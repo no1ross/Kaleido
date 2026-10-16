@@ -31,6 +31,10 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     private readonly CircuitBreakerStateProvider _circuit = new();
     private readonly ResiliencePipeline _pipeline;
 
+    // When the open circuit's break ends (UTC ticks). Polly moves an open circuit to half-open only
+    // when an execution is attempted after the break, so the relay must stop holding back then.
+    private long _breakUntilTicks;
+
     public KaleidoEventRelay(
         IServiceScopeFactory scopeFactory,
         IEventPublisher publisher,
@@ -80,7 +84,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
             // While the circuit is open nothing is claimed: the entries stay untouched in the outbox.
             if (CircuitIsOpen)
             {
-                await Task.Delay(_options.Resilience.CircuitBreakerBreakDuration, stoppingToken);
+                await Task.Delay(BreakRemaining, stoppingToken);
                 continue;
             }
 
@@ -187,7 +191,20 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     internal static TimeSpan RetryDelay(TimeSpan baseDelay, int attempts) =>
         Min(baseDelay * Math.Pow(2, Math.Min(attempts - 1, 20)), MaxRetryDelay);
 
-    private bool CircuitIsOpen => _circuit.CircuitState is CircuitState.Open or CircuitState.Isolated;
+    // Open only until the break ends: the next attempt after it is the half-open probe that closes
+    // the circuit again (or re-opens it). Nothing isolates the circuit (no manual control).
+    private bool CircuitIsOpen =>
+        _circuit.CircuitState is CircuitState.Open && BreakRemaining > TimeSpan.Zero;
+
+    private TimeSpan BreakRemaining
+    {
+        get
+        {
+            var remaining = new DateTimeOffset(Interlocked.Read(ref _breakUntilTicks), TimeSpan.Zero) - DateTimeOffset.UtcNow;
+
+            return remaining > TimeSpan.Zero ? Min(remaining, _options.Resilience.CircuitBreakerBreakDuration) : TimeSpan.Zero;
+        }
+    }
 
     private ResiliencePipeline BuildPipeline(KaleidoResilienceSettings resilience) =>
         new ResiliencePipelineBuilder()
@@ -200,6 +217,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
                 StateProvider = _circuit,
                 OnOpened = args =>
                 {
+                    Interlocked.Exchange(ref _breakUntilTicks, (DateTimeOffset.UtcNow + args.BreakDuration).UtcTicks);
                     LogCircuitOpened(_logger, args.BreakDuration);
                     return default;
                 },

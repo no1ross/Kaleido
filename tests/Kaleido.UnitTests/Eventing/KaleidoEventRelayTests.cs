@@ -387,7 +387,7 @@ public sealed class KaleidoEventRelayTests
         store.Verify(x => x.FailEventAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
-    [Fact(Skip = "Suspected bug: CircuitIsOpen reads the Polly state provider, which only moves Open -> HalfOpen when an execution is attempted; the relay never attempts one while the state reads Open, so it never resumes.")]
+    [Fact]
     public async Task RelayBatchAsync_WhenTheCircuitOpensAndLaterRecovers_LogsPauseAndResume()
     {
         var options = new KaleidoEventOptions { BatchSize = 2 };
@@ -413,7 +413,7 @@ public sealed class KaleidoEventRelayTests
         store.Verify(x => x.CompleteEventAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 
-    [Fact(Skip = "Suspected bug: after the break duration the state provider still reads Open (Polly moves to HalfOpen only on an attempted execution), so the relay loop keeps waiting and never claims again.")]
+    [Fact]
     public async Task ExecuteAsync_WhileTheCircuitIsOpen_WaitsTheBreakDurationBeforeClaimingAgain()
     {
         var options = new KaleidoEventOptions { BatchSize = 2 };
