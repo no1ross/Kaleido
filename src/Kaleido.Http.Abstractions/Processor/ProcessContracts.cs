@@ -547,8 +547,7 @@ public sealed record ProcessorRegistryResponse
 
     /// <summary>
     /// The steps that can start a new process (no dependencies and no availability preconditions;
-    /// never an information step), ordered by name. Their <c>ExecuteUrl</c> is empty: take it from
-    /// the matching entry in <see cref="Steps"/>.
+    /// never an information step), ordered by name, each with its <c>ExecuteUrl</c>.
     /// </summary>
     public IReadOnlyCollection<ProcessStepSummary> InitialSteps { get; init; }
         = [];

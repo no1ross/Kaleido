@@ -48,20 +48,7 @@ internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
             IsEntryProcessor = registration.IsEntryProcessor,
             RegistryUrl = RegistryContractUrls.Registry(serviceName),
             InitialSteps = registration.InitialSteps
-                .Select(x => new ProcessStepSummary
-                {
-                    Name = x.Name,
-                    Description = x.Description,
-                    DisplayName = x.DisplayName,
-                    Version = x.Version,
-                    Repeatable = x.Repeatable,
-                    IsInformationStep = x.IsInformationStep,
-                    Destructive = x.Destructive,
-                    External = x.External,
-                    RequiresConfirmation = x.RequiresConfirmation,
-                    Authorization = x.Authorization,
-                    ExecuteUrl = string.Empty,
-                })
+                .Select(x => CreateStepSummary(x, serviceName))
                 .ToArray(),
             Steps = registration.Steps
                 .Select(x => CreateStepResponse(x, serviceName))

@@ -35,6 +35,10 @@ public sealed class ProcessDiscoveryTests
         Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.Root);
         Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.RequiredRoot);
         Assert.Contains(processor.InitialSteps, x => x.Name == RuntimeStepNames.InvalidRequiredRoot);
+
+        var root = Assert.Single(processor.InitialSteps, x => x.Name == RuntimeStepNames.Root);
+        Assert.Equal(Assert.Single(processor.Steps!, x => x.Name == RuntimeStepNames.Root).ExecuteUrl, root.ExecuteUrl);
+        Assert.NotEmpty(root.ExecuteUrl);
     }
 
     [Fact]
