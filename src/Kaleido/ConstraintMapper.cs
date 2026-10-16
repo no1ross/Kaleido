@@ -24,7 +24,7 @@ public sealed record ConstraintParameterContract
     public object? Value { get; init; }
 }
 
-public interface IConstraintMapper
+internal interface IConstraintMapper
 {
     IReadOnlyCollection<ConstraintContract> Map(PropertyInfo propertyInfo);
 }

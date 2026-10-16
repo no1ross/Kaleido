@@ -232,9 +232,10 @@ Both clients:
 
 ### Front doors: calling as the caller, for a process
 
-A front door (a router proxy, the MCP adapter) calls services on behalf of its callers. Two
-per-call scopes, both opt-in and flowing with the async call only (both services are registered by
-`AddHttpClients()` when at least one client is configured):
+A front door calls services on behalf of its callers. Front doors are built into the solution (the
+MCP adapter), so the two per-call scopes are internal, shared with `Kaleido.Http.Mcp` through
+`InternalsVisibleTo`. Both are opt-in and flow with the async call only (both services are
+registered by `AddHttpClients()` when at least one client is configured):
 
 - `IKaleidoCallerForwarding.ForwardCaller(authorization)`: calls inside it send the caller's
   `Authorization` instead of the host's configured credentials.
