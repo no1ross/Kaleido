@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Kaleido.Exceptions;
 using Kaleido.Observability;
@@ -129,6 +130,126 @@ public sealed class QueryableObservabilityTests
             exception.ParamName);
     }
 
+    [Fact]
+    public void Observation_WithListener_TagsActivitiesAndLogsEachSignal()
+    {
+        var sourceName = $"test-source-{Guid.NewGuid():N}";
+        var processId = Guid.NewGuid();
+        var logger = new Mock<ILogger<QueryableObservability>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        var activities = new List<Activity>();
+        using var listener = CreateActivityListener(activities);
+        var childNames = new List<string>();
+
+        using (var observation = CreateSut(logger.Object, processId).BeginExecution(new QueryObservationDetails(sourceName, "grid", false, QueryExecutionMode.LocalView)))
+        {
+            foreach (var child in new[] { observation.BeginSource(), observation.BeginView(), observation.BeginMaterialization(), observation.BeginDelegate() })
+            {
+                childNames.Add(Assert.IsType<Activity>(child).OperationName);
+                child.Dispose();
+            }
+
+            observation.ValidationFailed(new KaleidoValidationException("qry_code", "bad"));
+            observation.Materialized(5, 2, 2, 4);
+            observation.Canceled();
+            observation.ExecutionFailed(new InvalidOperationException("boom"));
+        }
+
+        Assert.Equal(
+            [QueryableTelemetry.SourceActivityName, QueryableTelemetry.ViewActivityName, QueryableTelemetry.MaterializeActivityName, QueryableTelemetry.DelegateActivityName],
+            childNames);
+        var activity = Assert.Single(activities, x => x.GetTagItem(QueryableTelemetry.TagQuerySource) as string == sourceName);
+        Assert.Equal(QueryableTelemetry.ExecuteActivityName, activity.OperationName);
+        Assert.Equal("REQ-001", activity.GetTagItem(KaleidoTelemetryTags.RequestId));
+        Assert.Equal("calling-processor", activity.GetTagItem(KaleidoTelemetryTags.CallingProcessor));
+        Assert.Equal("calling-step", activity.GetTagItem(KaleidoTelemetryTags.CallingStep));
+        Assert.Equal(processId.ToString(), activity.GetTagItem(Kaleido.Processor.Observability.ProcessorTelemetry.TagProcessId));
+        Assert.Equal("grid", activity.GetTagItem(QueryableTelemetry.TagQueryView));
+        Assert.Equal(false, activity.GetTagItem(QueryableTelemetry.TagQueryDirect));
+        Assert.Equal(nameof(QueryExecutionMode.LocalView), activity.GetTagItem(QueryableTelemetry.TagQueryExecutionMode));
+        Assert.Equal("qry_code", activity.GetTagItem(QueryableTelemetry.TagValidationCode));
+        Assert.Equal(5, activity.GetTagItem(QueryableTelemetry.TagTotalCount));
+        Assert.Equal(2, activity.GetTagItem(QueryableTelemetry.TagReturnedCount));
+        Assert.Equal(2, activity.GetTagItem(QueryableTelemetry.TagPageSize));
+        Assert.Equal(4, activity.GetTagItem(QueryableTelemetry.TagPageOffset));
+        Assert.Contains(activity.Events, x => x.Name == QueryableTelemetry.CanceledEventName);
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        Assert.Equal("boom", activity.StatusDescription);
+
+        AssertLogged(logger, LogLevel.Debug, $"Queryable execution started for {sourceName}/grid direct False mode LocalView.");
+        AssertLogged(logger, LogLevel.Debug, $"Queryable materialization completed for {sourceName}/grid total 5 returned 2 pageSize 2 pageOffset 4.");
+        AssertLogged(logger, LogLevel.Warning, $"Queryable execution was canceled for {sourceName}/grid.");
+        AssertLogged(logger, LogLevel.Error, $"Queryable execution failed for {sourceName}/grid.");
+    }
+
+    [Fact]
+    public void Observation_WithoutListener_ReturnsNoOpChildScopesAndOmitsEmptyPaging()
+    {
+        var sourceName = $"test-source-{Guid.NewGuid():N}";
+        var measurements = new List<string>();
+        using var meterListener = new MeterListener();
+        meterListener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Meter.Name == QueryableTelemetry.MeterName)
+            {
+                l.EnableMeasurementEvents(instrument);
+            }
+        };
+        meterListener.SetMeasurementEventCallback<long>((instrument, _, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                if (tag.Key == QueryableTelemetry.TagQuerySource && tag.Value as string == sourceName)
+                {
+                    lock (measurements)
+                    {
+                        measurements.Add(instrument.Name);
+                    }
+                }
+            }
+        });
+        meterListener.Start();
+
+        using (var observation = CreateSut().BeginExecution(new QueryObservationDetails(sourceName, null, true, QueryExecutionMode.DelegatedSource)))
+        {
+            using var child = observation.BeginDelegate();
+            Assert.IsNotType<Activity>(child);
+            observation.ValidationFailed(new KaleidoValidationException("qry_code", "bad"));
+            observation.Materialized(3, 3, null, null);
+            observation.Canceled();
+            observation.ExecutionFailed(new InvalidOperationException("boom"));
+        }
+
+        Assert.Contains(QueryableTelemetry.TotalCountHistogramName, measurements);
+        Assert.DoesNotContain(QueryableTelemetry.PageSizeHistogramName, measurements);
+        Assert.DoesNotContain(QueryableTelemetry.PageOffsetHistogramName, measurements);
+    }
+
+    private static void AssertLogged(Mock<ILogger<QueryableObservability>> logger, LogLevel level, string message) =>
+        Assert.Contains(
+            logger.Invocations,
+            x => x.Method.Name == nameof(ILogger.Log) &&
+                 (LogLevel)x.Arguments[0] == level &&
+                 x.Arguments[2].ToString() == message);
+
+    private static ActivityListener CreateActivityListener(List<Activity> activities)
+    {
+        var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == QueryableTelemetry.ActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                lock (activities)
+                {
+                    activities.Add(activity);
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+        return listener;
+    }
+
     private static IQueryExecutionObservation BeginExecution() =>
         CreateSut().BeginExecution(
             new QueryObservationDetails(
@@ -137,7 +258,7 @@ public sealed class QueryableObservabilityTests
                 true,
                 QueryExecutionMode.DirectSource));
 
-    private static QueryableObservability CreateSut(ILogger<QueryableObservability>? logger = null)
+    private static QueryableObservability CreateSut(ILogger<QueryableObservability>? logger = null, Guid? processId = null)
     {
         var correlationAccessor =
             new Mock<IKaleidoCorrelationContextAccessor>();
@@ -148,7 +269,7 @@ public sealed class QueryableObservabilityTests
                 new KaleidoCorrelationContext
                 {
                     RequestId = "REQ-001",
-                    ProcessId = Guid.NewGuid(),
+                    ProcessId = processId,
                     CallingProcessorName = "calling-processor",
                     CallingStepName = "calling-step"
                 });

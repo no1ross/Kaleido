@@ -294,6 +294,35 @@ public sealed class ProcessorStateUpdaterTests
         Assert.Equal(ProcessExecutionState.Complete, result.State);
     }
 
+    [Theory]
+    [InlineData(ExecutionDecisionType.Continue, ProcessExecutionState.Active)]
+    [InlineData(ExecutionDecisionType.BusinessFailure, ProcessExecutionState.BusinessFailure)]
+    [InlineData(ExecutionDecisionType.ProcessViolation, ProcessExecutionState.ProcessViolation)]
+    [InlineData(ExecutionDecisionType.AwaitingRequiredStep, ProcessExecutionState.AwaitingRequiredStep)]
+    [InlineData(ExecutionDecisionType.AwaitingStepSelection, ProcessExecutionState.AwaitingStepSelection)]
+    [InlineData(ExecutionDecisionType.HandOff, ProcessExecutionState.HandOff)]
+    public void ApplyExecution_MapsEachDecisionToItsState(ExecutionDecisionType decisionType, ProcessExecutionState expected)
+    {
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step", Version = "1.0" }] };
+
+        var result = Sut.ApplyExecution(context, new StepCandidate { StepName = "test-step" }, new ExecutionDecision { Type = decisionType });
+
+        Assert.Equal(expected, result.State);
+    }
+
+    [Fact]
+    public void ApplyExecution_ForADecisionWithoutAProcessState_ThrowsAFrameworkException()
+    {
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step", Version = "1.0" }] };
+
+        var exception =
+            Assert.Throws<Kaleido.Exceptions.KaleidoFrameworkException>(() =>
+                Sut.ApplyExecution(context, new StepCandidate { StepName = "test-step" }, new ExecutionDecision { Type = ExecutionDecisionType.Rejected }));
+
+        Assert.Equal(Kaleido.Exceptions.FrameworkErrorCodes.TypeMismatch, exception.Code);
+        Assert.Contains("Rejected", exception.Message);
+    }
+
     [Fact]
     public void ApplyExecution_SetsDecisionProperties()
     {

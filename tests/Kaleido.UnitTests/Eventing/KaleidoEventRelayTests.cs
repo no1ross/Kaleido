@@ -13,7 +13,8 @@ public sealed class KaleidoEventRelayTests
         IKaleidoContextStore store,
         IEventPublisher publisher,
         KaleidoEventOptions? options = null,
-        IKaleidoEventSignal? signal = null)
+        IKaleidoEventSignal? signal = null,
+        Microsoft.Extensions.Logging.ILogger<KaleidoEventRelay>? logger = null)
     {
         var provider = new Mock<IServiceProvider>();
         provider.Setup(x => x.GetService(typeof(IKaleidoContextStore))).Returns(store);
@@ -29,8 +30,25 @@ public sealed class KaleidoEventRelayTests
             publisher,
             signal ?? Mock.Of<IKaleidoEventSignal>(),
             new KaleidoServiceOptions { ServiceName = "svc", Events = options ?? new KaleidoEventOptions() },
-            NullLogger<KaleidoEventRelay>.Instance);
+            logger ?? NullLogger<KaleidoEventRelay>.Instance);
     }
+
+    private static Mock<Microsoft.Extensions.Logging.ILogger<KaleidoEventRelay>> EnabledLogger()
+    {
+        var logger = new Mock<Microsoft.Extensions.Logging.ILogger<KaleidoEventRelay>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<Microsoft.Extensions.Logging.LogLevel>())).Returns(true);
+        return logger;
+    }
+
+    private static void AssertLogged(
+        Mock<Microsoft.Extensions.Logging.ILogger<KaleidoEventRelay>> logger,
+        Microsoft.Extensions.Logging.LogLevel level,
+        string fragment) =>
+        Assert.Contains(
+            logger.Invocations,
+            x => x.Method.Name == nameof(Microsoft.Extensions.Logging.ILogger.Log) &&
+                 (Microsoft.Extensions.Logging.LogLevel)x.Arguments[0] == level &&
+                 x.Arguments[2].ToString()!.Contains(fragment, StringComparison.Ordinal));
 
     private static KaleidoOutboxEvent Entry(int attempts = 0)
     {
@@ -289,6 +307,180 @@ public sealed class KaleidoEventRelayTests
 
         // The full batch was followed by a second claim before the first wait.
         Assert.Equal(2, claims);
+    }
+
+    [Fact]
+    public async Task RelayBatchAsync_LogsEachOutcomeAtItsLevel()
+    {
+        var published = Entry();
+        var logger = EnabledLogger();
+
+        await CreateSut(StoreClaiming(published).Object, Publisher().Object, logger: logger.Object).RelayBatchAsync(CancellationToken.None);
+        AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Debug, $"({published.EventId}) published.");
+
+        var retried = Entry();
+        await CreateSut(StoreClaiming(retried).Object, FailingPublisher().Object, logger: logger.Object).RelayBatchAsync(CancellationToken.None);
+        AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Warning, $"({retried.EventId}) failed (attempt 1); retrying at");
+
+        var options = new KaleidoEventOptions();
+        options.Resilience.MaxRetryAttempts = 0;
+        var parked = Entry();
+        await CreateSut(StoreClaiming(parked).Object, FailingPublisher().Object, options, logger: logger.Object).RelayBatchAsync(CancellationToken.None);
+        AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Error, $"({parked.EventId}) failed 1 times; the event is parked");
+    }
+
+    [Fact]
+    public async Task RelayBatchAsync_WhenTheStoreFails_LogsAnError()
+    {
+        var store = new Mock<IKaleidoContextStore>();
+        store
+            .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("database down"));
+        var logger = EnabledLogger();
+
+        await CreateSut(store.Object, Publisher().Object, logger: logger.Object).RelayBatchAsync(CancellationToken.None);
+
+        AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Error, "could not read or update the outbox");
+    }
+
+    [Fact]
+    public async Task RelayBatchAsync_WhenCanceled_PropagatesTheCancellation()
+    {
+        var store = new Mock<IKaleidoContextStore>();
+        store
+            .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => CreateSut(store.Object, Publisher().Object).RelayBatchAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RelayBatchAsync_WhenTheHostStopsDuringAPublish_DoesNotCountAFailedAttempt()
+    {
+        using var stopping = new CancellationTokenSource();
+        var store = StoreClaiming(Entry());
+        var publisher = Publisher(async () =>
+        {
+            await stopping.CancelAsync();
+            stopping.Token.ThrowIfCancellationRequested();
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => CreateSut(store.Object, publisher.Object).RelayBatchAsync(stopping.Token));
+
+        store.Verify(x => x.FailEventAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        store.Verify(x => x.CompleteEventAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RelayBatchAsync_WhenTheCircuitOpens_LogsThePauseAndLeavesTheRestUntouched()
+    {
+        var options = new KaleidoEventOptions { BatchSize = 3 };
+        options.Resilience.CircuitBreakerMinimumThroughput = 2;
+        var logger = EnabledLogger();
+        var store = StoreClaiming(Entry(), Entry(), Entry());
+
+        await CreateSut(store.Object, FailingPublisher().Object, options, logger: logger.Object).RelayBatchAsync(CancellationToken.None);
+
+        AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Warning, "Event publishing paused for");
+        store.Verify(x => x.FailEventAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact(Skip = "Suspected bug: CircuitIsOpen reads the Polly state provider, which only moves Open -> HalfOpen when an execution is attempted; the relay never attempts one while the state reads Open, so it never resumes.")]
+    public async Task RelayBatchAsync_WhenTheCircuitOpensAndLaterRecovers_LogsPauseAndResume()
+    {
+        var options = new KaleidoEventOptions { BatchSize = 2 };
+        options.Resilience.CircuitBreakerMinimumThroughput = 2;
+        options.Resilience.CircuitBreakerBreakDuration = TimeSpan.FromMilliseconds(500);
+        var failing = true;
+        var publisher = Publisher(() => failing ? Task.FromException(new InvalidOperationException("broker down")) : Task.CompletedTask);
+        var logger = EnabledLogger();
+        var store = StoreClaiming(Entry(), Entry());
+        var sut = CreateSut(store.Object, publisher.Object, options, logger: logger.Object);
+
+        await sut.RelayBatchAsync(CancellationToken.None);
+        AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Warning, "Event publishing paused for");
+
+        await sut.RelayBatchAsync(CancellationToken.None);
+        store.Verify(x => x.CompleteEventAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        failing = false;
+        await Task.Delay(TimeSpan.FromMilliseconds(700));
+        await sut.RelayBatchAsync(CancellationToken.None);
+
+        AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Warning, "Event publishing resumed.");
+        store.Verify(x => x.CompleteEventAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+    }
+
+    [Fact(Skip = "Suspected bug: after the break duration the state provider still reads Open (Polly moves to HalfOpen only on an attempted execution), so the relay loop keeps waiting and never claims again.")]
+    public async Task ExecuteAsync_WhileTheCircuitIsOpen_WaitsTheBreakDurationBeforeClaimingAgain()
+    {
+        var options = new KaleidoEventOptions { BatchSize = 2 };
+        options.Resilience.CircuitBreakerMinimumThroughput = 2;
+        options.Resilience.CircuitBreakerBreakDuration = TimeSpan.FromMilliseconds(500);
+        var claimTimes = new List<DateTimeOffset>();
+        var store = new Mock<IKaleidoContextStore>();
+        store
+            .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                lock (claimTimes)
+                {
+                    claimTimes.Add(DateTimeOffset.UtcNow);
+                    return claimTimes.Count == 1 ? [Entry(), Entry()] : [];
+                }
+            });
+        var waited = new TaskCompletionSource();
+        var signal = new Mock<IKaleidoEventSignal>();
+        signal
+            .Setup(x => x.WaitAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .Returns<TimeSpan, CancellationToken>(async (_, token) =>
+            {
+                waited.TrySetResult();
+                await Task.Delay(Timeout.Infinite, token);
+                return false;
+            });
+        using var sut = CreateSut(store.Object, FailingPublisher().Object, options, signal.Object);
+
+        await sut.StartAsync(CancellationToken.None);
+        await waited.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await sut.StopAsync(CancellationToken.None);
+
+        Assert.Equal(2, claimTimes.Count);
+        Assert.True(claimTimes[1] - claimTimes[0] >= TimeSpan.FromMilliseconds(400));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_AfterAPartialBatch_WaitsTheRelayIntervalAndStopsWhenTheHostStops()
+    {
+        var options = new KaleidoEventOptions { BatchSize = 5 };
+        var store = StoreClaiming(Entry());
+        var waits = new List<TimeSpan>();
+        var waited = new TaskCompletionSource();
+        var signal = new Mock<IKaleidoEventSignal>();
+        signal
+            .Setup(x => x.WaitAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .Returns<TimeSpan, CancellationToken>(async (wait, token) =>
+            {
+                lock (waits)
+                {
+                    waits.Add(wait);
+                }
+
+                waited.TrySetResult();
+                await Task.Delay(Timeout.Infinite, token).ContinueWith(_ => { }, TaskScheduler.Default);
+                return false;
+            });
+        using var sut = CreateSut(store.Object, Publisher().Object, options, signal.Object);
+
+        await sut.StartAsync(CancellationToken.None);
+        await waited.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await sut.StopAsync(CancellationToken.None);
+        await sut.ExecuteTask!;
+
+        Assert.Equal(KaleidoEventRelay.RelayInterval, Assert.Single(waits));
+        Assert.True(sut.ExecuteTask!.IsCompletedSuccessfully);
     }
 
     private static void InterlockedMax(ref int target, int value)

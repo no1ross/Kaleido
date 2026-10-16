@@ -802,6 +802,98 @@ public sealed class ProcessorExecutorTests
             x => x.Code == ProcessorErrorCodes.FrameworkException);
     }
 
+    private static async Task<ProcessExecutionOutcome> ExecuteOneAsync(
+        StepCandidateStatus candidateStatus,
+        bool succeeded,
+        ExecutionDecision decision,
+        Mock<IProcessorStepObservation>? stepObservation = null)
+    {
+        var candidate = CreateCandidate<TestStepA>("step-a");
+        candidate.Status = candidateStatus;
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateInvokerResult() with { Succeeded = succeeded });
+        var evaluator = new Mock<IStepExecutionEvaluator>();
+        evaluator
+            .Setup(x => x.Evaluate(It.IsAny<StepCandidate>(), It.IsAny<StepInvocationResult>(), It.IsAny<IReadOnlyCollection<StepCandidate>>(), It.IsAny<ProcessorContext>()))
+            .Returns(decision);
+
+        var result =
+            await CreateSut(invoker, evaluator: evaluator, stepObservation: stepObservation)
+                .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+
+        return Assert.Single(result.Outcomes);
+    }
+
+    [Theory]
+    [InlineData(StepCandidateStatus.Invalid, StepExecutionStatus.ValidationFailed, StepExecutionOutcome.Failed)]
+    [InlineData(StepCandidateStatus.Satisfied, StepExecutionStatus.Skipped, StepExecutionOutcome.Blocked)]
+    [InlineData(StepCandidateStatus.Pending, StepExecutionStatus.Pending, StepExecutionOutcome.Blocked)]
+    public async Task ExecuteAsync_TheCandidateStatus_DecidesTheReportedStatus(
+        StepCandidateStatus candidateStatus,
+        StepExecutionStatus expectedStatus,
+        StepExecutionOutcome expectedOutcome)
+    {
+        var outcome = await ExecuteOneAsync(candidateStatus, succeeded: true, ExecutionDecision.Complete());
+
+        Assert.Equal(expectedStatus, outcome.Status);
+        Assert.Equal(expectedOutcome, outcome.Outcome);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_AProcessViolationAfterASuccessfulHandler_IsReportedAsAnException()
+    {
+        var violation = StepProcessingMessage.Error(ProcessorErrorCodes.FrameworkException, "not a valid next step");
+
+        var outcome = await ExecuteOneAsync(StepCandidateStatus.Built, succeeded: true, ExecutionDecision.ProcessViolation(violation));
+
+        Assert.Equal(StepExecutionStatus.Exception, outcome.Status);
+        Assert.Equal(StepExecutionOutcome.Failed, outcome.Outcome);
+        Assert.Equal([violation], outcome.RuntimeMessages);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ABusinessFailure_IsReportedAsFailed()
+    {
+        var outcome = await ExecuteOneAsync(StepCandidateStatus.Built, succeeded: false, ExecutionDecision.BusinessFailure());
+
+        Assert.Equal(StepExecutionStatus.Failed, outcome.Status);
+        Assert.Equal(StepExecutionOutcome.Failed, outcome.Outcome);
+        Assert.Equal(ExecutionDecisionType.BusinessFailure, outcome.Decision);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenTheDecisionAsksForInformation_RecordsTheRequest()
+    {
+        var stepObservation = new Mock<IProcessorStepObservation>();
+        var request = new InformationRequest { InformationRequestId = "out-of-network", Items = [] };
+
+        var outcome = await ExecuteOneAsync(StepCandidateStatus.Built, succeeded: true, ExecutionDecision.AwaitingInformation("step-b", request), stepObservation);
+
+        Assert.Equal(StepExecutionStatus.Completed, outcome.Status);
+        stepObservation.Verify(x => x.DecisionRecorded(nameof(ExecutionDecisionType.AwaitingInformation), nameof(StepExecutionStatus.Completed)), Times.Once);
+        stepObservation.Verify(x => x.InformationRequested("out-of-network"), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenTheInvokerReportsAConcurrencyConflict_LetsItThroughWithoutSavingAFailure()
+    {
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KaleidoConcurrencyException(Guid.NewGuid()));
+        var saved = new List<ProcessorContext>();
+        var stepObservation = new Mock<IProcessorStepObservation>();
+
+        await Assert.ThrowsAsync<KaleidoConcurrencyException>(() =>
+            CreateSut(invoker, store: CreateStore(saved), stepObservation: stepObservation)
+                .ExecuteAsync([CreateCandidate<TestStepA>("step-a")], CreateContext("step-a"), new ProcessorRequest()));
+
+        Assert.Empty(saved);
+        stepObservation.Verify(x => x.StepFailed(It.IsAny<Exception>()), Times.Never);
+    }
+
     private static Mock<IKaleidoContextStore> CreateStore(
         List<ProcessorContext> savedContexts)
     {
@@ -902,13 +994,17 @@ public sealed class ProcessorExecutorTests
         Mock<IKaleidoContextStore>? store = null,
         Mock<IProcessorEventFactory>? eventFactory = null,
         Mock<IKaleidoEventOutbox>? eventOutbox = null,
-        Mock<IKaleidoCorrelationContextAccessor>? correlationAccessor = null)
+        Mock<IKaleidoCorrelationContextAccessor>? correlationAccessor = null,
+        Mock<IProcessorStepObservation>? stepObservation = null)
     {
+        var observedStep =
+            stepObservation?.Object ?? Mock.Of<IProcessorStepObservation>();
+
         var observability =
             Mock.Of<IProcessorObservability>(
                 x =>
                     x.BeginStep(It.IsAny<ProcessorStepObservationDetails>()) ==
-                    Mock.Of<IProcessorStepObservation>());
+                    observedStep);
 
         var accessor =
             correlationAccessor ??

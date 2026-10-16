@@ -135,6 +135,51 @@ public sealed class QueryableServiceTests
         Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
     }
 
+    [Fact]
+    public async Task QueryAsync_WhenTheEngineReturnsNoTask_ThrowsTypeMismatch()
+    {
+        var request = new QueryRequest();
+        var source = CreateSourceRegistration(typeof(TestSource), QuerySourceKind.Local, typeof(TestContext));
+        var engine = new Mock<IQueryContextEngine<TestContext, TestContext>>();
+        engine.Setup(x => x.ExecuteAsync(request, source, It.IsAny<CancellationToken>())).Returns((Task<QueryResult<TestContext>>)null!);
+
+        var service = CreateSut(
+            ScopeFactoryReturning(typeof(IQueryContextEngine<TestContext, TestContext>), engine.Object),
+            ViewRegistryWith(null),
+            SourceRegistryWith(typeof(TestSource), source));
+
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
+            service.QueryAsync<TestSource, TestContext>(request));
+
+        Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
+    }
+
+    [Fact]
+    public async Task QueryAsync_WhenRequestIsNull_Throws()
+    {
+        var service = CreateSut(Mock.Of<IServiceScopeFactory>(), ViewRegistryWith(null), Mock.Of<IQuerySourceRegistry>());
+
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => service.QueryAsync<TestSource, TestContext>(null!));
+
+        Assert.Equal("request", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task QueryAsync_WhenTheEngineFails_PropagatesTheFailure()
+    {
+        var request = new QueryRequest();
+        var source = CreateSourceRegistration(typeof(TestSource), QuerySourceKind.Local, typeof(TestContext));
+        var engine = new Mock<IQueryContextEngine<TestContext, TestContext>>();
+        engine.Setup(x => x.ExecuteAsync(request, source, It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+
+        var service = CreateSut(
+            ScopeFactoryReturning(typeof(IQueryContextEngine<TestContext, TestContext>), engine.Object),
+            ViewRegistryWith(null),
+            SourceRegistryWith(typeof(TestSource), source));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => service.QueryAsync<TestSource, TestContext>(request));
+    }
+
     private static IServiceScopeFactory ScopeFactoryReturning(Type serviceType, object service)
     {
         var provider = new Mock<IServiceProvider>();

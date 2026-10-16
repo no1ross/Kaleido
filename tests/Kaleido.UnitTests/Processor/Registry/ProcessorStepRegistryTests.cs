@@ -449,6 +449,70 @@ public sealed class ProcessorStepRegistryTests
         Assert.Empty(item.Fields.Single(x => x.Name == nameof(DeclaredStep.Amount)).Classifications);
         Assert.Equal(["Test:PHI"], item.Result!.OutputFields.Single(x => x.Name == nameof(DeclaredResponse.MemberName)).Classifications);
     }
+    [Theory]
+    [InlineData(typeof(SelfAvailableAfterStep), "AvailableAfter")]
+    [InlineData(typeof(SelfAvailableUntilStep), "AvailableUntil")]
+    public void Constructor_WhenAStepReferencesItselfInAnAvailabilityRule_ThrowsInvalidRegistration(Type stepType, string rule)
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut(stepType));
+
+        Assert.Equal(ProcessorErrorCodes.InvalidRegistration, exception.Code);
+        Assert.Contains($"cannot reference itself in {rule}", exception.Message);
+    }
+
+    [Fact]
+    public void Constructor_ASharedDependency_IsNotACycle()
+    {
+        var registry = CreateSut(typeof(StepA), typeof(StepB), typeof(DiamondStep));
+
+        Assert.Equal(
+            [typeof(StepA), typeof(StepB)],
+            registry.GetRegistration(typeof(DiamondStep)).Dependencies.Select(x => x.StepType).OrderBy(x => x.Name));
+    }
+
+    [Fact]
+    public void GetRegistration_ByName_WhenRegistered_ReturnsItCaseInsensitively()
+    {
+        var registry = CreateSut([typeof(StepA)], new Dictionary<Type, Type> { [typeof(StepA)] = typeof(StepAHandler) });
+
+        Assert.Equal(typeof(StepA), registry.GetRegistration(nameof(StepA).ToUpperInvariant()).StepType);
+        Assert.Equal(AuthorizationMetadata.Unspecified, registry.GetRegistration(typeof(StepA)).Metadata.Authorization);
+    }
+
+    [Fact]
+    public void Registration_ResultExtractor_ReturnsTheHandlerResult_AndRejectsANullResult()
+    {
+        var getResult = CreateSut(typeof(StepA)).GetRegistration(typeof(StepA)).GetResultFromTask!;
+        var handlerResult = new ProcessStepHandlerResult<TestResponse> { Succeeded = true };
+
+        Assert.Same(handlerResult, getResult(Task.FromResult(handlerResult)));
+
+        var exception =
+            Assert.Throws<KaleidoFrameworkException>(() =>
+                getResult(Task.FromResult<ProcessStepHandlerResult<TestResponse>>(null!)));
+
+        Assert.Equal(FrameworkErrorCodes.InvalidHandlerResult, exception.Code);
+    }
+
+    [ProcessStep(DisplayName = nameof(SelfAvailableAfterStep), Description = "self available-after description", Version = "1.0")]
+    [AvailableAfter<SelfAvailableAfterStep>]
+    private sealed class SelfAvailableAfterStep : IProcessStep;
+
+    private sealed class SelfAvailableAfterStepHandler : BaseHandler<SelfAvailableAfterStep, TestResponse>;
+
+    [ProcessStep(DisplayName = nameof(SelfAvailableUntilStep), Description = "self available-until description", Version = "1.0")]
+    [AvailableUntil<SelfAvailableUntilStep>]
+    private sealed class SelfAvailableUntilStep : IProcessStep;
+
+    private sealed class SelfAvailableUntilStepHandler : BaseHandler<SelfAvailableUntilStep, TestResponse>;
+
+    [ProcessStep(DisplayName = nameof(DiamondStep), Description = "diamond description", Version = "1.0")]
+    [DependsOn<StepA>]
+    [DependsOn<StepB>]
+    private sealed class DiamondStep : IProcessStep;
+
+    private sealed class DiamondStepHandler : BaseHandler<DiamondStep, TestResponse>;
+
     private static ProcessorStepRegistry CreateSut(
         IEnumerable<Type> stepTypes,
         IReadOnlyDictionary<Type, Type> handlerTypes) =>
@@ -478,7 +542,10 @@ public sealed class ProcessorStepRegistryTests
             { typeof(SelfDependentStep), typeof(SelfDependentStepHandler) },
             { typeof(CycleStepA), typeof(CycleStepAHandler) },
             { typeof(CycleStepB), typeof(CycleStepBHandler) },
-            { typeof(DeclaredStep), typeof(DeclaredStepHandler) }
+            { typeof(DeclaredStep), typeof(DeclaredStepHandler) },
+            { typeof(SelfAvailableAfterStep), typeof(SelfAvailableAfterStepHandler) },
+            { typeof(SelfAvailableUntilStep), typeof(SelfAvailableUntilStepHandler) },
+            { typeof(DiamondStep), typeof(DiamondStepHandler) }
         };
 
         return new ProcessorStepRegistry(

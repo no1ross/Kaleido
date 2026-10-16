@@ -163,6 +163,21 @@ public sealed class QueryViewRegistryTests
             Array.Empty<TestContract>().AsQueryable();
     }
 
+    [Fact]
+    public void Constructor_AViewWithoutQueryViewAttribute_FailsStartup()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut(typeof(UndescribedView)));
+
+        Assert.Equal(QueryableErrorCodes.MissingAttribute, exception.Code);
+        Assert.Contains(nameof(UndescribedView), exception.Message);
+    }
+
+    private sealed class UndescribedView : IQueryViewSource<TestSource, TestContext, TestContract>
+    {
+        public IQueryable<TestContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
+            Array.Empty<TestContract>().AsQueryable();
+    }
+
     [QueryView(DisplayName = "Simple", Description = "Simple view.", Version = "1.0.0")]
     private sealed class SimpleView : IQueryViewSource<TestSource, TestContext, TestContract>
     {

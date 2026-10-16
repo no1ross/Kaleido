@@ -275,6 +275,52 @@ public sealed class ProcessorRuntimeTests
         execution.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
     }
 
+    public static TheoryData<Exception, string?> LoadFailures() =>
+        new()
+        {
+            { new Kaleido.Exceptions.KaleidoConcurrencyException(Guid.Empty), new Kaleido.Exceptions.KaleidoConcurrencyException(Guid.Empty).Code },
+            { new Kaleido.Exceptions.KaleidoAuthorizationException("Approve", callerIsAuthenticated: true), ProcessorTelemetry.AuthorizationRejectionCode },
+            { new InvalidOperationException("store down"), null },
+        };
+
+    [Theory]
+    [MemberData(nameof(LoadFailures))]
+    public async Task ExecuteAsync_WhenLoadingFails_RecordsCallerErrorsAsRejectedAndTheRestAsFailures(Exception failure, string? rejectionCode)
+    {
+        var request = CreateRequest();
+        var contextStore = new Mock<IKaleidoContextStore>();
+        contextStore.Setup(x => x.LoadAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ThrowsAsync(failure);
+        var execution = new Mock<IProcessorExecutionObservation>();
+        var observability = new Mock<IProcessorObservability>();
+        observability.Setup(x => x.BeginExecution(It.IsAny<ProcessorExecutionObservationDetails>())).Returns(execution.Object);
+
+        var runtime =
+            CreateSut(
+                contextStore.Object,
+                new Mock<IProcessorStateUpdater>(MockBehavior.Strict).Object,
+                new Mock<IProcessorPlanner>(MockBehavior.Strict).Object,
+                new Mock<IProcessorExecutor>(MockBehavior.Strict).Object,
+                CreateProcessEventFactory().Object,
+                new Mock<IKaleidoEventOutbox>().Object,
+                observability.Object,
+                CreateCorrelationAccessor());
+
+        var thrown = await Assert.ThrowsAnyAsync<Exception>(() => runtime.ExecuteAsync(request, TestContext.Current.CancellationToken));
+
+        Assert.Same(failure, thrown);
+
+        if (rejectionCode is null)
+        {
+            execution.Verify(x => x.ExecutionFailed(failure), Times.Once);
+            execution.Verify(x => x.ExecutionRejected(It.IsAny<Exception>(), It.IsAny<string>()), Times.Never);
+        }
+        else
+        {
+            execution.Verify(x => x.ExecutionRejected(failure, rejectionCode), Times.Once);
+            execution.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
+        }
+    }
+
     [Fact]
     public async Task ExecuteAsync_WhenContextExists_ReconcilesContext()
     {

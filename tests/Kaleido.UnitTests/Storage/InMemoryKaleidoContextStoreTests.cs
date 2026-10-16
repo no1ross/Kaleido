@@ -8,8 +8,8 @@ namespace Kaleido.Storage.UnitTests;
 public sealed class InMemoryKaleidoContextStoreTests
     : SutFixture
 {
-    private static InMemoryKaleidoContextStore CreateSut() =>
-        new(new Mock<ILogger<InMemoryKaleidoContextStore>>().Object);
+    private static InMemoryKaleidoContextStore CreateSut(ILogger<InMemoryKaleidoContextStore>? logger = null) =>
+        new(logger ?? new Mock<ILogger<InMemoryKaleidoContextStore>>().Object);
 
     [Fact]
     public async Task SaveAsync_WhenContextIsNull_Throws()
@@ -218,6 +218,37 @@ public sealed class InMemoryKaleidoContextStoreTests
         await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "second"));
 
         Assert.Equal("second", (await sut.FindResultAsync("svc:alice:k1"))!.Response);
+    }
+
+    [Fact]
+    public async Task Constructor_WarnsOnce_AndEachSaveLogsAtDebug()
+    {
+        var logger = new Mock<ILogger<InMemoryKaleidoContextStore>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+        var store = CreateSut(logger.Object);
+        await store.SaveAsync(NewProcess(), []);
+
+        var levels = logger.Invocations.Where(x => x.Method.Name == nameof(ILogger.Log)).Select(x => (LogLevel)x.Arguments[0]).ToList();
+        Assert.Equal([LogLevel.Warning, LogLevel.Debug], levels);
+        Assert.Contains("InMemoryKaleidoContextStore is active", logger.Invocations.First(x => x.Method.Name == nameof(ILogger.Log)).Arguments[2].ToString());
+    }
+
+    [Fact]
+    public async Task CompleteEventAsync_AfterTheLeaseExpired_LeavesTheEntryForTheNextClaim()
+    {
+        var store = CreateSut();
+        var @event = Event();
+        await store.EnqueueEventsAsync([@event]);
+        var claimed = Assert.Single(await store.ClaimEventsAsync(10, TimeSpan.Zero));
+
+        await store.CompleteEventAsync(claimed.EventId);
+        await store.FailEventAsync(claimed.EventId, retryAtUtc: null, "late");
+
+        var reclaimed = Assert.Single(await store.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        Assert.Equal(@event.EventId, reclaimed.EventId);
+        Assert.Equal(0, reclaimed.Attempts);
+        Assert.False(reclaimed.IsParked);
     }
 
     private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null) =>

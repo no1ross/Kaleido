@@ -151,6 +151,32 @@ public sealed class QuerySourceRegistryTests
     }
 
     [Fact]
+    public void GetRegistration_WhenTypeIsMissing_Throws()
+    {
+        var registry = CreateSut(typeof(TestSource));
+
+        var exception = Assert.Throws<KaleidoFrameworkException>(() => registry.GetRegistration(typeof(ArchivedTestSource)));
+
+        Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
+        Assert.Contains(nameof(ArchivedTestSource), exception.Message);
+    }
+
+    [Fact]
+    public void Constructor_ASourceWithoutQuerySourceAttribute_FailsStartup()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut(typeof(UndescribedSource)));
+
+        Assert.Equal(QueryableErrorCodes.MissingAttribute, exception.Code);
+        Assert.Contains(nameof(UndescribedSource), exception.Message);
+    }
+
+    private sealed class UndescribedSource : IQuerySource<TestContext>
+    {
+        public IQueryable<TestContext> CreateQuery(QueryExecutionContext executionContext) =>
+            Array.Empty<TestContext>().AsQueryable();
+    }
+
+    [Fact]
     public void Constructor_MapsKaleidoAuthorizationFromSource()
     {
         var registry = CreateSut(typeof(SecuredSource));
