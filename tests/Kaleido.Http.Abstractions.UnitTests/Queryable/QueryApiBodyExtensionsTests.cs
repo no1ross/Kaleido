@@ -63,6 +63,28 @@ public sealed class QueryApiBodyExtensionsTests
             x => Assert.Equal("x", x.GetString()));
     }
 
+    // A forwarded value is written as Kaleido writes every value on the wire: an enum as its
+    // camelCase name (never a number, even without a converter on the type), a date as ISO text.
+    [Fact]
+    public void ToApiBody_WritesValuesWithTheKaleidoWireFormat()
+    {
+        var body = new QueryBody(
+            Filter: QueryFilterNode.CreateCondition("ward", FilterOperator.In, Ward.NorthWing, new DateOnly(2024, 1, 5), 40.5m));
+
+        var values = body.ToApiBody()!.Filter!.Condition!.Values!;
+
+        Assert.Equal(JsonValueKind.String, values[0].ValueKind);
+        Assert.Equal("northWing", values[0].GetString());
+        Assert.Equal("2024-01-05", values[1].GetString());
+        Assert.Equal(40.5m, values[2].GetDecimal());
+    }
+
+    private enum Ward
+    {
+        SouthWing,
+        NorthWing,
+    }
+
     [Fact]
     public void ToApiBody_WhenFilterIsAGroup_MapsItsNestedFilters()
     {
