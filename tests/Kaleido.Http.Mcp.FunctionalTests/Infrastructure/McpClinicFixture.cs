@@ -176,7 +176,8 @@ public class McpClinicFixture : IAsyncLifetime
     public async Task<McpClient> ConnectAsync(
         string? authorization,
         Func<ElicitRequestParams?, CancellationToken, ValueTask<ElicitResult>>? elicitation = null,
-        string? requestId = null)
+        string? requestId = null,
+        string? protocolVersion = null)
     {
         var headers = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -199,7 +200,9 @@ public class McpClinicFixture : IAsyncLifetime
             },
             Server.CreateClient());
 
-        var options = new McpClientOptions();
+        // A pinned revision decides how forms travel: 2026-07-28 returns input_required results
+        // (MRTR) that the SDK client answers and retries; 2025-11-25 elicits within the session.
+        var options = new McpClientOptions { ProtocolVersion = protocolVersion };
 
         if (elicitation is not null)
         {
