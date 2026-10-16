@@ -41,6 +41,12 @@ Rules:
 - `[ProcessStep]` declares non-empty `Version`, `DisplayName`, and `Description`
   (KAL2001). `DisplayName`/`Description` are what UIs and AI agents read — write
   them for that audience.
+- **Required inputs are `required` members.** Inputs are validated with DataAnnotations, and
+  `[Required]` cannot see an omitted value type (it is already its default). Declare required
+  value-type inputs with the C# keyword too (KAL2021):
+  `[Required] public required Guid MemberId { get; init; }`. Callers must then supply it: the
+  compiler checks in-process callers, and a request body that leaves it out is answered 400
+  naming it. The handler reads a plain `Guid`.
 - **The next step is named by type**: `Success<TNext>()`, or with a typed response
   `ProcessStepHandlerResult.Success(response).Next<TNext>()` (the response type is inferred);
   `Success()` / `Success(response)` let the process rules decide. Cross-processor routing uses
@@ -203,7 +209,8 @@ public sealed record MemberQueryContext : IQueryContext
 }
 
 // The source: the published capability. Queryable directly at /{service}/queryable/{source}/query.
-[QuerySource(Version = "1.0.0", DisplayName = "Members", Description = "Member enrollments, searchable by member number and name.")]
+[QuerySource(Version = "1.0.0", DisplayName = "Members", Description = "Member enrollments, searchable by member number and name.",
+             DefaultSortField = nameof(MemberQueryContext.MemberNumber))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class MemberQuerySource(MemberDbContext db) : IQuerySource<MemberQueryContext>
 {
@@ -237,7 +244,9 @@ Rules:
 - **Parameter records implement `IQueryParameters`.** View and result records are
   plain output shapes, with no marker.
 - **Paging:** a source's `[Pageable]` applies to direct queries of that source, a
-  view's to that view. Nothing is inherited.
+  view's to that view. Nothing is inherited. A pageable view or local source
+  declares a sortable `DefaultSortField` (prefer a unique field); requests without
+  a sort are ordered by it, so pages are stable.
 - **Sync vs async:** prefer `IQuerySource<T>` / `IQueryViewSource<…>` when the
   queryable is already in hand (in-memory, pre-fetched, or deferred LINQ). Use
   `IQuerySourceAsync<T>` / `IQueryViewSourceAsync<…>` when producing it needs async I/O.

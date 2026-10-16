@@ -159,15 +159,19 @@ public static partial class QueryableEndpointRouteBuilderExtensions
         endpoints.MapPost(
                 route,
                 async (
-                    QueryApiRequest<TViewParameters> request,
+                    KaleidoJsonBody<QueryApiRequest<TViewParameters>> body,
                     IQueryableService queryable,
                     CancellationToken cancellationToken) =>
-                    Results.Ok(
+                {
+                    var request = body.Value;
+
+                    return Results.Ok(
                         await queryable.QueryAsync<TQueryView, TView>(
                             new QueryRequest<TViewParameters>(
                                 ViewParameters: request.Parameters,
                                 Query: request.Query.ToQueryBody(fields)),
-                            cancellationToken)))
+                            cancellationToken));
+                })
             .WithKaleidoAuthorization(view.Authorization, options)
             .WithName(
                 QueryableEndpointNames.QueryViewEndpointName(
@@ -199,15 +203,19 @@ public static partial class QueryableEndpointRouteBuilderExtensions
         endpoints.MapPost(
                 route,
                 async (
-                    QueryApiRequest<TParameters> request,
+                    KaleidoJsonBody<QueryApiRequest<TParameters>> body,
                     IQueryableService queryable,
                     CancellationToken cancellationToken) =>
-                    Results.Ok(
+                {
+                    var request = body.Value;
+
+                    return Results.Ok(
                         await queryable.QueryAsync<TSource, TResult>(
                             new QueryRequest<TParameters>(
                                 ViewParameters: request.Parameters,
                                 Query: request.Query.ToQueryBody(fields)),
-                            cancellationToken)))
+                            cancellationToken));
+                })
             .WithKaleidoAuthorization(source.Authorization, options)
             .WithName(
                 QueryableEndpointNames.QuerySourceEndpointName(

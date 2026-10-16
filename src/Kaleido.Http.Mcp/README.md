@@ -51,7 +51,10 @@ Names come from the published names in snake case. When two capabilities produce
 the later one says what it is (`_view`, `_source`, `_step`), and the collision is logged.
 
 Step and input descriptions are the published metadata (`[ProcessStep]`, `[Description]`,
-`[Display]`): they are the interface the agent reads (ADR 0007).
+`[Display]`): they are the interface the agent reads (ADR 0007). A query field's description is
+shown where the field first appears in the tool (`filters`, else `searchText`, else `sort`). At
+startup the adapter logs, at Warning, every capability, input and query field without a
+description, once per property (`service.Source.Field`), not once per tool.
 
 **Tool hints** ([ADR 0015](../../docs/decisions/0015-declared-step-behavior.md)) - what the implementer declared on
 `[ProcessStep]`, so a client knows which calls need extra care:
@@ -70,8 +73,23 @@ them carelessly.
 
 ## After a step
 
-A step's result is summarized for the agent: the outcome, the business messages (verbatim),
-the step's result, and `next`:
+A step's result is summarized for the agent: the outcome, the step's result, `next`, and the two
+message streams of the step response, kept apart:
+
+- **`messages`**: the handler's business messages, for the user, delivered verbatim (ADR 0007).
+- **`diagnostics`**: Kaleido's framework messages (`pro_*`) that are warnings or errors, for the agent
+  to explain; informational notes are left out. They are present only when the service returns
+  framework messages (`AddHttp(o => o.IncludeFrameworkMessages = true)`).
+
+The JSON summary is one text block marked for the assistant (MCP `annotations.audience`). Each
+business message is also sent as its own text block marked for the user (`audience: ["user"]`,
+`priority: 1`), and so is each reason a service gives for refusing a call in its own words (an error
+code that is not Kaleido's: not `qry_*`, `pro_*`, `httpclient_*`, `mcp_*`, `argument_error` or
+`framework_error`). A client that honours the annotation can show that text to the user as written,
+without the model in between (ADR 0007). A client that ignores it passes every block to the model,
+and the instructions tell the model to relay messages verbatim.
+
+`next`:
 
 - **`next.required`**: the step that must run next. For an information step, `next.informationRequest`
   carries the questions, with an instruction to ask them exactly as written, to read proposed
@@ -82,7 +100,7 @@ the step's result, and `next`:
 - **After a handoff** the target service's state is read, so `next` names that service's tools.
 - **A rejected step** (`outcome: rejected`) changed nothing: the note says so and `next` lists the
   unchanged next steps (ADR 0008). A step that failed unexpectedly while the process still has next
-  steps is reported the same way. Framework messages are shown only when they are warnings or errors.
+  steps is reported the same way.
 
 ### Questions as forms
 

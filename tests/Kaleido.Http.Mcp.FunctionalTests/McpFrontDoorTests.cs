@@ -96,6 +96,6 @@ public sealed class McpFrontDoorTests(FrontDoorFixture fixture)
         await client.CallToolAsync(tool, arguments, cancellationToken: Cancel);
 
     private static JsonNode Body(CallToolResult result) =>
-        JsonNode.Parse(result.Content.OfType<TextContentBlock>().Single().Text)
+        JsonNode.Parse(result.Content.OfType<TextContentBlock>().First().Text)
         ?? throw new InvalidOperationException("The tool returned no JSON.");
 }

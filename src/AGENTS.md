@@ -112,7 +112,7 @@ Runtime invariants:
 - **`QueryableService` dispatches by the queried type** (view, local source, delegated source). Because each type is exactly one capability, there is no lane order or fallback.
 - **The consumer's query is validated against the source's query context before execution, delegated sources included.** A delegated source's `QueryResult` (including its paging) is returned untouched.
 - **`QuerySourceKind` (local or delegated) is service-side runtime metadata.** It must not be published on the registry or wire contracts; consumers see every source the same way.
-- **Paging is per capability:** the source's `[Pageable]` applies to direct queries, a view's to that view; it is never inherited. A pageable view must declare a sortable `DefaultSortField`.
+- **Paging is per capability:** the source's `[Pageable]` applies to direct queries, a view's to that view; it is never inherited. A pageable view, and a pageable local source, must declare a sortable `DefaultSortField`; a request without a sort is ordered by it (ascending), so pages are stable. A delegated source's order is its downstream's.
 
 ### Process runtime rules
 Process is step-centric, not query-centric. Do not import Queryable terminology into Process code or docs.
@@ -172,7 +172,7 @@ Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirec
 
 `KaleidoJsonOptions.Options` (in `Kaleido.Http.Abstractions`) is the single shared `JsonSerializerOptions` for all Kaleido HTTP serialization. Every `ReadFromJsonAsync`/`JsonContent.Create` call in Kaleido code must pass it explicitly.
 
-`QueryResult<T>.TotalCount` semantics: equals `results.Count` when `page` is absent from the request (caller got all results, no count query ran), or when `page` is present but the returned page is partial (`results.Count < page.Size`). Only when `page` is provided AND the page is full does `TotalCount` equal the true unfiltered count — `CountAsync` runs only in that case.
+`QueryResult<T>.TotalCount` semantics: always the number of matching results, whatever page was returned. A pageable source or view always pages (its default page when the request has no `page`). `CountAsync` runs only when the page cannot tell: the page is full, or empty past the start. A partial page ends the results (`TotalCount = offset + results.Count`), and an unpageable capability returns every result (`TotalCount = results.Count`). A delegated source's `TotalCount` is its downstream's.
 
 When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Http.Abstractions` — samples and consumers should only reference `Kaleido.Http.Abstractions`, not `Kaleido.Http` (which carries ASP.NET Core dependencies).
 

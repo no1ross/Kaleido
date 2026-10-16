@@ -10,6 +10,7 @@ namespace Kaleido.Http.FunctionalTests.Processor.Execution;
 public sealed class StepExecutionEndpointTests
 {
     private const string RootStepUrl = "/kaleido/processes/steps/runtimerootstep";
+    private const string InputStepUrl = "/kaleido/processes/steps/runtimeinputstep";
 
     private readonly HttpClient _client;
 
@@ -122,6 +123,52 @@ public sealed class StepExecutionEndpointTests
             await _client.GetAsync($"/kaleido/processes/{unknownProcessId}");
 
         Assert.Equal(HttpStatusCode.NotFound, stateResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostStepExecute_WithARequiredInputLeftOut_Returns400NamingIt()
+    {
+        var (status, body) = await PostRawAsync(InputStepUrl, """{"processStep":{"on":"2026-10-15"}}""");
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Contains(KaleidoErrorCodes.ArgumentError, body, StringComparison.Ordinal);
+        Assert.Contains("itemId", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PostStepExecute_WithAValueThatDoesNotFit_Returns400NamingItsPath()
+    {
+        var (status, body) = await PostRawAsync(InputStepUrl, """{"processStep":{"itemId":"6f1c2a9e-5d3b-4f7a-9c1e-2b8d4e6a0f13","on":"tomorrow"}}""");
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Contains(KaleidoErrorCodes.ArgumentError, body, StringComparison.Ordinal);
+        Assert.Contains("$.processStep.on", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PostStepExecute_WithTypedInputs_Runs()
+    {
+        var (status, _) = await PostRawAsync(InputStepUrl, """{"processStep":{"itemId":"6f1c2a9e-5d3b-4f7a-9c1e-2b8d4e6a0f13","on":"2026-10-15"}}""");
+
+        Assert.Equal(HttpStatusCode.OK, status);
+    }
+
+    [Fact]
+    public async Task PostStepExecute_WithABodyThatIsNotJson_Returns415()
+    {
+        using var content = new StringContent("itemId=1", Encoding.UTF8, "text/plain");
+        using var response = await _client.PostAsync(InputStepUrl, content);
+
+        // Routing answers it from the endpoint's Accepts("application/json") metadata, before binding.
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
+    private async Task<(HttpStatusCode Status, string Body)> PostRawAsync(string url, string json)
+    {
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+        using var response = await _client.PostAsync(url, content);
+
+        return (response.StatusCode, await response.Content.ReadAsStringAsync());
     }
 
     // Starts a new process the supported way: no process id, the runtime generates one.

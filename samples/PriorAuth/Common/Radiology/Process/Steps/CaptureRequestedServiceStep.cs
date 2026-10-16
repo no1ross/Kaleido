@@ -33,7 +33,7 @@ public sealed record CaptureRequestedServiceStep : IProcessStep
         Service = "codeset",
         Source = nameof(ProcedureCodeQueryContextSource),
         Field = "CodeSystem")]
-    public ProcedureCodeSystem CodeSystem { get; init; }
+    public required ProcedureCodeSystem CodeSystem { get; init; }
 
     // What the caller stated about this service up front. Stored with the service by binding key
     // (BodyPart, Laterality, Contrast); configured questions with the same binding key propose them.

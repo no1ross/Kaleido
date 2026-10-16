@@ -45,17 +45,18 @@ Queryable query operators and sort directions are already **string properties** 
 
 ### Queryable paging and `totalCount`
 
-A Queryable request may supply `{"query":{"page":{"size":10,"offset":0}}}`. `offset` is zero-based. An explicit `page` is accepted only for a source or view registered with `[Pageable]` (a source's paging applies to direct queries of it, a view's to that view); otherwise the endpoint returns `qry_paging_not_supported` (400). Omitted `size` uses the configured `DefaultSize`, and omitted `offset` uses zero, so `{"page":{}}` and `{"page":{"offset":20}}` are valid explicit pages of `DefaultSize` rows (and follow the explicit-page `totalCount` rules below). Explicit `size` must be greater than zero and no greater than `MaxSize` (`qry_invalid_page_size`); a negative `offset` returns `qry_invalid_page_offset`. An oversized explicit request is rejected, not silently clamped.
+A Queryable request may supply `{"query":{"page":{"size":10,"offset":0}}}`. `offset` is zero-based. An explicit `page` is accepted only for a source or view registered with `[Pageable]` (a source's paging applies to direct queries of it, a view's to that view); otherwise the endpoint returns `qry_paging_not_supported` (400). Omitted `size` uses the configured `DefaultSize`, and omitted `offset` uses zero, so `{"page":{}}` and `{"page":{"offset":20}}` are valid explicit pages of `DefaultSize` rows. Explicit `size` must be greater than zero and no greater than `MaxSize` (`qry_invalid_page_size`); a negative `offset` returns `qry_invalid_page_offset`. An oversized explicit request is rejected, not silently clamped.
 
-For locally executed Queryable sources and views, `QueryResult<T>.totalCount` depends on whether the request explicitly contains `page` and whether the returned page is full:
+For locally executed Queryable sources and views, `QueryResult<T>.totalCount` is always the number of matching rows, whichever page was returned, so a consumer can compute the page count from it. A pageable source or view always pages: a request without `page` gets its default page (`offset` 0, `DefaultSize` rows), and the response's `offset` and `pageSize` say which page that was. A source or view that is not pageable returns every matching row.
 
-| Request | Rows returned | `totalCount` |
+| Returned page | `totalCount` | Count query |
 |---|---|---|
-| No `page` | A pageable query applies its default page size; a non-pageable query is not paged. | `results.Count` — **not necessarily all matching rows** when the default size caps a pageable query. |
-| Explicit `page`, full (`results.Count == effective size`) | Up to the requested or defaulted size, from `offset`. | Count of all matching rows from a separate count query. |
-| Explicit `page`, partial or empty | Fewer rows than the effective size, including an offset beyond the end. | `results.Count`, **not** a global count when `offset` is nonzero. No separate count query runs. |
+| Full (`results.Count == pageSize`), with or without `page` in the request | All matching rows | Yes |
+| Partial, at least one row | `offset + results.Count` (the page ends the results) | No |
+| Empty, `offset` past the start | All matching rows | Yes |
+| Not pageable | `results.Count` (every row) | No |
 
-For example, with six matching rows and a default page size of three: omitting `page` returns three rows and `totalCount: 3`; `{ "size": 2, "offset": 2 }` returns two rows and `totalCount: 6`; `{ "size": 4, "offset": 4 }` returns two rows and `totalCount: 2`; and an offset beyond the end returns no rows and `totalCount: 0`. Do not calculate a global page count from `totalCount` on the skipped-count paths. A delegated source supplies its own `QueryResult<T>` (its downstream system's paging and count), which Kaleido returns unchanged.
+For example, with six matching rows and a default page size of three: omitting `page` returns three rows and `totalCount: 6`; `{ "size": 2, "offset": 2 }` returns two rows and `totalCount: 6`; `{ "size": 4, "offset": 4 }` returns two rows and `totalCount: 6`; and an offset beyond the end returns no rows and `totalCount: 6`. A delegated source supplies its own `QueryResult<T>` (its downstream system's paging and count), which Kaleido returns unchanged.
 
 ---
 

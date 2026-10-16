@@ -99,6 +99,49 @@ public sealed class ProcessorObservabilityTests
     }
 
     [Fact]
+    public void ExecutionRejected_IsNotCountedAsAFailure_AndLogsAtDebug()
+    {
+        var serviceName = $"test-processor-{Guid.NewGuid():N}";
+        var logger = new Mock<ILogger<ProcessorObservability>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        var observability = CreateSut(serviceName, logger.Object);
+
+        using var listener = new MeterListener();
+        var failures = 0L;
+
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Meter.Name == ProcessorTelemetry.MeterName && instrument.Name == "kaleido.processor.execution_failures")
+            {
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, measurement, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                if (tag.Key == KaleidoTelemetryTags.ProcessorName && tag.Value as string == serviceName)
+                {
+                    failures += measurement;
+                }
+            }
+        });
+        listener.Start();
+
+        using (var observation = observability.BeginExecution(new ProcessorExecutionObservationDetails(1)))
+        {
+            observation.ExecutionRejected(new Kaleido.Exceptions.KaleidoValidationException(ProcessorErrorCodes.ProcessNotFound, "not found"), ProcessorErrorCodes.ProcessNotFound);
+        }
+
+        Assert.Equal(0, failures);
+        logger.Verify(x => x.Log(LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
+        var rejected = Assert.Single(
+            logger.Invocations,
+            x => x.Method.Name == nameof(ILogger.Log) && x.Arguments[2].ToString()!.Contains(ProcessorErrorCodes.ProcessNotFound, StringComparison.Ordinal));
+        Assert.Equal(LogLevel.Debug, rejected.Arguments[0]);
+    }
+
+    [Fact]
     public void BeginStep_WhenDetailsIsNull_Throws()
     {
         var observability = CreateSut();
@@ -185,7 +228,8 @@ public sealed class ProcessorObservabilityTests
     }
 
     private static ProcessorObservability CreateSut(
-        string serviceName = "test-processor")
+        string serviceName = "test-processor",
+        ILogger<ProcessorObservability>? logger = null)
     {
         var correlationAccessor =
             new Mock<IKaleidoCorrelationContextAccessor>();
@@ -204,6 +248,6 @@ public sealed class ProcessorObservabilityTests
         return new ProcessorObservability(
             correlationAccessor.Object,
             new KaleidoServiceOptions { ServiceName = serviceName, DisplayName = "Test Processor" },
-            Mock.Of<ILogger<ProcessorObservability>>());
+            logger ?? Mock.Of<ILogger<ProcessorObservability>>());
     }
 }

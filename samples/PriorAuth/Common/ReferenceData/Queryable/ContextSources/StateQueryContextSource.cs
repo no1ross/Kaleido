@@ -9,7 +9,8 @@ namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.ContextSources;
     Version = "1.0.0",
     DisplayName = "States",
     Description = "States (reference data).",
-    Source = "Prior Authorization Reference Data")]
+    Source = "Prior Authorization Reference Data",
+    DefaultSortField = nameof(StateQueryContext.StateCode))]
 [Pageable(
     DefaultSize = 25,
     MaxSize = 100)]

@@ -11,7 +11,8 @@ namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.ContextSources;
     Version = "1.0.0",
     DisplayName = "Plans",
     Description = "Health plans (reference data).",
-    Source = "Prior Authorization Reference Data")]
+    Source = "Prior Authorization Reference Data",
+    DefaultSortField = nameof(PlanQueryContext.PlanId))]
 [Pageable(
     DefaultSize = 25,
     MaxSize = 100)]

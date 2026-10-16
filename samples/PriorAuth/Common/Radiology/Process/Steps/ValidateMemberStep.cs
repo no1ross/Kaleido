@@ -29,7 +29,7 @@ public sealed record ValidateMemberStep : IProcessStep
         View = nameof(MemberSearchViewSource),
         Field = "MemberId",
         Display = ["DisplayName", "DateOfBirth", "MemberNumber", "PlanName", "EffectiveDate", "TerminationDate"])]
-    public Guid MemberId { get; init; }
+    public required Guid MemberId { get; init; }
 
     [Required]
     [Description("The member's enrollment (plan coverage) from the same Member Search result.")]
@@ -38,10 +38,10 @@ public sealed record ValidateMemberStep : IProcessStep
         Source = nameof(MemberQueryContextSource),
         View = nameof(MemberSearchViewSource),
         Field = "MemberEnrollmentId")]
-    public Guid MemberEnrollmentId { get; init; }
+    public required Guid MemberEnrollmentId { get; init; }
 
     [Required]
     [Description("The date the service will be rendered.")]
     [Display(Name = "Date of service", Prompt = "What is the date of service?")]
-    public DateOnly DateOfService { get; init; }
+    public required DateOnly DateOfService { get; init; }
 }

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Kaleido.Processor;
 using Kaleido.Samples.PriorAuth.Auth;
 
@@ -12,7 +13,9 @@ namespace Kaleido.Samples.PriorAuth.Member.Process.Steps;
     Version = "1.0.0")]
 public sealed record GenerateSnapshotStep : IProcessStep
 {
+    [Description("The member to snapshot.")]
     public required Guid MemberId { get; init; }
 
+    [Description("The member's enrollment (plan coverage) to snapshot.")]
     public required Guid MemberEnrollmentId { get; init; }
 }

@@ -43,31 +43,28 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
                 break;
 
             case KaleidoAuthorizationException authorization:
-                MarkFailed(authorization);
                 LogAuthorizationDenied(logger, authorization, authorization.CallerIsAuthenticated, authorization.Message);
                 await DenyAsync(context, authorization, cancellationToken);
                 break;
 
             case KaleidoValidationException validation:
-                MarkFailed(validation);
                 LogValidationFailed(logger, validation, validation.Code, validation.Message);
                 await WriteErrorAsync(context, StatusCodes.Status400BadRequest, validation.Code, validation.Message, cancellationToken);
                 break;
 
             case KaleidoConcurrencyException conflict:
-                MarkFailed(conflict);
                 LogConflict(logger, conflict.ProcessId);
                 await WriteErrorAsync(context, StatusCodes.Status409Conflict, conflict.Code, conflict.Message, cancellationToken);
                 break;
 
-            case BadHttpRequestException badRequest:
-                MarkFailed(badRequest);
-                LogMalformedRequest(logger, badRequest, badRequest.Message);
-                await WriteErrorAsync(context, badRequest.StatusCode, KaleidoErrorCodes.ArgumentError, badRequest.Message, cancellationToken);
+            // A malformed request, including a body that does not fit its type if one ever gets past
+            // KaleidoJsonBody: a caller's mistake, never a 500.
+            case BadHttpRequestException or System.Text.Json.JsonException:
+                LogMalformedRequest(logger, exception, exception.Message);
+                await WriteMalformedAsync(context, exception, cancellationToken);
                 break;
 
             case ArgumentException argument:
-                MarkFailed(argument);
                 LogInvalidArgument(logger, argument);
                 await WriteErrorAsync(context, StatusCodes.Status400BadRequest, KaleidoErrorCodes.ArgumentError, "An invalid argument was provided.", cancellationToken);
                 break;
@@ -93,6 +90,13 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
         }
     }
 
+    private static Task WriteMalformedAsync(HttpContext context, Exception exception, CancellationToken cancellationToken) =>
+        exception is BadHttpRequestException badRequest
+            ? WriteErrorAsync(context, badRequest.StatusCode, KaleidoErrorCodes.ArgumentError, badRequest.Message, cancellationToken)
+            : WriteErrorAsync(context, StatusCodes.Status400BadRequest, KaleidoErrorCodes.ArgumentError, "The request body does not fit the expected shape.", cancellationToken);
+
+    // Only a 5xx marks the request's span as an error: a 4xx is the caller's mistake, answered to the
+    // caller (OpenTelemetry's HTTP server conventions), so dashboards do not count it as a fault.
     private static void MarkFailed(Exception exception) =>
         Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
 

@@ -6,7 +6,8 @@ namespace Kaleido.Samples.SQLite;
     Version = "1.0.0",
     DisplayName = "Functional Records",
     Description = "Sample records covering every supported field type, filter operator and match mode.",
-    Source = "CSV Functional Test Data")]
+    Source = "CSV Functional Test Data",
+    DefaultSortField = nameof(SampleKaleidoRecord.Id))]
 [Pageable(DefaultSize = 25, MaxSize = 500)]
 public sealed class SampleKaleidoRecordSource : IQuerySource<SampleKaleidoRecord>
 {

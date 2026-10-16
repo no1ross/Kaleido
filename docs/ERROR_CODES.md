@@ -16,6 +16,8 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 
 Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them.
 
+A request the HTTP layer cannot read (a body that is not JSON, a value that does not fit its type, a C# `required` member left out) is answered 400 `argument_error` (415 for a non-JSON content type) with a message naming the JSON path, by Kaleido's error handling on the per-step and query endpoints; a `JsonException` is never a 500.
+
 HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 error body. A Process step handler's validation exception instead produces a failed step outcome; its original code and message appear in `FrameworkMessages` only when the transport enables framework diagnostics. Configuration and framework exception codes remain log-only.
 
 ---
@@ -29,7 +31,7 @@ One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup 
 | `MissingAttribute` | `qry_missing_attribute` | Query source or view missing `[QuerySource]`/`[QueryView]`, or with an empty `Version`/`DisplayName`/`Description` (startup) |
 | `MissingSource` | `qry_missing_source` | Query view references a type that is not a registered local query source (startup) |
 | `DuplicateRegistration` | `qry_duplicate_registration` | Two sources share a type name, or two views of one source share a type name (startup) |
-| `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration, for example `[QuerySource]`/`[QueryView]` on a type that implements no source or view interface (also KAL2012), both sync and async shapes, more than one source/view interface, a type that is both a source and a view, or a bad default sort field (startup) |
+| `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration, for example `[QuerySource]`/`[QueryView]` on a type that implements no source or view interface (also KAL2012), both sync and async shapes, more than one source/view interface, a type that is both a source and a view, or a pageable view or local source without a valid sortable `DefaultSortField` (startup) |
 | `InvalidField` | `qry_invalid_field` | Field referenced in a filter, sort, or parameter does not exist on the query context |
 | `UnsupportedOperator` | `qry_unsupported_operator` | Filter condition uses an operator not supported by the field |
 | `FieldNotFilterable` | `qry_field_not_filterable` | Filter condition references a field not marked as filterable |

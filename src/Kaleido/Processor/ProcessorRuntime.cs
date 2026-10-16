@@ -222,12 +222,28 @@ internal sealed class ProcessorRuntime(
         // level with full context - that is ProcessorExecutor (stepObservation.Canceled(),
         // where state is saved). Do NOT add an observation.Canceled() catch block at
         // this level; it would double-record every cancellation. See AGENTS.md.
+        catch (Exception exception) when (exception is not OperationCanceledException && CallerErrorCode(exception) is { } code)
+        {
+            observation.ExecutionRejected(exception, code);
+            throw;
+        }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             observation.ExecutionFailed(exception);
             throw;
         }
     }
+
+    // A request the caller got wrong or must retry is answered to the caller (4xx), not a failure of
+    // this service: no Error log, no failure metric (one signal per failure, logged by the transport).
+    private static string? CallerErrorCode(Exception exception) =>
+        exception switch
+        {
+            KaleidoValidationException validation => validation.Code,
+            KaleidoConcurrencyException conflict => conflict.Code,
+            KaleidoAuthorizationException => ProcessorTelemetry.AuthorizationRejectionCode,
+            _ => null,
+        };
 
     private bool IsHandOff() =>
         correlationAccessor.Current.CallingProcessorName is { Length: > 0 } calling &&

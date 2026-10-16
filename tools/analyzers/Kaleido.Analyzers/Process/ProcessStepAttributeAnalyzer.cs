@@ -53,9 +53,9 @@ public sealed class ProcessStepAttributeAnalyzer : DiagnosticAnalyzer
 
         var args = attributeSyntax.ArgumentList?.Arguments ?? default;
 
-        if (!AttributeHelper.HasNonEmptyNamedArgument(args, "Version") ||
-            !AttributeHelper.HasNonEmptyNamedArgument(args, "DisplayName") ||
-            !AttributeHelper.HasNonEmptyNamedArgument(args, "Description"))
+        if (!AttributeHelper.HasNonEmptyNamedArgument(args, "Version", context.SemanticModel) ||
+            !AttributeHelper.HasNonEmptyNamedArgument(args, "DisplayName", context.SemanticModel) ||
+            !AttributeHelper.HasNonEmptyNamedArgument(args, "Description", context.SemanticModel))
         {
             context.ReportDiagnostic(
                 Diagnostic.Create(Rule, attributeSyntax.GetLocation(), ctorSymbol.ContainingType.Name));

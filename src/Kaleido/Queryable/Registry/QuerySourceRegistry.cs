@@ -153,10 +153,7 @@ internal sealed class QuerySourceRegistry : IQuerySourceRegistry
                 QueryableErrorCodes.MissingAttribute,
                 $"Query source '{sourceType.FullName}' must be decorated with [QuerySource].");
 
-        var pageable =
-            sourceType.GetCustomAttribute<PageableAttribute>() is { } pageableAttribute
-                ? new PageableMetadata(pageableAttribute.DefaultSize, pageableAttribute.MaxSize)
-                : null;
+        var pageable = sourceType.ToSourcePageable(contextType, attribute, kind);
 
         return new QuerySourceMetadata(
             sourceType.Name,

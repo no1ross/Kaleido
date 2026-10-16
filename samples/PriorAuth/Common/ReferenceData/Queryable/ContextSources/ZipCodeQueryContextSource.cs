@@ -9,7 +9,8 @@ namespace Kaleido.Samples.PriorAuth.ReferenceData.Queryable.ContextSources;
     Version = "1.0.0",
     DisplayName = "Zip Codes",
     Description = "Zip codes with their city and state (reference data).",
-    Source = "Prior Authorization Reference Data")]
+    Source = "Prior Authorization Reference Data",
+    DefaultSortField = nameof(ZipCodeQueryContext.PostalCode))]
 [Pageable(
     DefaultSize = 25,
     MaxSize = 250)]

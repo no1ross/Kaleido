@@ -139,12 +139,21 @@ public sealed record QueryViewMetadata
     AuthorizationMetadata? Authorization = null
 );
 
-/// <summary>Paging limits.</summary>
+/// <summary>Paging limits, and the order pages follow when the request specifies no sort.</summary>
+/// <param name="DefaultSize">The page size used when the request does not specify one.</param>
+/// <param name="MaxSize">The largest page size a request may ask for.</param>
+/// <param name="DefaultSortField">
+/// The query context field a request without a sort is ordered by (ascending), so pages are stable.
+/// Declared by the view (<see cref="QueryViewAttribute.DefaultSortField"/>) or the local source
+/// (<see cref="QuerySourceAttribute.DefaultSortField"/>); <see langword="null"/> for a delegated
+/// source, whose order is its downstream's.
+/// </param>
 [ExcludeFromCodeCoverage]
 public sealed record PageableMetadata
 (
     int DefaultSize,
-    int MaxSize
+    int MaxSize,
+    string? DefaultSortField = null
 );
 
 /// <summary>A query parameter and its constraints.</summary>

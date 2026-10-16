@@ -32,6 +32,14 @@ public static class ProcessorTelemetry
     public const string ExecutionCompletedEventName =
         "kaleido.processor.execution.completed";
 
+    // The caller's request was refused (validation, authorization, a concurrent change): not a failure.
+    public const string ExecutionRejectedEventName =
+        "kaleido.processor.execution.rejected";
+
+    // The rejection code tag value for an authorization refusal (which has no error code of its own).
+    public const string AuthorizationRejectionCode =
+        "authorization";
+
     public const string StepCanceledEventName =
         "kaleido.processor.step.canceled";
 
