@@ -93,7 +93,7 @@ The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, t
 
 ### Schema changes
 
-The SQLite store creates its schema with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, the `IdempotentResults` and `OutboxEvents` tables, or the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed (delete the file; it is recreated at startup). A production store manages its own schema migrations.
+The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, the `IdempotentResults` and `OutboxEvents` tables, or the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed (delete the file; it is recreated at startup). A production store manages its own schema migrations.
 
 ---
 
@@ -104,17 +104,25 @@ For samples, demos, and local development:
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, o =>
 {
-    o.ServiceName = "my-service";
-    o.Assemblies = new[] { typeof(Program).Assembly };
+    o.ServiceName = "myservice";
+    o.Assemblies = [typeof(Program).Assembly];
 })
     .UseSqliteKaleidoContextStore("Data Source=my-process.sqlite");
+
+var app = builder.Build();
+
+// The store does not create its tables: the host does, once, at startup.
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    await scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>().Database.EnsureCreatedAsync();
+}
 ```
 
-This registers `SqliteKaleidoContextStore` as `IKaleidoContextStore`, replacing the default in-memory store, and a health check (`kaleido-sqlite-context-store`).
+This registers `SqliteKaleidoContextStore` as `IKaleidoContextStore`, replacing the default in-memory store, and a health check (`kaleido-sqlite-context-store`). Registration does not touch the database: without the `EnsureCreatedAsync()` call the first save fails because the tables do not exist.
 
 Malformed, non-blank connection strings fail at registration with `KaleidoConfigurationException` (`SqliteErrorCodes.InvalidConnectionString`, `invalid_connection_string`) before DI services are replaced. The parser checks connection-string syntax only: registration does **not** open or create a database, and reachability remains a separate health-check concern.
 
-The default in-memory store is sufficient for tests and single-request processes; it logs a warning at registration precisely because production without a durable store is a configuration smell.
+The default in-memory store is sufficient for tests and single-request processes; it logs a warning when it is created (on first use) precisely because production without a durable store is a configuration smell.
 
 ---
 

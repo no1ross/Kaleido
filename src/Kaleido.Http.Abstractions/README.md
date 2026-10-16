@@ -29,12 +29,13 @@ For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteSte
 - `QueryApiRequest` / `QueryApiRequest<TParameters>` — query request body (search, filter, sort, page, optional view parameters)
 - `QueryApiBody` / `QueryApiFilterNode` / `QueryApiFilterCondition` / `QueryApiFilterGroup` / `QueryApiSort` / `QueryApiPage` — transport-level query body (string enums, raw `JsonElement` values)
 - `QueryableSourceResponse` — a query source in the registry response. It carries:
-  - `ServiceName`, `RegistryUrl` and `QueryUrl`;
+  - `Name` (what a client passes to address it), `ServiceName`, `RegistryUrl` and `QueryUrl`;
+  - `DisplayName`, `Description`, `Version`, `Pageable` and `Authorization`;
   - `Fields` (query rules), `Parameters`, `OutputFields` and `Views`.
 
   Every source is presented the same way; how the service fulfils it is not part of the contract. `QueryUrl` is null only in a caller-filtered registry, when the caller may use some of the source's views but not the source itself.
 - `QueryableViewResponse` — a view of a source (`QueryUrl`, `Parameters`, `OutputFields`, paging)
-- `QueryErrorResponse` — structured query validation error response
+- Errors use the shared `KaleidoErrorResponse` (defined in `Kaleido` core): `{ "errors": [{ "code", "message" }] }`; query validation failures are 400 with `qry_*` codes ([`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
 - `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated query sources calling a remote source or view)
 
 ### JSON enum values
@@ -88,5 +89,7 @@ When a contract must change, also update:
 
 ## Where to look
 
-- `Process/Contracts/` — all Process HTTP request/response types
-- `Queryable/Contracts/` — all Queryable HTTP request/response types
+- `Processor/ProcessContracts.cs` — all Process HTTP request/response types; `Processor/IKaleidoProcessorClient*.cs` — the process client interfaces
+- `Queryable/QueryableContracts.cs` and `Queryable/QueryApiBody.cs` — all Queryable HTTP request/response types; `Queryable/IKaleidoQueryableClient*.cs` — the queryable client interfaces
+- `Registry/` — `AggregatedRegistryResponse`, `IRegistrySnapshotStore`, `RegistryEndpointNames`
+- `KaleidoJsonOptions.cs`, `KaleidoCorrelationHeaders.cs`, `HttpHeaderSanitizer.cs`

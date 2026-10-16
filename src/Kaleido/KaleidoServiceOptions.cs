@@ -57,7 +57,7 @@ public class KaleidoServiceOptions
     public bool IsEntryProcessor { get; init; }
 
     /// <summary>
-    /// Optional filter to control which process steps are registered.
+    /// Optional filter to control which step and query source/view types are registered.
     /// Useful when sharing assemblies across multiple services.
     /// </summary>
     public Func<Type, bool>? TypeFilter { get; init; }
@@ -141,7 +141,7 @@ public class KaleidoServiceOptions
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,
                 "KaleidoServiceOptions.ServiceName must be a non-empty string. " +
-                "Set it via AddKaleido(config, o => o.ServiceName = \"my-service\") " +
+                "Set it via AddKaleido(config, o => o.ServiceName = \"myservice\") " +
                 "or via the Kaleido:ServiceName configuration key.");
         }
 
