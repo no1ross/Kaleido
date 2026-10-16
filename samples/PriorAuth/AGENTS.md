@@ -56,6 +56,11 @@
 - Kaleido redacts classified values in event payloads before the outbox write (ADR 0013); responses to callers keep the real values.
 - The sample registers no `AddRedaction`, so classified values are erased in events (a warning is logged once). To pseudonymize or encrypt instead, add `Microsoft.Extensions.Compliance.Redaction` to a host and call `services.AddRedaction(...)` per classification.
 
+## Telemetry
+- Each Kaleido service configures its export under `Kaleido:OpenTelemetry` in `appsettings*.json` (`Endpoint`, `Protocol`, `ResourceAttributes`); `service.name` is its `Kaleido:ServiceName`. See [`src/Kaleido.Observability.OpenTelemetry/README.md`](../../src/Kaleido.Observability.OpenTelemetry/README.md).
+- Compose sets the standard `OTEL_EXPORTER_OTLP_*`, `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` variables, which win over `appsettings.json`.
+- The EventCollector is not a Kaleido service: it wires OpenTelemetry itself from its own `OpenTelemetry` section, with the same precedence.
+
 ## Environment assumptions
 - Assume `ASPNETCORE_ENVIRONMENT=Development` for local work unless told otherwise
 - Use `npm` for the Angular app
