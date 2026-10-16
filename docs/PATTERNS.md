@@ -263,6 +263,31 @@ Rules:
   `QueryResult` through untouched. Delegated sources have no views.
 - **How a source is fulfilled (local or delegated) is not published:** consumers see
   every source the same way.
+- **EF Core (or any async provider): register an executor.** Kaleido counts the
+  results when a page is full. The default `IQueryContextExecutor<TView>` is
+  provider-neutral: it counts an async query by enumerating it, so the database
+  streams every matching row to count them. An EF Core host registers an executor
+  that uses EF's operators, and the count is one `SELECT COUNT(*)`:
+
+  ```csharp
+  internal sealed class EfCoreQueryContextExecutor<TView> : IQueryContextExecutor<TView>
+      where TView : class
+  {
+      public Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
+          EntityFrameworkQueryableExtensions.CountAsync(query, cancellationToken);
+
+      public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
+          await EntityFrameworkQueryableExtensions.ToListAsync(query, cancellationToken);
+
+      public IQueryable<TView> ApplyPage(IQueryable<TView> query, int size, int offset) =>
+          query.Skip(offset).Take(size);
+  }
+
+  builder.Services.AddSingleton(typeof(IQueryContextExecutor<>), typeof(EfCoreQueryContextExecutor<>));
+  ```
+
+  The framework registers its default with `TryAdd`, so this wins before or after
+  `AddKaleido()`. Proven in `tests/Kaleido.IntegrationTests/EfCore/EfCoreQueryContextExecutorTests.cs`.
 
 ## Exceptions
 

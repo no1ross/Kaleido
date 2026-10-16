@@ -12,7 +12,12 @@ namespace Kaleido.Queryable.Runtime;
 /// provider's true async operators (<c>EntityFrameworkCore.CountAsync</c>,
 /// <c>ToListAsync</c>) so queries stay off the request thread. The default
 /// implementation uses <see cref="IAsyncEnumerable{T}"/> when the queryable
-/// supports it and falls back to synchronous LINQ otherwise.
+/// supports it and falls back to synchronous LINQ otherwise. Note the cost of the
+/// default count on an async provider: it enumerates the query, so the provider sends
+/// every matching row to be counted, where a provider-native count sends one
+/// <c>COUNT</c> statement. Register the implementation once as an open generic
+/// (<c>services.AddSingleton(typeof(IQueryContextExecutor&lt;&gt;), typeof(MyExecutor&lt;&gt;))</c>);
+/// the framework's default is added with <c>TryAdd</c>, so the host's registration wins.
 /// </remarks>
 public interface IQueryContextExecutor<TView>
     where TView : class
