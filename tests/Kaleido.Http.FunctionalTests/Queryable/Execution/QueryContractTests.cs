@@ -170,6 +170,9 @@ public sealed class QueryContractTests(QueryableAspNetCoreFixture fixture) : ICl
             { """{ "query": { "filter": { "group": { "operator":"and", "filters": [] } } } }""", "qry_empty_filter_group" },
             { """{ "query": { "page": { "size": 11 } } }""", "qry_invalid_page_size" },
             { """{ "query": { "page": { "offset": -1 } } }""", "qry_invalid_page_offset" },
+            { """{ "query": { "filter": { } } }""", "qry_invalid_filter_node" },
+            { """{ "query": { "filter": { "condition": { "field":"Code", "operator":"equals", "values":["A"] }, "group": { "operator":"and", "filters": [ { "condition": { "field":"Code", "operator":"equals", "values":["B"] } } ] } } } }""", "qry_invalid_filter_node" },
+            { """{ "query": { "filter": { "group": { "operator":"and", "filters": [ { }, { "condition": { "field":"Code", "operator":"equals", "values":["A"] } } ] } } } }""", "qry_invalid_filter_node" },
         };
 
     [Theory]
