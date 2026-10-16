@@ -26,7 +26,7 @@ See also:
 
   Segments are the source and view type names, lowercased. All sources are mapped the same way; how a source is fulfilled is not visible to callers.
 
-Queryable requests use an optional `query.page` object. An omitted page can still apply the registered default size, and `totalCount` is not always a global match count; see [Queryable paging and totalCount](../Kaleido.Http.Abstractions/README.md#queryable-paging-and-totalcount) before implementing a non-.NET consumer.
+Queryable requests use an optional `query.page` object. An omitted page on a pageable source or view applies its default page; `totalCount` is always the number of matching rows. See [Queryable paging and totalCount](../Kaleido.Http.Abstractions/README.md#queryable-paging-and-totalcount) before implementing a non-.NET consumer.
 
 ### Process endpoint mapping
 - `ProcessorEndpointRouteBuilderExtensions` — `MapProcessor()` extension

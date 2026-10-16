@@ -172,7 +172,7 @@ Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirec
 
 `KaleidoJsonOptions.Options` (in `Kaleido.Http.Abstractions`) is the single shared `JsonSerializerOptions` for all Kaleido HTTP serialization. Every `ReadFromJsonAsync`/`JsonContent.Create` call in Kaleido code must pass it explicitly.
 
-`QueryResult<T>.TotalCount` semantics: equals `results.Count` when `page` is absent from the request (caller got all results, no count query ran), or when `page` is present but the returned page is partial (`results.Count < page.Size`). Only when `page` is provided AND the page is full does `TotalCount` equal the true unfiltered count — `CountAsync` runs only in that case.
+`QueryResult<T>.TotalCount` semantics: always the number of matching results, whatever page was returned. A pageable source or view always pages (its default page when the request has no `page`). `CountAsync` runs only when the page cannot tell: the page is full, or empty past the start. A partial page ends the results (`TotalCount = offset + results.Count`), and an unpageable capability returns every result (`TotalCount = results.Count`). A delegated source's `TotalCount` is its downstream's.
 
 When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Http.Abstractions` — samples and consumers should only reference `Kaleido.Http.Abstractions`, not `Kaleido.Http` (which carries ASP.NET Core dependencies).
 

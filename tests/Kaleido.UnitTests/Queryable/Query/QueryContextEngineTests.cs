@@ -52,13 +52,16 @@ public sealed class QueryContextEngineTests
 
     private static QueryContextEngine<FakeContext, TView> CreateSut<TView>(
         IQueryContextValidator validator,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        CompiledPage? page = null,
+        Mock<IQueryContextExecutor<TView>>? executor = null,
+        bool returnsNoRows = false)
         where TView : class
     {
         var compiler = new Mock<IQueryContextCompiler>();
         compiler
             .Setup(x => x.Compile(It.IsAny<IQueryRequest>(), It.IsAny<QuerySourceMetadata>(), It.IsAny<PageableMetadata?>()))
-            .Returns(new CompiledQuery(null, null, [], new CompiledPage(50, 0, false)));
+            .Returns(new CompiledQuery(null, null, [], page ?? new CompiledPage(50, 0)));
 
         var applier = new Mock<ICompiledQueryApplier<FakeContext>>();
         applier
@@ -71,10 +74,10 @@ public sealed class QueryContextEngineTests
             .Setup(x => x.ApplySort(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<IReadOnlyList<CompiledSort>>()))
             .Returns((IQueryable<FakeContext> query, IReadOnlyList<CompiledSort> _) => query);
 
-        var executor = new Mock<IQueryContextExecutor<TView>>();
+        executor ??= new Mock<IQueryContextExecutor<TView>>();
         executor
             .Setup(x => x.ApplyPage(It.IsAny<IQueryable<TView>>(), It.IsAny<int>(), It.IsAny<int>()))
-            .Returns((IQueryable<TView> query, int _, int _) => query);
+            .Returns((IQueryable<TView> query, int _, int _) => returnsNoRows ? query.Take(0) : query);
         executor
             .Setup(x => x.ToListAsync(It.IsAny<IQueryable<TView>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IQueryable<TView> query, CancellationToken _) => query.ToList());
@@ -152,6 +155,87 @@ public sealed class QueryContextEngineTests
 
         Assert.Equal(["label-A", "label-B"], result.Results.Select(x => x.Label));
         validator.Verify(x => x.Validate(request, sourceRegistration.Metadata, viewPageable), Times.Once);
+    }
+
+    // A pageable source pages with its default page when the request names none, so a full page is
+    // counted: the total is not the page's length (#343).
+    [Fact]
+    public async Task ExecuteAsync_PageableWithoutAPageInTheRequest_AFullDefaultPage_ReportsTheTrueTotal()
+    {
+        var registration = CreateSourceRegistration(typeof(FakeSource), new PageableMetadata(2, 100));
+        var serviceProvider = new Mock<IServiceProvider>();
+        serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
+        var executor = new Mock<IQueryContextExecutor<FakeContext>>();
+        executor.Setup(x => x.CountAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>())).ReturnsAsync(44);
+
+        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(2, 0), executor)
+            .ExecuteAsync(new QueryRequest(), registration);
+
+        Assert.Equal(2, result.Results.Count);
+        Assert.Equal(44, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PageableWithAPartialPage_ReportsTheReturnedCount_WithoutCounting()
+    {
+        var registration = CreateSourceRegistration(typeof(FakeSource), new PageableMetadata(25, 100));
+        var serviceProvider = new Mock<IServiceProvider>();
+        serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
+        var executor = new Mock<IQueryContextExecutor<FakeContext>>();
+
+        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(25, 0), executor)
+            .ExecuteAsync(new QueryRequest(), registration);
+
+        Assert.Equal(2, result.TotalCount);
+        executor.Verify(x => x.CountAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // The last page: its offset plus its rows is the total, without a count query.
+    [Fact]
+    public async Task ExecuteAsync_PageableWithAPartialPageAfterTheStart_ReportsOffsetPlusReturned_WithoutCounting()
+    {
+        var registration = CreateSourceRegistration(typeof(FakeSource), new PageableMetadata(25, 100));
+        var serviceProvider = new Mock<IServiceProvider>();
+        serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
+        var executor = new Mock<IQueryContextExecutor<FakeContext>>();
+
+        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(4, 4), executor)
+            .ExecuteAsync(new QueryRequest(), registration);
+
+        Assert.Equal(6, result.TotalCount);
+        executor.Verify(x => x.CountAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // An offset past the end returns no rows: only a count says how many there are.
+    [Fact]
+    public async Task ExecuteAsync_PageableWithAnEmptyPagePastTheEnd_ReportsTheTrueTotal()
+    {
+        var registration = CreateSourceRegistration(typeof(FakeSource), new PageableMetadata(25, 100));
+        var serviceProvider = new Mock<IServiceProvider>();
+        serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
+        var executor = new Mock<IQueryContextExecutor<FakeContext>>();
+        executor.Setup(x => x.CountAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>())).ReturnsAsync(2);
+
+        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(25, 50), executor, returnsNoRows: true)
+            .ExecuteAsync(new QueryRequest(), registration);
+
+        Assert.Empty(result.Results);
+        Assert.Equal(2, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_NotPageable_ReportsTheReturnedCount_WithoutCounting()
+    {
+        var registration = CreateSourceRegistration(typeof(FakeSource), pageable: null);
+        var serviceProvider = new Mock<IServiceProvider>();
+        serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
+        var executor = new Mock<IQueryContextExecutor<FakeContext>>();
+
+        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(2, 0), executor)
+            .ExecuteAsync(new QueryRequest(), registration);
+
+        Assert.Equal(2, result.TotalCount);
+        executor.Verify(x => x.CountAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static QuerySourceRegistration CreateSourceRegistration(

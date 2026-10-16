@@ -43,7 +43,7 @@ public sealed class QueryRequestCompilerTests
     }
 
     [Fact]
-    public void Compile_PageWithoutSize_UsesSourceDefaultSize_AndIsExplicit()
+    public void Compile_PageWithoutSize_UsesSourceDefaultSize()
     {
         var request = new QueryRequest(new QueryBody(Page: new QueryPage(null, 20)));
 
@@ -51,11 +51,10 @@ public sealed class QueryRequestCompilerTests
 
         Assert.Equal(25, result.Page.Size);
         Assert.Equal(20, result.Page.Offset);
-        Assert.True(result.Page.IsExplicit);
     }
 
     [Fact]
-    public void Compile_PageWithoutSize_UsesViewDefaultSize_AndIsExplicit()
+    public void Compile_PageWithoutSize_UsesViewDefaultSize()
     {
         var request = new QueryRequest(new QueryBody(Page: new QueryPage(null, null)));
 
@@ -63,13 +62,6 @@ public sealed class QueryRequestCompilerTests
 
         Assert.Equal(10, result.Page.Size);
         Assert.Equal(0, result.Page.Offset);
-        Assert.True(result.Page.IsExplicit);
-    }
-
-    [Fact]
-    public void Compile_WithoutPage_IsNotExplicit()
-    {
-        Assert.False(Compile(new QueryRequest(), CreateContextMetadata()).Page.IsExplicit);
     }
 
     [Fact]
