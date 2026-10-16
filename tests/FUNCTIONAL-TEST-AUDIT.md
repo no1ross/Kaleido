@@ -138,15 +138,19 @@ register them.
 1. **MCP session elicitation is unreachable over the shipped HTTP transport** ([#350](https://github.com/no1ross/Kaleido/issues/350)). The adapter uses
    stateless HTTP; a client on an initialize-based revision (e.g. `2025-11-25`) that advertises
    forms has no session, so the adapter falls back to returning the questions to the agent. The
-   README promises "clients with a session get an elicitation request during the call". Behavior is
-   safe (questions are never lost, pinned by `WithAnOlderRevision_TheQuestionsAreNeverLost`), but
-   the documented path only exists for non-HTTP transports. Decide: document, or offer stateful HTTP.
+   README promised "clients with a session get an elicitation request during the call". Behavior is
+   safe (questions are never lost, pinned by `WithAnOlderRevision_TheQuestionsAreNeverLost`). The
+   README now describes the actual behavior; an opt-in stateful mode stays open in #350 until a
+   consumer needs it.
 2. **Stale docs for a removed endpoint** ([#348](https://github.com/no1ross/Kaleido/issues/348), fixed):
    `GET /{prefix}/processes/steps/{step}/metadata` was removed (step metadata comes from the
    registry) but was still listed, with a `ProcessStepInfo` type that no longer exists.
 3. **Count materializes rows** ([#351](https://github.com/no1ross/Kaleido/issues/351)): the default `QueryContextExecutor.CountAsync` enumerates every
-   matching row of an async (EF Core) query to count it, instead of `SELECT COUNT(*)`. Documented as
-   an extension point, but the default is a performance trap for large sources.
+   matching row of an async (EF Core) query to count it, instead of `SELECT COUNT(*)`. That is by
+   design: `IQueryContextExecutor<TView>` is the extension point for provider-native execution.
+   `EfCoreQueryContextExecutorTests` now proves an EF Core executor replaces the default (either
+   registration order) and sends one `COUNT`, and `docs/PATTERNS.md` shows the executor and the cost
+   of the default.
 4. **`ToApiBody` value serialization** ([#349](https://github.com/no1ross/Kaleido/issues/349), fixed):
    forwarded values were written with default JSON options, so an enum without a string converter
    went out as a number. They now use `KaleidoJsonOptions.Options` like every other wire value.
