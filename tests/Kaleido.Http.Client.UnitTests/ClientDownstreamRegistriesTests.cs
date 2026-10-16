@@ -1,5 +1,6 @@
 using Kaleido.Http.Processor;
 using Kaleido.Http.Queryable;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Client.UnitTests;
@@ -36,7 +37,9 @@ public sealed class ClientDownstreamRegistriesTests
         queryableClients[name] = queryable;
     }
 
-    private ClientDownstreamRegistries CreateSut(string serviceName = "router")
+    private ClientDownstreamRegistries CreateSut(
+        string serviceName = "router",
+        ILogger<ClientDownstreamRegistries>? logger = null)
     {
         var processFactory = new Mock<IKaleidoProcessorClientFactory>();
         processFactory.Setup(x => x.GetClient(It.IsAny<string>())).Returns((string name) => processClients[name].Object);
@@ -50,7 +53,7 @@ public sealed class ClientDownstreamRegistriesTests
             processFactory.Object,
             queryableFactory.Object,
             new KaleidoServiceOptions { ServiceName = serviceName },
-            NullLogger<ClientDownstreamRegistries>.Instance);
+            logger ?? NullLogger<ClientDownstreamRegistries>.Instance);
     }
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
@@ -138,6 +141,70 @@ public sealed class ClientDownstreamRegistriesTests
         await CreateSut().InvalidateAsync(Cancel);
 
         processClients["Radiology"].Verify(x => x.InvalidateRegistryAsync(Cancel), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAsync_AClientThatTimesOut_IsReported_WhenTheCallerDidNotCancel()
+    {
+        Client("Intake", "intake");
+        Client("Radiology", "radiology", failure: new TaskCanceledException("timed out"));
+
+        var registries = await CreateSut().GetAsync(cancellationToken: Cancel);
+
+        Assert.Equal(["intake"], registries.Processes.Select(x => x.Name));
+        Assert.Equal("Radiology", Assert.Single(registries.Errors).ClientName);
+    }
+
+    [Fact]
+    public async Task GetAsync_AFailingClient_IsLoggedAsAWarningWithTheFailure()
+    {
+        var logger = new RecordingLogger();
+        Client("Intake", "intake", failure: new HttpRequestException("intake down"));
+        Client("Radiology", "radiology", failure: new HttpRequestException("radiology down"));
+
+        var registries = await CreateSut(logger: logger).GetAsync(cancellationToken: Cancel);
+
+        Assert.Equal(["Intake", "Radiology"], registries.Errors.Select(e => e.ClientName).Order());
+        Assert.Equal(
+            ["Registry client Intake failed: intake down.", "Registry client Radiology failed: radiology down."],
+            logger.Entries.Select(e => e.Message).Order());
+        Assert.All(logger.Entries, e =>
+        {
+            Assert.Equal(LogLevel.Warning, e.Level);
+            Assert.IsType<HttpRequestException>(e.Exception);
+        });
+    }
+
+    [Fact]
+    public async Task InvalidateAsync_AFailingClient_IsLoggedAsAWarning()
+    {
+        var logger = new RecordingLogger();
+        Client("Intake", "intake");
+        Client("Radiology", "radiology");
+        processClients["Intake"].Setup(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("store down"));
+        processClients["Radiology"].Setup(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("store down"));
+
+        await CreateSut(logger: logger).InvalidateAsync(Cancel);
+
+        Assert.Equal(
+            ["Failed to invalidate registry cache for client Intake.", "Failed to invalidate registry cache for client Radiology."],
+            logger.Entries.Select(e => e.Message).Order());
+        Assert.All(logger.Entries, e => Assert.Equal(LogLevel.Warning, e.Level));
+    }
+
+    private sealed class RecordingLogger : ILogger<ClientDownstreamRegistries>
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Enqueue((logLevel, formatter(state, exception), exception));
     }
 
     [Fact]
