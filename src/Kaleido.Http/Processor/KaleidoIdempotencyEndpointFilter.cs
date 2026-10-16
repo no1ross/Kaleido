@@ -88,7 +88,11 @@ internal sealed class KaleidoIdempotencyEndpointFilter(
     private static string Hash(EndpointFilterInvocationContext context)
     {
         var request = context.HttpContext.Request;
-        var body = context.Arguments.Count > 0 ? JsonSerializer.Serialize(context.Arguments[0], KaleidoJsonOptions.Options) : string.Empty;
+        var body = context.Arguments.Count > 0 ? context.Arguments[0] switch
+        {
+            IKaleidoJsonBody json => json.RawJson,
+            var argument => JsonSerializer.Serialize(argument, KaleidoJsonOptions.Options),
+        } : string.Empty;
         var payload = $"{request.Method} {request.Path}\n{request.Headers[KaleidoCorrelationHeaders.ProcessId]}\n{body}";
 
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();

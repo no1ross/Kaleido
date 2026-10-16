@@ -226,7 +226,7 @@ public sealed class KaleidoToolInvokerTests
     }
 
     private static JsonNode Body(ToolOutcome outcome) =>
-        JsonNode.Parse((outcome.Result ?? throw new Xunit.Sdk.XunitException("No result.")).Content.OfType<TextContentBlock>().Single().Text)!;
+        JsonNode.Parse((outcome.Result ?? throw new Xunit.Sdk.XunitException("No result.")).Content.OfType<TextContentBlock>().First().Text)!;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -320,6 +320,56 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(403, Body(outcome)["details"]?["status"]?.GetValue<int>());
         Assert.Equal("forbidden", Body(outcome)["details"]?["errors"]?[0]?["code"]?.GetValue<string>());
     }
+
+    // The service's own refusal reason is text for a person: also sent as a block for the user.
+    // Kaleido's codes (qry_*, pro_*, argument_error) are the agent's to explain.
+    [Fact]
+    public async Task AServicesOwnRefusalReason_IsAlsoSentToTheUser_KaleidosCodesAreNot()
+    {
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KaleidoHttpClientException(
+                HttpClientErrorCodes.RequestFailed,
+                "Query failed",
+                HttpStatusCode.BadRequest,
+                [
+                    new KaleidoError("MEMBER_PLAN_REQUIRED", "Capture the member first."),
+                    new KaleidoError("qry_invalid_field", "Unknown field 'Foo'."),
+                    new KaleidoError("argument_error", "The value at '$.x' is not valid."),
+                ]));
+
+        var outcome = await CreateSut().InvokeAsync(Search, Call(), Catalog, Cancel);
+
+        Assert.Equal(["Capture the member first."], ForTheUser(outcome));
+    }
+
+    // The JSON summary is the agent's; each business message is also a block for the user, so a
+    // client that honours the audience annotation shows it as written.
+    [Fact]
+    public async Task AStepsBusinessMessages_AreAlsoSentToTheUser_TheSummaryToTheAgent()
+    {
+        StepReturns(StepResponse() with
+        {
+            FrameworkMessages = [new ProcessMessage { Type = MessageType.Warning, Code = "pro_something", Message = "Check this." }],
+        });
+
+        var outcome = await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
+        var summary = Assert.IsType<TextContentBlock>(outcome.Result?.Content[0]);
+
+        Assert.Equal([Role.Assistant], summary.Annotations?.Audience);
+        Assert.Equal(["The visit is open."], ForTheUser(outcome));
+    }
+
+    [Fact]
+    public async Task AQueryResult_HasNothingForTheUser()
+    {
+        Assert.Empty(ForTheUser(await CreateSut().InvokeAsync(Search, Call(), Catalog, Cancel)));
+    }
+
+    private static string[] ForTheUser(ToolOutcome outcome) =>
+        [.. (outcome.Result?.Content ?? [])
+            .OfType<TextContentBlock>()
+            .Where(x => x.Annotations?.Audience?.Contains(Role.User) == true)
+            .Select(x => x.Text)];
 
     [Fact]
     public async Task AQueryTheServiceFails_TellsTheAgentWhatToDo_WithoutTheServicesMessage()
@@ -569,8 +619,10 @@ public sealed class KaleidoToolInvokerTests
         Assert.Contains("nothing was recorded", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
     }
 
+    // The step response keeps business and framework messages apart, and so does the summary:
+    // messages are shown to the user verbatim, diagnostics are explained by the agent.
     [Fact]
-    public async Task FrameworkMessages_AreShownOnlyWhenTheyMatter_BusinessMessagesAlways()
+    public async Task BusinessMessages_AreMessages_FrameworkWarningsAreDiagnostics_Separately()
     {
         StepReturns(StepResponse() with
         {
@@ -581,12 +633,28 @@ public sealed class KaleidoToolInvokerTests
             ]
         });
 
-        var messages = (Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel))["messages"]?.AsArray() ?? [])
-            .Select(x => x?["code"]?.GetValue<string>())
-            .ToArray();
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
-        Assert.Equal(["visit_opened", "pro_something"], messages);
+        Assert.Equal(["visit_opened"], Codes(body["messages"]));
+        Assert.Equal(["pro_something"], Codes(body["diagnostics"]));
     }
+
+    [Fact]
+    public async Task WithoutFrameworkWarnings_ThereAreNoDiagnostics()
+    {
+        StepReturns(StepResponse() with
+        {
+            FrameworkMessages = [new ProcessMessage { Type = MessageType.Information, Code = "pro_repeatable_step", Message = "Step is repeatable." }]
+        });
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Equal(["visit_opened"], Codes(body["messages"]));
+        Assert.Null(body["diagnostics"]);
+    }
+
+    private static string?[] Codes(JsonNode? messages) =>
+        [.. (messages?.AsArray() ?? []).Select(x => x?["code"]?.GetValue<string>())];
 
     [Fact]
     public async Task AStepResult_WithARequiredStepTheCallerCannotRun_SaysSo()

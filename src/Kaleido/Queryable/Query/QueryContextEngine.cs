@@ -218,12 +218,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
 
         var items = await executor.ToListAsync(query, cancellationToken);
 
-        // CountAsync only when page was explicitly requested AND the page is full —
-        // a partial page means all results were returned; an unpaged query
-        // means the caller asked for everything.
-        var totalCount = page.IsExplicit && items.Count == page.Size
-            ? await executor.CountAsync(unpagedQuery, cancellationToken)
-            : items.Count;
+        var totalCount = await TotalCountAsync(unpagedQuery, items.Count, page, pageable, cancellationToken);
 
         observation.Materialized(
             totalCount,
@@ -237,6 +232,22 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             page.Size,
             items);
     }
+
+    // The number of matching results, whatever page was returned. A pageable capability always
+    // pages (its default page when the request names none). A partial page ends the results, so
+    // the total is its offset plus its rows; a full page, or an empty one past the start, may not,
+    // so the results are counted. An unpageable capability returns every result.
+    private async Task<int> TotalCountAsync(
+        IQueryable<TView> unpagedQuery,
+        int returned,
+        CompiledPage page,
+        bool pageable,
+        CancellationToken cancellationToken) =>
+        !pageable
+            ? returned
+            : returned == page.Size || (returned == 0 && page.Offset > 0)
+                ? await executor.CountAsync(unpagedQuery, cancellationToken)
+                : page.Offset + returned;
 
     private async Task<IQueryable<TView>> CreateViewAsync(
         QueryViewRegistration viewRegistration,

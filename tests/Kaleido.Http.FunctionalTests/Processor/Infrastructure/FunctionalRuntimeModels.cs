@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+
 namespace Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 
 internal static class FunctionalRuntimeNamespaces
@@ -22,6 +25,7 @@ internal static class RuntimeStepNames
     public const string InvalidRequiredRoot = nameof(RuntimeInvalidRequiredRootStep);
     public const string AllowedStep = nameof(RuntimeAllowedStep);
     public const string Failing = nameof(RuntimeFailingStep);
+    public const string Input = nameof(RuntimeInputStep);
     public const string Ask = nameof(RuntimeAskStep);
     public const string Answer = nameof(RuntimeAnswerStep);
 }
@@ -58,6 +62,29 @@ public sealed record RuntimeAllowedStep : IProcessStep;
 
 [ProcessStep(DisplayName = RuntimeStepNames.Failing, Description = "Runtime step that always fails", Version = "1.0")]
 public sealed record RuntimeFailingStep : IProcessStep;
+
+// Typed inputs: a required value-type input the caller must supply (the required keyword), and a
+// date a malformed value cannot be bound to.
+[ProcessStep(DisplayName = RuntimeStepNames.Input, Description = "Runtime step with typed inputs", Version = "1.0")]
+[Repeatable]
+public sealed record RuntimeInputStep : IProcessStep
+{
+    [Required]
+    [Description("The item.")]
+    public required Guid ItemId { get; init; }
+
+    [Description("The day.")]
+    public DateOnly? On { get; init; }
+}
+
+public sealed class RuntimeInputStepHandler : IProcessStepHandler<RuntimeInputStep>
+{
+    public Task<ProcessStepHandlerResult> ExecuteAsync(
+        RuntimeInputStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ProcessStepHandlerResult.Success());
+}
 
 public sealed record RuntimeRootStepResponse
 {

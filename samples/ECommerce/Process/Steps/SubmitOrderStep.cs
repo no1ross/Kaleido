@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Processor;
 using Kaleido.Samples.ECommerce.Process.Steps;
@@ -15,7 +16,9 @@ namespace Kaleido.Samples.ECommerce.Steps;
 public sealed record SubmitOrderStep : IProcessStep
 {
     [Required]
+    [Description("The customer submitting the order.")]
     public required Guid CustomerId { get; init; }
     [Required]
+    [Description("The order to submit.")]
     public required Guid OrderId { get; init; }
 }

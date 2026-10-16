@@ -61,4 +61,10 @@ internal static class DiagnosticIds
 
     /// <summary>o.ServiceName is longer than 15 characters (the MCP tool-name prefix budget).</summary>
     public const string ServiceNameLength = "KAL2020";
+
+    /// <summary>A [Required] process step input has a non-nullable value type, so it can never be missing.</summary>
+    public const string ProcessStepRequiredValueType = "KAL2021";
+
+    /// <summary>A [Required] query parameter has a non-nullable value type, so it can never be missing.</summary>
+    public const string QueryParameterRequiredValueType = "KAL2022";
 }

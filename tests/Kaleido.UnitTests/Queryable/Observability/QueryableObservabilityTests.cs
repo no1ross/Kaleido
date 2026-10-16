@@ -94,6 +94,27 @@ public sealed class QueryableObservabilityTests
             exception.ParamName);
     }
 
+    // The caller's query was refused: the transport logs it once at Warning, so the observation logs
+    // at Debug only, naming the source (and view) without a "view (null)".
+    [Fact]
+    public void ValidationFailed_LogsAtDebug_WithTheCapabilityName()
+    {
+        var logger = new Mock<ILogger<QueryableObservability>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+        using (var observation = CreateSut(logger.Object).BeginExecution(new QueryObservationDetails("ProviderSource", null, true, QueryExecutionMode.DirectSource)))
+        {
+            observation.ValidationFailed(new KaleidoValidationException("MEMBER_PLAN_REQUIRED", "Capture the member first."));
+        }
+
+        logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
+
+        var logged = logger.Invocations
+            .Where(x => x.Method.Name == nameof(ILogger.Log) && Equals(x.Arguments[0], LogLevel.Debug))
+            .Select(x => x.Arguments[2].ToString());
+        Assert.Contains("Queryable validation failed for ProviderSource with code MEMBER_PLAN_REQUIRED.", logged);
+    }
+
     [Fact]
     public void ExecutionFailed_WhenExceptionIsNull_Throws()
     {
@@ -116,7 +137,7 @@ public sealed class QueryableObservabilityTests
                 true,
                 QueryExecutionMode.DirectSource));
 
-    private static QueryableObservability CreateSut()
+    private static QueryableObservability CreateSut(ILogger<QueryableObservability>? logger = null)
     {
         var correlationAccessor =
             new Mock<IKaleidoCorrelationContextAccessor>();
@@ -135,6 +156,6 @@ public sealed class QueryableObservabilityTests
         return new QueryableObservability(
             correlationAccessor.Object,
             new KaleidoServiceOptions { ServiceName = "test-queryable" },
-            Mock.Of<ILogger<QueryableObservability>>());
+            logger ?? Mock.Of<ILogger<QueryableObservability>>());
     }
 }

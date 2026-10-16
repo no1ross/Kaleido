@@ -129,49 +129,69 @@ internal static class QueryMetadataExtensions
         var pageable =
             queryViewType.GetCustomAttribute<PageableAttribute>();
 
-        if (pageable is null)
-        {
-            return null;
-        }
-
-        ValidateDefaultSort(queryViewType, contextType, attribute);
-
-        return new PageableMetadata(
-            pageable.DefaultSize,
-            pageable.MaxSize);
+        return pageable is null
+            ? null
+            : new PageableMetadata(
+                pageable.DefaultSize,
+                pageable.MaxSize,
+                ValidateDefaultSort("Query view", queryViewType, contextType, attribute.DefaultSortField));
     }
 
-    private static void ValidateDefaultSort(
-        Type queryViewType,
+    /// <summary>
+    /// Builds pageable metadata for a query source from its <see cref="PageableAttribute"/>. A local
+    /// source must declare a sortable <c>DefaultSortField</c>, so its pages are stable; a delegated
+    /// source pages in its downstream, which owns the order.
+    /// </summary>
+    internal static PageableMetadata? ToSourcePageable(
+        this Type sourceType,
         Type contextType,
-        QueryViewAttribute attribute)
+        QuerySourceAttribute attribute,
+        QuerySourceKind kind)
     {
-        if (string.IsNullOrWhiteSpace(attribute.DefaultSortField))
+        var pageable =
+            sourceType.GetCustomAttribute<PageableAttribute>();
+
+        return pageable is null
+            ? null
+            : new PageableMetadata(
+                pageable.DefaultSize,
+                pageable.MaxSize,
+                kind == QuerySourceKind.Local
+                    ? ValidateDefaultSort("Query source", sourceType, contextType, attribute.DefaultSortField)
+                    : null);
+    }
+
+    // The default sort field, by its declared property name, after checking it exists and is sortable.
+    private static string ValidateDefaultSort(
+        string capability,
+        Type capabilityType,
+        Type contextType,
+        string? defaultSortField)
+    {
+        if (string.IsNullOrWhiteSpace(defaultSortField))
         {
             throw new KaleidoConfigurationException(
                 QueryableErrorCodes.InvalidRegistration,
-                $"Query view '{queryViewType.Name}' is pageable and must define a DefaultSortField.");
+                $"{capability} '{capabilityType.Name}' is pageable and must define a DefaultSortField, so its pages are stable.");
         }
 
         var property =
             contextType.GetProperty(
-                attribute.DefaultSortField,
+                defaultSortField,
                 BindingFlags.Public |
                 BindingFlags.Instance |
-                BindingFlags.IgnoreCase);
-
-        if (property is null)
-        {
-            throw new KaleidoConfigurationException(
+                BindingFlags.IgnoreCase)
+            ?? throw new KaleidoConfigurationException(
                 QueryableErrorCodes.InvalidRegistration,
-                $"Query view '{queryViewType.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' which does not exist on query context '{contextType.Name}'.");
-        }
+                $"{capability} '{capabilityType.Name}' specifies DefaultSortField '{defaultSortField}' which does not exist on query context '{contextType.Name}'.");
 
         if (!Attribute.IsDefined(property, typeof(SortableAttribute)))
         {
             throw new KaleidoConfigurationException(
                 QueryableErrorCodes.InvalidRegistration,
-                $"Query view '{queryViewType.Name}' specifies DefaultSortField '{attribute.DefaultSortField}' but the field is not marked as sortable.");
+                $"{capability} '{capabilityType.Name}' specifies DefaultSortField '{defaultSortField}' but the field is not marked as sortable.");
         }
+
+        return property.Name;
     }
 }

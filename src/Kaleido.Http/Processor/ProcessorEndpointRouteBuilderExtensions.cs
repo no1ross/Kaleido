@@ -226,13 +226,13 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
         endpoints.MapPost(
                 route,
                 async (
-                    ExecuteStepRequest<TProcessStep> request,
+                    KaleidoJsonBody<ExecuteStepRequest<TProcessStep>> request,
                     IProcessExecutionService execution,
                     CancellationToken cancellationToken) =>
                 {
                     var result =
                         await execution.ExecuteAsync<TProcessStep, TResponse>(
-                            request,
+                            request.Value,
                             cancellationToken);
 
                     return Results.Ok(result);
@@ -269,13 +269,13 @@ public static partial class ProcessorEndpointRouteBuilderExtensions
         endpoints.MapPost(
                 route,
                 async (
-                    ExecuteStepRequest<TProcessStep> request,
+                    KaleidoJsonBody<ExecuteStepRequest<TProcessStep>> request,
                     IProcessExecutionService execution,
                     CancellationToken cancellationToken) =>
                 {
                     var result =
                         await execution.ExecuteAsync<TProcessStep>(
-                            request,
+                            request.Value,
                             cancellationToken);
 
                     return Results.Ok(result);

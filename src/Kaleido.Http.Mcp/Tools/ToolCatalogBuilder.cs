@@ -112,7 +112,7 @@ internal sealed partial class ToolCatalogBuilder(
         QueryableSourceResponse source)
     {
         var name = Name(context, source.ServiceName, source.Name, "source");
-        var query = QuerySchema(context, name, source.Fields, source.Parameters, source.Pageable);
+        var query = QuerySchema(context, name, FieldOwner(source), source.Fields, source.Parameters, source.Pageable);
 
         var description =
             Describe(context, name, source.DisplayName, source.Description) +
@@ -143,7 +143,7 @@ internal sealed partial class ToolCatalogBuilder(
         QueryableViewResponse view)
     {
         var name = Name(context, source.ServiceName, view.Name, "view");
-        var query = QuerySchema(context, name, source.Fields, view.Parameters, view.Pageable);
+        var query = QuerySchema(context, name, FieldOwner(source), source.Fields, view.Parameters, view.Pageable);
 
         var description =
             Describe(context, name, view.DisplayName, view.Description) +
@@ -198,6 +198,7 @@ internal sealed partial class ToolCatalogBuilder(
     private QueryToolSchema QuerySchema(
         BuildContext context,
         string toolName,
+        string fieldOwner,
         IReadOnlyCollection<QueryableFieldMetadata> fields,
         IReadOnlyCollection<QueryableQueryParameter> parameters,
         PageableMetadata? pageable)
@@ -221,7 +222,7 @@ internal sealed partial class ToolCatalogBuilder(
 
         parameters = parameters.Where(x => !ReferenceEquals(x, processIdParameter)).ToArray();
 
-        AddQueryProperties(context, toolName, properties, fields, pageable);
+        AddQueryProperties(context, fieldOwner, properties, fields, pageable);
 
         if (parameters.Count > 0)
         {
@@ -244,9 +245,11 @@ internal sealed partial class ToolCatalogBuilder(
     }
 
     // searchText, filters, sort and page: only what the source supports.
+    // fieldOwner names the query context's fields once ("service.Source"), so a source and its views
+    // report a missing field description once, not once per tool.
     private static void AddQueryProperties(
         BuildContext context,
-        string toolName,
+        string fieldOwner,
         JsonObject properties,
         IReadOnlyCollection<QueryableFieldMetadata> fields,
         PageableMetadata? pageable)
@@ -257,7 +260,7 @@ internal sealed partial class ToolCatalogBuilder(
 
         if (searchable.Length > 0)
         {
-            properties["searchText"] = SearchTextSchema(searchable);
+            properties["searchText"] = SearchTextSchema(searchable, filterable);
         }
 
         if (filterable.Length > 0)
@@ -267,7 +270,7 @@ internal sealed partial class ToolCatalogBuilder(
 
         if (sortable.Length > 0)
         {
-            properties["sort"] = SortSchema(sortable);
+            properties["sort"] = SortSchema(sortable, [.. filterable.Concat(searchable)]);
         }
 
         if (pageable is not null)
@@ -277,9 +280,12 @@ internal sealed partial class ToolCatalogBuilder(
 
         foreach (var field in filterable.Concat(searchable).Concat(sortable).Distinct().Where(x => string.IsNullOrWhiteSpace(x.Description)))
         {
-            context.MissingDescriptions.Add($"{toolName}.{field.Name}");
+            context.ReportMissingDescription($"{fieldOwner}.{field.Name}");
         }
     }
+
+    private static string FieldOwner(QueryableSourceResponse source) =>
+        $"{source.ServiceName}.{source.Name}";
 
     private static JsonObject QueryProcessIdSchema(QueryableQueryParameter? declared) =>
         new()
@@ -302,13 +308,14 @@ internal sealed partial class ToolCatalogBuilder(
 
     private sealed record QueryToolSchema(JsonObject Schema, bool ParametersTakeProcessId, bool ProcessIdRequired);
 
-    private static JsonObject SearchTextSchema(IEnumerable<QueryableFieldMetadata> searchable) =>
+    // Fields the filters already explain are only named here.
+    private static JsonObject SearchTextSchema(IEnumerable<QueryableFieldMetadata> searchable, IReadOnlyCollection<QueryableFieldMetadata> explained) =>
         new()
         {
             ["type"] = "string",
             ["description"] =
                 "Free-text search. Matches: " +
-                string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")})")) + ".",
+                string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")}{(explained.Contains(x) ? string.Empty : Explain(x.Description))})")) + ".",
         };
 
     private static JsonObject FiltersSchema(QueryableFieldMetadata[] filterable) =>
@@ -332,11 +339,17 @@ internal sealed partial class ToolCatalogBuilder(
             },
         };
 
-    private static JsonObject SortSchema(IEnumerable<QueryableFieldMetadata> sortable) =>
+    // A field's description is said once per tool, where it first appears (filters, then search),
+    // so the sort list only explains fields that are sortable and nothing else.
+    private static JsonObject SortSchema(IEnumerable<QueryableFieldMetadata> sortable, IReadOnlyCollection<QueryableFieldMetadata> explained) =>
         new()
         {
             ["type"] = "array",
-            ["description"] = "Sort order, first entry first.",
+            ["description"] =
+                "Sort order, first entry first." +
+                (sortable.Where(x => !explained.Contains(x) && !string.IsNullOrWhiteSpace(x.Description)).ToArray() is { Length: > 0 } unexplained
+                    ? " Fields: " + string.Join("; ", unexplained.Select(x => $"{x.Name} ({x.Description?.Trim().TrimEnd('.')})")) + "."
+                    : string.Empty),
             ["items"] = new JsonObject
             {
                 ["type"] = "object",
@@ -376,7 +389,7 @@ internal sealed partial class ToolCatalogBuilder(
 
             if (string.IsNullOrWhiteSpace(parameter.Description))
             {
-                context.MissingDescriptions.Add($"{toolName}.parameters.{argument}");
+                context.ReportMissingDescription($"{toolName}.parameters.{argument}");
             }
 
             parameterProperties[argument] = schemaBuilder.ForValue(parameter.DataType, WithSensitivity(parameter.Description, parameter.Classifications), parameter.Constraints);
@@ -581,7 +594,7 @@ internal sealed partial class ToolCatalogBuilder(
 
             if (string.IsNullOrWhiteSpace(field.Description))
             {
-                context.MissingDescriptions.Add($"{name}.{argument}");
+                context.ReportMissingDescription($"{name}.{argument}");
             }
 
             var lookup = lookups.Find(x => x.Inputs.Any(i => string.Equals(i.Argument, argument, StringComparison.Ordinal)));
@@ -739,7 +752,7 @@ internal sealed partial class ToolCatalogBuilder(
     {
         if (string.IsNullOrWhiteSpace(description))
         {
-            context.MissingDescriptions.Add(toolName);
+            context.ReportMissingDescription(toolName);
         }
 
         var text = string.Join(
@@ -832,6 +845,15 @@ internal sealed partial class ToolCatalogBuilder(
         {
             Names.Add(tool.Definition.Name);
             Tools.Add(tool);
+        }
+
+        // Each missing description is reported once, in the order it was found.
+        public void ReportMissingDescription(string what)
+        {
+            if (!MissingDescriptions.Contains(what, StringComparer.Ordinal))
+            {
+                MissingDescriptions.Add(what);
+            }
         }
     }
 }

@@ -26,10 +26,10 @@ public sealed record CaptureServicingProviderStep : IProcessStep
         Source = nameof(ServicingProviderSearchSource),
         Field = "ProviderId",
         Display = ["ProviderName", "LocationName", "City", "StateCode", "PrimaryNpi", "IsInNetwork"])]
-    public Guid ProviderId { get; init; }
+    public required Guid ProviderId { get; init; }
 
     [Required]
     [Description("The facility's location from the same Servicing Provider Search result.")]
     [Lookup(Service = "radiology", Source = nameof(ServicingProviderSearchSource), Field = "ProviderLocationId")]
-    public Guid ProviderLocationId { get; init; }
+    public required Guid ProviderLocationId { get; init; }
 }

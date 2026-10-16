@@ -74,7 +74,7 @@ public sealed class KaleidoMcpToolHandlerTests
         new(server.Object, new JsonRpcRequest { Method = RequestMethods.ToolsList }, new ListToolsRequestParams());
 
     private static JsonNode Body(CallToolResult result) =>
-        JsonNode.Parse(result.Content.OfType<TextContentBlock>().Single().Text)!;
+        JsonNode.Parse(result.Content.OfType<TextContentBlock>().First().Text)!;
 
     private static CallToolResult Text(string json) =>
         new() { Content = [new TextContentBlock { Text = json }] };
@@ -285,7 +285,7 @@ public sealed class KaleidoMcpToolHandlerTests
 
         var result = await CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel);
 
-        Assert.Equal("plain text", result.Content.OfType<TextContentBlock>().Single().Text);
+        Assert.Equal("plain text", result.Content.OfType<TextContentBlock>().First().Text);
     }
 
     [Fact]

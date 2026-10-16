@@ -43,7 +43,7 @@ public sealed class QueryRequestCompilerTests
     }
 
     [Fact]
-    public void Compile_PageWithoutSize_UsesSourceDefaultSize_AndIsExplicit()
+    public void Compile_PageWithoutSize_UsesSourceDefaultSize()
     {
         var request = new QueryRequest(new QueryBody(Page: new QueryPage(null, 20)));
 
@@ -51,11 +51,10 @@ public sealed class QueryRequestCompilerTests
 
         Assert.Equal(25, result.Page.Size);
         Assert.Equal(20, result.Page.Offset);
-        Assert.True(result.Page.IsExplicit);
     }
 
     [Fact]
-    public void Compile_PageWithoutSize_UsesViewDefaultSize_AndIsExplicit()
+    public void Compile_PageWithoutSize_UsesViewDefaultSize()
     {
         var request = new QueryRequest(new QueryBody(Page: new QueryPage(null, null)));
 
@@ -63,13 +62,6 @@ public sealed class QueryRequestCompilerTests
 
         Assert.Equal(10, result.Page.Size);
         Assert.Equal(0, result.Page.Offset);
-        Assert.True(result.Page.IsExplicit);
-    }
-
-    [Fact]
-    public void Compile_WithoutPage_IsNotExplicit()
-    {
-        Assert.False(Compile(new QueryRequest(), CreateContextMetadata()).Page.IsExplicit);
     }
 
     [Fact]
@@ -142,6 +134,35 @@ public sealed class QueryRequestCompilerTests
 
         Assert.Equal([nameof(TestRecord.Code), nameof(TestRecord.Region)], result.Sort.Select(x => x.Field.Name));
         Assert.Equal([0, 1], result.Sort.Select(x => x.Sequence));
+    }
+
+    [Fact]
+    public void Compile_WithoutSort_UsesTheDefaultSortField_Ascending()
+    {
+        var result = Sut.Compile(new QueryRequest(), CreateContextMetadata(), new PageableMetadata(10, 20, nameof(TestRecord.Region)));
+
+        var sort = Assert.Single(result.Sort);
+        Assert.Equal(nameof(TestRecord.Region), sort.Field.Name);
+        Assert.Equal(SortDirection.Ascending, sort.Direction);
+    }
+
+    [Fact]
+    public void Compile_TheRequestSort_WinsOverTheDefault()
+    {
+        var request = new QueryRequest(new QueryBody(Sort: [new QuerySort(nameof(TestRecord.Code), SortDirection.Descending, 1)]));
+
+        var result = Sut.Compile(request, CreateContextMetadata(), new PageableMetadata(10, 20, nameof(TestRecord.Region)));
+
+        var sort = Assert.Single(result.Sort);
+        Assert.Equal(nameof(TestRecord.Code), sort.Field.Name);
+        Assert.Equal(SortDirection.Descending, sort.Direction);
+    }
+
+    [Fact]
+    public void Compile_WithoutSortOrDefault_LeavesTheQueryUnsorted()
+    {
+        Assert.Empty(Compile(new QueryRequest(), CreateContextMetadata()).Sort);
+        Assert.Empty(Compile(new QueryRequest(), CreateContextMetadataWithoutPageable()).Sort);
     }
 
     [Fact]

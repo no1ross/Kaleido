@@ -32,6 +32,12 @@ internal interface IProcessorExecutionObservation
     void ExecutionFailed(
         Exception exception);
 
+    // The caller's request was refused (validation, authorization, 409): answered to the caller and
+    // logged once by the transport, so it is a span event and a Debug line here, never an Error.
+    void ExecutionRejected(
+        Exception exception,
+        string code);
+
     void ExecutionCompleted(
         ProcessExecutionState finalState);
 
@@ -345,6 +351,18 @@ internal sealed partial class ProcessorObservability(
             LogExecutionFailed(logger, exception, processorName);
         }
 
+        public void ExecutionRejected(Exception exception, string code)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+
+            activity?.AddEvent(
+                new ActivityEvent(
+                    ProcessorTelemetry.ExecutionRejectedEventName,
+                    tags: new ActivityTagsCollection { [ProcessorTelemetry.TagRejectionCode] = code }));
+
+            LogExecutionRejected(logger, processorName, code, exception.Message);
+        }
+
         public void ExecutionCompleted(
             ProcessExecutionState finalState)
         {
@@ -392,6 +410,9 @@ internal sealed partial class ProcessorObservability(
 
         [LoggerMessage(Level = LogLevel.Error, Message = "Process execution failed for processor {ProcessorName}.")]
         private static partial void LogExecutionFailed(ILogger logger, Exception exception, string processorName);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Process execution for processor {ProcessorName} was refused [{Code}]: {Message}")]
+        private static partial void LogExecutionRejected(ILogger logger, string processorName, string code, string message);
 
         [LoggerMessage(Level = LogLevel.Information, Message = "Process execution completed for processor {ProcessorName} with state {State}.")]
         private static partial void LogExecutionCompleted(ILogger logger, string processorName, ProcessExecutionState state);

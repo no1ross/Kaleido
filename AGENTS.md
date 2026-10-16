@@ -126,6 +126,7 @@ Information logs must stay minimal — treat them as the "normal operations" vie
 - **Debug** — all internals: step started/completed, context saves, source/view/materialization scopes, downstream fetch details, send/receive plumbing. This is what gets enabled when investigating by correlationId / requestId / processId.
 - **Warning** — cancellations, downstream non-success responses, validation failures. The runtime observation that owns a cancellation (`ProcessorExecutor`, the Queryable engines) logs it at Warning once. `ExceptionMiddleware`'s client-disconnect catch stays at **Debug** so the same cancellation is not logged twice.
 - **Error** — exceptions and failures only.
+- **Caller errors are never Error, and are logged once.** A request the caller got wrong or must retry - validation (400), authorization (401/403), a concurrent change (409) - is answered to the caller: `KaleidoExceptionHandler` logs it once at Warning; runtime observations record it at Debug (a span event, no failure metric); only a 5xx marks the request's span as an error. The same goes for a downstream's 4xx: the Kaleido client warns once, and callers of the client (the MCP adapter) log at Debug.
 - Do not promote internals to Information "for visibility" — if it fires more than once per request, it belongs at Debug.
 
 ### Exception handling

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Metadata;
@@ -15,6 +16,7 @@ public sealed class ZipCodeQueryContext : IQueryContext
         FilterOperator.NotEquals,
         FilterOperator.In)]
     [Sortable]
+    [Description("The ZIP code.")]
     public string PostalCode { get; init; } = string.Empty;
 
     [Searchable(
@@ -25,17 +27,20 @@ public sealed class ZipCodeQueryContext : IQueryContext
         FilterOperator.NotEquals,
         FilterOperator.In)]
     [Sortable]
+    [Description("The two-letter code of the state the ZIP code is in.")]
     public string StateCode { get; init; } = string.Empty;
 
     [Searchable(
         Priority = 3,
         MatchMode = MatchMode.Contains)]
     [Sortable]
+    [Description("The city of the ZIP code.")]
     public string City { get; init; } = string.Empty;
 
     [Filterable(
         FilterOperator.Equals,
         FilterOperator.NotEquals)]
     [Sortable]
+    [Description("Whether the ZIP code is currently active.")]
     public bool IsActive { get; init; }
 }

@@ -9,6 +9,7 @@ namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.Contexts;
 public sealed class ClinicalPathwayTransitionQueryContext : IQueryContext
 {
     [Key]
+    [Description("The unique identifier of the clinical pathway transition.")]
     public Guid ClinicalPathwayTransitionId { get; init; }
 
     [Description("The questionnaire whose answers this transition evaluates.")]

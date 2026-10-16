@@ -62,7 +62,8 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
 
         Assert.Contains("Patients registered at the clinic", search.Description, StringComparison.Ordinal);
         Assert.True(search.Annotations?.ReadOnlyHint);
-        Assert.Contains("Name (contains)", search.InputSchema.GetProperty("properties").GetProperty("searchText").GetProperty("description").GetString(), StringComparison.Ordinal);
+        // A search-only field is explained where it appears, so the agent knows what it matches.
+        Assert.Contains("Name (contains, The patient's full name)", search.InputSchema.GetProperty("properties").GetProperty("searchText").GetProperty("description").GetString(), StringComparison.Ordinal);
 
         Assert.False(start.Annotations?.ReadOnlyHint);
         var patientId = start.InputSchema.GetProperty("properties").GetProperty("patientId");
@@ -225,7 +226,7 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         await client.CallToolAsync(tool, arguments, cancellationToken: Cancel);
 
     private static JsonNode Body(CallToolResult result) =>
-        JsonNode.Parse(result.Content.OfType<TextContentBlock>().Single().Text)
+        JsonNode.Parse(result.Content.OfType<TextContentBlock>().First().Text)
         ?? throw new InvalidOperationException("The tool returned no JSON.");
 
     [Fact]
