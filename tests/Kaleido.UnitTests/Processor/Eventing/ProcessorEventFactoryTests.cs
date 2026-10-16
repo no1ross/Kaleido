@@ -1,6 +1,5 @@
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
-using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Registry;
 
 using Kaleido.UnitTests;
