@@ -55,6 +55,19 @@ functional or integration tests.
 
 ## Functional test fixtures
 
+### What a functional test is for
+A functional test proves that real Kaleido components agree with each other: it configures a host,
+performs a consumer action, and asserts the consumer-visible result (records, state read back with
+`GET /processes/{id}`, error codes, registry metadata, MCP tool results) - not which collaborator
+was called. Before adding one, name the production regression it would catch; if none, it belongs in
+a unit test or nowhere. The audit of what is protected, the gaps closed and the open risks is
+[`FUNCTIONAL-TEST-AUDIT.md`](./FUNCTIONAL-TEST-AUDIT.md); keep it current when you add or remove
+functional coverage.
+
+Models for one scenario family live in their own namespace and are registered with a `TypeFilter` on
+that namespace (e.g. `Processor/Behavior`, `IntegrationTests/EfCore`), so they cannot change what the
+shared fixtures publish.
+
 ### Shared fixture state
 `ProcessAspNetCoreFixture` and `QueryableAspNetCoreFixture` expose:
 - `Client` — a pre-wired `HttpClient` pointed at the TestServer (use for raw HTTP assertions)
