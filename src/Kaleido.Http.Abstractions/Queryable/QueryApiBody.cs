@@ -118,8 +118,7 @@ public record QueryApiBody
 /// A node of the filter tree: set exactly one of <see cref="Condition"/> or <see cref="Group"/>.
 /// </summary>
 /// <remarks>
-/// When both are set, the HTTP transport uses <see cref="Condition"/>; a node with neither is
-/// ignored.
+/// A node with both, or neither, is rejected as a validation error (<c>qry_invalid_filter_node</c>).
 /// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed record QueryApiFilterNode

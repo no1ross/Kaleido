@@ -327,11 +327,33 @@ public sealed class QueryBodyResolverTests
     }
 
     [Fact]
-    public void ToQueryBody_FilterNodeWithoutConditionOrGroup_ResolvesToNoFilter()
+    public void ToQueryBody_FilterNodeWithoutConditionOrGroup_KeepsTheEmptyNodeForValidation()
     {
         var body = new QueryApiBody { Filter = new QueryApiFilterNode() };
 
-        Assert.Null(body.ToQueryBody(Fields)!.Filter);
+        var filter = body.ToQueryBody(Fields)!.Filter;
+
+        Assert.NotNull(filter);
+        Assert.Null(filter.Condition);
+        Assert.Null(filter.Group);
+    }
+
+    [Fact]
+    public void ToQueryBody_FilterNodeWithConditionAndGroup_KeepsBothForValidation()
+    {
+        var body = new QueryApiBody
+        {
+            Filter = new QueryApiFilterNode
+            {
+                Condition = ApiBody("Name", "equals", StringValue("a")).Filter!.Condition,
+                Group = new QueryApiFilterGroup { Operator = "and", Filters = [ApiBody("Id", "equals", IntValue(1)).Filter!] }
+            }
+        };
+
+        var filter = body.ToQueryBody(Fields)!.Filter!;
+
+        Assert.Equal("Name", filter.Condition!.Field);
+        Assert.Equal("Id", Assert.Single(filter.Group!.Filters).Condition!.Field);
     }
 
     [Fact]
@@ -352,7 +374,7 @@ public sealed class QueryBodyResolverTests
     }
 
     [Fact]
-    public void ToQueryBody_GroupDropsEmptyNodes()
+    public void ToQueryBody_GroupKeepsEmptyNodesForValidation()
     {
         var body = new QueryApiBody
         {
@@ -366,9 +388,12 @@ public sealed class QueryBodyResolverTests
             }
         };
 
-        var filter = Assert.Single(body.ToQueryBody(Fields)!.Filter!.Group!.Filters);
+        var filters = body.ToQueryBody(Fields)!.Filter!.Group!.Filters;
 
-        Assert.Equal("Name", filter.Condition!.Field);
+        Assert.Equal(2, filters.Count);
+        Assert.Null(filters[0].Condition);
+        Assert.Null(filters[0].Group);
+        Assert.Equal("Name", filters[1].Condition!.Field);
     }
 
     [Fact]
