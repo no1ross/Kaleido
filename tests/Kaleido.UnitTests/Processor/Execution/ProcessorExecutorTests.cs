@@ -498,8 +498,9 @@ public sealed class ProcessorExecutorTests
                 It.IsAny<ProcessStepContext>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new KaleidoValidationException("pro_custom_validation", "Member invalid."));
+        var stepObservation = new Mock<IProcessorStepObservation>();
 
-        var result = await CreateSut(invoker).ExecuteAsync(
+        var result = await CreateSut(invoker, stepObservation: stepObservation).ExecuteAsync(
             [candidate], CreateContext("step-a"), new ProcessorRequest());
 
         var outcome = Assert.Single(result.Outcomes);
@@ -507,6 +508,8 @@ public sealed class ProcessorExecutorTests
         var message = Assert.Single(outcome.RuntimeMessages);
         Assert.Equal("pro_custom_validation", message.Code);
         Assert.Equal("Member invalid.", message.Message);
+        stepObservation.Verify(x => x.StepValidationFailed("pro_custom_validation"), Times.Once);
+        stepObservation.Verify(x => x.StepFailed(It.IsAny<Exception>()), Times.Never);
     }
 
     [Fact]

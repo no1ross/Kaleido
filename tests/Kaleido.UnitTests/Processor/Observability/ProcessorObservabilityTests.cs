@@ -374,6 +374,32 @@ public sealed class ProcessorObservabilityTests
         AssertLogged(logger, LogLevel.Error, "Process step execution failed");
     }
 
+    [Fact]
+    public void StepObservation_StepValidationFailed_IsRecordedAsACallerErrorNotAFailure()
+    {
+        var serviceName = $"test-processor-{Guid.NewGuid():N}";
+        var stepName = $"Step-{Guid.NewGuid():N}";
+        var logger = CreateEnabledLogger();
+        var observability = CreateSut(serviceName, logger.Object);
+        var activities = new List<Activity>();
+        using var listener = CreateActivityListener(activities);
+        var measurements = new List<(string Name, KeyValuePair<string, object?>[] Tags)>();
+        using var meterListener = CreateMeterListener(serviceName, measurements);
+
+        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails(stepName, "1.0.0")))
+        {
+            observation.StepValidationFailed("pro_custom_validation");
+        }
+
+        var activity = Assert.Single(activities, x => x.GetTagItem(ProcessorTelemetry.TagStepName) as string == stepName);
+        Assert.NotEqual(ActivityStatusCode.Error, activity.Status);
+        var refused = Assert.Single(activity.Events, x => x.Name == ProcessorTelemetry.StepValidationFailedEventName);
+        Assert.Contains(refused.Tags, x => x.Key == ProcessorTelemetry.TagRejectionCode && (string?)x.Value == "pro_custom_validation");
+        Assert.DoesNotContain(measurements, x => x.Name == ProcessorTelemetry.StepFailuresCounterName);
+        AssertLogged(logger, LogLevel.Debug, "pro_custom_validation");
+        logger.Verify(x => x.Log(LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData(" ")]
