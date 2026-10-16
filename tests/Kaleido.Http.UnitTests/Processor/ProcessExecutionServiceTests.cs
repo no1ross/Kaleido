@@ -382,6 +382,34 @@ public sealed class ProcessExecutionServiceTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenAStepIsSubmittedTwice_RejectsTheRequestBeforeRunning()
+    {
+        var runtime = new Mock<IProcessorRuntime>();
+        var service = CreateSut(
+            Mock.Of<IProcessorStepRegistry>(),
+            runtime.Object,
+            Mock.Of<IProcessExecutionResponseFactory>());
+
+        var request = new ExecuteProcessRequest
+        {
+            Steps =
+            [
+                new ProcessStepRequest { StepName = "CaptureMember", Request = JsonSerializer.SerializeToElement(new { }) },
+                new ProcessStepRequest { StepName = "capturemember", Request = JsonSerializer.SerializeToElement(new { }) },
+            ]
+        };
+
+        var exception = await Assert.ThrowsAsync<KaleidoValidationException>(
+            () => service.ExecuteAsync(request, CancellationToken.None));
+
+        Assert.Equal(ProcessorErrorCodes.InvalidRequest, exception.Code);
+        Assert.Contains("'capturemember'", exception.Message, StringComparison.Ordinal);
+        runtime.Verify(
+            x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenAnySubmittedStepDenied_RejectsWholeRequestBeforeRunning()
     {
         var allowed = CreateRegistration();

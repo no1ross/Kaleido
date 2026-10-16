@@ -129,6 +129,32 @@ public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fix
                  && x.Type == MessageType.Error);
     }
 
+    [Fact]
+    public async Task PostExecute_WhenAStepIsSubmittedTwice_Returns400NamingTheStep()
+    {
+        var request =
+            new ExecuteProcessRequest
+            {
+                Steps =
+                [
+                    CreateStep(RuntimeStepNames.Root),
+                    CreateStep(RuntimeStepNames.Root.ToUpperInvariant())
+                ]
+            };
+
+        var response =
+            await PostExecuteAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var body =
+            await response.Content.ReadAsync<KaleidoErrorResponse>();
+
+        var error = Assert.Single(body!.Errors);
+        Assert.Equal(ProcessorErrorCodes.InvalidRequest, error.Code);
+        Assert.Contains(RuntimeStepNames.Root.ToUpperInvariant(), error.Message, StringComparison.Ordinal);
+    }
+
     // No process id: each test starts a new process, whose id the runtime generates.
     private Task<HttpResponseMessage> PostExecuteAsync(ExecuteProcessRequest body) =>
         fixture.Client.PostAsJsonAsync("/kaleido/processes/execute", body, KaleidoJsonOptions.Options);
