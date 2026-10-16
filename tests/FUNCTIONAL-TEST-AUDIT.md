@@ -150,7 +150,7 @@ register them.
    design: `IQueryContextExecutor<TView>` is the extension point for provider-native execution.
    `EfCoreQueryContextExecutorTests` now proves an EF Core executor replaces the default (either
    registration order) and sends one `COUNT`, and `docs/PATTERNS.md` shows the executor and the cost
-   of the default.
+   of the default. The samples do not register one yet ([#352](https://github.com/no1ross/Kaleido/issues/352)).
 4. **`ToApiBody` value serialization** ([#349](https://github.com/no1ross/Kaleido/issues/349), fixed):
    forwarded values were written with default JSON options, so an enum without a string converter
    went out as a number. They now use `KaleidoJsonOptions.Options` like every other wire value.
