@@ -42,7 +42,7 @@ internal sealed class ObservabilityMiddleware(RequestDelegate next)
 
             if (correlation.ProcessId.HasValue)
             {
-                activity.SetTag(ProcessorTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
+                activity.SetTag(KaleidoTelemetryTags.ProcessId, correlation.ProcessId.Value.ToString());
             }
         }
 

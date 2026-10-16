@@ -72,7 +72,7 @@ public sealed class SqliteKaleidoContextStoreTests
     private static Activity StoppedActivity(ConcurrentQueue<Activity> stopped, string name, Guid processId) =>
         Assert.Single(stopped, x =>
             x.OperationName == name &&
-            Equals(x.GetTagItem(SqliteTelemetry.TagProcessId), processId.ToString()));
+            Equals(x.GetTagItem(KaleidoTelemetryTags.ProcessId), processId.ToString()));
 
     private sealed class CancelOnQueryInterceptor(CancellationTokenSource cancellation)
         : DbCommandInterceptor

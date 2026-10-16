@@ -49,9 +49,6 @@ internal static class McpTelemetry
     /// <summary>The <c>mcp_*</c> code of a failed call (same key as the HTTP error tag).</summary>
     public const string TagErrorCode = "kaleido.error.code";
 
-    /// <summary>The process a step tool ran on (same key as the Processor's tag).</summary>
-    public const string TagProcessId = "kaleido.processor.id";
-
     public const string TagToolCount = "kaleido.mcp.tool_count";
 
     public const string TagRegistryResult = "kaleido.mcp.registry.result";

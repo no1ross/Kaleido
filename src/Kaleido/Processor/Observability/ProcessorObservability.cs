@@ -184,7 +184,7 @@ internal sealed partial class ProcessorObservability(
 
         if (correlation.ProcessId.HasValue)
         {
-            activity?.SetTag(ProcessorTelemetry.TagProcessId, correlation.ProcessId.Value.ToString());
+            activity?.SetTag(KaleidoTelemetryTags.ProcessId, correlation.ProcessId.Value.ToString());
         }
 
         activity?.SetTag(ProcessorTelemetry.TagSubmittedStepCount, details.SubmittedStepCount);
@@ -302,7 +302,7 @@ internal sealed partial class ProcessorObservability(
     {
         public void ContextInitialized(Guid processId)
         {
-            activity?.SetTag(ProcessorTelemetry.TagProcessId, processId.ToString());
+            activity?.SetTag(KaleidoTelemetryTags.ProcessId, processId.ToString());
             activity?.AddEvent(new ActivityEvent(ProcessorTelemetry.ContextInitializedEventName));
 
             ProcessContextsInitializedCounter.Add(
@@ -314,7 +314,7 @@ internal sealed partial class ProcessorObservability(
 
         public void ContextLoaded(Guid processId)
         {
-            activity?.SetTag(ProcessorTelemetry.TagProcessId, processId.ToString());
+            activity?.SetTag(KaleidoTelemetryTags.ProcessId, processId.ToString());
             activity?.AddEvent(new ActivityEvent(ProcessorTelemetry.ContextLoadedEventName));
 
             ProcessContextsLoadedCounter.Add(

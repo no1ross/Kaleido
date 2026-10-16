@@ -26,7 +26,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         using var activity = SqliteTelemetry.ActivitySource
             .StartActivity(SqliteTelemetry.LoadActivityName, ActivityKind.Internal);
-        activity?.SetTag(SqliteTelemetry.TagProcessId, processId.ToString());
+        activity?.SetTag(KaleidoTelemetryTags.ProcessId, processId.ToString());
 
         try
         {
@@ -74,7 +74,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         using var activity = SqliteTelemetry.ActivitySource
             .StartActivity(SqliteTelemetry.SaveActivityName, ActivityKind.Internal);
-        activity?.SetTag(SqliteTelemetry.TagProcessId, context.ProcessId.ToString());
+        activity?.SetTag(KaleidoTelemetryTags.ProcessId, context.ProcessId.ToString());
 
         try
         {

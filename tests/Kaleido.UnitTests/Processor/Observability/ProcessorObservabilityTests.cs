@@ -254,7 +254,7 @@ public sealed class ProcessorObservabilityTests
         Assert.Equal("REQ-001", activity.GetTagItem(KaleidoTelemetryTags.RequestId));
         Assert.Equal("calling-processor", activity.GetTagItem(KaleidoTelemetryTags.CallingProcessor));
         Assert.Equal("calling-step", activity.GetTagItem(KaleidoTelemetryTags.CallingStep));
-        Assert.Equal(processId.ToString(), activity.GetTagItem(ProcessorTelemetry.TagProcessId));
+        Assert.Equal(processId.ToString(), activity.GetTagItem(KaleidoTelemetryTags.ProcessId));
         Assert.Equal(2, activity.GetTagItem(ProcessorTelemetry.TagSubmittedStepCount));
         Assert.Equal(3, activity.GetTagItem(ProcessorTelemetry.TagPlanCandidateCount));
         Assert.Equal(1, activity.GetTagItem(ProcessorTelemetry.TagPlanExecutableCount));
@@ -291,7 +291,7 @@ public sealed class ProcessorObservabilityTests
         observability.BeginExecution(new ProcessorExecutionObservationDetails(0)).Dispose();
 
         var activity = Assert.Single(activities, x => x.GetTagItem(KaleidoTelemetryTags.ProcessorName) as string == serviceName);
-        Assert.Null(activity.GetTagItem(ProcessorTelemetry.TagProcessId));
+        Assert.Null(activity.GetTagItem(KaleidoTelemetryTags.ProcessId));
         Assert.Null(activity.GetTagItem(KaleidoTelemetryTags.CallingProcessor));
         var executions = Assert.Single(measurements, x => x.Name == ProcessorTelemetry.ExecutionsCounterName);
         Assert.DoesNotContain(executions.Tags, x => x.Key == KaleidoTelemetryTags.CallingProcessor);
