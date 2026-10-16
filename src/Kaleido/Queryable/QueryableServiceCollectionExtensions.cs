@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Queryable;
 
-public static class QueryableServiceCollectionExtensions
+internal static class QueryableServiceCollectionExtensions
 {
     internal static IKaleidoBuilder AddQueryable(this IKaleidoBuilder builder)
     {

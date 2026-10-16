@@ -114,7 +114,7 @@ forwarded user.
 
 ## Evaluation
 
-`IKaleidoAuthorizationEvaluator` (core, transport-agnostic) evaluates
+`IKaleidoAuthorizationEvaluator` (core, transport-agnostic; internal, shared with the built-in HTTP transport) evaluates
 `AuthorizationMetadata` against the caller fields on
 `KaleidoCorrelationContext`, using `KaleidoServiceOptions.AuthorizationMode`.
 Declared `Policy` names resolve via a transport-supplied evaluator — HTTP bridges to

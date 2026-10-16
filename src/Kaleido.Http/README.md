@@ -41,7 +41,7 @@ Queryable requests use an optional `query.page` object. An omitted page on a pag
   - `GET /{prefix}/registry` — unified discovery: local process + queryable registrations; when `MapKaleidoHttp(o => o.AggregateRegistry = true)` is used, also merges every downstream client registered via `AddHttpClients()`
 
 ### URL and route helpers (internal)
-- `ProcessContractUrls` / `ProcessRoutePaths` and `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) build the execute, state and query URLs for both the server and the clients. They are internal: consumers take URLs from the registry (`executeUrl`, `queryUrl`). `ProcessEndpointNames` and `RegistryEndpointNames` are public, for addressing Kaleido's endpoints by name.
+- `ProcessContractUrls` / `ProcessRoutePaths` and `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) build the execute, state and query URLs for both the server and the clients. They are internal, as are the endpoint-name constants (`ProcessEndpointNames`, `QueryableEndpointNames`, `RegistryEndpointNames`): consumers take URLs from the registry (`executeUrl`, `queryUrl`).
 
 ---
 

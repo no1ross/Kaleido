@@ -75,8 +75,8 @@ below).
   `AddMcp()`; `mcp_no_pending_information_request`; built-in process tools exist only when the host
   has processes; tool naming (suffix stripping, 64-character hash shortening, KAL2019/KAL2020).
 - **HTTP:** `RegistryDownstreamMaxParallelism`; `IKaleidoRegistryService` for in-host consumers;
-  `destructive`/`external`/`requiresConfirmation` on `requiredStep`; public `ProcessEndpointNames`
-  and `RegistryEndpointNames` vs internal URL helpers.
+  `destructive`/`external`/`requiresConfirmation` on `requiredStep`; URL helpers and endpoint-name
+  constants are internal (consumers take URLs from the registry).
 - **Client:** `TryGetClientForService`; the untyped `ExecuteStepAsync(stepName, json, processId)`;
   caller/process forwarding exists only when clients are configured.
 - **Contracts:** `QueryableSourceResponse.Name` (what a client passes) and its descriptive fields;

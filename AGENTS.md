@@ -63,7 +63,7 @@ Owns the full HTTP transport layer:
 ### Kaleido.Http.Abstractions
 Owns shared HTTP contract types and HTTP-specific correlation primitives:
 - `KaleidoCorrelationHeaders` — canonical `X-Kaleido-*` header name constants
-- `HttpHeaderSanitizer` — RFC 7230-compliant sanitization of HTTP header values
+- `HttpHeaderSanitizer` (internal, shared with Kaleido.Http and Kaleido.Http.Client) — RFC 7230-compliant sanitization of HTTP header values
 - Process HTTP request/response contracts (`ExecuteProcessRequest`, `ProcessExecutionResponse`, etc.)
 - Queryable HTTP request/response contracts (`QueryApiRequest`, `QueryableSourceResponse`, etc.)
 - Shared contract types used by both server-side and client-side projects

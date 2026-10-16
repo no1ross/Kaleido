@@ -3,13 +3,10 @@ using Kaleido.UnitTests;
 namespace Kaleido.Queryable.Metadata.UnitTests;
 
 public sealed class QueryViewRegistrationTests
-    : SutFixture<QueryViewRegistration>
+    : SutFixture
 {
     private static readonly DataTypeDescriptor TestDataType =
         new("string");
-
-    protected override QueryViewRegistration CreateSut() =>
-        CreateSut(null!);
 
     private static QueryViewRegistration CreateSut(
         QueryViewMetadata metadata) =>

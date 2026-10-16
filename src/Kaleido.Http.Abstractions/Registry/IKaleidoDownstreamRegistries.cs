@@ -8,7 +8,7 @@ namespace Kaleido.Http.Registry;
 /// merges into its own registry. <c>Kaleido.Http.Client</c> provides it for the clients registered
 /// with <c>AddHttpClients()</c>; a host without clients has no downstream registries.
 /// </summary>
-public interface IKaleidoDownstreamRegistries
+internal interface IKaleidoDownstreamRegistries
 {
     /// <summary>
     /// Fetches every downstream registry (each through its client's own cache). A client that fails
@@ -32,7 +32,7 @@ public interface IKaleidoDownstreamRegistries
 
 /// <summary>The downstream registries, and the clients that could not be read.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record DownstreamRegistries(
+internal sealed record DownstreamRegistries(
     IReadOnlyCollection<ProcessorRegistryResponse> Processes,
     IReadOnlyCollection<QueryableSourceResponse> Queryables,
     IReadOnlyCollection<RegistryClientError> Errors)

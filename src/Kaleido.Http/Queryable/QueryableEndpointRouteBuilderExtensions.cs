@@ -12,7 +12,7 @@ namespace Kaleido.Http.Queryable;
 /// <summary>
 /// Provides endpoint registration extensions for Kaleido Queryable.
 /// </summary>
-public static partial class QueryableEndpointRouteBuilderExtensions
+internal static partial class QueryableEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps all Kaleido Queryable endpoints and returns the route group so hosts can
