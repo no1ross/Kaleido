@@ -40,6 +40,7 @@ All three are build diagnostics, not runtime error codes (runtime codes are in [
 | KAL2020 | Warning | `o.ServiceName` is longer than 15 characters | The service name prefixes every MCP tool name (`{service}_{capability}`) and eats the 64-character budget |
 | KAL2021 | Warning | A `[Required]` process step input has a non-nullable value type and is not a C# `required` member | An omitted input silently becomes its default (`Guid.Empty`, `default(DateOnly)`) and passes validation |
 | KAL2022 | Warning | The same for an `IQueryParameters` property | An omitted query parameter silently becomes its default and passes validation |
+| KAL2023 | Error | A `[Filterable]` operator does not apply to the property's type (a comparison on a string, enum or bool; a string operator on a non-string; `IsTrue`/`IsFalse` on a non-bool; `IsNull`/`IsNotNull` on a non-nullable value type) | Startup failure `qry_invalid_registration`; otherwise an operator the registry advertises but every request using it fails |
 
 ### Examples and notes
 
@@ -53,6 +54,8 @@ All three are build diagnostics, not runtime error codes (runtime codes are in [
 - **KAL2017–KAL2018 — describe inputs.** Only a description is asked for — `[Description("…")]` or `[Display(Description = "…")]`; `[Display(Name, Prompt)]` stay optional hints. The registry publishes them as field metadata, which is what UIs and AI agents read to know what to ask for. Warnings, not errors: the rule nudges without blocking. Information steps are exempt (their request describes the questions). [Implementation](../tools/analyzers/Kaleido.Analyzers/InputDescriptionAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/InputDescriptionAnalyzerTests.cs).
 
 - **KAL2021–KAL2022 — a required value must be able to be missing.** The `[Required]` attribute fails only for `null`, so on a `Guid`, `DateOnly`, enum or number it never fails: an omitted value has already become its default. Declare the input with the C# `required` keyword (`[Required] public required Guid MemberId { get; init; }`): the compiler makes in-process callers set it, and System.Text.Json refuses a request body that leaves it out (Kaleido answers 400 naming it). A nullable type (`Guid?`) also satisfies the rule, at the cost of `.Value` in handlers. [Implementation](../tools/analyzers/Kaleido.Analyzers/RequiredValueTypeAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/RequiredValueTypeAnalyzerTests.cs).
+
+- **KAL2023 - filter operators fit the field.** The rule mirrors the startup check: comparisons (`GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `Between`, `NotBetween`) need a number or a type with comparison operators (dates, times, `Guid`), string operators need `string`, `IsTrue`/`IsFalse` need `bool`/`bool?`, `IsNull`/`IsNotNull` need a nullable type, and `Equals`/`NotEquals` on a struct need an equality operator. `In`/`NotIn` fit every type. [Implementation](../tools/analyzers/Kaleido.Analyzers/Queryable/FilterOperatorTypeAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.UnitTests/Queryable/FilterOperatorTypeAnalyzerTests.cs).
 
 Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 
