@@ -123,7 +123,8 @@ internal sealed partial class KaleidoToolInvoker(
         return Error(
             McpErrorCodes.ServiceError,
             $"{tool.Definition.Name}: {exception.Message}",
-            Serialize(new { status = (int)exception.StatusCode, errors = exception.Errors }));
+            Serialize(new { status = (int)exception.StatusCode, errors = exception.Errors }),
+            ServiceReasons(exception.Errors));
     }
 
     public async Task<ToolOutcome> InvokeAsync(
@@ -691,7 +692,9 @@ internal sealed partial class KaleidoToolInvoker(
                 }
             }
 
-            return Success(Summary(service, pendingService, step, required, available, answered, note, catalog));
+            return Success(
+                Summary(service, pendingService, step, required, available, answered, note, catalog),
+                step.BusinessMessages.Select(x => x.Message));
         }
     }
 
@@ -768,15 +771,20 @@ internal sealed partial class KaleidoToolInvoker(
             summary["result"] = JsonNode.Parse(step.Result.GetRawText());
         }
 
-        // Business messages are the implementer's and always shown; framework messages only when they
-        // matter to the caller (warnings and errors), not informational notes such as a repeatable step.
-        var messages = step.BusinessMessages
-            .Concat(step.FrameworkMessages.Where(x => x.Type != MessageType.Information))
-            .ToArray();
-
-        if (messages.Length > 0)
+        // Two streams, kept apart as the step response keeps them: business messages are the
+        // implementer's words for the user (verbatim, always); framework messages are Kaleido's
+        // diagnostics about the call, for the agent to explain, and only when they matter (warnings
+        // and errors, not informational notes such as a repeatable step).
+        if (step.BusinessMessages.Count > 0)
         {
-            summary["messages"] = Serialize(messages);
+            summary["messages"] = Serialize(step.BusinessMessages);
+        }
+
+        var diagnostics = step.FrameworkMessages.Where(x => x.Type != MessageType.Information).ToArray();
+
+        if (diagnostics.Length > 0)
+        {
+            summary["diagnostics"] = Serialize(diagnostics);
         }
 
         if (answered.Count > 0)
@@ -796,7 +804,7 @@ internal sealed partial class KaleidoToolInvoker(
         note ??= step.Outcome switch
         {
             StepExecutionOutcome.Rejected =>
-                "The step was rejected and nothing was changed. Tell the user why (messages); they can correct it and try again, or choose another step.",
+                "The step was rejected and nothing was changed. Tell the user why (messages verbatim; explain diagnostics); they can correct it and try again, or choose another step.",
             StepExecutionOutcome.Failed when required is not null || available.Count > 0 =>
                 "The step did not complete and nothing was recorded; the process is where it was. The user can try again or choose another step.",
             _ => null,
@@ -984,16 +992,17 @@ internal sealed partial class KaleidoToolInvoker(
     private static string Camel(string value) =>
         JsonNamingPolicy.CamelCase.ConvertName(value);
 
-    private static CallToolResult Success(JsonNode body) =>
+    private static CallToolResult Success(JsonNode body, IEnumerable<string>? forTheUser = null) =>
         new()
         {
-            Content = [new TextContentBlock { Text = body.ToJsonString(KaleidoJsonOptions.Options) }],
+            Content = Content(body, forTheUser),
         };
 
     private static CallToolResult Error(
         string code,
         string message,
-        JsonNode? details = null)
+        JsonNode? details = null,
+        IEnumerable<string>? forTheUser = null)
     {
         var body = new JsonObject { ["code"] = code, ["message"] = message };
 
@@ -1005,9 +1014,49 @@ internal sealed partial class KaleidoToolInvoker(
         return new CallToolResult
         {
             IsError = true,
-            Content = [new TextContentBlock { Text = body.ToJsonString(KaleidoJsonOptions.Options) }],
+            Content = Content(body, forTheUser),
         };
     }
+
+    // The JSON summary is for the agent. Text the service wrote for a person (business messages, its
+    // own refusal reasons) also goes in blocks of its own marked for the user, so a client that
+    // honours MCP's audience annotation can show it as written, without the model in between
+    // (ADR 0007). A client that ignores annotations passes every block to the model, which the
+    // instructions tell to relay messages verbatim.
+    private static List<ContentBlock> Content(JsonNode body, IEnumerable<string>? forTheUser)
+    {
+        List<ContentBlock> content =
+        [
+            new TextContentBlock
+            {
+                Text = body.ToJsonString(KaleidoJsonOptions.Options),
+                Annotations = new Annotations { Audience = [Role.Assistant] },
+            },
+        ];
+
+        foreach (var text in forTheUser ?? [])
+        {
+            content.Add(new TextContentBlock
+            {
+                Text = text,
+                Annotations = new Annotations { Audience = [Role.User], Priority = 1 },
+            });
+        }
+
+        return content;
+    }
+
+    // A refusal reason the service itself wrote (e.g. MEMBER_PLAN_REQUIRED), as opposed to one of
+    // Kaleido's own codes, which the agent explains instead.
+    private static readonly string[] KaleidoCodePrefixes = ["qry_", "pro_", "httpclient_", "mcp_"];
+
+    private static IEnumerable<string> ServiceReasons(IEnumerable<KaleidoError> errors) =>
+        errors
+            .Where(x =>
+                x.Code is not (KaleidoErrorCodes.ArgumentError or KaleidoErrorCodes.FrameworkError) &&
+                !KaleidoCodePrefixes.Any(prefix => x.Code.StartsWith(prefix, StringComparison.Ordinal)) &&
+                !string.IsNullOrWhiteSpace(x.Message))
+            .Select(x => x.Message);
 
     private sealed class MissingClientException(string service)
         : Exception($"No Kaleido client is configured for service '{service}' on this host, so its tools cannot be called. Add it under Kaleido:Clients.");
