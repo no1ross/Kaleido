@@ -268,6 +268,27 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite) | Reference store for process state, stored execution responses, and the event outbox |
 | [`Kaleido.Observability.OpenTelemetry`](src/Kaleido.Observability.OpenTelemetry) | Opt-in tracing, metrics, logging, and OTLP export integration |
 
+### Prerequisites
+
+- **Using the packages:** they target `net8.0`, so a service runs on .NET 8 or later. `Kaleido.Http` and `Kaleido.Http.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`).
+- **Building this repository:** the .NET 10 SDK (pinned in `global.json`).
+
+### Install
+
+The packages are previews and are not published to nuget.org yet: CI builds them on every change to `master` (the `packages` workflow artifact). Add the feed you host them on (`dotnet nuget add source …`), then add what the service needs:
+
+```bash
+dotnet add package Kaleido --prerelease                              # core runtimes (always)
+dotnet add package Kaleido.Http --prerelease                         # publish the service over HTTP
+dotnet add package Kaleido.Http.Client --prerelease                  # call other Kaleido services
+dotnet add package Kaleido.Http.Abstractions --prerelease            # only the wire contracts (e.g. a delegated source)
+dotnet add package Kaleido.Http.Mcp --prerelease                     # publish capabilities to AI agents over MCP
+dotnet add package Kaleido.Observability.OpenTelemetry --prerelease  # logs, traces and metrics over OTLP
+dotnet add package Kaleido.Provider.SQLite --prerelease              # reference store (evaluation, not production)
+```
+
+`Kaleido.Http` and `Kaleido.Http.Client` bring `Kaleido.Http.Abstractions` and `Kaleido` with them.
+
 ## Documentation
 
 - [Architecture](ARCHITECTURE.md)

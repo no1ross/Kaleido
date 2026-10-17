@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <PropertyGroup>
+		<Description>Kaleido HTTP wire contracts shared by the server (Kaleido.Http) and the clients (Kaleido.Http.Client): request and response types, JSON options and correlation header names.</Description>
+		<PackageTags>kaleido;http;contracts</PackageTags>
 		<RootNamespace>Kaleido.Http</RootNamespace>
 	</PropertyGroup>
 	<ItemGroup>

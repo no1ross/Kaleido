@@ -5,8 +5,8 @@
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>kaleido-nuget-icon-128.png</PackageIcon>
         <PackageProjectUrl>https://github.com/no1ross/Kaleido</PackageProjectUrl>
-        <Description>Kaleido — metadata-driven query and process framework.</Description>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <RepositoryType>git</RepositoryType>
@@ -18,7 +18,6 @@
         <Authors>Andrew Ross</Authors>
         <Company>Andrew Ross</Company>
         <RepositoryUrl>https://github.com/no1ross/Kaleido</RepositoryUrl>
-        <PackageTags>reference-data;metadata;query;framework</PackageTags>
     </PropertyGroup>
     <ItemGroup>
         <!-- Git-height versioning: version.json → 1.0.0-preview.{height}; v* tags flip to stable. -->
@@ -28,5 +27,6 @@
         <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all" />
         <ProjectReference Include="$(MSBuildThisFileDirectory)..\tools\analyzers\Kaleido.Analyzers.Source\Kaleido.Analyzers.Source.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
         <None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="\" />
+        <None Include="$(MSBuildThisFileDirectory)..\docs\assets\kaleido-nuget-icon-128.png" Pack="true" PackagePath="\" Visible="false" />
     </ItemGroup>
 </Project>
