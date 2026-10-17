@@ -1,4 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido HTTP transport for ASP.NET Core: publishes a service&apos;s Process, Queryable and registry endpoints, with correlation, capability authorization and idempotent execution.</Description>
+		<PackageTags>kaleido;aspnetcore;http;rest;endpoints</PackageTags>
+	</PropertyGroup>
+
 <ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
