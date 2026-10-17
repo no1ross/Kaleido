@@ -23,6 +23,7 @@ ALLOWED = {
     "QueryContextSource": "type-name suffix the MCP adapter strips from tool names",
     "QueryViewSource": "type-name suffix the MCP adapter strips from tool names",
     "ProcessorMappings": "named in the PriorAuth handoff guide as a setting that does not exist",
+    "IQueryable": ".NET type (System.Linq) that query sources return",
 }
 
 API_NAME = re.compile(r"^I?(Kaleido|Process|Processor|Query|Queryable|Step|Registry|Information|Mcp|Sqlite"
@@ -31,11 +32,28 @@ SEGMENT = re.compile(r"^(I?[A-Z][A-Za-z0-9]*)(?:<[^>]*>)?(?:\(.*\))?$")
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
 FILE_NAME = re.compile(r"\.(cs|csproj|md|json|ts|tsx|yml|yaml|props|targets|slnx|ps1|cmd|sh|txt|png|xml)$", re.I)
 
-CS_DECLARATIONS = [
-    re.compile(r"\b(?:class|record|struct|interface|enum|delegate)\s+(?:struct\s+|class\s+)?([A-Z]\w*)"),
-    re.compile(r"\b(?:public|internal|protected|private)\s+(?:[\w<>\[\],.?]+\s+)*([A-Z]\w*)\s*(?:[({=;<]|=>)"),
-    re.compile(r"^\s*([A-Z]\w*)\s*(?:=\s*[^,;{}]+)?,?\s*$", re.M),  # enum members
-]
+# Declarations are read line by line with patterns whose quantifiers never compete for the same
+# characters, so matching stays linear.
+TYPE_DECLARATION = re.compile(r"\b(?:class|record|struct|interface|enum|delegate) +(?:struct +|class +)?([A-Z]\w*)")
+MEMBER_LINE = re.compile(r"^\s*(?:public|internal|protected|private)\b")
+MEMBER_NAME = re.compile(r"\b([A-Z]\w*)(?= *(?:[({=;]|<[^<>(){};]*> *\())")  # name before ( { = ; or <T>(
+ENUM_MEMBER_LINE = re.compile(r"^\s*([A-Z]\w*) *(?:=[^,;{}]*)?,?$")
+
+
+def cs_declarations(text):
+    lines = [line.rstrip() for line in text.splitlines()]
+    for index, line in enumerate(lines):
+        yield from TYPE_DECLARATION.findall(line)
+        if MEMBER_LINE.match(line):
+            # A member declaration may continue on the next lines (the name after a long return type).
+            declaration, following = line, index + 1
+            while not any(c in declaration for c in "({;=") and following < min(index + 4, len(lines)):
+                declaration += " " + lines[following].strip()
+                following += 1
+            yield from MEMBER_NAME.findall(declaration)
+        enum_member = ENUM_MEMBER_LINE.match(line)
+        if enum_member:
+            yield enum_member.group(1)
 TS_DECLARATIONS = [re.compile(r"\b(?:class|interface|enum|type|function|const)\s+([A-Z]\w*)")]
 NAMESPACE = re.compile(r"^\s*namespace\s+([\w.]+)", re.M)
 
@@ -56,8 +74,7 @@ def main():
     for path in files:
         if path.endswith(".cs"):
             text = read(path)
-            for pattern in CS_DECLARATIONS:
-                declared.update(pattern.findall(text))
+            declared.update(cs_declarations(text))
             for namespace in NAMESPACE.findall(text):
                 namespaces.update(namespace.split("."))
         elif path.endswith(".ts") and "node_modules" not in path:
