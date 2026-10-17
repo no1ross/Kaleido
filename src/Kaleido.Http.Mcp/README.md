@@ -206,6 +206,10 @@ A tool call never fails at the protocol level: a problem comes back as a tool re
   not the adapter.
 - Questions and lookups go to the user through forms where the client supports them; the model
   never answers for the user.
+- A process id is a bearer handle: the agent passes it as a tool argument, and any caller who knows
+  it and passes the step's own checks can read and continue that process (no case-level guardrails).
+  What that exposes, and where a host enforces case access, is in the
+  [threat model](../../docs/AUTHORIZATION.md#threat-model-the-process-id-is-a-bearer-handle).
 
 ## Sign-in from MCP clients (OAuth)
 

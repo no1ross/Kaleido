@@ -52,7 +52,7 @@ HTTP request
        └─ echoes RequestId and ProcessId on the response
 ```
 
-- String values pass through `HttpHeaderSanitizer` (RFC 7230 — printable ASCII, max 256
+- String values pass through the internal `HttpHeaderSanitizerExtensions.Sanitize` (RFC 7230 — printable ASCII, max 256
   chars); unsanitizable content is dropped.
 - `ProcessId` must parse as a GUID. A malformed value throws `BadHttpRequestException`,
   which `ExceptionMiddleware` maps to **HTTP 400** (`argument_error`) — see

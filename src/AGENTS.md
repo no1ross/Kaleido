@@ -11,70 +11,14 @@ See also:
 
 ## Scope and boundaries
 
-### `src/Kaleido`
-Owns the core runtime:
-- root bootstrap (`AddKaleido()`, `IKaleidoBuilder`, `KaleidoServiceOptions.Assemblies`)
-- shared metadata primitives (`TypeDescriber`, `ConstraintMapper`)
-- shared eventing abstractions and correlation context
-- shared JSON/value-conversion helpers
-- Queryable runtime: context/view registration, validation, dispatch, execution, observability
-- Process runtime: step registration, planning, execution, state mutation, observability
-- Default in-memory `IKaleidoContextStore`
+What each project owns and must not own is stated once, in the root [project boundaries](../AGENTS.md#project-boundaries); each project's README lists its public types, and [`ARCHITECTURE.md`](./ARCHITECTURE.md) its internals. Two rules apply across `src/`:
 
-Does **not** own HTTP endpoints, ASP.NET Core DI, HTTP contracts, remote client consumption, or SQLite persistence.
-
-### `src/Kaleido.Http`
-Owns the full HTTP transport layer — middleware, correlation propagation, and endpoint publication:
-- `AddHttp()` — public entry point; registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
-- `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
-- `ObservabilityMiddleware` — reads inbound correlation headers via `HttpCorrelationContextReader`, populates `IKaleidoCorrelationContextAccessor`, tags the `Activity`, and echoes `RequestId`/`ProcessId` on the response
-- `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers into `KaleidoCorrelationContext`
-- `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
-- `MapKaleidoHttp()` — the public mapping entry point; it calls the internal `MapQueryable()` (all Queryable HTTP endpoints) and `MapProcessor()` (all Process HTTP endpoints)
-- `MapRegistry()` — internal; `GET /{service}/registry` unified discovery endpoint (mapped by `MapKaleidoHttp`, optionally aggregating downstream clients)
-- `IProcessExecutionService` / `ProcessExecutionService` — translates HTTP execute requests into runtime calls
-- `IProcessStateService` / `ProcessStateService` — reads durable process state and maps it to HTTP contracts
-
-Depends on `Kaleido.Http.Abstractions` only. Does **not** own runtime logic or core DI registration.
-
-### `src/Kaleido.Http.Abstractions`
-Owns shared HTTP contract types and HTTP-specific correlation primitives:
-- `KaleidoCorrelationHeaders` — canonical `X-Kaleido-*` header name constants (namespace `Kaleido.Http`)
-- `HttpHeaderSanitizer` (internal, shared through `InternalsVisibleTo`) — RFC 7230-compliant sanitization, max 256 chars, printable ASCII only
-- Process HTTP request/response contracts
-- Queryable HTTP request/response contracts
-
-Changes here ripple into `Kaleido.Http` (server) and `Kaleido.Http.Client` (client). Prefer additive changes.
-
-### `src/Kaleido.Http.Client`
-Owns typed HTTP clients for consuming remote Kaleido services:
-- `IKaleidoProcessorClientFactory` / `KaleidoProcessorClient`
-- `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient`
-- `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessorClient(...)`/`AddQueryableClient(...)` are internal
-
-Does **not** own server-side runtime logic or endpoint mapping.
-
-### `src/Kaleido.Http.Mcp`
-Owns the MCP adapter (depends on `Kaleido.Http` and `Kaleido.Http.Client`):
-- `AddMcp()` / `MapKaleidoMcp(pattern)` — the MCP server and its stateless Streamable HTTP endpoint; `AddMcp()` requires `AddHttp()` and `AddHttpClients()`
-- the tool catalog, built per caller from `IKaleidoRegistryService`, and the tool invoker, which calls services through the Kaleido clients as the caller
-- `McpErrorCodes` (`mcp_*`) and `McpTelemetry`
-
-Does **not** own runtime logic, endpoint mapping of the services, or client transport.
-
-### `src/Kaleido.Observability.OpenTelemetry`
-Owns the OpenTelemetry observability provider (opt-in, no OTel dependency in core):
-- `AddOpenTelemetry()` on `IKaleidoBuilder` — one-call OTel setup: logging + tracing + metrics + OTLP export
-- `AddKaleidoInstrumentation()` on `TracerProviderBuilder` — registers Kaleido `ActivitySource`s
-- `AddKaleidoInstrumentation()` on `MeterProviderBuilder` — registers Kaleido `Meter`s with tuned histogram Views
-- Does **not** own core instrumentation — `ActivitySource`/`Meter` definitions stay in `Kaleido`
-
-Future observability providers follow the same pattern: `Kaleido.Observability.<Technology>`.
-
-### `src/Kaleido.Provider.SQLite`
-Owns the reference `IKaleidoContextStore` implementation (SQLite):
-- `UseSqliteKaleidoContextStore(...)` extension
-- SQLite-backed `IKaleidoContextStore` — a worked example only; consumers implement `IKaleidoContextStore` against their own durable infrastructure
+- **Project references point one way.** A new reference is an architecture change:
+  - `Kaleido` references no other Kaleido project.
+  - `Kaleido.Http.Abstractions`, `Kaleido.Observability.OpenTelemetry` and `Kaleido.Provider.SQLite` reference only `Kaleido`.
+  - `Kaleido.Http` and `Kaleido.Http.Client` reference `Kaleido.Http.Abstractions`.
+  - `Kaleido.Http.Mcp` references `Kaleido.Http` and `Kaleido.Http.Client`.
+- **Public means consumer API.** Transports, front doors and providers are built into the solution, so seams shared between Kaleido's own projects are internal and shared through `InternalsVisibleTo`. A type is public only when a consumer must name, implement or call it, and then it carries full XML documentation (CS1591 is enforced).
 
 ---
 
@@ -87,7 +31,7 @@ Owns the reference `IKaleidoContextStore` implementation (SQLite):
 - default event publisher registration
 - returning the builder for higher-level frameworks
 
-`AddAssembly(...)` is a lightweight recording step only. Core does not itself scan assemblies for capability registrations.
+`AddKaleido()` also registers both runtimes (the internal `AddProcessor()` and `AddQueryable()`), which scan the assemblies in `KaleidoServiceOptions.Assemblies`; the registration model is described once, in [`../ARCHITECTURE.md`](../ARCHITECTURE.md#4-registration-model).
 
 ### Builder rules
 `IKaleidoBuilder` is intentionally small: `Services`, `Assemblies`, `Configuration` and `ServiceOptions` — what every subsystem builder (Process, Queryable, Registry, transports) needs without a DI lookup. Be cautious about expanding it — additional members affect every framework built on top.
@@ -210,7 +154,7 @@ When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` a
 ---
 
 ## Common pitfalls
-- Moving HTTP or transport concerns into `Kaleido` (core) — `KaleidoCorrelationContext` is transport-agnostic; `KaleidoCorrelationHeaders` and `HttpHeaderSanitizer` belong in `Kaleido.Http.Abstractions`
+- Moving HTTP or transport concerns into `Kaleido` (core) — `KaleidoCorrelationContext` is transport-agnostic; `KaleidoCorrelationHeaders` and `HttpHeaderSanitizerExtensions` belong in `Kaleido.Http.Abstractions`
 - Moving runtime logic into `Kaleido.Http` (endpoint mapping and middleware only)
 - Treating `AddAssembly(...)` as if it should also scan and register features
 - Changing `Kaleido.Http.Abstractions` types without updating both the server endpoint and client

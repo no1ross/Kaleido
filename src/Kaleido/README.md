@@ -31,7 +31,7 @@ For the full repository model, see:
 - `QueryContextEngine` / `DelegatedQuerySourceEngine` / `QueryContextExecutor` — query execution pipeline
 - `IQueryContextExecutor<TView>` — public extension point: register your own implementation to plug in provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`). Default executor uses `IAsyncEnumerable<T>` when supported, sync LINQ otherwise; it counts an async query by reading every matching row, so EF Core hosts should register an EF executor ([docs/PATTERNS.md](../../docs/PATTERNS.md#queryable-sources-views-and-query-contexts)).
 - `QueryRequestCompiler` / `QueryRequestValidator` — validation and compilation
-- `QueryableBuilder` / `QueryableObservability` — builder and observability
+- `QueryableObservability` (internal) — logs, traces and metrics of the Queryable runtime
 - `IQuerySource<T>` / `IQuerySourceAsync<T>` / `IDelegatedQuerySource<…>` — source interfaces (the identity, described by `[QuerySource]`)
 - `IQueryViewSource<TSource, …>` / `IQueryViewSourceAsync<TSource, …>` — view interfaces (the identity, described by `[QueryView]`)
 - `IQueryContext` / `IQueryParameters` — markers for query context records (query rules) and parameter records
