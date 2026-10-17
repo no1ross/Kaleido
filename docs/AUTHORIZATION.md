@@ -8,7 +8,7 @@ resulting principal via the transport and enforces one gate:
   and views narrows access with `Roles` / `Policy`, or opens it with `AllowAnonymous`.
 
 Kaleido has **no case-level guardrails** ([ADR 0010](./decisions/0010-no-case-level-guardrails.md)):
-see [Who may continue a process](#who-may-continue-a-process).
+see [Who may continue a process](#who-may-continue-a-process) and the [threat model](#threat-model-the-process-id-is-a-bearer-handle).
 
 ## The mode: `AuthorizationMode`
 
@@ -111,6 +111,58 @@ enforced. There is no transfer endpoint.
 Keep call identity out of user roles: a service-to-service hop should identify the calling
 service with a separate claim (evaluated by a policy), not by adding a role to the
 forwarded user.
+
+## Threat model: the process id is a bearer handle
+
+Because there are no case-level guardrails, a process id works like a capability URL: **whoever
+knows it, and passes the capability checks above, can read and continue that process.**
+
+**What the id grants.** With a process id (`X-Kaleido-Process-Id`, the `{processId}` route value, or
+the MCP `processId` argument) a caller can:
+
+- read the process state, `GET /{service}/processes/{processId}` (MCP `get_process_state`): its
+  state, required and available steps, the step history, and who created and last changed the
+  process and each step (`CreatedBy`, `UpdatedBy`, `StartedBy`, `LastUpdatedBy`: caller names and
+  ids);
+- continue it with any step that the step's own `[KaleidoAuthorization]` admits for that caller.
+
+The route needs an authenticated caller when enforcing (or none, when the processor has an
+`AllowAnonymous` step); the process's creator is never compared with the caller. Ids are random
+GUIDs, so they cannot be guessed, but they are **not secrets**: treat them as identifiers that grant
+access, not as proof that the caller belongs to the case.
+
+**Where the id is exposed.** Anyone who can see these can use the id:
+
+- HTTP: response bodies, the echoed `X-Kaleido-Process-Id` response header, and the same header
+  Kaleido's clients forward on every downstream call made for the process
+  ([`CORRELATION.md`](./CORRELATION.md));
+- telemetry: the `kaleido.process.id` tag on the Processor, Queryable, HTTP, MCP and context-store
+  activities;
+- logs: Debug-level runtime and store messages, and the Warning for a concurrent change (409);
+- events: the context of every process event handed to `IEventPublisher`;
+- AI agents: through the MCP adapter, the id is a tool argument and result, so it reaches the model
+  and its provider.
+
+Restrict who can read traces, logs and event streams accordingly, and keep ids out of URLs that are
+shared or indexed.
+
+**Where to enforce case access.** Kaleido does not decide who may work on a case (ADR 0010); the
+implementer does, with these hooks:
+
+- **Step handlers.** A handler knows the process (`ProcessStepContext.ProcessId`) and the caller
+  (`IKaleidoCorrelationContextAccessor.Current.Caller`). It can look the case up in its own data and
+  refuse a caller who may not touch it (`Reject(...)`, or a validation error), before changing
+  anything.
+- **The routes.** `MapKaleidoHttp()` returns a convention builder, so a host can add an ASP.NET Core
+  authorization policy to every Kaleido endpoint (`app.MapKaleidoHttp().RequireAuthorization("case-access")`).
+  Its handler can read the process id from the route value or the request header and check the
+  case. This is the only place that also guards **reading** state, where no handler runs.
+- **The store.** A host can register its own `IKaleidoContextStore` (or wrap the one it uses) that
+  refuses to load a process for a caller who may not see it; this applies to every surface,
+  including the MCP adapter, whose calls reach the services as the caller.
+
+Adding a check in one of these places is a business rule of the implementer; Kaleido stays
+mechanism-only ([ADR 0001](./decisions/0001-process-engine-not-decision-maker.md)).
 
 ## Evaluation
 
