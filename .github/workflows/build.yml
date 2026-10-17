@@ -56,10 +56,13 @@ jobs:
     - name: Check documentation symbols
       run: python3 tools/docs/check-doc-symbols.py
 
+    # The SDK from global.json builds; the .NET 8 runtime is installed too, because the packages
+    # target net8.0 and the tests must run on the runtime consumers use (docs/VERSIONING.md).
     - name: Setup .NET
       uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68  # v6.0.0
       with:
         global-json-file: global.json
+        dotnet-version: 8.0.x
 
     - name: Restore
       run: dotnet restore --locked-mode
