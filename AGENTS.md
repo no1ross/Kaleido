@@ -2,14 +2,7 @@
 
 This is the repository-level contributor guide for Kaleido.
 
-Kaleido is organized into seven main framework projects:
-- [`src/Kaleido`](./src/Kaleido/README.md) — foundational bootstrap, shared abstractions, metadata primitives, eventing, transport-agnostic correlation context, and the core runtime for both Process and Queryable
-- [`src/Kaleido.Http`](./src/Kaleido.Http/README.md) — HTTP transport: endpoint publication, middleware pipeline (`ExceptionMiddleware`, `ObservabilityMiddleware`), correlation context reader, startup filter, and execution services
-- [`src/Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contract types and HTTP-specific correlation primitives (`KaleidoCorrelationHeaders`, `HttpHeaderSanitizer`) used by both server-side and client-side projects
-- [`src/Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients for consuming remote Process and Queryable endpoints
-- [`src/Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md) — MCP adapter: publishes the host's (aggregated) registry to AI agents as MCP tools and calls the services through the Kaleido clients as the caller
-- [`src/Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — optional OpenTelemetry provider: `AddOpenTelemetry()` on `IKaleidoBuilder` for full OTel setup (logging + tracing + metrics + OTLP), and `AddKaleidoInstrumentation()` on `TracerProviderBuilder`/`MeterProviderBuilder` for consumers managing their own OTel pipeline
-- [`src/Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — reference implementation of `IKaleidoContextStore` (SQLite); consumers write their own durable store
+Kaleido is organized into seven framework projects (see [Project boundaries](#project-boundaries)).
 
 Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository model. Then read the project README for the area you are changing.
 
@@ -40,60 +33,17 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 
 ## Project boundaries
 
-### Kaleido (core)
-Owns shared substrate concerns and capability runtimes:
-- bootstrap and builder state (`AddKaleido()`, `IKaleidoBuilder`, `KaleidoServiceOptions`)
-- shared metadata primitives (`TypeDescriber`, `ConstraintMapper`)
-- shared eventing abstractions and correlation context
-- Queryable runtime: source/view registration, validation, dispatch, execution, observability
-- Process runtime: step registration, planning, execution, state mutation, observability
-- Providers abstraction (`IKaleidoContextStore`)
+One place owns each fact: a project's README lists its types and entry points, [`ARCHITECTURE.md`](./ARCHITECTURE.md) describes how the projects depend on each other and how a host registers them, and [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) describes the internals. This section states only what each project owns and must not own; link to those documents rather than repeating their type lists.
 
-### Kaleido.Http
-Owns the full HTTP transport layer:
-- `AddHttp()` — registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
-- `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
-- `ObservabilityMiddleware` — reads inbound correlation headers, populates `IKaleidoCorrelationContextAccessor`, tags the Activity, and echoes correlation headers on the response
-- `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers into `KaleidoCorrelationContext`
-- `KaleidoStartupFilter` — registers middlewares in the correct pipeline order via `IStartupFilter`
-- Queryable endpoint mapping (`MapQueryable`) — source and view query endpoints
-- Process endpoint mapping (`MapProcessor`) — multi-step execute, per-step execute, and state endpoints (step and query metadata are published by the registry endpoint)
-- Registry endpoint mapping (`MapRegistry`, internal) — `GET /{service}/registry` unified discovery combining Process and Queryable; `MapKaleidoHttp(o => o.AggregateRegistry = true)` fans out to `AddHttpClients()` clients
-
-### Kaleido.Http.Abstractions
-Owns shared HTTP contract types and HTTP-specific correlation primitives:
-- `KaleidoCorrelationHeaders` — canonical `X-Kaleido-*` header name constants
-- `HttpHeaderSanitizer` (internal, shared with Kaleido.Http and Kaleido.Http.Client) — RFC 7230-compliant sanitization of HTTP header values
-- Process HTTP request/response contracts (`ExecuteProcessRequest`, `ProcessExecutionResponse`, etc.)
-- Queryable HTTP request/response contracts (`QueryApiRequest`, `QueryableSourceResponse`, etc.)
-- Shared contract types used by both server-side and client-side projects
-
-### Kaleido.Http.Client
-Owns typed HTTP clients:
-- `IKaleidoProcessorClientFactory` / `KaleidoProcessorClient` for consuming remote process endpoints
-- `IKaleidoQueryableClientFactory` / `KaleidoQueryableClient` for consuming remote queryable endpoints
-- `AddHttpClients()` — consumer-facing registration (config-driven `Kaleido:Clients`); `AddProcessorClient(...)`/`AddQueryableClient(...)` are internal
-
-### Kaleido.Http.Mcp
-Owns the MCP adapter (depends on `Kaleido.Http` and `Kaleido.Http.Client`):
-- `AddMcp()` — registers the MCP server, its options (`Kaleido:Mcp`), the tool catalog and the tool invoker; requires `AddHttp()` and `AddHttpClients()`
-- `MapKaleidoMcp(pattern)` — maps the Streamable HTTP MCP endpoint (stateless)
-- tool listing (`McpToolListing.All` / `FrontDoor`), the built-in tools, information requests as forms (MRTR) or agent-asked questions, guided lookups
-- Does **not** own transport or client logic: tools come from the registry, calls go through the Kaleido clients as the caller
-
-### Kaleido.Observability.OpenTelemetry
-Owns the OpenTelemetry observability provider (opt-in):
-- `AddOpenTelemetry()` on `IKaleidoBuilder` — one-call setup: logging + tracing + metrics + OTLP export
-- `AddKaleidoInstrumentation()` on `TracerProviderBuilder` — registers Kaleido `ActivitySource`s for consumers managing their own OTel pipeline
-- `AddKaleidoInstrumentation()` on `MeterProviderBuilder` — registers Kaleido `Meter`s with tuned histogram bucket boundaries
-- Does **not** own core telemetry instrumentation — that lives in `Kaleido` (BCL `ActivitySource`/`Meter`)
-
-Kaleido core is observability-provider-agnostic. This project is one of many possible providers (`Kaleido.Observability.<Technology>`).
-
-### Kaleido.Provider.SQLite
-Owns the reference `IKaleidoContextStore` implementation:
-- `UseSqliteKaleidoContextStore(...)` extension
-- SQLite-backed `IKaleidoContextStore` — a worked example only; production deployments implement `IKaleidoContextStore` against their own durable infrastructure
+| Project | Owns | Does not own |
+|---|---|---|
+| [`Kaleido`](./src/Kaleido/README.md) (core) | bootstrap and builder state, metadata primitives, eventing, transport-agnostic correlation, the Process and Queryable runtimes, the store contract and its in-memory default | any transport, ASP.NET Core, HTTP contracts, a persistence technology |
+| [`Kaleido.Http`](./src/Kaleido.Http/README.md) | the HTTP transport: DI registration, middleware pipeline, endpoint publication, HTTP execution services | runtime logic (it adapts and publishes) |
+| [`Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) | the wire contracts and HTTP header names shared by server and client | behavior; changes ripple into both server and client |
+| [`Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) | typed clients for remote Kaleido services, configured from `Kaleido:Clients` | server-side logic, endpoint mapping |
+| [`Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md) | the MCP adapter: tools built per caller from the registry, calls through the Kaleido clients as the caller | transport or client logic |
+| [`Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) | wiring Kaleido's activity sources and meters into OpenTelemetry (one of many possible `Kaleido.Observability.<Technology>` providers) | the instrumentation itself, which lives in core on BCL `ActivitySource`/`Meter` |
+| [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) | a reference `IKaleidoContextStore` on SQLite | production guarantees; production hosts implement the store on their own infrastructure |
 
 ## General contributor rules
 
@@ -273,6 +223,8 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 2. **All tests pass:** `dotnet test Kaleido.slnx --no-build --` → 0 failed, with a non-zero test count.
 3. **If the commit touches a UI sample:** `npm run build` (0 errors) and `npm test` in that UI folder.
 4. **Record the result in the commit message body**, e.g. `Gate: build 0 errors / 0 warnings; tests 812 passed; priorauth-ui build + test OK`.
+
+CI (`build.yml`) also checks that every Kaleido type or member named in the Markdown docs exists in the sources (`python3 tools/docs/check-doc-symbols.py`; ADRs and audit records are skipped as historical; a deliberate non-symbol in code style goes in the script's `ALLOWED` list with its reason). Run it before committing doc changes.
 
 CI (`build.yml`) also enforces a **coverage gate**: merged line coverage of the shipped `src/` assemblies (tests, analyzers and samples excluded) must be at least the `COVERAGE_FLOOR` (95%), or the build fails. Raise the floor, never lower it. To check locally, run the tests with `-- --coverage --coverage-output-format cobertura` and merge the reports with `reportgenerator` using the workflow's `-assemblyfilters`.
 
