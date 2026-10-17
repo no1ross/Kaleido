@@ -17,6 +17,7 @@
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <Authors>Andrew Ross</Authors>
         <Company>Andrew Ross</Company>
+        <Copyright>Copyright 2026 Andrew Ross</Copyright>
         <RepositoryUrl>https://github.com/no1ross/Kaleido</RepositoryUrl>
     </PropertyGroup>
     <ItemGroup>
@@ -28,5 +29,6 @@
         <ProjectReference Include="$(MSBuildThisFileDirectory)..\tools\analyzers\Kaleido.Analyzers.Source\Kaleido.Analyzers.Source.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
         <None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="\" />
         <None Include="$(MSBuildThisFileDirectory)..\docs\assets\kaleido-nuget-icon-128.png" Pack="true" PackagePath="\" Visible="false" />
+        <None Include="$(MSBuildThisFileDirectory)..\NOTICE" Pack="true" PackagePath="\" Visible="false" />
     </ItemGroup>
 </Project>

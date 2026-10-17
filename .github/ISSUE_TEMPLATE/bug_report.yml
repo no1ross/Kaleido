@@ -1,0 +1,36 @@
+name: Bug report
+description: Kaleido does something it should not, or fails to do what its docs say.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems are never reported here: see SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Packages and version
+      description: Which packages, and which preview (1.0.0-preview.N) or commit.
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the response, the error code (pro_*, qry_*, mcp_*, ...) and relevant log lines.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Link the documentation that describes the expected behavior, if any.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: A minimal host or the steps, and the relevant configuration (AuthorizationMode, store, MCP tool listing, ...).
+    validations:
+      required: true
