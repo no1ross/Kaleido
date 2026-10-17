@@ -302,6 +302,7 @@ dotnet add package Kaleido.Provider.SQLite --prerelease              # reference
 - [Error codes](docs/ERROR_CODES.md)
 - [Correlation](docs/CORRELATION.md)
 - [Analyzers (KAL rules)](docs/ANALYZERS.md)
+- [Versioning, compatibility and support](docs/VERSIONING.md)
 - [Decision records](docs/decisions/README.md), starting with [process engine, not decision maker](docs/decisions/0001-process-engine-not-decision-maker.md)
 - [SQLite reference provider](src/Kaleido.Provider.SQLite/README.md)
 - [OpenTelemetry provider](src/Kaleido.Observability.OpenTelemetry/README.md)
@@ -313,7 +314,7 @@ dotnet add package Kaleido.Provider.SQLite --prerelease              # reference
 
 Kaleido is being prepared for its first public release. The current focus is refining the public API, strengthening and validating execution and authorization behavior, validating package composition, and keeping documentation aligned with the implementation.
 
-The MCP adapter is implemented, not merely a planned AI integration. That does not make the preview a production-readiness certification. Use preview releases for evaluation and experimentation until a stable compatibility policy is published.
+The MCP adapter is implemented, not merely a planned AI integration. That does not make the preview a production-readiness certification. Use preview releases for evaluation and experimentation; what holds during the preview, and what 1.0 decides, is in [Versioning, compatibility and support](docs/VERSIONING.md).
 
 ## Contributing
 
