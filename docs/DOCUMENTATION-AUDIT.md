@@ -6,7 +6,7 @@ surprise them?* Each claim (type and member names, signatures, routes, configura
 defaults, error codes, behavior) was checked against the production code; each important
 consumer-facing behavior was checked for a place in the docs where its audience would look.
 
-Out of scope: `docs/archive/` and `docs/published/` (historical artifacts).
+Out of scope: `docs/archive/` and `docs/published/` (historical artifacts, since removed from the repository with `docs/PRERELEASE_PROMPT.md`, #327).
 
 ## 1. Documentation reviewed
 
