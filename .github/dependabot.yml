@@ -1,0 +1,38 @@
+# Dependency updates. Every ecosystem waits 7 days after a release before proposing it (cooldown),
+# matching the repository rule of only taking versions published at least a week ago.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      nuget-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The Angular packages pin each other exactly, so they move together in one PR.
+  - package-ecosystem: npm
+    directories:
+      - "/samples/PriorAuth/priorauth-ui"
+      - "/samples/kaleido-sample-ecommerce-ui"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      angular:
+        patterns: ["@angular/*", "@angular-devkit/*", "@schematics/*"]
+      npm-minor-and-patch:
+        update-types: [minor, patch]
