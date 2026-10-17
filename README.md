@@ -320,6 +320,10 @@ The MCP adapter is implemented, not merely a planned AI integration. That does n
 
 Issues, design feedback, and focused pull requests are welcome. Start with [AGENTS.md](AGENTS.md) and [ARCHITECTURE.md](ARCHITECTURE.md) before making structural changes.
 
+## Security
+
+Report vulnerabilities privately, never in a public issue: see [SECURITY.md](SECURITY.md).
+
 ## License
 
 Kaleido is licensed under the [Apache License 2.0](LICENSE).
