@@ -10,7 +10,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
 | `Kaleido.Http.Mcp.UnitTests` | `src/Kaleido.Http.Mcp` (tool catalog and naming, schemas, the tool invoker) |
 | `Kaleido.Http.Mcp.FunctionalTests` | `src/Kaleido.Http.Mcp` through a real host and the SDK's MCP client |
-| `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (`HttpHeaderSanitizer` and contract types) |
+| `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (the internal `HttpHeaderSanitizerExtensions` and contract types) |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (`IKaleidoContextStore` contract and SQLite fidelity) |
 | `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Kaleido.Observability.OpenTelemetry` (registration of every Kaleido source/meter, `AddOpenTelemetry` options, copied telemetry names equal the owning constants) |
 | `Kaleido.Analyzers.UnitTests` | `tools/analyzers/Kaleido.Analyzers` (consumer `KAL2xxx` rules) |
@@ -45,7 +45,7 @@ SUT may only be constructed inside a `CreateSut` method or via `Sut` (KAL1008),
 collaborators must be mocked — never `new` a real Kaleido service
 implementation (KAL1012; domain data the SUT consumes is exempt) — and the
 fixture file must mirror the SUT's source path (KAL1003 — e.g.
-`src/Kaleido/Json/ValueConverter.cs` → `tests/Kaleido.UnitTests/Json/ValueConverterTests.cs`).
+`src/Kaleido/Queryable/Metadata/QueryMetadataExtensions.cs` → `tests/Kaleido.UnitTests/Queryable/Metadata/QueryMetadataExtensionsTests.cs`).
 The fixture's namespace is the SUT's namespace with `.UnitTests` appended, not
 the folder path (KAL1013 — e.g. `Kaleido.Queryable.Query.QueryContextEngine` →
 `namespace Kaleido.Queryable.Query.UnitTests;`), so the SUT's types resolve

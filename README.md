@@ -268,6 +268,27 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite) | Reference store for process state, stored execution responses, and the event outbox |
 | [`Kaleido.Observability.OpenTelemetry`](src/Kaleido.Observability.OpenTelemetry) | Opt-in tracing, metrics, logging, and OTLP export integration |
 
+### Prerequisites
+
+- **Using the packages:** they target `net8.0`, so a service runs on .NET 8 or later. `Kaleido.Http` and `Kaleido.Http.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`).
+- **Building this repository:** the .NET 10 SDK (pinned in `global.json`).
+
+### Install
+
+The packages are previews and are not published to nuget.org yet: CI builds them on every change to `master` (the `packages` workflow artifact). Add the feed you host them on (`dotnet nuget add source …`), then add what the service needs:
+
+```bash
+dotnet add package Kaleido --prerelease                              # core runtimes (always)
+dotnet add package Kaleido.Http --prerelease                         # publish the service over HTTP
+dotnet add package Kaleido.Http.Client --prerelease                  # call other Kaleido services
+dotnet add package Kaleido.Http.Abstractions --prerelease            # only the wire contracts (e.g. a delegated source)
+dotnet add package Kaleido.Http.Mcp --prerelease                     # publish capabilities to AI agents over MCP
+dotnet add package Kaleido.Observability.OpenTelemetry --prerelease  # logs, traces and metrics over OTLP
+dotnet add package Kaleido.Provider.SQLite --prerelease              # reference store (evaluation, not production)
+```
+
+`Kaleido.Http` and `Kaleido.Http.Client` bring `Kaleido.Http.Abstractions` and `Kaleido` with them.
+
 ## Documentation
 
 - [Architecture](ARCHITECTURE.md)
@@ -281,6 +302,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 - [Error codes](docs/ERROR_CODES.md)
 - [Correlation](docs/CORRELATION.md)
 - [Analyzers (KAL rules)](docs/ANALYZERS.md)
+- [Versioning, compatibility and support](docs/VERSIONING.md)
 - [Decision records](docs/decisions/README.md), starting with [process engine, not decision maker](docs/decisions/0001-process-engine-not-decision-maker.md)
 - [SQLite reference provider](src/Kaleido.Provider.SQLite/README.md)
 - [OpenTelemetry provider](src/Kaleido.Observability.OpenTelemetry/README.md)
@@ -292,11 +314,15 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 
 Kaleido is being prepared for its first public release. The current focus is refining the public API, strengthening and validating execution and authorization behavior, validating package composition, and keeping documentation aligned with the implementation.
 
-The MCP adapter is implemented, not merely a planned AI integration. That does not make the preview a production-readiness certification. Use preview releases for evaluation and experimentation until a stable compatibility policy is published.
+The MCP adapter is implemented, not merely a planned AI integration. That does not make the preview a production-readiness certification. Use preview releases for evaluation and experimentation; what holds during the preview, and what 1.0 decides, is in [Versioning, compatibility and support](docs/VERSIONING.md).
 
 ## Contributing
 
-Issues, design feedback, and focused pull requests are welcome. Start with [AGENTS.md](AGENTS.md) and [ARCHITECTURE.md](ARCHITECTURE.md) before making structural changes.
+Issues, design feedback, and focused pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) (setup, the per-commit gate, pull requests) and [SUPPORT.md](SUPPORT.md) for questions. Start with [AGENTS.md](AGENTS.md) and [ARCHITECTURE.md](ARCHITECTURE.md) before making structural changes. Everyone follows the [code of conduct](CODE_OF_CONDUCT.md).
+
+## Security
+
+Report vulnerabilities privately, never in a public issue: see [SECURITY.md](SECURITY.md).
 
 ## License
 

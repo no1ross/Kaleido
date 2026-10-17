@@ -7,7 +7,7 @@
     <File Path="docs/CORRELATION.md" />
     <File Path="docs/ERROR_CODES.md" />
     <File Path="docs/PATTERNS.md" />
-    <File Path="docs/PRERELEASE_PROMPT.md" />
+    <File Path="docs/VERSIONING.md" />
   </Folder>
   <Folder Name="/samples/">
     <File Path="samples/Directory.Build.props" />

@@ -55,13 +55,13 @@ The core project is organized into two main namespaces:
 - `KaleidoServiceCollectionExtensions` — `AddKaleido()` (assemblies via `KaleidoServiceOptions.Assemblies`)
 - `IKaleidoBuilder` / `KaleidoBuilder` — minimal shared builder
 - `IKaleidoCorrelationContextAccessor` — scoped accessor for ambient correlation (a pre-existing registration wins)
-- `TypeDescriber` — CLR type → `DataTypeDescriptor` projection and `IsSupportedType` check
-- `ConstraintMapper` — `ValidationAttribute` → `ConstraintContract` projection
+- `TypeDescriber` (internal) — CLR type → `DataTypeDescriptor` projection and `IsSupportedType` check
+- `ConstraintMapper` (internal) — `ValidationAttribute` → `ConstraintContract` projection
 - `KaleidoCorrelationContext` — shared ambient identity
 - `IEventPublisher` — infrastructure-agnostic event seam; `AddKaleido()` registers an internal no-op publisher (with a Warning log) until the host calls `AddEventPublisher<T>()`
 
 **`Kaleido.Queryable`**
-- Registration: `QueryableServiceCollectionExtensions`, `QueryableBuilder`
+- Registration: `QueryableServiceCollectionExtensions` (internal, invoked by `AddKaleido()`)
 - Runtime: `QueryableService` (dispatch by queried type), `QueryContextEngine`, `DelegatedQuerySourceEngine`, `QueryContextExecutor`
 - Extension point: `IQueryContextExecutor<TView>` is public — consumers on async-capable providers (e.g. EF Core) should register their own implementation so `CountAsync`/`ToListAsync` call provider-native async operators instead of the default `IAsyncEnumerable`/sync fallback.
 - Planning: `QueryRequestCompiler`, `QueryRequestValidator`
@@ -69,7 +69,7 @@ The core project is organized into two main namespaces:
 - Observability: `QueryableObservability`
 
 **`Kaleido.Processor`**
-- Registration: `ProcessorServiceCollectionExtensions`
+- Registration: `ProcessorServiceCollectionExtensions` (internal, invoked by `AddKaleido()`)
 - Runtime: `IProcessorRuntime`, `ProcessorExecutor` (the step execution loop)
 - Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`, `StepCandidateNextStepChecker` (only next steps run; answers checked against the pending information request)
 - State: `IKaleidoContextStore` (in `Kaleido.Storage`), the internal in-memory default, `ProcessorContext`
@@ -268,6 +268,6 @@ Events are handed to `IEventPublisher` **at least once, never on the request pat
 
 ### Discoverability
 Metadata is derived from CLR types at startup:
-- `TypeDescriber` converts CLR property types to `DataTypeDescriptor` values
-- `ConstraintMapper` converts `ValidationAttribute` usage to `ConstraintContract` values
+- `TypeDescriber` (internal) converts CLR property types to `DataTypeDescriptor` values
+- `ConstraintMapper` (internal) converts `ValidationAttribute` usage to `ConstraintContract` values
 - Both are used by the Queryable and Process runtimes when building discovery metadata for HTTP endpoints
