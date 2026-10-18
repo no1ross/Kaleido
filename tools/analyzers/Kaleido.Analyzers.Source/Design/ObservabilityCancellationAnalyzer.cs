@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Linq;
+using Kaleido.Analyzers.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -13,13 +14,13 @@ namespace Kaleido.Analyzers.Source.Design;
 /// either filter it out (<c>when (ex is not OperationCanceledException)</c>) or handle
 /// it in an earlier <c>catch (OperationCanceledException)</c> clause. Otherwise a
 /// cancellation is recorded as a failure, inflating error metrics and triggering false
-/// alerts (AGENTS.md, "OperationCanceledException and observability").
+/// alerts (AGENTS.md, "OperationCanceledException and observability"). Whether a filter
+/// excludes cancellation is proven from its semantics, not from the type names it mentions
+/// (<see cref="CancellationCatch"/>, shared with KAL2004).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ObservabilityCancellationAnalyzer : DiagnosticAnalyzer
 {
-    private const string OperationCanceledException = "System.OperationCanceledException";
-
     private static readonly DiagnosticDescriptor Rule =
         new(
             DiagnosticIds.ObservabilityCancellation,
@@ -44,9 +45,7 @@ public sealed class ObservabilityCancellationAnalyzer : DiagnosticAnalyzer
         var catchClause = (CatchClauseSyntax)context.Node;
         var model = context.SemanticModel;
 
-        if (!IsCatchAll(catchClause, model, context) ||
-            ExcludesCancellation(catchClause, model, context) ||
-            HasEarlierCancellationClause(catchClause, model, context))
+        if (!CancellationCatch.SeesCancellationAsFailure(catchClause, model, context.CancellationToken))
         {
             return;
         }
@@ -68,30 +67,6 @@ public sealed class ObservabilityCancellationAnalyzer : DiagnosticAnalyzer
                 catchClause.CatchKeyword.GetLocation(),
                 observabilityCall.Expression.ToString()));
     }
-
-    private static bool IsCatchAll(CatchClauseSyntax catchClause, SemanticModel model, SyntaxNodeAnalysisContext context) =>
-        catchClause.Declaration is null ||
-        model.GetTypeInfo(catchClause.Declaration.Type, context.CancellationToken).Type?.ToDisplayString() == "System.Exception";
-
-    private static bool ExcludesCancellation(CatchClauseSyntax catchClause, SemanticModel model, SyntaxNodeAnalysisContext context) =>
-        catchClause.Filter is { } filter &&
-        filter.FilterExpression
-            .DescendantNodesAndSelf()
-            .OfType<TypeSyntax>()
-            .Any(type => IsCancellationType(model.GetTypeInfo(type, context.CancellationToken).Type));
-
-    private static bool HasEarlierCancellationClause(CatchClauseSyntax catchClause, SemanticModel model, SyntaxNodeAnalysisContext context) =>
-        catchClause.Parent is TryStatementSyntax tryStatement &&
-        tryStatement.Catches
-            .TakeWhile(clause => clause != catchClause)
-            .Any(clause =>
-                clause.Declaration is { } declaration &&
-                clause.Filter is null &&
-                IsCancellationType(model.GetTypeInfo(declaration.Type, context.CancellationToken).Type));
-
-    private static bool IsCancellationType(ITypeSymbol? type) =>
-        type is INamedTypeSymbol named &&
-        (named.ToDisplayString() == OperationCanceledException || named.DerivesFrom(OperationCanceledException));
 
     private static bool IsObservabilityCall(InvocationExpressionSyntax invocation, SemanticModel model, SyntaxNodeAnalysisContext context) =>
         model.GetSymbolInfo(invocation, context.CancellationToken).Symbol is IMethodSymbol method &&
