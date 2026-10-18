@@ -268,15 +268,30 @@ public sealed class KaleidoProcessorClientTests
         Assert.Equal(ambient, Assert.Single(Assert.Single(sent).Request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
     }
 
-    [Fact]
-    public async Task ExecuteStepAsync_ByName_AnUnknownStep_Throws_NotFound()
+    // An unknown (or forbidden) step is the service's own answer, not a client-side registry check.
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task ExecuteStepAsync_ByName_AStepTheServiceRefuses_GetsItsOwnStatus(HttpStatusCode status)
     {
-        var (client, _) = CreateStepClient();
+        var (client, sent) = CreateStepClient(stepStatus: status);
 
         var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.ExecuteStepAsync("NoSuchStep", System.Text.Json.JsonSerializer.SerializeToElement(new { })));
 
-        Assert.Equal(HttpClientErrorCodes.NotFound, exception.Code);
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, exception.Code);
+        Assert.Equal(status, exception.StatusCode);
+        Assert.Equal("/processes/steps/nosuchstep", Assert.Single(sent).Request.RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_ByName_KeepsTheNameOneRouteSegment()
+    {
+        var (client, sent) = CreateStepClient();
+
+        await client.ExecuteStepAsync("../registry", System.Text.Json.JsonSerializer.SerializeToElement(new { }));
+
+        Assert.Equal("/processes/steps/..%2Fregistry", Assert.Single(sent).Request.RequestUri!.AbsolutePath);
     }
 
     [Fact]
@@ -353,15 +368,8 @@ public sealed class KaleidoProcessorClientTests
         };
 
         string? postedUrl = null;
-        var callCount = 0;
         var (client, _) = CreateClient(respond: req =>
         {
-            callCount++;
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
             postedUrl = req.RequestUri!.PathAndQuery;
             return JsonOk(fakeResult);
         });
@@ -369,32 +377,25 @@ public sealed class KaleidoProcessorClientTests
         var result = await client.ExecuteStepAsync(new MyStep());
 
         Assert.Equal("MyStep", result.StepName);
-        Assert.Contains("/processes/steps/mystep", postedUrl);
+        Assert.Equal("/processes/steps/mystep", postedUrl);
     }
 
     [Fact]
-    public async Task ExecuteStepAsync_WhenStepNotInRegistry_Throws()
+    public async Task ExecuteStepAsync_WhenTheServiceDoesNotHaveTheStep_Throws()
     {
-        var (client, _) = CreateClient();
+        var (client, _) = CreateClient(respond: _ => new HttpResponseMessage(HttpStatusCode.NotFound));
 
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.ExecuteStepAsync(new UnknownTypeForTest()));
+
+        Assert.Equal(HttpStatusCode.NotFound, ex.StatusCode);
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
     }
 
     [Fact]
     public async Task ExecuteStepAsync_WhenHttpFails_ThrowsKaleidoException()
     {
-        var callCount = 0;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            callCount++;
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.BadGateway);
-        });
+        var (client, _) = CreateClient(respond: _ => new HttpResponseMessage(HttpStatusCode.BadGateway));
 
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.ExecuteStepAsync(new MyStep()));
@@ -418,17 +419,7 @@ public sealed class KaleidoProcessorClientTests
             Result = new MyStepResponse { Value = "done" }
         };
 
-        var callCount = 0;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            callCount++;
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
-            return JsonOk(fakeResult);
-        });
+        var (client, _) = CreateClient(respond: _ => JsonOk(fakeResult));
 
         var result = await client.ExecuteStepAsync<MyStep, MyStepResponse>(new MyStep());
 
@@ -637,50 +628,47 @@ public sealed class KaleidoProcessorClientTests
         Assert.Equal("Process step request failed: Field required.", exception.Message);
     }
 
-    private static HttpResponseMessage RegistryWithAStepLessProcessor()
+    // Step calls never read the registry (#381): with an empty cache they make no registry request.
+    [Fact]
+    public async Task ExecuteStepAsync_MakesNoRegistryRequest_AndUsesTheRoutePrefix()
     {
-        var node = JsonSerializer.SerializeToNode(
-            new AggregatedRegistryResponse { Processes = [FakeProcessor with { Name = "empty" }, FakeProcessor] },
-            KaleidoJsonOptions.Options)!;
-        node["processes"]![0]!["steps"] = null;
-
-        return new HttpResponseMessage(HttpStatusCode.OK)
+        var paths = new List<string>();
+        var (client, _) = CreateClient(routePrefix: "radiology", respond: req =>
         {
-            Content = new StringContent(node.ToJsonString(), System.Text.Encoding.UTF8, "application/json")
-        };
+            paths.Add(req.RequestUri!.AbsolutePath);
+            return JsonOk(new StepExecutionResponse<object> { ProcessId = Guid.NewGuid(), StepName = "MyStep" });
+        });
+
+        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), cancellationToken: TestContext.Current.CancellationToken);
+        await client.ExecuteStepAsync<FakeStepRequest>(new FakeStepRequest(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["/radiology/processes/steps/mystep", "/radiology/processes/steps/fakesteprequest"], paths);
     }
 
+    // The registry is filtered per caller: a cached view that lacks the step (another caller fetched
+    // it) does not stop a caller who may run the step (#381).
     [Fact]
-    public async Task ExecuteStepAsync_ByName_SkipsAProcessorThatPublishesNoSteps()
+    public async Task ExecuteStepAsync_WhenTheCachedRegistryLacksTheStep_StillCallsIt()
     {
         string? postedPath = null;
         var (client, _) = CreateClient(respond: req =>
         {
             if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
             {
-                return RegistryWithAStepLessProcessor();
+                return JsonOk(new AggregatedRegistryResponse { Processes = [] });
             }
 
             postedPath = req.RequestUri.AbsolutePath;
             return JsonOk(new StepExecutionResponse<object> { ProcessId = Guid.NewGuid(), StepName = "MyStep" });
         });
 
+        Assert.Empty(await client.GetRegistryAsync(TestContext.Current.CancellationToken));
         await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("/processes/steps/mystep", postedPath);
     }
 
-    [Fact]
-    public async Task ExecuteStepAsync_ByName_AnUnknownStep_ListsTheStepsOfProcessorsThatPublishThem()
-    {
-        var (client, _) = CreateClient(respond: _ => RegistryWithAStepLessProcessor());
-
-        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync("NoSuchStep", JsonSerializer.SerializeToElement(new { }), cancellationToken: TestContext.Current.CancellationToken));
-
-        Assert.Equal(HttpClientErrorCodes.NotFound, exception.Code);
-        Assert.Contains("Available steps: MyStep.", exception.Message, StringComparison.Ordinal);
-    }
+    private sealed record FakeStepRequest;
 
     private static (KaleidoProcessorClient Client, RecordingLogger Logger) CreateLoggedClient(Func<HttpRequestMessage, HttpResponseMessage> respond)
     {

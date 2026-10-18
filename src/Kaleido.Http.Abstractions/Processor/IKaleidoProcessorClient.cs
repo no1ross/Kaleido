@@ -3,8 +3,9 @@ namespace Kaleido.Http.Processor;
 
 /// <summary>
 /// Client for a remote service's Process capabilities: its processor registry, process state, and
-/// step execution. Steps are addressed by their published names and resolved against the remote
-/// registry (case-insensitive). Obtain one from <see cref="IKaleidoProcessorClientFactory"/>.
+/// step execution. Steps are addressed by their published names: a step call goes to
+/// <c>/{routePrefix}/processes/steps/{step}</c> without consulting the registry, which is filtered
+/// per caller and serves discovery only. Obtain one from <see cref="IKaleidoProcessorClientFactory"/>.
 /// </summary>
 /// <remarks>
 /// Calls carry the ambient correlation headers. Every execute call is sent with its own
@@ -14,8 +15,9 @@ namespace Kaleido.Http.Processor;
 public interface IKaleidoProcessorClient
 {
     /// <summary>
-    /// Gets the remote service's processor registry. The registry is fetched on first use and cached
-    /// per client name. With a registry time to live configured for the client, the snapshot is
+    /// Gets the remote service's processor registry, for discovery (step calls do not use it). The
+    /// registry is fetched on first use, as filtered for the identity the client's request carries,
+    /// and cached per client name. With a registry time to live configured for the client, the snapshot is
     /// revalidated with the remote once it expires; without one it is kept until it is invalidated
     /// (<see cref="InvalidateRegistryAsync"/>, or a step call answered 404).
     /// </summary>
@@ -79,7 +81,7 @@ public interface IKaleidoProcessorClient
     /// <summary>
     /// Executes a process step remotely. The step is identified by the type name of
     /// <typeparamref name="TStep"/> (<c>typeof(TStep).Name</c>), which must match a step
-    /// name in the remote registry — the same name the remote service derives from its
+    /// name the remote service publishes — the same name it derives from its
     /// own step type.
     /// </summary>
     /// <typeparam name="TStep">
@@ -91,7 +93,7 @@ public interface IKaleidoProcessorClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The remote step execution response.</returns>
     /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the step name is not in the remote registry or the remote call fails.
+    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails; a step the service does not have, or the caller may not run, arrives as the service's own 404 or 403.
     /// </remarks>
     Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
         TStep processStep,
@@ -101,7 +103,7 @@ public interface IKaleidoProcessorClient
     /// <summary>
     /// Executes a process step remotely and deserializes its typed response. The step is
     /// identified by the type name of <typeparamref name="TStep"/>
-    /// (<c>typeof(TStep).Name</c>), which must match a step name in the remote registry.
+    /// (<c>typeof(TStep).Name</c>), which must match a step name the remote service publishes.
     /// </summary>
     /// <typeparam name="TStep">
     /// The step payload type: the remote step type itself, or a local mirror record with
@@ -112,7 +114,7 @@ public interface IKaleidoProcessorClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The remote step execution response with its typed result.</returns>
     /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the step name is not in the remote registry or the remote call fails.
+    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails; a step the service does not have, or the caller may not run, arrives as the service's own 404 or 403.
     /// </remarks>
     Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
         TStep processStep,
@@ -122,10 +124,10 @@ public interface IKaleidoProcessorClient
     /// <summary>
     /// Executes a process step by its published name with a JSON payload — for callers that
     /// discover steps at runtime and have no compile-time step type (gateways, AI-tool adapters).
-    /// The step URL is resolved from the remote registry by name, exactly as for the typed
+    /// The step URL is built from the route prefix and the name, exactly as for the typed
     /// overloads.
     /// </summary>
-    /// <param name="stepName">The step's published name (case-insensitive).</param>
+    /// <param name="stepName">The step's published name (routes match it case-insensitively).</param>
     /// <param name="processStep">The step input, as the step's JSON object.</param>
     /// <param name="processId">
     /// The process to continue, sent as <c>X-Kaleido-Process-Id</c>; it takes precedence over the
@@ -135,7 +137,7 @@ public interface IKaleidoProcessorClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The step execution response, with the step's result as JSON.</returns>
     /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the step name is not in the remote registry or the remote call fails.
+    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails; a step the service does not have, or the caller may not run, arrives as the service's own 404 or 403.
     /// </remarks>
     Task<StepExecutionResponse<JsonElement>> ExecuteStepAsync(
         string stepName,
