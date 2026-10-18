@@ -52,7 +52,8 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddDevSwagger();
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<IntakeDbContext>();
+    .AddDbContextCheck<IntakeDbContext>()
+    .AddDbContextCheck<SqliteKaleidoContextDbContext>("kaleido-sqlite-context-store");
 
 builder.Services.AddHttpClient("PriorAuthEventCollector", client =>
     client.BaseAddress = new Uri(

@@ -84,7 +84,10 @@ internal sealed class ProcessorExecutor(
                 return (context, null);
             }
 
-            context = await SaveStepAsync(candidate, result, decision, run, context, stepObservation, cancellationToken);
+            // The handler has returned: its outcome is final. Saving it (state and step-completed
+            // event together) is not cancellable, so a cancellation that arrives now neither discards
+            // the completion nor makes a retry run the handler's side effects again.
+            context = await SaveStepAsync(candidate, result, decision, run, context, stepObservation);
 
             return (context, GetNextCandidate(decision));
         }
@@ -124,22 +127,21 @@ internal sealed class ProcessorExecutor(
     }
 
     // A step that ran: applies its decision, records its outcome, and saves the state together with
-    // the step-completed event - both or neither.
+    // the step-completed event - both or neither, without the request's cancellation token.
     private async Task<ProcessorContext> SaveStepAsync(
         StepCandidate candidate,
         StepInvocationResult result,
         ExecutionDecision decision,
         ExecutionRun run,
         ProcessorContext context,
-        IProcessorStepObservation stepObservation,
-        CancellationToken cancellationToken)
+        IProcessorStepObservation stepObservation)
     {
         context = stateUpdater.ApplyExecution(context, candidate, decision);
 
         var outcome = Complete(candidate, result, decision, stepObservation);
         var stepCompleted = eventFactory.CreateStepCompleted(correlationAccessor.Current, context, candidate, outcome, result);
 
-        context = await SaveAsync(context, eventOutbox.Prepare(stepCompleted), cancellationToken);
+        context = await SaveAsync(context, eventOutbox.Prepare(stepCompleted), CancellationToken.None);
         run.Outcomes.Add(outcome);
 
         return context;

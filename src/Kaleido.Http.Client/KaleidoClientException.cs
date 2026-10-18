@@ -3,7 +3,7 @@ using System.Net;
 namespace Kaleido.Http.Client;
 
 /// <summary>
-/// Thrown when a remote Kaleido service call fails (HTTP error, missing payload, or unknown registration).
+/// Thrown when a remote Kaleido service call fails (HTTP error or missing payload).
 /// The <see cref="Code"/> is a stable machine-readable diagnostic code (see <see cref="HttpClientErrorCodes"/>).
 /// Carries the <see cref="StatusCode"/> of the response and any structured <see cref="Errors"/> from the error body.
 /// </summary>
@@ -17,8 +17,7 @@ public sealed class KaleidoHttpClientException : Exception
     /// <param name="message">A description of the call and why it failed.</param>
     /// <param name="statusCode">
     /// The status of the remote response, or the status that best describes a failure detected by
-    /// the client itself (e.g. <see cref="HttpStatusCode.NotFound"/> for a name missing from the
-    /// remote registry).
+    /// the client itself (e.g. <see cref="HttpStatusCode.InternalServerError"/> for an empty payload).
     /// </param>
     /// <param name="errors">
     /// The structured errors from the remote error body; <see langword="null"/> becomes an empty list.
@@ -67,8 +66,9 @@ public sealed class KaleidoHttpClientException : Exception
     /// <summary>
     /// The status of the remote response, e.g. <see cref="HttpStatusCode.BadRequest"/> when the
     /// service rejected the request or <see cref="HttpStatusCode.Conflict"/> for <see cref="HttpClientErrorCodes.Conflict"/>.
-    /// When the client detected the failure itself, the status that best describes it, e.g.
-    /// <see cref="HttpStatusCode.NotFound"/> for <see cref="HttpClientErrorCodes.NotFound"/>.
+    /// A step, source or view the service does not have, or the caller may not use, arrives as the
+    /// service's own <see cref="HttpStatusCode.NotFound"/> or <see cref="HttpStatusCode.Forbidden"/>
+    /// with <see cref="HttpClientErrorCodes.RequestFailed"/>.
     /// </summary>
     public HttpStatusCode StatusCode { get; }
 
@@ -88,9 +88,6 @@ public sealed class KaleidoHttpClientException : Exception
 /// </summary>
 public static class HttpClientErrorCodes
 {
-    /// <summary>A required registration (context, view, or step) was not found in the remote registry.</summary>
-    public const string NotFound = "httpclient_not_found";
-
     /// <summary>A remote request succeeded but returned an empty payload.</summary>
     public const string EmptyResponse = "httpclient_empty_response";
 
@@ -106,9 +103,6 @@ public static class HttpClientErrorCodes
     /// decide on the next step instead of repeating the call.
     /// </summary>
     public const string Conflict = "httpclient_conflict";
-
-    /// <summary>A URL returned by a remote registry was not a valid absolute http(s) URL.</summary>
-    public const string InvalidRegistryUrl = "httpclient_invalid_registry_url";
 
     /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl). Raised at startup as a configuration error.</summary>
     public const string MissingBaseUrl = "missing_base_url";

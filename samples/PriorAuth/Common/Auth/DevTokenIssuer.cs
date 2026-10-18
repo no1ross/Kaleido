@@ -6,14 +6,18 @@ namespace Kaleido.Samples.PriorAuth.Auth;
 /// <summary>
 /// Issues and validates HMAC-signed dev tokens for the sample. This is a
 /// demo-only stand-in for a real identity provider — tokens carry a
-/// <c>name|role1,role2|actor|expiryUtc</c> payload plus an HMACSHA256
+/// <c>name|role1,role2|actor|principalType|expiryUtc</c> payload plus an HMACSHA256
 /// signature, both base64url-encoded: <c>dev.&lt;payload&gt;.&lt;sig&gt;</c>.
 /// </summary>
 /// <remarks>
 /// Roles describe the <b>user</b>; the optional actor names the <b>service</b>
 /// making a service-to-service call (on behalf of the user, or on its own).
+/// The principal type says which: <see cref="DevPrincipalTypes.User"/> for a
+/// user (direct, or on behalf of whom a service calls) and
+/// <see cref="DevPrincipalTypes.Service"/> for a service acting on its own.
 /// Users never carry an "internal" role — internal-only capabilities check
-/// for the actor via <see cref="DevAuthPolicies.InternalCaller"/>.
+/// for the actor via <see cref="DevAuthPolicies.InternalCaller"/>, and handoffs
+/// that need a real user behind the hop via <see cref="DevAuthPolicies.OnBehalfOfUser"/>.
 /// </remarks>
 public static class DevTokenIssuer
 {
@@ -42,7 +46,26 @@ public static class DevTokenIssuer
         IReadOnlyCollection<string> roles,
         string key,
         string? actor = null,
-        TimeSpan? lifetime = null)
+        TimeSpan? lifetime = null) =>
+        Issue(name, roles, key, actor, DevPrincipalTypes.User, lifetime);
+
+    /// <summary>
+    /// Issues a service-to-service token with no user: name
+    /// <c>svc-{serviceName}</c>, the service's app roles, the service as
+    /// actor, and principal type <see cref="DevPrincipalTypes.Service"/>.
+    /// </summary>
+    public static string IssueServiceToken(
+        string serviceName,
+        string key) =>
+        Issue($"svc-{serviceName}", ServiceAppRoles, key, serviceName, DevPrincipalTypes.Service, lifetime: null);
+
+    private static string Issue(
+        string name,
+        IReadOnlyCollection<string> roles,
+        string key,
+        string? actor,
+        string principalType,
+        TimeSpan? lifetime)
     {
         var expiry =
             DateTimeOffset.UtcNow
@@ -51,20 +74,10 @@ public static class DevTokenIssuer
 
         var payload =
             Base64UrlEncode(
-                $"{name}|{string.Join(",", roles)}|{actor}|{expiry}");
+                $"{name}|{string.Join(",", roles)}|{actor}|{principalType}|{expiry}");
 
         return $"dev.{payload}.{Sign(payload, key)}";
     }
-
-    /// <summary>
-    /// Issues a service-to-service token with no user: name
-    /// <c>svc-{serviceName}</c>, the service's app roles, and the service as
-    /// actor.
-    /// </summary>
-    public static string IssueServiceToken(
-        string serviceName,
-        string key) =>
-        Issue($"svc-{serviceName}", ServiceAppRoles, key, actor: serviceName);
 
     public static bool TryValidate(
         string token,
@@ -91,8 +104,9 @@ public static class DevTokenIssuer
             Encoding.UTF8.GetString(Base64UrlDecode(parts[1]))
                 .Split('|');
 
-        if (fields.Length != 4
-            || !long.TryParse(fields[3], out var expiry)
+        if (fields.Length != 5
+            || fields[3] is not (DevPrincipalTypes.User or DevPrincipalTypes.Service)
+            || !long.TryParse(fields[4], out var expiry)
             || DateTimeOffset.UtcNow.ToUnixTimeSeconds() > expiry)
         {
             return false;
@@ -104,7 +118,8 @@ public static class DevTokenIssuer
                 ',',
                 StringSplitOptions.RemoveEmptyEntries |
                 StringSplitOptions.TrimEntries),
-            string.IsNullOrWhiteSpace(fields[2]) ? null : fields[2]);
+            string.IsNullOrWhiteSpace(fields[2]) ? null : fields[2],
+            fields[3]);
 
         return true;
     }
@@ -137,7 +152,22 @@ public static class DevTokenIssuer
 /// <param name="Name">The user (or <c>svc-{service}</c> for service tokens).</param>
 /// <param name="Roles">The user's roles (or a service principal's app roles).</param>
 /// <param name="Actor">The calling service on service-to-service hops; null for direct user calls.</param>
+/// <param name="PrincipalType">
+/// <see cref="DevPrincipalTypes.User"/> for a user (direct or on behalf of), or
+/// <see cref="DevPrincipalTypes.Service"/> for a service acting on its own.
+/// </param>
 public sealed record DevTokenIdentity(
     string Name,
     string[] Roles,
-    string? Actor);
+    string? Actor,
+    string PrincipalType);
+
+/// <summary>Values of the <see cref="DevAuthClaims.PrincipalType"/> claim.</summary>
+public static class DevPrincipalTypes
+{
+    /// <summary>A user: a direct call, or a service calling on the user's behalf.</summary>
+    public const string User = "user";
+
+    /// <summary>A service acting on its own, with no user behind the call.</summary>
+    public const string Service = "service";
+}

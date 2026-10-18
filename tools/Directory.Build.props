@@ -1,5 +1,10 @@
 <Project>
     <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..\'))" />
+    <PropertyGroup>
+        <!-- Like src/: any warning fails the build, including analyzer release tracking
+             (RS2000-RS2008), so every descriptor keeps its AnalyzerReleases entry. -->
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
     <ItemGroup>
         <!-- Git-height versioning: version.json → 1.0.0-preview.{height}; v* tags flip to stable. -->
         <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />

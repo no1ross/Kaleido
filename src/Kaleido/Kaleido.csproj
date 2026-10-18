@@ -20,17 +20,20 @@
 		<InternalsVisibleTo Include="Kaleido.UnitTests" />
 	</ItemGroup>
 
-	<!-- EXT-05: the project reference supplies the consumer analyzer during builds;
-	     the pack item ships it inside Kaleido.nupkg under analyzers/dotnet/cs/.
-	     ReferenceOutputAssembly=false keeps Kaleido.dll free of a runtime reference. -->
+	<!-- EXT-05: this reference exists only so Kaleido.nupkg declares a package
+	     dependency on Kaleido.Analyzers, which flows the consumer rules to every
+	     service that installs Kaleido. It is not an Analyzer item, so the rules do
+	     not run on the framework (the samples load them in samples/Directory.Build.props).
+	     Restore ignores ReferenceOutputAssembly=false references, so pack would drop the
+	     dependency; instead IncludeAssets="analyzers" keeps the analyzer DLL out of the
+	     compile and out of downstream projects, PrivateAssets="none" lets the analyzers
+	     flow to consumers, and Private="false" keeps it out of bin. -->
 	<ItemGroup>
 		<ProjectReference
 			Include="..\..\tools\analyzers\Kaleido.Analyzers\Kaleido.Analyzers.csproj"
-			OutputItemType="Analyzer"
-			ReferenceOutputAssembly="false"
-			PrivateAssets="all" />
-		<None Include="..\..\tools\analyzers\Kaleido.Analyzers\bin\$(Configuration)\netstandard2.0\Kaleido.Analyzers.dll"
-			Pack="true" PackagePath="analyzers/dotnet/cs/" />
+			Private="false"
+			IncludeAssets="analyzers"
+			PrivateAssets="none" />
 	</ItemGroup>
 
 </Project>

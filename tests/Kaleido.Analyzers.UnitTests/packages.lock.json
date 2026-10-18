@@ -360,10 +360,7 @@
         }
       },
       "kaleido.analyzers": {
-        "type": "Project",
-        "dependencies": {
-          "Microsoft.CodeAnalysis.CSharp": "[4.8.0, )"
-        }
+        "type": "Project"
       }
     }
   }

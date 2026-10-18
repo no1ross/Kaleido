@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Linq;
+using Kaleido.Analyzers.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -12,6 +13,8 @@ namespace Kaleido.Analyzers.Process;
 /// A bare catch (Exception) in a step handler's ExecuteAsync body will silently swallow
 /// cancellations, causing false failures in observability and masking client disconnects.
 /// Add a when (ex is not OperationCanceledException) filter or a separate catch block.
+/// Whether a filter excludes cancellation is proven from its semantics, not its text
+/// (<see cref="CancellationCatch"/>, shared with KAL0021).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class StepHandlerOceAnalyzer : DiagnosticAnalyzer
@@ -69,19 +72,7 @@ public sealed class StepHandlerOceAnalyzer : DiagnosticAnalyzer
 
         foreach (var catchClause in catchClauses)
         {
-            if (!IsBareExceptionCatch(catchClause, context.SemanticModel, context.CancellationToken))
-            {
-                continue;
-            }
-
-            // Is there a filter with OperationCanceledException?
-            if (HasOceFilter(catchClause))
-            {
-                continue;
-            }
-
-            // Is there a preceding catch (OperationCanceledException) in the same try?
-            if (PrecedingCatchHandlesOce(catchClause, context.SemanticModel, context.CancellationToken))
+            if (!CancellationCatch.SeesCancellationAsFailure(catchClause, context.SemanticModel, context.CancellationToken))
             {
                 continue;
             }
@@ -100,83 +91,6 @@ public sealed class StepHandlerOceAnalyzer : DiagnosticAnalyzer
         {
             if (iface.Name == "IProcessStepHandler" &&
                 (iface.TypeArguments.Length == 1 || iface.TypeArguments.Length == 2))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool IsBareExceptionCatch(
-        CatchClauseSyntax catchClause,
-        SemanticModel semanticModel,
-        System.Threading.CancellationToken cancellationToken)
-    {
-        if (catchClause.Declaration is null)
-        {
-            // catch { } with no type — catches everything
-            return true;
-        }
-
-        var catchType = semanticModel.GetTypeInfo(
-            catchClause.Declaration.Type, cancellationToken).Type;
-
-        if (catchType is null)
-        {
-            return false;
-        }
-
-        var fullName = catchType.ToDisplayString();
-        return fullName is "System.Exception" or "Exception";
-    }
-
-    private static bool HasOceFilter(CatchClauseSyntax catchClause)
-    {
-        if (catchClause.Filter is null)
-        {
-            return false;
-        }
-
-        // Look for patterns like: when (ex is not OperationCanceledException)
-        // or when (!(ex is OperationCanceledException))
-        var filterText = catchClause.Filter.FilterExpression.ToString();
-        return filterText.Contains("OperationCanceledException");
-    }
-
-    private static bool PrecedingCatchHandlesOce(
-        CatchClauseSyntax catchClause,
-        SemanticModel semanticModel,
-        System.Threading.CancellationToken cancellationToken)
-    {
-        if (catchClause.Parent is not TryStatementSyntax tryStatement)
-        {
-            return false;
-        }
-
-        foreach (var sibling in tryStatement.Catches)
-        {
-            if (sibling == catchClause)
-            {
-                // Stop at our own catch — only preceding ones matter
-                break;
-            }
-
-            if (sibling.Declaration is null)
-            {
-                continue;
-            }
-
-            var siblingType = semanticModel.GetTypeInfo(
-                sibling.Declaration.Type, cancellationToken).Type;
-
-            if (siblingType is null)
-            {
-                continue;
-            }
-
-            var siblingName = siblingType.ToDisplayString();
-            if (siblingName is "System.OperationCanceledException" or "OperationCanceledException")
             {
                 return true;
             }

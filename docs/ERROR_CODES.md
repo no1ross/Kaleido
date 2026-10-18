@@ -153,12 +153,10 @@ Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `NotFound` | `httpclient_not_found` | Context, view, or step not found in remote registry |
 | `EmptyResponse` | `httpclient_empty_response` | Remote request succeeded but returned no payload |
-| `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status |
+| `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status (including a step, source or view the service does not have, 404, or the caller may not use, 403) |
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors |
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
-| `InvalidRegistryUrl` | `httpclient_invalid_registry_url` | A URL returned by a remote registry was not a valid absolute http(s) URL |
 | `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
 | `UnknownClient` | `httpclient_unknown_client` | `GetClient` was asked for a name not configured under `Kaleido:Clients`; the message lists the configured clients (`KaleidoConfigurationException`, at the call) |
 

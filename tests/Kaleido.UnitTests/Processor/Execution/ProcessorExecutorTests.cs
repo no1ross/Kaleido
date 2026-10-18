@@ -1311,6 +1311,112 @@ public sealed class ProcessorExecutorTests
         outbox.Verify(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>()), Times.Never);
     }
 
+    // Like both real stores: a save with a cancelled token throws.
+    private static Mock<IKaleidoContextStore> CancellationHonoringStore(List<(ProcessorContext Context, IReadOnlyCollection<KaleidoOutboxEvent> Events)> saves)
+    {
+        var store = new Mock<IKaleidoContextStore>();
+        store
+            .Setup(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()))
+            .Returns((ProcessorContext saved, IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken token) =>
+            {
+                token.ThrowIfCancellationRequested();
+                saves.Add((saved, events));
+                return Task.FromResult(saved with { Version = saved.Version + 1 });
+            });
+
+        return store;
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CancelledWhileTheHandlerRuns_SavesTheStepAsCanceled()
+    {
+        var candidate = CreateCandidate<TestStepA>("step-a", CreateRegistration<TestStepA>("step-a"));
+        using var cancellation = new CancellationTokenSource();
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .Returns(async (ProcessStepRegistration _, object _, ProcessStepContext _, CancellationToken token) =>
+            {
+                await cancellation.CancelAsync();
+                token.ThrowIfCancellationRequested();
+                return CreateInvokerResult();
+            });
+        var saves = new List<(ProcessorContext Context, IReadOnlyCollection<KaleidoOutboxEvent> Events)>();
+        var outbox = new Mock<IKaleidoEventOutbox>();
+
+        var result = await CreateSut(invoker, store: CancellationHonoringStore(saves), eventOutbox: outbox)
+            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest(), cancellation.Token);
+
+        Assert.Equal(StepExecutionStatus.Canceled, Assert.Single(result.Outcomes).Status);
+        var (saved, events) = Assert.Single(saves);
+        Assert.Equal(ProcessExecutionState.Canceled, saved.State);
+        Assert.Empty(events);
+        outbox.Verify(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CancelledAfterTheHandlerReturned_SavesTheCompletionAndItsEvent()
+    {
+        var candidate = CreateCandidate<TestStepA>("step-a", CreateRegistration<TestStepA>("step-a"));
+        using var cancellation = new CancellationTokenSource();
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .Returns(async (ProcessStepRegistration _, object _, ProcessStepContext _, CancellationToken _) =>
+            {
+                await cancellation.CancelAsync();
+                return CreateInvokerResult();
+            });
+        var stepEvent = OutboxEvent();
+        var outbox = new Mock<IKaleidoEventOutbox>();
+        outbox
+            .Setup(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>()))
+            .Returns(stepEvent);
+        var saves = new List<(ProcessorContext Context, IReadOnlyCollection<KaleidoOutboxEvent> Events)>();
+
+        var result = await CreateSut(invoker, store: CancellationHonoringStore(saves), eventOutbox: outbox)
+            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest(), cancellation.Token);
+
+        Assert.Equal(StepExecutionStatus.Completed, Assert.Single(result.Outcomes).Status);
+        var (saved, events) = Assert.Single(saves);
+        Assert.NotEqual(ProcessExecutionState.Canceled, saved.State);
+        Assert.Equal(stepEvent, Assert.Single(events));
+        outbox.Verify(x => x.Saved(), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CancelledAfterTheFirstStepReturned_CompletesItAndDoesNotInvokeTheNext()
+    {
+        var first = CreateCandidate<TestStepA>("step-a", CreateRegistration<TestStepA>("step-a"));
+        var second = CreateCandidate<TestStepA>("step-b", CreateRegistration<TestStepA>("step-b"));
+        using var cancellation = new CancellationTokenSource();
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .Returns(async (ProcessStepRegistration _, object _, ProcessStepContext _, CancellationToken _) =>
+            {
+                await cancellation.CancelAsync();
+                return CreateInvokerResult();
+            });
+        var evaluator = new Mock<IStepExecutionEvaluator>();
+        evaluator
+            .Setup(x => x.Evaluate(first, It.IsAny<StepInvocationResult>(), It.IsAny<IReadOnlyCollection<StepCandidate>>(), It.IsAny<ProcessorContext>()))
+            .Returns(ExecutionDecision.Continue(second));
+        var saves = new List<(ProcessorContext Context, IReadOnlyCollection<KaleidoOutboxEvent> Events)>();
+
+        var result = await CreateSut(invoker, evaluator: evaluator, store: CancellationHonoringStore(saves))
+            .ExecuteAsync([first, second], CreateContext("step-a", "step-b"), new ProcessorRequest(), cancellation.Token);
+
+        Assert.Collection(
+            result.Outcomes,
+            x => Assert.Equal((first.StepName, StepExecutionStatus.Completed), (x.StepName, x.Status)),
+            x => Assert.Equal((second.StepName, StepExecutionStatus.Canceled), (x.StepName, x.Status)));
+        invoker.Verify(
+            x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        Assert.Equal(2, saves.Count);
+    }
+
     [Fact]
     public async Task ExecuteAsync_AFailedStep_SavesItsStateWithoutAStepEvent()
     {

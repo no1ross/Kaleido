@@ -95,7 +95,7 @@ internal sealed partial class KaleidoProcessorClient(
         CancellationToken cancellationToken = default)
         where TStep : class
     {
-        var url = await ResolveExecuteUrlAsync(typeof(TStep).Name, cancellationToken);
+        var url = StepUrl(typeof(TStep).Name);
 
         var body = new ExecuteStepRequest<TStep>
         {
@@ -132,7 +132,7 @@ internal sealed partial class KaleidoProcessorClient(
         CancellationToken cancellationToken = default)
         where TStep : class
     {
-        var url = await ResolveExecuteUrlAsync(typeof(TStep).Name, cancellationToken);
+        var url = StepUrl(typeof(TStep).Name);
 
         var body = new ExecuteStepRequest<TStep>
         {
@@ -172,7 +172,7 @@ internal sealed partial class KaleidoProcessorClient(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
 
-        var url = await ResolveExecuteUrlAsync(stepName, cancellationToken);
+        var url = StepUrl(stepName);
 
         var body = new ExecuteStepRequest<JsonElement>
         {
@@ -211,33 +211,6 @@ internal sealed partial class KaleidoProcessorClient(
             cancellationToken);
     }
 
-    private async Task<string> ResolveExecuteUrlAsync(
-        string stepName,
-        CancellationToken cancellationToken)
-    {
-        var registry = await EnsureRegistryAsync(cancellationToken);
-
-        foreach (var processor in registry)
-        {
-            var match = processor.Steps?.FirstOrDefault(
-                s => string.Equals(s.Name, stepName, StringComparison.OrdinalIgnoreCase));
-
-            if (match is not null)
-            {
-                return match.ExecuteUrl.RequireValidRegistryUrl(nameof(match.ExecuteUrl), httpClient.BaseAddress);
-            }
-        }
-
-        var available = string.Join(
-            ", ",
-            registry.SelectMany(p => p.Steps ?? []).Select(s => s.Name));
-
-        throw new KaleidoHttpClientException(
-            HttpClientErrorCodes.NotFound,
-            $"Process step '{stepName}' was not found in the remote registry. Available steps: {available}.",
-            HttpStatusCode.NotFound);
-    }
-
     private static async Task<KaleidoHttpClientException> CreateFailureAsync(
         HttpResponseMessage response,
         string description,
@@ -273,9 +246,11 @@ internal sealed partial class KaleidoProcessorClient(
             response.StatusCode);
     }
 
-    // A capability call answered 404 means the service no longer has that step (it was deployed
-    // without it): the registry snapshot is dropped so the next read loads the current one. The process
-    // state call answers 404 for an unknown process, which says nothing about the registry.
+    // Step URLs come from the route prefix, never from the registry: the registry is filtered per
+    // caller, so a cached copy would answer for whoever fetched it first (#381). A capability call
+    // answered 404 means the service does not have that step (perhaps deployed without it): the
+    // discovery snapshot is dropped so the next registry read loads the current one. The process state
+    // call answers 404 for an unknown process, which says nothing about the registry.
     private async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken,
@@ -305,6 +280,11 @@ internal sealed partial class KaleidoProcessorClient(
 
         return response;
     }
+
+    // The URL the service publishes for the step: its route segment is the lower-case name, kept one
+    // segment whatever the caller passes.
+    private string StepUrl(string stepName) =>
+        ProcessContractUrls.ExecuteStep(serviceName, Uri.EscapeDataString(stepName.ToLowerInvariant()));
 
     private async Task<IReadOnlyList<ProcessorRegistryResponse>> EnsureRegistryAsync(
         CancellationToken cancellationToken) =>

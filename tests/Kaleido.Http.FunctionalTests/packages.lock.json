@@ -683,6 +683,7 @@
       "kaleido": {
         "type": "Project",
         "dependencies": {
+          "Kaleido.Analyzers": "[1.0.0, )",
           "Microsoft.Extensions.Compliance.Abstractions": "[8.10.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[8.0.0, )",
           "Microsoft.Extensions.Configuration.Binder": "[8.0.2, )",
@@ -692,6 +693,9 @@
           "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, )",
           "Polly.Core": "[8.4.2, )"
         }
+      },
+      "kaleido.analyzers": {
+        "type": "Project"
       },
       "kaleido.http": {
         "type": "Project",
@@ -721,8 +725,7 @@
         "dependencies": {
           "Kaleido": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[8.0.31, )",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
-          "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[8.0.31, )"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )"
         }
       },
       "Microsoft.EntityFrameworkCore.Sqlite": {
@@ -789,17 +792,6 @@
           "Microsoft.Extensions.Hosting.Abstractions": "8.0.1",
           "Microsoft.Extensions.Logging.Abstractions": "8.0.3",
           "Microsoft.Extensions.Options": "8.0.2"
-        }
-      },
-      "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": {
-        "type": "CentralTransitive",
-        "requested": "[8.0.31, )",
-        "resolved": "8.0.31",
-        "contentHash": "M5OSZy7U16IdT90uQPzSohghAzHY7hZOLV29LXq1yfbHg4XijcwQeP8RZxi8g1fofvxg314PPtC28ne1vzcLzg==",
-        "dependencies": {
-          "Microsoft.EntityFrameworkCore.Relational": "8.0.31",
-          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.31",
-          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "8.0.31"
         }
       },
       "Microsoft.Extensions.Hosting.Abstractions": {

@@ -204,15 +204,8 @@ public sealed class KaleidoQueryableClientTests
         var expectedResult = new QueryResult<FakeView>(1, 0, 1, [new FakeView { Id = 42 }]);
         string? postedUrl = null;
 
-        var callCount = 0;
         var handler = HandlerThatReturns(req =>
         {
-            callCount++;
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
             postedUrl = req.RequestUri!.PathAndQuery;
             return JsonOk(expectedResult);
         });
@@ -227,45 +220,31 @@ public sealed class KaleidoQueryableClientTests
 
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(42, result.Results.First().Id);
-        Assert.Contains("grid", postedUrl);
+        Assert.Equal("/queryable/my-context/grid/query", postedUrl);
     }
 
-    [Fact]
-    public async Task QueryViewAsync_WhenContextNotFound_Throws()
+    // An unknown source or view (or one the caller may not use) is the service's own answer.
+    [Theory]
+    [InlineData("no-such-context", "grid", HttpStatusCode.NotFound)]
+    [InlineData("my-context", "no-such-view", HttpStatusCode.NotFound)]
+    [InlineData("my-context", "grid", HttpStatusCode.Forbidden)]
+    public async Task QueryViewAsync_WhenTheServiceRefuses_ThrowsWithItsStatus(string source, string view, HttpStatusCode status)
     {
-        var (client, _) = CreateClient();
+        var (client, _) = CreateClient(respond: _ => new HttpResponseMessage(status));
 
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(
+        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
-                "no-such-context", "grid",
+                source, view,
                 new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody())));
-    }
 
-    [Fact]
-    public async Task QueryViewAsync_WhenViewNotFound_Throws()
-    {
-        var (client, _) = CreateClient();
-
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.QueryViewAsync<FakeParams, FakeView>(
-                "my-context", "no-such-view",
-                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody())));
+        Assert.Equal(status, ex.StatusCode);
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
     }
 
     [Fact]
     public async Task QueryViewAsync_WhenHttpFails_ThrowsKaleidoException()
     {
-        var callCount = 0;
-        var handler = HandlerThatReturns(req =>
-        {
-            callCount++;
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
-        });
+        var handler = HandlerThatReturns(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
@@ -288,17 +267,7 @@ public sealed class KaleidoQueryableClientTests
     {
         var expectedResult = new QueryResult<FakeView>(2, 0, 2, [new FakeView { Id = 1 }, new FakeView { Id = 2 }]);
 
-        var callCount = 0;
-        var handler = HandlerThatReturns(req =>
-        {
-            callCount++;
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
-            return JsonOk(expectedResult);
-        });
+        var handler = HandlerThatReturns(_ => JsonOk(expectedResult));
         using var httpClient = new HttpClient(handler.Object, disposeHandler: false) { BaseAddress = new Uri("http://localhost") };
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
@@ -316,15 +285,8 @@ public sealed class KaleidoQueryableClientTests
     {
         string? postedUrl = null;
         string? postedBody = null;
-        var callCount = 0;
         var handler = HandlerThatReturns(req =>
         {
-            callCount++;
-            if (callCount == 1)
-            {
-                return JsonOk(FakeRegistry);
-            }
-
             postedUrl = req.RequestUri!.PathAndQuery;
             postedBody = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return JsonOk(new QueryResult<FakeView>(1, 0, 1, [new FakeView { Id = 7 }]));
@@ -341,18 +303,19 @@ public sealed class KaleidoQueryableClientTests
         Assert.Equal(7, Assert.Single(result.Results).Id);
     }
 
+    // A source the caller may only use through views is refused by the service (403), whatever a
+    // cached registry copy says.
     [Fact]
-    public async Task QuerySourceAsync_WhenSourceHasNoQueryUrlForCaller_Throws()
+    public async Task QuerySourceAsync_WhenTheCallerMayNotQueryTheSource_ThrowsWithTheServicesStatus()
     {
-        var noQuerySource = FakeContext with { QueryUrl = null };
-        var (client, _) = CreateClient(respond: _ => JsonOk(new AggregatedRegistryResponse { Queryables = [noQuerySource] }));
+        var (client, _) = CreateClient(respond: _ => new HttpResponseMessage(HttpStatusCode.Forbidden));
 
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QuerySourceAsync<FakeView>(
                 "my-context",
                 new QueryApiRequest(new QueryApiBody())));
 
-        Assert.Contains("query URL", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(HttpStatusCode.Forbidden, ex.StatusCode);
     }
 
     // ---------------------------------------------------------------------------
@@ -502,17 +465,18 @@ public sealed class KaleidoQueryableClientTests
         Assert.Contains("view 'grid' on source 'my-context'", exception.Message, StringComparison.Ordinal);
     }
 
+    // Query URLs come from the route prefix, never from the registry (#381), so a registry URL
+    // pointing elsewhere is never followed.
     [Fact]
-    public async Task QuerySourceAsync_AQueryUrlOnAnotherHost_IsRejected_WithoutSendingTheQuery()
+    public async Task QuerySourceAsync_IgnoresTheRegistryQueryUrl_AndPostsToTheContractUrl()
     {
         var registry = new AggregatedRegistryResponse { Queryables = [FakeContext with { QueryUrl = "http://evil.example/steal" }] };
         var (client, _, queries) = CreateQueryClient(() => JsonOk(new QueryResult<FakeView>(0, 0, 0, [])), registry);
 
-        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+        await client.QuerySourceAsync<FakeView>("My-Context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken);
+        await client.QueryViewAsync<FakeParams, FakeView>("my-context", "Grid", new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpClientErrorCodes.InvalidRegistryUrl, exception.Code);
-        Assert.Empty(queries);
+        Assert.Equal(["http://localhost/caller/queryable/my-context/query", "http://localhost/caller/queryable/my-context/grid/query"], queries);
     }
 
     [Fact]

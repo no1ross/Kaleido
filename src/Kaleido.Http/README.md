@@ -64,7 +64,7 @@ This project does not contain:
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, o =>
 {
-    o.ServiceName = "myservice"; // lowercase, no separators (KAL2005)
+    o.ServiceName = "myservice"; // lowercase letters, digits, '-' and '_' (KAL2005)
     o.Assemblies = [typeof(Program).Assembly];
 })
     .AddHttp();
@@ -203,7 +203,7 @@ In-host consumers (such as the MCP adapter) read the same caller-filtered payloa
 
 The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
 
-**Route-prefix contract:** every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. Downstream consumers address a service through a named client whose `RoutePrefix` must equal that service's `ServiceName`. `RoutePrefix` defaults to the client key lowercased — so a client named `"Member"` expects the Member service to have `Kaleido:ServiceName = "member"`. A mismatch produces silent 404s at call time, not startup errors. `ServiceName` must be lowercase with no separators (enforced by KAL2005).
+**Route-prefix contract:** every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. Downstream consumers address a service through a named client whose `RoutePrefix` must equal that service's `ServiceName`. `RoutePrefix` defaults to the client key lowercased — so a client named `"Member"` expects the Member service to have `Kaleido:ServiceName = "member"`. A mismatch produces silent 404s at call time, not startup errors. `ServiceName` must match `[a-z0-9][a-z0-9_-]*` (lowercase ASCII letters, digits, `-` and `_`, starting with a letter or digit); `AddKaleido` rejects any other value at startup (`invalid_service_name`) and KAL2005 reports constant values at build time.
 
 ---
 
