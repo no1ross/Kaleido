@@ -176,7 +176,7 @@ Full model: [`INFORMATION_REQUESTS.md`](./INFORMATION_REQUESTS.md).
 ```csharp
 services.AddKaleido(builder.Configuration, o =>
 {
-    o.ServiceName = "intake";                       // lowercase, no separators (KAL2005)
+    o.ServiceName = "intake";                       // lowercase letters, digits, '-' and '_' (KAL2005)
     o.Assemblies = [typeof(Program).Assembly];      // explicit — never omit (KAL2009)
 })
     .AddHttp();

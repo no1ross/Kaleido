@@ -1,6 +1,7 @@
 using Kaleido.Eventing;
 using Kaleido.Exceptions;
 using Kaleido.Registry;
+using Kaleido.Testing;
 
 namespace Kaleido.UnitTests;
 
@@ -97,28 +98,53 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
     }
 
     [Theory]
-    [InlineData("", "non-empty")]
-    [InlineData("  ", "non-empty")]
-    [InlineData("a/b", "path separators")]
-    [InlineData("a\\b", "path separators")]
-    [InlineData("a b", "whitespace")]
-    [InlineData("MyService", "lowercase")]
-    public void Validate_InvalidServiceName_ThrowsInvalidServiceName(string serviceName, string reason)
+    [InlineData("")]
+    [InlineData("  ")]
+    public void Validate_EmptyServiceName_ThrowsInvalidServiceName(string serviceName)
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(
             () => KaleidoServiceOptions.Validate(CreateSut(serviceName)));
 
         Assert.Equal(ConfigurationErrorCodes.InvalidServiceName, exception.Code);
-        Assert.Contains(reason, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("non-empty", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(ServiceNameCases.Valid), MemberType = typeof(ServiceNameCases))]
+    public void Validate_ValidServiceName_DoesNotThrow(string serviceName)
+    {
+        KaleidoServiceOptions.Validate(CreateSut(serviceName));
+    }
+
+    [Theory]
+    [MemberData(nameof(ServiceNameCases.Invalid), MemberType = typeof(ServiceNameCases))]
+    public void Validate_InvalidServiceName_ThrowsInvalidServiceName(string serviceName)
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(
+            () => KaleidoServiceOptions.Validate(CreateSut(serviceName)));
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidServiceName, exception.Code);
+    }
+
+    [Theory]
+    [InlineData("MyService", "myservice")]
+    [InlineData("My Svc.V2", "mysvcv2")]
+    [InlineData("-intake", "intake")]
+    public void Validate_InvalidServiceName_SuggestsAValidName(string serviceName, string suggestion)
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(
+            () => KaleidoServiceOptions.Validate(CreateSut(serviceName)));
+
+        Assert.Contains($"Use '{suggestion}' instead.", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Validate_UppercaseServiceName_SuggestsTheLowercaseName()
+    public void Validate_NameWithNothingToKeep_HasNoSuggestion()
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(
-            () => KaleidoServiceOptions.Validate(CreateSut("MyService")));
+            () => KaleidoServiceOptions.Validate(CreateSut("..")));
 
-        Assert.Contains("Use 'myservice' instead.", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("instead", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

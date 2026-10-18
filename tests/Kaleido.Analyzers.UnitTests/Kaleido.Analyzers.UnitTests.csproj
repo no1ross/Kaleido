@@ -4,6 +4,7 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" />
 		<Compile Include="..\Shared\AnalyzerTestHarness.cs" />
 		<Compile Include="..\Shared\SutFixture.cs" />
+		<Compile Include="..\Shared\ServiceNameCases.cs" />
 		<PackageReference Include="Basic.Reference.Assemblies" />
 		<PackageReference Include="Basic.Reference.Assemblies.Net80" />
 	</ItemGroup>

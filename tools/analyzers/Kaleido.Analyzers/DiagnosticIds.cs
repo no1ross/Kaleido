@@ -20,7 +20,7 @@ internal static class DiagnosticIds
     /// <summary>Step handler catch (Exception) must filter OperationCanceledException.</summary>
     public const string StepHandlerOceMissing = "KAL2004";
 
-    /// <summary>o.ServiceName must be lowercase with no spaces or separators.</summary>
+    /// <summary>A constant ServiceName must match [a-z0-9][a-z0-9_-]* (the runtime rule).</summary>
     public const string ServiceNameFormat = "KAL2005";
 
     /// <summary>IProcessStep type has no IProcessStepHandler in same compilation.</summary>
