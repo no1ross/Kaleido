@@ -3,8 +3,6 @@ using Kaleido.Processor.Context;
 using Kaleido.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Options;
 
 namespace Kaleido.Provider.SQLite.UnitTests;
 
@@ -58,7 +56,7 @@ public sealed class SqliteKaleidoContextStoreServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void UseSqliteKaleidoContextStore_WhenResolved_ConfiguresSqliteAndTheHealthCheck()
+    public void UseSqliteKaleidoContextStore_WhenResolved_ConfiguresSqliteWithoutAHealthCheck()
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -73,9 +71,7 @@ public sealed class SqliteKaleidoContextStoreServiceCollectionExtensionsTests
         Assert.Equal("Microsoft.EntityFrameworkCore.Sqlite", dbContext.Database.ProviderName);
         Assert.Equal("Data Source=:memory:", dbContext.Database.GetConnectionString());
         Assert.IsType<SqliteKaleidoContextStore>(scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>());
-        var registration = Assert.Single(
-            provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations);
-        Assert.Equal("kaleido-sqlite-context-store", registration.Name);
+        Assert.DoesNotContain(services, x => x.ServiceType.Namespace == "Microsoft.Extensions.Diagnostics.HealthChecks");
     }
 
     private static IKaleidoBuilder CreateBuilder(IServiceCollection services)

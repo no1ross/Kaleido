@@ -456,8 +456,7 @@
         "dependencies": {
           "Kaleido": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[8.0.31, )",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
-          "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[8.0.31, )"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )"
         }
       },
       "kaleido.samples.priorauth.common": {
