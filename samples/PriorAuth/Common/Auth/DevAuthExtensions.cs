@@ -14,6 +14,14 @@ public static class DevAuthClaims
     /// direct user call.
     /// </summary>
     public const string Actor = "kaleido_actor";
+
+    /// <summary>
+    /// Who the principal is: <see cref="DevPrincipalTypes.User"/> (a direct
+    /// call, or a service calling on the user's behalf) or
+    /// <see cref="DevPrincipalTypes.Service"/> (a service on its own). Signed
+    /// into the token, so a service token cannot pass as a user.
+    /// </summary>
+    public const string PrincipalType = "kaleido_principal";
 }
 
 /// <summary>Authorization policy names used by sample capabilities.</summary>
@@ -25,6 +33,14 @@ public static class DevAuthPolicies
     /// with <c>Roles</c> to also require the user's role.
     /// </summary>
     public const string InternalCaller = "InternalCaller";
+
+    /// <summary>
+    /// A service called on behalf of a user: the actor claim is present and
+    /// the principal is a user, not a service acting on its own. Use for
+    /// handoffs that must carry a real user (combine with <c>Roles</c> for the
+    /// user's role); a pure service token never passes it, even with app roles.
+    /// </summary>
+    public const string OnBehalfOfUser = "OnBehalfOfUser";
 
     public const string AuthenticatedUser = "AuthenticatedUser";
 }
@@ -51,6 +67,11 @@ public static class DevAuthExtensions
             options.AddPolicy(
                 DevAuthPolicies.InternalCaller,
                 policy => policy.RequireClaim(DevAuthClaims.Actor));
+            options.AddPolicy(
+                DevAuthPolicies.OnBehalfOfUser,
+                policy => policy
+                    .RequireClaim(DevAuthClaims.Actor)
+                    .RequireClaim(DevAuthClaims.PrincipalType, DevPrincipalTypes.User));
             options.AddPolicy(
                 DevAuthPolicies.AuthenticatedUser,
                 policy => policy.RequireAuthenticatedUser());

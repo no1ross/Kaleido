@@ -5,8 +5,9 @@ using Kaleido.Samples.PriorAuth.Auth;
 namespace Kaleido.Samples.PriorAuth.Radiology.Process.Steps;
 
 // Handoff entry: only callable by a service (Intake) on behalf of a user who
-// holds the radiology role. Never called directly by a consumer.
-[KaleidoAuthorization(Roles = "radiology", Policy = DevAuthPolicies.InternalCaller)]
+// holds the radiology role. Never called directly by a consumer, and never by a
+// service token on its own (its app roles include radiology, but it is no user).
+[KaleidoAuthorization(Roles = "radiology", Policy = DevAuthPolicies.OnBehalfOfUser)]
 [ProcessStep(
     DisplayName = "Start Radiology Intake",
     Description = "Initializes a radiology prior authorization from intake handoff data. " +

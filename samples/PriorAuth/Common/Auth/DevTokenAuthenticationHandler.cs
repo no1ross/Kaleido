@@ -10,8 +10,9 @@ namespace Kaleido.Samples.PriorAuth.Auth;
 /// <summary>
 /// Authentication handler for the sample's dev-token scheme. Reads
 /// <c>Authorization: Bearer dev.…</c>, validates the HMAC signature and
-/// expiry, and populates <c>HttpContext.User</c> with name + role claims, plus
-/// a <see cref="DevAuthClaims.Actor"/> claim on service-to-service calls.
+/// expiry, and populates <c>HttpContext.User</c> with name, role and
+/// <see cref="DevAuthClaims.PrincipalType"/> claims, plus a
+/// <see cref="DevAuthClaims.Actor"/> claim on service-to-service calls.
 /// </summary>
 public sealed class DevTokenAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -49,7 +50,8 @@ public sealed class DevTokenAuthenticationHandler(
         var claims =
             identity.Roles
                 .Select(r => new Claim(ClaimTypes.Role, r))
-                .Append(new Claim(ClaimTypes.Name, identity.Name));
+                .Append(new Claim(ClaimTypes.Name, identity.Name))
+                .Append(new Claim(DevAuthClaims.PrincipalType, identity.PrincipalType));
 
         if (identity.Actor is not null)
         {
