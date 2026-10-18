@@ -42,4 +42,7 @@ The 1.0 contract freeze ([#241](https://github.com/no1ross/Kaleido/issues/241)) 
 - the deprecation rule for 1.x (how long an `[Obsolete]` member stays before removal);
 - the supported runtimes and how long each is supported.
 
+At 1.0 the consumer analyzer rules (`KAL2xxx`) move to `AnalyzerReleases.Shipped.md`, so later changes to
+them are recorded per release ([`tools/analyzers/README.md`](../tools/analyzers/README.md#rule-inventory-and-release-tracking)).
+
 Until then, this page is the policy.

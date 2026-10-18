@@ -10,6 +10,15 @@ Kaleido has three analyzer projects (in `tools/analyzers`). Each targets **one a
 
 All three are build diagnostics, not runtime error codes (runtime codes are in [`ERROR_CODES.md`](./ERROR_CODES.md)). Severities are configured in `.editorconfig`: in `src/` warnings are treated as errors; in `tests/` some rules are relaxed where the convention genuinely differs.
 
+<a id="retired-ids"></a>**Retired IDs.** An ID is never reused. These were removed before any release (the release files only list current rules; see [`tools/analyzers/README.md`](../tools/analyzers/README.md#rule-inventory-and-release-tracking)):
+
+| ID | Rule | Why removed |
+|---|---|---|
+| KAL0016 | `MapGet`/`MapPost` endpoints in `Kaleido.Http` must call `.WithTags()` | Swagger grouping became one tag set by the framework |
+| KAL0017 | Endpoint tags must include `"Kaleido"` | Same change as KAL0016 |
+| KAL2006 | `MapRegistry()` called without `AddHttpClients()` | A startup guard covers it |
+| KAL2007 | A `[ProcessStep]` class name must end in `Step` | `IProcessStep` became the step identity; the name carries no rule |
+
 **For code generators:** every rule below exists because of a correctness or security hazard, not style. Generate compliant code on the first pass; never suppress a `KAL` rule.
 
 ---
