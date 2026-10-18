@@ -1,18 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="..\..\..\src\Packaging.props" />
 	<PropertyGroup>
 		<!-- Analyzers run inside the compiler host — must target netstandard2.0 -->
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>disable</ImplicitUsings>
-		<!-- Not shipped standalone — bundled into the Kaleido package via OutputItemType=Analyzer -->
-		<IsPackable>false</IsPackable>
 		<IsRoslynComponent>true</IsRoslynComponent>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<!-- Shipped as its own analyzer-only package; Kaleido.nupkg depends on it. -->
+		<Description>Kaleido consumer analyzers (KAL2xxx): compile-time checks for steps, query sources, views and host registration. Installed automatically with the Kaleido package.</Description>
+		<PackageTags>kaleido;analyzers;roslyn</PackageTags>
 		<DevelopmentDependency>true</DevelopmentDependency>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+		<None Include="$(TargetPath)" Pack="true" PackagePath="analyzers/dotnet/cs/" Visible="false" />
 	</ItemGroup>
 </Project>

@@ -267,6 +267,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Http.Mcp`](src/Kaleido.Http.Mcp) | Registry-derived MCP tools, input schemas, guided interaction, and process continuation for AI agents |
 | [`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite) | Reference store for process state, stored execution responses, and the event outbox |
 | [`Kaleido.Observability.OpenTelemetry`](src/Kaleido.Observability.OpenTelemetry) | Opt-in tracing, metrics, logging, and OTLP export integration |
+| [`Kaleido.Analyzers`](tools/analyzers/Kaleido.Analyzers) | Consumer compile-time checks (`KAL2xxx`); installed automatically with `Kaleido` |
 
 ### Prerequisites
 
