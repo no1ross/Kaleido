@@ -10,10 +10,11 @@ public sealed class KaleidoRemoteRegistryTests
 {
     private static KaleidoRemoteRegistry CreateSut(
         IHttpClientFactory httpClientFactory,
-        ILogger<KaleidoRemoteRegistry>? logger = null)
+        ILogger<KaleidoRemoteRegistry>? logger = null,
+        System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? data = null)
     {
         var store = new Mock<IRegistrySnapshotStore>();
-        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
+        data ??= new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
         store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns((string k, CancellationToken _) =>
             {
@@ -62,7 +63,8 @@ public sealed class KaleidoRemoteRegistryTests
 
     private static (KaleidoRemoteRegistry sut, Mock<HttpMessageHandler> handler) CreateSutWithHandler(
         Func<HttpRequestMessage, HttpResponseMessage>? respond = null,
-        ILogger<KaleidoRemoteRegistry>? logger = null)
+        ILogger<KaleidoRemoteRegistry>? logger = null,
+        System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? data = null)
     {
         var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handler.Protected()
@@ -83,7 +85,7 @@ public sealed class KaleidoRemoteRegistryTests
             .Setup(f => f.CreateClient(It.IsAny<string>()))
             .Returns(httpClient);
 
-        return (CreateSut(factory.Object, logger), handler);
+        return (CreateSut(factory.Object, logger, data), handler);
     }
 
     [Theory]
@@ -146,7 +148,7 @@ public sealed class KaleidoRemoteRegistryTests
     }
 
     [Fact]
-    public async Task GetAsync_CachesPerServiceKey()
+    public async Task GetAsync_CachesPerClientName()
     {
         var callCount = 0;
         var (sut, _) = CreateSutWithHandler(_ =>
@@ -158,13 +160,39 @@ public sealed class KaleidoRemoteRegistryTests
         var stamper = Mock.Of<ICorrelationHeaderStamper>();
         await sut.GetAsync("remote", "remote-svc", null, stamper, CancellationToken.None);
         await sut.GetAsync("remote", "remote-svc", null, stamper, CancellationToken.None);
-        // Canonical store key is kaleido:{routePrefix} — another client name
-        // pointing at the same service still hits the shared snapshot.
+        // The copy is the view of the identity a client's requests carry, so another client name
+        // pointing at the same service has its own entry.
         await sut.GetAsync("alias", "remote-svc", null, stamper, CancellationToken.None);
-        // A different service prefix is a different cache entry.
-        await sut.GetAsync("other", "other-svc", null, stamper, CancellationToken.None);
 
         Assert.Equal(2, callCount);
+    }
+
+    // A fetched registry is filtered for its caller: it must never replace the service's own
+    // unfiltered snapshot (kaleido:{ServiceName}) in a shared store, nor be read from it (#381).
+    [Fact]
+    public async Task GetAsync_UsesItsOwnKey_NeverTheServiceSnapshotKey()
+    {
+        var serviceSnapshot = new AggregatedRegistryResponse { Processes = [] };
+        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["kaleido:remote-svc"] = serviceSnapshot,
+        };
+        var callCount = 0;
+        var (sut, _) = CreateSutWithHandler(
+            _ =>
+            {
+                callCount++;
+                return JsonOk(FakeRegistry);
+            },
+            data: data);
+
+        var result = await sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
+
+        Assert.Equal(1, callCount);
+        Assert.Single(result.Processes);
+        Assert.Same(serviceSnapshot, data["kaleido:remote-svc"]);
+        Assert.True(data.ContainsKey(KaleidoRemoteRegistry.CacheKey("remote")));
+        Assert.Equal("kaleido-client:remote", KaleidoRemoteRegistry.CacheKey("remote"));
     }
 
     [Fact]

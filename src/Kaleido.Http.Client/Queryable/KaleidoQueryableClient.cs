@@ -25,25 +25,14 @@ internal sealed partial class KaleidoQueryableClient(
         CancellationToken cancellationToken = default) =>
         remoteRegistry.InvalidateAsync(clientName, cancellationToken);
 
-    public async Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
+    public Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
         string source,
         string view,
         QueryApiRequest<TParameters> request,
         CancellationToken cancellationToken = default)
         where TParameters : class
-        where TView : class
-    {
-        var sourceEntry = await FindSourceAsync(source, view, cancellationToken);
-
-        var viewEntry = sourceEntry.Views.FirstOrDefault(
-            v => string.Equals(v.Name, view, StringComparison.OrdinalIgnoreCase))
-            ?? throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.NotFound,
-                $"{callerServiceName} tried to call view '{view}' on source '{source}', but the view was not found in the remote registry.",
-                HttpStatusCode.NotFound);
-
-        return await SendQueryAsync<TView>(viewEntry.QueryUrl, request, cancellationToken, source, view);
-    }
+        where TView : class =>
+        SendQueryAsync<TView>(QueryableContractUrls.QueryViewQuery(callerServiceName, Segment(source), Segment(view)), request, cancellationToken, source, view);
 
     public Task<QueryResult<TResult>> QuerySourceAsync<TResult>(
         string source,
@@ -60,40 +49,24 @@ internal sealed partial class KaleidoQueryableClient(
         where TResult : class =>
         QuerySourceCoreAsync<TResult>(source, request, cancellationToken);
 
-    private async Task<QueryResult<TResult>> QuerySourceCoreAsync<TResult>(
+    private Task<QueryResult<TResult>> QuerySourceCoreAsync<TResult>(
         string source,
         object request,
         CancellationToken cancellationToken)
-        where TResult : class
+        where TResult : class =>
+        SendQueryAsync<TResult>(QueryableContractUrls.QuerySourceQuery(callerServiceName, Segment(source)), request, cancellationToken, source, view: null);
+
+    // The route segment the service publishes for a source or view: the lower-case name, kept one
+    // segment whatever the caller passes.
+    private static string Segment(string name)
     {
-        var sourceEntry = await FindSourceAsync(source, view: null, cancellationToken);
-
-        if (string.IsNullOrEmpty(sourceEntry.QueryUrl))
-        {
-            throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.NotFound,
-                $"{callerServiceName} tried to call source '{source}', but the remote registry does not expose a query URL for it to this caller.",
-                HttpStatusCode.NotFound);
-        }
-
-        return await SendQueryAsync<TResult>(sourceEntry.QueryUrl, request, cancellationToken, source, view: null);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return Uri.EscapeDataString(name.ToLowerInvariant());
     }
 
-    private async Task<QueryableSourceResponse> FindSourceAsync(
-        string source,
-        string? view,
-        CancellationToken cancellationToken)
-    {
-        var registry = await EnsureRegistryAsync(cancellationToken);
-
-        return registry.FirstOrDefault(
-            r => string.Equals(r.Name, source, StringComparison.OrdinalIgnoreCase))
-            ?? throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.NotFound,
-                $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the source was not found in the remote registry.",
-                HttpStatusCode.NotFound);
-    }
-
+    // Query URLs come from the route prefix, never from the registry: the registry is filtered per
+    // caller, so a cached copy would answer for whoever fetched it first (#381). An unknown or
+    // forbidden source or view gets the service's own answer (404 / 403).
     private async Task<QueryResult<TView>> SendQueryAsync<TView>(
         string url,
         object request,
@@ -104,7 +77,7 @@ internal sealed partial class KaleidoQueryableClient(
     {
         using var httpRequest = new HttpRequestMessage(
             HttpMethod.Post,
-            url.RequireValidRegistryUrl(nameof(url), httpClient.BaseAddress))
+            url)
         {
             Content = JsonContent.Create(request, options: KaleidoJsonOptions.Options),
         };
@@ -169,8 +142,8 @@ internal sealed partial class KaleidoQueryableClient(
             LogRemoteNonSuccess(logger, callerServiceName, (int)response.StatusCode, response.StatusCode, request.Method, request.RequestUri);
         }
 
-        // 404: the service no longer has that source or view (it was deployed without it); the
-        // registry snapshot is dropped so the next read loads the current one.
+        // 404: the service does not have that source or view (perhaps deployed without it); the
+        // discovery snapshot is dropped so the next registry read loads the current one.
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             await remoteRegistry.InvalidateAsync(clientName, cancellationToken);
