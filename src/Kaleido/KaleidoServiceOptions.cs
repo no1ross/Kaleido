@@ -20,8 +20,15 @@ public class KaleidoServiceOptions
     /// The unique name identifying this service within the distributed system.
     /// Used as the route prefix for Process and Queryable endpoints (e.g. <c>"intake"</c>
     /// produces <c>/intake/processes/...</c> and <c>/intake/queryable/...</c>).
-    /// Must be non-empty, lowercase, and contain no whitespace or path separators.
+    /// Must start with a lowercase ASCII letter or digit and contain only lowercase ASCII letters,
+    /// digits, <c>-</c> and <c>_</c> (for example <c>intake</c> or <c>intake-events</c>), so it
+    /// is a safe URL path segment and MCP tool-name prefix.
     /// </summary>
+    /// <remarks>
+    /// <c>AddKaleido</c> rejects any other value with a <see cref="KaleidoConfigurationException"/>
+    /// (<c>invalid_service_name</c>). The consumer analyzer KAL2005 reports the same rule at build time
+    /// for constant values; a value read from configuration is checked only at startup.
+    /// </remarks>
     public string ServiceName { get; init; } = string.Empty;
 
     /// <summary>
@@ -145,8 +152,9 @@ public class KaleidoServiceOptions
         }
     }
 
-    // The service name is a route segment and the registry identity: non-empty, lowercase, no
-    // whitespace or path separators.
+    // The service name is a route segment, the registry identity and the MCP tool-name prefix:
+    // [a-z0-9][a-z0-9_-]*. KAL2005 (Kaleido.Analyzers ServiceNameAnalyzer) applies the same rule;
+    // both are tested against tests/Shared/ServiceNameCases.cs.
     private static void ValidateServiceName(string serviceName)
     {
         if (string.IsNullOrWhiteSpace(serviceName))
@@ -158,28 +166,18 @@ public class KaleidoServiceOptions
                 "or via the Kaleido:ServiceName configuration key.");
         }
 
-        if (serviceName.Contains('/', StringComparison.Ordinal) || serviceName.Contains('\\', StringComparison.Ordinal))
+        if (!IsLowercaseLetterOrDigit(serviceName[0]) || !serviceName.All(c => IsLowercaseLetterOrDigit(c) || c is '-' or '_'))
         {
+            var suggestion = new string([.. serviceName.ToLowerInvariant().Where(c => IsLowercaseLetterOrDigit(c) || c is '-' or '_')]).TrimStart('-', '_');
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,
-                $"KaleidoServiceOptions.ServiceName '{serviceName}' must not contain path separators.");
-        }
-
-        if (serviceName.Any(char.IsWhiteSpace))
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.InvalidServiceName,
-                $"KaleidoServiceOptions.ServiceName '{serviceName}' must not contain whitespace.");
-        }
-
-        if (serviceName.Any(char.IsUpper))
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.InvalidServiceName,
-                $"KaleidoServiceOptions.ServiceName '{serviceName}' must be lowercase. " +
-                $"Use '{serviceName.ToLowerInvariant()}' instead.");
+                $"KaleidoServiceOptions.ServiceName '{serviceName}' must start with a lowercase letter or digit " +
+                "and contain only lowercase letters (a-z), digits, '-' and '_': it is the route prefix and the MCP tool-name prefix." +
+                (suggestion.Length > 0 ? $" Use '{suggestion}' instead." : string.Empty));
         }
     }
+
+    private static bool IsLowercaseLetterOrDigit(char c) => c is (>= 'a' and <= 'z') or (>= '0' and <= '9');
 }
 
 /// <summary>

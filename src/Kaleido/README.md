@@ -74,7 +74,7 @@ A service starts by calling `AddKaleido()`:
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, o =>
 {
-    o.ServiceName = "myservice"; // lowercase, no separators: it is the route prefix and the MCP tool prefix (KAL2005)
+    o.ServiceName = "myservice"; // [a-z0-9][a-z0-9_-]*: it is the route prefix and the MCP tool prefix (KAL2005)
     o.Assemblies =
     [
         typeof(Program).Assembly,
