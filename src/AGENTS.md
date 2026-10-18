@@ -14,7 +14,7 @@ See also:
 What each project owns and must not own is stated once, in the root [project boundaries](../AGENTS.md#project-boundaries); each project's README lists its public types, and [`ARCHITECTURE.md`](./ARCHITECTURE.md) its internals. Two rules apply across `src/`:
 
 - **Project references point one way.** A new reference is an architecture change:
-  - `Kaleido` references no other Kaleido project.
+  - `Kaleido` references no other Kaleido project. Its one tooling reference, to the consumer analyzer (`tools/analyzers/Kaleido.Analyzers`), carries only analyzer assets: it makes `Kaleido.nupkg` depend on the `Kaleido.Analyzers` package and neither compiles against nor runs the analyzer.
   - `Kaleido.Http.Abstractions`, `Kaleido.Observability.OpenTelemetry` and `Kaleido.Provider.SQLite` reference only `Kaleido`.
   - `Kaleido.Http` and `Kaleido.Http.Client` reference `Kaleido.Http.Abstractions`.
   - `Kaleido.Http.Mcp` references `Kaleido.Http` and `Kaleido.Http.Client`.

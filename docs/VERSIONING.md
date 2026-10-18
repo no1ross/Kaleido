@@ -7,8 +7,8 @@ decided at 1.0. Nothing here promises a support period or a date.
 
 - Package versions come from [`version.json`](../version.json)
   ([Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning)): `1.0.0-preview.{height}`,
-  where the height is the number of commits since the version was last changed. All seven
-  packages share one version.
+  where the height is the number of commits since the version was last changed. All eight
+  packages (the seven `src/` packages and `Kaleido.Analyzers`) share one version.
 - From 1.0 the packages follow [Semantic Versioning](https://semver.org): a breaking change to the
   public API, the HTTP wire contracts, the error codes or the telemetry names needs a new major
   version.

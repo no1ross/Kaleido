@@ -4,7 +4,7 @@ Kaleido has three analyzer projects (in `tools/analyzers`). Each targets **one a
 
 | Section | IDs | Who sees it | Runs on | Shipped |
 |---|---|---|---|---|
-| [Consumer rules](#consumer-rules--kal2xxx) | `KAL2xxx` | Anyone referencing the `Kaleido` NuGet package | Consumer services (and this repo's samples) | Yes — inside `Kaleido.nupkg` (`analyzers/dotnet/cs/`) |
+| [Consumer rules](#consumer-rules--kal2xxx) | `KAL2xxx` | Anyone referencing the `Kaleido` NuGet package | Consumer services (and this repo's samples) | Yes — the `Kaleido.Analyzers` package, a dependency of `Kaleido` |
 | [Source rules](#source-rules--kal0xxx) | `KAL0xxx` | Contributors to this repository | Framework source (`src/`) | No |
 | [Test rules](#test-rules--kal1xxx) | `KAL1xxx` | Contributors writing tests in this repository | Test projects (`tests/`) | No |
 
@@ -16,7 +16,7 @@ All three are build diagnostics, not runtime error codes (runtime codes are in [
 
 ## Consumer rules — `KAL2xxx`
 
-**Audience:** developers building services on Kaleido. **Project:** [`Kaleido.Analyzers`](../tools/analyzers/Kaleido.Analyzers/), shipped in the `Kaleido` package, so the rules apply automatically to any code that references it. A project reference to `src/Kaleido` does not carry it (the analyzer reference is `PrivateAssets="all"`), so the repository's samples load it explicitly in `samples/Directory.Build.props`, as a NuGet consumer would get it. Most are compile-time equivalents of startup validation: a misconfigured step, source or view fails the build instead of failing at startup.
+**Audience:** developers building services on Kaleido. **Project:** [`Kaleido.Analyzers`](../tools/analyzers/Kaleido.Analyzers/), shipped as the analyzer-only `Kaleido.Analyzers` package. The `Kaleido` package depends on it, so the rules apply automatically to any code that installs `Kaleido`. In this repository `src/Kaleido` references the analyzer project only to declare that dependency; it does not run the consumer rules on the framework. A project reference to `src/Kaleido` does not carry the analyzer, so the samples load it explicitly in `samples/Directory.Build.props`, as a NuGet consumer would get it; test projects do not load it, because unit tests deliberately declare invalid capabilities to exercise startup validation. Most are compile-time equivalents of startup validation: a misconfigured step, source or view fails the build instead of failing at startup.
 
 | ID | Severity | Rule | What it prevents |
 |---|---|---|---|

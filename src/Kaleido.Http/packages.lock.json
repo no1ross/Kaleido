@@ -88,6 +88,7 @@
       "kaleido": {
         "type": "Project",
         "dependencies": {
+          "Kaleido.Analyzers": "[1.0.0, )",
           "Microsoft.Extensions.Compliance.Abstractions": "[8.10.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[8.0.0, )",
           "Microsoft.Extensions.Configuration.Binder": "[8.0.2, )",
@@ -97,6 +98,9 @@
           "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, )",
           "Polly.Core": "[8.4.2, )"
         }
+      },
+      "kaleido.analyzers": {
+        "type": "Project"
       },
       "kaleido.http.abstractions": {
         "type": "Project",

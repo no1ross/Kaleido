@@ -154,17 +154,19 @@ jobs:
           coverage/index.html
         if-no-files-found: ignore
 
-    # Pack shipped src/ projects on PRs and master merges; master uploads
-    # artifacts. NuGet publish is deliberately not wired up.
+    # Pack shipped src/ projects and the consumer analyzer on PRs and master
+    # merges; master uploads artifacts. NuGet publish is deliberately not wired up.
     - name: Pack
       run: |
-        for project in src/*/*.csproj; do
+        for project in src/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do
           dotnet pack "$project" --configuration Release --no-build -o artifacts
         done
         packages=(artifacts/*.nupkg)
-        test "${#packages[@]}" -eq 7
-        unzip -Z1 artifacts/Kaleido.[0-9]*.nupkg |
+        test "${#packages[@]}" -eq 8
+        unzip -Z1 artifacts/Kaleido.Analyzers.[0-9]*.nupkg |
           awk '$0 == "analyzers/dotnet/cs/Kaleido.Analyzers.dll" { found=1 } END { exit !found }'
+        unzip -p artifacts/Kaleido.[0-9]*.nupkg Kaleido.nuspec |
+          grep -q '<dependency id="Kaleido.Analyzers"'
 
     - name: Upload packages
       if: github.event_name == 'push'
