@@ -13,5 +13,6 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+		<Compile Include="..\Shared\CancellationCatch.cs" Link="Shared\CancellationCatch.cs" />
 	</ItemGroup>
 </Project>
