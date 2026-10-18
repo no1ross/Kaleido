@@ -3,11 +3,15 @@ namespace Kaleido.Http.Queryable;
 /// <summary>
 /// Client for a remote service's Queryable capabilities. Sources and views are addressed by their
 /// published names (strings): the caller lives in another service and cannot reference the remote
-/// types. Names are resolved against the remote registry (case-insensitive).
+/// types. A query goes to <c>/{routePrefix}/queryable/{source}[/{view}]/query</c> without consulting the
+/// registry, which is filtered per caller and serves discovery only.
 /// </summary>
 public interface IKaleidoQueryableClient
 {
-    /// <summary>Gets the remote service's query sources (fetched once and cached).</summary>
+    /// <summary>
+    /// Gets the remote service's query sources, for discovery (queries do not use it): fetched once, as
+    /// filtered for the identity the client's request carries, and cached per client name.
+    /// </summary>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The remote query sources with their views.</returns>
     Task<IReadOnlyList<QueryableSourceResponse>> GetRegistryAsync(
@@ -32,8 +36,9 @@ public interface IKaleidoQueryableClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The query result.</returns>
     /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the source or
-    /// view is not in the remote registry, or the remote call fails.
+    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails;
+    /// a source or view the service does not have, or the caller may not use, arrives as the
+    /// service's own 404 or 403.
     /// </remarks>
     Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
         string source,
@@ -50,8 +55,9 @@ public interface IKaleidoQueryableClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The query result.</returns>
     /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the source is
-    /// not in the remote registry, or the remote call fails.
+    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails;
+    /// a source or view the service does not have, or the caller may not use, arrives as the
+    /// service's own 404 or 403.
     /// </remarks>
     Task<QueryResult<TResult>> QuerySourceAsync<TResult>(
         string source,
@@ -67,8 +73,9 @@ public interface IKaleidoQueryableClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The query result.</returns>
     /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the source is
-    /// not in the remote registry, or the remote call fails.
+    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails;
+    /// a source or view the service does not have, or the caller may not use, arrives as the
+    /// service's own 404 or 403.
     /// </remarks>
     Task<QueryResult<TResult>> QuerySourceAsync<TParameters, TResult>(
         string source,

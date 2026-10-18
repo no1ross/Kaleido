@@ -7,8 +7,8 @@ decided at 1.0. Nothing here promises a support period or a date.
 
 - Package versions come from [`version.json`](../version.json)
   ([Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning)): `1.0.0-preview.{height}`,
-  where the height is the number of commits since the version was last changed. All seven
-  packages share one version.
+  where the height is the number of commits since the version was last changed. All eight
+  packages (the seven `src/` packages and `Kaleido.Analyzers`) share one version.
 - From 1.0 the packages follow [Semantic Versioning](https://semver.org): a breaking change to the
   public API, the HTTP wire contracts, the error codes or the telemetry names needs a new major
   version.
@@ -41,5 +41,8 @@ The 1.0 contract freeze ([#241](https://github.com/no1ross/Kaleido/issues/241)) 
 - which APIs and contracts are covered by the compatibility promise;
 - the deprecation rule for 1.x (how long an `[Obsolete]` member stays before removal);
 - the supported runtimes and how long each is supported.
+
+At 1.0 the consumer analyzer rules (`KAL2xxx`) move to `AnalyzerReleases.Shipped.md`, so later changes to
+them are recorded per release ([`tools/analyzers/README.md`](../tools/analyzers/README.md#rule-inventory-and-release-tracking)).
 
 Until then, this page is the policy.

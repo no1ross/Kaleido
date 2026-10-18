@@ -61,7 +61,7 @@ below).
 | `samples/PriorAuth/AGENTS.md` | handoff calls `/processes/execute` with the original payload; `*.Artifacts/` projects; a "smaller compose file"; ports labelled `providersearch`, `memberservice` | The handler calls the entry step with a typed payload through the process client (`CaptureRequestedServiceHandler.cs`); no `*.Artifacts`; one compose file; the compose services are `provider` and `member`. |
 | `src/Kaleido.Http.Abstractions/README.md`, `src/Kaleido.Http.Client/README.md` | "Where to look" paths `Process/Contracts/`, `Processor/IKaleidoProcessorClient.cs` (in the client) | Real paths: `Processor/ProcessContracts.cs`, `Queryable/QueryableContracts.cs`, client interfaces in `Kaleido.Http.Abstractions`. |
 | XML docs | `[KaleidoAuthorization]` applies to "query context"; `TypeFilter` filters "process steps"; `HttpClientErrorCodes` are `pro_`/`qry_` prefixed; `AggregatedRegistryResponse` refers to internal `AddProcessorClient()` | Sources (never contexts); steps and query sources/views; `httpclient_*` plus `missing_base_url`; `AddHttpClients()`. |
-| `KaleidoServiceOptions` error message, several READMEs | `o.ServiceName = "my-service"` | KAL2005 warns on separators; examples now use `myservice`. |
+| `KaleidoServiceOptions` error message, several READMEs | `o.ServiceName = "my-service"` | Valid: KAL2005 and the runtime share one rule, `[a-z0-9][a-z0-9_-]*` (#308); examples use `myservice`. |
 
 ## 4. Code -> documentation gaps (documented)
 

@@ -115,6 +115,7 @@ caller forwarding order (`CallerForwardingTests`), delegated paging pass-through
 | `QueryableDiscoveryTests` (strengthened) | registry dropping descriptions, classifications, operators, capabilities, view paging; removed a duplicated assertion |
 | `QueryableClientTests` (strengthened) | client/server JSON drift for any value type; error mapping |
 | `EventOutboxTests` (strengthened, +1) | `PlanBuilt` not published; classified step input published in the clear |
+| `Processor/Cancellation/CancellationFinalizationTests` (new, in-memory and SQLite store) | a cancellation after the handler returned discarding its completion and `StepCompleted` (#286); a handler invoked for an already-cancelled request; a cancellation during the handler not saved as Canceled |
 
 Model changes: `FunctionalRecordContext` gained operators and Guid/DateTime fields, an async source
 and an async view with their own paging; `RuntimeInputStep` gained a classified `Remark`; the clinic

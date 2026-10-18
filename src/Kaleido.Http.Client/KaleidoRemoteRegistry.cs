@@ -13,6 +13,12 @@ namespace Kaleido.Http.Client;
 /// <see cref="AggregatedRegistryResponse"/> carries both process and queryable
 /// registrations, cached once per client name.
 /// </summary>
+/// <remarks>
+/// A remote registry is filtered for the caller that fetched it, so this cache is used only for
+/// discovery and aggregation (<c>GetRegistryAsync</c>), never to route capability calls, and it is
+/// stored under its own key, <c>kaleido-client:{clientName}</c>: never under the remote service's
+/// <c>kaleido:{ServiceName}</c>, where that service keeps its unfiltered snapshot (#381).
+/// </remarks>
 internal sealed partial class KaleidoRemoteRegistry(
     IHttpClientFactory httpClientFactory,
     IRegistrySnapshotStore snapshotStore,
@@ -29,15 +35,16 @@ internal sealed partial class KaleidoRemoteRegistry(
         CancellationToken cancellationToken) =>
         _caches.GetOrAdd(
                 clientName,
-                // Canonical per-service key — matches the key the downstream
-                // writes its own snapshot under (kaleido:{ServiceName}), since
-                // RoutePrefix equals ServiceName by contract.
-                static (_, state) => new HttpClientRegistryCache(state.SnapshotStore, $"kaleido:{state.RoutePrefix}"),
-                (SnapshotStore: snapshotStore, RoutePrefix: routePrefix))
+                static (name, store) => new HttpClientRegistryCache(store, CacheKey(name)),
+                snapshotStore)
             .GetOrRevalidateAsync(
                 registryTtl,
                 (revision, ct) => FetchAsync(clientName, routePrefix, stamper, revision, ct),
                 cancellationToken);
+
+    // The client's own key: a caller-filtered copy must never replace the service's unfiltered
+    // snapshot (kaleido:{ServiceName}) in a shared store.
+    internal static string CacheKey(string clientName) => $"kaleido-client:{clientName}";
 
     public async Task InvalidateAsync(
         string clientName,

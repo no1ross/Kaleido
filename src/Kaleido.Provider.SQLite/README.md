@@ -93,7 +93,7 @@ The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, t
 
 ### Schema changes
 
-The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, the `IdempotentResults` and `OutboxEvents` tables, or the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed (delete the file; it is recreated at startup). A production store manages its own schema migrations.
+The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, the `IdempotentResults` and `OutboxEvents` tables, or the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed (delete the file; the host's `EnsureCreated` call recreates it at startup). A production store manages its own schema migrations.
 
 ---
 
@@ -118,9 +118,20 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 ```
 
-This registers `SqliteKaleidoContextStore` as `IKaleidoContextStore`, replacing the default in-memory store, and a health check (`kaleido-sqlite-context-store`). Registration does not touch the database: without the `EnsureCreatedAsync()` call the first save fails because the tables do not exist.
+This registers `SqliteKaleidoContextStore` as `IKaleidoContextStore`, replacing the default in-memory store. Registration does not touch the database: without the `EnsureCreatedAsync()` call the first save fails because the tables do not exist. (This exact sequence is tested against a fresh database file: `tests/Kaleido.IntegrationTests/SqliteReadmeTests.cs`.)
 
-Malformed, non-blank connection strings fail at registration with `KaleidoConfigurationException` (`SqliteErrorCodes.InvalidConnectionString`, `invalid_connection_string`) before DI services are replaced. The parser checks connection-string syntax only: registration does **not** open or create a database, and reachability remains a separate health-check concern.
+Malformed, non-blank connection strings fail at registration with `KaleidoConfigurationException` (`SqliteErrorCodes.InvalidConnectionString`, `invalid_connection_string`) before DI services are replaced. The parser checks connection-string syntax only: registration does **not** open or create a database.
+
+**Health check.** None is registered. To report the database's reachability, add the Entity Framework Core check (package `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`) and map an endpoint:
+
+```csharp
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<SqliteKaleidoContextDbContext>("kaleido-sqlite-context-store");
+
+app.MapHealthChecks("/health");
+```
+
+**Telemetry.** The store traces process-state reads and writes and counts their failures: activities `kaleido.sqlite.context.load` / `kaleido.sqlite.context.save` (source `Kaleido.Provider.SQLite`, tagged with the process id) and the counters `kaleido.sqlite.context.load_failures` / `kaleido.sqlite.context.save_failures` (meter `Kaleido.Provider.SQLite`; a concurrency conflict or a cancellation is not a failure). The idempotent-result and outbox methods are not instrumented by the store: event delivery is measured by core's `Kaleido.Events` meter (`kaleido.events.published`, `failed`, `parked`, `enqueue_failures`), and EF Core's own diagnostics cover individual commands. `AddKaleidoInstrumentation()` in [`Kaleido.Observability.OpenTelemetry`](../Kaleido.Observability.OpenTelemetry/README.md) subscribes to both.
 
 The default in-memory store is sufficient for tests and single-request processes; it logs a warning when it is created (on first use) precisely because production without a durable store is a configuration smell.
 
