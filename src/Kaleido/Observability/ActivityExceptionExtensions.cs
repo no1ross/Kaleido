@@ -18,4 +18,20 @@ internal static class ActivityExceptionExtensions
                     ["exception.message"] = exception.Message,
                     ["exception.stacktrace"] = exception.ToString(),
                 }));
+
+    // Marks the span failed with a description that never carries exception text (#290): a Kaleido
+    // exception's error code, otherwise the exception's type name. The message, which may come from
+    // any library (a driver's SQL, a connection detail), stays in the log and the exception event.
+    public static void SetErrorStatus(this Activity? activity, Exception exception) =>
+        activity?.SetStatus(ActivityStatusCode.Error, exception.StatusDescription());
+
+    public static string StatusDescription(this Exception exception) =>
+        exception switch
+        {
+            KaleidoConfigurationException configuration => configuration.Code,
+            KaleidoFrameworkException framework => framework.Code,
+            KaleidoValidationException validation => validation.Code,
+            KaleidoConcurrencyException conflict => conflict.Code,
+            _ => exception.GetType().Name,
+        };
 }

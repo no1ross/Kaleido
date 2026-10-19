@@ -19,7 +19,7 @@ Each area owns its codes; there is no single catalog. Code string values are sta
 
 A request the HTTP layer cannot read (a body that is not JSON, a value that does not fit its type, a C# `required` member left out) is answered 400 `argument_error` (415 for a non-JSON content type) with a message naming the JSON path, by Kaleido's error handling on the per-step and query endpoints; a `JsonException` is never a 500.
 
-HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 error body. A Process step handler's validation exception instead produces a failed step outcome; its original code and message appear in `FrameworkMessages` only when the transport enables framework diagnostics. A configuration or framework exception thrown during a request is logged and answered 500 with its `Code` and `Message`; one thrown at startup stops the host and never reaches a response.
+HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 error body. A Process step handler's validation exception instead produces a failed step outcome; its original code and message appear in `FrameworkMessages` only when the transport enables framework diagnostics. A configuration or framework exception thrown during a request is logged with its `Code` and `Message` and answered 500 with its `Code` and a generic message ("The service is not configured correctly." / "An internal error occurred."): the detail names internals, so it stays in the log, and the code links the response to the log entry. One thrown at startup stops the host and never reaches a response. A failed span's status description is likewise the error code (or, for an unexpected failure, the exception type), never the message.
 
 ---
 

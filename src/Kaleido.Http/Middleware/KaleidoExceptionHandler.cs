@@ -69,16 +69,18 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
                 await WriteErrorAsync(context, StatusCodes.Status400BadRequest, KaleidoErrorCodes.ArgumentError, "An invalid argument was provided.", cancellationToken);
                 break;
 
+            // A 500 tells the caller the code, never the detail (#290): the message names internals
+            // (registrations, configuration keys, types). The Error log carries it; the code links both.
             case KaleidoConfigurationException configuration:
                 MarkFailed(configuration);
                 LogConfigurationError(logger, configuration, configuration.Code, configuration.Message);
-                await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, configuration.Code, configuration.Message, cancellationToken);
+                await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, configuration.Code, "The service is not configured correctly.", cancellationToken);
                 break;
 
             case KaleidoFrameworkException framework:
                 MarkFailed(framework);
                 LogFrameworkError(logger, framework, framework.Code, framework.Message);
-                await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, framework.Code, framework.Message, cancellationToken);
+                await WriteErrorAsync(context, StatusCodes.Status500InternalServerError, framework.Code, "An internal error occurred.", cancellationToken);
                 break;
 
             // Last resort: any other failure becomes a 500 with no details.
@@ -96,9 +98,10 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
             : WriteErrorAsync(context, StatusCodes.Status400BadRequest, KaleidoErrorCodes.ArgumentError, "The request body does not fit the expected shape.", cancellationToken);
 
     // Only a 5xx marks the request's span as an error: a 4xx is the caller's mistake, answered to the
-    // caller (OpenTelemetry's HTTP server conventions), so dashboards do not count it as a fault.
+    // caller (OpenTelemetry's HTTP server conventions), so dashboards do not count it as a fault. The
+    // status describes the failure by code or exception type, never by its message (#290).
     private static void MarkFailed(Exception exception) =>
-        Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
+        Activity.Current.SetErrorStatus(exception);
 
     // Without an authentication handler the status code is set directly; with one, the handler
     // answers (a challenge for an anonymous caller, forbid for an authenticated one).
