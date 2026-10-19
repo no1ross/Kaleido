@@ -63,7 +63,7 @@ internal sealed class KaleidoJsonBody<T> : IKaleidoJsonBody
         }
         catch (JsonException exception)
         {
-            return Failed(string.Empty, StatusCodes.Status400BadRequest, $"The request body is not valid JSON: {Describe(exception)}");
+            return Failed(string.Empty, StatusCodes.Status400BadRequest, $"The request body is not valid JSON: {exception.Describe()}");
         }
 
         var raw = json.GetRawText();
@@ -74,20 +74,10 @@ internal sealed class KaleidoJsonBody<T> : IKaleidoJsonBody
         }
         catch (JsonException exception)
         {
-            return Failed(raw, StatusCodes.Status400BadRequest, Describe(exception));
+            return Failed(raw, StatusCodes.Status400BadRequest, exception.Describe());
         }
     }
 
     private static KaleidoJsonBody<T> Failed(string raw, int status, string failure) =>
         new(raw, value: null, status, failure);
-
-    // The serializer's message without its line/position suffix, led by the JSON path that failed.
-    private static string Describe(JsonException exception)
-    {
-        var message = exception.Message.Split(" Path:", 2)[0].Trim();
-
-        return exception.Path is { Length: > 0 } path
-            ? $"The value at '{path}' is not valid: {message}"
-            : message;
-    }
 }

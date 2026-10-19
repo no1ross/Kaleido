@@ -62,7 +62,7 @@ public sealed class StepCandidateBuilderTests
         {
             Steps = new Dictionary<string, object?>
             {
-                ["test-step"] = new { Name = "test" }
+                ["test-step"] = new TestStep { Name = "test" }
             }
         };
 
@@ -75,7 +75,7 @@ public sealed class StepCandidateBuilderTests
     }
 
     [Fact]
-    public void Build_WhenDeserializationFails_MarksCandidateInvalid()
+    public void Build_WhenTheValueIsNotTheStepType_MarksCandidateInvalid()
     {
         var registration = new ProcessStepRegistration(
             typeof(TestStep),
@@ -106,7 +106,7 @@ public sealed class StepCandidateBuilderTests
     }
 
     [Fact]
-    public void Build_WhenDeserializationReturnsNull_MarksCandidateInvalid()
+    public void Build_WhenTheValueIsNull_MarksCandidateInvalid()
     {
         var registration = new ProcessStepRegistration(
             typeof(TestStep),
@@ -166,8 +166,8 @@ public sealed class StepCandidateBuilderTests
         {
             Steps = new Dictionary<string, object?>
             {
-                ["step-a"] = new { Name = "a" },
-                ["step-b"] = new { Name = "b" }
+                ["step-a"] = new TestStep { Name = "a" },
+                ["step-b"] = new TestStep { Name = "b" }
             }
         };
 
@@ -196,16 +196,17 @@ public sealed class StepCandidateBuilderTests
         return registration;
     }
 
+    // Core never parses input (#344): a transport reads its wire format into the step type first.
     [Fact]
-    public void Build_FromAJsonElement_DeserializesTheStep()
+    public void Build_FromAJsonElement_IsInvalid_BecauseCoreNeverParsesInput()
     {
         RegisterTestStep();
         using var json = System.Text.Json.JsonDocument.Parse("{\"name\":\"from-json\"}");
 
         var candidate = Assert.Single(Sut.Build(new ProcessorRequest { Steps = new Dictionary<string, object?> { ["test-step"] = json.RootElement.Clone() } }));
 
-        Assert.Equal(StepCandidateStatus.Built, candidate.Status);
-        Assert.Equal("from-json", Assert.IsType<TestStep>(candidate.Step).Name);
+        Assert.Equal(StepCandidateStatus.Invalid, candidate.Status);
+        Assert.Null(candidate.Step);
     }
 
     [Fact]

@@ -12,10 +12,10 @@ internal sealed record ProcessorRequest
     /// with the step's input as the value.
     /// </summary>
     /// <remarks>
-    /// A value may be an instance of the step type, used as is, or any value that deserializes to
-    /// it (such as a <c>JsonElement</c> from an HTTP request). Each entry becomes one planned
-    /// candidate; a name that is not a registered step, or a value that cannot be read as the step,
-    /// makes that candidate invalid. The default dictionary compares names case-insensitively.
+    /// Each value is an instance of the step type: the transport reads its wire format into the step
+    /// type before the runtime sees it (core never parses input). Each entry becomes one planned
+    /// candidate; a name that is not a registered step, or a value of another type, makes that
+    /// candidate invalid. The default dictionary compares names case-insensitively.
     /// </remarks>
     public IReadOnlyDictionary<string, object?> Steps { get; init; }
         = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);

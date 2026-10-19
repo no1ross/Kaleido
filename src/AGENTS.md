@@ -119,6 +119,8 @@ Middleware and endpoint mapping code should adapt contracts and wire the runtime
 ### Transport contract boundary
 Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`) are never serialized over HTTP directly. `QueryApiBody` and its sub-types in `Kaleido.Http.Abstractions` are the wire contract — string enums, `JsonElement` values. `QueryBodyResolver` (in `Kaleido.Http`) converts between them before handing to core.
 
+Core never parses transport input. The transport reads each submitted step into its step type (`POST /processes/execute`: `ProcessExecutionService`, with `KaleidoJsonOptions`, 400 for a step that cannot be built before anything runs) and core receives typed steps only; `Kaleido.Processor` has no `System.Text.Json` dependency (architecture test `Process_MustNotDependOnJson`). Core's one sanctioned JSON use is the event outbox (`Kaleido.Eventing`): its own storage format, where classified values are redacted (ADR 0013) (#344).
+
 `KaleidoJsonEndpointFilter` is applied to all Kaleido route groups — it wraps `IValueHttpResult` responses in `Results.Json(..., KaleidoJsonOptions.Options)` so enums serialize as strings. Do not call `ConfigureHttpJsonOptions` — it affects all endpoints in the host app, not just Kaleido's.
 
 `KaleidoJsonOptions.Options` (in `Kaleido.Http.Abstractions`) is the single shared `JsonSerializerOptions` for all Kaleido HTTP serialization. Every `ReadFromJsonAsync`/`JsonContent.Create` call in Kaleido code must pass it explicitly.

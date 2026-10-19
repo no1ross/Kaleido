@@ -71,12 +71,12 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `InvalidHandler` | `pro_invalid_handler` | Handler signature is invalid |
 | `DuplicateStep` | `pro_duplicate_step` | Two step types share a type name (step names are type names) |
 | `InvalidRegistration` | `pro_invalid_registration` | Step registration is structurally invalid (including `[ProcessStep]` on a type that does not implement `IProcessStep`, and an `IInformationStep` declaring properties other than `InformationRequestId` and `Items`) |
-| `UnknownStep` | `pro_unknown_step` | Requested step is not registered |
+| `UnknownStep` | `pro_unknown_step` | Requested step is not registered; on `POST /processes/execute` it rejects the whole request before anything runs (400) |
 | `ProcessNotFound` | `pro_process_not_found` | The request names a process that does not exist and is not a handoff from another processor; nothing is started (400, ADR 0009) |
 | `ProcessConflict` | `pro_process_conflict` | Another request saved the process since this one loaded it (optimistic concurrency); nothing of this request was saved. Read the process state again and decide on the next step (409, `KaleidoConcurrencyException`) |
 | `IdempotencyKeyReused` | `pro_idempotency_key_reused` | An `Idempotency-Key` was sent again with a different request; a key identifies one call - use a new key for a new call (422) |
 | `InvalidIdempotencyKey` | `pro_invalid_idempotency_key` | The `Idempotency-Key` header is longer than 200 characters (400) |
-| `InvalidRequest` | `pro_invalid_request` | Step request cannot be hydrated or processed, or an execute request names a step more than once (400) |
+| `InvalidRequest` | `pro_invalid_request` | An execute request names a step more than once (400), or a step reached the runtime as something other than its step type |
 | `PropertyNotFound` | `pro_property_not_found` | Requested step property was not found |
 | `ConversionFailed` | `pro_conversion_failed` | Request value could not be converted |
 | `ValidationFailed` | `pro_validation_failed` | Generic, custom, or object-level step validation failed |
@@ -144,7 +144,7 @@ Declared in `Kaleido.Http.Abstractions` (`Kaleido.Http` namespace), next to the 
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `ArgumentError` | `argument_error` | 400 (415 for a non-JSON content type): a body Kaleido cannot read - malformed JSON, a value that does not fit its type, a `required` member left out, a malformed correlation header such as a non-GUID `X-Kaleido-Process-Id` |
+| `ArgumentError` | `argument_error` | 400 (415 for a non-JSON content type): a body Kaleido cannot read - malformed JSON, a value that does not fit its type, a `required` member left out (on `POST /processes/execute` the message names the step and the JSON path, and nothing runs), a malformed correlation header such as a non-GUID `X-Kaleido-Process-Id` |
 | `FrameworkError` | `framework_error` | 500 for an unexpected failure; the message is generic and never carries the exception's detail |
 
 ---

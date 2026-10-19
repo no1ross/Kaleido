@@ -90,6 +90,24 @@ public sealed class ArchitectureTests
     }
 
     /// <summary>
+    /// The Process runtime never parses input: a transport reads its wire format into the step type
+    /// before core sees it (#344). Core's one sanctioned JSON use is the event outbox (Kaleido.Eventing).
+    /// </summary>
+    [Fact]
+    public void Process_MustNotDependOnJson()
+    {
+        var result =
+            Types.InAssembly(KaleidoAssembly)
+                .That()
+                .ResideInNamespace("Kaleido.Processor")
+                .ShouldNot()
+                .HaveDependencyOn("System.Text.Json")
+                .GetResult();
+
+        Assert.True(result.IsSuccessful, Failures(result));
+    }
+
+    /// <summary>
     /// Process is step-centric; Queryable is context/view-centric. They share
     /// only primitives (telemetry constants) via the Queryable → Process
     /// direction — Process must never reach back into Queryable.
