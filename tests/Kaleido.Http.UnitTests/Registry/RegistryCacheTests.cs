@@ -269,4 +269,72 @@ public sealed class HttpRegistryCacheTests
 
         Assert.Equal(1, buildCount);
     }
+
+    // IRegistrySnapshotStore is the public seam for a shared store (#293): two caches over one
+    // store (e.g. two router replicas) serve one snapshot, built once.
+    [Fact]
+    public async Task GetOrBuildAsync_TwoCachesOverOneStore_ShareTheSnapshot()
+    {
+        var store = CreateStore();
+        using var first = CreateSut(store);
+        using var second = CreateSut(store);
+        var builds = 0;
+
+        await first.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
+        await second.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, builds);
+    }
+
+    [Fact]
+    public async Task GetOrBuildAsync_PassesTheCallersTokenToTheStore()
+    {
+        using var cts = new CancellationTokenSource();
+        var store = new Mock<IRegistrySnapshotStore>();
+        store.Setup(s => s.GetAsync(Key, cts.Token)).ReturnsAsync((AggregatedRegistryResponse?)null);
+        using var sut = CreateSut(store.Object);
+
+        await sut.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => Clean(), cts.Token);
+
+        store.Verify(s => s.GetAsync(Key, cts.Token), Times.Exactly(2));
+        store.Verify(s => s.SetAsync(Key, It.IsAny<AggregatedRegistryResponse>(), cts.Token), Times.Once);
+    }
+
+    // A store failure is the caller's failure: nothing is built on top of an unreadable store.
+    // A store that may be unavailable handles that itself (a distributed store falls back, #275).
+    [Fact]
+    public async Task GetOrBuildAsync_WhenTheStoreFails_TheFailurePropagates_AndNothingIsBuilt()
+    {
+        var store = new Mock<IRegistrySnapshotStore>();
+        store.Setup(s => s.GetAsync(Key, It.IsAny<CancellationToken>())).ThrowsAsync(new TimeoutException("store down"));
+        using var sut = CreateSut(store.Object);
+        var built = false;
+
+        await Assert.ThrowsAsync<TimeoutException>(() => sut.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => { built = true; return Clean(); }, TestContext.Current.CancellationToken));
+
+        Assert.False(built);
+    }
+
+    [Fact]
+    public async Task GetOrBuildAsync_WhenCanceled_StopsWithoutStoring()
+    {
+        var store = new Mock<IRegistrySnapshotStore>();
+        store.Setup(s => s.GetAsync(Key, It.IsAny<CancellationToken>())).ReturnsAsync((AggregatedRegistryResponse?)null);
+        using var sut = CreateSut(store.Object);
+        using var cts = new CancellationTokenSource();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.GetOrBuildAsync(
+            null,
+            TimeSpan.Zero,
+            false,
+            ct =>
+            {
+                cts.Cancel();
+                ct.ThrowIfCancellationRequested();
+                return Clean();
+            },
+            cts.Token));
+
+        store.Verify(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
