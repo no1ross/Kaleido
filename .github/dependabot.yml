@@ -15,6 +15,13 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # The Roslyn version Kaleido.Analyzers references is the minimum compiler a consumer needs to
+      # load it: it stays at the oldest supported SDK's compiler and moves only deliberately (#387).
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp"
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp.Workspaces"
+      - dependency-name: "Microsoft.CodeAnalysis.Workspaces.Common"
+      # Pinned to 4.18.4, before SponsorLink (HP-010); lift the pin deliberately (#387).
+      - dependency-name: "Moq"
     groups:
       nuget:
         patterns: ["*"]
