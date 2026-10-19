@@ -260,7 +260,7 @@ public sealed class ProcessorObservabilityTests
         Assert.Equal(1, activity.GetTagItem(ProcessorTelemetry.TagPlanExecutableCount));
         Assert.Equal(nameof(ProcessExecutionState.Complete), activity.GetTagItem(ProcessorTelemetry.TagExecutionStatus));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
-        Assert.Equal("boom", activity.StatusDescription);
+        Assert.Equal(nameof(InvalidOperationException), activity.StatusDescription);
         var events = activity.Events.Select(x => x.Name).ToList();
         Assert.Contains(ProcessorTelemetry.ContextInitializedEventName, events);
         Assert.Contains(ProcessorTelemetry.ContextLoadedEventName, events);
@@ -463,7 +463,7 @@ public sealed class ProcessorObservabilityTests
         Assert.Equal(ProcessorTelemetry.StepHandlerActivityName, activity.OperationName);
         Assert.Equal("3.0.0", activity.GetTagItem(ProcessorTelemetry.TagStepVersion));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
-        Assert.Equal("handler boom", activity.StatusDescription);
+        Assert.Equal(nameof(InvalidOperationException), activity.StatusDescription);
         AssertLogged(logger, LogLevel.Trace, "Process handler execution started");
         AssertLogged(logger, LogLevel.Error, "Process handler execution failed");
     }

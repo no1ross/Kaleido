@@ -346,7 +346,7 @@ internal sealed partial class ProcessorObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            activity.SetErrorStatus(exception);
             activity.AddExceptionEvent(exception);
 
             ProcessExecutionFailuresCounter.Add(
@@ -473,7 +473,7 @@ internal sealed partial class ProcessorObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            activity.SetErrorStatus(exception);
             activity.AddExceptionEvent(exception);
 
             ProcessStepFailuresCounter.Add(
@@ -530,7 +530,7 @@ internal sealed partial class ProcessorObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            activity.SetErrorStatus(exception);
             activity.AddExceptionEvent(exception);
 
             ProcessHandlerFailuresCounter.Add(

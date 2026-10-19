@@ -54,7 +54,8 @@ internal sealed partial class SqliteKaleidoContextStore(
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             SqliteTelemetry.LoadFailuresCounter.Add(1);
-            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            // The type, never the driver's message (SQL, connection details) (#290).
+            activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
             LogLoadFailed(logger, exception, processId);
             throw;
         }
@@ -120,7 +121,7 @@ internal sealed partial class SqliteKaleidoContextStore(
         catch (Exception exception) when (exception is not OperationCanceledException and not KaleidoConcurrencyException)
         {
             SqliteTelemetry.SaveFailuresCounter.Add(1);
-            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
             LogSaveFailed(logger, exception, context.ProcessId);
             throw;
         }
