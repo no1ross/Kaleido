@@ -10,7 +10,7 @@ namespace Kaleido.Processor;
 /// each executed step (a step its handler rejects leaves the process unchanged and unsaved). The
 /// HTTP transport calls it for the process execute endpoints.
 /// </summary>
-public interface IProcessorRuntime
+internal interface IProcessorRuntime
 {
     /// <summary>
     /// Executes the steps in <paramref name="request"/> against the process it identifies, or
@@ -49,7 +49,7 @@ public interface IProcessorRuntime
 /// Use <see cref="ForStep{TStep}"/> to submit a single typed step.
 /// </remarks>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessRequest
+internal sealed record ProcessRequest
 {
     /// <summary>
     /// Uniquely identifies the durable process instance.
@@ -114,7 +114,7 @@ public sealed record ProcessRequest
 /// started from.
 /// </remarks>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessResult
+internal sealed record ProcessResult
 {
     /// <summary>The process instance the request ran against; newly generated when the request created the process without an id.</summary>
     public required Guid ProcessId { get; init; }
@@ -182,7 +182,7 @@ public sealed record ProcessResult
 /// it ran in this request, its outcome.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessStepResult
+internal sealed record ProcessStepResult
 {
     /// <summary>The step name as submitted in <see cref="ProcessorRequest.Steps"/>.</summary>
     public required string StepName
@@ -305,7 +305,6 @@ internal sealed class ProcessorRuntime(
                 await processor.ExecuteAsync(
                     executionCandidates,
                     context,
-                    request.Processor,
                     cancellationToken);
 
             var result = CreateResult(plan, executionResult);

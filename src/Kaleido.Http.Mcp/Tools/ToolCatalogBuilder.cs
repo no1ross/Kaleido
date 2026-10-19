@@ -201,7 +201,7 @@ internal sealed partial class ToolCatalogBuilder(
         string fieldOwner,
         IReadOnlyCollection<QueryableFieldMetadata> fields,
         IReadOnlyCollection<QueryableQueryParameter> parameters,
-        PageableMetadata? pageable)
+        QueryablePagingMetadata? pageable)
     {
         var properties = new JsonObject();
         var required = new List<string>();
@@ -252,7 +252,7 @@ internal sealed partial class ToolCatalogBuilder(
         string fieldOwner,
         JsonObject properties,
         IReadOnlyCollection<QueryableFieldMetadata> fields,
-        PageableMetadata? pageable)
+        QueryablePagingMetadata? pageable)
     {
         var searchable = fields.Where(x => x.IsSearchable).OrderBy(x => x.SearchPriority ?? int.MaxValue).ToArray();
         var filterable = fields.Where(x => x.IsFilterable && x.FilterOperators.Count > 0).ToArray();
@@ -362,7 +362,7 @@ internal sealed partial class ToolCatalogBuilder(
             },
         };
 
-    private static JsonObject PageSchema(PageableMetadata pageable) =>
+    private static JsonObject PageSchema(QueryablePagingMetadata pageable) =>
         new()
         {
             ["type"] = "object",
@@ -478,7 +478,7 @@ internal sealed partial class ToolCatalogBuilder(
 
         foreach (var group in fields.Where(x => x.Lookup is not null).GroupBy(x => x.Lookup?.Group ?? string.Empty, StringComparer.Ordinal))
         {
-            var first = group.Select(x => x.Lookup).OfType<Kaleido.Processor.Registry.LookupMetadata>().First();
+            var first = group.Select(x => x.Lookup).OfType<ProcessFieldLookup>().First();
 
             var query = context.Tools.Find(x =>
                 x.Kind == KaleidoToolKind.Query &&
@@ -811,7 +811,7 @@ internal sealed partial class ToolCatalogBuilder(
     private static string ClassificationValue(string classification) =>
         classification[(classification.LastIndexOf(':') + 1)..];
 
-    private static string DescribeType(DataTypeDescriptor type) =>
+    private static string DescribeType(DataTypeMetadata type) =>
         type.EnumValues is { Count: > 0 } values
             ? string.Join('|', values.Select(x => Camel(x.Name)))
             : type.Format ?? type.Type;

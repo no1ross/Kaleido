@@ -59,6 +59,21 @@ public sealed class KaleidoServiceOptionsBuilderTests : SutFixture<KaleidoServic
     }
 
     [Fact]
+    public void Build_CopiesAssemblies_SoChangingTheBuilderArrayDoesNotLeak()
+    {
+        var sut = CreateSut();
+        var assemblies = new[] { typeof(KaleidoServiceOptions).Assembly };
+        sut.Assemblies = assemblies;
+
+        var options = sut.Build();
+        assemblies[0] = typeof(KaleidoServiceOptionsBuilderTests).Assembly;
+
+        Assert.Equal([typeof(KaleidoServiceOptions).Assembly], options.Assemblies);
+        Assert.NotSame(assemblies, options.Assemblies);
+        Assert.Throws<NotSupportedException>(() => ((IList<System.Reflection.Assembly>)options.Assemblies!)[0] = assemblies[0]);
+    }
+
+    [Fact]
     public void Build_WhenEventsIsNull_ThrowsInvalidEventOptions()
     {
         var sut = CreateSut();

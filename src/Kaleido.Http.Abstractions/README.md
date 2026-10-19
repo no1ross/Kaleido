@@ -22,6 +22,7 @@ See also:
 - `ProcessRequiredStep` — the step a process requires next: the fields of a `ProcessStepSummary` (including its execute URL) plus the pending information request, if any
 - `ProcessorRegistryResponse` — full processor registry record (all step metadata)
 - `ProcessStepResponse` — detailed step metadata record
+- `ProcessFieldMetadata` / `ProcessFieldLookup` / `ProcessOutputFieldMetadata` / `ProcessStepResultMetadata` — a step's input fields (with their lookup) and its typed result fields
 
 For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Kaleido.Http/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
 
@@ -35,6 +36,7 @@ For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteSte
 
   Every source is presented the same way; how the service fulfils it is not part of the contract. `QueryUrl` is null only in a caller-filtered registry, when the caller may use some of the source's views but not the source itself.
 - `QueryableViewResponse` — a view of a source (`QueryUrl`, `Parameters`, `OutputFields`, paging)
+- `QueryableFieldMetadata` / `QueryableQueryParameter` / `QueryableQueryProperty` / `QueryablePagingMetadata` — a source's query fields, a source's or view's parameters and result fields, and its paging
 - Errors use the shared `KaleidoErrorResponse` (defined in `Kaleido` core): `{ "errors": [{ "code", "message" }] }`; query validation failures are 400 with `qry_*` codes ([`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
 - `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated query sources calling a remote source or view)
 
@@ -91,5 +93,7 @@ When a contract must change, also update:
 
 - `Processor/ProcessContracts.cs` — all Process HTTP request/response types; `Processor/IKaleidoProcessorClient*.cs` — the process client interfaces
 - `Queryable/QueryableContracts.cs` and `Queryable/QueryApiBody.cs` — all Queryable HTTP request/response types; `Queryable/IKaleidoQueryableClient*.cs` — the queryable client interfaces
-- `Registry/` — `AggregatedRegistryResponse`, `IRegistrySnapshotStore`, `RegistryEndpointNames`
+- `Registry/` — `AggregatedRegistryResponse`, `IRegistrySnapshotStore`, `RegistryEndpointNames`, and the metadata shared by Process and Queryable registry entries (`DataTypeMetadata`, `EnumValueMetadata`, `ConstraintMetadata`, `ConstraintParameterMetadata`)
+
+The registry contracts are self-contained: they neither inherit from nor carry core's registry descriptors, which are internal; `Kaleido.Http` maps the runtime registries to them (#356).
 - `KaleidoJsonOptions.cs`, `KaleidoCorrelationHeaders.cs`, `HttpHeaderSanitizer.cs`

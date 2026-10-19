@@ -9,7 +9,6 @@ internal interface IProcessorExecutor
     Task<ProcessExecutionResult> ExecuteAsync(
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context,
-        ProcessorRequest originalRequest,
         CancellationToken cancellationToken = default);
 }
 
@@ -29,13 +28,12 @@ internal sealed class ProcessorExecutor(
     public async Task<ProcessExecutionResult> ExecuteAsync(
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context,
-        ProcessorRequest originalRequest,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
 
-        var run = new ExecutionRun(candidates, originalRequest);
+        var run = new ExecutionRun(candidates);
         var currentCandidate = run.RemainingCandidates.FirstOrDefault();
 
         while (currentCandidate is not null)
@@ -179,7 +177,6 @@ internal sealed class ProcessorExecutor(
     {
         var candidates = run.Candidates;
         var remainingCandidates = run.RemainingCandidates;
-        var originalRequest = run.OriginalRequest;
 
         var stepContext =
             context.FindStep(
@@ -198,8 +195,7 @@ internal sealed class ProcessorExecutor(
             new ProcessStepContext(
                 context.ProcessId,
                 stepContext,
-                initialAvailableSteps,
-                originalRequest);
+                initialAvailableSteps);
 
         var result =
             await invoker.ExecuteAsync(
@@ -430,14 +426,11 @@ internal sealed class ProcessorExecutor(
 
     // The state of one request's execution.
     private sealed class ExecutionRun(
-        IReadOnlyCollection<StepCandidate> candidates,
-        ProcessorRequest originalRequest)
+        IReadOnlyCollection<StepCandidate> candidates)
     {
         public IReadOnlyCollection<StepCandidate> Candidates { get; } = candidates;
 
         public List<StepCandidate> RemainingCandidates { get; } = [.. candidates];
-
-        public ProcessorRequest OriginalRequest { get; } = originalRequest;
 
         public List<ProcessExecutionOutcome> Outcomes { get; } = [];
     }

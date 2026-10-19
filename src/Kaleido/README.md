@@ -17,7 +17,7 @@ For the full repository model, see:
 - a default no-op `IEventPublisher` (internal) — events are discarded, with a Warning log, until the host calls `AddEventPublisher<T>()`
 
 ### Shared abstractions
-- `ITypeDescriber` / `TypeDescriber` (internal) — converts CLR types and properties into transport-friendly `DataTypeDescriptor` values
+- `ITypeDescriber` / `TypeDescriber` (internal) — converts CLR types and properties into `DataTypeDescriptor` values (internal; the HTTP transport maps them to the wire's `DataTypeMetadata`)
 - `IConstraintMapper` / `ConstraintMapper` (internal) — converts `ValidationAttribute` usage into metadata constraint contracts
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - `IEventPublisher` / `IKaleidoEvent` - infrastructure-agnostic event publication seam; events reach the publisher at least once through the outbox and the event relay (`KaleidoEventRelay`, `KaleidoEventOptions`, ADR 0012)
@@ -26,8 +26,8 @@ For the full repository model, see:
 
 ### Queryable runtime
 - `QueryableServiceCollectionExtensions` — `AddQueryable()` (internal, auto-invoked by `AddKaleido()`)
-- `QueryableService` — main dispatch service (by queried type: view, local source, or delegated source)
-- `IQuerySourceRegistry` / `IQueryViewRegistry` — runtime registries (sources keyed by source type and name; views keyed by view type)
+- `IQueryableService` / `QueryableService` (internal; called by the HTTP transport) — main dispatch service (by queried type: view, local source, or delegated source)
+- `IQuerySourceRegistry` / `IQueryViewRegistry` (internal) — runtime registries (sources keyed by source type and name; views keyed by view type)
 - `QueryContextEngine` / `DelegatedQuerySourceEngine` / `QueryContextExecutor` — query execution pipeline
 - `IQueryContextExecutor<TView>` — public extension point: register your own implementation to plug in provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`). Default executor uses `IAsyncEnumerable<T>` when supported, sync LINQ otherwise; it counts an async query by reading every matching row, so EF Core hosts should register an EF executor ([docs/PATTERNS.md](../../docs/PATTERNS.md#queryable-sources-views-and-query-contexts)).
 - `QueryRequestCompiler` / `QueryRequestValidator` — validation and compilation
@@ -38,9 +38,9 @@ For the full repository model, see:
 
 ### Process runtime
 - `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
-- `IProcessorRuntime` — runs submitted steps in-process (what the HTTP transport calls); `ProcessorExecutor` (internal) is the main step execution loop
+- `IProcessorRuntime` (internal) — runs submitted steps in-process (what the HTTP transport calls); `ProcessorExecutor` (internal) is the main step execution loop
 - `StepCandidateBuilder` / `StepCandidateValidator` / `StepCandidateConsistencyChecker` / `StepCandidatePlanner` / `StepCandidateNextStepChecker` — planning pipeline
-- `IProcessorStepRegistry` / `IProcessorRegistry` — runtime registries (`IProcessorRegistry` is internal, shared with `Kaleido.Http`)
+- `IProcessorStepRegistry` / `IProcessorRegistry` (internal, shared with `Kaleido.Http`) — runtime registries
 - `ProcessorObservability` (internal) — logs, traces and metrics of the runtime
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
 - `IInformationStep` / `InformationRequest` / `RequireInformation<TNext>` — information requests: runtime-decided questions answered by an information step (see [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md))
@@ -120,7 +120,7 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 - **Pages are stable.** A pageable view or local source declares a sortable `DefaultSortField` (on `[QueryView]` / `[QuerySource]`; startup fails with `qry_invalid_registration` otherwise), and a request without a sort is ordered by it, ascending. Prefer a unique field: rows with equal values can still swap places between pages. A delegated source's order is its downstream's. The default is published as `pageable.defaultSortField`.
 - **Query parameters are validated before the query runs,** like a step's input: the parameters record's DataAnnotations (`[Required]` → `qry_missing_parameter`, others → `qry_invalid_parameter_value`), and a missing record is rejected when it has a `[Required]` member. A source or view can rely on its required parameters being present. For value types, declare the parameter with the C# `required` keyword (or a nullable type): on a plain `Guid` an omitted value is `Guid.Empty` and passes `[Required]` (KAL2022). The same holds for step inputs (KAL2021).
 - **Request bodies are read by Kaleido.** The per-step and query endpoints deserialize their typed body themselves (`KaleidoJsonBody<T>`), so a body that does not fit (a malformed value, a `required` member left out) is answered 400 `argument_error` naming the JSON path, by Kaleido's error handling - never by the host's developer exception page or `UseExceptionHandler`.
-- **How a source is fulfilled (`QuerySourceKind`: local or delegated) is runtime metadata for the service only.** It is available via `QueryExecutionContext.Metadata` and never published to consumers.
+- **How a source is fulfilled (`QuerySourceKind`: local or delegated) is runtime metadata for the service only.** It is internal: never published, and not passed to sources and views (`QueryExecutionContext` carries only the request).
 
 ### Performance implications
 
@@ -137,7 +137,7 @@ Process is step-centric:
 2. implement exactly one `IProcessStepHandler<TStep>` (or `<TStep, TResult>`)
 3. register the assemblies containing steps via `KaleidoServiceOptions.Assemblies`
 4. let the runtime build a registry and manage state
-5. submit one or more steps through `IProcessorRuntime` or the HTTP transport layer
+5. submit one or more steps through a transport (the HTTP transport, `Kaleido.Http`); the in-process runtime it calls is internal
 
 A step's public name is its type name (`Type.Name`, unmodified) — in the registry, on the wire, in persisted state, and in events. Handlers name the next step by type (`ProcessStepHandlerResult.Success<TNext>()`, or `ProcessStepHandlerResult.Success(response).Next<TNext>()` with a typed response); names are only produced at the boundary.
 

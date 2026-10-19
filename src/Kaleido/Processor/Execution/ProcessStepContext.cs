@@ -16,14 +16,14 @@ namespace Kaleido.Processor.Execution;
 /// completed so far plus this one, computed before the handler runs. Information steps are
 /// included; they only run when required with an information request.
 /// </param>
-/// <param name="OriginalRequest">
-/// All the steps submitted with the request that runs this step, with their input as submitted.
-/// </param>
+/// <remarks>
+/// The handler's input is its own step (the typed step instance); it does not see the other steps
+/// submitted with the same request.
+/// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed record ProcessStepContext
 (
     Guid ProcessId,
     StepContext StepContext,
-    IReadOnlyCollection<string> AvailableNextSteps,
-    ProcessorRequest OriginalRequest
+    IReadOnlyCollection<string> AvailableNextSteps
 );
