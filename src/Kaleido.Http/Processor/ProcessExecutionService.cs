@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Kaleido.Http.Authorization;
 using Kaleido.Processor;
 using Kaleido.Processor.Registry;
@@ -63,6 +64,10 @@ internal sealed partial class ProcessExecutionService(
                 cancellationToken);
         }
 
+        // Every step is built before anything runs: a step that cannot be built rejects the whole
+        // request, so nothing runs and no process is created (#344).
+        var steps = BuildSteps(request.Steps);
+
         // No case-level guardrail (ADR 0010): any caller admitted by the
         // steps' declared roles/policies may create or resume the process.
         LogExecutingProcess(logger, serviceOptions.ServiceName, request.Steps.Count);
@@ -71,14 +76,7 @@ internal sealed partial class ProcessExecutionService(
             new ProcessRequest
             {
                 ProcessId = correlationAccessor.Current.ProcessId,
-                Processor =
-                    new ProcessorRequest
-                    {
-                        Steps = request.Steps.ToDictionary(
-                            x => x.StepName,
-                            x => (object?)x.Request,
-                            StringComparer.OrdinalIgnoreCase),
-                    },
+                Processor = new ProcessorRequest { Steps = steps },
             };
 
         var processResult =
@@ -107,6 +105,39 @@ internal sealed partial class ProcessExecutionService(
             throw new KaleidoValidationException(
                 ProcessorErrorCodes.InvalidRequest,
                 $"Step '{duplicate.Last().StepName}' is submitted more than once; submit each step once per request.");
+        }
+    }
+
+    // The transport turns each step's JSON into its step type, with the same rules as the per-step
+    // routes (KaleidoJsonOptions); core receives typed steps only.
+    private Dictionary<string, object?> BuildSteps(IReadOnlyCollection<ProcessStepRequest> steps)
+    {
+        var built = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var step in steps)
+        {
+            var registration =
+                registry.Find(step.StepName)
+                ?? throw new KaleidoValidationException(
+                    ProcessorErrorCodes.UnknownStep,
+                    $"Process step '{step.StepName}' is not registered.");
+
+            built[step.StepName] = ReadStep(step, registration.StepType);
+        }
+
+        return built;
+    }
+
+    private static object ReadStep(ProcessStepRequest step, Type stepType)
+    {
+        try
+        {
+            return step.Request.Deserialize(stepType, KaleidoJsonOptions.Options)
+                ?? throw new BadHttpRequestException($"Step '{step.StepName}' has no input; send the step's fields as an object.");
+        }
+        catch (JsonException exception)
+        {
+            throw new BadHttpRequestException($"Step '{step.StepName}': {exception.Describe()}", StatusCodes.Status400BadRequest, exception);
         }
     }
 

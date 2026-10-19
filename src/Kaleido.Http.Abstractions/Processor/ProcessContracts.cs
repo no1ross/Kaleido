@@ -16,7 +16,9 @@ namespace Kaleido.Http.Processor;
 /// The process id is not part of the body: an existing process is continued by sending its id in the
 /// <c>X-Kaleido-Process-Id</c> request header; without it a new process is started. Every submitted
 /// step is authorized against its own declared requirement before anything runs, and the first
-/// denial rejects the whole request.
+/// denial rejects the whole request. Then every step is read into its step type: an unknown step
+/// (400, <c>pro_unknown_step</c>) or an input that does not fit it (400, <c>argument_error</c> naming
+/// the step and the JSON path) rejects the whole request, so nothing runs and no process is created.
 /// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed record ExecuteProcessRequest
@@ -50,7 +52,7 @@ public sealed record ProcessStepRequest
 
     /// <summary>
     /// The step's input as raw JSON: the same object that the per-step endpoint takes as
-    /// <c>processStep</c>. It is passed to the runtime as submitted.
+    /// <c>processStep</c>, read into the step type with the same rules.
     /// </summary>
     public required JsonElement Request
     {
