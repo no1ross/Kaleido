@@ -1,9 +1,9 @@
 using System.Text.Json;
 
-namespace Kaleido.UnitTests;
+namespace Kaleido.Http.UnitTests;
 
 public sealed class KaleidoErrorResponseTests
-    : SutFixture<KaleidoErrorResponse>
+    : Kaleido.UnitTests.SutFixture<KaleidoErrorResponse>
 {
     private static readonly JsonSerializerOptions WebOptions =
         new(JsonSerializerDefaults.Web);
