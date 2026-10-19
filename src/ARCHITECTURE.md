@@ -160,7 +160,7 @@ Public seams consumers are expected to implement or replace:
 **Queryable contracts**
 - Request: `QueryApiRequest`, `QueryApiRequest<TParameters>` — accepts `QueryApiBody` (transport shape)
 - Transport body: `QueryApiBody`, `QueryApiFilterNode`, `QueryApiFilterCondition`, `QueryApiFilterGroup`, `QueryApiSort`, `QueryApiPage` — string enums, raw `JsonElement` filter values
-- Response: `QueryableSourceResponse` (carries `ServiceName`, `RegistryUrl`), `QueryableFieldMetadata`, `QueryableViewResponse`; errors use the core `KaleidoErrorResponse`
+- Response: `QueryableSourceResponse` (carries `ServiceName`, `RegistryUrl`), `QueryableFieldMetadata`, `QueryableViewResponse`; errors use the shared `KaleidoErrorResponse` (in `Kaleido.Http.Abstractions`)
 - `QueryApiBodyExtensions.ToApiBody()` — converts runtime `QueryBody` → `QueryApiBody` for core callers forwarding over HTTP (e.g. delegated query sources)
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` with `JsonStringEnumConverter` for all Kaleido HTTP serialization
 

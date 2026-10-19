@@ -15,6 +15,13 @@ namespace Kaleido.Http.Registry;
 /// used so in-memory and distributed stores behave identically.
 /// Only clean (non-partial) snapshots are ever written, and they always carry
 /// a populated <see cref="AggregatedRegistryResponse.GeneratedAt"/>.
+/// <para>
+/// Every call is awaited with the caller's cancellation token; nothing blocks on it. An exception
+/// from the store is the caller's failure (the registry read fails and nothing is stored), so a
+/// store that can be unavailable handles that itself, for example by falling back to memory.
+/// Registered with <c>TryAdd</c> by both <c>AddHttp()</c> and <c>AddHttpClients()</c>: register your
+/// implementation before them to replace the in-memory default (ADR 0017).
+/// </para>
 /// </remarks>
 public interface IRegistrySnapshotStore
 {

@@ -70,6 +70,26 @@ public sealed class ArchitectureTests
     }
 
     /// <summary>
+    /// HTTP contract types (responses, the error body and its codes) live in
+    /// Kaleido.Http.Abstractions, never in transport-free core (#298).
+    /// </summary>
+    [Fact]
+    public void Core_MustNotContainHttpContractTypes()
+    {
+        var result =
+            Types.InAssembly(KaleidoAssembly)
+                .ShouldNot()
+                .HaveNameEndingWith("Response")
+                .Or()
+                .HaveName("KaleidoError")
+                .Or()
+                .HaveName("KaleidoErrorCodes")
+                .GetResult();
+
+        Assert.True(result.IsSuccessful, Failures(result));
+    }
+
+    /// <summary>
     /// Process is step-centric; Queryable is context/view-centric. They share
     /// only primitives (telemetry constants) via the Queryable → Process
     /// direction — Process must never reach back into Queryable.

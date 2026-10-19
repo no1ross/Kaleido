@@ -32,6 +32,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0014](./0014-kaleido-telemetry-only-what-kaleido-observes.md) | Kaleido emits telemetry only for what Kaleido alone can observe; OTel parts are switchable | Accepted | #109 |
 | [0015](./0015-declared-step-behavior.md) | Step behavior (destructive, external, confirmation) is declared; idempotence derived; classifications published | Accepted | #137 |
 | [0016](./0016-mcp-front-door-tool-listing.md) | The MCP adapter can list a front door (derived from initial steps and their lookups); open steps arrive in `next` and run with `call_tool` | Accepted | #338 |
+| [0017](./0017-transport-contract-placement.md) | Transport contracts (including the error body) live in `Kaleido.Http.Abstractions` under the `Kaleido.Http` namespace; `IRegistrySnapshotStore` stays a public async seam | Accepted | #298, #293 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are
