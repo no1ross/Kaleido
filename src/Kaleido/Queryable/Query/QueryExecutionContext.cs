@@ -1,10 +1,7 @@
-using Kaleido.Queryable.Metadata;
-
 namespace Kaleido.Queryable.Query;
 
 /// <summary>
-/// What a local query source or view receives about the query being executed: the source's
-/// metadata and the current request.
+/// What a local query source or view receives about the query being executed: the current request.
 /// </summary>
 /// <remarks>
 /// Passed to <see cref="IQuerySource{TQueryContext}.CreateQuery"/>,
@@ -13,15 +10,10 @@ namespace Kaleido.Queryable.Query;
 /// applies search, filter, sort and paging itself; sources and views read the parameters through
 /// <see cref="TryGetViewParameters{TViewParameters}"/>.
 /// </remarks>
-/// <param name="Metadata">
-/// The metadata of the query source being queried (also for a view query, where it is the view's
-/// source).
-/// </param>
 /// <param name="Request">The validated request being executed.</param>
 [ExcludeFromCodeCoverage]
 public sealed record QueryExecutionContext
 (
-    QuerySourceMetadata Metadata,
     IQueryRequest Request
 )
 {

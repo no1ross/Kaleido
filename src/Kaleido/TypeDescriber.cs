@@ -40,7 +40,7 @@ namespace Kaleido;
 /// The descriptor of the element type of an <c>"array"</c>; <see langword="null"/> for every other type.
 /// </param>
 [ExcludeFromCodeCoverage]
-public sealed record DataTypeDescriptor(
+internal sealed record DataTypeDescriptor(
     string Type,
     string? Format = null,
     bool Nullable = false,
@@ -56,7 +56,7 @@ public sealed record DataTypeDescriptor(
 /// The member's <see cref="DescriptionAttribute"/> text, or <see langword="null"/> when it has none.
 /// </param>
 [ExcludeFromCodeCoverage]
-public sealed record EnumValueDescriptor(
+internal sealed record EnumValueDescriptor(
     int Value,
     string Name,
     string? Description);

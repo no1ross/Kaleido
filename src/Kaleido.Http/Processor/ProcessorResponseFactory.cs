@@ -162,11 +162,11 @@ internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Name = item.Name,
             DisplayName = item.DisplayName,
             Prompt = item.Prompt,
-            Lookup = item.Lookup,
+            Lookup = item.Lookup.ToWire(),
             Description = item.Description,
-            DataType = item.DataType,
+            DataType = item.DataType.ToWire(),
             Classifications = item.Classifications,
-            Constraints = item.Constraints,
+            Constraints = item.Constraints.ToWire(),
         };
     }
 
@@ -188,7 +188,7 @@ internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
         {
             Name = item.Name,
             Description = item.Description,
-            DataType = item.DataType,
+            DataType = item.DataType.ToWire(),
             Classifications = item.Classifications,
         };
     }

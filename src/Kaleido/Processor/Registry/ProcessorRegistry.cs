@@ -8,7 +8,7 @@ namespace Kaleido.Processor.Registry;
 /// start a process and every registered step. Built once at startup from the discovered steps.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessorRegistryItem
+internal sealed record ProcessorRegistryItem
 {
     /// <summary>
     /// Marks this processor as the entry point for the application workflow.
@@ -35,7 +35,7 @@ public sealed record ProcessorRegistryItem
 /// that name a step elsewhere (initial steps, relationships, next and required steps).
 /// </summary>
 [ExcludeFromCodeCoverage]
-public abstract record ProcessorStepDescriptor
+internal abstract record ProcessorStepDescriptor
 {
     /// <summary>The step's name: its type name.</summary>
     public required string Name { get; init; }
@@ -76,7 +76,7 @@ public abstract record ProcessorStepDescriptor
 
 /// <summary>A step as published in the processor registry: its description, inputs, relationships and result.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessorStepRegistryItem : ProcessorStepDescriptor
+internal sealed record ProcessorStepRegistryItem : ProcessorStepDescriptor
 {
     /// <summary>The step's input fields; empty for an information step.</summary>
     public IReadOnlyCollection<ProcessorInputFieldDescriptor> Fields { get; init; }
@@ -100,13 +100,13 @@ public sealed record ProcessorStepRegistryItem : ProcessorStepDescriptor
 
 /// <summary>A step named from elsewhere: an initial step, a relationship, a next or the required step.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessorStepSummary : ProcessorStepDescriptor;
+internal sealed record ProcessorStepSummary : ProcessorStepDescriptor;
 
 /// <summary>
 /// A published property of a step: an input field of the step or an output field of its result.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public record ProcessorPropertyDescriptor
+internal record ProcessorPropertyDescriptor
 {
     /// <summary>The property's name, as declared on its type.</summary>
     public required string Name { get; init; }
@@ -132,7 +132,7 @@ public record ProcessorPropertyDescriptor
 /// validation constraints.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
+internal record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
 {
     /// <summary>
     /// A short label for the input, from <c>[Display(Name = …)]</c>. A hint for UIs and AI
@@ -168,7 +168,7 @@ public record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
 /// A published link, never a choice: the user identifies and picks the result (ADR 0008).
 /// </remarks>
 [ExcludeFromCodeCoverage]
-public sealed record LookupMetadata
+internal sealed record LookupMetadata
 {
     /// <summary>The service that publishes the query.</summary>
     public required string Service { get; init; }
@@ -191,14 +191,14 @@ public sealed record LookupMetadata
 
 /// <summary>An output field of a step's result: a public readable instance property of the handler's typed response.</summary>
 [ExcludeFromCodeCoverage]
-public record ProcessorOutputFieldDescriptor : ProcessorPropertyDescriptor;
+internal record ProcessorOutputFieldDescriptor : ProcessorPropertyDescriptor;
 
 /// <summary>
 /// The result of a step whose handler returns a typed response
 /// (<see cref="Kaleido.Processor.Execution.IProcessStepHandler{TProcessStep, TProcessStepResult}"/>).
 /// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessorStepResultDescriptor
+internal sealed record ProcessorStepResultDescriptor
 {
     /// <summary>
     /// The response type's public readable instance properties. Empty when the response type is a

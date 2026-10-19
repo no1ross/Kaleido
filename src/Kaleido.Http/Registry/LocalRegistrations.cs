@@ -27,5 +27,5 @@ internal sealed class LocalRegistrations(
         queryableRegistries
             .Take(1)
             .SelectMany(x => x.Registrations)
-            .Select(r => QueryableSourceResponse.FromRegistryItem(r, serviceOptions.ServiceName));
+            .Select(r => r.ToResponse(serviceOptions.ServiceName));
 }

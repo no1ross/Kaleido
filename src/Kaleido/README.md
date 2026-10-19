@@ -17,7 +17,7 @@ For the full repository model, see:
 - a default no-op `IEventPublisher` (internal) — events are discarded, with a Warning log, until the host calls `AddEventPublisher<T>()`
 
 ### Shared abstractions
-- `ITypeDescriber` / `TypeDescriber` (internal) — converts CLR types and properties into transport-friendly `DataTypeDescriptor` values
+- `ITypeDescriber` / `TypeDescriber` (internal) — converts CLR types and properties into `DataTypeDescriptor` values (internal; the HTTP transport maps them to the wire's `DataTypeMetadata`)
 - `IConstraintMapper` / `ConstraintMapper` (internal) — converts `ValidationAttribute` usage into metadata constraint contracts
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - `IEventPublisher` / `IKaleidoEvent` - infrastructure-agnostic event publication seam; events reach the publisher at least once through the outbox and the event relay (`KaleidoEventRelay`, `KaleidoEventOptions`, ADR 0012)
@@ -120,7 +120,7 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 - **Pages are stable.** A pageable view or local source declares a sortable `DefaultSortField` (on `[QueryView]` / `[QuerySource]`; startup fails with `qry_invalid_registration` otherwise), and a request without a sort is ordered by it, ascending. Prefer a unique field: rows with equal values can still swap places between pages. A delegated source's order is its downstream's. The default is published as `pageable.defaultSortField`.
 - **Query parameters are validated before the query runs,** like a step's input: the parameters record's DataAnnotations (`[Required]` → `qry_missing_parameter`, others → `qry_invalid_parameter_value`), and a missing record is rejected when it has a `[Required]` member. A source or view can rely on its required parameters being present. For value types, declare the parameter with the C# `required` keyword (or a nullable type): on a plain `Guid` an omitted value is `Guid.Empty` and passes `[Required]` (KAL2022). The same holds for step inputs (KAL2021).
 - **Request bodies are read by Kaleido.** The per-step and query endpoints deserialize their typed body themselves (`KaleidoJsonBody<T>`), so a body that does not fit (a malformed value, a `required` member left out) is answered 400 `argument_error` naming the JSON path, by Kaleido's error handling - never by the host's developer exception page or `UseExceptionHandler`.
-- **How a source is fulfilled (`QuerySourceKind`: local or delegated) is runtime metadata for the service only.** It is available via `QueryExecutionContext.Metadata` and never published to consumers.
+- **How a source is fulfilled (`QuerySourceKind`: local or delegated) is runtime metadata for the service only.** It is internal: never published, and not passed to sources and views (`QueryExecutionContext` carries only the request).
 
 ### Performance implications
 

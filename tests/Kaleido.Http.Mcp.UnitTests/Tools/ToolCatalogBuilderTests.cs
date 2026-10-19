@@ -13,13 +13,13 @@ public sealed class ToolCatalogBuilderTests
             .Returns((string service, string type) => naming?.Invoke(service, type) ?? new ToolName($"{service}_{type}".ToLowerInvariant(), false));
 
         var schemas = new Mock<IToolSchemaBuilder>();
-        schemas.Setup(x => x.ForValue(It.IsAny<DataTypeDescriptor>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<ConstraintContract>?>()))
-            .Returns((DataTypeDescriptor type, string? description, IReadOnlyCollection<ConstraintContract>? _) =>
+        schemas.Setup(x => x.ForValue(It.IsAny<DataTypeMetadata>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<ConstraintMetadata>?>()))
+            .Returns((DataTypeMetadata type, string? description, IReadOnlyCollection<ConstraintMetadata>? _) =>
                 description is null
                     ? new JsonObject { ["type"] = type.Type }
                     : new JsonObject { ["type"] = type.Type, ["description"] = description });
-        schemas.Setup(x => x.IsRequired(It.IsAny<IReadOnlyCollection<ConstraintContract>?>()))
-            .Returns((IReadOnlyCollection<ConstraintContract>? constraints) => constraints?.Any(c => c.Type == "Required") == true);
+        schemas.Setup(x => x.IsRequired(It.IsAny<IReadOnlyCollection<ConstraintMetadata>?>()))
+            .Returns((IReadOnlyCollection<ConstraintMetadata>? constraints) => constraints?.Any(c => c.Type == "Required") == true);
 
         return new ToolCatalogBuilder(
             names.Object,
@@ -27,7 +27,7 @@ public sealed class ToolCatalogBuilderTests
             new KaleidoMcpOptions { Instructions = "test", ToolListing = listing, ListedTools = listedTools ?? [] });
     }
 
-    private static readonly DataTypeDescriptor Text = new("string");
+    private static readonly DataTypeMetadata Text = new("string");
 
     private static QueryableSourceResponse Patients(string? queryUrl = "/clinic/queryable/patients/query") => new()
     {
@@ -37,13 +37,13 @@ public sealed class ToolCatalogBuilderTests
         Description = "Patients registered at the clinic",
         Source = "EHR",
         QueryUrl = queryUrl,
-        Pageable = new PageableMetadata(25, 100),
+        Pageable = new QueryablePagingMetadata(25, 100),
         Fields =
         [
-            new QueryableFieldMetadata { Name = "Id", Description = "The id.", DataType = new DataTypeDescriptor("integer"), IsFilterable = true, FilterOperators = [FilterOperator.Equals, FilterOperator.In] },
+            new QueryableFieldMetadata { Name = "Id", Description = "The id.", DataType = new DataTypeMetadata("integer"), IsFilterable = true, FilterOperators = [FilterOperator.Equals, FilterOperator.In] },
             new QueryableFieldMetadata { Name = "Name", DataType = Text, IsSearchable = true, SearchPriority = 1, MatchMode = MatchMode.Contains, IsSortable = true }
         ],
-        Parameters = [new QueryableQueryParameter { Name = "ClinicId", Description = "The clinic.", DataType = Text, Constraints = [new ConstraintContract { Type = "Required" }] }],
+        Parameters = [new QueryableQueryParameter { Name = "ClinicId", Description = "The clinic.", DataType = Text, Constraints = [new ConstraintMetadata { Type = "Required" }] }],
         OutputFields = [new QueryableQueryProperty { Name = "Id", DataType = Text }, new QueryableQueryProperty { Name = "Name", DataType = Text }],
         Views =
         [
@@ -66,7 +66,7 @@ public sealed class ToolCatalogBuilderTests
                 ExecuteUrl = "/clinic/processes/steps/StartVisitStep",
                 Fields =
                 [
-                    new ProcessFieldMetadata { Name = "PatientId", Description = "The patient.", DisplayName = "Patient", Prompt = "Which patient?", DataType = new DataTypeDescriptor("integer"), Constraints = [new ConstraintContract { Type = "Required" }] },
+                    new ProcessFieldMetadata { Name = "PatientId", Description = "The patient.", DisplayName = "Patient", Prompt = "Which patient?", DataType = new DataTypeMetadata("integer"), Constraints = [new ConstraintMetadata { Type = "Required" }] },
                     new ProcessFieldMetadata { Name = "Reason", DataType = Text }
                 ],
                 Result = new ProcessStepResultMetadata { OutputFields = [new ProcessOutputFieldMetadata { Name = "VisitId", DataType = Text }] }
@@ -186,7 +186,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var scoped = Patients() with
         {
-            Parameters = [new QueryableQueryParameter { Name = "ProcessId", Description = "The visit this search is for.", DataType = Text, Constraints = [new ConstraintContract { Type = "Required" }] }]
+            Parameters = [new QueryableQueryParameter { Name = "ProcessId", Description = "The visit this search is for.", DataType = Text, Constraints = [new ConstraintMetadata { Type = "Required" }] }]
         };
 
         var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [scoped], Processes = [Visits()] }), "clinic_patientsource");
@@ -357,7 +357,7 @@ public sealed class ToolCatalogBuilderTests
         {
             Fields =
             [
-                new QueryableFieldMetadata { Name = "Id", Description = "The id.", DataType = new DataTypeDescriptor("integer"), IsFilterable = true, FilterOperators = [FilterOperator.Equals], IsSearchable = true, SearchPriority = 2, MatchMode = MatchMode.Exact },
+                new QueryableFieldMetadata { Name = "Id", Description = "The id.", DataType = new DataTypeMetadata("integer"), IsFilterable = true, FilterOperators = [FilterOperator.Equals], IsSearchable = true, SearchPriority = 2, MatchMode = MatchMode.Exact },
                 new QueryableFieldMetadata { Name = "Name", Description = "The patient's full name.", DataType = Text, IsSearchable = true, SearchPriority = 1, MatchMode = MatchMode.Contains },
                 new QueryableFieldMetadata { Name = "Born", Description = "The date of birth.", DataType = Text, IsSortable = true },
             ],
@@ -441,14 +441,14 @@ public sealed class ToolCatalogBuilderTests
                         Name = "PatientId",
                         Description = "The patient.",
                         DataType = Text,
-                        Lookup = new Kaleido.Processor.Registry.LookupMetadata { Service = "clinic", Source = "PatientSource", View = viewName, Field = "Id", Group = "patient", Display = ["Name", "DateOfBirth"] }
+                        Lookup = new ProcessFieldLookup { Service = "clinic", Source = "PatientSource", View = viewName, Field = "Id", Group = "patient", Display = ["Name", "DateOfBirth"] }
                     },
                     new ProcessFieldMetadata
                     {
                         Name = "PatientName",
                         Description = "The patient's name.",
                         DataType = Text,
-                        Lookup = new Kaleido.Processor.Registry.LookupMetadata { Service = "clinic", Source = "PatientSource", View = viewName, Field = "Name", Group = "patient" }
+                        Lookup = new ProcessFieldLookup { Service = "clinic", Source = "PatientSource", View = viewName, Field = "Name", Group = "patient" }
                     },
                     new ProcessFieldMetadata { Name = "Reason", Description = "Why.", DataType = Text }
                 ]
@@ -612,11 +612,11 @@ public sealed class ToolCatalogBuilderTests
                 new QueryableFieldMetadata
                 {
                     Name = "Kind",
-                    DataType = new DataTypeDescriptor("string", EnumValues: [new EnumValueDescriptor(0, "Outpatient", null), new EnumValueDescriptor(1, "Inpatient", null)]),
+                    DataType = new DataTypeMetadata("string", EnumValues: [new EnumValueMetadata(0, "Outpatient", null), new EnumValueMetadata(1, "Inpatient", null)]),
                     IsFilterable = true,
                     FilterOperators = [FilterOperator.Equals]
                 },
-                new QueryableFieldMetadata { Name = "Born", Description = "Date of birth.", DataType = new DataTypeDescriptor("string", "date"), IsFilterable = true, FilterOperators = [FilterOperator.Between] },
+                new QueryableFieldMetadata { Name = "Born", Description = "Date of birth.", DataType = new DataTypeMetadata("string", "date"), IsFilterable = true, FilterOperators = [FilterOperator.Between] },
                 new QueryableFieldMetadata { Name = "Ignored", DataType = Text, IsFilterable = true, FilterOperators = [] }
             ]
         };
@@ -780,7 +780,7 @@ public sealed class ToolCatalogBuilderTests
                             Name = "PatientId",
                             Description = "The patient.",
                             DataType = Text,
-                            Lookup = new Kaleido.Processor.Registry.LookupMetadata { Service = "clinic", Source = "PatientSource", Field = "Id", Group = "patient" }
+                            Lookup = new ProcessFieldLookup { Service = "clinic", Source = "PatientSource", Field = "Id", Group = "patient" }
                         }
                     ]
                 }
@@ -820,7 +820,7 @@ public sealed class ToolCatalogBuilderTests
                         {
                             Name = "PatientId",
                             DataType = Text,
-                            Lookup = new Kaleido.Processor.Registry.LookupMetadata { Service = "clinic", Source = "PatientSource", Field = "Id", Group = "patient" }
+                            Lookup = new ProcessFieldLookup { Service = "clinic", Source = "PatientSource", Field = "Id", Group = "patient" }
                         }
                     ]
                 }

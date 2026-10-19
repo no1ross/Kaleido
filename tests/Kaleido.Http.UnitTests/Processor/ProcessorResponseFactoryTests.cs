@@ -47,7 +47,10 @@ public sealed class ProcessorResponseFactoryTests
 
         var result = CreateSut().CreateRegistryResponse(registration, new KaleidoServiceOptions { ServiceName = "intake" });
 
-        Assert.Equal(lookup, Assert.Single(Assert.Single(result.Steps ?? []).Fields).Lookup);
+        var published = Assert.Single(Assert.Single(result.Steps ?? []).Fields).Lookup;
+        Assert.NotNull(published);
+        Assert.Equal(("member", "Member", "MemberSearch", "MemberId", "member/Member/MemberSearch"), (published.Service, published.Source, published.View, published.Field, published.Group));
+        Assert.Equal(["DisplayName"], published.Display);
     }
 
     private static ProcessorStepSummary DeclaredSummary() =>
