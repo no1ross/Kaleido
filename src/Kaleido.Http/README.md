@@ -30,7 +30,7 @@ Queryable requests use an optional `query.page` object. An omitted page on a pag
 
 ### Process endpoint mapping
 - `ProcessorEndpointRouteBuilderExtensions` — `MapProcessor()` (internal; mapped by `MapKaleidoHttp`)
-  - `POST /{prefix}/processes/execute` — multi-step execute endpoint
+  - `POST /{prefix}/processes/execute` — multi-step execute endpoint. Each submitted step is read into its step type here, with the same JSON rules as the per-step routes; a step that cannot be built (unknown name: `pro_unknown_step`; a value that does not fit or a `required` member left out: `argument_error` naming the step and the JSON path) rejects the whole request with 400 before anything runs, so no process is created
   - `GET /{prefix}/processes/{processId}` — process state
   - `POST /{prefix}/processes/steps/{step}` — per-step execute endpoint
 

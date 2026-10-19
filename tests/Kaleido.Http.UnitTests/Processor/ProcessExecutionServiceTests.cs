@@ -478,7 +478,7 @@ public sealed class ProcessExecutionServiceTests
             Mock.Of<IProcessExecutionResponseFactory>(),
             authorizer: authorizer.Object);
 
-        await service.ExecuteAsync(
+        var exception = await Assert.ThrowsAsync<KaleidoValidationException>(() => service.ExecuteAsync(
             new ExecuteProcessRequest
             {
                 Steps =
@@ -490,11 +490,77 @@ public sealed class ProcessExecutionServiceTests
                     }
                 ]
             },
-            CancellationToken.None);
+            CancellationToken.None));
 
+        // Authorized as undeclared first (fail closed), then rejected before anything runs (#344).
         authorizer.Verify(
             x => x.AuthorizeAsync(null, "NoSuchStep", It.IsAny<CancellationToken>()),
             Times.Once);
+        Assert.Equal(ProcessorErrorCodes.UnknownStep, exception.Code);
+        Assert.Contains("'NoSuchStep'", exception.Message, StringComparison.Ordinal);
+    }
+
+    // /execute builds each step in the transport (KaleidoJsonOptions); core receives typed steps (#344).
+    [Fact]
+    public async Task ExecuteAsync_BuildsEachStepAsItsStepType_BeforeTheRuntime()
+    {
+        var registry = TypedInputRegistry();
+        ProcessRequest? captured = null;
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<ProcessRequest, CancellationToken>((request, _) => captured = request)
+            .ReturnsAsync(CreateProcessResult(nameof(TypedInputStep), new TestResponse()));
+        var itemId = Guid.NewGuid();
+
+        await CreateSut(registry, runtime.Object, Mock.Of<IProcessExecutionResponseFactory>()).ExecuteAsync(
+            new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = "typedinputstep", Request = JsonSerializer.SerializeToElement(new { itemId }) }] },
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(captured);
+        var step = Assert.IsType<TypedInputStep>(captured.Processor.Steps["TypedInputStep"]);
+        Assert.Equal(itemId, step.ItemId);
+    }
+
+    [Theory]
+    [InlineData("{\"itemId\":\"not-a-guid\"}", "itemId")]
+    [InlineData("{}", "itemId")]
+    [InlineData("null", "no input")]
+    public async Task ExecuteAsync_AStepThatCannotBeBuilt_IsRejected_NamingTheStep_AndNothingRuns(string input, string named)
+    {
+        var runtime = new Mock<IProcessorRuntime>();
+        using var json = JsonDocument.Parse(input);
+
+        var exception = await Assert.ThrowsAsync<Microsoft.AspNetCore.Http.BadHttpRequestException>(() =>
+            CreateSut(TypedInputRegistry(), runtime.Object, Mock.Of<IProcessExecutionResponseFactory>()).ExecuteAsync(
+                new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = nameof(TypedInputStep), Request = json.RootElement.Clone() }] },
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Contains("Step 'TypedInputStep'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(named, exception.Message, StringComparison.Ordinal);
+        runtime.Verify(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private static IProcessorStepRegistry TypedInputRegistry()
+    {
+        var registration = new ProcessStepRegistration(
+            typeof(TypedInputStep),
+            null,
+            typeof(TestStepHandler),
+            [],
+            [],
+            [],
+            new RepeatableOptions { Enabled = false },
+            new ProcessStepMetadata { Name = nameof(TypedInputStep), Description = "Typed input", Version = "1.0.0", DisplayName = "Typed input" });
+        var registry = new Mock<IProcessorStepRegistry>();
+        registry.Setup(x => x.Find(It.Is<string>(n => string.Equals(n, nameof(TypedInputStep), StringComparison.OrdinalIgnoreCase)))).Returns(registration);
+        return registry.Object;
+    }
+
+    public sealed record TypedInputStep : IProcessStep
+    {
+        public required Guid ItemId { get; init; }
     }
 
     [Fact]

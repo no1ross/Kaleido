@@ -67,33 +67,57 @@ public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fix
         Assert.Contains(contract.Results, x => x.StepName == RuntimeStepNames.RequiredRoot);
     }
 
+    // A step that cannot be built rejects the whole request before anything runs: no process is
+    // created, so no process id comes back (#344).
     [Fact]
-    public async Task PostExecute_WhenUnknownStepIsProvided_HidesFrameworkMessagesByDefault()
+    public async Task PostExecute_WhenAStepIsUnknown_Returns400NamingIt_AndCreatesNoProcess()
     {
-        var request =
-            new ExecuteProcessRequest
-            {
-                Steps =
-                [
-                    CreateStep(RuntimeStepNames.Root),
-                    CreateStep("TotallyFakeStep")
-                ]
-            };
+        var response = await PostExecuteAsync(new ExecuteProcessRequest
+        {
+            Steps = [CreateStep(RuntimeStepNames.Root), CreateStep("TotallyFakeStep")],
+        });
 
-        var response =
-            await PostExecuteAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.False(response.Headers.Contains(KaleidoCorrelationHeaders.ProcessId));
+        var error = Assert.Single((await response.Content.ReadAsync<KaleidoErrorResponse>())!.Errors);
+        Assert.Equal(ProcessorErrorCodes.UnknownStep, error.Code);
+        Assert.Contains("'TotallyFakeStep'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("{\"itemId\":\"not-a-guid\"}", "itemId")]
+    [InlineData("{\"on\":\"2026-10-15\"}", "itemId")]
+    public async Task PostExecute_WhenAStepsInputDoesNotFit_Returns400NamingTheStepAndField_AndCreatesNoProcess(string input, string field)
+    {
+        using var json = System.Text.Json.JsonDocument.Parse(input);
+
+        var response = await PostExecuteAsync(new ExecuteProcessRequest
+        {
+            Steps = [new ProcessStepRequest { StepName = nameof(RuntimeInputStep), Request = json.RootElement.Clone() }],
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.False(response.Headers.Contains(KaleidoCorrelationHeaders.ProcessId));
+        var error = Assert.Single((await response.Content.ReadAsync<KaleidoErrorResponse>())!.Errors);
+        Assert.Equal(KaleidoErrorCodes.ArgumentError, error.Code);
+        Assert.Contains($"Step '{nameof(RuntimeInputStep)}'", error.Message, StringComparison.Ordinal);
+        Assert.Contains(field, error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PostExecute_AValidStepInput_IsBuiltByTheTransport_AndRuns()
+    {
+        using var json = System.Text.Json.JsonDocument.Parse($"{{\"itemId\":\"{Guid.NewGuid()}\",\"on\":\"2026-10-15\"}}");
+
+        var response = await PostExecuteAsync(new ExecuteProcessRequest
+        {
+            Steps = [new ProcessStepRequest { StepName = nameof(RuntimeInputStep), Request = json.RootElement.Clone() }],
+        });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var contract =
-            await response.Content.ReadAsync<ProcessExecutionResponse>();
-
-        Assert.NotNull(contract);
-        Assert.Contains(
-            contract.Results,
-            x => x.StepName == "TotallyFakeStep"
-                 && x.BusinessMessages.Count == 0
-                 && x.FrameworkMessages.Count == 0);
+        Assert.True(response.Headers.Contains(KaleidoCorrelationHeaders.ProcessId));
+        var contract = await response.Content.ReadAsync<ProcessExecutionResponse>();
+        Assert.Contains(contract!.Results, x => x.StepName == nameof(RuntimeInputStep));
     }
 
     [Fact]

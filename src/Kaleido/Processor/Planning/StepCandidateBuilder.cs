@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Kaleido.Processor.Registry;
 
 namespace Kaleido.Processor.Planning;
@@ -41,20 +40,18 @@ internal sealed class StepCandidateBuilder(
                     Registration = registration,
                 };
 
-            var instance =
-                CreateStepInstance(
-                    candidate,
-                    registration.StepType,
-                    step.Value);
-
-            if (instance is not null)
+            // Steps arrive typed: a transport reads its wire format into the step type before core
+            // sees it, so core never parses input (#344).
+            if (registration.StepType.IsInstanceOfType(step.Value))
             {
-                candidate.Step = instance;
-
-                if (!candidate.HasErrors)
-                {
-                    candidate.Status = StepCandidateStatus.Built;
-                }
+                candidate.Step = step.Value;
+                candidate.Status = StepCandidateStatus.Built;
+            }
+            else
+            {
+                candidate.MarkInvalid(
+                    ProcessorErrorCodes.InvalidRequest,
+                    $"Process step '{step.Key}' must be submitted as a '{registration.StepType.Name}'.");
             }
 
             candidates.Add(candidate);
@@ -62,56 +59,4 @@ internal sealed class StepCandidateBuilder(
 
         return candidates;
     }
-
-    private static object? CreateStepInstance(
-        StepCandidate candidate,
-        Type stepType,
-        object? values)
-    {
-        try
-        {
-            // If values is already a JsonElement (e.g. from HTTP deserialization), deserialize
-            // directly to avoid a redundant Serialize → Deserialize round-trip. If it is
-            // already the target step type (in-process callers passing typed objects),
-            // use it as-is — no copy is made.
-            var instance =
-                values switch
-                {
-                    JsonElement je => je.Deserialize(stepType, SerializerOptions),
-                    _ when stepType.IsInstanceOfType(values) => values,
-                    _ => JsonSerializer.Deserialize(
-                        JsonSerializer.Serialize(values, SerializerOptions),
-                        stepType,
-                        SerializerOptions),
-                };
-
-            if (instance is null)
-            {
-                candidate.MarkInvalid(
-                    ProcessorErrorCodes.InvalidRequest,
-                    $"Unable to create process step '{stepType.Name}'.");
-            }
-
-            return instance;
-        }
-        catch (JsonException exception)
-        {
-            candidate.MarkInvalid(
-                ProcessorErrorCodes.InvalidRequest,
-                $"Unable to create process step '{stepType.Name}'. {exception.Message}");
-
-            return null;
-        }
-    }
-
-    private static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
-        Converters =
-        {
-            new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
-        },
-    };
 }
-
