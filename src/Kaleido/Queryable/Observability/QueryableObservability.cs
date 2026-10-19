@@ -232,7 +232,7 @@ internal sealed partial class QueryableObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            activity.SetErrorStatus(exception);
             activity.AddExceptionEvent(exception);
 
             QueryExecutionFailuresCounter.Add(1, CreateExecutionTags(details));
