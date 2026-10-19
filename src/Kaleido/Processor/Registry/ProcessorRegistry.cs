@@ -132,7 +132,7 @@ internal record ProcessorPropertyDescriptor
 /// validation constraints.
 /// </summary>
 [ExcludeFromCodeCoverage]
-internal record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
+internal sealed record ProcessorInputFieldDescriptor : ProcessorPropertyDescriptor
 {
     /// <summary>
     /// A short label for the input, from <c>[Display(Name = …)]</c>. A hint for UIs and AI
@@ -191,7 +191,7 @@ internal sealed record LookupMetadata
 
 /// <summary>An output field of a step's result: a public readable instance property of the handler's typed response.</summary>
 [ExcludeFromCodeCoverage]
-internal record ProcessorOutputFieldDescriptor : ProcessorPropertyDescriptor;
+internal sealed record ProcessorOutputFieldDescriptor : ProcessorPropertyDescriptor;
 
 /// <summary>
 /// The result of a step whose handler returns a typed response
