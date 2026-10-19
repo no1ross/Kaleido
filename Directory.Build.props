@@ -6,8 +6,6 @@
         <LangVersion>latest</LangVersion>
         <Deterministic>true</Deterministic>
         <AnalysisLevel>latest-recommended</AnalysisLevel>
-        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-        <RestoreLockedMode Condition="'$(CI)' != 'true'">false</RestoreLockedMode>
         <NuGetAudit>true</NuGetAudit>
     </PropertyGroup>
 </Project>
