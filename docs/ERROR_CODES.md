@@ -140,6 +140,8 @@ These indicate a framework bug or broken DI wiring, not a user error.
 
 ## `KaleidoErrorCodes` - shared HTTP error-body codes
 
+Declared in `Kaleido.Http.Abstractions` (`Kaleido.Http` namespace), next to the error body `KaleidoErrorResponse` (ADR 0017).
+
 | Constant | Code | Meaning |
 |---|---|---|
 | `ArgumentError` | `argument_error` | 400 (415 for a non-JSON content type): a body Kaleido cannot read - malformed JSON, a value that does not fit its type, a `required` member left out, a malformed correlation header such as a non-GUID `X-Kaleido-Process-Id` |
