@@ -9,4 +9,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Kaleido.Http.UnitTests")]
 [assembly: InternalsVisibleTo("Kaleido.Http.FunctionalTests")]
 [assembly: InternalsVisibleTo("Kaleido.Http.Client.UnitTests")]
+[assembly: InternalsVisibleTo("Kaleido.IntegrationTests")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

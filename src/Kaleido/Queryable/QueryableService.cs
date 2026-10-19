@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.Queryable;
 
 /// <summary>In-process entry point for executing Queryable requests.</summary>
-public interface IQueryableService
+internal interface IQueryableService
 {
     /// <summary>Executes a query against a query source or a query view.</summary>
     /// <typeparam name="TQuery">

@@ -710,8 +710,7 @@ public sealed class ProcessorStepInvokerTests
             {
                 StepName = "test-step"
             },
-            [],
-            new ProcessorRequest());
+            []);
     }
 
 }

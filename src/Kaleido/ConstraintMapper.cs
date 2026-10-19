@@ -12,7 +12,7 @@ namespace Kaleido;
 /// The constraint only describes the attribute; the service still validates the values it receives.
 /// </remarks>
 [ExcludeFromCodeCoverage]
-public sealed record ConstraintContract
+internal sealed record ConstraintContract
 {
     /// <summary>
     /// The constraint name: the attribute's class name without the <c>Attribute</c> suffix, e.g.
@@ -41,7 +41,7 @@ public sealed record ConstraintContract
 /// <c>StringLength</c> constraint.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ConstraintParameterContract
+internal sealed record ConstraintParameterContract
 {
     /// <summary>The argument name, as listed in <see cref="ConstraintContract.Parameters"/>.</summary>
     public required string Name { get; init; }

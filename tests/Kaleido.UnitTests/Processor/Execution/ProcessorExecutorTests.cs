@@ -32,8 +32,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [],
-                context,
-                new ProcessorRequest());
+                context);
 
         Assert.Equal(
             context.State,
@@ -99,8 +98,7 @@ public sealed class ProcessorExecutorTests
 
         await processor.ExecuteAsync(
             [candidate],
-            context,
-            new ProcessorRequest());
+            context);
 
         Assert.NotNull(
             capturedContext);
@@ -139,8 +137,7 @@ public sealed class ProcessorExecutorTests
 
         await processor.ExecuteAsync(
             [candidate],
-            context,
-            new ProcessorRequest());
+            context);
 
         invoker.Verify(
             x =>
@@ -182,8 +179,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context,
-                new ProcessorRequest());
+                context);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -254,8 +250,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context,
-                new ProcessorRequest());
+                context);
 
         var persisted =
             Assert.Single(savedContexts);
@@ -297,7 +292,7 @@ public sealed class ProcessorExecutorTests
         var saved = new List<ProcessorContext>();
 
         var result = await CreateSut(invoker, evaluator: evaluator, stateUpdater: stateUpdater, store: CreateStore(saved))
-            .ExecuteAsync([candidate], context, new ProcessorRequest());
+            .ExecuteAsync([candidate], context);
 
         var outcome = Assert.Single(result.Outcomes);
         Assert.Equal(StepExecutionStatus.Rejected, outcome.Status);
@@ -341,8 +336,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context,
-                new ProcessorRequest());
+                context);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -442,8 +436,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [firstCandidate, nextCandidate],
-                context,
-                new ProcessorRequest());
+                context);
 
         Assert.Collection(
             result.Outcomes,
@@ -501,7 +494,7 @@ public sealed class ProcessorExecutorTests
         var stepObservation = new Mock<IProcessorStepObservation>();
 
         var result = await CreateSut(invoker, stepObservation: stepObservation).ExecuteAsync(
-            [candidate], CreateContext("step-a"), new ProcessorRequest());
+            [candidate], CreateContext("step-a"));
 
         var outcome = Assert.Single(result.Outcomes);
         Assert.Equal(StepExecutionStatus.ValidationFailed, outcome.Status);
@@ -548,8 +541,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context,
-                new ProcessorRequest());
+                context);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -611,7 +603,6 @@ public sealed class ProcessorExecutorTests
             await processor.ExecuteAsync(
                 [candidate],
                 context,
-                new ProcessorRequest(),
                 cancellationTokenSource.Token);
 
         var outcome =
@@ -681,8 +672,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context,
-                new ProcessorRequest());
+                context);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -734,8 +724,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context,
-                new ProcessorRequest());
+                context);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -790,8 +779,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context,
-                new ProcessorRequest());
+                context);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -828,7 +816,7 @@ public sealed class ProcessorExecutorTests
 
         var result =
             await CreateSut(invoker, evaluator: evaluator, stepObservation: stepObservation)
-                .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+                .ExecuteAsync([candidate], CreateContext("step-a"));
 
         return Assert.Single(result.Outcomes);
     }
@@ -895,7 +883,7 @@ public sealed class ProcessorExecutorTests
 
         await Assert.ThrowsAsync<KaleidoConcurrencyException>(() =>
             CreateSut(invoker, store: CreateStore(saved), stepObservation: stepObservation)
-                .ExecuteAsync([CreateCandidate<TestStepA>("step-a")], CreateContext("step-a"), new ProcessorRequest()));
+                .ExecuteAsync([CreateCandidate<TestStepA>("step-a")], CreateContext("step-a")));
 
         Assert.Empty(saved);
         stepObservation.Verify(x => x.StepFailed(It.IsAny<Exception>()), Times.Never);
@@ -1196,7 +1184,7 @@ public sealed class ProcessorExecutorTests
             .ThrowsAsync(new KaleidoConcurrencyException(context.ProcessId));
 
         await Assert.ThrowsAsync<KaleidoConcurrencyException>(() =>
-            CreateSut(invoker, store: store).ExecuteAsync([candidate], context, new ProcessorRequest()));
+            CreateSut(invoker, store: store).ExecuteAsync([candidate], context));
 
         store.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -1220,7 +1208,7 @@ public sealed class ProcessorExecutorTests
         var saved = new List<ProcessorContext>();
 
         var result = await CreateSut(invoker, store: CreateStore(saved))
-            .ExecuteAsync([candidate], context, new ProcessorRequest());
+            .ExecuteAsync([candidate], context);
 
         Assert.Equal(context.Version, Assert.Single(saved).Version);
         Assert.Equal(context.ProcessId, result.ProcessId);
@@ -1267,7 +1255,7 @@ public sealed class ProcessorExecutorTests
         var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
 
         await CreateSut(SucceedingInvoker(), store: RecordingStore(savedEvents), eventOutbox: outbox)
-            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+            .ExecuteAsync([candidate], CreateContext("step-a"));
 
         Assert.Equal(stepEvent, Assert.Single(Assert.Single(savedEvents)));
         outbox.Verify(x => x.Saved(), Times.Once);
@@ -1282,7 +1270,7 @@ public sealed class ProcessorExecutorTests
         var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
 
         await CreateSut(SucceedingInvoker(), store: RecordingStore(savedEvents), eventOutbox: outbox)
-            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+            .ExecuteAsync([candidate], CreateContext("step-a"));
 
         Assert.Empty(Assert.Single(savedEvents));
         outbox.Verify(x => x.Saved(), Times.Never);
@@ -1305,7 +1293,7 @@ public sealed class ProcessorExecutorTests
         var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
 
         await CreateSut(SucceedingInvoker(), evaluator: evaluator, store: RecordingStore(savedEvents), eventOutbox: outbox)
-            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+            .ExecuteAsync([candidate], CreateContext("step-a"));
 
         Assert.Empty(savedEvents);
         outbox.Verify(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>()), Times.Never);
@@ -1345,7 +1333,7 @@ public sealed class ProcessorExecutorTests
         var outbox = new Mock<IKaleidoEventOutbox>();
 
         var result = await CreateSut(invoker, store: CancellationHonoringStore(saves), eventOutbox: outbox)
-            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest(), cancellation.Token);
+            .ExecuteAsync([candidate], CreateContext("step-a"), cancellation.Token);
 
         Assert.Equal(StepExecutionStatus.Canceled, Assert.Single(result.Outcomes).Status);
         var (saved, events) = Assert.Single(saves);
@@ -1375,7 +1363,7 @@ public sealed class ProcessorExecutorTests
         var saves = new List<(ProcessorContext Context, IReadOnlyCollection<KaleidoOutboxEvent> Events)>();
 
         var result = await CreateSut(invoker, store: CancellationHonoringStore(saves), eventOutbox: outbox)
-            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest(), cancellation.Token);
+            .ExecuteAsync([candidate], CreateContext("step-a"), cancellation.Token);
 
         Assert.Equal(StepExecutionStatus.Completed, Assert.Single(result.Outcomes).Status);
         var (saved, events) = Assert.Single(saves);
@@ -1405,7 +1393,7 @@ public sealed class ProcessorExecutorTests
         var saves = new List<(ProcessorContext Context, IReadOnlyCollection<KaleidoOutboxEvent> Events)>();
 
         var result = await CreateSut(invoker, evaluator: evaluator, store: CancellationHonoringStore(saves))
-            .ExecuteAsync([first, second], CreateContext("step-a", "step-b"), new ProcessorRequest(), cancellation.Token);
+            .ExecuteAsync([first, second], CreateContext("step-a", "step-b"), cancellation.Token);
 
         Assert.Collection(
             result.Outcomes,
@@ -1433,7 +1421,7 @@ public sealed class ProcessorExecutorTests
         var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
 
         await CreateSut(invoker, store: RecordingStore(savedEvents))
-            .ExecuteAsync([candidate], CreateContext("step-a"), new ProcessorRequest());
+            .ExecuteAsync([candidate], CreateContext("step-a"));
 
         Assert.Empty(Assert.Single(savedEvents));
     }

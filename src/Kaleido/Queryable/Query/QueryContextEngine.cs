@@ -63,7 +63,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             var pageable = viewRegistration.Metadata.Pageable;
             validator.Validate(request, metadata, pageable);
 
-            var executionContext = new QueryExecutionContext(metadata, request);
+            var executionContext = new QueryExecutionContext(request);
             var compiled = compiler.Compile(request, metadata, pageable);
             var query = await CreateQueryAsync(source, executionContext, compiled, observation, cancellationToken);
             var view = await CreateViewAsync(viewRegistration, query, executionContext, observation, cancellationToken);
@@ -116,7 +116,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             var metadata = source.Metadata;
             validator.Validate(request, metadata, metadata.Pageable);
 
-            var executionContext = new QueryExecutionContext(metadata, request);
+            var executionContext = new QueryExecutionContext(request);
             var compiled = compiler.Compile(request, metadata, metadata.Pageable);
             var query = await CreateQueryAsync(source, executionContext, compiled, observation, cancellationToken);
 

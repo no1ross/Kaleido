@@ -45,7 +45,7 @@ public sealed record QueryableFieldMetadata
     public string? Description { get; init; }
 
     /// <summary>The field's published data type.</summary>
-    public required DataTypeDescriptor DataType { get; init; }
+    public required DataTypeMetadata DataType { get; init; }
 
     /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
     public IReadOnlyList<string> Classifications { get; init; } = [];
@@ -75,29 +75,6 @@ public sealed record QueryableFieldMetadata
     /// <summary>True when the field is declared <c>[Sortable]</c> and may appear in a sort clause.</summary>
     public bool IsSortable { get; init; }
 
-    /// <summary>Projects a registry field descriptor to its wire shape.</summary>
-    /// <param name="item">The field as registered in the Queryable registry.</param>
-    /// <returns>A new <see cref="QueryableFieldMetadata"/> with the descriptor's values.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
-    public static QueryableFieldMetadata FromRegistryItem(
-        QueryableFieldDescriptor item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-
-        return new QueryableFieldMetadata
-        {
-            Name = item.Name,
-            Description = item.Description,
-            DataType = item.DataType,
-            Classifications = item.Classifications,
-            IsFilterable = item.IsFilterable,
-            FilterOperators = item.FilterOperators,
-            IsSearchable = item.IsSearchable,
-            SearchPriority = item.SearchPriority,
-            MatchMode = item.MatchMode,
-            IsSortable = item.IsSortable,
-        };
-    }
 }
 
 /// <summary>
@@ -114,33 +91,15 @@ public sealed record QueryableQueryParameter
     public string? Description { get; init; }
 
     /// <summary>The parameter's published data type.</summary>
-    public required DataTypeDescriptor DataType { get; init; }
+    public required DataTypeMetadata DataType { get; init; }
 
     /// <summary>The parameter's validation constraints, one per validation attribute; empty when it has none.</summary>
-    public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
+    public IReadOnlyCollection<ConstraintMetadata> Constraints { get; init; }
         = [];
 
     /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
     public IReadOnlyList<string> Classifications { get; init; } = [];
 
-    /// <summary>Projects a registry parameter descriptor to its wire shape.</summary>
-    /// <param name="item">The parameter as registered in the Queryable registry.</param>
-    /// <returns>A new <see cref="QueryableQueryParameter"/> with the descriptor's values.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
-    public static QueryableQueryParameter FromRegistryItem(
-        QueryableParameterDescriptor item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-
-        return new QueryableQueryParameter
-        {
-            Name = item.Name,
-            Description = item.Description,
-            DataType = item.DataType,
-            Classifications = item.Classifications,
-            Constraints = item.Constraints,
-        };
-    }
 }
 
 /// <summary>
@@ -157,28 +116,11 @@ public sealed record QueryableQueryProperty
     public string? Description { get; init; }
 
     /// <summary>The field's published data type.</summary>
-    public required DataTypeDescriptor DataType { get; init; }
+    public required DataTypeMetadata DataType { get; init; }
 
     /// <summary>The property's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>), so clients know which values are sensitive; empty when not classified.</summary>
     public IReadOnlyList<string> Classifications { get; init; } = [];
 
-    /// <summary>Projects a registry output field descriptor to its wire shape.</summary>
-    /// <param name="item">The output field as registered in the Queryable registry.</param>
-    /// <returns>A new <see cref="QueryableQueryProperty"/> with the descriptor's values.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
-    public static QueryableQueryProperty FromRegistryItem(
-        QueryableOutputFieldDescriptor item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-
-        return new QueryableQueryProperty
-        {
-            Name = item.Name,
-            Description = item.Description,
-            DataType = item.DataType,
-            Classifications = item.Classifications,
-        };
-    }
 }
 
 /// <summary>
@@ -201,7 +143,7 @@ public sealed record QueryableViewResponse
     public string? Version { get; init; }
 
     /// <summary>Paging for this view (not inherited from its source). Null means not pageable.</summary>
-    public PageableMetadata? Pageable { get; init; }
+    public QueryablePagingMetadata? Pageable { get; init; }
 
     /// <summary>
     /// Effective authorization requirement for this view
@@ -220,41 +162,6 @@ public sealed record QueryableViewResponse
     public IReadOnlyCollection<QueryableQueryProperty> OutputFields { get; init; }
         = [];
 
-    /// <summary>Projects a registry view to its wire shape, building its query URL.</summary>
-    /// <param name="item">The view as registered in the Queryable registry.</param>
-    /// <param name="sourceName">The owning source's route segment (the lowercase source name), used as-is in <see cref="QueryUrl"/>.</param>
-    /// <param name="serviceName">The service's route prefix; when empty the URL has no service segment.</param>
-    /// <returns>A new <see cref="QueryableViewResponse"/>.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="sourceName"/> is <see langword="null"/>, empty or whitespace.</exception>
-    public static QueryableViewResponse FromRegistryItem(
-        QueryableViewRegistryItem item,
-        string sourceName,
-        string serviceName)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        ArgumentException.ThrowIfNullOrWhiteSpace(sourceName);
-
-        return new QueryableViewResponse
-        {
-            Name = item.Name,
-            Description = item.Description,
-            DisplayName = item.DisplayName,
-            Version = item.Version,
-            Pageable = item.Pageable,
-            Authorization = item.Authorization,
-            QueryUrl = QueryableContractUrls.QueryViewQuery(
-                serviceName,
-                sourceName,
-                item.Name.ToLowerInvariant()),
-            Parameters = item.Parameters
-                .Select(QueryableQueryParameter.FromRegistryItem)
-                .ToArray(),
-            OutputFields = item.OutputFields
-                .Select(QueryableQueryProperty.FromRegistryItem)
-                .ToArray(),
-        };
-    }
 }
 
 /// <summary>
@@ -286,7 +193,7 @@ public sealed record QueryableSourceResponse
     public string? Source { get; init; }
 
     /// <summary>Paging for direct queries of this source. Null means not pageable.</summary>
-    public PageableMetadata? Pageable { get; init; }
+    public QueryablePagingMetadata? Pageable { get; init; }
 
     /// <summary>
     /// Authorization requirement for this source. Null means open.
@@ -320,47 +227,21 @@ public sealed record QueryableSourceResponse
     public IReadOnlyCollection<QueryableViewResponse> Views { get; init; }
         = [];
 
-    /// <summary>
-    /// Projects a registry source, with its fields, parameters, output fields and views, to its wire
-    /// shape, building its registry and query URLs (the URL uses the lowercase source name).
-    /// </summary>
-    /// <param name="item">The source as registered in the Queryable registry.</param>
-    /// <param name="serviceName">The service name, published as <see cref="ServiceName"/> and used as the URLs' route prefix.</param>
-    /// <returns>A new <see cref="QueryableSourceResponse"/>; <see cref="QueryUrl"/> is always set.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="item"/> is <see langword="null"/>.</exception>
-    public static QueryableSourceResponse FromRegistryItem(
-        QueryableSourceRegistryItem item,
-        string serviceName)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-
-        var sourceName =
-            item.Name.ToLowerInvariant();
-
-        return new QueryableSourceResponse
-        {
-            ServiceName = serviceName,
-            Name = item.Name,
-            Description = item.Description,
-            DisplayName = item.DisplayName,
-            Version = item.Version,
-            Source = item.Source,
-            Pageable = item.Pageable,
-            Authorization = item.Authorization,
-            RegistryUrl = RegistryContractUrls.Registry(serviceName),
-            QueryUrl = QueryableContractUrls.QuerySourceQuery(serviceName, sourceName),
-            Fields = item.Fields
-                .Select(QueryableFieldMetadata.FromRegistryItem)
-                .ToArray(),
-            Parameters = item.Parameters
-                .Select(QueryableQueryParameter.FromRegistryItem)
-                .ToArray(),
-            OutputFields = item.OutputFields
-                .Select(QueryableQueryProperty.FromRegistryItem)
-                .ToArray(),
-            Views = item.Views
-                .Select(view => QueryableViewResponse.FromRegistryItem(view, sourceName, serviceName))
-                .ToArray(),
-        };
-    }
 }
+
+/// <summary>
+/// A source's or view's paging (<see cref="QueryableSourceResponse.Pageable"/>,
+/// <see cref="QueryableViewResponse.Pageable"/>): its page sizes, and the order pages follow when the
+/// request specifies no sort.
+/// </summary>
+/// <param name="DefaultSize">The page size used when the request does not specify one.</param>
+/// <param name="MaxSize">The largest page size a request may ask for.</param>
+/// <param name="DefaultSortField">
+/// The field a request without a sort is ordered by (ascending), so pages are stable;
+/// <see langword="null"/> when the order is the service's own.
+/// </param>
+[ExcludeFromCodeCoverage]
+public sealed record QueryablePagingMetadata(
+    int DefaultSize,
+    int MaxSize,
+    string? DefaultSortField = null);

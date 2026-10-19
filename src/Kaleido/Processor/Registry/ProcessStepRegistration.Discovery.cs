@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
-public sealed partial record ProcessStepRegistration
+internal sealed partial record ProcessStepRegistration
 {
     internal ProcessorStepRegistryItem ToRegistryItem(
         ITypeDescriber TypeDescriber,

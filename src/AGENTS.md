@@ -18,7 +18,7 @@ What each project owns and must not own is stated once, in the root [project bou
   - `Kaleido.Http.Abstractions`, `Kaleido.Observability.OpenTelemetry` and `Kaleido.Provider.SQLite` reference only `Kaleido`.
   - `Kaleido.Http` and `Kaleido.Http.Client` reference `Kaleido.Http.Abstractions`.
   - `Kaleido.Http.Mcp` references `Kaleido.Http` and `Kaleido.Http.Client`.
-- **Public means consumer API.** Transports, front doors and providers are built into the solution, so seams shared between Kaleido's own projects are internal and shared through `InternalsVisibleTo`. A type is public only when a consumer must name, implement or call it, and then it carries full XML documentation (CS1591 is enforced).
+- **Public means consumer API.** Transports, front doors and providers are built into the solution, so seams shared between Kaleido's own projects are internal and shared through `InternalsVisibleTo`. A type is public only when a consumer must name, implement or call it, and then it carries full XML documentation (CS1591 is enforced). In particular, the runtime registries (`IProcessorStepRegistry`, `ProcessStepRegistration`, `IQuerySourceRegistry`, `IQueryViewRegistry`) and the in-process execution entry points (`IProcessorRuntime` with `ProcessRequest`/`ProcessorRequest`/`ProcessResult`, `IQueryableService`) are internal: only the transports use them (#297).
 
 ---
 

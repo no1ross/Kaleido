@@ -91,9 +91,8 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     It.IsAny<ProcessorContext>(),
-                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
-            .Returns<IReadOnlyCollection<StepCandidate>, ProcessorContext, ProcessorRequest, CancellationToken>((_, context, _, _) =>
+            .Returns<IReadOnlyCollection<StepCandidate>, ProcessorContext, CancellationToken>((_, context, _) =>
                 Task.FromResult(
                     CreateExecutionResult(
                         context.ProcessId)));
@@ -183,7 +182,6 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     It.IsAny<ProcessorContext>(),
-                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 CreateExecutionResult(processId));
@@ -377,7 +375,6 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     reconciledContext,
-                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 CreateExecutionResult(processId));
@@ -483,10 +480,9 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     context,
-                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
-            .Callback<IReadOnlyCollection<StepCandidate>, ProcessorContext, ProcessorRequest, CancellationToken>(
-                (candidates, _, _, _) => capturedCandidates = candidates)
+            .Callback<IReadOnlyCollection<StepCandidate>, ProcessorContext, CancellationToken>(
+                (candidates, _, _) => capturedCandidates = candidates)
             .ReturnsAsync(
                 CreateExecutionResult(processId));
 
@@ -608,7 +604,6 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     context,
-                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(executionResult);
 
@@ -706,7 +701,6 @@ public sealed class ProcessorRuntimeTests
                 x.ExecuteAsync(
                     It.IsAny<IReadOnlyCollection<StepCandidate>>(),
                     context,
-                    It.IsAny<ProcessorRequest>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(executionResult);
 
@@ -778,8 +772,8 @@ public sealed class ProcessorRuntimeTests
     {
         var processor = new Mock<IProcessorExecutor>();
         processor
-            .Setup(x => x.ExecuteAsync(It.IsAny<IReadOnlyCollection<StepCandidate>>(), It.IsAny<ProcessorContext>(), It.IsAny<ProcessorRequest>(), It.IsAny<CancellationToken>()))
-            .Returns<IReadOnlyCollection<StepCandidate>, ProcessorContext, ProcessorRequest, CancellationToken>((_, context, _, _) => Task.FromResult(result(context)));
+            .Setup(x => x.ExecuteAsync(It.IsAny<IReadOnlyCollection<StepCandidate>>(), It.IsAny<ProcessorContext>(), It.IsAny<CancellationToken>()))
+            .Returns<IReadOnlyCollection<StepCandidate>, ProcessorContext, CancellationToken>((_, context, _) => Task.FromResult(result(context)));
 
         return processor;
     }

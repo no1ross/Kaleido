@@ -24,20 +24,20 @@ internal interface IToolSchemaBuilder
 {
     /// <summary>The schema of one value of <paramref name="dataType"/>.</summary>
     JsonObject ForValue(
-        DataTypeDescriptor dataType,
+        DataTypeMetadata dataType,
         string? description = null,
-        IReadOnlyCollection<ConstraintContract>? constraints = null);
+        IReadOnlyCollection<ConstraintMetadata>? constraints = null);
 
     /// <summary>True when the constraints mark the value as required.</summary>
-    bool IsRequired(IReadOnlyCollection<ConstraintContract>? constraints);
+    bool IsRequired(IReadOnlyCollection<ConstraintMetadata>? constraints);
 }
 
 internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
 {
     public JsonObject ForValue(
-        DataTypeDescriptor dataType,
+        DataTypeMetadata dataType,
         string? description = null,
-        IReadOnlyCollection<ConstraintContract>? constraints = null)
+        IReadOnlyCollection<ConstraintMetadata>? constraints = null)
     {
         ArgumentNullException.ThrowIfNull(dataType);
 
@@ -56,10 +56,10 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
         return schema;
     }
 
-    public bool IsRequired(IReadOnlyCollection<ConstraintContract>? constraints) =>
+    public bool IsRequired(IReadOnlyCollection<ConstraintMetadata>? constraints) =>
         constraints?.Any(x => string.Equals(x.Type, "Required", StringComparison.OrdinalIgnoreCase)) == true;
 
-    private static JsonObject TypeSchema(DataTypeDescriptor dataType)
+    private static JsonObject TypeSchema(DataTypeMetadata dataType)
     {
         if (dataType.EnumValues is { Count: > 0 } values)
         {
@@ -138,7 +138,7 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
 
     private static void ApplyConstraint(
         JsonObject schema,
-        ConstraintContract constraint)
+        ConstraintMetadata constraint)
     {
         switch (constraint.Type)
         {
@@ -185,7 +185,7 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
 
     // Constraint values are objects in-process and JsonElements after a registry round trip.
     private static string? Parameter(
-        ConstraintContract constraint,
+        ConstraintMetadata constraint,
         string name)
     {
         var value =
