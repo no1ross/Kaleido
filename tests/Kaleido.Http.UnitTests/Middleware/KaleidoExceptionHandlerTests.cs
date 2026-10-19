@@ -178,8 +178,8 @@ public sealed class KaleidoExceptionHandlerTests
             { nameof(ArgumentException), StatusCodes.Status400BadRequest, "argument_error", "An invalid argument was provided." },
             { nameof(BadHttpRequestException), StatusCodes.Status400BadRequest, "argument_error", "bad request" },
             { nameof(System.Text.Json.JsonException), StatusCodes.Status400BadRequest, "argument_error", "The request body does not fit the expected shape." },
-            { nameof(KaleidoConfigurationException), StatusCodes.Status500InternalServerError, "pro_missing_handler", "no handler" },
-            { nameof(KaleidoFrameworkException), StatusCodes.Status500InternalServerError, "type_mismatch", "bad type" },
+            { nameof(KaleidoConfigurationException), StatusCodes.Status500InternalServerError, "pro_missing_handler", "The service is not configured correctly." },
+            { nameof(KaleidoFrameworkException), StatusCodes.Status500InternalServerError, "type_mismatch", "An internal error occurred." },
             { nameof(KaleidoConcurrencyException), StatusCodes.Status409Conflict, "pro_process_conflict", $"Process '{ConflictedProcess}' was changed by another request. Read its state again and decide on the next step." },
             { nameof(Exception), StatusCodes.Status500InternalServerError, "framework_error", "An unexpected error occurred." },
         };
@@ -223,6 +223,30 @@ public sealed class KaleidoExceptionHandlerTests
         Assert.Equal(
             expectedStatus >= 500 ? System.Diagnostics.ActivityStatusCode.Error : System.Diagnostics.ActivityStatusCode.Unset,
             activity.Status);
+    }
+
+    public static TheoryData<Exception, string> SensitiveFailures { get; } =
+        new()
+        {
+            { new KaleidoConfigurationException("pro_missing_handler", "Server=db;Password=hunter2"), "pro_missing_handler" },
+            { new KaleidoFrameworkException("type_mismatch", "Server=db;Password=hunter2"), "type_mismatch" },
+            { new InvalidOperationException("Server=db;Password=hunter2"), nameof(InvalidOperationException) },
+        };
+
+    // #290: a 500 never carries the exception's text, neither in the body nor in the span status;
+    // the code (or, for an unexpected failure, the exception type) identifies it, the log has the detail.
+    [Theory]
+    [MemberData(nameof(SensitiveFailures))]
+    public async Task HandleAsync_A500_NeverCarriesTheExceptionText(Exception exception, string expectedStatusDescription)
+    {
+        using var activity = new System.Diagnostics.Activity("request").Start();
+        var context = CreateContext();
+
+        await CreateSut().HandleAsync(context, exception, CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
+        Assert.DoesNotContain("hunter2", ReadBody(context), StringComparison.Ordinal);
+        Assert.Equal(expectedStatusDescription, activity.StatusDescription);
     }
 
     [Theory]

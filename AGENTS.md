@@ -92,8 +92,9 @@ Information logs must stay minimal — treat them as the "normal operations" vie
 ### Exception handling
 - Always use custom exceptions from `Kaleido.Exceptions` namespace, never `InvalidOperationException`
 - `KaleidoValidationException` — 400 Bad Request when caught by HTTP middleware; in a Process step handler, its original `Code` and `Message` become an opt-in framework message on a failed step outcome
-- `KaleidoConfigurationException` — 500; startup/DI misconfiguration; `Code` and `Message` are logged and, when thrown during a request, written to the 500 body — keep both free of sensitive data
-- `KaleidoFrameworkException` — 500; internal integrity violation; `Code` and `Message` are logged and written to the 500 body — keep both free of sensitive data
+- `KaleidoConfigurationException` — 500; startup/DI misconfiguration; `Code` and `Message` are logged; when thrown during a request the 500 body carries the `Code` with a generic message, never the `Message` — still keep both free of sensitive data, since logs carry them
+- `KaleidoFrameworkException` — 500; internal integrity violation; `Code` and `Message` are logged; the 500 body carries the `Code` with a generic message, never the `Message` — still keep both free of sensitive data, since logs carry them
+- A failed span's status description is the error code, or the exception type for anything else (`ActivityExceptionExtensions.SetErrorStatus`), never `exception.Message`; the exception event (OpenTelemetry convention) carries the message and stack trace, as the Error log does
 - `KaleidoHttpClientException` — client-side only, never reaches HTTP; carries `Code`, `StatusCode`, and `Errors`
 - Error codes are owned by their area — no single catalog; a new code goes in its area's class, never in a shared one. Code string values never change when a constant moves:
   - `ProcessorErrorCodes` (`Processor/ProcessorErrorCodes.cs`) — `pro_*` codes shared across Processor startup, planning, validation, and execution

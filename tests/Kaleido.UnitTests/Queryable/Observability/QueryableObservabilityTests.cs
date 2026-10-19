@@ -174,7 +174,7 @@ public sealed class QueryableObservabilityTests
         Assert.Equal(4, activity.GetTagItem(QueryableTelemetry.TagPageOffset));
         Assert.Contains(activity.Events, x => x.Name == QueryableTelemetry.CanceledEventName);
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
-        Assert.Equal("boom", activity.StatusDescription);
+        Assert.Equal(nameof(InvalidOperationException), activity.StatusDescription);
 
         AssertLogged(logger, LogLevel.Debug, $"Queryable execution started for {sourceName}/grid direct False mode LocalView.");
         AssertLogged(logger, LogLevel.Debug, $"Queryable materialization completed for {sourceName}/grid total 5 returned 2 pageSize 2 pageOffset 4.");
