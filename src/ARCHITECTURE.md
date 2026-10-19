@@ -271,3 +271,4 @@ Metadata is derived from CLR types at startup:
 - `TypeDescriber` (internal) converts CLR property types to `DataTypeDescriptor` values
 - `ConstraintMapper` (internal) converts `ValidationAttribute` usage to `ConstraintContract` values
 - Both are used by the Queryable and Process runtimes when building discovery metadata for HTTP endpoints
+- The runtime registry descriptors (`DataTypeDescriptor`, `ConstraintContract`, the `Kaleido.Processor.Registry` and `Kaleido.Queryable.Metadata` types) are internal. The wire contracts in `Kaleido.Http.Abstractions` have their own types (`DataTypeMetadata`, `ConstraintMetadata`, `ProcessFieldLookup`, `QueryablePagingMetadata`, …), and `Kaleido.Http` maps to them (`RegistryMetadataMapper`, `ProcessorResponseFactory`, `QueryableRegistryItemExtensions`), so a change to a core descriptor is never a wire change by accident (#356)

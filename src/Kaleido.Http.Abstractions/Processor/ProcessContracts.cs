@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Kaleido.Http.Registry;
 using Kaleido.Observability;
 
 namespace Kaleido.Http.Processor;
@@ -633,14 +634,92 @@ public sealed record ProcessRequiredStep : ProcessStepContract
 /// its name, data type, constraints, classifications and optional UI hints and lookup.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessFieldMetadata : ProcessorInputFieldDescriptor;
+public sealed record ProcessFieldMetadata
+{
+    /// <summary>
+    /// A short label for the input, from <c>[Display(Name = …)]</c>. A hint for UIs and AI agents,
+    /// which may phrase the question their own way.
+    /// </summary>
+    public string? DisplayName { get; init; }
+
+    /// <summary>A suggested prompt, from <c>[Display(Prompt = …)]</c>. A hint, like <see cref="DisplayName"/>.</summary>
+    public string? Prompt { get; init; }
+
+    /// <summary>
+    /// Where the input's value comes from, from <c>[Lookup]</c>: a field of one result of a query.
+    /// Null when the user supplies the value directly.
+    /// </summary>
+    public ProcessFieldLookup? Lookup { get; init; }
+
+    /// <summary>The input's validation constraints, one per validation attribute; empty when it declares none.</summary>
+    public IReadOnlyCollection<ConstraintMetadata> Constraints { get; init; } = [];
+
+    /// <summary>The field's name: the step type's property name.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The field's description (<c>[Description]</c>, or <c>[Display(Description = …)]</c>); null when neither is declared.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>The field's published data type.</summary>
+    public required DataTypeMetadata DataType { get; init; }
+
+    /// <summary>
+    /// The field's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>),
+    /// so clients know which values are sensitive; empty when the field is not classified.
+    /// </summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
+}
+
+/// <summary>
+/// A step input's lookup (<see cref="ProcessFieldMetadata.Lookup"/>): the input takes
+/// <see cref="Field"/> of one result of the query <see cref="Service"/>/<see cref="Source"/>[/<see cref="View"/>];
+/// the inputs of a step with the same <see cref="Group"/> are filled from the same result.
+/// </summary>
+/// <remarks>A published link, never a choice: the user identifies and picks the result.</remarks>
+[ExcludeFromCodeCoverage]
+public sealed record ProcessFieldLookup
+{
+    /// <summary>The service that publishes the query.</summary>
+    public required string Service { get; init; }
+
+    /// <summary>The query source's published name.</summary>
+    public required string Source { get; init; }
+
+    /// <summary>The view of <see cref="Source"/>, or null for a direct source query.</summary>
+    public string? View { get; init; }
+
+    /// <summary>The result field the input takes.</summary>
+    public required string Field { get; init; }
+
+    /// <summary>The step's inputs with the same group are filled from the same result.</summary>
+    public required string Group { get; init; }
+
+    /// <summary>The result fields that identify a result to a person, in display order (may be empty).</summary>
+    public IReadOnlyList<string> Display { get; init; } = [];
+}
 
 /// <summary>
 /// A field of a step's typed result as published in the registry
 /// (<see cref="ProcessStepResultMetadata.OutputFields"/>).
 /// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessOutputFieldMetadata : ProcessorOutputFieldDescriptor;
+public sealed record ProcessOutputFieldMetadata
+{
+    /// <summary>The field's name: the result type's property name.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The field's description (<c>[Description]</c>), if any.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>The field's published data type.</summary>
+    public required DataTypeMetadata DataType { get; init; }
+
+    /// <summary>
+    /// The field's data classifications (<c>DataClassificationAttribute</c>, e.g. <c>"PriorAuth:PHI"</c>);
+    /// empty when the field is not classified.
+    /// </summary>
+    public IReadOnlyList<string> Classifications { get; init; } = [];
+}
 
 /// <summary>
 /// The shape of a step's typed result as published in the registry

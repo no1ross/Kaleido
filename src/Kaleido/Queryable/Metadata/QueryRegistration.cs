@@ -11,7 +11,7 @@ namespace Kaleido.Queryable.Metadata;
 /// through <c>QueryExecutionContext.Metadata</c>). It is not published to consumers: the registry
 /// and transports present every source the same way.
 /// </remarks>
-public enum QuerySourceKind
+internal enum QuerySourceKind
 {
     /// <summary>
     /// A local source (<see cref="IQuerySource{TQueryContext}"/> or
@@ -57,7 +57,7 @@ internal sealed record QuerySourceRegistration(
 /// <param name="OutputFields">The fields of the record a direct query returns.</param>
 /// <param name="Authorization">The effective authorization rule.</param>
 [ExcludeFromCodeCoverage]
-public sealed record QuerySourceMetadata(
+internal sealed record QuerySourceMetadata(
     string Name,
     string Description,
     string DisplayName,
@@ -72,7 +72,7 @@ public sealed record QuerySourceMetadata(
 
 /// <summary>A query context field and its query rules.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record FieldMetadata
+internal sealed record FieldMetadata
 {
     /// <summary>The field's name.</summary>
     public required string Name { get; init; }
@@ -127,7 +127,7 @@ internal sealed record QueryViewRegistration
 
 /// <summary>Published metadata for a local query view.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record QueryViewMetadata
+internal sealed record QueryViewMetadata
 (
     string Name,
     string Version,
@@ -149,7 +149,7 @@ public sealed record QueryViewMetadata
 /// source, whose order is its downstream's.
 /// </param>
 [ExcludeFromCodeCoverage]
-public sealed record PageableMetadata
+internal sealed record PageableMetadata
 (
     int DefaultSize,
     int MaxSize,
@@ -158,7 +158,7 @@ public sealed record PageableMetadata
 
 /// <summary>A query parameter and its constraints.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record QueryParameterMetadata
+internal sealed record QueryParameterMetadata
 {
     /// <summary>The parameter's name.</summary>
     public required string Name { get; init; }
@@ -180,7 +180,7 @@ public sealed record QueryParameterMetadata
 
 /// <summary>A field of a returned record.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record QueryOutputFieldMetadata
+internal sealed record QueryOutputFieldMetadata
 {
     /// <summary>The field's name.</summary>
     public required string Name { get; init; }
@@ -203,7 +203,7 @@ public sealed record QueryOutputFieldMetadata
 /// implementation detail of the service and is deliberately not published.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public record QueryableSourceRegistryItem
+internal record QueryableSourceRegistryItem
 {
     /// <summary>The source type. For transport endpoint mapping. Not serialized to the wire.</summary>
     public required Type SourceType { get; init; }
@@ -260,7 +260,7 @@ public record QueryableSourceRegistryItem
 
 /// <summary>A local query view as published in the Queryable registry.</summary>
 [ExcludeFromCodeCoverage]
-public record QueryableViewRegistryItem
+internal record QueryableViewRegistryItem
 {
     /// <summary>
     /// The CLR type of the query view class. For transport endpoint mapping (e.g. MakeGenericMethod).
@@ -314,7 +314,7 @@ public record QueryableViewRegistryItem
 
 /// <summary>A published property.</summary>
 [ExcludeFromCodeCoverage]
-public record QueryablePropertyDescriptor
+internal record QueryablePropertyDescriptor
 {
     /// <summary>The property name.</summary>
     public required string Name { get; init; }
@@ -337,7 +337,7 @@ public record QueryablePropertyDescriptor
 
 /// <summary>A published query context field with its query rules.</summary>
 [ExcludeFromCodeCoverage]
-public record QueryableFieldDescriptor : QueryablePropertyDescriptor
+internal record QueryableFieldDescriptor : QueryablePropertyDescriptor
 {
     /// <summary>Whether the field can be filtered.</summary>
     public bool IsFilterable { get; init; }
@@ -361,7 +361,7 @@ public record QueryableFieldDescriptor : QueryablePropertyDescriptor
 
 /// <summary>A published query parameter with its constraints.</summary>
 [ExcludeFromCodeCoverage]
-public record QueryableParameterDescriptor : QueryablePropertyDescriptor
+internal record QueryableParameterDescriptor : QueryablePropertyDescriptor
 {
     /// <summary>The parameter's validation constraints.</summary>
     public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
@@ -370,4 +370,4 @@ public record QueryableParameterDescriptor : QueryablePropertyDescriptor
 
 /// <summary>A published field of a returned record.</summary>
 [ExcludeFromCodeCoverage]
-public record QueryableOutputFieldDescriptor : QueryablePropertyDescriptor;
+internal record QueryableOutputFieldDescriptor : QueryablePropertyDescriptor;

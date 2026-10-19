@@ -116,7 +116,7 @@ public sealed class QueryContextEngineTests
             .ExecuteAsync(request, registration);
 
         Assert.Equal(["A", "B"], result.Results.Select(x => x.Code));
-        Assert.Same(registration.Metadata, source.ReceivedContext?.Metadata);
+        Assert.Same(request, source.ReceivedContext?.Request);
         validator.Verify(x => x.Validate(request, registration.Metadata, registration.Metadata.Pageable), Times.Once);
     }
 

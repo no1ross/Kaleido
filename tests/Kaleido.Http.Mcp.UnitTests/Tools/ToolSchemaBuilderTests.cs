@@ -5,11 +5,11 @@ public sealed class ToolSchemaBuilderTests
 {
     private static ToolSchemaBuilder CreateSut() => new();
 
-    private static ConstraintContract Constraint(string type, params (string Name, object? Value)[] parameters) =>
+    private static ConstraintMetadata Constraint(string type, params (string Name, object? Value)[] parameters) =>
         new()
         {
             Type = type,
-            Parameters = parameters.Select(x => new ConstraintParameterContract { Name = x.Name, Value = x.Value }).ToArray()
+            Parameters = parameters.Select(x => new ConstraintParameterMetadata { Name = x.Name, Value = x.Value }).ToArray()
         };
 
     [Theory]
@@ -22,7 +22,7 @@ public sealed class ToolSchemaBuilderTests
     [InlineData("string", "duration", "string", "duration")]
     public void ForValue_MapsTypesAndFormats(string type, string? format, string expectedType, string? expectedFormat)
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor(type, format));
+        var schema = CreateSut().ForValue(new DataTypeMetadata(type, format));
 
         Assert.Equal(expectedType, schema["type"]?.GetValue<string>());
         Assert.Equal(expectedFormat, schema["format"]?.GetValue<string>());
@@ -32,12 +32,12 @@ public sealed class ToolSchemaBuilderTests
     public void ForValue_AnEnum_ListsCamelCaseNames_AndDescribesThem()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor(
+            new DataTypeMetadata(
                 "string",
                 EnumValues:
                 [
-                    new EnumValueDescriptor(0, "Outpatient", "At a clinic"),
-                    new EnumValueDescriptor(1, "Inpatient", null)
+                    new EnumValueMetadata(0, "Outpatient", "At a clinic"),
+                    new EnumValueMetadata(1, "Inpatient", null)
                 ]));
 
         Assert.Equal(["outpatient", "inpatient"], schema["enum"]!.AsArray().Select(x => x!.GetValue<string>()));
@@ -47,7 +47,7 @@ public sealed class ToolSchemaBuilderTests
     [Fact]
     public void ForValue_AnArray_DescribesItsItems()
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor("array", ItemType: new DataTypeDescriptor("string", "uuid")));
+        var schema = CreateSut().ForValue(new DataTypeMetadata("array", ItemType: new DataTypeMetadata("string", "uuid")));
 
         Assert.Equal("array", schema["type"]?.GetValue<string>());
         Assert.Equal("uuid", schema["items"]?["format"]?.GetValue<string>());
@@ -56,7 +56,7 @@ public sealed class ToolSchemaBuilderTests
     [Fact]
     public void ForValue_CarriesTheDescription()
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor("string"), "  The member's id.  ");
+        var schema = CreateSut().ForValue(new DataTypeMetadata("string"), "  The member's id.  ");
 
         Assert.Equal("The member's id.", schema["description"]?.GetValue<string>());
     }
@@ -65,7 +65,7 @@ public sealed class ToolSchemaBuilderTests
     public void ForValue_MapsConstraints_IncludingValuesRoundTrippedAsJson()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor("string"),
+            new DataTypeMetadata("string"),
             constraints:
             [
                 Constraint("StringLength", ("MaximumLength", JsonSerializer.SerializeToElement(20)), ("MinimumLength", 2)),
@@ -82,7 +82,7 @@ public sealed class ToolSchemaBuilderTests
     public void ForValue_Range_SetsMinimumAndMaximum()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor("number"),
+            new DataTypeMetadata("number"),
             constraints: [Constraint("Range", ("Minimum", 0.5m), ("Maximum", 10))]);
 
         Assert.Equal(0.5m, schema["minimum"]?.GetValue<decimal>());
@@ -94,16 +94,16 @@ public sealed class ToolSchemaBuilderTests
     {
         var builder = CreateSut();
 
-        Assert.Equal(1, builder.ForValue(new DataTypeDescriptor("string"), constraints: [Constraint("Required")])["minLength"]?.GetValue<int>());
-        Assert.Equal("email", builder.ForValue(new DataTypeDescriptor("string"), constraints: [Constraint("EmailAddress")])["format"]?.GetValue<string>());
-        Assert.Equal("uri", builder.ForValue(new DataTypeDescriptor("string"), constraints: [Constraint("Url")])["format"]?.GetValue<string>());
+        Assert.Equal(1, builder.ForValue(new DataTypeMetadata("string"), constraints: [Constraint("Required")])["minLength"]?.GetValue<int>());
+        Assert.Equal("email", builder.ForValue(new DataTypeMetadata("string"), constraints: [Constraint("EmailAddress")])["format"]?.GetValue<string>());
+        Assert.Equal("uri", builder.ForValue(new DataTypeMetadata("string"), constraints: [Constraint("Url")])["format"]?.GetValue<string>());
     }
 
     [Fact]
     public void ForValue_LengthOnAnArray_LimitsItems()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor("array", ItemType: new DataTypeDescriptor("string")),
+            new DataTypeMetadata("array", ItemType: new DataTypeMetadata("string")),
             constraints: [Constraint("MaxLength", ("Length", 3)), Constraint("MinLength", ("Length", 1))]);
 
         Assert.Equal(3, schema["maxItems"]?.GetValue<long>());
@@ -117,7 +117,7 @@ public sealed class ToolSchemaBuilderTests
     [InlineData(null, null)]
     public void ForValue_AString_KeepsOnlyTheFormatsJsonSchemaKnows(string? format, string? expectedFormat)
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor("string", format));
+        var schema = CreateSut().ForValue(new DataTypeMetadata("string", format));
 
         Assert.Equal("string", schema["type"]?.GetValue<string>());
         Assert.Equal(expectedFormat, schema["format"]?.GetValue<string>());
@@ -127,7 +127,7 @@ public sealed class ToolSchemaBuilderTests
     [Fact]
     public void ForValue_ADuration_SaysHowToWriteIt()
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor("string", "duration"));
+        var schema = CreateSut().ForValue(new DataTypeMetadata("string", "duration"));
 
         Assert.Equal("An ISO 8601 duration, e.g. PT30M.", schema["description"]?.GetValue<string>());
     }
@@ -135,7 +135,7 @@ public sealed class ToolSchemaBuilderTests
     [Fact]
     public void ForValue_AnArrayOfUnknownItems_AcceptsAnyItem()
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor("array"));
+        var schema = CreateSut().ForValue(new DataTypeMetadata("array"));
 
         Assert.Equal("array", schema["type"]?.GetValue<string>());
         Assert.Empty(Assert.IsType<JsonObject>(schema["items"]));
@@ -144,7 +144,7 @@ public sealed class ToolSchemaBuilderTests
     [Fact]
     public void ForValue_AnObject_KeepsItsType()
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor("object"));
+        var schema = CreateSut().ForValue(new DataTypeMetadata("object"));
 
         Assert.Equal(["type"], schema.Select(x => x.Key));
         Assert.Equal("object", schema["type"]?.GetValue<string>());
@@ -155,7 +155,7 @@ public sealed class ToolSchemaBuilderTests
     [InlineData("  ")]
     public void ForValue_AnUntypedValue_AcceptsAnyValue(string type)
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor(type));
+        var schema = CreateSut().ForValue(new DataTypeMetadata(type));
 
         Assert.Empty(schema);
     }
@@ -163,7 +163,7 @@ public sealed class ToolSchemaBuilderTests
     [Fact]
     public void ForValue_AnEnumWithoutDescriptions_HasNoDescription()
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor("string", EnumValues: [new EnumValueDescriptor(0, "Outpatient", " ")]));
+        var schema = CreateSut().ForValue(new DataTypeMetadata("string", EnumValues: [new EnumValueMetadata(0, "Outpatient", " ")]));
 
         Assert.Equal(["outpatient"], schema["enum"]!.AsArray().Select(x => x!.GetValue<string>()));
         Assert.Null(schema["description"]);
@@ -173,7 +173,7 @@ public sealed class ToolSchemaBuilderTests
     public void ForValue_LengthOnAString_LimitsItsLength()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor("string"),
+            new DataTypeMetadata("string"),
             constraints: [Constraint("MaxLength", ("Length", 30)), Constraint("MinLength", ("Length", 2))]);
 
         Assert.Equal(30, schema["maxLength"]?.GetValue<long>());
@@ -185,7 +185,7 @@ public sealed class ToolSchemaBuilderTests
     public void ForValue_LengthOnAnUntypedValue_LimitsItsLength()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor(string.Empty),
+            new DataTypeMetadata(string.Empty),
             constraints: [Constraint("MaxLength", ("Length", 4)), Constraint("Required")]);
 
         Assert.Equal(4, schema["maxLength"]?.GetValue<long>());
@@ -196,7 +196,7 @@ public sealed class ToolSchemaBuilderTests
     public void ForValue_AStringLengthWithoutAMinimum_SetsOnlyTheMaximum()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor("string"),
+            new DataTypeMetadata("string"),
             constraints: [Constraint("StringLength", ("MaximumLength", 10), ("MinimumLength", 0))]);
 
         Assert.Equal(10, schema["maxLength"]?.GetValue<long>());
@@ -207,7 +207,7 @@ public sealed class ToolSchemaBuilderTests
     public void ForValue_RequiredText_KeepsALongerMinimumLength()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor("string"),
+            new DataTypeMetadata("string"),
             constraints: [Constraint("StringLength", ("MaximumLength", 10), ("MinimumLength", 3)), Constraint("Required")]);
 
         Assert.Equal(3, schema["minLength"]?.GetValue<long>());
@@ -216,7 +216,7 @@ public sealed class ToolSchemaBuilderTests
     [Fact]
     public void ForValue_ARequiredNumber_HasNoLengthLimit()
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor("integer"), constraints: [Constraint("Required")]);
+        var schema = CreateSut().ForValue(new DataTypeMetadata("integer"), constraints: [Constraint("Required")]);
 
         Assert.Equal(["type"], schema.Select(x => x.Key));
     }
@@ -225,7 +225,7 @@ public sealed class ToolSchemaBuilderTests
     public void ForValue_ConstraintParameters_AreReadFromEveryShape()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor("number"),
+            new DataTypeMetadata("number"),
             constraints:
             [
                 Constraint("Range", ("Minimum", "1.25"), ("Maximum", JsonSerializer.SerializeToElement(99.5))),
@@ -243,7 +243,7 @@ public sealed class ToolSchemaBuilderTests
     public void ForValue_MissingOrEmptyConstraintParameters_SetNothing()
     {
         var schema = CreateSut().ForValue(
-            new DataTypeDescriptor("string"),
+            new DataTypeMetadata("string"),
             constraints:
             [
                 Constraint("Range"),
@@ -266,7 +266,7 @@ public sealed class ToolSchemaBuilderTests
     [Fact]
     public void ForValue_ABlankDescription_IsLeftOut()
     {
-        var schema = CreateSut().ForValue(new DataTypeDescriptor("boolean"), "   ");
+        var schema = CreateSut().ForValue(new DataTypeMetadata("boolean"), "   ");
 
         Assert.Null(schema["description"]);
     }
