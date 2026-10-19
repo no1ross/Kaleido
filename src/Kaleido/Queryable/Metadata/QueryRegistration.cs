@@ -203,7 +203,7 @@ internal sealed record QueryOutputFieldMetadata
 /// implementation detail of the service and is deliberately not published.
 /// </summary>
 [ExcludeFromCodeCoverage]
-internal record QueryableSourceRegistryItem
+internal sealed record QueryableSourceRegistryItem
 {
     /// <summary>The source type. For transport endpoint mapping. Not serialized to the wire.</summary>
     public required Type SourceType { get; init; }
@@ -260,7 +260,7 @@ internal record QueryableSourceRegistryItem
 
 /// <summary>A local query view as published in the Queryable registry.</summary>
 [ExcludeFromCodeCoverage]
-internal record QueryableViewRegistryItem
+internal sealed record QueryableViewRegistryItem
 {
     /// <summary>
     /// The CLR type of the query view class. For transport endpoint mapping (e.g. MakeGenericMethod).
@@ -337,7 +337,7 @@ internal record QueryablePropertyDescriptor
 
 /// <summary>A published query context field with its query rules.</summary>
 [ExcludeFromCodeCoverage]
-internal record QueryableFieldDescriptor : QueryablePropertyDescriptor
+internal sealed record QueryableFieldDescriptor : QueryablePropertyDescriptor
 {
     /// <summary>Whether the field can be filtered.</summary>
     public bool IsFilterable { get; init; }
@@ -361,7 +361,7 @@ internal record QueryableFieldDescriptor : QueryablePropertyDescriptor
 
 /// <summary>A published query parameter with its constraints.</summary>
 [ExcludeFromCodeCoverage]
-internal record QueryableParameterDescriptor : QueryablePropertyDescriptor
+internal sealed record QueryableParameterDescriptor : QueryablePropertyDescriptor
 {
     /// <summary>The parameter's validation constraints.</summary>
     public IReadOnlyCollection<ConstraintContract> Constraints { get; init; }
@@ -370,4 +370,4 @@ internal record QueryableParameterDescriptor : QueryablePropertyDescriptor
 
 /// <summary>A published field of a returned record.</summary>
 [ExcludeFromCodeCoverage]
-internal record QueryableOutputFieldDescriptor : QueryablePropertyDescriptor;
+internal sealed record QueryableOutputFieldDescriptor : QueryablePropertyDescriptor;
