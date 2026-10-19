@@ -80,34 +80,6 @@ public sealed record ExecuteStepRequest<TProcessStep>
         get;
         init;
     }
-
-    /// <summary>
-    /// Builds the runtime <see cref="ProcessRequest"/> for this step: a single-step request that
-    /// carries <see cref="ProcessStep"/> under <paramref name="stepName"/>.
-    /// </summary>
-    /// <param name="stepName">The step's registered name; the request's steps are keyed case-insensitively.</param>
-    /// <param name="processId">The process to continue, or <see langword="null"/> to start a new one.</param>
-    /// <returns>A new <see cref="ProcessRequest"/> containing only this step.</returns>
-    public ProcessRequest ToProcessRequest(
-        string stepName,
-        Guid? processId = null)
-    {
-        return new ProcessRequest
-        {
-            ProcessId = processId,
-
-            Processor =
-                new ProcessorRequest
-                {
-                    Steps =
-                        new Dictionary<string, object?>(
-                            StringComparer.OrdinalIgnoreCase)
-                        {
-                            [stepName] = ProcessStep,
-                        },
-                },
-        };
-    }
 }
 
 // ── Execution responses ──────────────────────────────────────────────────────

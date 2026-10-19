@@ -15,7 +15,7 @@ namespace Kaleido.Processor.Registry;
 /// Inject this interface to inspect available steps, resolve step metadata by name
 /// (the step type's name) or CLR type, or drive dynamic process execution logic.
 /// </remarks>
-public interface IProcessorStepRegistry
+internal interface IProcessorStepRegistry
 {
     /// <summary>
     /// All registered process steps, in an unspecified order.

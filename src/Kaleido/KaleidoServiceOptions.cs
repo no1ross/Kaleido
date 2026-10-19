@@ -53,7 +53,11 @@ public class KaleidoServiceOptions
     /// The assemblies to scan for Process and Queryable registrations.
     /// A non-empty explicit list is required when calling AddKaleido().
     /// </summary>
-    public Assembly[]? Assemblies { get; init; }
+    /// <remarks>
+    /// A read-only copy taken when the options are built: changing the array assigned to
+    /// <see cref="KaleidoServiceOptionsBuilder.Assemblies"/> afterwards does not change it.
+    /// </remarks>
+    public IReadOnlyList<Assembly>? Assemblies { get; init; }
 
     /// <summary>
     /// Marks this processor as the entry point for the application workflow.
@@ -116,7 +120,7 @@ public class KaleidoServiceOptions
         ValidateServiceName(options.ServiceName);
         KaleidoEventOptions.Validate(options.Events);
 
-        if (options.Assemblies is null || options.Assemblies.Length == 0)
+        if (options.Assemblies is null || options.Assemblies.Count == 0)
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.MissingAssembly,
@@ -201,7 +205,14 @@ public sealed class KaleidoServiceOptionsBuilder
     /// <inheritdoc cref="KaleidoServiceOptions.InstanceId"/>
     public Guid InstanceId { get; set; } = Guid.NewGuid();
 
-    /// <inheritdoc cref="KaleidoServiceOptions.Assemblies"/>
+    /// <summary>
+    /// The assemblies to scan for Process and Queryable registrations.
+    /// A non-empty explicit list is required when calling AddKaleido().
+    /// </summary>
+    /// <remarks>
+    /// Copied into a read-only <see cref="KaleidoServiceOptions.Assemblies"/> when the options are
+    /// built; later changes to this array have no effect.
+    /// </remarks>
     public Assembly[]? Assemblies { get; set; }
 
     /// <inheritdoc cref="KaleidoServiceOptions.IsEntryProcessor"/>
@@ -226,7 +237,7 @@ public sealed class KaleidoServiceOptionsBuilder
             DisplayName = DisplayName,
             Description = Description,
             InstanceId = InstanceId,
-            Assemblies = Assemblies,
+            Assemblies = Assemblies is null ? null : Array.AsReadOnly([.. Assemblies]),
             IsEntryProcessor = IsEntryProcessor,
             TypeFilter = TypeFilter,
             AuthorizationMode = AuthorizationMode,

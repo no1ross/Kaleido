@@ -36,7 +36,7 @@ namespace Kaleido.Processor.Registry;
 /// discovery; the runtime fails with a framework error when it is <see langword="null"/>.
 /// </param>
 [ExcludeFromCodeCoverage]
-public sealed partial record ProcessStepRegistration(
+internal sealed partial record ProcessStepRegistration(
     Type StepType,
     Type? StepResultType,
     Type HandlerType,
@@ -58,7 +58,7 @@ public sealed partial record ProcessStepRegistration(
 
 /// <summary>A step's repeatability, from <see cref="RepeatableAttribute"/>.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record RepeatableOptions
+internal sealed record RepeatableOptions
 {
     /// <summary>
     /// <see langword="true"/> when the step type declares <see cref="RepeatableAttribute"/>, so the step
@@ -69,7 +69,7 @@ public sealed record RepeatableOptions
 
 /// <summary>A step's published metadata, from its <see cref="ProcessStepAttribute"/>.</summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessStepMetadata
+internal sealed record ProcessStepMetadata
 {
     /// <summary>The step's name: its type name.</summary>
     public required string Name { get; init; }

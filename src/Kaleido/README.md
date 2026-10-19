@@ -26,8 +26,8 @@ For the full repository model, see:
 
 ### Queryable runtime
 - `QueryableServiceCollectionExtensions` — `AddQueryable()` (internal, auto-invoked by `AddKaleido()`)
-- `QueryableService` — main dispatch service (by queried type: view, local source, or delegated source)
-- `IQuerySourceRegistry` / `IQueryViewRegistry` — runtime registries (sources keyed by source type and name; views keyed by view type)
+- `IQueryableService` / `QueryableService` (internal; called by the HTTP transport) — main dispatch service (by queried type: view, local source, or delegated source)
+- `IQuerySourceRegistry` / `IQueryViewRegistry` (internal) — runtime registries (sources keyed by source type and name; views keyed by view type)
 - `QueryContextEngine` / `DelegatedQuerySourceEngine` / `QueryContextExecutor` — query execution pipeline
 - `IQueryContextExecutor<TView>` — public extension point: register your own implementation to plug in provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`). Default executor uses `IAsyncEnumerable<T>` when supported, sync LINQ otherwise; it counts an async query by reading every matching row, so EF Core hosts should register an EF executor ([docs/PATTERNS.md](../../docs/PATTERNS.md#queryable-sources-views-and-query-contexts)).
 - `QueryRequestCompiler` / `QueryRequestValidator` — validation and compilation
@@ -38,9 +38,9 @@ For the full repository model, see:
 
 ### Process runtime
 - `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
-- `IProcessorRuntime` — runs submitted steps in-process (what the HTTP transport calls); `ProcessorExecutor` (internal) is the main step execution loop
+- `IProcessorRuntime` (internal) — runs submitted steps in-process (what the HTTP transport calls); `ProcessorExecutor` (internal) is the main step execution loop
 - `StepCandidateBuilder` / `StepCandidateValidator` / `StepCandidateConsistencyChecker` / `StepCandidatePlanner` / `StepCandidateNextStepChecker` — planning pipeline
-- `IProcessorStepRegistry` / `IProcessorRegistry` — runtime registries (`IProcessorRegistry` is internal, shared with `Kaleido.Http`)
+- `IProcessorStepRegistry` / `IProcessorRegistry` (internal, shared with `Kaleido.Http`) — runtime registries
 - `ProcessorObservability` (internal) — logs, traces and metrics of the runtime
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
 - `IInformationStep` / `InformationRequest` / `RequireInformation<TNext>` — information requests: runtime-decided questions answered by an information step (see [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md))
@@ -137,7 +137,7 @@ Process is step-centric:
 2. implement exactly one `IProcessStepHandler<TStep>` (or `<TStep, TResult>`)
 3. register the assemblies containing steps via `KaleidoServiceOptions.Assemblies`
 4. let the runtime build a registry and manage state
-5. submit one or more steps through `IProcessorRuntime` or the HTTP transport layer
+5. submit one or more steps through a transport (the HTTP transport, `Kaleido.Http`); the in-process runtime it calls is internal
 
 A step's public name is its type name (`Type.Name`, unmodified) — in the registry, on the wire, in persisted state, and in events. Handlers name the next step by type (`ProcessStepHandlerResult.Success<TNext>()`, or `ProcessStepHandlerResult.Success(response).Next<TNext>()` with a typed response); names are only produced at the boundary.
 

@@ -147,10 +147,18 @@ internal sealed partial class ProcessExecutionService(
 
         LogExecutingStep(logger, stepName, serviceOptions.ServiceName);
 
-        var processRequest =
-            request.ToProcessRequest(
-                stepName: stepName,
-                processId: correlationAccessor.Current.ProcessId);
+        // A single-step runtime request carrying the step under its registered name.
+        var processRequest = new ProcessRequest
+        {
+            ProcessId = correlationAccessor.Current.ProcessId,
+            Processor = new ProcessorRequest
+            {
+                Steps = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [stepName] = request.ProcessStep,
+                },
+            },
+        };
 
         var processResult =
             await runtime.ExecuteAsync(

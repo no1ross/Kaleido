@@ -5,7 +5,7 @@ namespace Kaleido.Processor;
 /// part of a <see cref="ProcessRequest"/>.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record ProcessorRequest
+internal sealed record ProcessorRequest
 {
     /// <summary>
     /// The submitted steps, keyed by step name (the step type's name, as the registry publishes it)
