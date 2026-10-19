@@ -322,4 +322,47 @@ public sealed class HttpClientRegistryCacheTests
 
         Assert.Equal(HttpClientErrorCodes.EmptyResponse, exception.Code);
     }
+
+    [Fact]
+    public async Task GetOrFetchAsync_PassesTheCallersTokenToTheStoreAndTheFetch()
+    {
+        using var cts = new CancellationTokenSource();
+        var store = new Mock<IRegistrySnapshotStore>();
+        store.Setup(s => s.GetAsync(Key, cts.Token)).ReturnsAsync((AggregatedRegistryResponse?)null);
+        using var sut = CreateSut(store.Object);
+        var fetchToken = CancellationToken.None;
+
+        await sut.GetOrFetchAsync(null, ct => { fetchToken = ct; return Task.FromResult(Fresh); }, cts.Token);
+
+        Assert.Equal(cts.Token, fetchToken);
+        store.Verify(s => s.SetAsync(Key, Fresh, cts.Token), Times.Once);
+    }
+
+    // A store failure is the caller's failure; a store that may be unavailable handles that itself
+    // (a distributed store falls back, #275).
+    [Fact]
+    public async Task GetOrFetchAsync_WhenTheStoreFails_TheFailurePropagates_AndNothingIsFetched()
+    {
+        var store = new Mock<IRegistrySnapshotStore>();
+        store.Setup(s => s.GetAsync(Key, It.IsAny<CancellationToken>())).ThrowsAsync(new TimeoutException("store down"));
+        using var sut = CreateSut(store.Object);
+        var fetched = false;
+
+        await Assert.ThrowsAsync<TimeoutException>(() => sut.GetOrFetchAsync(null, _ => { fetched = true; return Task.FromResult(Fresh); }, TestContext.Current.CancellationToken));
+
+        Assert.False(fetched);
+    }
+
+    [Fact]
+    public async Task GetOrFetchAsync_WhenTheFetchFails_NothingIsStored_AndTheNextCallFetchesAgain()
+    {
+        var backing = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
+        using var sut = CreateSut(CreateStore(backing));
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetOrFetchAsync(null, _ => throw new HttpRequestException("down"), TestContext.Current.CancellationToken));
+        Assert.Empty(backing);
+
+        var result = await sut.GetOrFetchAsync(null, _ => Task.FromResult(Fresh), TestContext.Current.CancellationToken);
+        Assert.Same(Fresh, result);
+    }
 }
