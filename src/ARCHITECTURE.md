@@ -70,10 +70,10 @@ The core project is organized into two main namespaces:
 
 **`Kaleido.Processor`**
 - Registration: `ProcessorServiceCollectionExtensions` (internal, invoked by `AddKaleido()`)
-- Runtime: `IProcessorRuntime`, `ProcessorExecutor` (the step execution loop)
+- Runtime: `IProcessorRuntime` (internal, called by the HTTP transport), `ProcessorExecutor` (the step execution loop)
 - Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`, `StepCandidateNextStepChecker` (only next steps run; answers checked against the pending information request)
 - State: `IKaleidoContextStore` (in `Kaleido.Storage`), the internal in-memory default, `ProcessorContext`
-- Registries: `IProcessorStepRegistry`, `IProcessorRegistry`
+- Registries: `IProcessorStepRegistry`, `IProcessorRegistry` (both internal, shared with `Kaleido.Http`)
 - Observability: `ProcessorObservability`
 
 ### Extension points
