@@ -183,9 +183,18 @@ services.AddKaleido(builder.Configuration, o =>
 ```
 
 `AddKaleido()` auto-registers Processor + Queryable runtimes and binds
-`Kaleido:*` config into an immutable `KaleidoServiceOptions` snapshot. Set
-options via the `KaleidoServiceOptionsBuilder` configure lambda — the
-registered options are init-only.
+`Kaleido:*` config into a `KaleidoServiceOptions` snapshot. Set options via the
+`KaleidoServiceOptionsBuilder` configure lambda; `Build()` validates and
+normalizes them (service name, assemblies, roles).
+
+**Options are startup inputs.** Every Kaleido options object is configured while
+the host composes its services: the `AddKaleido` builder, `AddHttp`'s
+`KaleidoHttpOptions`, `MapKaleidoHttp`'s `KaleidoHttpMapOptions`, the
+`Kaleido:Clients` options, the `AddMcp` builder and
+`KaleidoOpenTelemetryOptions`. Set them in configuration or in the configure
+callback, then leave them alone: changing an options object after the `Add…`/
+`Map…` call is unsupported, and what it changes is undefined. Kaleido does not
+copy options defensively (ADR 0018).
 
 `AddHttp()` always wires `ExceptionMiddleware` + `ObservabilityMiddleware` via
 `KaleidoStartupFilter`; there is no opt-out.
