@@ -37,7 +37,7 @@ For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteSte
   Every source is presented the same way; how the service fulfils it is not part of the contract. `QueryUrl` is null only in a caller-filtered registry, when the caller may use some of the source's views but not the source itself.
 - `QueryableViewResponse` — a view of a source (`QueryUrl`, `Parameters`, `OutputFields`, paging)
 - `QueryableFieldMetadata` / `QueryableQueryParameter` / `QueryableQueryProperty` / `QueryablePagingMetadata` — a source's query fields, a source's or view's parameters and result fields, and its paging
-- Errors use the shared `KaleidoErrorResponse` (defined in `Kaleido` core): `{ "errors": [{ "code", "message" }] }`; query validation failures are 400 with `qry_*` codes ([`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
+- Errors use the shared `KaleidoErrorResponse` / `KaleidoError` (with the shared codes in `KaleidoErrorCodes`), defined here: `{ "errors": [{ "code", "message" }] }`; query validation failures are 400 with `qry_*` codes ([`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
 - `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated query sources calling a remote source or view)
 
 ### JSON enum values

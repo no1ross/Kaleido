@@ -22,7 +22,7 @@ For the full repository model, see:
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - `IEventPublisher` / `IKaleidoEvent` - infrastructure-agnostic event publication seam; events reach the publisher at least once through the outbox and the event relay (`KaleidoEventRelay`, `KaleidoEventOptions`, ADR 0012)
 - `IKaleidoEventRedactor` / `AddEventRedactor<T>()` - reduce events before the outbox write; properties marked with a `DataClassificationAttribute` are redacted with the host's `AddRedaction` redactors, or erased when none is registered (ADR 0013)
-- `Kaleido.Exceptions` — `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConcurrencyException` (409), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500); `KaleidoErrorResponse` is the error body every Kaleido endpoint returns (see [`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
+- `Kaleido.Exceptions` — `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConcurrencyException` (409), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500); the HTTP transport maps them to the error body `KaleidoErrorResponse`, which lives in `Kaleido.Http.Abstractions` (see [`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md), ADR 0017)
 
 ### Queryable runtime
 - `QueryableServiceCollectionExtensions` — `AddQueryable()` (internal, auto-invoked by `AddKaleido()`)
