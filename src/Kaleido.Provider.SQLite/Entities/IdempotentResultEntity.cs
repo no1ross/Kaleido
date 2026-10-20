@@ -1,3 +1,4 @@
+using Kaleido.Processor.Context;
 namespace Kaleido.Provider.SQLite.Entities;
 
 internal sealed class IdempotentResultEntity
@@ -13,6 +14,18 @@ internal sealed class IdempotentResultEntity
         get;
         set;
     } = string.Empty;
+
+    public IdempotentResultState State
+    {
+        get;
+        set;
+    }
+
+    public DateTimeOffset LeaseUntilUtc
+    {
+        get;
+        set;
+    }
 
     public int StatusCode
     {

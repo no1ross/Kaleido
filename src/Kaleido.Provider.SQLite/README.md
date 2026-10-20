@@ -33,8 +33,9 @@ public interface IKaleidoContextStore
     Task<ProcessorContext> SaveAsync(ProcessorContext context, IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default);
 
     // Idempotent results
-    Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default);
-    Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default);
+    Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken = default);
+    Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken = default);
+    Task ReleaseAsync(string key, CancellationToken cancellationToken = default);
 
     // Event outbox
     Task EnqueueEventsAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default);
@@ -72,13 +73,14 @@ The compare and the write must be one step: a row version / ETag / `WHERE Versio
 
 ### Idempotent results
 
-`FindResultAsync` / `SaveResultAsync` keep the answers to execute requests sent with an `Idempotency-Key`, so a retry gets the stored answer instead of running the step again ([`Kaleido.Http`](../Kaleido.Http/README.md#idempotent-execution-idempotency-key)). Keep them **next to the process state, in the same database** - no extra store for the integrator:
+`AdmitAsync` / `CompleteAsync` / `ReleaseAsync` keep the lifecycle of execute requests sent with an `Idempotency-Key`: the key is admitted before the step runs, so a retry never runs alongside the first attempt and gets its answer instead of running the step again ([`Kaleido.Http`](../Kaleido.Http/README.md#idempotent-execution-idempotency-key), [ADR 0019](../../docs/decisions/0019-idempotent-execution-admission.md)). Keep them **next to the process state, in the same database** - no extra store for the integrator:
 
-- `FindResultAsync` returns the stored `IdempotentResult` for the key, or `null` when there is none or it has expired (`ExpiresUtc`).
-- `SaveResultAsync` stores it, replacing an earlier answer for the same key. Delete expired answers here (or in a background job) so they do not pile up.
-- Keep `Key`, `RequestHash`, `StatusCode`, `Response` (the JSON answer - plan for responses of several KB) and `ExpiresUtc` as given.
+- `AdmitAsync(admission)` stores the record (state `InProgress`, with its `LeaseUntilUtc`) when no record exists for the key, or only an expired one, and returns `null`; otherwise it stores nothing and returns the existing record. It must be **one atomic insert-if-absent** - two admissions of the same key at once never both get `null` (a unique key with `INSERT ... ON CONFLICT DO NOTHING`, a conditional put). Delete expired records here (or in a background job) so they do not pile up.
+- `CompleteAsync(result)` stores the answer (state `Completed`), replacing the admission.
+- `ReleaseAsync(key)` removes the record **only while it is still `InProgress`** (its request failed, so the key may be used again); a completed record stays.
+- Keep `Key`, `RequestHash`, `State`, `LeaseUntilUtc`, `StatusCode`, `Response` (the JSON answer - plan for responses of several KB) and `ExpiresUtc` as given, and keep an admission across restarts: a record still `InProgress` after its lease is how Kaleido knows an attempt never finished.
 
-The SQLite store keeps them in its own `IdempotentResults` table (`Key` primary key, an index on `ExpiresUtc`) and deletes expired rows whenever a new answer is saved.
+The SQLite store keeps them in its own `IdempotentResults` table (`Key` primary key, times as UTC ticks, an index on `ExpiresUtc`). An admission is one `INSERT ... ON CONFLICT(Key) DO NOTHING` after deleting expired rows; a completion is an upsert; a release is `DELETE ... WHERE Key = @key AND State = InProgress`.
 
 ### Event outbox
 
@@ -93,7 +95,7 @@ The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, t
 
 ### Schema changes
 
-The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, the `IdempotentResults` and `OutboxEvents` tables, or the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed (delete the file; the host's `EnsureCreated` call recreates it at startup). A production store manages its own schema migrations.
+The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, the `IdempotentResults` and `OutboxEvents` tables, the `IdempotentResults` `State`/`LeaseUntilUtc` columns (#285), or the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed (delete the file; the host's `EnsureCreated` call recreates it at startup). A production store manages its own schema migrations.
 
 ---
 

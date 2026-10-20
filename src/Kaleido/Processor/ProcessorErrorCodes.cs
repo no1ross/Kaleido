@@ -46,6 +46,19 @@ public static class ProcessorErrorCodes
     /// <summary>The idempotency key is longer than 200 characters. HTTP 400.</summary>
     public const string InvalidIdempotencyKey = "pro_invalid_idempotency_key";
 
+    /// <summary>
+    /// The first request with this idempotency key is still running, so this one did not run. Retry
+    /// with the same key after the <c>Retry-After</c> delay to get its answer. HTTP 409.
+    /// </summary>
+    public const string IdempotencyInProgress = "pro_idempotency_in_progress";
+
+    /// <summary>
+    /// The first request with this idempotency key never finished (e.g. the service stopped while it
+    /// ran), so it may or may not have run. It is not run again with this key: read the process state
+    /// and decide on the next step. HTTP 409.
+    /// </summary>
+    public const string IdempotencyOutcomeUnknown = "pro_idempotency_outcome_unknown";
+
     /// <summary>The supplied step request is invalid.</summary>
     public const string InvalidRequest = "pro_invalid_request";
 

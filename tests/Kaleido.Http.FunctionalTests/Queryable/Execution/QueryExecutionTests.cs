@@ -7,14 +7,9 @@ using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 
 namespace Kaleido.Http.FunctionalTests.Queryable.Execution;
 
-public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixture>
+public sealed class QueryExecutionTests(QueryableAspNetCoreFixture fixture) : IClassFixture<QueryableAspNetCoreFixture>
 {
-    private readonly HttpClient _client;
-
-    public QueryExecutionTests(QueryableAspNetCoreFixture fixture)
-    {
-        _client = fixture.Client;
-    }
+    private readonly HttpClient _client = fixture.Client;
 
     [Fact]
     public async Task PostDirectQuery_ReturnsDefaultPage()
