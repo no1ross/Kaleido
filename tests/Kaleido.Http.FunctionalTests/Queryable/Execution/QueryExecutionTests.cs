@@ -237,6 +237,45 @@ public sealed class QueryExecutionTests(QueryableAspNetCoreFixture fixture) : IC
         Assert.Equal(offset ?? 0, GetOffset(root));
     }
 
+    // #299: a nullable collection on the wire means the same whether it is missing, null or empty.
+    [Theory]
+    [InlineData("""{"query":{}}""")]
+    [InlineData("""{"query":{"sort":null}}""")]
+    [InlineData("""{"query":{"sort":[]}}""")]
+    public async Task AMissingNullOrEmptySort_AppliesTheDefaultSort(string json)
+    {
+        var response = await PostRawContextQueryAsync(json);
+
+        await AssertStatusCodeAsync(HttpStatusCode.OK, response);
+        Assert.Equal([1, 2, 3], (await ReadRecordsAsync(response)).Select(x => GetInt32(x, "Id")));
+    }
+
+    [Theory]
+    [InlineData("""{"query":{"filter":{"condition":{"field":"NullableScore","operator":"isnull"}}}}""")]
+    [InlineData("""{"query":{"filter":{"condition":{"field":"NullableScore","operator":"isnull","values":null}}}}""")]
+    [InlineData("""{"query":{"filter":{"condition":{"field":"NullableScore","operator":"isnull","values":[]}}}}""")]
+    public async Task AMissingNullOrEmptyValueList_MeansNoValues(string json)
+    {
+        var expected = await PostRawContextQueryAsync("""{"query":{"filter":{"condition":{"field":"NullableScore","operator":"isnull"}}}}""");
+        var response = await PostRawContextQueryAsync(json);
+
+        await AssertStatusCodeAsync(HttpStatusCode.OK, response);
+        Assert.Equal(GetTotalCount(await ReadResponseRootAsync(expected)), GetTotalCount(await ReadResponseRootAsync(response)));
+    }
+
+    [Theory]
+    [InlineData("""{"query":{"filter":{"group":{"operator":"and"}}}}""")]
+    [InlineData("""{"query":{"filter":{"group":{"operator":"and","filters":null}}}}""")]
+    [InlineData("""{"query":{"filter":{"group":{"operator":"and","filters":[]}}}}""")]
+    public async Task AMissingNullOrEmptyGroup_IsAnsweredTheSameWay(string json)
+    {
+        var expected = await PostRawContextQueryAsync("""{"query":{"filter":{"group":{"operator":"and","filters":[]}}}}""");
+        var response = await PostRawContextQueryAsync(json);
+
+        Assert.Equal(expected.StatusCode, response.StatusCode);
+        Assert.Equal(await expected.Content.ReadAsStringAsync(), await response.Content.ReadAsStringAsync());
+    }
+
     private Task<HttpResponseMessage> PostContextQueryAsync(QueryRequest request) =>
         PostJsonAsync("/kaleido/queryable/functionalrecordcontextsource/query", request);
 

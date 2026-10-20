@@ -68,6 +68,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
 {
     o.ServiceName = "myservice"; // lowercase letters, digits, '-' and '_' (KAL2005)
     o.Assemblies = [typeof(Program).Assembly];
+    // AuthorizationMode is Authenticated unless set: add host authentication, or set None explicitly (ADR 0021)
 })
     .AddHttp();
 
@@ -157,7 +158,7 @@ Kaleido answers every error from its own endpoints itself, with `{ "errors": [{ 
 // Require authorization on everything Kaleido publishes
 app.MapKaleidoHttp().RequireAuthorization();
 
-// No auth (default)
+// No host-level convention: Kaleido's own mode decides (Authenticated unless the host chose otherwise)
 app.MapKaleidoHttp();
 ```
 
@@ -165,7 +166,7 @@ Any `IEndpointConventionBuilder` extension (`RequireAuthorization`, `WithMetadat
 
 ### Per-capability authorization
 
-Capability authorization is set in core with `AddKaleido(…, o => o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust)` (see [`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md)). With `None` (default) Kaleido attaches no auth metadata and enforces nothing, so hosts without authentication work unchanged. With `Authenticated`, every capability requires an authenticated caller and undeclared capabilities are open to any of them. With `ZeroTrust`, a capability needs an explicit rule (its own `[KaleidoAuthorization]` or the service `DefaultAuthorization`) or it is not mapped or discovered at all. `[KaleidoAuthorization]` narrows or opens access:
+Capability authorization is set in core with `AddKaleido(…, o => o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust)` (see [`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md)). With `Authenticated` (the default, ADR 0021), every capability requires an authenticated caller and undeclared capabilities are open to any of them; a host without an authentication scheme does not start. With `None`, which a host chooses explicitly, Kaleido attaches no auth metadata and enforces nothing, so hosts without authentication work. With `ZeroTrust`, a capability needs an explicit rule (its own `[KaleidoAuthorization]` or the service `DefaultAuthorization`) or it is not mapped or discovered at all. `[KaleidoAuthorization]` narrows or opens access:
 
 ```csharp
 [ProcessStep(Version = "1.0.0", DisplayName = "Approve", Description = "...")]

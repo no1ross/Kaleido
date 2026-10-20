@@ -277,7 +277,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
         builder.Services.AddSingleton(new KaleidoHttpOptions());
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName });
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = KaleidoAuthorizationMode.None });
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
         builder.Services.AddSingleton<IProcessorStepRegistry>(CreateProcessStepRegistry());

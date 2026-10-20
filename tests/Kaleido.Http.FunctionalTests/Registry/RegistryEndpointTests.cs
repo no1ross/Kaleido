@@ -145,6 +145,7 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
                     services.AddKaleido(config, o =>
                         {
                             o.ServiceName = "kaleido";
+                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(ProcessorAspNetCoreFixture).Assembly];
                         })
                         .AddHttp()

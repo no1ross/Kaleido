@@ -61,6 +61,15 @@ public static class KaleidoServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
+        // One Kaleido service per host: a second call would silently replace the first one's options
+        // (its service name, assemblies, authorization), so it is refused (#301).
+        if (services.Any(x => x.ServiceType == typeof(KaleidoServiceOptions)))
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.DuplicateRegistration,
+                "AddKaleido() was called more than once on this service collection. A host runs one Kaleido service: configure it in a single AddKaleido() call.");
+        }
+
         // Bind + configure run on the mutable builder; the immutable
         // KaleidoServiceOptions snapshot is what DI sees (EXT-16). Eager
         // validation here is strictly stronger than ValidateOnStart — it

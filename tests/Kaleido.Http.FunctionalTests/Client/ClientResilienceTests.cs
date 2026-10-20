@@ -29,6 +29,7 @@ public sealed class ClientResilienceTests
         services.AddKaleido(configuration, o =>
             {
                 o.ServiceName = "caller";
+                o.AuthorizationMode = KaleidoAuthorizationMode.None;
                 o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
             })
             .AddHttpClients();
