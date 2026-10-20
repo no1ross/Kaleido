@@ -24,9 +24,8 @@ builder.Services.AddDbContext<ProviderSearchDbContext>(
 builder.Services.AddScoped<PlanNetworkClient>();
 
 
-// Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding.
+// Dev-token auth (sample stand-in for a real IdP); outgoing Kaleido calls are authorized by\n// DevCallCredentialProvider (registered on the Kaleido builder below).
 builder.Services.AddDevAuth();
-builder.Services.AddDevTokenForwarding("ReferenceData");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -58,6 +57,9 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
     .AddHttp(o => o.IncludeFrameworkMessages = true)
     .AddHttpClients()
+    // Outgoing calls: an on-behalf-of dev token for the caller (user + roles + this service as actor),
+    // a service token for the service's own calls (ADR 0022).
+    .AddCallCredentials<DevCallCredentialProvider>()
     .AddOpenTelemetry();
 
 var app = builder.Build();

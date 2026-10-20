@@ -160,26 +160,6 @@ public static class DevAuthExtensions
             options.UseRequestInterceptor(
                 "(request) => { try { var authorized = JSON.parse(window.localStorage.getItem('authorized') || 'null'); var token = authorized && authorized.Bearer && authorized.Bearer.value; if (token && !request.headers.Authorization) { request.headers.Authorization = 'Bearer ' + token; } } catch (e) { } return request; }");
         });
-
-    /// <summary>
-    /// Registers <see cref="DevTokenForwardingHandler"/> for the given named
-    /// Kaleido clients so outbound calls carry an on-behalf-of token (the
-    /// user plus this service as actor) or a service token.
-    /// </summary>
-    public static IServiceCollection AddDevTokenForwarding(
-        this IServiceCollection services,
-        params string[] clientNames)
-    {
-        services.AddTransient<DevTokenForwardingHandler>();
-
-        foreach (var name in clientNames)
-        {
-            services.AddHttpClient(name)
-                .AddHttpMessageHandler<DevTokenForwardingHandler>();
-        }
-
-        return services;
-    }
 }
 
 /// <summary>

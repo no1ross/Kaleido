@@ -9,17 +9,27 @@ internal interface ICorrelationHeaderStamper
 /// Stamps outbound correlation headers. Request id and process id are forwarded
 /// unchanged (the process id of an <see cref="IKaleidoProcessForwarding"/> scope wins over
 /// the inbound one); calling processor and step are this service and its executing step,
-/// sent only when the call is made from inside a step (never forwarded from inbound).
+/// sent only when the call is made from inside a step (never forwarded from inbound). It also attaches
+/// why the call is made and for whom (<see cref="KaleidoCallContext"/>): a call made while handling an
+/// inbound request is made for its caller; the credential handler authorizes it as that caller.
 /// </summary>
 internal sealed class CorrelationHeaderStamper(
     IKaleidoCorrelationContextAccessor correlation,
     IKaleidoProcessForwarding processForwarding,
+    IKaleidoInboundCallerAccessor inboundCaller,
     KaleidoServiceOptions serviceOptions)
     : ICorrelationHeaderStamper
 {
     public void Stamp(HttpRequestMessage request)
     {
         var ctx = correlation.Current;
+
+        if (inboundCaller.IsInboundRequest)
+        {
+            request.Options.Set(
+                KaleidoCallContext.Key,
+                new KaleidoCallContext(KaleidoCallPurpose.OnBehalfOfCaller, inboundCaller.Principal, inboundCaller.Credential));
+        }
 
         if (!string.IsNullOrWhiteSpace(ctx.RequestId))
         {

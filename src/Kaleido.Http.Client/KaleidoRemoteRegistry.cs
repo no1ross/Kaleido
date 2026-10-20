@@ -69,6 +69,9 @@ internal sealed partial class KaleidoRemoteRegistry(
             RegistryContractUrls.Registry(routePrefix));
         stamper.Stamp(request);
 
+        // Shared by every caller (cached, filtered per caller at the edge): the service's own call.
+        KaleidoCallContext.MarkServiceOwn(request);
+
         if (knownRevision is not null)
         {
             request.Headers.IfNoneMatch.Add(new EntityTagHeaderValue($"\"{knownRevision}\""));

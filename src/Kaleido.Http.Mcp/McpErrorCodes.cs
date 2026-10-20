@@ -14,6 +14,12 @@ public static class McpErrorCodes
     /// <summary><c>AddMcp()</c> needs Kaleido clients (<c>Kaleido:Clients</c> + <c>AddHttpClients()</c>) to call services.</summary>
     public const string MissingClients = "mcp_missing_clients";
 
+    /// <summary>
+    /// <c>AddMcp()</c> needs to know how tool calls are authorized for the agent's user: register
+    /// <c>ForwardCallerToken()</c> or <c>AddCallCredentials&lt;TProvider&gt;()</c> before it (ADR 0022).
+    /// </summary>
+    public const string MissingCallCredentials = "mcp_call_credentials_not_configured";
+
     /// <summary><c>Kaleido:Mcp:InstructionsFile</c> points at a file that does not exist.</summary>
     public const string MissingInstructionsFile = "mcp_missing_instructions_file";
 

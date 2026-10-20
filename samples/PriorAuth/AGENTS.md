@@ -82,7 +82,7 @@ The sample's dev auth (`Common/Auth`) stands in for a real IdP. Kaleido itself o
   - Exceptions: `StartRadiologyIntakeStep` needs `radiology` **and** `OnBehalfOfUser`; `GenerateSnapshotStep`, `UpsertPriorAuthRecordStep`, and ReferenceData `PlanQueryContextSource` need `InternalCaller`.
 - **Roles describe the user; the actor claim describes the call; the principal type says whether a user is behind it.** No user ever gets an `internal` or `intake` role. Every token carries `kaleido_principal` (`user` or `service`), signed into it.
   - Direct user call: name + the user's roles, `kaleido_principal = user`.
-  - On-behalf-of hop (`DevTokenForwardingHandler`): the same name + roles, plus `kaleido_actor = {calling service}`, `kaleido_principal = user`.
+  - On-behalf-of hop (`DevCallCredentialProvider`, the services' `IKaleidoCallCredentialProvider`, ADR 0022): the same name + roles, plus `kaleido_actor = {calling service}`, `kaleido_principal = user`.
   - Pure service token (`IssueServiceToken`, used by the router's registry clients and by outbound calls with no inbound user): `svc-{service}`, service app roles (`radiology, admin`), plus the actor claim, `kaleido_principal = service`.
 - **`InternalCaller` policy** = actor claim present. Use `Policy = DevAuthPolicies.InternalCaller` for capabilities that must never be called directly by a consumer; a service acting on its own passes it.
 - **`OnBehalfOfUser` policy** = actor claim present **and** `kaleido_principal = user`. Use it for a handoff that must carry a real user: combine it with `Roles` for the user's role (`StartRadiologyIntakeStep` = `radiology` + `OnBehalfOfUser`). A pure service token never passes it, even though its app roles include `radiology`, so the router's aggregate (fetched with its service token) does not list that step; no consumer could call it directly anyway.
@@ -90,7 +90,7 @@ The sample's dev auth (`Common/Auth`) stands in for a real IdP. Kaleido itself o
   - `alice`: no domain role. Can use Intake, but is refused at the Radiology handoff.
   - `bob`: `radiology`.
   - `carol`: `admin, radiology`.
-- The router forwards the caller's token unchanged; anonymous requests stay anonymous.
+- The router registers `ForwardCallerToken()`: MCP tool calls send the user's token unchanged (never an actor: that would satisfy `InternalCaller`), and its registry fetches keep the router's service token. Anonymous callers stay anonymous on every hop: Kaleido never upgrades them to a service token.
 
 ## Cross-processor handoff convention
 

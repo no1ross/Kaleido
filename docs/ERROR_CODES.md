@@ -163,6 +163,7 @@ Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors |
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
 | `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
+| `ConfiguredCredentialForCaller` | `httpclient_configured_credential_for_caller` | An `IKaleidoCallCredentialProvider` answered `Configured` for a call made for a caller: a caller's call never goes out with the host's own credentials (`KaleidoConfigurationException`, at the call; ADR 0022) |
 | `UnknownClient` | `httpclient_unknown_client` | `GetClient` was asked for a name not configured under `Kaleido:Clients`; the message lists the configured clients (`KaleidoConfigurationException`, at the call) |
 
 ---

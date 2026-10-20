@@ -56,7 +56,7 @@ endpoint (`IdempotentExecutionTests`, real SQLite), event outbox delivery/retry/
 redaction (`EventOutboxTests`), endpoint authorization in Authenticated mode
 (`AuthorizationEndpointTests`), correlation echo on success (`CorrelationEchoTests`,
 `CorrelationIdentityTrustTests`), registry ETag/304/strict-on-failure (`RegistryEndpointTests`),
-caller forwarding order (`CallerForwardingTests`), delegated paging pass-through
+call credentials per purpose and destination (`CallCredentialTests`), delegated paging pass-through
 (`DelegatedQuerySourceTests`), MCP tool listing/hints/caller forwarding/front door
 (`McpEndpointTests`, `McpFrontDoorTests`).
 

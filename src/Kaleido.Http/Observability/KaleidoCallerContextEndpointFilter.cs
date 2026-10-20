@@ -51,6 +51,12 @@ internal static class KaleidoCallerContextHttpContextExtensions
         }
 
         var user = httpContext.User;
+
+        // The caller's principal and presented credential, for the outgoing clients: a call made for
+        // this caller is authorized as this caller (ADR 0022).
+        httpContext.RequestServices
+            .GetService<IKaleidoInboundCallerAccessor>()?
+            .Set(user, httpContext.Request.Headers.Authorization.ToString());
         var authenticated = user.Identity?.IsAuthenticated == true;
         var callerName =
             authenticated

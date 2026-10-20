@@ -10,6 +10,7 @@ builder.Services
     .AddKaleido(builder.Configuration, o => o.ServiceName = "router")
     .AddHttp()
     .AddHttpClients()
+    .ForwardCallerToken()          // how tool calls are authorized for the agent's user (see Security)
     .AddMcp(o => o.ServerName = "priorauth");
 
 app.MapKaleidoHttp(o => o.AggregateRegistry = true);
@@ -23,9 +24,10 @@ every information request to the agent; a negative value fails startup with `mcp
 `ToolListing` (`All`, the default, or `FrontDoor`; see [Front door](#front-door)) and `ListedTools`
 (FrontDoor only: extra tool names to list).
 
-Call `AddHttp()` and `AddHttpClients()` (with at least one client under `Kaleido:Clients`)
-**before** `AddMcp()`: it fails startup with `mcp_missing_http` or `mcp_missing_clients`
-otherwise. An `InstructionsFile` that does not exist fails with
+Call `AddHttp()`, `AddHttpClients()` (with at least one client under `Kaleido:Clients`) and a
+call-credential registration (`ForwardCallerToken()` or `AddCallCredentials<TProvider>()`)
+**before** `AddMcp()`: it fails startup with `mcp_missing_http`, `mcp_missing_clients` or
+`mcp_call_credentials_not_configured` otherwise. An `InstructionsFile` that does not exist fails with
 `mcp_missing_instructions_file`. The endpoint is stateless Streamable HTTP, so it needs no session
 affinity behind a load balancer.
 
@@ -202,8 +204,12 @@ A tool call never fails at the protocol level: a problem comes back as a tool re
 
 - Tools are built from the registry **filtered for the caller**: a caller sees only what it may use.
 - **Tool changes follow deployments within the registry check interval:** the tool list is built from the host's registry snapshot, which an aggregating host rebuilds after `RegistryCacheTtl` (default 30 seconds), checking each downstream with its ETag. A removed step that is still called answers 404 and drops that downstream's snapshot at once.
-- Every call forwards the caller's token (`ForwardCaller`), so the services authorize the user,
-  not the adapter.
+- Every tool call is made **for the agent's user**: the host's `IKaleidoCallCredentialProvider`
+  decides its credential (the user's token unchanged with `ForwardCallerToken()`, or a token
+  exchanged per service), and Kaleido guarantees it is never the host's own service credential; an
+  anonymous user stays anonymous ([ADR 0022](../../docs/decisions/0022-call-credentials.md),
+  [`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#who-a-call-is-authorized-as-ikaleidocallcredentialprovider)).
+  The services authorize the user, not the adapter.
 - Questions and lookups go to the user through forms where the client supports them; the model
   never answers for the user.
 - A process id is a bearer handle: the agent passes it as a tool argument, and any caller who knows
@@ -244,10 +250,11 @@ builder.Services
 app.MapKaleidoMcp("/mcp").RequireAuthorization();
 ```
 
-- **The token is forwarded unchanged** to the Kaleido services (`ForwardCaller`); per-caller tool
-  filtering and authorization work exactly as with a header token. The services must accept that
-  token (same audience), or the host exchanges it (on-behalf-of) before forwarding - the host's
-  concern.
+- **What reaches the services is the host's choice** (ADR 0022): with `ForwardCallerToken()` the
+  user's token unchanged - the services must accept a token issued for the MCP endpoint (one
+  audience); with `AddCallCredentials<TProvider>()` a token the provider exchanges for each service
+  (on-behalf-of), which the services validate against their own audience. Per-caller tool filtering
+  and authorization work the same either way.
 - **Client registration** (a pre-registered client id, or dynamic client registration) is the
   identity provider's concern; check which one your MCP clients use.
 - Without `RequireAuthorization()` anonymous callers stay allowed and see only anonymous tools; the

@@ -124,6 +124,9 @@ public class McpClinicFixture : IAsyncLifetime
                             })
                             .AddHttp()
                             .AddHttpClients()
+                            // Tool calls send the agent's user's token unchanged (ADR 0022); the
+                            // host's service credential below stays on the service's own calls.
+                            .ForwardCallerToken()
                             .AddMcp();
 
                         // The clinic client calls this TestServer (in production: the network),

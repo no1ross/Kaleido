@@ -7,12 +7,39 @@ public sealed class CorrelationHeaderStamperTests
 {
     private static CorrelationHeaderStamper CreateSut(
         IKaleidoCorrelationContextAccessor correlation,
-        Guid? forwardedProcessId = null)
+        Guid? forwardedProcessId = null,
+        IKaleidoInboundCallerAccessor? inboundCaller = null)
     {
         var forwarding = new Mock<IKaleidoProcessForwarding>();
         forwarding.Setup(x => x.ProcessId).Returns(forwardedProcessId);
 
-        return new(correlation, forwarding.Object, new KaleidoServiceOptions { ServiceName = "intake" });
+        return new(correlation, forwarding.Object, inboundCaller ?? Mock.Of<IKaleidoInboundCallerAccessor>(), new KaleidoServiceOptions { ServiceName = "intake" });
+    }
+
+    // ADR 0022: a call made while handling an inbound request is made for its caller; outside one it is the service's own.
+    [Fact]
+    public void Stamp_InsideAnInboundRequest_AttachesTheCallerAsTheCallsPurpose()
+    {
+        var principal = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([], "test"));
+        var inbound = new Mock<IKaleidoInboundCallerAccessor>();
+        inbound.Setup(x => x.IsInboundRequest).Returns(true);
+        inbound.Setup(x => x.Principal).Returns(principal);
+        inbound.Setup(x => x.Credential).Returns("Bearer carol");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "http://intake.test/");
+
+        CreateSut(SetupContext(new KaleidoCorrelationContext()), inboundCaller: inbound.Object).Stamp(request);
+
+        Assert.Equal(new KaleidoCallContext(KaleidoCallPurpose.OnBehalfOfCaller, principal, "Bearer carol"), KaleidoCallContext.Of(request));
+    }
+
+    [Fact]
+    public void Stamp_OutsideAnInboundRequest_LeavesTheServicesOwnCall()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "http://intake.test/");
+
+        CreateSut(SetupContext(new KaleidoCorrelationContext())).Stamp(request);
+
+        Assert.Equal(KaleidoCallPurpose.ServiceOwn, KaleidoCallContext.Of(request).Purpose);
     }
 
     // ---------------------------------------------------------------------------
