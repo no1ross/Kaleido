@@ -420,45 +420,121 @@ public sealed class SqliteKaleidoContextStoreTests
         return context;
     }
 
-    private static IdempotentResult Result(string key, DateTimeOffset expiresUtc, string response = "{}") =>
-        new() { Key = key, RequestHash = "hash", StatusCode = 200, Response = response, ExpiresUtc = expiresUtc };
+    private static IdempotentResult Admission(string key, DateTimeOffset? expiresUtc = null, DateTimeOffset? leaseUntilUtc = null, string hash = "hash") =>
+        new()
+        {
+            Key = key,
+            RequestHash = hash,
+            State = IdempotentResultState.InProgress,
+            LeaseUntilUtc = leaseUntilUtc ?? DateTimeOffset.UtcNow.AddMinutes(5),
+            ExpiresUtc = expiresUtc ?? DateTimeOffset.UtcNow.AddHours(1),
+        };
+
+    private static IdempotentResult Completed(string key, string response) =>
+        new()
+        {
+            Key = key,
+            RequestHash = "hash",
+            State = IdempotentResultState.Completed,
+            StatusCode = 200,
+            Response = response,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
+        };
 
     [Fact]
-    public async Task SaveResultAsync_ThenFindResultAsync_ReturnsTheStoredAnswer()
+    public async Task AdmitAsync_ANewKey_IsAdmitted_AndASecondAdmissionGetsTheRecordInProgress()
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        var stored = Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), """{"processId":"p"}""");
+        var lease = DateTimeOffset.UtcNow.AddMinutes(5);
 
-        await sut.SaveResultAsync(stored);
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:k1", leaseUntilUtc: lease)));
 
-        var found = await sut.FindResultAsync("svc:alice:k1");
-        Assert.NotNull(found);
-        Assert.Equal(stored.RequestHash, found.RequestHash);
-        Assert.Equal(stored.StatusCode, found.StatusCode);
-        Assert.Equal(stored.Response, found.Response);
+        var existing = await sut.AdmitAsync(Admission("svc:alice:k1", hash: "other"));
+        Assert.NotNull(existing);
+        Assert.Equal(IdempotentResultState.InProgress, existing.State);
+        Assert.Equal("hash", existing.RequestHash);
+        Assert.Equal(lease.UtcTicks, existing.LeaseUntilUtc.UtcTicks);
+    }
+
+    // #285: two service instances (separate connections) admitting one key at the same time: exactly
+    // one wins, so a retry never runs alongside the first attempt.
+    [Fact]
+    public async Task AdmitAsync_FromTwoInstancesAtOnce_AdmitsExactlyOne()
+    {
+        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
+        using var first = CreateSharedDbContext(connectionString);
+        using var second = CreateSharedDbContext(connectionString);
+
+        var outcomes = await Task.WhenAll(
+            CreateSut(first).AdmitAsync(Admission("svc:alice:race")),
+            CreateSut(second).AdmitAsync(Admission("svc:alice:race")));
+
+        Assert.Single(outcomes, x => x is null);
+    }
+
+    // #285: an admission survives a restart (a new store on the same database): a retry after the
+    // service stopped mid-attempt finds the attempt, with its lease, instead of running again.
+    [Fact]
+    public async Task AdmitAsync_AfterARestart_FindsTheEarlierAttempt()
+    {
+        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
+        using var keepAlive = CreateSharedDbContext(connectionString);
+        var expiredLease = DateTimeOffset.UtcNow.AddMinutes(-1);
+
+        using (var before = CreateSharedDbContext(connectionString))
+        {
+            await CreateSut(before).AdmitAsync(Admission("svc:alice:k1", leaseUntilUtc: expiredLease));
+        }
+
+        using var after = CreateSharedDbContext(connectionString);
+        var existing = await CreateSut(after).AdmitAsync(Admission("svc:alice:k1"));
+
+        Assert.NotNull(existing);
+        Assert.Equal(IdempotentResultState.InProgress, existing.State);
+        Assert.True(existing.LeaseUntilUtc < DateTimeOffset.UtcNow);
     }
 
     [Fact]
-    public async Task FindResultAsync_ForAnExpiredOrUnknownKey_ReturnsNull()
+    public async Task CompleteAsync_ThenAdmitAsync_ReturnsTheCompletedAnswer()
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.SaveResultAsync(Result("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)));
+        await sut.AdmitAsync(Admission("svc:alice:k1"));
 
-        Assert.Null(await sut.FindResultAsync("svc:alice:old"));
-        Assert.Null(await sut.FindResultAsync("svc:alice:unknown"));
+        await sut.CompleteAsync(Completed("svc:alice:k1", """{"processId":"p"}"""));
+
+        var existing = await sut.AdmitAsync(Admission("svc:alice:k1"));
+        Assert.NotNull(existing);
+        Assert.Equal(IdempotentResultState.Completed, existing.State);
+        Assert.Equal(200, existing.StatusCode);
+        Assert.Equal("""{"processId":"p"}""", existing.Response);
     }
 
     [Fact]
-    public async Task SaveResultAsync_ForAnExistingKey_ReplacesTheAnswer()
+    public async Task ReleaseAsync_FreesAKeyInProgress_ButKeepsACompletedOne()
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "first"));
-        await sut.SaveResultAsync(Result("svc:alice:k1", DateTimeOffset.UtcNow.AddHours(1), "second"));
+        await sut.AdmitAsync(Admission("svc:alice:failed"));
+        await sut.AdmitAsync(Admission("svc:alice:done"));
+        await sut.CompleteAsync(Completed("svc:alice:done", "{}"));
 
-        Assert.Equal("second", (await sut.FindResultAsync("svc:alice:k1"))!.Response);
+        await sut.ReleaseAsync("svc:alice:failed");
+        await sut.ReleaseAsync("svc:alice:done");
+
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:failed")));
+        Assert.Equal(IdempotentResultState.Completed, (await sut.AdmitAsync(Admission("svc:alice:done")))?.State);
+    }
+
+    [Fact]
+    public async Task AdmitAsync_OverAnExpiredRecord_AdmitsTheKeyAgain()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        await sut.AdmitAsync(Admission("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)));
+
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old")));
     }
 
     private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null)
@@ -880,7 +956,9 @@ public sealed class SqliteKaleidoContextStoreTests
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(null!, []));
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), null!));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveResultAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.AdmitAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.CompleteAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.ReleaseAsync(null!));
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.EnqueueEventsAsync(null!));
     }
 }

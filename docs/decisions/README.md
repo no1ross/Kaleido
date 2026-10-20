@@ -34,6 +34,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0016](./0016-mcp-front-door-tool-listing.md) | The MCP adapter can list a front door (derived from initial steps and their lookups); open steps arrive in `next` and run with `call_tool` | Accepted | #338 |
 | [0017](./0017-transport-contract-placement.md) | Transport contracts (including the error body) live in `Kaleido.Http.Abstractions` under the `Kaleido.Http` namespace; `IRegistrySnapshotStore` stays a public async seam | Accepted | #298, #293 |
 | [0018](./0018-options-are-startup-inputs.md) | Options are startup inputs: no defensive copies; KAL0018 stays the immutability rule, no deep-immutability analyzer | Accepted | #294, #305 |
+| [0019](./0019-idempotent-execution-admission.md) | Idempotent execution: an `Idempotency-Key` is admitted before its step runs; at most once per key, not exactly-once external work | Accepted | #285 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

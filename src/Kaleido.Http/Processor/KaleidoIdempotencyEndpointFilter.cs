@@ -10,15 +10,26 @@ namespace Kaleido.Http.Processor;
 
 /// <summary>
 /// Makes process execution idempotent for a request sent with an <c>Idempotency-Key</c> header: the
-/// first successful answer is stored, and a retry with the same key and the same request gets that
-/// answer again (with <c>Idempotent-Replayed: true</c>) instead of running the step a second time.
+/// key is admitted in the store before the step runs, the first successful answer is stored, and a
+/// retry with the same key and the same request gets that answer again (with
+/// <c>Idempotent-Replayed: true</c>) instead of running the step a second time (#285, ADR 0019).
 /// </summary>
 /// <remarks>
-/// The key is scoped per service and caller (the caller's stable subject id, else its name). The same key with a different request is refused with
-/// 422 <c>pro_idempotency_key_reused</c>. Only successful (2xx) answers are stored; a failed request
-/// may be retried with the same key. Two requests with the same key at the same time both run; the
-/// process store's optimistic concurrency lets only one of them save (the other gets 409). Without the
-/// header nothing changes. ASP.NET creates the filter per request, so a scoped store (e.g. the SQLite store) is fine.
+/// <para>
+/// The key is scoped per service and caller (the caller's stable subject id, else its name). Admission
+/// is atomic in the store, so a request with a key that is still running does not run: 409
+/// <c>pro_idempotency_in_progress</c> with <c>Retry-After</c>. A key whose request never finished
+/// within <see cref="KaleidoHttpOptions.IdempotencyLease"/> is answered 409
+/// <c>pro_idempotency_outcome_unknown</c> and never run again. The same key with a different request
+/// is refused with 422 <c>pro_idempotency_key_reused</c>.
+/// </para>
+/// <para>
+/// Only successful (2xx) answers are stored; any other outcome releases the key, so a failed request
+/// may be retried with the same key. Both are written with <see cref="CancellationToken.None"/>: a
+/// request whose caller has gone (a client timeout) still stores its answer for the retry. Without
+/// the header nothing changes. ASP.NET creates the filter per request, so a scoped store (e.g. the
+/// SQLite store) is fine.
+/// </para>
 /// </remarks>
 internal sealed class KaleidoIdempotencyEndpointFilter(
     IKaleidoContextStore store,
@@ -48,30 +59,63 @@ internal sealed class KaleidoIdempotencyEndpointFilter(
 
         var scopedKey = Scope(key);
         var requestHash = Hash(context);
+        var now = DateTimeOffset.UtcNow;
 
-        if (await store.FindResultAsync(scopedKey, http.RequestAborted) is { } stored)
+        var existing = await store.AdmitAsync(
+            new IdempotentResult
+            {
+                Key = scopedKey,
+                RequestHash = requestHash,
+                State = IdempotentResultState.InProgress,
+                LeaseUntilUtc = now + httpOptions.IdempotencyLease,
+                ExpiresUtc = now + Max(httpOptions.IdempotencyRetention, httpOptions.IdempotencyLease),
+            },
+            http.RequestAborted);
+
+        if (existing is not null)
         {
-            return Replay(http, stored, requestHash);
+            return Answer(http, existing, requestHash);
         }
 
-        var result = await next(context);
+        object? result = null;
 
-        if (result is IValueHttpResult valueResult && IsSuccess(result))
+        try
         {
-            await store.SaveResultAsync(
-                new IdempotentResult
-                {
-                    Key = scopedKey,
-                    RequestHash = requestHash,
-                    StatusCode = (result as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK,
-                    Response = JsonSerializer.Serialize(valueResult.Value, KaleidoJsonOptions.Options),
-                    ExpiresUtc = DateTimeOffset.UtcNow + httpOptions.IdempotencyRetention,
-                },
-                http.RequestAborted);
+            result = await next(context);
+        }
+        finally
+        {
+            await CompleteOrReleaseAsync(scopedKey, requestHash, result);
         }
 
         return result;
     }
+
+    // The bookkeeping of an admitted key always finishes, even when the caller has gone: a successful
+    // answer is stored for the retry; anything else (a failure, an exception) frees the key.
+    private async Task CompleteOrReleaseAsync(string scopedKey, string requestHash, object? result)
+    {
+        if (result is IValueHttpResult valueResult && IsSuccess(result))
+        {
+            await store.CompleteAsync(
+                new IdempotentResult
+                {
+                    Key = scopedKey,
+                    RequestHash = requestHash,
+                    State = IdempotentResultState.Completed,
+                    StatusCode = (result as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK,
+                    Response = JsonSerializer.Serialize(valueResult.Value, KaleidoJsonOptions.Options),
+                    ExpiresUtc = DateTimeOffset.UtcNow + httpOptions.IdempotencyRetention,
+                },
+                CancellationToken.None);
+
+            return;
+        }
+
+        await store.ReleaseAsync(scopedKey, CancellationToken.None);
+    }
+
+    private static TimeSpan Max(TimeSpan first, TimeSpan second) => first > second ? first : second;
 
     // Scoped per service and caller: two callers cannot see each other's answers. The caller is its
     // stable subject id when the principal has one (a renamed user keeps their keys; two users with the
@@ -98,9 +142,11 @@ internal sealed class KaleidoIdempotencyEndpointFilter(
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();
     }
 
-    private static IResult Replay(HttpContext http, IdempotentResult stored, string requestHash)
+    // The answer for a key another request holds: a different request is refused; a running one is
+    // retried later; one that never finished is not run again; a completed one is replayed.
+    private static IResult Answer(HttpContext http, IdempotentResult existing, string requestHash)
     {
-        if (!string.Equals(stored.RequestHash, requestHash, StringComparison.Ordinal))
+        if (!string.Equals(existing.RequestHash, requestHash, StringComparison.Ordinal))
         {
             return Error(
                 StatusCodes.Status422UnprocessableEntity,
@@ -108,10 +154,31 @@ internal sealed class KaleidoIdempotencyEndpointFilter(
                 $"The {KaleidoIdempotencyHeaders.IdempotencyKey} was already used with a different request. Use a new key for a new call.");
         }
 
+        if (existing.State == IdempotentResultState.InProgress)
+        {
+            if (existing.LeaseUntilUtc > DateTimeOffset.UtcNow)
+            {
+                http.Response.Headers.RetryAfter = RetryAfterSeconds;
+
+                return Error(
+                    StatusCodes.Status409Conflict,
+                    ProcessorErrorCodes.IdempotencyInProgress,
+                    $"The first request with this {KaleidoIdempotencyHeaders.IdempotencyKey} is still running. Retry with the same key after {RetryAfterSeconds} second(s) to get its answer.");
+            }
+
+            return Error(
+                StatusCodes.Status409Conflict,
+                ProcessorErrorCodes.IdempotencyOutcomeUnknown,
+                $"The first request with this {KaleidoIdempotencyHeaders.IdempotencyKey} never finished, so it may or may not have run; it is not run again. Read the process state and decide on the next step.");
+        }
+
         http.Response.Headers[KaleidoIdempotencyHeaders.Replayed] = "true";
 
-        return Results.Text(stored.Response, "application/json", Encoding.UTF8, stored.StatusCode);
+        return Results.Text(existing.Response, "application/json", Encoding.UTF8, existing.StatusCode);
     }
+
+    // How long a caller waits before retrying a key that is still running.
+    private const string RetryAfterSeconds = "1";
 
     private static bool IsSuccess(object? result) =>
         (result as IStatusCodeHttpResult)?.StatusCode is null or (>= 200 and < 300);
