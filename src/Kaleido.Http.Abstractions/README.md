@@ -61,6 +61,8 @@ For locally executed Queryable sources and views, `QueryResult<T>.totalCount` is
 
 For example, with six matching rows and a default page size of three: omitting `page` returns three rows and `totalCount: 6`; `{ "size": 2, "offset": 2 }` returns two rows and `totalCount: 6`; `{ "size": 4, "offset": 4 }` returns two rows and `totalCount: 6`; and an offset beyond the end returns no rows and `totalCount: 6`. A delegated source supplies its own `QueryResult<T>` (its downstream system's paging and count), which Kaleido returns unchanged.
 
+When the total is counted (a full page, or an empty page past the start), the count is a second read of the source after the page. Kaleido reads no snapshot, so rows another writer adds or removes between the two reads can make `totalCount` disagree with the page by that many rows; treat it as the count at the time of the request, not a transactional guarantee. The same value is published as the `kaleido.query.total_count` span tag, the `kaleido.queryable.total_count` histogram and `QueryExecuted.TotalCount`.
+
 ---
 
 ## Who uses this project
