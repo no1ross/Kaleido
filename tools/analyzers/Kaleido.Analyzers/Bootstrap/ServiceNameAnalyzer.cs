@@ -33,6 +33,7 @@ public sealed class ServiceNameAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.ServiceNameLength),
             description: "AI agents call Kaleido capabilities as MCP tools named {service}_{capability}; the service name has a 15-character budget and the capability part 40 (KAL2019).");
 
     private static readonly DiagnosticDescriptor Rule =
@@ -43,6 +44,7 @@ public sealed class ServiceNameAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.ServiceNameFormat),
             description: "ServiceName is the HTTP route prefix and the MCP tool-name prefix; AddKaleido rejects any value outside [a-z0-9][a-z0-9_-]* at startup with invalid_service_name.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

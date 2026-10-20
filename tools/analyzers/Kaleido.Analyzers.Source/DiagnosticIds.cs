@@ -13,9 +13,6 @@ internal static class DiagnosticIds
     /// <summary>The null-forgiving operator (!) suppresses nullability analysis; replace it with an explicit null check that throws a Kaleido exception.</summary>
     public const string NullForgivingOperator = "KAL0003";
 
-    /// <summary>Exception types must not be declared as records; record value-equality and copy semantics are meaningless and harmful on exception types.</summary>
-    public const string ExceptionRecord = "KAL0004";
-
     /// <summary>Service-like types (suffixed Service, Handler, Executor, etc.) must not be static; make them injectable instance classes.</summary>
     public const string InjectableStatic = "KAL0005";
 

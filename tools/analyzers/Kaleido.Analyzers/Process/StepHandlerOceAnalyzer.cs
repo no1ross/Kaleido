@@ -27,6 +27,7 @@ public sealed class StepHandlerOceAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.StepHandlerOceMissing),
             description: "Swallowing OperationCanceledException in a step handler inflates error metrics and hides client disconnects. Filter it explicitly.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

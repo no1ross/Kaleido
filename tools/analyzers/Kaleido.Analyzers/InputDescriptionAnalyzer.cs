@@ -29,6 +29,7 @@ public sealed class InputDescriptionAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.ProcessStepPropertyDescription),
             description: "Step input descriptions are published in the registry and are what clients and AI agents rely on to collect the right information.");
 
     private static readonly DiagnosticDescriptor QueryRule =
@@ -39,6 +40,7 @@ public sealed class InputDescriptionAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.QueryPropertyDescription),
             description: "Query context and parameter descriptions are published in the registry and become field descriptions for clients and AI agents.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

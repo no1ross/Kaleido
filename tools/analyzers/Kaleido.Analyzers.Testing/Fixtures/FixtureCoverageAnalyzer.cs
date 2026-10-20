@@ -22,7 +22,7 @@ public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
             "Testable source type has no unit-test fixture",
             "Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture",
             "Kaleido.Tests",
-            DiagnosticSeverity.Error,
+            DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 

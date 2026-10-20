@@ -33,6 +33,7 @@ public sealed class ToolNameLengthAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.ToolNameLength),
             description: "AI agents call Kaleido capabilities as MCP tools named {service}_{capability}. MCP limits tool names to 64 characters; longer names are cut and given a hash, which agents read badly.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
