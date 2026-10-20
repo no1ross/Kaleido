@@ -7,16 +7,16 @@ namespace Kaleido.Processor.Context;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Kept by the <see cref="IKaleidoContextStore"/> next to the process state (the SQLite reference
+/// Kept by the <see cref="IKaleidoIdempotencyStore"/> (the SQLite reference
 /// store: its own table in the same database) until <see cref="ExpiresUtc"/>. The transport decides
 /// what the key's scope is and what the answer looks like; the store only keeps it.
 /// </para>
 /// <para>
-/// Lifecycle: <see cref="IKaleidoContextStore.AdmitAsync"/> creates the record in
+/// Lifecycle: <see cref="IKaleidoIdempotencyStore.AdmitAsync"/> creates the record in
 /// <see cref="IdempotentResultState.InProgress"/> before the step runs, atomically, so a second
 /// attempt with the same key never runs alongside the first. A successful answer is stored with
-/// <see cref="IKaleidoContextStore.CompleteAsync"/> (<see cref="IdempotentResultState.Completed"/>);
-/// any other outcome removes the record with <see cref="IKaleidoContextStore.ReleaseAsync"/>, so the
+/// <see cref="IKaleidoIdempotencyStore.CompleteAsync"/> (<see cref="IdempotentResultState.Completed"/>);
+/// any other outcome removes the record with <see cref="IKaleidoIdempotencyStore.ReleaseAsync"/>, so the
 /// key may be used again. A record still in progress after <see cref="LeaseUntilUtc"/> belongs to
 /// an attempt that never finished (e.g. the service stopped): it may have run, so it is never run
 /// again with that key.

@@ -22,7 +22,9 @@ public static class KaleidoServiceCollectionExtensions
     /// <see cref="KaleidoServiceOptions"/> singleton. Besides the runtimes it registers logging, the
     /// scoped correlation context accessor, the event outbox and relay, and defaults the host can
     /// replace by registering its own first: a no-op <see cref="IEventPublisher"/> (replace it with
-    /// <see cref="AddEventPublisher{TPublisher}"/>) and an in-memory <see cref="IKaleidoContextStore"/>.
+    /// <see cref="AddEventPublisher{TPublisher}"/>) and in-memory stores
+    /// (<see cref="IKaleidoContextStore"/>, <see cref="IKaleidoOutboxStore"/>,
+    /// <see cref="IKaleidoIdempotencyStore"/>).
     /// Transports and providers are added on the returned builder (e.g. <c>AddHttp</c>).
     /// </remarks>
     /// <param name="services">The service collection to register into.</param>
@@ -82,9 +84,12 @@ public static class KaleidoServiceCollectionExtensions
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.TryAddSingleton<IEventPublisher, EventPublisher>();
 
-        // One store per service (process state, idempotent results, event outbox) and the relay
-        // that hands outbox entries to the publisher.
+        // The three stores (process state, event outbox, idempotent requests) and the relay that hands
+        // outbox entries to the publisher. The in-memory context store adds a save's events to the
+        // registered outbox.
+        services.TryAddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
         services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
+        services.TryAddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
         services.TryAddSingleton<IKaleidoEventSignal, KaleidoEventSignal>();
         services.TryAddSingleton<IKaleidoEventPayloadWriter, KaleidoEventPayloadWriter>();
         services.TryAddScoped<IKaleidoEventOutbox, KaleidoEventOutbox>();

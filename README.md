@@ -234,7 +234,7 @@ kaleido.UseSqliteKaleidoContextStore("Data Source=kaleido-process.db");
 
 [`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite/README.md) is a **reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Kaleido.Provider.SQLite/README.md#using-the-example-implementation)), and `EnsureCreated` never migrates an existing database.
 
-Production deployments provide and validate an `IKaleidoContextStore` suited to their infrastructure. Its contract covers process state, stored execution responses, and the event outbox.
+Production deployments provide and validate stores suited to their infrastructure: `IKaleidoContextStore` (process state), `IKaleidoOutboxStore` (the event outbox, in the same database) and `IKaleidoIdempotencyStore` (requests sent with an idempotency key).
 
 ## The capability model
 
