@@ -76,6 +76,8 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `ProcessConflict` | `pro_process_conflict` | Another request saved the process since this one loaded it (optimistic concurrency); nothing of this request was saved. Read the process state again and decide on the next step (409, `KaleidoConcurrencyException`) |
 | `IdempotencyKeyReused` | `pro_idempotency_key_reused` | An `Idempotency-Key` was sent again with a different request; a key identifies one call - use a new key for a new call (422) |
 | `InvalidIdempotencyKey` | `pro_invalid_idempotency_key` | The `Idempotency-Key` header is longer than 200 characters (400) |
+| `IdempotencyInProgress` | `pro_idempotency_in_progress` | The first request with this `Idempotency-Key` is still running, so this one did not run; retry with the same key after `Retry-After` to get its answer (409) |
+| `IdempotencyOutcomeUnknown` | `pro_idempotency_outcome_unknown` | The first request with this `Idempotency-Key` never finished within its lease (e.g. the service stopped), so it may or may not have run and is not run again; read the process state and decide (409) |
 | `InvalidRequest` | `pro_invalid_request` | An execute request names a step more than once (400), or a step reached the runtime as something other than its step type |
 | `PropertyNotFound` | `pro_property_not_found` | Requested step property was not found |
 | `ConversionFailed` | `pro_conversion_failed` | Request value could not be converted |

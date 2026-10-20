@@ -127,49 +127,79 @@ internal sealed partial class SqliteKaleidoContextStore(
         }
     }
 
-    public async Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default)
+    public async Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken = default)
     {
-        var entity = await dbContext.IdempotentResults
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Key == key, cancellationToken);
+        ArgumentNullException.ThrowIfNull(admission);
 
-        return entity is null || entity.ExpiresUtc <= DateTimeOffset.UtcNow
-            ? null
-            : new IdempotentResult
-            {
-                Key = entity.Key,
-                RequestHash = entity.RequestHash,
-                StatusCode = entity.StatusCode,
-                Response = entity.Response,
-                ExpiresUtc = entity.ExpiresUtc,
-            };
-    }
-
-    public async Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-
-        // Expired answers are deleted as new ones arrive, so the table does not grow without bound.
+        // Expired records are deleted as new keys arrive, so the table does not grow without bound.
         var nowTicks = DateTimeOffset.UtcNow.UtcTicks;
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM IdempotentResults WHERE ExpiresUtc <= {nowTicks}",
             cancellationToken);
 
-        var entity = await dbContext.IdempotentResults.FirstOrDefaultAsync(x => x.Key == result.Key, cancellationToken);
+        // One atomic insert-if-absent on the primary key: of two admissions of the same key, exactly one inserts.
+        var inserted = await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO IdempotentResults (Key, RequestHash, State, LeaseUntilUtc, StatusCode, Response, ExpiresUtc)
+            VALUES ({admission.Key}, {admission.RequestHash}, {(int)admission.State}, {admission.LeaseUntilUtc.UtcTicks}, {admission.StatusCode}, {admission.Response}, {admission.ExpiresUtc.UtcTicks})
+            ON CONFLICT(Key) DO NOTHING
+            """,
+            cancellationToken);
 
-        if (entity is null)
+        if (inserted == 1)
         {
-            entity = new IdempotentResultEntity { Key = result.Key };
-            dbContext.IdempotentResults.Add(entity);
+            return null;
         }
 
-        entity.RequestHash = result.RequestHash;
-        entity.StatusCode = result.StatusCode;
-        entity.Response = result.Response;
-        entity.ExpiresUtc = result.ExpiresUtc;
+        var existing = await dbContext.IdempotentResults
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Key == admission.Key, cancellationToken);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        // Gone between the insert and the read (released or expired just then): admit again.
+        return existing is null
+            ? await AdmitAsync(admission, cancellationToken)
+            : ToResult(existing);
     }
+
+    public async Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO IdempotentResults (Key, RequestHash, State, LeaseUntilUtc, StatusCode, Response, ExpiresUtc)
+            VALUES ({result.Key}, {result.RequestHash}, {(int)result.State}, {result.LeaseUntilUtc.UtcTicks}, {result.StatusCode}, {result.Response}, {result.ExpiresUtc.UtcTicks})
+            ON CONFLICT(Key) DO UPDATE SET
+                RequestHash = excluded.RequestHash,
+                State = excluded.State,
+                LeaseUntilUtc = excluded.LeaseUntilUtc,
+                StatusCode = excluded.StatusCode,
+                Response = excluded.Response,
+                ExpiresUtc = excluded.ExpiresUtc
+            """,
+            cancellationToken);
+    }
+
+    public async Task ReleaseAsync(string key, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM IdempotentResults WHERE Key = {key} AND State = {(int)IdempotentResultState.InProgress}",
+            cancellationToken);
+    }
+
+    private static IdempotentResult ToResult(IdempotentResultEntity entity) =>
+        new()
+        {
+            Key = entity.Key,
+            RequestHash = entity.RequestHash,
+            State = entity.State,
+            LeaseUntilUtc = entity.LeaseUntilUtc,
+            StatusCode = entity.StatusCode,
+            Response = entity.Response,
+            ExpiresUtc = entity.ExpiresUtc,
+        };
 
     public async Task EnqueueEventsAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
     {

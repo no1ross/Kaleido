@@ -119,18 +119,27 @@ Steps without a typed handler result return the same fields without `result`. Ha
 
 A process execute request - `POST /{service}/processes/execute` or a step call - may carry an `Idempotency-Key` header: a caller-chosen key for one logical call (e.g. a GUID), the same on every retry of that call.
 
-- **First request:** the step runs as usual; a successful (2xx) answer is stored with the key.
-- **Retry with the same key and the same request:** the stored answer is returned again with `Idempotent-Replayed: true`. **The step does not run a second time** - a lost response or a timeout on the way back no longer creates a duplicate process or a second side effect.
-- **The same key with a different request** (other body, other route, other `X-Kaleido-Process-Id`): **422** `pro_idempotency_key_reused`. A key identifies one call; use a new key for a new call.
-- **A key longer than 200 characters:** **400** `pro_invalid_idempotency_key`.
-- **Without the header** nothing changes.
+The key is **admitted in the store before the step runs**, atomically (ADR 0019). What a request with a key gets:
+
+| Situation | Answer |
+|---|---|
+| First request with the key | the step runs; a successful (2xx) answer is stored with the key |
+| Same key and request, **while the first one still runs** | **409** `pro_idempotency_in_progress` with `Retry-After`; the step does **not** run. Retry after the delay |
+| Same key and request, **after the first one answered** | the stored answer again, with `Idempotent-Replayed: true`; the step does not run again |
+| Same key, the first one **never finished** (the service stopped while it ran; its lease, `KaleidoHttpOptions.IdempotencyLease`, default 5 minutes, passed) | **409** `pro_idempotency_outcome_unknown`: it may or may not have run, so it is not run again with this key. Read the process state (`GET /{service}/processes/{processId}`) and decide |
+| Same key, a **different request** (other body, route or `X-Kaleido-Process-Id`) | **422** `pro_idempotency_key_reused`. A key identifies one call; use a new key for a new call |
+| A key longer than 200 characters | **400** `pro_invalid_idempotency_key` |
+| No header | nothing changes: every request runs |
+
+What this guarantees, and what it does not:
+- With a key, **a step runs at most once per key** while the key is kept, even when retries arrive while the first attempt still runs, or after its caller gave up (a client timeout): the answer is stored even when nobody is waiting for it.
+- It does **not** make a handler's external work exactly-once. If the service stops inside a handler after it called another system and before the step was saved, that call happened and Kaleido never learned of it; the key is then answered `pro_idempotency_outcome_unknown`. Make such calls idempotent on the other system's side (e.g. pass it a stable id such as the process id and the step name).
 
 Details:
 - Keys are **scoped per service and caller**: two callers cannot see each other's answers, and the same key at two services is two keys. The caller is its stable subject id (`sub`, else `NameIdentifier`) when the principal has one - a renamed user keeps their keys and two users with the same name stay apart - else its name; anonymous callers share one scope.
-- Answers are kept for `KaleidoHttpOptions.IdempotencyRetention` (default **24 hours**: `AddHttp(o => o.IdempotencyRetention = TimeSpan.FromHours(4))`) and stored by the process store (`IKaleidoContextStore.FindResultAsync`/`SaveResultAsync`) - the SQLite reference store keeps them in its own `IdempotentResults` table in the same database, so there is nothing extra to set up.
-- Only successful answers are stored: a request that failed may be retried with the same key.
-- Two requests with the same key **at the same time** both run; optimistic concurrency (below) lets only one of them save, the other gets 409.
-- The Kaleido clients send a key with every execute call automatically ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#idempotent-execute-calls)).
+- Answers are kept for `KaleidoHttpOptions.IdempotencyRetention` (default **24 hours**: `AddHttp(o => o.IdempotencyRetention = TimeSpan.FromHours(4))`) by the process store (`IKaleidoContextStore.AdmitAsync`/`CompleteAsync`/`ReleaseAsync`) - the SQLite reference store keeps them in its own `IdempotentResults` table in the same database, so there is nothing extra to set up.
+- Only successful answers are stored: a request that failed releases its key, so it may be retried with the same key.
+- **Any HTTP client** gets this, not only Kaleido's: send `Idempotency-Key: <a new unique value>` with each logical call, re-send the **same key and the same request** on a retry, wait `Retry-After` seconds on `pro_idempotency_in_progress`, and read the process state on `pro_idempotency_outcome_unknown`. The Kaleido clients do all of it automatically ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#idempotent-execute-calls)).
 
 ## Concurrent calls (`409 pro_process_conflict`)
 

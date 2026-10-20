@@ -8,7 +8,7 @@ public sealed class KaleidoResiliencePipelineExtensionsTests
 {
     private static readonly KaleidoResilienceOptions Fast = new() { MaxRetryAttempts = 2, RetryDelay = TimeSpan.FromMilliseconds(1) };
 
-    private static async Task<int> AttemptsAsync(HttpRequestMessage request, HttpStatusCode answer, KaleidoResilienceOptions? options = null)
+    private static async Task<int> AttemptsAsync(HttpRequestMessage request, HttpStatusCode answer, KaleidoResilienceOptions? options = null, TimeSpan? retryAfter = null)
     {
         var pipeline = new ResiliencePipelineBuilder<HttpResponseMessage>().AddKaleidoResilience(options ?? Fast).Build();
         var context = ResilienceContextPool.Shared.Get(TestContext.Current.CancellationToken);
@@ -21,7 +21,14 @@ public sealed class KaleidoResiliencePipelineExtensionsTests
                 (_, _) =>
                 {
                     attempts++;
-                    return ValueTask.FromResult(Outcome.FromResult(new HttpResponseMessage(answer)));
+                    var response = new HttpResponseMessage(answer) { RequestMessage = request };
+
+                    if (retryAfter is { } delay)
+                    {
+                        response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(delay);
+                    }
+
+                    return ValueTask.FromResult(Outcome.FromResult(response));
                 },
                 context,
                 state: 0);
@@ -93,6 +100,33 @@ public sealed class KaleidoResiliencePipelineExtensionsTests
         {
             ResilienceContextPool.Shared.Return(context);
         }
+    }
+
+    // #285: the service answers 409 + Retry-After while the first request with the key still runs;
+    // the client waits and asks again, and then gets the stored answer.
+    [Fact]
+    public async Task AKeyedCallAnsweredStillRunning_IsRetried()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/svc/processes/execute");
+        request.Headers.Add(KaleidoIdempotencyHeaders.IdempotencyKey, "k1");
+
+        Assert.Equal(3, await AttemptsAsync(request, HttpStatusCode.Conflict, retryAfter: TimeSpan.Zero));
+    }
+
+    // A process conflict, or an outcome that is unknown, comes without Retry-After: retrying would not help.
+    [Fact]
+    public async Task AKeyedCallAnsweredConflictWithoutRetryAfter_IsNotRetried()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/svc/processes/execute");
+        request.Headers.Add(KaleidoIdempotencyHeaders.IdempotencyKey, "k1");
+
+        Assert.Equal(1, await AttemptsAsync(request, HttpStatusCode.Conflict));
+    }
+
+    [Fact]
+    public async Task AReadAnsweredConflictWithRetryAfter_IsNotRetried()
+    {
+        Assert.Equal(1, await AttemptsAsync(new HttpRequestMessage(HttpMethod.Get, "/svc/registry"), HttpStatusCode.Conflict, retryAfter: TimeSpan.Zero));
     }
 
     [Fact]

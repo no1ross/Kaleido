@@ -18,9 +18,13 @@ internal sealed class IdempotentResultEntityConfiguration
         builder.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
         builder.Property(x => x.Response).IsRequired();
 
-        // Stored as ticks so expired rows can be found with a plain comparison in SQLite.
+        // Stored as ticks so expired rows can be found with a plain comparison in SQLite; the store
+        // writes these columns with raw SQL (an atomic insert-if-absent), in the same units.
         builder.Property(x => x.ExpiresUtc)
             .HasConversion(x => x.UtcTicks, x => new DateTimeOffset(x, TimeSpan.Zero));
+        builder.Property(x => x.LeaseUntilUtc)
+            .HasConversion(x => x.UtcTicks, x => new DateTimeOffset(x, TimeSpan.Zero));
+        builder.Property(x => x.State).HasConversion<int>();
 
         builder.HasIndex(x => x.ExpiresUtc);
     }
