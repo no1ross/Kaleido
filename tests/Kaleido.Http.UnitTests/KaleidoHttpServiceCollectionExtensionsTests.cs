@@ -60,19 +60,17 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddHttp_RegistersKaleidoStartupFilter()
+    // Kaleido's HTTP behavior lives on its own endpoints; nothing is added to the host's pipeline (#295).
+    public void AddHttp_AddsNothingToTheHostsPipeline()
     {
         var webBuilder = WebApplication.CreateBuilder();
         webBuilder.WebHost.UseTestServer();
+        var before = webBuilder.Services.Count(x => x.ServiceType == typeof(IStartupFilter));
 
         var kaleidoBuilder = webBuilder.Services.AddKaleido(webBuilder.Configuration, ConfigureKaleido("test-service"));
         kaleidoBuilder.AddHttp();
 
-        var serviceProvider = webBuilder.Services.BuildServiceProvider();
-        var startupFilter = serviceProvider.GetService<IStartupFilter>();
-
-        Assert.NotNull(startupFilter);
-        Assert.IsType<KaleidoStartupFilter>(startupFilter);
+        Assert.Equal(before, webBuilder.Services.Count(x => x.ServiceType == typeof(IStartupFilter)));
     }
 
     [Fact]

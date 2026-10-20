@@ -8,9 +8,9 @@ namespace Kaleido.Http.Middleware;
 
 /// <summary>
 /// Turns an exception into Kaleido's HTTP answer: the status code, the <see cref="KaleidoErrorResponse"/>
-/// body and the log entry. Used by <see cref="ExceptionMiddleware"/> and by
-/// <see cref="KaleidoExceptionEndpointFilter"/>, which answers inside Kaleido's endpoints so a host's own
-/// exception handling (the developer exception page, <c>UseExceptionHandler</c>) never sees Kaleido's errors.
+/// body and the log entry. Used by <see cref="KaleidoExceptionEndpointFilter"/>, which answers inside
+/// Kaleido's endpoints so a host's own exception handling (the developer exception page,
+/// <c>UseExceptionHandler</c>) never sees Kaleido's errors, and the host's own endpoints are never touched.
 /// </summary>
 internal interface IKaleidoExceptionHandler
 {

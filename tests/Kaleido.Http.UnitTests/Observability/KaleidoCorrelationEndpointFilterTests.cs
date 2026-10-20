@@ -6,13 +6,16 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Http.Middleware.UnitTests;
+namespace Kaleido.Http.Observability.UnitTests;
 
-public sealed class ObservabilityMiddlewareTests
+public sealed class KaleidoCorrelationEndpointFilterTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static ObservabilityMiddleware CreateSut(RequestDelegate? next = null) =>
-        new(next ?? (_ => Task.CompletedTask));
+    private static KaleidoCorrelationEndpointFilter CreateSut() => new();
+
+    // Runs the filter around an endpoint that does nothing.
+    private static async Task InvokeAsync(HttpContext httpContext) =>
+        await CreateSut().InvokeAsync(new DefaultEndpointFilterInvocationContext(httpContext), _ => ValueTask.FromResult<object?>(null));
 
     private static bool IsGuid(string value) =>
         Guid.TryParse(value, out _);
@@ -71,10 +74,9 @@ public sealed class ObservabilityMiddlewareTests
     [Fact]
     public async Task InvokeAsync_WhenContextInitializerNotRegistered_DoesNotThrow()
     {
-        var sut = CreateSut();
         var httpContext = CreateContext();
 
-        await sut.InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
     }
 
     [Fact]
@@ -91,9 +93,7 @@ public sealed class ObservabilityMiddlewareTests
             callingProcessor: "intake",
             callingStep: "Capture");
 
-        var sut = CreateSut();
-
-        await sut.InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
         initializer.Verify(
             x => x.Initialize(
@@ -111,9 +111,7 @@ public sealed class ObservabilityMiddlewareTests
         var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
         var httpContext = CreateContext(initializer);
 
-        var sut = CreateSut();
-
-        await sut.InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
         initializer.Verify(
             x => x.Initialize(
@@ -144,9 +142,7 @@ public sealed class ObservabilityMiddlewareTests
             callingProcessor: "intake",
             callingStep: "Capture");
 
-        var sut = CreateSut();
-
-        await sut.InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
         initializer.Verify(
             x => x.Initialize(
@@ -172,9 +168,7 @@ public sealed class ObservabilityMiddlewareTests
 
         SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
 
-        var sut = CreateSut();
-
-        await sut.InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
         initializer.Verify(
             x => x.Initialize(
@@ -194,9 +188,7 @@ public sealed class ObservabilityMiddlewareTests
 
         SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
 
-        var sut = CreateSut();
-
-        await sut.InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
         initializer.Verify(
             x => x.Initialize(
@@ -219,92 +211,7 @@ public sealed class ObservabilityMiddlewareTests
 
         SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
 
-        var sut = CreateSut();
-
-        await sut.InvokeAsync(httpContext);
-
-        initializer.Verify(
-            x => x.Initialize(
-                It.Is<KaleidoCorrelationContext>(c =>
-                    c.RequestId == "req-42" &&
-                    c.CallingProcessorName == "intake")),
-            Times.Once);
-    }
-
-    private static DefaultHttpContext CreateContextAuthenticatedByDefaultScheme(
-        Mock<IKaleidoCorrelationContextInitializer> initializer,
-        bool authenticates,
-        KaleidoHttpOptions? httpOptions = null)
-    {
-        var schemeProvider = new Mock<IAuthenticationSchemeProvider>();
-        var scheme = new AuthenticationScheme("test", null, typeof(IAuthenticationHandler));
-
-        schemeProvider
-            .Setup(x => x.GetDefaultAuthenticateSchemeAsync())
-            .ReturnsAsync(scheme);
-
-        var authentication = new Mock<IAuthenticationService>();
-
-        authentication
-            .Setup(x => x.AuthenticateAsync(It.IsAny<HttpContext>(), null))
-            .ReturnsAsync(authenticates
-                ? AuthenticateResult.Success(new AuthenticationTicket(
-                    new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim(ClaimTypes.Name, "svc-intake"), new Claim(ClaimTypes.Role, "internal-service")],
-                        "test")),
-                    "test"))
-                : AuthenticateResult.NoResult());
-
-        var services = new ServiceCollection()
-            .AddSingleton(initializer.Object)
-            .AddSingleton(schemeProvider.Object)
-            .AddSingleton(authentication.Object);
-
-        if (httpOptions is not null)
-        {
-            services.AddSingleton(httpOptions);
-        }
-
-        var httpContext = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
-
-        SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
-
-        return httpContext;
-    }
-
-    // Kaleido's middleware runs ahead of the host's UseAuthentication(), so the caller is not
-    // authenticated yet: the middleware authenticates it with the default scheme itself.
-    [Theory]
-    [InlineData(true, "req-42", "intake")]
-    [InlineData(false, null, null)]
-    public async Task InvokeAsync_WhenNotYetAuthenticated_TrustsIdentityOnlyIfTheDefaultSchemeAuthenticates(
-        bool authenticates,
-        string? expectedRequestId,
-        string? expectedCallingProcessor)
-    {
-        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
-        var httpContext = CreateContextAuthenticatedByDefaultScheme(initializer, authenticates);
-
-        await CreateSut().InvokeAsync(httpContext);
-
-        initializer.Verify(
-            x => x.Initialize(
-                It.Is<KaleidoCorrelationContext>(c =>
-                    (expectedRequestId == null ? c.RequestId != "req-42" : c.RequestId == expectedRequestId) &&
-                    c.CallingProcessorName == expectedCallingProcessor)),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task InvokeAsync_WhenTrustPredicateChecksTheUser_SeesTheAuthenticatedCaller()
-    {
-        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
-        var httpContext = CreateContextAuthenticatedByDefaultScheme(
-            initializer,
-            authenticates: true,
-            new KaleidoHttpOptions { TrustCorrelationIdentity = ctx => ctx.User.IsInRole("internal-service") });
-
-        await CreateSut().InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
         initializer.Verify(
             x => x.Initialize(
@@ -331,9 +238,7 @@ public sealed class ObservabilityMiddlewareTests
 
         using var activity = new Activity("kaleido-test").Start();
 
-        var sut = CreateSut();
-
-        await sut.InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
         Assert.Equal("req-9", activity.GetTagItem(KaleidoTelemetryTags.RequestId));
         // this service's own instance id, never the value sent by the caller
@@ -351,47 +256,49 @@ public sealed class ObservabilityMiddlewareTests
 
         using var activity = new Activity("kaleido-test").Start();
 
-        await CreateSut().InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
         Assert.Equal("req-3", activity.GetTagItem(KaleidoTelemetryTags.RequestId));
         Assert.Null(activity.GetTagItem(KaleidoTelemetryTags.ProcessorInstanceId));
         Assert.Null(activity.GetTagItem(KaleidoTelemetryTags.ProcessId));
     }
 
+    // The filter runs inside the endpoint, after the host's authentication: it judges trust against
+    // the principal the host set and never authenticates on its own (#295).
     [Fact]
-    public async Task InvokeAsync_WhenNoDefaultAuthenticateScheme_DoesNotAuthenticate()
+    public async Task InvokeAsync_NeverAuthenticatesTheCallerItself()
     {
         var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
-        var schemeProvider = new Mock<IAuthenticationSchemeProvider>();
-        schemeProvider
-            .Setup(x => x.GetDefaultAuthenticateSchemeAsync())
-            .ReturnsAsync((AuthenticationScheme?)null);
-        var authentication = new Mock<IAuthenticationService>();
-        var httpContext = CreateContextWithAuthentication(initializer, schemeProvider, authentication);
+        var authentication = new Mock<IAuthenticationService>(MockBehavior.Strict);
+        var services = new ServiceCollection()
+            .AddSingleton(initializer.Object)
+            .AddSingleton(new Mock<IAuthenticationSchemeProvider>().Object)
+            .AddSingleton(authentication.Object);
+        var httpContext = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
         SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
 
-        await CreateSut().InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
-        authentication.Verify(x => x.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string?>()), Times.Never);
         initializer.Verify(
             x => x.Initialize(It.Is<KaleidoCorrelationContext>(c => c.RequestId != "req-42" && c.CallingProcessorName == null)),
             Times.Once);
     }
 
     [Fact]
-    public async Task InvokeAsync_WhenAlreadyAuthenticated_DoesNotAuthenticateAgain()
+    public async Task InvokeAsync_WhenTrustPredicateChecksTheUser_SeesTheHostsAuthenticatedCaller()
     {
         var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
-        var schemeProvider = new Mock<IAuthenticationSchemeProvider>();
-        var authentication = new Mock<IAuthenticationService>();
-        var httpContext = CreateContextWithAuthentication(initializer, schemeProvider, authentication);
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "alice")], "test"));
+        var httpContext = CreateContext(
+            initializer,
+            new KaleidoHttpOptions { TrustCorrelationIdentity = ctx => ctx.User.IsInRole("internal-service") },
+            new Mock<IAuthenticationSchemeProvider>());
+        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Name, "svc-intake"), new Claim(ClaimTypes.Role, "internal-service")],
+            "test"));
         SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
 
-        await CreateSut().InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
-        authentication.Verify(x => x.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string?>()), Times.Never);
-        schemeProvider.Verify(x => x.GetDefaultAuthenticateSchemeAsync(), Times.Never);
         initializer.Verify(
             x => x.Initialize(It.Is<KaleidoCorrelationContext>(c => c.RequestId == "req-42" && c.CallingProcessorName == "intake")),
             Times.Once);
@@ -407,28 +314,11 @@ public sealed class ObservabilityMiddlewareTests
         httpContext.User = new ClaimsPrincipal();
         SetHeaders(httpContext, requestId: "req-42", callingProcessor: "intake");
 
-        await CreateSut().InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
 
         initializer.Verify(
             x => x.Initialize(It.Is<KaleidoCorrelationContext>(c => c.RequestId != "req-42" && c.CallingProcessorName == null)),
             Times.Once);
-    }
-
-    private static DefaultHttpContext CreateContextWithAuthentication(
-        Mock<IKaleidoCorrelationContextInitializer> initializer,
-        Mock<IAuthenticationSchemeProvider> schemeProvider,
-        Mock<IAuthenticationService> authentication)
-    {
-        var services = new ServiceCollection()
-            .AddSingleton(initializer.Object)
-            .AddSingleton(schemeProvider.Object)
-            .AddSingleton(authentication.Object);
-
-        return new DefaultHttpContext
-        {
-            RequestServices = services.BuildServiceProvider(
-                new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }),
-        };
     }
 
     [Fact]
@@ -446,7 +336,7 @@ public sealed class ObservabilityMiddlewareTests
             callingProcessor: "intake",
             callingStep: "Capture");
 
-        await CreateSut().InvokeAsync(httpContext);
+        await InvokeAsync(httpContext);
         await responseFeature.StartAsync();
 
         Assert.Equal("req-7", responseFeature.Headers[KaleidoCorrelationHeaders.RequestId].ToString());
