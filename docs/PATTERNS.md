@@ -177,6 +177,7 @@ Full model: [`INFORMATION_REQUESTS.md`](./INFORMATION_REQUESTS.md).
 services.AddKaleido(builder.Configuration, o =>
 {
     o.ServiceName = "intake";                       // lowercase letters, digits, '-' and '_' (KAL2005)
+    // AuthorizationMode: Authenticated unless set - add host authentication, or set None explicitly (ADR 0021)
     o.Assemblies = [typeof(Program).Assembly];      // explicit — never omit (KAL2009)
 })
     .AddHttp();

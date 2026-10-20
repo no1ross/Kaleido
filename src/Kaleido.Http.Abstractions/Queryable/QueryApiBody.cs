@@ -105,7 +105,7 @@ public record QueryApiBody
     [JsonPropertyName("filter")]
     public QueryApiFilterNode? Filter { get; init; }
 
-    /// <summary>Sort clauses, applied in order.</summary>
+    /// <summary>Sort clauses, applied in order. Missing, null and empty mean the same: the capability's default sort (its <c>DefaultSortField</c>, ascending).</summary>
     [JsonPropertyName("sort")]
     public IReadOnlyList<QueryApiSort>? Sort { get; init; }
 
@@ -157,7 +157,7 @@ public sealed record QueryApiFilterCondition
     [JsonPropertyName("operator")]
     public required string Operator { get; init; }
 
-    /// <summary>The values to compare against. JsonElement is used for raw transport.</summary>
+    /// <summary>The values to compare against. JsonElement is used for raw transport. Missing, null and empty mean the same: no values (operators such as <c>isnull</c> or <c>istrue</c> take none).</summary>
     [JsonPropertyName("values")]
     public IReadOnlyList<JsonElement>? Values { get; init; }
 }
@@ -172,7 +172,7 @@ public sealed record QueryApiFilterGroup
     [JsonPropertyName("operator")]
     public required string Operator { get; init; }
 
-    /// <summary>Child filter nodes.</summary>
+    /// <summary>Child filter nodes. Missing, null and empty mean the same: a group without children.</summary>
     [JsonPropertyName("filters")]
     public IReadOnlyList<QueryApiFilterNode>? Filters { get; init; }
 }

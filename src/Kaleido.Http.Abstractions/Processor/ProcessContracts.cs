@@ -528,7 +528,8 @@ public sealed record ProcessorRegistryResponse
         = [];
 
     /// <summary>
-    /// Full step detail for every registered step.
+    /// Full step detail for every registered step, omitted (null) when the registry carries none for
+    /// this processor; treat a missing value like an empty one.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyCollection<ProcessStepResponse>? Steps { get; init; }

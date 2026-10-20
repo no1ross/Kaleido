@@ -98,6 +98,8 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 - automatically invokes `AddQueryable()` and `AddProcessor()` to register both runtimes
 - returns an `IKaleidoBuilder`
 
+`AddKaleido()` is called once per service collection: a host runs one Kaleido service. A second call throws `KaleidoConfigurationException` (`duplicate_registration`) instead of silently replacing the first one's options; the same holds for `AddHttp()` (#301).
+
 `KaleidoServiceOptions.Assemblies` records the assemblies that become the shared scanning input for the Queryable and Process runtimes. A non-empty list is required: `AddKaleido()` throws `KaleidoConfigurationException` (`missing_assembly`) before changing DI when it is omitted or empty. There is no calling-assembly or entry-assembly fallback. Even a client-only host must choose a scan set deliberately; it can use `typeof(KaleidoServiceOptions).Assembly` when it does not publish application capabilities.
 
 ---

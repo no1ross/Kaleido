@@ -224,6 +224,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
                     services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                         {
                             o.ServiceName = FunctionalProcessorNames.TestProcessor;
+                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(RuntimeRootStep).Assembly];
                             o.Events.Resilience.RetryDelay = retryDelay ?? TimeSpan.FromMilliseconds(50);
                         })

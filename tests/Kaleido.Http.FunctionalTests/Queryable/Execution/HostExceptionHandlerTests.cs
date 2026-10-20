@@ -61,6 +61,7 @@ public sealed class HostExceptionHandlerTests
                     services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                         {
                             o.ServiceName = "kaleido";
+                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(FunctionalRecordContext).Assembly];
                         })
                         .AddHttp();
@@ -86,6 +87,7 @@ public sealed class HostExceptionHandlerTests
                     services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                         {
                             o.ServiceName = "kaleido";
+                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(FunctionalRecordContext).Assembly];
                         })
                         .AddHttp();

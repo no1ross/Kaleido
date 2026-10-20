@@ -149,6 +149,7 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
         services.AddKaleido(config, o =>
                 {
                     o.ServiceName = "test-client";
+                    o.AuthorizationMode = KaleidoAuthorizationMode.None;
                     o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
                 })
                 .AddHttpClients();

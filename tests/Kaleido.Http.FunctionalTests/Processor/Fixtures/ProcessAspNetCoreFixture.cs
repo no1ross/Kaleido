@@ -45,6 +45,7 @@ public sealed class ProcessorAspNetCoreFixture
                         services.AddKaleido(serverConfig, o =>
                             {
                                 o.ServiceName = "kaleido";
+                                o.AuthorizationMode = KaleidoAuthorizationMode.None;
                                 o.DisplayName = "Test Processor";
                                 o.Description = "Test processor.";
                                 o.Assemblies = new[] { typeof(ProcessorAspNetCoreFixture).Assembly };
@@ -86,6 +87,7 @@ public sealed class ProcessorAspNetCoreFixture
         clientServices.AddKaleido(clientConfig, o =>
             {
                 o.ServiceName = "test-client";
+                o.AuthorizationMode = KaleidoAuthorizationMode.None;
                 o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
             })
             .AddHttpClients();

@@ -75,4 +75,11 @@ public static class ConfigurationErrorCodes
 
     /// <summary>A <c>Kaleido:Events</c> setting is out of range (e.g. a non-positive batch size or timeout).</summary>
     public const string InvalidEventOptions = "invalid_event_options";
+
+    /// <summary>
+    /// <c>AddKaleido</c> or <c>AddHttp</c> was called a second time on the same service collection. A host
+    /// runs one Kaleido service: configure it in one call (a second call would otherwise silently replace
+    /// the first one's options).
+    /// </summary>
+    public const string DuplicateRegistration = "duplicate_registration";
 }

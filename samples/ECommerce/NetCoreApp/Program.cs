@@ -22,6 +22,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddKaleido(builder.Configuration, o =>
     {
         o.ServiceName = "ecommerce";
+        o.AuthorizationMode = KaleidoAuthorizationMode.None;
         o.DisplayName = "ECommerce";
         o.Description = "ECommerce processor workflow.";
         o.Assemblies = new[] { typeof(Program).Assembly, typeof(AddItemToCartStep).Assembly, typeof(ProductCatalogQueryContext).Assembly };
