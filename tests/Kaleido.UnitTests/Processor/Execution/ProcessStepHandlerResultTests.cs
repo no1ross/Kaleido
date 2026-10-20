@@ -150,6 +150,18 @@ public sealed class ProcessStepHandlerResultTests
         Assert.Equal("ok", converted.Response!.Value);
     }
 
+    [Fact]
+    public void Failure_WithoutResponse_IsANonRejectedFailureWithItsMessages()
+    {
+        var result = ProcessStepHandlerResult.Failure(Note);
+
+        Assert.False(result.Succeeded);
+        Assert.False(result.Rejected);
+        Assert.Null(result.RequiredStep);
+        Assert.Null(result.Response);
+        Assert.Equal([Note], result.Messages);
+    }
+
     private sealed record Response(string Value);
 
     private sealed record NextStep : IProcessStep;

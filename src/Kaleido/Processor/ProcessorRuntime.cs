@@ -48,7 +48,6 @@ internal interface IProcessorRuntime
 /// <remarks>
 /// Use <see cref="ForStep{TStep}"/> to submit a single typed step.
 /// </remarks>
-[ExcludeFromCodeCoverage]
 internal sealed record ProcessRequest
 {
     /// <summary>

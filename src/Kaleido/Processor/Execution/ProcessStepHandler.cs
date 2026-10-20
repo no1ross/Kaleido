@@ -127,7 +127,6 @@ public interface IProcessStepHandlerResult
 /// </code>
 /// </example>
 /// <typeparam name="TProcessStepResult">The typed response returned to the caller.</typeparam>
-[ExcludeFromCodeCoverage]
 public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStepHandlerResult
 {
     internal ProcessStepHandlerResult() { }
@@ -258,7 +257,6 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 /// <summary>
 /// The outcome of a step handler that returns no typed response.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
 {
     internal ProcessStepHandlerResult() { }

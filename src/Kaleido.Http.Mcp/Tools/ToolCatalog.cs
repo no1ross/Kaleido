@@ -111,7 +111,6 @@ internal sealed record ToolLookup
 /// a second registry: it holds nothing the registry doesn't publish, and is rebuilt when the
 /// registry revision changes.
 /// </summary>
-[ExcludeFromCodeCoverage]
 internal sealed record ToolCatalog
 {
     public static ToolCatalog Empty { get; } = new();

@@ -36,7 +36,6 @@ public interface IKaleidoBuilder
     KaleidoServiceOptions ServiceOptions { get; }
 }
 
-[ExcludeFromCodeCoverage]
 internal sealed class KaleidoBuilder : IKaleidoBuilder
 {
     private readonly Dictionary<string, Assembly> _assemblies = [];
