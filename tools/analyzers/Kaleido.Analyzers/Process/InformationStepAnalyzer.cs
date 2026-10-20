@@ -35,6 +35,7 @@ public sealed class InformationStepAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.InformationStepShape),
             description: "Startup fails with pro_invalid_registration when an IInformationStep declares other properties: the same data must never live in two places.");
 
     private static readonly DiagnosticDescriptor SuccessRule =
@@ -45,6 +46,7 @@ public sealed class InformationStepAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.InformationStepRequiredWithoutRequest),
             description: "Requiring an information step without an information request fails the step with pro_information_request_missing.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

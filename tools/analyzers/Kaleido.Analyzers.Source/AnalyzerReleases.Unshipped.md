@@ -5,7 +5,6 @@ Rule ID | Category | Severity | Notes
 KAL0001 | Kaleido.Design | Warning | Static classes are for extension methods only
 KAL0002 | Kaleido.Design | Warning | Do not throw general BCL exception types
 KAL0003 | Kaleido.Design | Warning | Do not use the null-forgiving operator
-KAL0004 | Kaleido.Design | Error | Exception types must not be records
 KAL0005 | Kaleido.Design | Error | Service-like types must not be static
 KAL0006 | Kaleido.Design | Error | Do not new up DI-registered implementations
 KAL0007 | Kaleido.Design | Error | No service locator — resolve via constructor injection

@@ -7,7 +7,6 @@ KAL2002 | Kaleido.Usage | Error | [QuerySource] Version, DisplayName, and Descri
 KAL2003 | Kaleido.Usage | Error | [QueryView] Version, DisplayName, and Description must be non-empty
 KAL2004 | Kaleido.Usage | Warning | Step handler catch (Exception) must filter OperationCanceledException
 KAL2005 | Kaleido.Usage | Warning | ServiceName must be lowercase letters, digits, '-' and '_'
-KAL2008 | Kaleido.Usage | Warning | IProcessStep type has no IProcessStepHandler in this compilation
 KAL2009 | Kaleido.Usage | Warning | AddKaleido() options lambda does not set Assemblies
 KAL2010 | Kaleido.Usage | Error | [ProcessStep] type must implement IProcessStep
 KAL2011 | Kaleido.Usage | Error | IProcessStep type must have [ProcessStep]

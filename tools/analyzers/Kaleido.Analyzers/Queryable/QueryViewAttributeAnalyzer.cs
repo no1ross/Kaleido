@@ -22,6 +22,7 @@ public sealed class QueryViewAttributeAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.QueryViewAttributeValidity),
             description: "A [QueryView] with an empty Version, DisplayName, or Description cannot be registered by the Kaleido runtime.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

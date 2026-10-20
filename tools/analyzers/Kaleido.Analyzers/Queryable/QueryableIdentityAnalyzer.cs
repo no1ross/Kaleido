@@ -23,6 +23,7 @@ public sealed class QueryableIdentityAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.QueryableAttributeWithoutInterface),
             description: "Discovery is interface-only, so a [QuerySource] or [QueryView] on a type without the matching interface is never registered.");
 
     private static readonly DiagnosticDescriptor InterfaceWithoutAttributeRule =
@@ -33,6 +34,7 @@ public sealed class QueryableIdentityAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.QueryableMissingAttribute),
             description: "Startup fails with qry_missing_attribute when a concrete query source or view has no [QuerySource] or [QueryView] attribute.");
 
     private static readonly DiagnosticDescriptor QueryRuleOutsideContextRule =
@@ -43,6 +45,7 @@ public sealed class QueryableIdentityAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.QueryRuleAttributeOutsideQueryContext),
             description: "[Filterable], [Searchable] and [Sortable] describe how a query source can be queried and are only read from IQueryContext records.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

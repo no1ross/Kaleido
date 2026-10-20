@@ -24,6 +24,7 @@ public sealed class ProcessStepAttributeAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.ProcessStepAttributeValidity),
             description: "A [ProcessStep] with an empty Version, DisplayName, or Description cannot be registered by the Kaleido runtime.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
