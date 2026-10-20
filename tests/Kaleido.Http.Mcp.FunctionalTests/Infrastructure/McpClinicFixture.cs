@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Kaleido.Http.Client;
+using Kaleido.Observability;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -7,6 +9,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.AspNetCore.Authentication;
 using ModelContextProtocol.Authentication;
 using ModelContextProtocol.Client;
@@ -44,6 +47,23 @@ public class McpClinicFixture : IAsyncLifetime
     /// <summary>The origin headers (X-Kaleido-Origin, X-Kaleido-Origin-Tool) of every request the clinic service received.</summary>
     public System.Collections.Concurrent.ConcurrentQueue<(string Path, string Authorization, string Origin, string OriginTool)> ServiceOrigins { get; } = new();
 
+    /// <summary>Client timeout of the host's Kaleido clients (short, so a slow downstream test ends quickly).</summary>
+    public static readonly TimeSpan ClientTimeout = TimeSpan.FromSeconds(3);
+
+    /// <summary>Clinic service requests carrying one of these request ids are held for the given time (a slow downstream).</summary>
+    public System.Collections.Concurrent.ConcurrentDictionary<string, TimeSpan> SlowRequests { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Request ids of held clinic service requests that were aborted before they finished.</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<string> AbortedServiceRequests { get; } = new();
+
+    /// <summary>Every log entry of the host: level, formatted message and exception text.</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<(LogLevel Level, string Text)> Logs { get; } = new();
+
+    /// <summary>Every tag value of the host's Kaleido spans (sources named Kaleido*), with the span's request id.</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<(string? RequestId, string Key, string? Value)> SpanTags { get; } = new();
+
+    private ActivityListener? spanListener;
+
     public McpClinicFixture()
         : this(withDownstreamThatIsDown: false)
     {
@@ -64,6 +84,22 @@ public class McpClinicFixture : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        spanListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name.StartsWith("Kaleido", StringComparison.Ordinal),
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                var requestId = activity.GetTagItem(KaleidoTelemetryTags.RequestId) as string;
+
+                foreach (var tag in activity.TagObjects)
+                {
+                    SpanTags.Enqueue((requestId, tag.Key, tag.Value?.ToString()));
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(spanListener);
+
         host =
             await new HostBuilder()
                 .ConfigureWebHost(web =>
@@ -72,6 +108,7 @@ public class McpClinicFixture : IAsyncLifetime
 
                     web.ConfigureServices(services =>
                     {
+                        services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug).AddProvider(new CapturingLoggerProvider(Logs)));
                         services.AddRouting();
                         var authentication = services.AddAuthentication(o =>
                             {
@@ -101,7 +138,8 @@ public class McpClinicFixture : IAsyncLifetime
                         {
                             ["Kaleido:Clients:clinic:BaseUrl"] = "http://localhost/",
                             ["Kaleido:Clients:clinic:RoutePrefix"] = "clinic",
-                            ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search."
+                            ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search.",
+                            ["Kaleido:Resilience:TotalTimeout"] = ClientTimeout.ToString("c", System.Globalization.CultureInfo.InvariantCulture),
                         };
 
                         if (withFrontDoor)
@@ -153,7 +191,22 @@ public class McpClinicFixture : IAsyncLifetime
                             {
                                 ServiceRequests.Enqueue((context.Request.Path, context.Request.Headers.Authorization.ToString()));
                                 ServiceProcessIds.Enqueue((context.Request.Path, context.Request.Headers[KaleidoCorrelationHeaders.ProcessId].ToString()));
-                            ServiceOrigins.Enqueue((context.Request.Path, context.Request.Headers.Authorization.ToString(), context.Request.Headers[KaleidoCorrelationHeaders.Origin].ToString(), context.Request.Headers[KaleidoCorrelationHeaders.OriginTool].ToString()));
+                                ServiceOrigins.Enqueue((context.Request.Path, context.Request.Headers.Authorization.ToString(), context.Request.Headers[KaleidoCorrelationHeaders.Origin].ToString(), context.Request.Headers[KaleidoCorrelationHeaders.OriginTool].ToString()));
+
+                                var requestId = context.Request.Headers[KaleidoCorrelationHeaders.RequestId].ToString();
+
+                                if (SlowRequests.TryGetValue(requestId, out var hold))
+                                {
+                                    try
+                                    {
+                                        await Task.Delay(hold, context.RequestAborted);
+                                    }
+                                    catch (OperationCanceledException)
+                                    {
+                                        AbortedServiceRequests.Enqueue(requestId);
+                                        return;
+                                    }
+                                }
                             }
 
                             await next(context);
@@ -221,6 +274,26 @@ public class McpClinicFixture : IAsyncLifetime
         return await McpClient.CreateAsync(transport, options, cancellationToken: TestContext.Current.CancellationToken);
     }
 
+    private sealed class CapturingLoggerProvider(System.Collections.Concurrent.ConcurrentQueue<(LogLevel Level, string Text)> logs) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(logs);
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class CapturingLogger(System.Collections.Concurrent.ConcurrentQueue<(LogLevel Level, string Text)> logs) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            logs.Enqueue((logLevel, formatter(state, exception) + (exception is null ? string.Empty : " " + exception)));
+    }
+
     private sealed class UnreachableHandler : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
@@ -229,6 +302,8 @@ public class McpClinicFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
+        spanListener?.Dispose();
+
         if (host is not null)
         {
             await host.StopAsync();
