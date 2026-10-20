@@ -88,6 +88,18 @@ public sealed class QueryEventFactoryTests
         Assert.Equal(new KaleidoCaller { Name = "alice", Id = "sub-alice" }, envelope.Context.Caller);
     }
 
+    // ADR 0022: the front door (informational) and the acting application (from the principal) reach the events.
+    [Fact]
+    public void CreateQueryExecuted_RecordsTheOriginAndTheCallersActor()
+    {
+        var correlation = new KaleidoCorrelationContext { RequestId = "test-request", Origin = "mcp", OriginTool = "clinic_patient", CallerActor = "radiology" };
+        var details = new QueryObservationDetails("test-context", null, true, QueryExecutionMode.LocalView);
+
+        var envelope = Sut.CreateQueryExecuted<TestView>(correlation, details, new QueryRequest(), new QueryResult<TestView>(0, 0, 10, []));
+
+        Assert.Equal(("mcp", "clinic_patient", "radiology"), (envelope.Context.Origin, envelope.Context.OriginTool, envelope.Context.CallerActor));
+    }
+
     [Fact]
     public void CreateQueryExecuted_CreatesEventWithCorrectData()
     {

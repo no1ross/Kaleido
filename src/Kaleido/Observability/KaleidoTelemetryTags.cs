@@ -28,4 +28,13 @@ public static class KaleidoTelemetryTags
 
     /// <summary>The step in the calling processor that called this service (per-hop, inbound).</summary>
     public const string CallingStep = "kaleido.calling.step";
+
+    /// <summary>The front door the request came through (e.g. <c>mcp</c>; end-to-end, informational).</summary>
+    public const string Origin = "kaleido.origin";
+
+    /// <summary>The front door's name for what started the request (the MCP tool; end-to-end, informational).</summary>
+    public const string OriginTool = "kaleido.origin.tool";
+
+    /// <summary>The application acting for the caller on this hop, from the principal's actor claim.</summary>
+    public const string CallerActor = "kaleido.caller.actor";
 }

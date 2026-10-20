@@ -1,7 +1,6 @@
 using Kaleido.Http.Client;
 using Kaleido.Http.Mcp.Observability;
 using Kaleido.Observability;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Protocol;
@@ -18,9 +17,8 @@ public sealed class KaleidoMcpToolHandlerTests
     private readonly Mock<IMcpToolCallObservation> callObservation = new();
     private readonly Mock<IMcpToolsListObservation> listObservation = new();
     private readonly Mock<McpServer> server = new();
-    private readonly Mock<IKaleidoCallerForwarding> forwarding = new();
-    private readonly Mock<IDisposable> forwardingScope = new();
-    private string? inboundAuthorization = "Bearer carol-token";
+    private readonly Mock<IKaleidoInboundCallerAccessor> inboundCaller = new();
+    private readonly Mock<IKaleidoCorrelationContextInitializer> correlationInitializer = new();
 
     private static readonly KaleidoTool Search = new()
     {
@@ -35,7 +33,6 @@ public sealed class KaleidoMcpToolHandlerTests
         observability.Setup(x => x.BeginToolCall(It.IsAny<string>())).Returns(callObservation.Object);
         observability.Setup(x => x.BeginToolsList()).Returns(listObservation.Object);
         catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ToolCatalog { Tools = [Search] });
-        forwarding.Setup(x => x.ForwardCaller(It.IsAny<string?>())).Returns(forwardingScope.Object);
     }
 
     private KaleidoMcpToolHandler CreateSut(ILogger<KaleidoMcpToolHandler>? logger = null, bool inAnHttpRequest = true)
@@ -43,23 +40,15 @@ public sealed class KaleidoMcpToolHandlerTests
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext { RequestId = "req-7" });
 
-        var context = new DefaultHttpContext();
-
-        if (inboundAuthorization is not null)
-        {
-            context.Request.Headers.Authorization = inboundAuthorization;
-        }
-
-        var httpContext = new Mock<IHttpContextAccessor>();
-        httpContext.Setup(x => x.HttpContext).Returns(inAnHttpRequest ? context : null);
+        inboundCaller.Setup(x => x.IsInboundRequest).Returns(inAnHttpRequest);
 
         return new KaleidoMcpToolHandler(
             catalogs.Object,
             invoker.Object,
             observability.Object,
             correlation.Object,
-            forwarding.Object,
-            httpContext.Object,
+            correlationInitializer.Object,
+            inboundCaller.Object,
             logger ?? NullLogger<KaleidoMcpToolHandler>.Instance);
     }
 
@@ -234,15 +223,14 @@ public sealed class KaleidoMcpToolHandlerTests
     }
 
     [Fact]
-    public async Task CallTool_OutsideAnHttpRequest_IsForwardedAsAnonymous()
+    // ADR 0022: without the MCP request's caller the calls would be the service's own, so none is made.
+    public async Task CallTool_OutsideAnHttpRequest_RunsNothing_AndIsAnInternalError()
     {
-        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Text("{}"));
+        var result = await CreateSut(inAnHttpRequest: false).CallToolAsync(CallRequest("clinic_patient"), Cancel);
 
-        await CreateSut(inAnHttpRequest: false).CallToolAsync(CallRequest("clinic_patient"), Cancel);
-
-        forwarding.Verify(x => x.ForwardCaller(null), Times.Once);
-        forwardingScope.Verify(x => x.Dispose(), Times.Once);
+        Assert.True(result.IsError);
+        Assert.Contains(McpErrorCodes.InternalError, result.Content.OfType<TextContentBlock>().First().Text, StringComparison.Ordinal);
+        invoker.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -416,7 +404,6 @@ public sealed class KaleidoMcpToolHandlerTests
 
         Assert.Equal("done", call?.Arguments["note"].GetString());
         callObservation.Verify(x => x.Resolved(HiddenStep, processId.ToString()));
-        forwarding.Verify(x => x.ForwardCaller("Bearer carol-token"), Times.Once);
     }
 
     [Theory]
@@ -559,38 +546,19 @@ public sealed class KaleidoMcpToolHandlerTests
         Assert.Equal("plain text", result.Content.OfType<TextContentBlock>().First().Text);
     }
 
+    // ADR 0022 (#402): every service the tool reaches learns the request came through MCP, and which tool started it.
     [Fact]
-    public async Task ATool_RunsAsTheCaller_InsideACallerForwardingScope()
+    public async Task CallTool_StampsTheOrigin_BeforeCallingTheService()
     {
-        var forwardedDuringTheCall = false;
+        var stampedFirst = false;
         invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
-            .Callback(() => forwardedDuringTheCall = forwarding.Invocations.Any(i => i.Method.Name == nameof(IKaleidoCallerForwarding.ForwardCaller)))
-            .ReturnsAsync(new ToolOutcome { Result = new CallToolResult { Content = [new TextContentBlock { Text = "{}" }] } });
+            .Callback(() => stampedFirst = correlationInitializer.Invocations.Count == 1)
+            .ReturnsAsync(Text("{}"));
 
-        await CreateSut().CallToolAsync(CallRequest("clinic_patient"), TestContext.Current.CancellationToken);
+        await CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel);
 
-        Assert.True(forwardedDuringTheCall);
-        forwarding.Verify(x => x.ForwardCaller("Bearer carol-token"), Times.Once);
-        forwardingScope.Verify(x => x.Dispose(), Times.Once);
-    }
-
-    [Fact]
-    public async Task AnAnonymousCaller_IsForwardedAsAnonymous()
-    {
-        inboundAuthorization = null;
-        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ToolOutcome { Result = new CallToolResult { Content = [new TextContentBlock { Text = "{}" }] } });
-
-        await CreateSut().CallToolAsync(CallRequest("clinic_patient"), TestContext.Current.CancellationToken);
-
-        forwarding.Verify(x => x.ForwardCaller(It.Is<string?>(v => string.IsNullOrEmpty(v))), Times.Once);
-    }
-
-    [Fact]
-    public async Task ListingTools_DoesNotForwardTheCaller()
-    {
-        await CreateSut().ListToolsAsync(ListRequest(), TestContext.Current.CancellationToken);
-
-        forwarding.Verify(x => x.ForwardCaller(It.IsAny<string?>()), Times.Never);
+        Assert.True(stampedFirst);
+        correlationInitializer.Verify(x => x.Initialize(It.Is<KaleidoCorrelationContext>(c =>
+            c.RequestId == "req-7" && c.Origin == "mcp" && c.OriginTool == "clinic_patient")), Times.Once);
     }
 }

@@ -55,4 +55,20 @@ public sealed record QueryableEventContext
     /// where the event stream must not carry it.
     /// </summary>
     public Kaleido.Observability.KaleidoCaller? Caller { get; init; }
+
+    /// <summary>
+    /// The application acting for the caller on the hop that produced this event (a calling service or a
+    /// front door), from the principal's actor claim - never from headers (ADR 0022). <see langword="null"/>
+    /// when the principal names none.
+    /// </summary>
+    public string? CallerActor { get; init; }
+
+    /// <summary>
+    /// The front door the request came through (e.g. <c>mcp</c>), end-to-end (<c>X-Kaleido-Origin</c>).
+    /// Informational: an audit hint, never proof - <see cref="CallerActor"/> is the trusted counterpart.
+    /// </summary>
+    public string? Origin { get; init; }
+
+    /// <summary>The front door's name for what started the request (the MCP tool; <c>X-Kaleido-Origin-Tool</c>), informational.</summary>
+    public string? OriginTool { get; init; }
 }

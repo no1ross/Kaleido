@@ -244,4 +244,17 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         Assert.Contains(calls, x => x.Path.Contains("/processes/steps/", StringComparison.Ordinal));
         Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == McpClinicFixture.HostServiceToken);
     }
+
+    // #402: the service a tool reaches learns the request came through MCP, and which tool started it.
+    [Fact]
+    public async Task ATool_TellsTheServiceItCameThroughMcp_AndWhichTool()
+    {
+        var nurse = BearerTestAuthHandler.Token($"nurse-{Guid.NewGuid():N}");
+        await using var client = await fixture.ConnectAsync(nurse);
+
+        await client.CallToolAsync("clinic_patient", new Dictionary<string, object?>(), cancellationToken: Cancel);
+
+        var call = Assert.Single(fixture.ServiceOrigins, x => x.Authorization == nurse && x.Path.Contains("/queryable/", StringComparison.Ordinal));
+        Assert.Equal(("mcp", "clinic_patient"), (call.Origin, call.OriginTool));
+    }
 }

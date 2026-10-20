@@ -47,6 +47,17 @@ internal static class HttpCorrelationContextReader
                 trustIdentity
                     ? ReadString(context, KaleidoCorrelationHeaders.CallingStep)
                     : null,
+
+            // Informational, end to end: honored under the same trust as the request id (ADR 0022).
+            Origin =
+                trustIdentity
+                    ? ReadString(context, KaleidoCorrelationHeaders.Origin)
+                    : null,
+
+            OriginTool =
+                trustIdentity
+                    ? ReadString(context, KaleidoCorrelationHeaders.OriginTool)
+                    : null,
         };
     }
 
