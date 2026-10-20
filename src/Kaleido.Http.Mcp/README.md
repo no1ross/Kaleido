@@ -200,6 +200,103 @@ A tool call never fails at the protocol level: a problem comes back as a tool re
 
 **Retries are safe.** Tool calls go through the Kaleido clients: transient failures are retried by their resilience pipeline, and every step call carries an `Idempotency-Key`, so a retry the service has already answered gets the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#resilience)).
 
+## Trust boundary
+
+The agent (the model) and the MCP client are **untrusted input**. Everything that protects a business
+runs on the server, whatever the agent says or the client shows:
+
+| The agent can... | What decides | Where |
+|---|---|---|
+| call any tool name | the caller's per-service access (the tool list is filtered per caller; a tool not in it is `mcp_unknown_tool` and the service is never called) | adapter + each service's authorization |
+| pass any arguments | each service's validation (`DataAnnotations`, query rules) | service |
+| claim the user agreed | nothing: prompt guidance (`confirm with the user`, destructive hints) is advice to well-behaved clients, **not consent**. Questions that must come from the user are information requests: shown as forms where the client supports them, refused when the answers do not match the pending request | service + adapter |
+| retry or abandon a call | idempotency keys on execute calls; a cancellation is recorded as one (a Warning), never a failure | client + service |
+| learn data it should not | which capabilities the caller may use (tools are filtered per caller; each service authorizes its own); which **records** a caller may see within a capability is the service's own logic (no case-level guardrails). Credentials and tool arguments are never written to logs or span tags | adapter + services |
+
+The credential a tool call carries is the host's decision and never the host's own identity
+([ADR 0022](../../docs/decisions/0022-call-credentials.md)); downstream services see that the call came
+through MCP and which tool started it (`Origin`/`OriginTool`, informational) and which application
+acted (`CallerActor`, from the token) - see [`docs/CORRELATION.md`](../../docs/CORRELATION.md).
+Each row is covered by tests: `McpEndpointTests`, `McpContractTests` and `McpTrustTests` in
+`tests/Kaleido.Http.Mcp.FunctionalTests`.
+
+## The instructions resource
+
+The adapter sends **server instructions** to every MCP client: how to use Kaleido's tools (start
+from `next`, pass the `processId` on every call, relay business messages verbatim, ask the user
+rather than invent answers). They are packaged with the adapter (`Instructions/DefaultInstructions.md`,
+an embedded resource, plus `FrontDoorInstructions.md` for the front door) and versioned **with the
+package**: they change only in a Kaleido release, and a change is listed in the release notes, because
+agents' behavior depends on them.
+
+- `Kaleido:Mcp:AdditionalInstructions` **appends** the business's own guidance (the usual choice:
+  Kaleido's mechanics stay current with upgrades).
+- `Instructions` / `InstructionsFile` **replace** them entirely; a host doing so owns keeping them
+  in step with the adapter's tools after each upgrade.
+- `ServerVersion` (default `1.0.0`) is the host's own version of what it publishes, reported to
+  clients; raise it when the tools or instructions a client sees change meaningfully.
+
+The instructions are guidance for well-behaved agents; nothing in them is a security control (see
+[Trust boundary](#trust-boundary)).
+
+## Integration example
+
+A router publishing two services to AI agents, with OAuth sign-in from MCP clients and per-service
+tokens:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services
+    .AddAuthentication(o =>
+    {
+        o.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+        o.DefaultChallengeScheme = McpAuthenticationDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(o => { o.Authority = "https://login.example.com"; o.Audience = "api://kaleido-mcp"; })
+    .AddMcp(o => o.ResourceMetadata = new ProtectedResourceMetadata
+    {
+        AuthorizationServers = ["https://login.example.com"],
+        ScopesSupported = ["api://kaleido-mcp/mcp.access"],
+    });
+builder.Services.AddAuthorization();
+
+builder.Services
+    .AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "router";
+        o.Assemblies = [typeof(Program).Assembly];
+        o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+    })
+    .AddHttp()
+    .AddHttpClients()                                   // Kaleido:Clients:intake, Kaleido:Clients:radiology
+    .AddCallCredentials<OnBehalfOfProvider>()           // a token for the user, per service (Kaleido.Http.Client README)
+    .AddMcp(o => o.ServerName = "priorauth");
+
+var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapKaleidoHttp(o => o.AggregateRegistry = true);
+app.MapKaleidoMcp("/mcp").RequireAuthorization();
+app.Run();
+```
+
+```json
+{
+  "Kaleido": {
+    "Clients": {
+      "intake": { "BaseUrl": "https://intake.internal/" },
+      "radiology": { "BaseUrl": "https://radiology.internal/" }
+    },
+    "Mcp": { "AdditionalInstructions": "Start every request with an intake." }
+  }
+}
+```
+
+An agent connecting to `/mcp` signs the user in, lists the tools that user may use across both
+services, and every call reaches the service with a token for that user and service. The PriorAuth
+sample's router is a complete, runnable version (with dev tokens and `ForwardCallerToken()`).
+
 ## Security
 
 - Tools are built from the registry **filtered for the caller**: a caller sees only what it may use.
