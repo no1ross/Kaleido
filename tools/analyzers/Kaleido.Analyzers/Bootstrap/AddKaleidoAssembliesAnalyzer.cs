@@ -21,6 +21,7 @@ public sealed class AddKaleidoAssembliesAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.AddKaleidoMissingAssemblies),
             description: "Missing or empty Assemblies causes AddKaleido() to fail at registration; explicit assemblies make discovery deterministic.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

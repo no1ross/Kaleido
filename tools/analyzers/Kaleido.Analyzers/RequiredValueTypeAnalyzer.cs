@@ -28,6 +28,7 @@ public sealed class RequiredValueTypeAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.ProcessStepRequiredValueType),
             description: "The [Required] attribute fails only for a missing (null) value. For a value type, the required keyword makes callers supply it: the compiler for in-process callers, System.Text.Json for a request body.");
 
     private static readonly DiagnosticDescriptor QueryRule =
@@ -38,6 +39,7 @@ public sealed class RequiredValueTypeAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.QueryParameterRequiredValueType),
             description: "The [Required] attribute fails only for a missing (null) value. For a value type, the required keyword makes callers supply it: the compiler for in-process callers, System.Text.Json for a request body.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

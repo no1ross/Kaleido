@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -74,7 +75,7 @@ public sealed class MutableCollectionAnalyzer : DiagnosticAnalyzer
         SyntaxNodeAnalysisContext context,
         PropertyDeclarationSyntax property)
     {
-        if (!IsAccessibleMember(context, property))
+        if (!IsAccessibleMember(context, property) || IsInheritedContract(context, property))
         {
             return;
         }
@@ -86,24 +87,35 @@ public sealed class MutableCollectionAnalyzer : DiagnosticAnalyzer
         SyntaxNodeAnalysisContext context,
         MethodDeclarationSyntax method)
     {
-        if (!IsAccessibleMember(context, method))
-        {
-            return;
-        }
-
-        // Skip overrides and explicit interface implementations.
-        if (method.Modifiers.Any(SyntaxKind.OverrideKeyword))
-        {
-            return;
-        }
-
-        if (method.ExplicitInterfaceSpecifier is not null)
+        if (!IsAccessibleMember(context, method) || IsInheritedContract(context, method))
         {
             return;
         }
 
         CheckTypeSyntax(context, method.ReturnType);
     }
+
+    // Ownership: the diagnostic belongs to the member that declares the contract. An override, or an
+    // explicit or implicit interface implementation, cannot choose its type - the base or interface
+    // fixed it - so it is never reported; the declaring member is (when it is source in this
+    // compilation), once.
+    private static bool IsInheritedContract(SyntaxNodeAnalysisContext context, MemberDeclarationSyntax member)
+    {
+        var symbol = context.SemanticModel.GetDeclaredSymbol(member, context.CancellationToken);
+
+        return symbol switch
+        {
+            IPropertySymbol property => property.IsOverride || property.ExplicitInterfaceImplementations.Length > 0 || ImplementsInterfaceMember(property),
+            IMethodSymbol method => method.IsOverride || method.ExplicitInterfaceImplementations.Length > 0 || ImplementsInterfaceMember(method),
+            _ => false,
+        };
+    }
+
+    private static bool ImplementsInterfaceMember(ISymbol member) =>
+        member.ContainingType is { } type
+        && type.AllInterfaces
+            .SelectMany(x => x.GetMembers(member.Name))
+            .Any(x => SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(x), member));
 
     private static void AnalyzeParameter(
         SyntaxNodeAnalysisContext context,
@@ -120,13 +132,7 @@ public sealed class MutableCollectionAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (!IsAccessibleMember(context, method))
-        {
-            return;
-        }
-
-        if (method.Modifiers.Any(SyntaxKind.OverrideKeyword) ||
-            method.ExplicitInterfaceSpecifier is not null)
+        if (!IsAccessibleMember(context, method) || IsInheritedContract(context, method))
         {
             return;
         }

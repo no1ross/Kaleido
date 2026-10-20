@@ -26,6 +26,7 @@ public sealed class FilterOperatorTypeAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.FilterOperatorTypeMismatch),
             description: "Kaleido checks [Filterable] operators against the property's type at startup (qry_invalid_registration). A comparison needs a number, date, time or other type with comparison operators; string operators need a string; IsTrue/IsFalse need a bool; IsNull/IsNotNull need a nullable type.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

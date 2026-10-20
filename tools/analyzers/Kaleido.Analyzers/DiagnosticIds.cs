@@ -23,9 +23,6 @@ internal static class DiagnosticIds
     /// <summary>A constant ServiceName must match [a-z0-9][a-z0-9_-]* (the runtime rule).</summary>
     public const string ServiceNameFormat = "KAL2005";
 
-    /// <summary>IProcessStep type has no IProcessStepHandler in same compilation.</summary>
-    public const string ProcessStepMissingHandler = "KAL2008";
-
     /// <summary>AddKaleido() lambda never sets o.Assemblies.</summary>
     public const string AddKaleidoMissingAssemblies = "KAL2009";
 

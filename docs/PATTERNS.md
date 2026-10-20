@@ -73,7 +73,7 @@ Rules:
     an **initial step**: available when a process starts.
   - At startup: a relationship to itself, a circular `[DependsOn]` graph, or a relationship to a
     step the processor does not register fails with `pro_invalid_registration`.
-- Every step needs exactly one handler (KAL2008); the handler must not swallow
+- Every step needs exactly one handler (checked at startup: `pro_missing_handler`); the handler must not swallow
   `OperationCanceledException` in `catch (Exception)` — filter it or let the
   executor own cancellation (KAL2004).
 - **Describe inputs** with `[Description("…")]` or `[Display(Description = "…")]`
@@ -332,7 +332,7 @@ Rules:
 Throw `Kaleido*Exception` types only (KAL0002): `KaleidoValidationException`
 (400 surface), `KaleidoConfigurationException` (startup), `KaleidoFrameworkException`
 (internal integrity). Argument guards (`ArgumentNullException`) are fine.
-Exception types are classes, never records (KAL0004/KAL1011).
+Exception types are classes, never records (the compiler rejects a record deriving from `Exception`: CS8865).
 
 ## Async
 
