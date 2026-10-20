@@ -75,12 +75,14 @@ public class KaleidoServiceOptions
 
     /// <summary>
     /// How capability authorization is enforced. Default
-    /// <see cref="KaleidoAuthorizationMode.None"/> (nothing enforced).
-    /// Production deployments should use
-    /// <see cref="KaleidoAuthorizationMode.ZeroTrust"/> on every host,
-    /// including registry aggregators/routers.
+    /// <see cref="KaleidoAuthorizationMode.Authenticated"/>: every capability requires an
+    /// authenticated caller, so a host must register authentication, or choose
+    /// <see cref="KaleidoAuthorizationMode.None"/> explicitly to leave its capabilities open
+    /// (ADR 0021). Production deployments should use
+    /// <see cref="KaleidoAuthorizationMode.ZeroTrust"/> on every host, including registry
+    /// aggregators/routers.
     /// </summary>
-    public KaleidoAuthorizationMode AuthorizationMode { get; init; }
+    public KaleidoAuthorizationMode AuthorizationMode { get; init; } = KaleidoAuthorizationMode.Authenticated;
 
     /// <summary>
     /// The service-wide authorization rule for process steps and query sources that declare no
@@ -222,7 +224,7 @@ public sealed class KaleidoServiceOptionsBuilder
     public Func<Type, bool>? TypeFilter { get; set; }
 
     /// <inheritdoc cref="KaleidoServiceOptions.AuthorizationMode"/>
-    public KaleidoAuthorizationMode AuthorizationMode { get; set; }
+    public KaleidoAuthorizationMode AuthorizationMode { get; set; } = KaleidoAuthorizationMode.Authenticated;
 
     /// <inheritdoc cref="KaleidoServiceOptions.DefaultAuthorization"/>
     public AuthorizationMetadata DefaultAuthorization { get; set; } = new(Policy: null, []);

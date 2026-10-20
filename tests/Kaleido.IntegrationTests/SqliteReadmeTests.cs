@@ -67,6 +67,7 @@ public sealed class SqliteReadmeTests : IDisposable
         services.AddKaleido(new ConfigurationBuilder().Build(), o =>
             {
                 o.ServiceName = "myservice";
+                o.AuthorizationMode = KaleidoAuthorizationMode.None;
                 o.Assemblies = [typeof(SqliteReadmeTests).Assembly];
                 o.TypeFilter = _ => false;
             })

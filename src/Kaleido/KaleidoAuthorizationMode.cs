@@ -10,13 +10,15 @@ public enum KaleidoAuthorizationMode
     /// <summary>
     /// Nothing is enforced: declared roles/policies, process ownership and
     /// registry filtering are all skipped. For samples, local development,
-    /// and hosts without authentication. A startup warning is logged when
+    /// and hosts without authentication; chosen explicitly (the default is
+    /// <see cref="Authenticated"/>). A startup warning is logged when
     /// capabilities declare authorization that this mode ignores.
     /// </summary>
     None = 0,
 
     /// <summary>
-    /// Every capability requires an authenticated caller. A capability with
+    /// The default when a host sets no mode (ADR 0021). Every capability requires an authenticated
+    /// caller. A capability with
     /// no declaration is open to <b>any</b> authenticated caller;
     /// <c>[KaleidoAuthorization]</c> narrows access to roles/policy or opens
     /// it with <c>AllowAnonymous</c>.

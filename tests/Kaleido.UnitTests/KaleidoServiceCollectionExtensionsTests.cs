@@ -38,6 +38,44 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     private static ServiceDescriptor Single<TService>(IServiceCollection services) =>
         Assert.Single(services, x => x.ServiceType == typeof(TService));
 
+    // #301: one Kaleido service per host; a second call would silently replace the first one's options.
+    [Fact]
+    public void AddKaleido_CalledTwice_IsAConfigurationError()
+    {
+        var services = new ServiceCollection();
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => services.AddKaleido(EmptyConfig(), DefaultServiceOptions()));
+
+        Assert.Equal(ConfigurationErrorCodes.DuplicateRegistration, exception.Code);
+    }
+
+    // #288: a host that does not choose gets Authenticated; leaving capabilities open is an explicit None.
+    [Fact]
+    public void AddKaleido_WithoutAnAuthorizationMode_EnforcesAuthenticatedCallers()
+    {
+        var services = new ServiceCollection();
+
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
+
+        var options = Assert.IsType<KaleidoServiceOptions>(Single<KaleidoServiceOptions>(services).ImplementationInstance);
+        Assert.Equal(KaleidoAuthorizationMode.Authenticated, options.AuthorizationMode);
+    }
+
+    [Fact]
+    public void AddKaleido_WithAuthorizationModeNoneInConfiguration_LeavesCapabilitiesOpen()
+    {
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:AuthorizationMode"] = "None" })
+            .Build();
+
+        services.AddKaleido(configuration, DefaultServiceOptions());
+
+        var options = Assert.IsType<KaleidoServiceOptions>(Single<KaleidoServiceOptions>(services).ImplementationInstance);
+        Assert.Equal(KaleidoAuthorizationMode.None, options.AuthorizationMode);
+    }
+
     [Fact]
     public void AddKaleido_ShouldThrow_WhenServicesIsNull()
     {

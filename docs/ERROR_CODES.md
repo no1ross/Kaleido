@@ -119,9 +119,10 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
 | `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
 | `ConflictingAuthorization` | `conflicting_authorization` | `[KaleidoAuthorization]` declares `AllowAnonymous` together with `Roles`/`Policy` |
-| `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization but no authentication scheme is registered |
+| `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization (`Authenticated` is the default) but no authentication scheme is registered: add host authentication, or set `AuthorizationMode = None` explicitly |
 | `InvalidAuthorizationMode` | `invalid_authorization_mode` | `AuthorizationMode` is not a defined value |
 | `InvalidEventOptions` | `invalid_event_options` | a `Kaleido:Events` setting is out of range (e.g. a non-positive `BatchSize` or `Resilience:AttemptTimeout`) |
+| `DuplicateRegistration` | `duplicate_registration` | `AddKaleido()` or `AddHttp()` was called a second time on the same service collection; a host runs one Kaleido service, configured in one call of each |
 
 ---
 

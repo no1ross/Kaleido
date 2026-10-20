@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -45,6 +46,19 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
 
         var options = Assert.Single(services, d => d.ServiceType == typeof(KaleidoHttpOptions)).ImplementationInstance;
         Assert.True(Assert.IsType<KaleidoHttpOptions>(options).IncludeFrameworkMessages);
+    }
+
+    // #301: a second call would silently replace the first one's options.
+    [Fact]
+    public void AddHttp_CalledTwice_IsAConfigurationError()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), ConfigureKaleido("test"));
+        builder.AddHttp(o => o.IncludeFrameworkMessages = true);
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddHttp());
+
+        Assert.Equal(ConfigurationErrorCodes.DuplicateRegistration, exception.Code);
     }
 
     [Fact]

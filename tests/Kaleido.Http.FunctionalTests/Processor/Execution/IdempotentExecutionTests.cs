@@ -160,6 +160,7 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
                     services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                         {
                             o.ServiceName = FunctionalProcessorNames.TestProcessor;
+                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(RuntimeRootStep).Assembly];
                         })
                         .AddHttp()

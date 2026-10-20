@@ -29,6 +29,7 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
                 .AddKaleido(new ConfigurationBuilder().Build(), o =>
                 {
                     o.ServiceName = BehaviorFixture.ServiceName;
+                    o.AuthorizationMode = KaleidoAuthorizationMode.None;
                     o.Assemblies = [typeof(BehaviorFixture).Assembly];
                     o.TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace;
                 })
@@ -48,6 +49,7 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
                         o =>
                         {
                             o.ServiceName = "router";
+                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(BehaviorFixture).Assembly];
                             o.TypeFilter = _ => false;
                         })

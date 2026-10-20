@@ -24,6 +24,7 @@ public sealed class DbContextDependencyTests
         services.AddKaleido(new ConfigurationBuilder().Build(), o =>
         {
             o.ServiceName = "test-integration";
+            o.AuthorizationMode = KaleidoAuthorizationMode.None;
             o.Assemblies = new[] { typeof(DbContextDependencyTests).Assembly };
             o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.IntegrationTests.TestArtifacts", StringComparison.Ordinal) ?? false;
         });
@@ -52,6 +53,7 @@ public sealed class DbContextDependencyTests
         services.AddKaleido(new ConfigurationBuilder().Build(), o =>
         {
             o.ServiceName = "test-integration";
+            o.AuthorizationMode = KaleidoAuthorizationMode.None;
             o.Assemblies = [typeof(DbContextDependencyTests).Assembly];
         }).UseSqliteKaleidoContextStore(connectionString);
 

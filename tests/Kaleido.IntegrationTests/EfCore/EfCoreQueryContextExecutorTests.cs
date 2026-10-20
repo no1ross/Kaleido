@@ -64,6 +64,7 @@ public sealed class EfCoreQueryContextExecutorTests : IAsyncLifetime
         services.AddKaleido(new ConfigurationBuilder().Build(), o =>
         {
             o.ServiceName = "members";
+            o.AuthorizationMode = KaleidoAuthorizationMode.None;
             o.Assemblies = [typeof(EfCoreQueryContextExecutorTests).Assembly];
             o.TypeFilter = type => type.Namespace == typeof(EfCoreQueryContextExecutorTests).Namespace;
         });

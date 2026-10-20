@@ -23,7 +23,12 @@ services.AddKaleido(configuration, o =>
 Both can also be bound from configuration (`Kaleido:AuthorizationMode`,
 `Kaleido:DefaultAuthorization:Policy`, `Kaleido:DefaultAuthorization:Roles:0`, …).
 
-| | `None` (default) | `Authenticated` | `ZeroTrust` |
+**The default is `Authenticated`** ([ADR 0021](./decisions/0021-authenticated-by-default.md)): a host that never sets the
+mode enforces an authenticated caller on every capability, and without an authentication scheme
+it does not start (`authentication_not_configured`). Leaving capabilities open is a choice the host
+states: `AuthorizationMode = None` (or `Kaleido:AuthorizationMode=None`).
+
+| | `None` | `Authenticated` (default) | `ZeroTrust` |
 |---|---|---|---|
 | no rule (no attribute and no service default, or an empty attribute) | open | any authenticated caller | omitted from discovery and endpoint mapping; denied in generic execute |
 | `Roles = "a,b"` | not enforced | authenticated + any of the roles | authenticated + any of the roles |

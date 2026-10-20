@@ -149,6 +149,7 @@ public sealed class QueryableClientHeaderTests : IClassFixture<QueryableAspNetCo
         services.AddKaleido(config, o =>
                 {
                     o.ServiceName = "test-queryable-client";
+                    o.AuthorizationMode = KaleidoAuthorizationMode.None;
                     o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
                 })
                 .AddHttpClients();

@@ -36,6 +36,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0018](./0018-options-are-startup-inputs.md) | Options are startup inputs: no defensive copies; KAL0018 stays the immutability rule, no deep-immutability analyzer | Accepted | #294, #305 |
 | [0019](./0019-idempotent-execution-admission.md) | Idempotent execution: an `Idempotency-Key` is admitted before its step runs; at most once per key, not exactly-once external work | Accepted | #285 |
 | [0020](./0020-three-store-contracts.md) | Three store contracts, one concern each: process state, event outbox, idempotent requests; the context and outbox stores share a database | Accepted | #285 |
+| [0021](./0021-authenticated-by-default.md) | Authorization is enforced by default (`Authenticated`); an open host sets `None` explicitly | Accepted | #288 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

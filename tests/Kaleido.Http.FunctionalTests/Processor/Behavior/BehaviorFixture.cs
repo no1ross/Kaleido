@@ -39,6 +39,7 @@ public sealed class BehaviorFixture : IAsyncLifetime
                         services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                             {
                                 o.ServiceName = ServiceName;
+                                o.AuthorizationMode = KaleidoAuthorizationMode.None;
                                 o.Assemblies = [typeof(BehaviorFixture).Assembly];
                                 o.TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace;
                             })
@@ -64,6 +65,7 @@ public sealed class BehaviorFixture : IAsyncLifetime
                 o =>
                 {
                     o.ServiceName = "behavior-caller";
+                    o.AuthorizationMode = KaleidoAuthorizationMode.None;
                     o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
                 })
             .AddHttpClients();
