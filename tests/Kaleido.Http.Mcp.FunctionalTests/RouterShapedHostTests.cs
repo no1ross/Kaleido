@@ -33,12 +33,13 @@ public sealed class RouterShapedHostTests
             })
             .AddHttp()
             .AddHttpClients()
+            .ForwardCallerToken()
             .AddMcp();
 
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
 
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IKaleidoRegistryService>());
-        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IKaleidoCallerForwarding>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IKaleidoCallCredentialProvider>());
     }
 }

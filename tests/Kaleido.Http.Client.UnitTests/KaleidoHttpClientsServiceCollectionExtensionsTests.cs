@@ -53,7 +53,7 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
         Assert.Equal("http://router/", options.BaseUrl);
         Assert.Empty(options.Clients);
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IKaleidoDownstreamRegistries));
-        Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IKaleidoCallerForwarding));
+        Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IHttpMessageHandlerBuilderFilter));
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IKaleidoProcessorClientFactory));
     }
 
@@ -111,7 +111,7 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddHttpClients_WithClients_ReplacesTheDownstreamRegistriesAndAddsCallerForwardingOnce()
+    public void AddHttpClients_WithClients_ReplacesTheDownstreamRegistriesAndAddsTheCredentialFilterOnce()
     {
         var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/" });
         builder.Services.AddScoped(_ => Mock.Of<IKaleidoDownstreamRegistries>());
@@ -122,11 +122,39 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
         var downstream = Assert.Single(builder.Services, d => d.ServiceType == typeof(IKaleidoDownstreamRegistries));
         Assert.Equal(typeof(ClientDownstreamRegistries), downstream.ImplementationType);
         Assert.Equal(ServiceLifetime.Scoped, downstream.Lifetime);
-        var forwarding = Assert.Single(builder.Services, d => d.ServiceType == typeof(IKaleidoCallerForwarding));
-        Assert.Equal(typeof(KaleidoCallerForwarding), forwarding.ImplementationType);
         Assert.Single(
             builder.Services,
-            d => d.ServiceType == typeof(IHttpMessageHandlerBuilderFilter) && d.ImplementationType == typeof(CallerForwardingHandlerFilter));
+            d => d.ServiceType == typeof(IHttpMessageHandlerBuilderFilter) && d.ImplementationType == typeof(KaleidoCallCredentialHandlerFilter));
+    }
+
+    // ADR 0022: one provider decides every call's credential; a later registration replaces an earlier one.
+    [Fact]
+    public void AddCallCredentials_RegistersTheProviderAsASingleton_ReplacingAnEarlierOne()
+    {
+        var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/" });
+
+        var result = builder.ForwardCallerToken().AddCallCredentials<TestCallCredentialProvider>();
+
+        Assert.Same(builder, result);
+        var provider = Assert.Single(builder.Services, d => d.ServiceType == typeof(IKaleidoCallCredentialProvider));
+        Assert.Equal(typeof(TestCallCredentialProvider), provider.ImplementationType);
+        Assert.Equal(ServiceLifetime.Singleton, provider.Lifetime);
+    }
+
+    [Fact]
+    public void ForwardCallerToken_RegistersTheBuiltInPassThrough()
+    {
+        var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/" });
+
+        builder.ForwardCallerToken();
+
+        Assert.Equal(typeof(ForwardCallerTokenProvider), Assert.Single(builder.Services, d => d.ServiceType == typeof(IKaleidoCallCredentialProvider)).ImplementationType);
+    }
+
+    private sealed class TestCallCredentialProvider : IKaleidoCallCredentialProvider
+    {
+        public ValueTask<KaleidoCallCredential> GetCredentialAsync(KaleidoCallCredentialRequest request, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(KaleidoCallCredential.None);
     }
 
     [Fact]

@@ -54,19 +54,7 @@ public static class KaleidoMcpServiceCollectionExtensions
 
         var services = builder.Services;
 
-        if (!services.Any(x => x.ServiceType == typeof(IKaleidoRegistryService)))
-        {
-            throw new KaleidoConfigurationException(
-                McpErrorCodes.MissingHttp,
-                "AddMcp() needs the Kaleido HTTP stack: call AddHttp() before AddMcp().");
-        }
-
-        if (!services.Any(x => x.ServiceType == typeof(IKaleidoCallerForwarding)))
-        {
-            throw new KaleidoConfigurationException(
-                McpErrorCodes.MissingClients,
-                "AddMcp() calls services through the Kaleido clients: configure Kaleido:Clients and call AddHttpClients() before AddMcp().");
-        }
+        RequirePrerequisites(services);
 
         var optionsBuilder = new KaleidoMcpOptionsBuilder();
         builder.Configuration.GetSection(KaleidoMcpOptions.SectionName).Bind(optionsBuilder);
@@ -106,6 +94,33 @@ public static class KaleidoMcpServiceCollectionExtensions
         return builder;
     }
 
+    // AddHttp() (the registry), the Kaleido clients, and how tool calls are authorized must come first.
+    private static void RequirePrerequisites(IServiceCollection services)
+    {
+        if (!services.Any(x => x.ServiceType == typeof(IKaleidoRegistryService)))
+        {
+            throw new KaleidoConfigurationException(
+                McpErrorCodes.MissingHttp,
+                "AddMcp() needs the Kaleido HTTP stack: call AddHttp() before AddMcp().");
+        }
+
+        if (!services.Any(x => x.ImplementationInstance is KaleidoClientOptions { Clients.Count: > 0 }))
+        {
+            throw new KaleidoConfigurationException(
+                McpErrorCodes.MissingClients,
+                "AddMcp() calls services through the Kaleido clients: configure Kaleido:Clients and call AddHttpClients() before AddMcp().");
+        }
+
+        // Fail closed: tool calls are made for the agent's user, and the host must state how they are
+        // authorized - the caller's token unchanged, or exchanged per service (ADR 0022).
+        if (!services.Any(x => x.ServiceType == typeof(IKaleidoCallCredentialProvider)))
+        {
+            throw new KaleidoConfigurationException(
+                McpErrorCodes.MissingCallCredentials,
+                "AddMcp() makes tool calls for the agent's user: register how they are authorized before AddMcp() - ForwardCallerToken() to send the user's token unchanged (every service accepts it), or AddCallCredentials<TProvider>() to exchange it per service.");
+        }
+    }
+
     // Resolve the handler from the HTTP request's own scope (not the SDK's per-message scope), and set
     // up that request's correlation first: the MCP endpoint is the SDK's, not a Kaleido route group, so
     // no Kaleido endpoint filter runs (#295). The request id the agent sent is then the one every call
@@ -114,6 +129,7 @@ public static class KaleidoMcpServiceCollectionExtensions
     {
         var httpContext = services?.GetService<IHttpContextAccessor>()?.HttpContext;
         httpContext?.InitializeKaleidoCorrelation();
+        httpContext?.InitializeKaleidoCaller();
 
         var provider =
             httpContext?.RequestServices

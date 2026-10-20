@@ -14,8 +14,7 @@ namespace Kaleido.Http.Client;
 /// <c>ExecuteStepAsync(stepName, step, processId)</c>) wins, then this scope, then the correlation
 /// context. The scope is never filled from inbound headers; it is the front door's statement of
 /// which process the call belongs to.</para>
-/// <para>The same pattern as <see cref="IKaleidoCallerForwarding"/>: the value flows with the async
-/// call and does not leak into other requests.</para>
+/// <para>The value flows with the async call and does not leak into other requests.</para>
 /// </remarks>
 internal interface IKaleidoProcessForwarding
 {
