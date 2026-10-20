@@ -31,21 +31,33 @@ internal sealed class KaleidoJsonBody<T> : IKaleidoJsonBody
     private readonly T? _value;
     private readonly int _failureStatus;
     private readonly string? _failure;
+    private readonly CancellationToken _canceled;
 
-    private KaleidoJsonBody(string rawJson, T? value, int failureStatus = 0, string? failure = null)
+    private KaleidoJsonBody(string rawJson, T? value, int failureStatus = 0, string? failure = null, CancellationToken canceled = default)
     {
         RawJson = rawJson;
         _value = value;
         _failureStatus = failureStatus;
         _failure = failure;
+        _canceled = canceled;
     }
 
     /// <inheritdoc />
     public string RawJson { get; }
 
-    /// <summary>The typed request, or a <see cref="BadHttpRequestException"/> naming what does not fit.</summary>
-    public T Value =>
-        _value ?? throw new BadHttpRequestException(_failure ?? "The request body is empty.", _failure is null ? StatusCodes.Status400BadRequest : _failureStatus);
+    /// <summary>
+    /// The typed request, or a <see cref="BadHttpRequestException"/> naming what does not fit, or an
+    /// <see cref="OperationCanceledException"/> when the client was gone while the body was read.
+    /// </summary>
+    public T Value
+    {
+        get
+        {
+            _canceled.ThrowIfCancellationRequested();
+
+            return _value ?? throw new BadHttpRequestException(_failure ?? "The request body is empty.", _failure is null ? StatusCodes.Status400BadRequest : _failureStatus);
+        }
+    }
 
     /// <summary>Minimal-API binding hook: reads and deserializes the body; never throws for a caller's mistake.</summary>
     public static async ValueTask<KaleidoJsonBody<T>?> BindAsync(HttpContext context)
@@ -64,6 +76,12 @@ internal sealed class KaleidoJsonBody<T> : IKaleidoJsonBody
         catch (JsonException exception)
         {
             return Failed(string.Empty, StatusCodes.Status400BadRequest, $"The request body is not valid JSON: {exception.Describe()}");
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // The client is gone: kept for the endpoint, where the exception filter treats it as a
+            // disconnect (Debug log, no response), rather than escaping binding into the host.
+            return new KaleidoJsonBody<T>(string.Empty, value: null, canceled: context.RequestAborted);
         }
 
         var raw = json.GetRawText();

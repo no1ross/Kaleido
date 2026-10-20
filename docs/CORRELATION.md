@@ -42,20 +42,24 @@ step calls Configuration:
 ## Inbound path (server)
 
 ```
-HTTP request
-  └─ ObservabilityMiddleware        (registered by KaleidoStartupFilter via AddHttp())
-       └─ HttpCorrelationContextReader
-            reads + sanitizes RequestId, ProcessId, Calling-Processor, Calling-Step
-            └─ writes KaleidoCorrelationContext into
-               IKaleidoCorrelationContextAccessor (scoped)
-       ├─ tags the current Activity (this service's own instance id + the fields above)
-       └─ echoes RequestId and ProcessId on the response
+HTTP request to a Kaleido endpoint (host middleware, incl. authentication, has run)
+  └─ KaleidoExceptionEndpointFilter        (first filter on every Kaleido route group)
+       └─ KaleidoCorrelationEndpointFilter
+            └─ HttpCorrelationContextReader
+                 reads + sanitizes RequestId, ProcessId, Calling-Processor, Calling-Step
+                 └─ writes KaleidoCorrelationContext into
+                    IKaleidoCorrelationContextAccessor (scoped)
+            ├─ tags the current Activity (this service's own instance id + the fields above)
+            └─ echoes RequestId and ProcessId on the response
 ```
+
+Only Kaleido's endpoints get this; the host's own endpoints are untouched (no `X-Kaleido-*` headers).
+The MCP endpoint (`MapKaleidoMcp`), mapped by the MCP SDK, runs the same correlation setup itself.
 
 - String values pass through the internal `HttpHeaderSanitizerExtensions.Sanitize` (RFC 7230 — printable ASCII, max 256
   chars); unsanitizable content is dropped.
 - `ProcessId` must parse as a GUID. A malformed value throws `BadHttpRequestException`,
-  which `ExceptionMiddleware` maps to **HTTP 400** (`argument_error`) — see
+  which `KaleidoExceptionEndpointFilter` maps to **HTTP 400** (`argument_error`) — see
   [`ERROR_CODES.md`](./ERROR_CODES.md).
 - A missing `X-Kaleido-Request-Id` is replaced with a fresh GUID, so every request has an
   ID downstream. `KaleidoCorrelationContext.IsEmpty` reports whether any meaningful field
@@ -80,13 +84,12 @@ The default is adaptive:
 - **Authentication registered** — headers are trusted only when
   `User.Identity.IsAuthenticated`.
 
-`ObservabilityMiddleware` is added by Kaleido's startup filter, ahead of the host's
-`UseAuthentication()`. Before deciding trust it therefore authenticates the request itself with
-the default authenticate scheme (when one is registered) and sets `HttpContext.User`, so both the
-default and a custom predicate see the real caller. ASP.NET caches the result for the request, so
-`UseAuthentication()` does not run the handler again. Without this, every caller would look
-anonymous, and a handoff to a processor that has not seen the process would fail with
-`pro_process_not_found` because the calling processor is dropped.
+The correlation filter runs inside the endpoint, after the host's authentication, so both the
+default and a custom predicate see the authenticated caller; Kaleido does not authenticate requests
+itself. (A host must authenticate before its endpoints, as ASP.NET Core does by default once
+authentication is registered; otherwise every caller looks anonymous, and a handoff to a processor
+that has not seen the process fails with `pro_process_not_found` because the calling processor is
+dropped.)
 
 Override the predicate to apply a custom policy (e.g. service-account-only trust):
 
@@ -99,10 +102,9 @@ Override the predicate to apply a custom policy (e.g. service-account-only trust
 ### Caller identity
 
 `CallerName`, `CallerId` and `CallerRoles` are **never** read from headers - they come from the
-authenticated request principal. The `ObservabilityMiddleware` runs before the host's
-`UseAuthentication`, so they are stamped later by `KaleidoCallerContextEndpointFilter`
-(runs inside endpoint execution, always after auth middleware) on all Kaleido endpoint
-groups:
+authenticated request principal, stamped by `KaleidoCallerContextEndpointFilter` (inside
+endpoint execution, after the correlation filter and the host's authentication) on all Kaleido
+endpoint groups:
 - `CallerName` - `Identity.Name`;
 - `CallerId` - the stable subject id: the `sub` claim, else `ClaimTypes.NameIdentifier`;
 - `CallerRoles` - the role claims.
@@ -165,7 +167,7 @@ step handler / consumer code
 
 ## Observability correlation
 
-- The inbound `ObservabilityMiddleware` and the runtime engines tag the `Activity` with
+- The inbound `KaleidoCorrelationEndpointFilter` and the runtime engines tag the `Activity` with
   `kaleido.request.id`, `kaleido.process.id` (when known), `kaleido.processor.instance_id` (own),
   `kaleido.calling.processor` and `kaleido.calling.step`, so distributed traces line up with the
   correlation headers.

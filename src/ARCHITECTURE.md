@@ -104,10 +104,8 @@ Public seams consumers are expected to implement or replace:
 ### Internal structure
 
 **Registration and pipeline**
-- `KaleidoHttpServiceCollectionExtensions` — `AddHttp()` builder extension; registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
-- `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
-- `ExceptionMiddleware` — outermost middleware; maps exceptions to JSON error responses
-- `ObservabilityMiddleware` — reads inbound correlation headers, populates `IKaleidoCorrelationContextAccessor`, tags the `Activity`, echoes correlation headers on the response
+- `KaleidoHttpServiceCollectionExtensions` — `AddHttp()` builder extension; registers routing, `IHttpContextAccessor` and HTTP execution services; adds nothing to the host's middleware pipeline (#295)
+- Endpoint filters on every Kaleido route group, in order: `KaleidoExceptionEndpointFilter` (exceptions → JSON error responses via `KaleidoExceptionHandler`), `KaleidoCorrelationEndpointFilter` (reads inbound correlation headers, populates `IKaleidoCorrelationContextAccessor`, tags the `Activity`, echoes correlation headers), `KaleidoJsonEndpointFilter`, `KaleidoCallerContextEndpointFilter`
 - `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers into `KaleidoCorrelationContext`
 
 **Transport services**
@@ -223,7 +221,7 @@ Public seams consumers are expected to implement or replace:
 
 ### Correlation identity
 `KaleidoCorrelationContext` flows through all layers:
-- initialized from HTTP headers by `HttpCorrelationContextReader` / `ObservabilityMiddleware` (in `Kaleido.Http`)
+- initialized from HTTP headers by `HttpCorrelationContextReader` / `KaleidoCorrelationEndpointFilter` on Kaleido's endpoints (in `Kaleido.Http`; the MCP adapter runs the same setup for its endpoint)
 - accessed via the scoped `IKaleidoCorrelationContextAccessor` (registered by `AddKaleido()` in `Kaleido`)
 - forwarded by HTTP clients as outbound headers (in `Kaleido.Http.Client`)
 - included as tags on observability activities (in `Kaleido`)
@@ -232,7 +230,7 @@ Public seams consumers are expected to implement or replace:
 
 These are framework invariants — code that violates them produces split traces:
 
-- **Exactly one RequestId per HTTP request** — `ObservabilityMiddleware` echoes the inbound
+- **Exactly one RequestId per HTTP request** — `KaleidoCorrelationEndpointFilter` echoes the inbound
   `X-Kaleido-Request-Id` if present, else generates one. Handlers and downstream calls must
   propagate the ambient `RequestId`, never mint a second one.
 - **Echo-or-generate** — every Kaleido response echoes the end-to-end pair (`RequestId`,

@@ -196,18 +196,16 @@ callback, then leave them alone: changing an options object after the `Add…`/
 `Map…` call is unsupported, and what it changes is undefined. Kaleido does not
 copy options defensively (ADR 0018).
 
-`AddHttp()` always wires `ExceptionMiddleware` + `ObservabilityMiddleware` via
-`KaleidoStartupFilter`; there is no opt-out.
+### Kaleido's HTTP behavior is scoped to Kaleido's endpoints
 
-### Middleware ordering
-
-The startup filter registers `ExceptionMiddleware` **outside**
-`ObservabilityMiddleware`, before the rest of the host pipeline. The outer
-boundary turns exceptions from correlation setup and endpoints into Kaleido
-HTTP error responses; the inner middleware initializes correlation and echoes
-its headers. Reversing them would leave a failure during observability setup
-outside Kaleido's exception handler. Both middleware types are internal; hosts
-never register them manually.
+`AddHttp()` adds nothing to the host's middleware pipeline. Error answers and
+correlation are endpoint filters on Kaleido's route groups: the exception filter
+first (so it also answers a malformed correlation header), then the correlation
+filter (headers, trace tags, header echo; it runs after the host's
+authentication), then the JSON and caller filters. The host's own endpoints get
+no `X-Kaleido-*` headers and no Kaleido error bodies; a host endpoint that calls
+a Kaleido client sends no inbound request id, so the downstream service
+generates one. All filters are internal; hosts never register them (#295).
 
 ## Transport-neutral response semantics
 

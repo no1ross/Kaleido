@@ -1,6 +1,5 @@
 global using Kaleido.Http.Middleware;
 global using Kaleido.Http.Processor;
-global using Kaleido.Http.Startup;
 global using Kaleido.Observability;
 global using Kaleido.Processor;
 global using Kaleido.Processor.Execution;
