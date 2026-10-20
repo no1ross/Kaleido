@@ -39,6 +39,7 @@ internal sealed partial class KaleidoMcpToolHandler(
     IKaleidoToolInvoker invoker,
     IMcpObservability observability,
     IKaleidoCorrelationContextAccessor correlation,
+    IKaleidoCorrelationContextInitializer correlationInitializer,
     IKaleidoInboundCallerAccessor inboundCaller,
     ILogger<KaleidoMcpToolHandler> logger)
     : IKaleidoMcpToolHandler
@@ -172,6 +173,10 @@ internal sealed partial class KaleidoMcpToolHandler(
         {
             return Error(McpErrorCodes.InternalError, "The tool call has no caller (it did not arrive as an HTTP request); nothing was run.");
         }
+
+        // Every service the tool reaches, and every hop after it, records that the request came through
+        // MCP and which tool started it (informational: the trusted part is the caller's actor).
+        correlationInitializer.Initialize(correlation.Current with { Origin = McpTelemetry.Origin, OriginTool = tool.Definition.Name });
 
         return await invoker.InvokeAsync(
             tool,

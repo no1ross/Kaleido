@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -70,11 +72,16 @@ internal static class KaleidoCallerContextHttpContextExtensions
                 ? (user.FindFirst(SubjectClaimType) ?? user.FindFirst(ClaimTypes.NameIdentifier))?.Value
                 : null;
 
+        // The application acting for the caller on this hop, from the principal only (ADR 0022).
+        var callerActor = authenticated ? ActorOf(user) : null;
+        Activity.Current?.SetTag(KaleidoTelemetryTags.CallerActor, callerActor);
+
         initializer.Initialize(
             accessor.Current with
             {
                 CallerName = callerName,
                 CallerId = callerId,
+                CallerActor = callerActor,
                 CallerRoles =
                     callerName is null
                         ? []
@@ -86,5 +93,38 @@ internal static class KaleidoCallerContextHttpContextExtensions
                             .Select(x => x.Value)
                             .ToArray(),
             });
+    }
+
+    // RFC 8693 "act" (a JSON object naming the actor's "sub", or a plain value), else the authorized
+    // party ("azp", OpenID Connect) or Entra ID's "appid".
+    private static string? ActorOf(ClaimsPrincipal user)
+    {
+        if (user.FindFirst("act")?.Value is { } act)
+        {
+            return SubjectOf(act);
+        }
+
+        return user.FindFirst("azp")?.Value ?? user.FindFirst("appid")?.Value;
+    }
+
+    private static string SubjectOf(string act)
+    {
+        if (!act.TrimStart().StartsWith('{'))
+        {
+            return act;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(act);
+
+            return document.RootElement.TryGetProperty("sub", out var subject) && subject.ValueKind == JsonValueKind.String
+                ? subject.GetString() ?? act
+                : act;
+        }
+        catch (JsonException)
+        {
+            return act;
+        }
     }
 }

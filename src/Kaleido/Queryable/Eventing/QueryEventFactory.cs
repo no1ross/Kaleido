@@ -58,6 +58,9 @@ internal sealed class QueryEventFactory(
             ProcessorInstanceId = serviceOptions.InstanceId.ToString(),
             CallingProcessorName = correlation.CallingProcessorName,
             Caller = correlation.Caller,
+            CallerActor = correlation.CallerActor,
+            Origin = correlation.Origin,
+            OriginTool = correlation.OriginTool,
         };
 
         return new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>

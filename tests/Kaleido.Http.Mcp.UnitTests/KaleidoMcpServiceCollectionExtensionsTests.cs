@@ -33,6 +33,7 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
         services.AddSingleton(new KaleidoClientOptions { Clients = new Dictionary<string, KaleidoClientEntry> { ["Clinic"] = new() } });
         services.AddSingleton(Mock.Of<IKaleidoCallCredentialProvider>());
         services.AddScoped(_ => Mock.Of<IKaleidoInboundCallerAccessor>());
+        services.AddScoped(_ => Mock.Of<IKaleidoCorrelationContextInitializer>());
         return services;
     }
 

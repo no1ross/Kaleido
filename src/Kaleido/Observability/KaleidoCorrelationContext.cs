@@ -1,8 +1,8 @@
 namespace Kaleido.Observability;
 
 /// <summary>
-/// Correlation for the current request. <see cref="RequestId"/> and <see cref="ProcessId"/>
-/// are end-to-end: forwarded unchanged on every hop. <see cref="CallingProcessorName"/> and
+/// Correlation for the current request. <see cref="RequestId"/>, <see cref="ProcessId"/> and the
+/// origin (<see cref="Origin"/>, <see cref="OriginTool"/>) are end-to-end: forwarded unchanged on every hop. <see cref="CallingProcessorName"/> and
 /// <see cref="CallingStepName"/> are per-hop: they describe the processor step that called
 /// this service and are never forwarded. A service's own instance id is never on the wire.
 /// </summary>
@@ -38,6 +38,37 @@ public sealed record KaleidoCorrelationContext
 
     /// <summary>The step in <see cref="CallingProcessorName"/> that made this call (per-hop, inbound).</summary>
     public string? CallingStepName
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The front door the request came through (e.g. <c>mcp</c>), end-to-end: set by the front door,
+    /// forwarded on every hop, recorded on events and spans. Informational - any caller can send it -
+    /// so never an authorization input; <see cref="CallerActor"/> is the trusted counterpart.
+    /// <see langword="null"/> for a request that did not come through a front door.
+    /// </summary>
+    public string? Origin
+    {
+        get;
+        init;
+    }
+
+    /// <summary>The front door's name for what started the request (the MCP tool), end-to-end; informational like <see cref="Origin"/>.</summary>
+    public string? OriginTool
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The application acting for the caller on this hop (a calling service or the front door), from
+    /// the authenticated principal's actor claim (<c>act</c>, else <c>azp</c>, else <c>appid</c>) - never
+    /// from headers. Per-hop: each service reads its own caller's token. <see langword="null"/> when the
+    /// principal names none.
+    /// </summary>
+    public string? CallerActor
     {
         get;
         init;

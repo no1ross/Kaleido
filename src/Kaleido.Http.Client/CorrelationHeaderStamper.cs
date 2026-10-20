@@ -38,6 +38,17 @@ internal sealed class CorrelationHeaderStamper(
                 ctx.RequestId.Sanitize());
         }
 
+        // The front door the request came through, end to end (informational, ADR 0022).
+        if (!string.IsNullOrWhiteSpace(ctx.Origin))
+        {
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.Origin, ctx.Origin.Sanitize());
+        }
+
+        if (!string.IsNullOrWhiteSpace(ctx.OriginTool))
+        {
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.OriginTool, ctx.OriginTool.Sanitize());
+        }
+
         if ((processForwarding.ProcessId ?? ctx.ProcessId) is { } processId)
         {
             request.Headers.TryAddWithoutValidation(
