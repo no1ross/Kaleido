@@ -298,7 +298,9 @@ public record QueryPage(
 /// results are counted only when the page cannot tell (a full page, or an empty page past the
 /// start); a partial page ends the results, so the total is <c>Offset</c> plus the returned count.
 /// An unpageable capability returns every result, so the total is the returned count. A delegated
-/// source's total is its downstream's.
+/// source's total is its downstream's. When the results are counted, the count is a second read of
+/// the source: rows another writer changes between the two reads can make the total disagree with the
+/// page (Kaleido reads no snapshot).
 /// </param>
 /// <param name="Offset">
 /// The zero-based offset of the page (zero when the request named none). A delegated source's
