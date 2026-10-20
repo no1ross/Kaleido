@@ -23,7 +23,7 @@ internal interface IKaleidoEventOutbox
 }
 
 internal sealed partial class KaleidoEventOutbox(
-    IKaleidoContextStore store,
+    IKaleidoOutboxStore store,
     IEventPublisher publisher,
     IKaleidoEventPayloadWriter payloadWriter,
     IKaleidoEventSignal signal,

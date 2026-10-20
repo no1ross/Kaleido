@@ -9,7 +9,7 @@ public sealed class KaleidoEventOutboxTests
     : SutFixture
 {
     private static KaleidoEventOutbox CreateSut(
-        IKaleidoContextStore store,
+        IKaleidoOutboxStore store,
         IEventPublisher publisher,
         IKaleidoEventSignal signal,
         IKaleidoEventPayloadWriter? payloadWriter = null,
@@ -33,7 +33,7 @@ public sealed class KaleidoEventOutboxTests
         var written = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessCreated, Payload = "{\"redacted\":true}", OccurredUtc = DateTimeOffset.UtcNow };
         var writer = new Mock<IKaleidoEventPayloadWriter>();
         writer.Setup(x => x.Write(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>())).Returns(written);
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         var sut = CreateSut(store.Object, Mock.Of<IEventPublisher>(), Mock.Of<IKaleidoEventSignal>(), writer.Object);
 
         var prepared = sut.Prepare(Envelope());
@@ -47,7 +47,7 @@ public sealed class KaleidoEventOutboxTests
     public async Task WithoutAPublisher_TheWriterIsNeverCalled()
     {
         var writer = new Mock<IKaleidoEventPayloadWriter>();
-        var sut = CreateSut(Mock.Of<IKaleidoContextStore>(), Mock.Of<INoOpEventPublisher>(), Mock.Of<IKaleidoEventSignal>(), writer.Object);
+        var sut = CreateSut(Mock.Of<IKaleidoOutboxStore>(), Mock.Of<INoOpEventPublisher>(), Mock.Of<IKaleidoEventSignal>(), writer.Object);
 
         sut.Prepare(Envelope());
         await sut.EnqueueAsync(Envelope(), CancellationToken.None);
@@ -68,7 +68,7 @@ public sealed class KaleidoEventOutboxTests
     {
         var envelope = Envelope();
 
-        var entry = CreateSut(Mock.Of<IKaleidoContextStore>(), Mock.Of<IEventPublisher>(), Mock.Of<IKaleidoEventSignal>()).Prepare(envelope);
+        var entry = CreateSut(Mock.Of<IKaleidoOutboxStore>(), Mock.Of<IEventPublisher>(), Mock.Of<IKaleidoEventSignal>()).Prepare(envelope);
 
         Assert.NotNull(entry);
         Assert.Equal(envelope.Event.EventId, entry.EventId);
@@ -77,7 +77,7 @@ public sealed class KaleidoEventOutboxTests
     [Fact]
     public void Prepare_WithoutAPublisher_ReturnsNothing()
     {
-        var entry = CreateSut(Mock.Of<IKaleidoContextStore>(), Mock.Of<INoOpEventPublisher>(), Mock.Of<IKaleidoEventSignal>()).Prepare(Envelope());
+        var entry = CreateSut(Mock.Of<IKaleidoOutboxStore>(), Mock.Of<INoOpEventPublisher>(), Mock.Of<IKaleidoEventSignal>()).Prepare(Envelope());
 
         Assert.Null(entry);
     }
@@ -86,7 +86,7 @@ public sealed class KaleidoEventOutboxTests
     public async Task EnqueueAsync_WritesTheEventAndWakesTheRelay()
     {
         var envelope = Envelope();
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         var signal = new Mock<IKaleidoEventSignal>();
 
         await CreateSut(store.Object, Mock.Of<IEventPublisher>(), signal.Object).EnqueueAsync(envelope, CancellationToken.None);
@@ -100,7 +100,7 @@ public sealed class KaleidoEventOutboxTests
     [Fact]
     public async Task EnqueueAsync_WithoutAPublisher_WritesNothing()
     {
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         var signal = new Mock<IKaleidoEventSignal>();
 
         await CreateSut(store.Object, Mock.Of<INoOpEventPublisher>(), signal.Object).EnqueueAsync(Envelope(), CancellationToken.None);
@@ -112,7 +112,7 @@ public sealed class KaleidoEventOutboxTests
     [Fact]
     public async Task EnqueueAsync_WhenTheStoreFails_NeverFailsTheCaller()
     {
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         store
             .Setup(x => x.EnqueueEventsAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("database down"));
@@ -127,7 +127,7 @@ public sealed class KaleidoEventOutboxTests
     public async Task EnqueueAsync_WhenTheStoreFails_LogsAnErrorWithTheEvent()
     {
         var failure = new InvalidOperationException("database down");
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         store
             .Setup(x => x.EnqueueEventsAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(failure);
@@ -149,7 +149,7 @@ public sealed class KaleidoEventOutboxTests
     {
         var signal = new Mock<IKaleidoEventSignal>();
 
-        CreateSut(Mock.Of<IKaleidoContextStore>(), Mock.Of<IEventPublisher>(), signal.Object).Saved();
+        CreateSut(Mock.Of<IKaleidoOutboxStore>(), Mock.Of<IEventPublisher>(), signal.Object).Saved();
 
         signal.Verify(x => x.Notify(), Times.Once);
     }

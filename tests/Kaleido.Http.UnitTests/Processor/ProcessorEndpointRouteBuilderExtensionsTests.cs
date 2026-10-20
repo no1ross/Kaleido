@@ -419,7 +419,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
             registrations ?? [CreateRegistration(typeof(TestStep), typeof(TestResponse), "Test-Step", stepAuthorization ?? AuthorizationMetadata.Unspecified)]));
         builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessorRegistry());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, DisplayName = "Test Processor", AuthorizationMode = mode });
-        builder.Services.AddSingleton(Mock.Of<IKaleidoContextStore>());
+        builder.Services.AddSingleton(Mock.Of<IKaleidoIdempotencyStore>());
         builder.Services.AddSingleton(Mock.Of<IKaleidoCorrelationContextAccessor>(x => x.Current == new KaleidoCorrelationContext()));
 
         if (exceptionHandler is not null)

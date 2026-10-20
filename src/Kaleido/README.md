@@ -44,7 +44,7 @@ For the full repository model, see:
 - `ProcessorObservability` (internal) — logs, traces and metrics of the runtime
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
 - `IInformationStep` / `InformationRequest` / `RequireInformation<TNext>` — information requests: runtime-decided questions answered by an information step (see [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md))
-- `IKaleidoContextStore` — state store abstraction (process state, idempotent results, event outbox); the default in-memory store (internal) is for development and logs a Warning that state is lost on restart
+- `IKaleidoContextStore` — the process-state store; with `IKaleidoOutboxStore` (the event outbox, in the same database: a save's events are written in the state's transaction) and `IKaleidoIdempotencyStore` (requests sent with an idempotency key) one of three store contracts, one concern each (ADR 0020). The in-memory defaults (internal) are for development; each logs a Warning that its data is lost on restart
 
 ---
 
@@ -94,7 +94,7 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 `AddKaleido()`:
 - validates the `IServiceCollection`
 - registers the scoped correlation accessor (using `TryAddScoped` so a pre-existing registration wins)
-- registers the default no-op event publisher, the in-memory `IKaleidoContextStore` (process state, idempotent results, event outbox) and the event relay (a hosted background service that hands outbox entries to the publisher - see `KaleidoEventOptions`, `Kaleido:Events`)
+- registers the default no-op event publisher, the three in-memory stores (`IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore`) and the event relay (a hosted background service that hands outbox entries to the publisher - see `KaleidoEventOptions`, `Kaleido:Events`)
 - automatically invokes `AddQueryable()` and `AddProcessor()` to register both runtimes
 - returns an `IKaleidoBuilder`
 
