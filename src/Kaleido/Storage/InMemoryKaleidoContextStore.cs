@@ -4,20 +4,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Storage;
 
-// The default store: everything in memory, for development and tests. The outbox survives a
-// publisher outage, not a restart; each instance relays only the events it wrote itself.
+// The default process-state store: in memory, for development and tests. A save's events go to the
+// registered outbox right after the state (the in-memory outbox enqueues synchronously and cannot
+// fail, so they stay together, as the durable stores keep them in the state's transaction).
 internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
 {
     private readonly ILogger<InMemoryKaleidoContextStore> _logger;
+    private readonly IKaleidoOutboxStore _outbox;
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
-    private readonly Dictionary<string, IdempotentResult> _results = new(StringComparer.Ordinal);
-    private readonly Dictionary<Guid, OutboxEntry> _outbox = [];
     private readonly object _lock = new();
 
     public InMemoryKaleidoContextStore(
-        ILogger<InMemoryKaleidoContextStore> logger)
+        ILogger<InMemoryKaleidoContextStore> logger,
+        IKaleidoOutboxStore outbox)
     {
         _logger = logger;
+        _outbox = outbox;
 
         LogInMemoryStoreActive(logger);
     }
@@ -30,7 +32,7 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
         return Task.FromResult(context);
     }
 
-    public Task<ProcessorContext> SaveAsync(
+    public async Task<ProcessorContext> SaveAsync(
         ProcessorContext context,
         IReadOnlyCollection<KaleidoOutboxEvent> events,
         CancellationToken cancellationToken = default)
@@ -42,8 +44,7 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
 
         ProcessorContext saved;
 
-        // Compare and write as one step: two saves for the same process must not both pass the
-        // check, and the events are added only together with the state.
+        // Compare and write as one step: two saves for the same process must not both pass the check.
         lock (_lock)
         {
             var storedVersion = _contexts.TryGetValue(context.ProcessId, out var stored) ? stored.Version : 0;
@@ -55,163 +56,16 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
 
             saved = context with { Version = context.Version + 1 };
             _contexts[context.ProcessId] = saved;
-            AddEvents(events);
         }
+
+        await _outbox.EnqueueEventsAsync(events, CancellationToken.None);
 
         LogSaved(_logger, context.ProcessId, context.Steps.Count);
 
-        return Task.FromResult(saved);
+        return saved;
     }
 
-    public Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(admission);
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Check and insert as one step: two admissions of the same key must not both win.
-        lock (_lock)
-        {
-            // Expired records are dropped as new keys arrive, so the dictionary does not grow without bound.
-            var now = DateTimeOffset.UtcNow;
-
-            foreach (var expired in _results.Where(x => x.Value.ExpiresUtc <= now).Select(x => x.Key).ToList())
-            {
-                _results.Remove(expired);
-            }
-
-            if (_results.TryGetValue(admission.Key, out var existing))
-            {
-                return Task.FromResult<IdempotentResult?>(existing);
-            }
-
-            _results[admission.Key] = admission;
-
-            return Task.FromResult<IdempotentResult?>(null);
-        }
-    }
-
-    public Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        lock (_lock)
-        {
-            _results[result.Key] = result;
-        }
-
-        return Task.CompletedTask;
-    }
-
-    public Task ReleaseAsync(string key, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(key);
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        lock (_lock)
-        {
-            if (_results.TryGetValue(key, out var existing) && existing.State == IdempotentResultState.InProgress)
-            {
-                _results.Remove(key);
-            }
-        }
-
-        return Task.CompletedTask;
-    }
-
-    public Task EnqueueEventsAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(events);
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        lock (_lock)
-        {
-            AddEvents(events);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    public Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var now = DateTimeOffset.UtcNow;
-
-        lock (_lock)
-        {
-            var claimed = _outbox.Values
-                .Where(x => !x.Event.IsParked && x.Event.NextAttemptUtc <= now && x.LeaseUntil <= now)
-                .OrderBy(x => x.Event.OccurredUtc)
-                .Take(maxCount)
-                .ToList();
-
-            foreach (var entry in claimed)
-            {
-                entry.LeaseUntil = now + lease;
-            }
-
-            return Task.FromResult<IReadOnlyList<KaleidoOutboxEvent>>([.. claimed.Select(x => x.Event)]);
-        }
-    }
-
-    public Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken = default)
-    {
-        lock (_lock)
-        {
-            if (TryGetLeased(eventId, out _))
-            {
-                _outbox.Remove(eventId);
-            }
-        }
-
-        return Task.CompletedTask;
-    }
-
-    public Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken = default)
-    {
-        lock (_lock)
-        {
-            if (TryGetLeased(eventId, out var entry))
-            {
-                entry.Event = entry.Event with
-                {
-                    Attempts = entry.Event.Attempts + 1,
-                    LastError = errorMessage,
-                    NextAttemptUtc = retryAtUtc ?? entry.Event.NextAttemptUtc,
-                    IsParked = retryAtUtc is null,
-                };
-                entry.LeaseUntil = DateTimeOffset.MinValue;
-            }
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private void AddEvents(IReadOnlyCollection<KaleidoOutboxEvent> events)
-    {
-        foreach (var @event in events)
-        {
-            _outbox[@event.EventId] = new OutboxEntry(@event);
-        }
-    }
-
-    // A completed or failed attempt counts only while the lease is still held.
-    private bool TryGetLeased(Guid eventId, [NotNullWhen(true)] out OutboxEntry? entry) =>
-        _outbox.TryGetValue(eventId, out entry) && entry.LeaseUntil > DateTimeOffset.UtcNow;
-
-    private sealed class OutboxEntry(KaleidoOutboxEvent @event)
-    {
-        public KaleidoOutboxEvent Event { get; set; } = @event;
-
-        public DateTimeOffset LeaseUntil { get; set; } = DateTimeOffset.MinValue;
-    }
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoContextStore is active. Process state, idempotent results and outbox events are kept in memory only: lost on restart, and process state grows without bound in long-running processes. Register a durable IKaleidoContextStore (e.g. UseSqliteKaleidoContextStore) before deploying to production.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoContextStore is active. Process state is kept in memory only: lost on restart, and it grows without bound in long-running processes. Register a durable IKaleidoContextStore (e.g. UseSqliteKaleidoContextStore) before deploying to production.")]
     private static partial void LogInMemoryStoreActive(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Process context saved for process {ProcessId} ({StepCount} steps).")]

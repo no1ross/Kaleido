@@ -1,6 +1,6 @@
 # 0012. Events reach the publisher at least once, through an outbox in the store
 
-- **Status:** Accepted
+- **Status:** Accepted (the single store interface is revised by ADR 0020: the outbox has its own contract, still in the state's database)
 - **Date:** 2026-10-12
 - **Related:** #240, #233
 

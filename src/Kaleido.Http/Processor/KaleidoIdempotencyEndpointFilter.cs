@@ -32,7 +32,7 @@ namespace Kaleido.Http.Processor;
 /// </para>
 /// </remarks>
 internal sealed class KaleidoIdempotencyEndpointFilter(
-    IKaleidoContextStore store,
+    IKaleidoIdempotencyStore store,
     KaleidoHttpOptions httpOptions,
     KaleidoServiceOptions serviceOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor)

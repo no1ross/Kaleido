@@ -8,8 +8,10 @@ namespace Kaleido.Storage.UnitTests;
 public sealed class InMemoryKaleidoContextStoreTests
     : SutFixture
 {
-    private static InMemoryKaleidoContextStore CreateSut(ILogger<InMemoryKaleidoContextStore>? logger = null) =>
-        new(logger ?? new Mock<ILogger<InMemoryKaleidoContextStore>>().Object);
+    private readonly Mock<IKaleidoOutboxStore> outbox = new();
+
+    private InMemoryKaleidoContextStore CreateSut(ILogger<InMemoryKaleidoContextStore>? logger = null) =>
+        new(logger ?? new Mock<ILogger<InMemoryKaleidoContextStore>>().Object, outbox.Object);
 
     [Fact]
     public async Task SaveAsync_WhenContextIsNull_Throws()
@@ -182,90 +184,6 @@ public sealed class InMemoryKaleidoContextStoreTests
             store.SaveAsync(context, [], CancellationToken.None));
     }
 
-    private static IdempotentResult Admission(string key, DateTimeOffset? expiresUtc = null, string hash = "hash") =>
-        new()
-        {
-            Key = key,
-            RequestHash = hash,
-            State = IdempotentResultState.InProgress,
-            LeaseUntilUtc = DateTimeOffset.UtcNow.AddMinutes(5),
-            ExpiresUtc = expiresUtc ?? DateTimeOffset.UtcNow.AddHours(1),
-        };
-
-    private static IdempotentResult Completed(string key, string response) =>
-        new()
-        {
-            Key = key,
-            RequestHash = "hash",
-            State = IdempotentResultState.Completed,
-            StatusCode = 200,
-            Response = response,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
-        };
-
-    [Fact]
-    public async Task AdmitAsync_ANewKey_IsAdmitted_AndASecondAdmissionGetsTheRecordInProgress()
-    {
-        var sut = CreateSut();
-
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:k1")));
-
-        var existing = await sut.AdmitAsync(Admission("svc:alice:k1", hash: "other"));
-        Assert.NotNull(existing);
-        Assert.Equal(IdempotentResultState.InProgress, existing.State);
-        Assert.Equal("hash", existing.RequestHash);
-    }
-
-    // #285: two attempts with one key at the same time never both run.
-    [Fact]
-    public async Task AdmitAsync_InParallel_AdmitsExactlyOne()
-    {
-        var sut = CreateSut();
-
-        var outcomes = await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => Task.Run(() => sut.AdmitAsync(Admission("svc:alice:race")))));
-
-        Assert.Single(outcomes, x => x is null);
-    }
-
-    [Fact]
-    public async Task CompleteAsync_ThenAdmitAsync_ReturnsTheCompletedAnswer()
-    {
-        var sut = CreateSut();
-        await sut.AdmitAsync(Admission("svc:alice:k1"));
-
-        await sut.CompleteAsync(Completed("svc:alice:k1", """{"processId":"p"}"""));
-
-        var existing = await sut.AdmitAsync(Admission("svc:alice:k1"));
-        Assert.NotNull(existing);
-        Assert.Equal(IdempotentResultState.Completed, existing.State);
-        Assert.Equal(200, existing.StatusCode);
-        Assert.Equal("""{"processId":"p"}""", existing.Response);
-    }
-
-    [Fact]
-    public async Task ReleaseAsync_FreesAKeyInProgress_ButKeepsACompletedOne()
-    {
-        var sut = CreateSut();
-        await sut.AdmitAsync(Admission("svc:alice:failed"));
-        await sut.AdmitAsync(Admission("svc:alice:done"));
-        await sut.CompleteAsync(Completed("svc:alice:done", "{}"));
-
-        await sut.ReleaseAsync("svc:alice:failed");
-        await sut.ReleaseAsync("svc:alice:done");
-
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:failed")));
-        Assert.Equal(IdempotentResultState.Completed, (await sut.AdmitAsync(Admission("svc:alice:done")))?.State);
-    }
-
-    [Fact]
-    public async Task AdmitAsync_OverAnExpiredRecord_AdmitsTheKeyAgain()
-    {
-        var sut = CreateSut();
-        await sut.AdmitAsync(Admission("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)));
-
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old")));
-    }
-
     [Fact]
     public async Task Constructor_WarnsOnce_AndEachSaveLogsAtDebug()
     {
@@ -278,23 +196,6 @@ public sealed class InMemoryKaleidoContextStoreTests
         var levels = logger.Invocations.Where(x => x.Method.Name == nameof(ILogger.Log)).Select(x => (LogLevel)x.Arguments[0]).ToList();
         Assert.Equal([LogLevel.Warning, LogLevel.Debug], levels);
         Assert.Contains("InMemoryKaleidoContextStore is active", logger.Invocations.First(x => x.Method.Name == nameof(ILogger.Log)).Arguments[2].ToString());
-    }
-
-    [Fact]
-    public async Task CompleteEventAsync_AfterTheLeaseExpired_LeavesTheEntryForTheNextClaim()
-    {
-        var store = CreateSut();
-        var @event = Event();
-        await store.EnqueueEventsAsync([@event]);
-        var claimed = Assert.Single(await store.ClaimEventsAsync(10, TimeSpan.Zero));
-
-        await store.CompleteEventAsync(claimed.EventId);
-        await store.FailEventAsync(claimed.EventId, retryAtUtc: null, "late");
-
-        var reclaimed = Assert.Single(await store.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-        Assert.Equal(@event.EventId, reclaimed.EventId);
-        Assert.Equal(0, reclaimed.Attempts);
-        Assert.False(reclaimed.IsParked);
     }
 
     private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null) =>
@@ -311,15 +212,14 @@ public sealed class InMemoryKaleidoContextStoreTests
         new() { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
 
     [Fact]
-    public async Task SaveAsync_WithEvents_AddsThemToTheOutbox()
+    public async Task SaveAsync_WithEvents_AddsThemToTheOutboxAfterTheState()
     {
         var sut = CreateSut();
         var @event = Event();
 
         await sut.SaveAsync(NewProcess(), [@event]);
 
-        var claimed = await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
-        Assert.Equal(@event.EventId, Assert.Single(claimed).EventId);
+        outbox.Verify(x => x.EnqueueEventsAsync(It.Is<IReadOnlyCollection<KaleidoOutboxEvent>>(e => e.Single().EventId == @event.EventId), CancellationToken.None), Times.Once);
     }
 
     [Fact]
@@ -331,100 +231,6 @@ public sealed class InMemoryKaleidoContextStoreTests
 
         await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context, [Event()]));
 
-        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-    }
-
-    [Fact]
-    public async Task ClaimEventsAsync_TakesAtMostTheBatchOldestFirstAndNeverTwice()
-    {
-        var sut = CreateSut();
-        var now = DateTimeOffset.UtcNow;
-        var oldest = Event(now.AddSeconds(-3));
-        var middle = Event(now.AddSeconds(-2));
-        await sut.EnqueueEventsAsync([Event(now.AddSeconds(-1)), middle, oldest]);
-
-        var first = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
-        var second = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
-
-        Assert.Equal([oldest.EventId, middle.EventId], first.Select(x => x.EventId));
-        Assert.Single(second);
-        Assert.Empty(await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1)));
-    }
-
-    [Fact]
-    public async Task ClaimEventsAsync_SkipsEntriesThatAreNotDueYet()
-    {
-        var sut = CreateSut();
-        await sut.EnqueueEventsAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }]);
-
-        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-    }
-
-    [Fact]
-    public async Task ClaimEventsAsync_AfterTheLeaseExpired_ClaimsTheEntryAgain()
-    {
-        var sut = CreateSut();
-        await sut.EnqueueEventsAsync([Event()]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
-        await Task.Delay(20);
-
-        Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-    }
-
-    [Fact]
-    public async Task CompleteEventAsync_RemovesTheLeasedEntry()
-    {
-        var sut = CreateSut();
-        var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(200));
-
-        await sut.CompleteEventAsync(@event.EventId);
-        await Task.Delay(250);
-
-        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-    }
-
-    [Fact]
-    public async Task CompleteEventAsync_AfterTheLeaseExpired_KeepsTheEntry()
-    {
-        var sut = CreateSut();
-        var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
-        await Task.Delay(20);
-
-        await sut.CompleteEventAsync(@event.EventId);
-
-        Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-    }
-
-    [Fact]
-    public async Task FailEventAsync_CountsTheAttemptAndReleasesTheEntryForTheRetry()
-    {
-        var sut = CreateSut();
-        var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
-
-        await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down");
-
-        var retried = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-        Assert.Equal(1, retried.Attempts);
-        Assert.Equal("broker down", retried.LastError);
-        Assert.False(retried.IsParked);
-    }
-
-    [Fact]
-    public async Task FailEventAsync_WithoutARetryTime_ParksTheEntry()
-    {
-        var sut = CreateSut();
-        var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
-
-        await sut.FailEventAsync(@event.EventId, retryAtUtc: null, "gave up");
-
-        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        outbox.Verify(x => x.EnqueueEventsAsync(It.Is<IReadOnlyCollection<KaleidoOutboxEvent>>(e => e.Count > 0), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

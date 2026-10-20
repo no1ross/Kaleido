@@ -26,17 +26,20 @@ public sealed class SqliteKaleidoContextStoreServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void UseSqliteKaleidoContextStore_WhenConnectionStringIsValid_ReplacesDefaultStore()
+    public void UseSqliteKaleidoContextStore_WhenConnectionStringIsValid_ReplacesTheThreeDefaultStores()
     {
         var services = new ServiceCollection();
         services.AddSingleton(Mock.Of<IKaleidoContextStore>());
+        services.AddSingleton(Mock.Of<IKaleidoOutboxStore>());
+        services.AddSingleton(Mock.Of<IKaleidoIdempotencyStore>());
         var builder = CreateBuilder(services);
 
         var result = builder.UseSqliteKaleidoContextStore("Data Source=:memory:");
 
         Assert.Same(builder, result);
-        var store = Assert.Single(services, x => x.ServiceType == typeof(IKaleidoContextStore));
-        Assert.Equal(typeof(SqliteKaleidoContextStore), store.ImplementationType);
+        Assert.Equal(typeof(SqliteKaleidoContextStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoContextStore)).ImplementationType);
+        Assert.Equal(typeof(SqliteKaleidoOutboxStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoOutboxStore)).ImplementationType);
+        Assert.Equal(typeof(SqliteKaleidoIdempotencyStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoIdempotencyStore)).ImplementationType);
     }
 
     [Theory]
@@ -71,6 +74,8 @@ public sealed class SqliteKaleidoContextStoreServiceCollectionExtensionsTests
         Assert.Equal("Microsoft.EntityFrameworkCore.Sqlite", dbContext.Database.ProviderName);
         Assert.Equal("Data Source=:memory:", dbContext.Database.GetConnectionString());
         Assert.IsType<SqliteKaleidoContextStore>(scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>());
+        Assert.IsType<SqliteKaleidoOutboxStore>(scope.ServiceProvider.GetRequiredService<IKaleidoOutboxStore>());
+        Assert.IsType<SqliteKaleidoIdempotencyStore>(scope.ServiceProvider.GetRequiredService<IKaleidoIdempotencyStore>());
         Assert.DoesNotContain(services, x => x.ServiceType.Namespace == "Microsoft.Extensions.Diagnostics.HealthChecks");
     }
 

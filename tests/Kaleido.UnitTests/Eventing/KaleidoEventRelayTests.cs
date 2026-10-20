@@ -10,14 +10,14 @@ public sealed class KaleidoEventRelayTests
     : SutFixture
 {
     private static KaleidoEventRelay CreateSut(
-        IKaleidoContextStore store,
+        IKaleidoOutboxStore store,
         IEventPublisher publisher,
         KaleidoEventOptions? options = null,
         IKaleidoEventSignal? signal = null,
         Microsoft.Extensions.Logging.ILogger<KaleidoEventRelay>? logger = null)
     {
         var provider = new Mock<IServiceProvider>();
-        provider.Setup(x => x.GetService(typeof(IKaleidoContextStore))).Returns(store);
+        provider.Setup(x => x.GetService(typeof(IKaleidoOutboxStore))).Returns(store);
 
         var scope = new Mock<IServiceScope>();
         scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
@@ -62,9 +62,9 @@ public sealed class KaleidoEventRelayTests
         }.ToOutboxEvent() with { Attempts = attempts };
     }
 
-    private static Mock<IKaleidoContextStore> StoreClaiming(params KaleidoOutboxEvent[] entries)
+    private static Mock<IKaleidoOutboxStore> StoreClaiming(params KaleidoOutboxEvent[] entries)
     {
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         store
             .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(entries);
@@ -119,7 +119,7 @@ public sealed class KaleidoEventRelayTests
         var options = new KaleidoEventOptions { BatchSize = 20, MaxConcurrentPublishes = 4 };
         options.Resilience.AttemptTimeout = TimeSpan.FromSeconds(10);
 
-        var sut = CreateSut(Mock.Of<IKaleidoContextStore>(), Publisher().Object, options);
+        var sut = CreateSut(Mock.Of<IKaleidoOutboxStore>(), Publisher().Object, options);
 
         Assert.Equal(TimeSpan.FromSeconds((5 * 10) + 30), sut.Lease);
     }
@@ -209,7 +209,7 @@ public sealed class KaleidoEventRelayTests
     [Fact]
     public async Task RelayBatchAsync_WhenTheStoreFails_ReportsNothingClaimedAndDoesNotThrow()
     {
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         store
             .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("database down"));
@@ -236,7 +236,7 @@ public sealed class KaleidoEventRelayTests
     [Fact]
     public async Task ExecuteAsync_WithoutAPublisher_ClaimsNothing()
     {
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         using var sut = CreateSut(store.Object, Mock.Of<INoOpEventPublisher>());
 
         await sut.StartAsync(CancellationToken.None);
@@ -285,7 +285,7 @@ public sealed class KaleidoEventRelayTests
     {
         var options = new KaleidoEventOptions { BatchSize = 1 };
         var claims = 0;
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         store
             .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => Interlocked.Increment(ref claims) == 1 ? [Entry()] : []);
@@ -332,7 +332,7 @@ public sealed class KaleidoEventRelayTests
     [Fact]
     public async Task RelayBatchAsync_WhenTheStoreFails_LogsAnError()
     {
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         store
             .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("database down"));
@@ -346,7 +346,7 @@ public sealed class KaleidoEventRelayTests
     [Fact]
     public async Task RelayBatchAsync_WhenCanceled_PropagatesTheCancellation()
     {
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         store
             .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new OperationCanceledException());
@@ -420,7 +420,7 @@ public sealed class KaleidoEventRelayTests
         options.Resilience.CircuitBreakerMinimumThroughput = 2;
         options.Resilience.CircuitBreakerBreakDuration = TimeSpan.FromMilliseconds(500);
         var claimTimes = new List<DateTimeOffset>();
-        var store = new Mock<IKaleidoContextStore>();
+        var store = new Mock<IKaleidoOutboxStore>();
         store
             .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(() =>

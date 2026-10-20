@@ -16,7 +16,7 @@ internal sealed class OutboxEventEntityConfiguration
         builder.HasKey(x => x.EventId);
         builder.Property(x => x.EventType).HasMaxLength(100).IsRequired();
         builder.Property(x => x.Payload).IsRequired();
-        builder.Property(x => x.LastError).HasMaxLength(SqliteKaleidoContextStore.MaxErrorLength);
+        builder.Property(x => x.LastError).HasMaxLength(SqliteKaleidoOutboxStore.MaxErrorLength);
         builder.Property(x => x.LeaseOwner).HasMaxLength(64);
 
         // Claims look for due, unparked, unleased entries, oldest first.
