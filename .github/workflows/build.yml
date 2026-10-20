@@ -163,10 +163,13 @@ jobs:
         done
         packages=(artifacts/*.nupkg)
         test "${#packages[@]}" -eq 8
-        unzip -Z1 artifacts/Kaleido.Analyzers.[0-9]*.nupkg |
-          awk '$0 == "analyzers/dotnet/cs/Kaleido.Analyzers.dll" { found=1 } END { exit !found }'
-        unzip -p artifacts/Kaleido.[0-9]*.nupkg Kaleido.nuspec |
-          grep -q '<dependency id="Kaleido.Analyzers"'
+
+    # The packages as a consumer gets them (#319): contents (assembly, XML docs, README, symbols;
+    # the analyzer-only package), then a clean project outside the repository restored from the
+    # local feed builds without repository-only rules and fails a deliberate violation with KAL2001.
+    - name: Test packages in a clean consumer
+      shell: pwsh
+      run: ./tools/packaging/Test-PackageConsumer.ps1 -Packages artifacts
 
     - name: Upload packages
       if: github.event_name == 'push'

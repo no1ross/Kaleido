@@ -21,6 +21,7 @@ public sealed class ProcessStepIdentityAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.ProcessStepAttributeWithoutInterface),
             description: "Startup fails with pro_invalid_registration when [ProcessStep] is applied to a type that does not implement IProcessStep.");
 
     private static readonly DiagnosticDescriptor InterfaceWithoutAttributeRule =
@@ -31,6 +32,7 @@ public sealed class ProcessStepIdentityAnalyzer : DiagnosticAnalyzer
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
+            helpLinkUri: HelpLinks.For(DiagnosticIds.ProcessStepMissingAttribute),
             description: "Startup fails with pro_missing_attribute when a concrete IProcessStep type has no [ProcessStep] attribute.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
