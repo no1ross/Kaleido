@@ -140,3 +140,7 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host "Packages $version`: contents complete; a clean consumer builds, gets KAL2001, and no repository-only rule."
+
+# The last native command was the violation build, which fails by design; a pwsh step in GitHub
+# Actions ends with that $LASTEXITCODE unless the script sets its own.
+exit 0
