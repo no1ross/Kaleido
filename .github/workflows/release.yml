@@ -1,0 +1,103 @@
+name: Release
+
+# Builds, tests, packs and verifies the packages from a clean checkout, then publishes them to the
+# repository's GitHub Packages feed (RELEASING.md, #318).
+# - A tag v<version> on master publishes that version; the tag must equal the version Nerdbank
+#   computes from version.json (set the version in version.json first, then tag that commit), and
+#   a GitHub Release is created with the packages and symbols attached.
+# - workflow_dispatch is the dry run: the current master's preview version, published to the same
+#   test feed, without a GitHub Release.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+
+    runs-on: ubuntu-latest
+
+    # Publishing waits for this environment's protection rules (required reviewers) - configure
+    # them in the repository settings; RELEASING.md lists the expected setup.
+    environment: release
+
+    permissions:
+      contents: write   # the GitHub Release on a tag
+      packages: write   # GitHub Packages
+
+    steps:
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        fetch-depth: 0  # NBGV needs full history for version height
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68  # v6.0.0
+      with:
+        global-json-file: global.json
+        dotnet-version: 8.0.x
+
+    - name: Restore
+      run: dotnet restore Kaleido.CI.slnf
+
+    - name: Build
+      run: dotnet build Kaleido.CI.slnf --configuration Release --no-restore
+
+    - name: Test
+      run: dotnet test --solution Kaleido.CI.slnf --configuration Release --no-build
+
+    - name: Pack
+      run: |
+        for project in src/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do
+          dotnet pack "$project" --configuration Release --no-build -o artifacts
+        done
+        packages=(artifacts/*.nupkg)
+        test "${#packages[@]}" -eq 8
+
+    - name: Verify the packages
+      shell: pwsh
+      run: ./tools/packaging/Test-PackageConsumer.ps1 -Packages artifacts -RequireDeterministic
+
+    # A tag publishes exactly the version it names: refuse a tag that does not match version.json.
+    - name: Check the tag matches the package version
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        version="${GITHUB_REF_NAME#v}"
+        test -f "artifacts/Kaleido.${version}.nupkg" || {
+          echo "::error::Tag ${GITHUB_REF_NAME} does not match the packed version ($(ls artifacts/Kaleido.[0-9]*.nupkg)). Set the version in version.json, then tag that commit."
+          exit 1
+        }
+
+    # GitHub Packages hosts the .nupkg files; it does not host symbol packages, so the .snupkg files
+    # travel with the workflow run (and with the GitHub Release on a tag).
+    - name: Publish to GitHub Packages
+      run: |
+        dotnet nuget push "artifacts/*.nupkg" \
+          --source "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json" \
+          --api-key "${{ secrets.GITHUB_TOKEN }}" \
+          --skip-duplicate
+
+    - name: Upload packages and symbols
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+      with:
+        name: release-packages
+        path: |
+          artifacts/*.nupkg
+          artifacts/*.snupkg
+        if-no-files-found: error
+
+    - name: Create the GitHub Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        prerelease=""
+        case "${GITHUB_REF_NAME}" in *-*) prerelease="--prerelease" ;; esac
+        gh release create "${GITHUB_REF_NAME}" artifacts/*.nupkg artifacts/*.snupkg \
+          --title "${GITHUB_REF_NAME}" \
+          --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md) for what changed." \
+          ${prerelease}

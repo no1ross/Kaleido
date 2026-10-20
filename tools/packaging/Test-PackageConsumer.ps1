@@ -12,14 +12,23 @@
     3. The same consumer with a deliberate violation (a [ProcessStep] with an empty Version, which compiles) fails with the
        consumer rule KAL2001: the analyzer flows to consumers through the package dependency.
 
+    4. With -RequireDeterministic (CI builds): every symbols package's PDBs map their source paths to
+       /_/ (no build-machine paths) and carry a Source Link map to the repository (#322).
+
 .PARAMETER Packages
     The folder holding the packed .nupkg/.snupkg files (CI: artifacts).
+
+.PARAMETER RequireDeterministic
+    Check deterministic source paths and Source Link in the symbols packages (needs PowerShell 7:
+    System.Reflection.Metadata). Packages built outside CI keep real paths, so leave it off locally
+    unless you pack with GITHUB_ACTIONS=true.
 
 .EXAMPLE
     dotnet pack ... -o artifacts; pwsh tools/packaging/Test-PackageConsumer.ps1 -Packages artifacts
 #>
 param(
-    [string] $Packages = "artifacts"
+    [string] $Packages = "artifacts",
+    [switch] $RequireDeterministic
 )
 
 $ErrorActionPreference = "Stop"
@@ -61,6 +70,37 @@ $nuspec = & {
     try { $reader = [System.IO.StreamReader]::new($zip.GetEntry("Kaleido.nuspec").Open()); try { $reader.ReadToEnd() } finally { $reader.Dispose() } } finally { $zip.Dispose() }
 }
 if ($nuspec -notmatch '<dependency id="Kaleido.Analyzers"') { $failures.Add("Kaleido does not depend on Kaleido.Analyzers") }
+
+# --- 4. Deterministic paths and Source Link (CI builds) --------------------------------------------
+if ($RequireDeterministic) {
+    if ($PSVersionTable.PSEdition -ne 'Core') { throw "-RequireDeterministic needs PowerShell 7 (pwsh): it reads the PDBs with System.Reflection.Metadata." }
+
+    $sourceLinkKind = [Guid]'CC110556-A091-4D38-9FEC-25AB9A351A6A'
+
+    foreach ($symbols in Get-ChildItem $feed -Filter *.snupkg) {
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($symbols.FullName)
+        try {
+            foreach ($entry in $zip.Entries | Where-Object { $_.FullName -like '*.pdb' }) {
+                $buffer = [System.IO.MemoryStream]::new()
+                $stream = $entry.Open(); $stream.CopyTo($buffer); $stream.Dispose(); $buffer.Position = 0
+                $provider = [System.Reflection.Metadata.MetadataReaderProvider]::FromPortablePdbStream($buffer)
+                try {
+                    $reader = $provider.GetMetadataReader()
+                    $paths = @($reader.Documents | ForEach-Object { $reader.GetString($reader.GetDocument($_).Name) })
+                    $local = @($paths | Where-Object { -not $_.StartsWith('/_/') })
+                    if ($local.Count -gt 0) { $failures.Add("$($symbols.Name) $($entry.FullName) has build-machine source paths, e.g. $($local[0])") }
+
+                    $sourceLink = @($reader.CustomDebugInformation | ForEach-Object { $reader.GetCustomDebugInformation($_) } |
+                        Where-Object { $reader.GetGuid($_.Kind) -eq $sourceLinkKind } |
+                        ForEach-Object { [System.Text.Encoding]::UTF8.GetString($reader.GetBlobBytes($_.Value)) })
+                    if (-not ($sourceLink | Where-Object { $_ -match 'https://raw\.githubusercontent\.com/' })) { $failures.Add("$($symbols.Name) $($entry.FullName) has no Source Link map to the repository") }
+                }
+                finally { $provider.Dispose(); $buffer.Dispose() }
+            }
+        }
+        finally { $zip.Dispose() }
+    }
+}
 
 # --- 2./3. Clean consumer ----------------------------------------------------------------------
 $work = Join-Path ([System.IO.Path]::GetTempPath()) "kaleido-consumer-$([guid]::NewGuid().ToString('N'))"
