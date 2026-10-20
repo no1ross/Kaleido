@@ -5,7 +5,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | Test project | Tests code in |
 |---|---|
 | `Kaleido.UnitTests` | `src/Kaleido` (core runtime: bootstrap, Process, Queryable) |
-| `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (middleware, startup filter, correlation reader, endpoint extensions, queryable value normalizer) |
+| `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (endpoint filters, exception handler, correlation reader, endpoint extensions, queryable value normalizer) |
 | `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` and client contracts through TestServer |
 | `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
 | `Kaleido.Http.Mcp.UnitTests` | `src/Kaleido.Http.Mcp` (tool catalog and naming, schemas, the tool invoker) |

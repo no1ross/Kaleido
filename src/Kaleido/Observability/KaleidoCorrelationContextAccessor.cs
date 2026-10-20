@@ -6,8 +6,8 @@ namespace Kaleido.Observability;
 /// <remarks>
 /// <para>
 /// Registered as a scoped singleton by <c>AddKaleido()</c>. The context is
-/// populated at the start of each HTTP request by <c>ObservabilityMiddleware</c>,
-/// which reads inbound <c>X-Kaleido-*</c> headers and calls
+/// populated for each request to a Kaleido endpoint by the transport (in <c>Kaleido.Http</c>, the
+/// correlation endpoint filter), which reads inbound <c>X-Kaleido-*</c> headers and calls
 /// <c>IKaleidoCorrelationContextInitializer.Initialize</c> on the same underlying
 /// instance.
 /// </para>
@@ -41,7 +41,7 @@ public interface IKaleidoCorrelationContextAccessor
 /// </summary>
 /// <remarks>
 /// Implemented by the same scoped instance as <see cref="IKaleidoCorrelationContextAccessor"/>.
-/// Transport-layer middleware (e.g. <c>ObservabilityMiddleware</c> in <c>Kaleido.Http</c>)
+/// The transport (e.g. the correlation endpoint filter in <c>Kaleido.Http</c>)
 /// resolves this interface to stamp the context once per request. Consumers should
 /// inject <see cref="IKaleidoCorrelationContextAccessor"/> for read access only.
 /// </remarks>

@@ -1,8 +1,6 @@
 using Kaleido.Http.Authorization;
 using Kaleido.Http.Registry;
-using Kaleido.Http.Startup;
 using Kaleido.Processor.Registry;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -39,9 +37,6 @@ public static class KaleidoHttpServiceCollectionExtensions
         // Capability authorization: runtime evaluator. 401/403 responses are
         // produced by the host's authentication scheme (standard ASP.NET Core).
         builder.Services.TryAddScoped<IKaleidoAuthorizer, KaleidoAuthorizer>();
-
-        // Register Kaleido middleware pipeline via startup filter.
-        builder.Services.AddSingleton<IStartupFilter, KaleidoStartupFilter>();
         builder.Services.TryAddSingleton<Middleware.IKaleidoExceptionHandler, Middleware.KaleidoExceptionHandler>();
 
         // Register HTTP-specific execution services — only when Process runtime is present

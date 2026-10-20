@@ -8,11 +8,11 @@ namespace Kaleido.Http;
 /// response (status code, <see cref="KaleidoErrorResponse"/>, metric, log) inside the endpoint.
 /// </summary>
 /// <remarks>
-/// A host's own exception handling - the developer exception page <c>WebApplication</c> adds in
-/// Development, or <c>UseExceptionHandler</c> - sits inside the pipeline, closer to the endpoints than
-/// Kaleido's <see cref="ExceptionMiddleware"/>. Without this filter it would catch a Kaleido validation
-/// error first and answer 500. Applied first on every Kaleido route group, so it wraps the other filters.
-/// Without <c>AddHttp()</c> no handler is registered; the exception then propagates unchanged.
+/// Kaleido answers its own errors inside its endpoints, so a host's exception handling (the developer
+/// exception page <c>WebApplication</c> adds in Development, or <c>UseExceptionHandler</c>) never turns a
+/// Kaleido validation error into a 500, and the host's own endpoints are never touched (#210, #295).
+/// Applied first on every Kaleido route group, so it wraps the other filters. Without <c>AddHttp()</c>
+/// no handler is registered; the exception then propagates unchanged.
 /// </remarks>
 internal sealed class KaleidoExceptionEndpointFilter(IKaleidoExceptionHandler? handler = null) : IEndpointFilter
 {

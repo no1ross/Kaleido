@@ -12,8 +12,8 @@ using Microsoft.Extensions.Hosting;
 namespace Kaleido.Http.FunctionalTests.Queryable.Execution;
 
 // A host's own exception handling (WebApplication adds the developer exception page in Development;
-// production hosts add UseExceptionHandler) sits inside the pipeline, closer to the endpoints than
-// Kaleido's ExceptionMiddleware. Kaleido's errors must still be Kaleido's answers (#210).
+// production hosts add UseExceptionHandler) sits in the host's pipeline, in front of every endpoint.
+// Kaleido answers its errors inside its own endpoints, so they are still Kaleido's answers (#210).
 public sealed class HostExceptionHandlerTests
 {
     [Fact]

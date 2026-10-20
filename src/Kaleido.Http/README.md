@@ -12,11 +12,13 @@ See also:
 
 ## What lives here
 
-### Registration and middleware
-- `KaleidoHttpServiceCollectionExtensions` — `AddHttp()` entry point; registers routing, `IHttpContextAccessor`, the middleware pipeline, and HTTP execution services
-- `KaleidoStartupFilter` — registers middlewares via `IStartupFilter` in the correct pipeline order
-- `ExceptionMiddleware` — outermost middleware; maps exceptions outside Kaleido's endpoints to JSON error responses (inside the endpoints `KaleidoExceptionEndpointFilter` does it; see [Error responses](#error-responses))
-- `ObservabilityMiddleware` — populates `IKaleidoCorrelationContextAccessor` from inbound headers and echoes correlation headers on the response
+### Registration and endpoint filters
+- `KaleidoHttpServiceCollectionExtensions` — `AddHttp()` entry point; registers routing, `IHttpContextAccessor` and the HTTP execution services. It adds nothing to the host's middleware pipeline.
+- Endpoint filters on every Kaleido route group, in order (all internal):
+  - `KaleidoExceptionEndpointFilter` maps exceptions to JSON error responses (see [Error responses](#error-responses));
+  - `KaleidoCorrelationEndpointFilter` reads the inbound correlation headers, populates `IKaleidoCorrelationContextAccessor`, tags the trace and echoes the correlation headers;
+  - `KaleidoJsonEndpointFilter` writes results with `KaleidoJsonOptions`;
+  - `KaleidoCallerContextEndpointFilter` sets the caller from the authenticated user.
 - `HttpCorrelationContextReader` — reads and sanitizes inbound HTTP headers
 
 ### Queryable endpoint mapping
@@ -76,9 +78,7 @@ app.MapKaleidoHttp(); // maps Process + Queryable + /{service}/registry
 app.MapKaleidoHttp(o => o.AggregateRegistry = true); // requires AddHttpClients()
 ```
 
-`AddHttp()` wires the middleware pipeline automatically via `KaleidoStartupFilter`. It places `ExceptionMiddleware` **outermost**, then `ObservabilityMiddleware`, then the rest of the host pipeline. The exception boundary catches failures from correlation setup and downstream endpoints and maps them to Kaleido HTTP error responses. The inner observability middleware initializes correlation before endpoints run and schedules response-header echo. Reversing the pair would leave errors thrown during observability setup outside Kaleido's exception mapping.
-
-This registration always happens; there is no opt-out, and both middleware types are internal.
+Kaleido's HTTP behavior lives on Kaleido's own endpoints: `AddHttp()` adds nothing to the host's middleware pipeline. Every Kaleido route group runs the exception filter first, then the correlation filter, so a failure during correlation setup (e.g. a malformed `X-Kaleido-Process-Id`) is answered with Kaleido's 400. The correlation filter runs inside the endpoint, after the host's authentication, so identity headers are trusted against the authenticated caller. The host's own endpoints are untouched: no `X-Kaleido-*` headers, no Kaleido error bodies. The MCP endpoint (`MapKaleidoMcp`), mapped by the MCP SDK, sets up the same correlation itself (#295).
 
 ## Per-step Process execution contract
 
@@ -138,7 +138,7 @@ Every save of the process state is conditional on the version it was loaded with
 
 ## Error responses
 
-Kaleido answers every error from its own endpoints itself, with `{ "errors": [{ "code", "message" }] }`: `KaleidoExceptionEndpointFilter` runs first on every Kaleido route group and maps the exception inside the endpoint (400 validation, 401/403 authorization, 409 conflict, 500 configuration/framework/unexpected). A host's own exception handling - the developer exception page `WebApplication` adds in Development, or `UseExceptionHandler` - therefore never turns a Kaleido validation error into a 500 or an HTML page. `ExceptionMiddleware` (outermost, via the startup filter) covers failures outside the endpoints, e.g. during correlation setup. When the client has gone, the error is still logged, but no response is written.
+Kaleido answers every error from its own endpoints itself, with `{ "errors": [{ "code", "message" }] }`: `KaleidoExceptionEndpointFilter` runs first on every Kaleido route group and maps the exception inside the endpoint (400 validation, 401/403 authorization, 409 conflict, 500 configuration/framework/unexpected). A host's own exception handling - the developer exception page `WebApplication` adds in Development, or `UseExceptionHandler` - therefore never turns a Kaleido validation error into a 500 or an HTML page. Correlation setup runs inside the endpoint too (after the exception filter), and request bodies are read by Kaleido itself, so no Kaleido failure happens outside the filters; errors from the host's own endpoints are the host's to answer. When the client has gone, the error is still logged, but no response is written.
 
 ## Authorization
 
@@ -173,7 +173,7 @@ Enforcement works on two layers:
 - *No case-level guardrails* (ADR 0010) - resuming or reading a process needs only what the step or route declares; `CreatedBy`/`UpdatedBy` (and the step `StartedBy`/`LastUpdatedBy`) are tags, never enforced. A process id therefore works as a bearer handle; what it grants, where it is exposed and where a host enforces case access is in the [threat model](../../docs/AUTHORIZATION.md#threat-model-the-process-id-is-a-bearer-handle).
 - *Filtered discovery* — the `/{service}/registry` endpoint stays open but scopes its payload to the caller: `FilterAsync` drops capabilities the caller can't access (including views inside sources and steps inside processors) and omits processors whose steps are all filtered out. The registry cache holds the unfiltered union; filtering is per-request with this host's `AuthorizationMode`, so routers must use `ZeroTrust` too.
 
-Authorization failures are answered by the host's authentication scheme, as standard ASP.NET Core: endpoint-metadata denials use ASP.NET's default authorization result handler, and Kaleido's exception handling (`KaleidoExceptionEndpointFilter` inside the endpoints, `ExceptionMiddleware` outside) turns thrown `KaleidoAuthorizationException`s into `ChallengeAsync()` (401) or `ForbidAsync()` (403). Kaleido does not replace the host's authorization result handler, so consumer endpoints are unaffected.
+Authorization failures are answered by the host's authentication scheme, as standard ASP.NET Core: endpoint-metadata denials use ASP.NET's default authorization result handler, and Kaleido's exception handling (`KaleidoExceptionEndpointFilter`, inside the endpoints) turns thrown `KaleidoAuthorizationException`s into `ChallengeAsync()` (401) or `ForbidAsync()` (403). Kaleido does not replace the host's authorization result handler, so consumer endpoints are unaffected.
 
 A capability declaring `Policy` on a host with no `IAuthorizationService` fails closed — filtered out of discovery and denied at execution (with a warning log), rather than erroring the whole response.
 
@@ -209,7 +209,7 @@ The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from
 
 ## Registration requirement
 
-`AddHttp()` registers the middleware pipeline (`ExceptionMiddleware`, `ObservabilityMiddleware`) and the transport services (`ProcessExecutionService`, `ProcessStateService`) that `MapKaleidoHttp()` depends on. Call it on the `IKaleidoBuilder` before mapping endpoints.
+`AddHttp()` registers the transport services (`ProcessExecutionService`, `ProcessStateService`, the exception handler) that `MapKaleidoHttp()` and its endpoint filters depend on. Call it on the `IKaleidoBuilder` before mapping endpoints.
 
 ---
 
