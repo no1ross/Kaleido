@@ -200,6 +200,48 @@ public sealed class QueryExecutionTests : IClassFixture<QueryableAspNetCoreFixtu
         Assert.Contains("qry_paging_not_supported", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
+    // TotalCount is always the number of matching rows, whatever page was returned (#291). Six records,
+    // both capabilities pageable (default 3). A partial page ends the results (offset + returned); a
+    // full page or an empty page past the start is counted; an empty result has a total of 0.
+    public static TheoryData<bool, int?, int?, bool, int, int> TotalCountCases { get; } =
+        new()
+        {
+            // view?, page size, page offset, filter to nothing?, returned, total
+            { false, null, null, false, 3, 6 },   // page omitted: the default page
+            { false, 2, 0, false, 2, 6 },         // first page
+            { false, 2, 2, false, 2, 6 },         // middle page
+            { false, 2, 4, false, 2, 6 },         // final page, exactly full
+            { false, 4, 4, false, 2, 6 },         // final page, partial
+            { false, 2, 10, false, 0, 6 },        // beyond the end
+            { false, null, null, true, 0, 0 },    // no matching rows
+            { true, null, null, false, 3, 6 },
+            { true, 2, 0, false, 2, 6 },
+            { true, 2, 2, false, 2, 6 },
+            { true, 2, 4, false, 2, 6 },
+            { true, 4, 4, false, 2, 6 },
+            { true, 2, 10, false, 0, 6 },
+            { true, null, null, true, 0, 0 },
+        };
+
+    [Theory]
+    [MemberData(nameof(TotalCountCases))]
+    public async Task TotalCount_IsTheNumberOfMatchingRows_OnEveryPage(bool view, int? size, int? offset, bool filterToNothing, int returned, int total)
+    {
+        var body = new QueryBody(
+            Filter: filterToNothing ? QueryFilterNode.CreateCondition("Category", FilterOperator.Equals, "NoSuchCategory") : null,
+            Page: size is null ? null : new QueryPage(size.Value, offset ?? 0));
+
+        var response = view
+            ? await PostViewQueryAsync(new QueryRequest<FunctionalRecordViewParameters>(new FunctionalRecordViewParameters { Category = "Any" }, body))
+            : await PostContextQueryAsync(new QueryRequest(body));
+
+        await AssertStatusCodeAsync(HttpStatusCode.OK, response);
+        var root = await ReadResponseRootAsync(response);
+        Assert.Equal(returned, GetRecords(root).Length);
+        Assert.Equal(total, GetTotalCount(root));
+        Assert.Equal(offset ?? 0, GetOffset(root));
+    }
+
     private Task<HttpResponseMessage> PostContextQueryAsync(QueryRequest request) =>
         PostJsonAsync("/kaleido/queryable/functionalrecordcontextsource/query", request);
 
