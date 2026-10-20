@@ -20,6 +20,24 @@ public sealed class KaleidoServiceCollectionExtensionsTests
             o.Assemblies = [typeof(KaleidoServiceCollectionExtensionsTests).Assembly];
         };
 
+    // Three store contracts, one per concern, each with an in-memory default the host can replace.
+    [Fact]
+    public void AddKaleido_RegistersTheThreeInMemoryStores_AndAHostsOwnStoreWins()
+    {
+        var services = new ServiceCollection();
+        var ownOutbox = Mock.Of<Kaleido.Storage.IKaleidoOutboxStore>();
+        services.AddSingleton(ownOutbox);
+
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
+
+        Assert.Equal("InMemoryKaleidoContextStore", Single<Kaleido.Storage.IKaleidoContextStore>(services).ImplementationType?.Name);
+        Assert.Equal("InMemoryKaleidoIdempotencyStore", Single<Kaleido.Storage.IKaleidoIdempotencyStore>(services).ImplementationType?.Name);
+        Assert.Same(ownOutbox, Single<Kaleido.Storage.IKaleidoOutboxStore>(services).ImplementationInstance);
+    }
+
+    private static ServiceDescriptor Single<TService>(IServiceCollection services) =>
+        Assert.Single(services, x => x.ServiceType == typeof(TService));
+
     [Fact]
     public void AddKaleido_ShouldThrow_WhenServicesIsNull()
     {

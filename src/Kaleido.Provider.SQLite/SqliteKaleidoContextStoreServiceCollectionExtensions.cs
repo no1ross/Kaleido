@@ -8,16 +8,18 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace Kaleido.Provider.SQLite;
 
 /// <summary>
-/// Registers the SQLite <see cref="IKaleidoContextStore"/>.
+/// Registers the SQLite stores: <see cref="IKaleidoContextStore"/>, <see cref="IKaleidoOutboxStore"/>
+/// and <see cref="IKaleidoIdempotencyStore"/>, on one database.
 /// </summary>
 public static class SqliteKaleidoContextStoreServiceCollectionExtensions
 {
     /// <summary>
-    /// Replaces the in-memory store with SQLite: process state, idempotent results and the event
-    /// outbox in one database (tables <c>ProcessContexts</c>, <c>IdempotentResults</c>,
-    /// <c>OutboxEvents</c>, ...). Several instances may share the database: saves are conditional on
-    /// the process version, and outbox claims are leased, so each event is relayed by one instance at
-    /// a time.
+    /// Replaces the in-memory stores with SQLite: process state, the event outbox and idempotent
+    /// requests in one database (tables <c>ProcessContexts</c>, <c>OutboxEvents</c>,
+    /// <c>IdempotentResults</c>, ...), each store a class of its own on the same
+    /// <see cref="SqliteKaleidoContextDbContext"/>. Several instances may share the database: saves
+    /// are conditional on the process version, and outbox claims are leased, so each event is relayed
+    /// by one instance at a time.
     /// </summary>
     /// <param name="builder">The Kaleido builder.</param>
     /// <param name="connectionString">The SQLite connection string, e.g. <c>Data Source=kaleido.db</c>.</param>
@@ -58,11 +60,14 @@ public static class SqliteKaleidoContextStoreServiceCollectionExtensions
                     connectionString);
             });
 
+        // The three stores share one scoped DbContext: the context store writes a save's events to
+        // the outbox in the state's transaction, and the outbox store relays them from the same table.
         builder.Services.RemoveAll<IKaleidoContextStore>();
-
-        builder.Services.AddScoped<
-            IKaleidoContextStore,
-            SqliteKaleidoContextStore>();
+        builder.Services.RemoveAll<IKaleidoOutboxStore>();
+        builder.Services.RemoveAll<IKaleidoIdempotencyStore>();
+        builder.Services.AddScoped<IKaleidoContextStore, SqliteKaleidoContextStore>();
+        builder.Services.AddScoped<IKaleidoOutboxStore, SqliteKaleidoOutboxStore>();
+        builder.Services.AddScoped<IKaleidoIdempotencyStore, SqliteKaleidoIdempotencyStore>();
 
         return builder;
     }

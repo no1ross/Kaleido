@@ -30,8 +30,8 @@ only after the runtime returns.
    `AdmitAsync` stores it **in progress** before the step runs, as one atomic insert-if-absent;
    `CompleteAsync` stores a successful (2xx) answer; `ReleaseAsync` frees it after any other outcome.
    Completion and release are written with `CancellationToken.None`, so an attempt whose caller has
-   gone still finishes its bookkeeping. This replaces `FindResultAsync`/`SaveResultAsync` on
-   `IKaleidoContextStore`.
+   gone still finishes its bookkeeping. These are the methods of `IKaleidoIdempotencyStore` (ADR 0020),
+   replacing `FindResultAsync`/`SaveResultAsync` on the former single store interface.
 2. **A key that is held is never run again:**
    - in progress within its lease (`KaleidoHttpOptions.IdempotencyLease`, default 5 minutes):
      409 `pro_idempotency_in_progress` with `Retry-After`; the Kaleido clients wait and retry;
@@ -58,7 +58,7 @@ only after the runtime returns.
   and an answer built after the runtime returns (see Context).
 
 ## Consequences
-- Breaking for custom stores (preview): three store methods replace two, `IdempotentResult` gains
+- Breaking for custom stores (preview): three store methods (on `IKaleidoIdempotencyStore`, ADR 0020) replace two, `IdempotentResult` gains
   `State` and `LeaseUntilUtc`, and the SQLite `IdempotentResults` table gains columns (existing
   development databases are recreated).
 - Two new error codes, one new option (`IdempotencyLease`); the clients retry a keyed 409 that

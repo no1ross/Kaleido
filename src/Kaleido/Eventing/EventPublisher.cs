@@ -30,7 +30,7 @@ namespace Kaleido.Eventing;
 /// </para>
 /// <para>
 /// <strong>At least once, never on the request path:</strong> Kaleido writes every event to the
-/// outbox of <see cref="Storage.IKaleidoContextStore"/> (process events that describe a save in the
+/// outbox (<see cref="Storage.IKaleidoOutboxStore"/>; process events that describe a save in the
 /// same transaction as the state) and a background relay calls <see cref="PublishAsync"/>, awaiting
 /// it. A call that throws or times out is retried later with backoff; after the configured maximum
 /// attempts the event is parked (kept, logged at Error), never dropped. A publisher never slows down

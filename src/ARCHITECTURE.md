@@ -72,7 +72,7 @@ The core project is organized into two main namespaces:
 - Registration: `ProcessorServiceCollectionExtensions` (internal, invoked by `AddKaleido()`)
 - Runtime: `IProcessorRuntime` (internal, called by the HTTP transport), `ProcessorExecutor` (the step execution loop)
 - Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`, `StepCandidateNextStepChecker` (only next steps run; answers checked against the pending information request)
-- State: `IKaleidoContextStore` (in `Kaleido.Storage`), the internal in-memory default, `ProcessorContext`
+- State: `IKaleidoContextStore` (in `Kaleido.Storage`, next to `IKaleidoOutboxStore` and `IKaleidoIdempotencyStore`), the internal in-memory defaults, `ProcessorContext`
 - Registries: `IProcessorStepRegistry`, `IProcessorRegistry` (both internal, shared with `Kaleido.Http`)
 - Observability: `ProcessorObservability`
 
@@ -82,7 +82,7 @@ Public seams consumers are expected to implement or replace:
 
 | Seam | Register via | Notes |
 |------|--------------|-------|
-| `IKaleidoContextStore` | `UseSqliteKaleidoContextStore(...)` or your own `services.AddScoped` after `AddKaleido()` | Production deployments implement against their own durable store; SQLite provider is a reference impl |
+| `IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore` | `UseSqliteKaleidoContextStore(...)` (all three) or your own `services.AddScoped` after `AddKaleido()` - the context and outbox stores on one database | Production deployments implement against their own durable store; SQLite provider is a reference impl |
 | `IEventPublisher` | `AddEventPublisher<TPublisher>()` on the builder | Default is an internal no-op publisher (nothing is written to the outbox; a Warning says events are discarded); replace for real event delivery - the relay hands it every event at least once |
 | `IQueryContextExecutor<TView>` | `services.AddSingleton(typeof(IQueryContextExecutor<>), typeof(MyExecutor<>))` (the default is added with `TryAdd`) | Provider-native execution (e.g. EF Core `CountAsync`/`ToListAsync`): the default counts an async query by reading every matching row; see `docs/PATTERNS.md` |
 | Observability provider | `AddOpenTelemetry()` (Kaleido.Observability.OpenTelemetry) or custom `AddKaleidoInstrumentation()` calls | Core stays provider-agnostic on BCL `ActivitySource`/`Meter` |
@@ -208,11 +208,11 @@ Public seams consumers are expected to implement or replace:
 ## 6. Kaleido.Provider.SQLite
 
 ### Internal structure
-- `SqliteKaleidoContextStore` — implements `IKaleidoContextStore` using SQLite via EF Core
+- `SqliteKaleidoContextStore`, `SqliteKaleidoOutboxStore`, `SqliteKaleidoIdempotencyStore` - implement the three store contracts with EF Core on one `SqliteKaleidoContextDbContext`; the context store writes a save's events to the outbox table in the state's transaction
 - `SqliteKaleidoContextStoreServiceCollectionExtensions` — `UseSqliteKaleidoContextStore(connectionString)` extension; replaces the default in-memory store
 
 ### Key design invariants
-- Calling `UseSqliteKaleidoContextStore(...)` replaces the in-memory `IKaleidoContextStore` registered by `AddKaleido()`: process state, idempotent results and the event outbox share one database.
+- Calling `UseSqliteKaleidoContextStore(...)` replaces the three in-memory stores registered by `AddKaleido()`: process state, the event outbox and idempotent requests share one database.
 - The store must correctly implement state reconciliation so that existing saved contexts remain valid when the step registry changes.
 
 ---
@@ -260,7 +260,7 @@ Both Queryable and Process publish observability through activity sources and me
 `IEventPublisher` is registered by `AddKaleido()` as a no-op publisher by default. Replace it with `AddEventPublisher<TPublisher>()` to install real event infrastructure.
 
 Events are handed to `IEventPublisher` **at least once, never on the request path** ([ADR 0012](../docs/decisions/0012-events-at-least-once-through-the-store.md)):
-- **Outbox in the store.** The runtime writes every event to the outbox of `IKaleidoContextStore`. Events that describe a save go in the same transaction as the state: `ProcessCreated` (a new process is saved right away) and `StepCompleted`. `PlanBuilt`, `ExecutionCompleted` and `QueryExecuted` are enqueued right after; an enqueue failure is logged and counted, never fails the request. Without a registered publisher nothing is written.
+- **Outbox in the store.** The runtime writes every event to the outbox (`IKaleidoOutboxStore`, in the same database as `IKaleidoContextStore`). Events that describe a save go in the same transaction as the state: `ProcessCreated` (a new process is saved right away) and `StepCompleted`. `PlanBuilt`, `ExecutionCompleted` and `QueryExecuted` are enqueued right after; an enqueue failure is logged and counted, never fails the request. Without a registered publisher nothing is written.
 - **Relay.** `KaleidoEventRelay`, a hosted background service registered by `AddKaleido()` (one per instance), claims a batch (`Kaleido:Events:BatchSize`), publishes each entry through a Polly pipeline (timeout + circuit breaker, no Polly retries; `Kaleido:Events:Resilience`) and removes it on success. A failure is retried with exponential backoff (the durable schedule lives in the outbox, so it survives restarts); after `MaxRetryAttempts` the entry is parked. A write wakes the local relay at once; otherwise it polls, backing off to 10 s while the outbox is empty. Claims are leases, so an entry is in one instance's hands at a time; when an instance stops, its leases expire and another takes over.
 - **Privacy.** Payloads are complete (the audit trail); before the outbox write, the registered `IKaleidoEventRedactor`s run and properties marked with a `DataClassificationAttribute` are redacted with the host's `IRedactorProvider` (`AddRedaction`), or erased when none is registered (`KaleidoEventPayloadWriter`, ADR 0013). A crash between a successful publish and its removal publishes the event again - consumers drop duplicates by `IKaleidoEvent.EventId`.
 

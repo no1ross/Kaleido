@@ -420,122 +420,6 @@ public sealed class SqliteKaleidoContextStoreTests
         return context;
     }
 
-    private static IdempotentResult Admission(string key, DateTimeOffset? expiresUtc = null, DateTimeOffset? leaseUntilUtc = null, string hash = "hash") =>
-        new()
-        {
-            Key = key,
-            RequestHash = hash,
-            State = IdempotentResultState.InProgress,
-            LeaseUntilUtc = leaseUntilUtc ?? DateTimeOffset.UtcNow.AddMinutes(5),
-            ExpiresUtc = expiresUtc ?? DateTimeOffset.UtcNow.AddHours(1),
-        };
-
-    private static IdempotentResult Completed(string key, string response) =>
-        new()
-        {
-            Key = key,
-            RequestHash = "hash",
-            State = IdempotentResultState.Completed,
-            StatusCode = 200,
-            Response = response,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
-        };
-
-    [Fact]
-    public async Task AdmitAsync_ANewKey_IsAdmitted_AndASecondAdmissionGetsTheRecordInProgress()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext);
-        var lease = DateTimeOffset.UtcNow.AddMinutes(5);
-
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:k1", leaseUntilUtc: lease)));
-
-        var existing = await sut.AdmitAsync(Admission("svc:alice:k1", hash: "other"));
-        Assert.NotNull(existing);
-        Assert.Equal(IdempotentResultState.InProgress, existing.State);
-        Assert.Equal("hash", existing.RequestHash);
-        Assert.Equal(lease.UtcTicks, existing.LeaseUntilUtc.UtcTicks);
-    }
-
-    // #285: two service instances (separate connections) admitting one key at the same time: exactly
-    // one wins, so a retry never runs alongside the first attempt.
-    [Fact]
-    public async Task AdmitAsync_FromTwoInstancesAtOnce_AdmitsExactlyOne()
-    {
-        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
-        using var first = CreateSharedDbContext(connectionString);
-        using var second = CreateSharedDbContext(connectionString);
-
-        var outcomes = await Task.WhenAll(
-            CreateSut(first).AdmitAsync(Admission("svc:alice:race")),
-            CreateSut(second).AdmitAsync(Admission("svc:alice:race")));
-
-        Assert.Single(outcomes, x => x is null);
-    }
-
-    // #285: an admission survives a restart (a new store on the same database): a retry after the
-    // service stopped mid-attempt finds the attempt, with its lease, instead of running again.
-    [Fact]
-    public async Task AdmitAsync_AfterARestart_FindsTheEarlierAttempt()
-    {
-        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
-        using var keepAlive = CreateSharedDbContext(connectionString);
-        var expiredLease = DateTimeOffset.UtcNow.AddMinutes(-1);
-
-        using (var before = CreateSharedDbContext(connectionString))
-        {
-            await CreateSut(before).AdmitAsync(Admission("svc:alice:k1", leaseUntilUtc: expiredLease));
-        }
-
-        using var after = CreateSharedDbContext(connectionString);
-        var existing = await CreateSut(after).AdmitAsync(Admission("svc:alice:k1"));
-
-        Assert.NotNull(existing);
-        Assert.Equal(IdempotentResultState.InProgress, existing.State);
-        Assert.True(existing.LeaseUntilUtc < DateTimeOffset.UtcNow);
-    }
-
-    [Fact]
-    public async Task CompleteAsync_ThenAdmitAsync_ReturnsTheCompletedAnswer()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext);
-        await sut.AdmitAsync(Admission("svc:alice:k1"));
-
-        await sut.CompleteAsync(Completed("svc:alice:k1", """{"processId":"p"}"""));
-
-        var existing = await sut.AdmitAsync(Admission("svc:alice:k1"));
-        Assert.NotNull(existing);
-        Assert.Equal(IdempotentResultState.Completed, existing.State);
-        Assert.Equal(200, existing.StatusCode);
-        Assert.Equal("""{"processId":"p"}""", existing.Response);
-    }
-
-    [Fact]
-    public async Task ReleaseAsync_FreesAKeyInProgress_ButKeepsACompletedOne()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext);
-        await sut.AdmitAsync(Admission("svc:alice:failed"));
-        await sut.AdmitAsync(Admission("svc:alice:done"));
-        await sut.CompleteAsync(Completed("svc:alice:done", "{}"));
-
-        await sut.ReleaseAsync("svc:alice:failed");
-        await sut.ReleaseAsync("svc:alice:done");
-
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:failed")));
-        Assert.Equal(IdempotentResultState.Completed, (await sut.AdmitAsync(Admission("svc:alice:done")))?.State);
-    }
-
-    [Fact]
-    public async Task AdmitAsync_OverAnExpiredRecord_AdmitsTheKeyAgain()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext);
-        await sut.AdmitAsync(Admission("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)));
-
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old")));
-    }
 
     private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null)
     {
@@ -560,11 +444,12 @@ public sealed class SqliteKaleidoContextStoreTests
 
         await sut.SaveAsync(CreateContext(Guid.NewGuid()), [@event]);
 
-        var claimed = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-        Assert.Equal(@event.EventId, claimed.EventId);
-        Assert.Equal(@event.EventType, claimed.EventType);
-        Assert.Equal(@event.Payload, claimed.Payload);
-        Assert.Equal(@event.OccurredUtc, claimed.OccurredUtc);
+        // In the outbox table that SqliteKaleidoOutboxStore claims from.
+        var row = Assert.Single(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
+        Assert.Equal(@event.EventId, row.EventId);
+        Assert.Equal(@event.EventType, row.EventType);
+        Assert.Equal(@event.Payload, row.Payload);
+        Assert.Equal(@event.OccurredUtc.UtcTicks, row.OccurredUtc);
     }
 
     [Fact]
@@ -578,134 +463,9 @@ public sealed class SqliteKaleidoContextStoreTests
         await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context, [Event()]));
 
         dbContext.ChangeTracker.Clear();
-        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-    }
-
-    [Fact]
-    public async Task ClaimEventsAsync_TakesAtMostTheBatchOldestFirstAndNeverTwice()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext, Guid.NewGuid());
-        var now = DateTimeOffset.UtcNow;
-        var oldest = Event(now.AddSeconds(-3));
-        var middle = Event(now.AddSeconds(-2));
-        await sut.EnqueueEventsAsync([Event(now.AddSeconds(-1)), middle, oldest]);
-
-        var first = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
-        var second = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
-
-        Assert.Equal([oldest.EventId, middle.EventId], first.Select(x => x.EventId));
-        Assert.Single(second);
-        Assert.Empty(await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1)));
-    }
-
-    [Fact]
-    public async Task ClaimEventsAsync_SkipsEntriesThatAreNotDueYet()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext);
-        await sut.EnqueueEventsAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }]);
-
-        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-    }
-
-    // Two instances on one database claiming at the same time: each entry goes to exactly one.
-    [Fact]
-    public async Task ClaimEventsAsync_FromTwoInstancesOnOneDatabase_NeverClaimsAnEntryTwice()
-    {
-        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
-        using var first = CreateSharedDbContext(connectionString);
-        using var second = CreateSharedDbContext(connectionString);
-        var events = Enumerable.Range(0, 30).Select(i => Event(DateTimeOffset.UtcNow.AddSeconds(-30 + i))).ToArray();
-        await CreateSut(first).EnqueueEventsAsync(events);
-        var a = CreateSut(first, Guid.NewGuid());
-        var b = CreateSut(second, Guid.NewGuid());
-
-        var claimedByA = new List<Guid>();
-        var claimedByB = new List<Guid>();
-
-        for (var round = 0; round < 4; round++)
-        {
-            var claims = await Task.WhenAll(a.ClaimEventsAsync(5, TimeSpan.FromMinutes(1)), b.ClaimEventsAsync(5, TimeSpan.FromMinutes(1)));
-            claimedByA.AddRange(claims[0].Select(x => x.EventId));
-            claimedByB.AddRange(claims[1].Select(x => x.EventId));
-        }
-
-        Assert.Empty(claimedByA.Intersect(claimedByB));
-        Assert.Equal(claimedByA.Count + claimedByB.Count, claimedByA.Concat(claimedByB).Distinct().Count());
-        Assert.Equal(30, claimedByA.Count + claimedByB.Count);
-    }
-
-    [Fact]
-    public async Task CompleteEventAsync_RemovesTheEntry()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext, Guid.NewGuid());
-        var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
-
-        await sut.CompleteEventAsync(@event.EventId);
-
         Assert.Empty(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
     }
 
-    // An instance whose lease expired must not remove an entry another instance has claimed since.
-    [Fact]
-    public async Task CompleteEventAsync_ByAnInstanceWhoseLeaseExpired_KeepsTheEntryOfTheNewOwner()
-    {
-        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
-        using var first = CreateSharedDbContext(connectionString);
-        using var second = CreateSharedDbContext(connectionString);
-        var stale = CreateSut(first, Guid.NewGuid());
-        var owner = CreateSut(second, Guid.NewGuid());
-        var @event = Event();
-        await stale.EnqueueEventsAsync([@event]);
-
-        await stale.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
-        await Task.Delay(20);
-        Assert.Single(await owner.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-
-        await stale.CompleteEventAsync(@event.EventId);
-        await stale.FailEventAsync(@event.EventId, retryAtUtc: null, "stale");
-
-        var entry = Assert.Single(await second.OutboxEvents.AsNoTracking().ToListAsync());
-        Assert.False(entry.IsParked);
-        Assert.Equal(0, entry.Attempts);
-    }
-
-    [Fact]
-    public async Task FailEventAsync_CountsTheAttemptAndReleasesTheEntryForTheRetry()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext, Guid.NewGuid());
-        var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
-
-        await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down");
-
-        var retried = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-        Assert.Equal(1, retried.Attempts);
-        Assert.Equal("broker down", retried.LastError);
-    }
-
-    [Fact]
-    public async Task FailEventAsync_WithoutARetryTime_ParksTheEntryAndKeepsIt()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext, Guid.NewGuid());
-        var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
-
-        await sut.FailEventAsync(@event.EventId, retryAtUtc: null, new string('x', 5000));
-
-        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
-        var parked = Assert.Single(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
-        Assert.True(parked.IsParked);
-        Assert.Equal(SqliteKaleidoContextStore.MaxErrorLength, parked.LastError!.Length);
-    }
 
     [Fact]
     public async Task LoadAsync_And_SaveAsync_TraceTheProcessId()
@@ -956,9 +716,5 @@ public sealed class SqliteKaleidoContextStoreTests
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(null!, []));
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), null!));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.AdmitAsync(null!));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.CompleteAsync(null!));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.ReleaseAsync(null!));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.EnqueueEventsAsync(null!));
     }
 }

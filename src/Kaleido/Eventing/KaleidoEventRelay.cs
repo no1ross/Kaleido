@@ -108,7 +108,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         try
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
-            var store = scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>();
+            var store = scope.ServiceProvider.GetRequiredService<IKaleidoOutboxStore>();
 
             var leaseUntil = DateTimeOffset.UtcNow + Lease;
             var entries = await store.ClaimEventsAsync(_options.BatchSize, Lease, cancellationToken);
@@ -131,7 +131,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     }
 
     private async Task RelayAsync(
-        IKaleidoContextStore store,
+        IKaleidoOutboxStore store,
         SemaphoreSlim storeGate,
         KaleidoOutboxEvent entry,
         DateTimeOffset leaseUntil,
@@ -169,7 +169,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         LogPublished(_logger, entry.EventType, entry.EventId);
     }
 
-    private async Task FailAsync(IKaleidoContextStore store, KaleidoOutboxEvent entry, Exception exception)
+    private async Task FailAsync(IKaleidoOutboxStore store, KaleidoOutboxEvent entry, Exception exception)
     {
         var attempts = entry.Attempts + 1;
         Failed.Add(1, Tag(entry));
