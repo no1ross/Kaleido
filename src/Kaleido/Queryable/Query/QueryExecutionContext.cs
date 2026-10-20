@@ -11,7 +11,6 @@ namespace Kaleido.Queryable.Query;
 /// <see cref="TryGetViewParameters{TViewParameters}"/>.
 /// </remarks>
 /// <param name="Request">The validated request being executed.</param>
-[ExcludeFromCodeCoverage]
 public sealed record QueryExecutionContext
 (
     IQueryRequest Request

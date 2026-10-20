@@ -6,7 +6,6 @@ namespace Kaleido.Observability;
 /// <see cref="CallingStepName"/> are per-hop: they describe the processor step that called
 /// this service and are never forwarded. A service's own instance id is never on the wire.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed record KaleidoCorrelationContext
 {
     /// <summary>
