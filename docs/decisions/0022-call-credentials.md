@@ -1,4 +1,4 @@
-# 0022. One credential model for every outgoing call
+# 0022. One credential model for every outgoing call, and provenance behind a front door
 
 - **Status:** Accepted
 - **Date:** 2026-10-20
@@ -43,6 +43,19 @@ exchange tokens, but upgraded an anonymous caller to the service's own identity.
    its own client handlers, as before.
 6. The transport records the inbound caller (principal and presented credential) for the outgoing
    clients; the credential is never logged and never on events.
+7. **Provenance behind a front door (#402)** - two signals of different strength:
+   - **Origin, informational, end to end:** `Origin` / `OriginTool` (`X-Kaleido-Origin` /
+     `X-Kaleido-Origin-Tool`). The MCP adapter stamps `mcp` and the tool name on its tool calls;
+     every Kaleido client forwards them like the request id; services read them under the same trust
+     as the request id. Any caller can send them, so they are an audit hint, never an authorization
+     input.
+   - **Actor, trusted, per hop:** `CallerActor`, read by the transport from the authenticated
+     principal - the `act` claim (its `sub` when it is an object), else `azp`, else `appid` -
+     never from a header. Each service reads its own caller's token, so with on-behalf-of tokens the
+     actor names the calling service on each hop.
+   - Both are recorded on the correlation context, on `ProcessEventContext` and
+     `QueryableEventContext`, and as span tags (`kaleido.origin`, `kaleido.origin.tool`,
+     `kaleido.caller.actor`). Process state is unchanged.
 
 ## Alternatives considered
 - **Kaleido steps out** (delete the forwarding; hosts configure standard .NET handlers such as header
@@ -60,3 +73,6 @@ exchange tokens, but upgraded an anonymous caller to the service's own identity.
   actor; a service token for their own calls). The router uses `ForwardCallerToken()`: an actor on
   agent calls would satisfy the services' internal-caller policy.
 - Token caching is the provider's concern; it is called on every outgoing request.
+- A consumer of the event stream can tell which front door and tool started a request (origin) and
+  which application acted with the token's authority (actor); only the actor is evidence. The
+  PriorAuth sample's dev tokens use the standard `act` claim for the calling service.

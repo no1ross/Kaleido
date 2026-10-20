@@ -2,7 +2,7 @@ namespace Kaleido.Http;
 
 /// <summary>
 /// HTTP header names used to propagate Kaleido correlation context between services.
-/// Request id and process id are end-to-end (forwarded unchanged on every hop); calling
+/// Request id, process id and the origin are end-to-end (forwarded unchanged on every hop); calling
 /// processor and calling step are per-hop (set by the caller, never forwarded).
 /// </summary>
 public static class KaleidoCorrelationHeaders
@@ -25,4 +25,16 @@ public static class KaleidoCorrelationHeaders
     /// <summary>Per-hop: the step in the calling processor that is making this call.</summary>
     public const string CallingStep =
         "X-Kaleido-Calling-Step";
+
+    /// <summary>
+    /// End-to-end: the front door the request came through (e.g. <c>mcp</c> for the MCP adapter), set by
+    /// that front door and forwarded on every hop. Informational: any caller can send it, so it is an
+    /// audit hint, never an authorization input (ADR 0022).
+    /// </summary>
+    public const string Origin =
+        "X-Kaleido-Origin";
+
+    /// <summary>End-to-end: the front door's own name for what started the request (the MCP tool name).</summary>
+    public const string OriginTool =
+        "X-Kaleido-Origin-Tool";
 }

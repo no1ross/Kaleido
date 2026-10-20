@@ -32,6 +32,30 @@ public sealed class CorrelationHeaderStamperTests
         Assert.Equal(new KaleidoCallContext(KaleidoCallPurpose.OnBehalfOfCaller, principal, "Bearer carol"), KaleidoCallContext.Of(request));
     }
 
+    // ADR 0022: the origin is end-to-end - every hop forwards it, as it forwards the request id.
+    [Fact]
+    public void Stamp_ForwardsTheOrigin_OnEveryHop()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "http://intake.test/");
+
+        CreateSut(SetupContext(new KaleidoCorrelationContext { RequestId = "req-1", Origin = "mcp", OriginTool = "clinic_patient", CallerActor = "never-forwarded" })).Stamp(request);
+
+        Assert.Equal(["mcp"], request.Headers.GetValues(KaleidoCorrelationHeaders.Origin));
+        Assert.Equal(["clinic_patient"], request.Headers.GetValues(KaleidoCorrelationHeaders.OriginTool));
+        Assert.DoesNotContain(request.Headers, x => x.Value.Contains("never-forwarded"));
+    }
+
+    [Fact]
+    public void Stamp_WithoutAnOrigin_SendsNone()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "http://intake.test/");
+
+        CreateSut(SetupContext(new KaleidoCorrelationContext { RequestId = "req-1" })).Stamp(request);
+
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.Origin));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.OriginTool));
+    }
+
     [Fact]
     public void Stamp_OutsideAnInboundRequest_LeavesTheServicesOwnCall()
     {

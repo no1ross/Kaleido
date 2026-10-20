@@ -78,6 +78,8 @@ internal static class KaleidoCorrelationHttpContextExtensions
             httpContext.RequestServices.GetService<KaleidoServiceOptions>()?.InstanceId.ToString());
         activity.SetTag(KaleidoTelemetryTags.CallingProcessor, correlation.CallingProcessorName);
         activity.SetTag(KaleidoTelemetryTags.CallingStep, correlation.CallingStepName);
+        activity.SetTag(KaleidoTelemetryTags.Origin, correlation.Origin);
+        activity.SetTag(KaleidoTelemetryTags.OriginTool, correlation.OriginTool);
 
         if (correlation.ProcessId.HasValue)
         {

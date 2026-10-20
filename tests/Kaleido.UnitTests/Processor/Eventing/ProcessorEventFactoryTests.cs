@@ -73,6 +73,19 @@ public sealed class ProcessorEventFactoryTests
         Assert.Equal(name is null ? null : new KaleidoCaller { Name = name, Id = id }, result.Context.Caller);
     }
 
+    // ADR 0022: the front door (informational) and the acting application (from the principal) reach the events.
+    [Fact]
+    public void CreateProcessCreated_RecordsTheOriginAndTheCallersActor()
+    {
+        var correlation = new KaleidoCorrelationContext { RequestId = "test-request", Origin = "mcp", OriginTool = "clinic_start_visit", CallerActor = "intake" };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
+        var request = new ProcessRequest { Processor = new ProcessorRequest { Steps = new Dictionary<string, object?>() } };
+
+        var result = Sut.CreateProcessCreated(correlation, context, request);
+
+        Assert.Equal(("mcp", "clinic_start_visit", "intake"), (result.Context.Origin, result.Context.OriginTool, result.Context.CallerActor));
+    }
+
     [Fact]
     public void CreateProcessCreated_ExtractsStepNamesFromRequest()
     {

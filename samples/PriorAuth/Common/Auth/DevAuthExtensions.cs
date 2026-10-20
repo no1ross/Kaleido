@@ -11,9 +11,10 @@ public static class DevAuthClaims
     /// <summary>
     /// The calling service on a service-to-service hop. Present only when a
     /// service makes the call (on behalf of a user or on its own); never on a
-    /// direct user call.
+    /// direct user call. The standard actor claim (`act`, RFC 8693), so Kaleido records the calling
+    /// service as the caller's actor on events and spans (ADR 0022).
     /// </summary>
-    public const string Actor = "kaleido_actor";
+    public const string Actor = "act";
 
     /// <summary>
     /// Who the principal is: <see cref="DevPrincipalTypes.User"/> (a direct

@@ -18,6 +18,7 @@ public sealed class KaleidoMcpToolHandlerTests
     private readonly Mock<IMcpToolsListObservation> listObservation = new();
     private readonly Mock<McpServer> server = new();
     private readonly Mock<IKaleidoInboundCallerAccessor> inboundCaller = new();
+    private readonly Mock<IKaleidoCorrelationContextInitializer> correlationInitializer = new();
 
     private static readonly KaleidoTool Search = new()
     {
@@ -46,6 +47,7 @@ public sealed class KaleidoMcpToolHandlerTests
             invoker.Object,
             observability.Object,
             correlation.Object,
+            correlationInitializer.Object,
             inboundCaller.Object,
             logger ?? NullLogger<KaleidoMcpToolHandler>.Instance);
     }
@@ -542,5 +544,21 @@ public sealed class KaleidoMcpToolHandlerTests
         var result = await CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel);
 
         Assert.Equal("plain text", result.Content.OfType<TextContentBlock>().First().Text);
+    }
+
+    // ADR 0022 (#402): every service the tool reaches learns the request came through MCP, and which tool started it.
+    [Fact]
+    public async Task CallTool_StampsTheOrigin_BeforeCallingTheService()
+    {
+        var stampedFirst = false;
+        invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
+            .Callback(() => stampedFirst = correlationInitializer.Invocations.Count == 1)
+            .ReturnsAsync(Text("{}"));
+
+        await CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel);
+
+        Assert.True(stampedFirst);
+        correlationInitializer.Verify(x => x.Initialize(It.Is<KaleidoCorrelationContext>(c =>
+            c.RequestId == "req-7" && c.Origin == "mcp" && c.OriginTool == "clinic_patient")), Times.Once);
     }
 }

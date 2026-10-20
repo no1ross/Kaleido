@@ -44,6 +44,9 @@ internal sealed class ProcessorEventFactory(
             CallingProcessorName = correlation.CallingProcessorName,
             CallingStepName = correlation.CallingStepName,
             Caller = correlation.Caller,
+            CallerActor = correlation.CallerActor,
+            Origin = correlation.Origin,
+            OriginTool = correlation.OriginTool,
         };
 
     public KaleidoEventEnvelope<ProcessCreated, ProcessEventContext> CreateProcessCreated(

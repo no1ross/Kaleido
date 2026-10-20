@@ -41,6 +41,9 @@ public class McpClinicFixture : IAsyncLifetime
     /// <summary>The X-Kaleido-Process-Id header of every request the clinic service received (path, header).</summary>
     public System.Collections.Concurrent.ConcurrentQueue<(string Path, string ProcessId)> ServiceProcessIds { get; } = new();
 
+    /// <summary>The origin headers (X-Kaleido-Origin, X-Kaleido-Origin-Tool) of every request the clinic service received.</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<(string Path, string Authorization, string Origin, string OriginTool)> ServiceOrigins { get; } = new();
+
     public McpClinicFixture()
         : this(withDownstreamThatIsDown: false)
     {
@@ -150,6 +153,7 @@ public class McpClinicFixture : IAsyncLifetime
                             {
                                 ServiceRequests.Enqueue((context.Request.Path, context.Request.Headers.Authorization.ToString()));
                                 ServiceProcessIds.Enqueue((context.Request.Path, context.Request.Headers[KaleidoCorrelationHeaders.ProcessId].ToString()));
+                            ServiceOrigins.Enqueue((context.Request.Path, context.Request.Headers.Authorization.ToString(), context.Request.Headers[KaleidoCorrelationHeaders.Origin].ToString(), context.Request.Headers[KaleidoCorrelationHeaders.OriginTool].ToString()));
                             }
 
                             await next(context);

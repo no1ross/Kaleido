@@ -108,6 +108,23 @@ public sealed class HttpCorrelationContextReaderTests
         Assert.Null(result.CallingStepName);
     }
 
+    // ADR 0022: the origin is end-to-end and informational, honored under the same trust as the request id.
+    [Theory]
+    [InlineData(true, "mcp", "clinic_patient")]
+    [InlineData(false, null, null)]
+    public void Read_TheOrigin_OnlyWhenIdentityIsTrusted(bool trusted, string? origin, string? tool)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers[KaleidoCorrelationHeaders.Origin] = "mcp";
+        context.Request.Headers[KaleidoCorrelationHeaders.OriginTool] = "clinic_patient";
+
+        var result = context.ReadCorrelationContext(trustIdentity: trusted);
+
+        Assert.Equal(origin, result.Origin);
+        Assert.Equal(tool, result.OriginTool);
+        Assert.Null(result.CallerActor);
+    }
+
     [Fact]
     public void Read_StripsSanitizableCharsFromStringFields()
     {
