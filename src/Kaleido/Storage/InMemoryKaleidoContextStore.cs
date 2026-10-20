@@ -10,7 +10,7 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
 {
     private readonly ILogger<InMemoryKaleidoContextStore> _logger;
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
-    private readonly ConcurrentDictionary<string, IdempotentResult> _results = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, IdempotentResult> _results = new(StringComparer.Ordinal);
     private readonly Dictionary<Guid, OutboxEntry> _outbox = [];
     private readonly object _lock = new();
 
@@ -63,30 +63,60 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
         return Task.FromResult(saved);
     }
 
-    public Task<IdempotentResult?> FindResultAsync(string key, CancellationToken cancellationToken = default)
+    public Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(admission);
+
         cancellationToken.ThrowIfCancellationRequested();
 
-        return Task.FromResult(
-            _results.TryGetValue(key, out var result) && result.ExpiresUtc > DateTimeOffset.UtcNow
-                ? result
-                : null);
+        // Check and insert as one step: two admissions of the same key must not both win.
+        lock (_lock)
+        {
+            // Expired records are dropped as new keys arrive, so the dictionary does not grow without bound.
+            var now = DateTimeOffset.UtcNow;
+
+            foreach (var expired in _results.Where(x => x.Value.ExpiresUtc <= now).Select(x => x.Key).ToList())
+            {
+                _results.Remove(expired);
+            }
+
+            if (_results.TryGetValue(admission.Key, out var existing))
+            {
+                return Task.FromResult<IdempotentResult?>(existing);
+            }
+
+            _results[admission.Key] = admission;
+
+            return Task.FromResult<IdempotentResult?>(null);
+        }
     }
 
-    public Task SaveResultAsync(IdempotentResult result, CancellationToken cancellationToken = default)
+    public Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(result);
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        _results[result.Key] = result;
-
-        // Expired answers are dropped as new ones arrive, so the dictionary does not grow without bound.
-        var now = DateTimeOffset.UtcNow;
-
-        foreach (var expired in _results.Where(x => x.Value.ExpiresUtc <= now).Select(x => x.Key).ToList())
+        lock (_lock)
         {
-            _results.TryRemove(expired, out _);
+            _results[result.Key] = result;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task ReleaseAsync(string key, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_lock)
+        {
+            if (_results.TryGetValue(key, out var existing) && existing.State == IdempotentResultState.InProgress)
+            {
+                _results.Remove(key);
+            }
         }
 
         return Task.CompletedTask;

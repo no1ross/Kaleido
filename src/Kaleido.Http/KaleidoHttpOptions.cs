@@ -37,4 +37,13 @@ public sealed class KaleidoHttpOptions
     /// with the same key gets it again instead of running the step a second time. Default 24 hours.
     /// </summary>
     public TimeSpan IdempotencyRetention { get; set; } = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// How long a request sent with an <c>Idempotency-Key</c> counts as running. Meanwhile a retry with
+    /// the same key does not run (409 <c>pro_idempotency_in_progress</c>, with <c>Retry-After</c>). If
+    /// the request has not finished by then (e.g. the service stopped), a retry is answered 409
+    /// <c>pro_idempotency_outcome_unknown</c> and never run again with that key. Default 5 minutes;
+    /// keep it longer than a step can take.
+    /// </summary>
+    public TimeSpan IdempotencyLease { get; set; } = TimeSpan.FromMinutes(5);
 }

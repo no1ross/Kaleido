@@ -80,9 +80,16 @@ public sealed class BehaviorSwitches
     }
 }
 
-// Holds a Slow step inside its handler until released, so a second request can save first.
+// Holds a Slow step inside its handler until released, so a second request can save first, and
+// counts how often the handler ran (a side effect the tests check independently of Kaleido).
 public sealed class BehaviorGate
 {
+    private int _invocations;
+
+    public int Invocations => Volatile.Read(ref _invocations);
+
+    public void Invoked() => Interlocked.Increment(ref _invocations);
+
     public TaskCompletionSource Entered { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public TaskCompletionSource Release { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -90,6 +97,7 @@ public sealed class BehaviorGate
     {
         Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Interlocked.Exchange(ref _invocations, 0);
     }
 }
 
@@ -152,8 +160,11 @@ public sealed class BehaviorSlowHandler(BehaviorGate gate) : IProcessStepHandler
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(BehaviorSlowStep processStep, ProcessStepContext context, CancellationToken cancellationToken = default)
     {
+        gate.Invoked();
         gate.Entered.TrySetResult();
-        await gate.Release.Task.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+
+        // Like an external call already in flight, it finishes even when its caller has gone.
+        await gate.Release.Task.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
         return ProcessStepHandlerResult.Success();
     }
 }

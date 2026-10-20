@@ -246,6 +246,88 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
             ProcessId(Parse(await second.Content.ReadAsStringAsync())));
     }
 
+    // #285: a retry with the same key while the first attempt still runs does not run the step; the
+    // caller is told to come back, and then gets the first attempt's answer. The handler ran once.
+    [Fact]
+    public async Task ARetryWhileTheFirstAttemptRuns_DoesNotRunTheStep_AndThenGetsItsAnswer()
+    {
+        var processId = await StartAsync();
+        fixture.Gate.Reset();
+        var key = Guid.NewGuid().ToString();
+        var body = SlowBody();
+
+        var first = PostExecuteAsync(body, processId, key);
+        await fixture.Gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        using (var duplicate = await PostExecuteAsync(body, processId, key))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+            Assert.Equal("pro_idempotency_in_progress", ErrorCode(Parse(await duplicate.Content.ReadAsStringAsync())));
+            Assert.NotNull(duplicate.Headers.RetryAfter);
+        }
+
+        fixture.Gate.Release.TrySetResult();
+        using (var answered = await first)
+        {
+            Assert.Equal(HttpStatusCode.OK, answered.StatusCode);
+        }
+
+        using var replayed = await PostExecuteAsync(body, processId, key);
+        Assert.Equal(HttpStatusCode.OK, replayed.StatusCode);
+        Assert.True(replayed.Headers.Contains("Idempotent-Replayed"));
+        Assert.Equal(1, fixture.Gate.Invocations);
+        Assert.Equal("completed", StepStatus(await StateAsync(processId), BehaviorSteps.Slow));
+    }
+
+    // #285: the caller gave up (a client timeout) while the step ran; the step still finished, and
+    // its answer was stored, so the retry gets it instead of "already completed" - and nothing runs twice.
+    [Fact]
+    public async Task WhenTheCallerGivesUpWhileTheStepRuns_TheRetryGetsTheStepsAnswer()
+    {
+        var processId = await StartAsync();
+        fixture.Gate.Reset();
+        var key = Guid.NewGuid().ToString();
+        var body = SlowBody();
+
+        using var abandon = new CancellationTokenSource();
+        var first = PostExecuteAsync(body, processId, key, abandon.Token);
+        await fixture.Gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await abandon.CancelAsync();
+
+        // The step finishes after its caller has gone (TestServer completes the abandoned call only then).
+        fixture.Gate.Release.TrySetResult();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first);
+
+        var retry = await RetryUntilAnsweredAsync(body, processId, key);
+
+        Assert.Equal(HttpStatusCode.OK, retry.Status);
+        Assert.True(retry.Replayed);
+        Assert.Equal(1, fixture.Gate.Invocations);
+        Assert.Equal("completed", StepStatus(await StateAsync(processId), BehaviorSteps.Slow));
+    }
+
+    private static string SlowBody() =>
+        $$$"""{"steps":[{"stepName":"{{{BehaviorSteps.Slow}}}","request":{}}]}""";
+
+    private static string? ErrorCode(JsonElement body) =>
+        body.GetProperty("errors")[0].GetProperty("code").GetString();
+
+    // Retries like a client honouring Retry-After, until the key is no longer in progress.
+    private async Task<(HttpStatusCode Status, bool Replayed)> RetryUntilAnsweredAsync(string body, Guid processId, string key)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            using var response = await PostExecuteAsync(body, processId, key);
+
+            if (response.StatusCode != HttpStatusCode.Conflict || attempt == 50)
+            {
+                return (response.StatusCode, response.Headers.Contains("Idempotent-Replayed"));
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), TestContext.Current.CancellationToken);
+        }
+    }
+
     [Fact]
     public async Task AnErrorResponse_StillEchoesTheCallersRequestId()
     {
@@ -371,7 +453,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         return (response.StatusCode, Parse(await response.Content.ReadAsStringAsync()));
     }
 
-    private async Task<HttpResponseMessage> PostExecuteAsync(string json, Guid? processId = null, string? idempotencyKey = null)
+    private async Task<HttpResponseMessage> PostExecuteAsync(string json, Guid? processId = null, string? idempotencyKey = null, CancellationToken cancellationToken = default)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, $"/{BehaviorFixture.ServiceName}/processes/execute")
         {
@@ -388,7 +470,8 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
             request.Headers.Add("Idempotency-Key", idempotencyKey);
         }
 
-        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, TestContext.Current.CancellationToken);
+        return await _client.SendAsync(request, linked.Token);
     }
 
     private async Task<JsonElement> StateAsync(Guid processId)

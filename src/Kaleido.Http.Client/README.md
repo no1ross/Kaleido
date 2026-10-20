@@ -98,7 +98,7 @@ The pipeline, outermost first:
 
 **Only safe requests are retried:**
 - reads (`GET`, `HEAD`): registry, process state;
-- requests with an `Idempotency-Key` header. The process client sends a new key with every execute call (see below), so execute calls are retried too: a retry the service has already answered gets the stored answer, the step does not run twice.
+- requests with an `Idempotency-Key` header. The process client sends a new key with every execute call (see below), so execute calls are retried too: the service runs the step at most once per key, and a retry gets the first attempt's answer. A keyed call answered **409 with `Retry-After`** (`pro_idempotency_in_progress`: the first attempt still runs) is retried after that delay; any other 409 is not.
 
 A request with neither is never retried. Retries re-send the same request, so the correlation headers (the same `X-Kaleido-Request-Id`) and the idempotency key stay the same; the resilience events (retries, an opening circuit) appear in the logs and metrics of `Microsoft.Extensions.Resilience`.
 
@@ -143,7 +143,12 @@ The timeout, retry and circuit-breaker settings are those of `KaleidoResilienceS
 
 ## Idempotent execute calls
 
-The process client sends an `Idempotency-Key` (a new GUID) with **every execute call** - the generic execute and every step call. A retry of that call (by the resilience pipeline) re-sends the same key, and the service answers it with the result it stored for the first attempt: the step never runs twice because a response was lost on the way back. The MCP adapter calls services through these clients, so its tool calls get the same protection. The service side is described in [`Kaleido.Http`](../Kaleido.Http/README.md#idempotent-execution-idempotency-key).
+The process client sends an `Idempotency-Key` (a new GUID) with **every execute call** - the generic execute and every step call. A retry of that call (by the resilience pipeline) re-sends the same key. The service admits the key before the step runs, so:
+- a retry after a lost response, or after an attempt timed out while the step still ran, gets the first attempt's answer (`Idempotent-Replayed: true`); the step runs at most once;
+- a retry while the first attempt still runs is answered 409 with `Retry-After`, and the client waits and asks again within its total timeout;
+- if the first attempt never finished (the service stopped while it ran), the call fails with `KaleidoHttpClientException` (`Code = httpclient_conflict`, service error `pro_idempotency_outcome_unknown`): it may or may not have run, so read the process state and decide.
+
+This is not exactly-once for a handler's own external calls: a service that stops inside a handler after calling another system may have done that work (see [`Kaleido.Http`](../Kaleido.Http/README.md#idempotent-execution-idempotency-key)). The MCP adapter calls services through these clients, so its tool calls get the same protection.
 
 **When another call changed the process first** (two calls for the same process at the same time - a double submit, two agents on one case), the service refuses the second save with **409** `pro_process_conflict`; the client throws `KaleidoHttpClientException` with `Code = httpclient_conflict` and the service's errors. Nothing of that call was saved. Read the process state again and decide on the next step - do not repeat the call blindly.
 
