@@ -37,16 +37,42 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
             builder.Services.Replace(
                 ServiceDescriptor.Scoped<IKaleidoDownstreamRegistries, ClientDownstreamRegistries>());
 
-            // Front doors (MCP adapter) call services as the caller: inside a ForwardCaller() scope
-            // the caller's Authorization replaces whatever the host configured on these clients.
-            // Outside a scope nothing changes.
-            builder.Services.TryAddSingleton<IKaleidoCallerForwarding, KaleidoCallerForwarding>();
+            // With an IKaleidoCallCredentialProvider registered, it decides every call's Authorization
+            // (innermost handler); without one the host's own client handlers do, as before.
             builder.Services.TryAddEnumerable(
-                ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, CallerForwardingHandlerFilter>());
+                ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoCallCredentialHandlerFilter>());
         }
 
         return builder;
     }
+
+    /// <summary>
+    /// Registers <typeparamref name="TProvider"/> as the <see cref="IKaleidoCallCredentialProvider"/>
+    /// (singleton): it decides the <c>Authorization</c> of every Kaleido client call, for the caller or
+    /// for the service itself (ADR 0022). Replaces a provider registered before.
+    /// </summary>
+    /// <typeparam name="TProvider">The host's provider, e.g. an OAuth on-behalf-of token exchange.</typeparam>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <returns>The same builder.</returns>
+    public static IKaleidoBuilder AddCallCredentials<TProvider>(this IKaleidoBuilder builder)
+        where TProvider : class, IKaleidoCallCredentialProvider
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.Services.Replace(ServiceDescriptor.Singleton<IKaleidoCallCredentialProvider, TProvider>());
+        return builder;
+    }
+
+    /// <summary>
+    /// Sends a caller's own credential unchanged on every call made for that caller, and keeps the host's
+    /// configured credentials on the service's own calls (registry fetches): for deployments where every
+    /// service accepts the caller's token (one audience). Where services have their own audiences,
+    /// register a provider that exchanges the token instead (<see cref="AddCallCredentials{TProvider}"/>).
+    /// </summary>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <returns>The same builder.</returns>
+    public static IKaleidoBuilder ForwardCallerToken(this IKaleidoBuilder builder) =>
+        builder.AddCallCredentials<ForwardCallerTokenProvider>();
 
     // One configured client: a process client and a queryable client for the same service; the
     // entry's settings fall back to the shared ones.

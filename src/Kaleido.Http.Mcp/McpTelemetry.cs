@@ -11,6 +11,9 @@ internal static class McpTelemetry
 
     public const string ActivitySourceName = "Kaleido.Http.Mcp";
 
+    /// <summary>The origin (<c>X-Kaleido-Origin</c>) the adapter stamps on its tool calls (ADR 0022).</summary>
+    public const string Origin = "mcp";
+
     public const string MeterName = "Kaleido.Http.Mcp";
 
     // ── Activity names ───────────────────────────────────────────────────────

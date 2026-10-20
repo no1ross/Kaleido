@@ -34,12 +34,8 @@ builder.Services.AddScoped<ProductCodeMappingClient>();
 builder.Services.AddScoped<HistoryClient>();
 
 
-// Dev-token auth (sample stand-in for a real IdP) + outbound token forwarding
-// so downstream Kaleido calls carry an on-behalf-of token (the user + this
-// service as actor) or a service token.
+// Dev-token auth (sample stand-in for a real IdP); outgoing Kaleido calls are authorized by\n// DevCallCredentialProvider (registered on the Kaleido builder below).
 builder.Services.AddDevAuth();
-builder.Services.AddDevTokenForwarding(
-    "CodeSet", "Configuration", "History", "Member", "Provider", "Radiology");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -73,6 +69,9 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     .AddHttp(o => o.IncludeFrameworkMessages = true)
     .UseSqliteKaleidoContextStore(processConnectionString)
     .AddHttpClients()
+    // Outgoing calls: an on-behalf-of dev token for the caller (user + roles + this service as actor),
+    // a service token for the service's own calls (ADR 0022).
+    .AddCallCredentials<DevCallCredentialProvider>()
     .AddOpenTelemetry();
 
 var app = builder.Build();

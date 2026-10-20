@@ -58,6 +58,10 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     // Observability middleware so errors render as Kaleido error JSON.
     .AddHttp()
     .AddHttpClients()
+    // Tool calls send the agent's user's own token unchanged (every service accepts the dev tokens);
+    // the registry clients' service token below is kept for the router's own registry fetches.
+    // Not the services' provider: an actor on agent calls would satisfy InternalCaller (ADR 0022).
+    .ForwardCallerToken()
     // AI agents (MCP clients) get the aggregate as tools at /mcp, filtered per caller, and every
     // tool runs as the agent's user — the router's service token is never used for them.
     .AddMcp(o => o.ServerName = "priorauth")

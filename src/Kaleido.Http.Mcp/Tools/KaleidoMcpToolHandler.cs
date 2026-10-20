@@ -2,9 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Kaleido.Http.Client;
 using Kaleido.Http.Mcp.Observability;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Net.Http.Headers;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -21,8 +19,9 @@ namespace Kaleido.Http.Mcp.Tools;
 /// result when the user must answer questions, or an empty tool list when the tools cannot be
 /// read. Only the caller's own cancellation propagates (nobody is waiting). Every tool result
 /// carries the call's <c>requestId</c>, the same <c>X-Kaleido-Request-Id</c> sent to Kaleido.
-/// Tools run as the caller: the calls they make carry the caller's own <c>Authorization</c>,
-/// whatever credentials the host configured on its Kaleido clients.
+/// Tools run as the caller: the calls they make are made for the MCP request's caller, so the host's
+/// <see cref="IKaleidoCallCredentialProvider"/> authorizes them as that caller, never with the host's
+/// own credentials (ADR 0022).
 /// </remarks>
 internal interface IKaleidoMcpToolHandler
 {
@@ -40,8 +39,8 @@ internal sealed partial class KaleidoMcpToolHandler(
     IKaleidoToolInvoker invoker,
     IMcpObservability observability,
     IKaleidoCorrelationContextAccessor correlation,
-    IKaleidoCallerForwarding callerForwarding,
-    IHttpContextAccessor httpContextAccessor,
+    IKaleidoCorrelationContextInitializer correlationInitializer,
+    IKaleidoInboundCallerAccessor inboundCaller,
     ILogger<KaleidoMcpToolHandler> logger)
     : IKaleidoMcpToolHandler
 {
@@ -168,9 +167,16 @@ internal sealed partial class KaleidoMcpToolHandler(
         ToolCatalog catalog,
         CancellationToken cancellationToken)
     {
-        // A front door calls services as the caller, never with the host's own credentials.
-        using var asCaller = callerForwarding.ForwardCaller(
-            httpContextAccessor.HttpContext?.Request.Headers[HeaderNames.Authorization].ToString());
+        // A front door calls services for its caller, never with the host's own credentials: without the
+        // MCP request's caller (no HTTP request) the calls would be the service's own, so none is made.
+        if (!inboundCaller.IsInboundRequest)
+        {
+            return Error(McpErrorCodes.InternalError, "The tool call has no caller (it did not arrive as an HTTP request); nothing was run.");
+        }
+
+        // Every service the tool reaches, and every hop after it, records that the request came through
+        // MCP and which tool started it (informational: the trusted part is the caller's actor).
+        correlationInitializer.Initialize(correlation.Current with { Origin = McpTelemetry.Origin, OriginTool = tool.Definition.Name });
 
         return await invoker.InvokeAsync(
             tool,

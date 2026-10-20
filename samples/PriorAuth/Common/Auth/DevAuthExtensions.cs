@@ -11,9 +11,10 @@ public static class DevAuthClaims
     /// <summary>
     /// The calling service on a service-to-service hop. Present only when a
     /// service makes the call (on behalf of a user or on its own); never on a
-    /// direct user call.
+    /// direct user call. The standard actor claim (`act`, RFC 8693), so Kaleido records the calling
+    /// service as the caller's actor on events and spans (ADR 0022).
     /// </summary>
-    public const string Actor = "kaleido_actor";
+    public const string Actor = "act";
 
     /// <summary>
     /// Who the principal is: <see cref="DevPrincipalTypes.User"/> (a direct
@@ -160,26 +161,6 @@ public static class DevAuthExtensions
             options.UseRequestInterceptor(
                 "(request) => { try { var authorized = JSON.parse(window.localStorage.getItem('authorized') || 'null'); var token = authorized && authorized.Bearer && authorized.Bearer.value; if (token && !request.headers.Authorization) { request.headers.Authorization = 'Bearer ' + token; } } catch (e) { } return request; }");
         });
-
-    /// <summary>
-    /// Registers <see cref="DevTokenForwardingHandler"/> for the given named
-    /// Kaleido clients so outbound calls carry an on-behalf-of token (the
-    /// user plus this service as actor) or a service token.
-    /// </summary>
-    public static IServiceCollection AddDevTokenForwarding(
-        this IServiceCollection services,
-        params string[] clientNames)
-    {
-        services.AddTransient<DevTokenForwardingHandler>();
-
-        foreach (var name in clientNames)
-        {
-            services.AddHttpClient(name)
-                .AddHttpMessageHandler<DevTokenForwardingHandler>();
-        }
-
-        return services;
-    }
 }
 
 /// <summary>

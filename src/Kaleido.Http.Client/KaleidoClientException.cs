@@ -108,6 +108,13 @@ public static class HttpClientErrorCodes
     public const string MissingBaseUrl = "missing_base_url";
 
     /// <summary>
+    /// An <see cref="IKaleidoCallCredentialProvider"/> answered <see cref="KaleidoCallCredential.Configured"/>
+    /// for a call made for a caller; a caller's call never goes out with the host's own credentials.
+    /// Raised on the call as a configuration error.
+    /// </summary>
+    public const string ConfiguredCredentialForCaller = "httpclient_configured_credential_for_caller";
+
+    /// <summary>
     /// <c>GetClient</c> was asked for a client name that is not configured under <c>Kaleido:Clients</c>.
     /// Raised as a configuration error at the call; the message lists the configured clients.
     /// </summary>

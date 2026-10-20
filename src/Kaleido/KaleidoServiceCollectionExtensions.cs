@@ -91,6 +91,7 @@ public static class KaleidoServiceCollectionExtensions
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.TryAddScoped<IKaleidoCorrelationContextInitializer>(
             sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
+        services.TryAddScoped<IKaleidoInboundCallerAccessor, KaleidoInboundCallerAccessor>(); // ADR 0022
         services.TryAddSingleton<IEventPublisher, EventPublisher>();
 
         // The three stores (process state, event outbox, idempotent requests) and the relay that hands

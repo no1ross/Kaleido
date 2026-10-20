@@ -21,10 +21,12 @@ Correlation has three kinds of fields:
 |---|---|---|---|
 | End-to-end | `RequestId` | `X-Kaleido-Request-Id` | The user action. Generated (new GUID) when the caller does not supply one — always non-empty after the inbound read. |
 | End-to-end | `ProcessId` | `X-Kaleido-Process-Id` | The process instance the call belongs to. |
+| End-to-end | `Origin` / `OriginTool` | `X-Kaleido-Origin` / `X-Kaleido-Origin-Tool` | The front door the request came through and what started it there (the MCP adapter stamps `mcp` and the tool name). **Informational**: honored under the same trust as the request id, an audit hint, never an authorization input (ADR 0022). |
 | Per-hop | `CallingProcessorName` | `X-Kaleido-Calling-Processor` | The processor whose **step** made this call. |
 | Per-hop | `CallingStepName` | `X-Kaleido-Calling-Step` | The step in that processor that made this call. |
 | Local | `ExecutingStepName` | *(none)* | The step this service is executing; set by the runtime for a step handler's scope and used to stamp outbound calls. |
 | Local | `CallerName` / `CallerRoles` | *(none)* | Authenticated caller — from the request principal after authentication, never from headers. |
+| Local (per hop) | `CallerActor` | *(none)* | The application acting for the caller on this hop (a calling service, a front door): the principal's `act` claim (its `sub` when it is an object), else `azp`, else `appid`. **Trusted**: from the token, never from headers; each service reads its own caller's. |
 
 The processor **instance id** (`KaleidoServiceOptions.InstanceId`) is local too: each
 service records its own instance id in its trace tags, events and logs. It is never sent,
@@ -169,10 +171,27 @@ step handler / consumer code
 
 - The inbound `KaleidoCorrelationEndpointFilter` and the runtime engines tag the `Activity` with
   `kaleido.request.id`, `kaleido.process.id` (when known), `kaleido.processor.instance_id` (own),
-  `kaleido.calling.processor` and `kaleido.calling.step`, so distributed traces line up with the
+  `kaleido.calling.processor`, `kaleido.calling.step`, `kaleido.origin` and `kaleido.origin.tool`,
+  and the caller filter adds `kaleido.caller.actor`, so distributed traces line up with the
   correlation headers.
 - Emitted events carry the correlation (`RequestId`, `ProcessId`, `CallingProcessorName`,
-  `CallingStepName`) plus the emitting service's own `ProcessorInstanceId`.
+  `CallingStepName`, `Origin`, `OriginTool`), the caller (`Caller`, `CallerActor`) and the
+  emitting service's own `ProcessorInstanceId`.
+
+### Which front door, which application (ADR 0022)
+
+A call that came through the MCP adapter stays recognizable on every hop behind it:
+
+| Hop | `Origin` / `OriginTool` (end to end) | `CallerActor` (per hop, from the token) |
+|---|---|---|
+| MCP client → router | *(the router sets them for its tool call)* | the MCP client app (`azp`), if the token names it |
+| Router → Intake (`ForwardCallerToken()`) | `mcp` / `intake_capture_requested_service` | the MCP client app (same token) |
+| Intake → Radiology (handoff) | unchanged | `intake` (the on-behalf-of token's `act`) |
+| Radiology → Member | unchanged | `radiology` |
+
+The origin answers *which front door and tool started this* for a consumer of the event stream
+alone; the actor answers *which application acted* with the token's authority. Only the actor is
+evidence: any caller can send an origin header.
 
 ## What stays stable
 

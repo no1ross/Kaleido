@@ -167,6 +167,61 @@ public sealed class KaleidoCallerContextEndpointFilterTests
         Assert.Empty(context.CallerRoles);
     }
 
+    // ADR 0022: the application acting for the caller comes from the principal's actor claim, never a header.
+    [Theory]
+    [InlineData("act", "{\"sub\":\"intake-service\"}", "intake-service")]
+    [InlineData("act", "intake", "intake")]
+    [InlineData("act", "{not json", "{not json")]
+    [InlineData("act", "{\"iss\":\"idp\"}", "{\"iss\":\"idp\"}")]
+    [InlineData("azp", "kaleido-mcp", "kaleido-mcp")]
+    [InlineData("appid", "11111111-2222", "11111111-2222")]
+    public async Task InvokeAsync_StampsTheCallersActor_FromTheActorClaim(string claimType, string value, string expected)
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "alice"), new Claim(claimType, value)], authenticationType: "test"));
+
+        Assert.Equal(expected, (await InitializedWith(user)).CallerActor);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_PrefersTheActClaim_OverTheAuthorizedParty()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Name, "alice"), new Claim("azp", "ui-app"), new Claim("act", "radiology")],
+            authenticationType: "test"));
+
+        Assert.Equal("radiology", (await InitializedWith(user)).CallerActor);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_AnAnonymousCaller_OrAPrincipalWithoutActor_HasNoActor()
+    {
+        Assert.Null((await InitializedWith(new ClaimsPrincipal(new ClaimsIdentity([new Claim("act", "x")])))).CallerActor);
+        Assert.Null((await InitializedWith(User("alice"))).CallerActor);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_RecordsTheInboundCaller_ForTheOutgoingClients()
+    {
+        var accessor = new Mock<IKaleidoCorrelationContextAccessor>();
+        accessor.Setup(x => x.Current).Returns(new KaleidoCorrelationContext());
+        var inbound = new Mock<IKaleidoInboundCallerAccessor>();
+        var user = User("alice");
+        var services = new ServiceCollection();
+        services.AddSingleton(accessor.Object);
+        services.AddSingleton(Mock.Of<IKaleidoCorrelationContextInitializer>());
+        services.AddSingleton(inbound.Object);
+        var httpContext = new DefaultHttpContext
+        {
+            User = user,
+            RequestServices = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }),
+        };
+        httpContext.Request.Headers.Authorization = "Bearer alice";
+
+        await CreateSut().InvokeAsync(new DefaultEndpointFilterInvocationContext(httpContext), _ => ValueTask.FromResult<object?>(null));
+
+        inbound.Verify(x => x.Set(user, "Bearer alice"), Times.Once);
+    }
+
     [Fact]
     public async Task InvokeAsync_WhenOnlyTheInitializerIsRegistered_DoesNotInitializeAndCallsNext()
     {
