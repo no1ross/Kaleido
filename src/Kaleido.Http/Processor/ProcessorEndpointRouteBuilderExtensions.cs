@@ -50,10 +50,9 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
             endpoints.MapGroup(
                 routePrefix)
             .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
+            .AddEndpointFilter<Observability.KaleidoCorrelationEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
-            // Post-auth: stamps CallerName/CallerId/CallerRoles onto the ambient
-            // correlation context for per-step checks inside handlers and the
-            // runtime's created-by / updated-by tags.
+            // Post-auth caller (CallerName/CallerId/CallerRoles) for per-step checks and created-by tags.
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
         LogEndpointsMapped(logger, routePrefix, registry.Registrations.Count, registry.InitialRegistrations.Count);
@@ -128,13 +127,17 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
         var builder = endpoints.MapGet(
                 ProcessRoutePaths.Process,
                 async (
-                    Guid processId,
+                    string processId,
                     IProcessStateService stateService,
                     CancellationToken cancellationToken) =>
                 {
+                    // Parsed here, not bound as a Guid: a malformed id is answered inside the
+                    // endpoint (400 argument_error by the exception filter), never by binding first.
                     var process =
                         await stateService.GetCurrentState(
-                            processId,
+                            Guid.TryParse(processId, out var id)
+                                ? id
+                                : throw new BadHttpRequestException($"The process id '{processId}' is not a valid GUID."),
                             cancellationToken);
 
                     return process is null

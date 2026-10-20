@@ -57,6 +57,7 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
             endpoints.MapGroup(
                 routePrefix)
             .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
+            .AddEndpointFilter<Observability.KaleidoCorrelationEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 

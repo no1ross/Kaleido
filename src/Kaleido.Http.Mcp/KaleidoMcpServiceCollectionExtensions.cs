@@ -1,5 +1,6 @@
 using Kaleido.Http.Client;
 using Kaleido.Http.Mcp.Observability;
+using Kaleido.Http.Observability;
 using Kaleido.Http.Mcp.Tools;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -105,13 +106,17 @@ public static class KaleidoMcpServiceCollectionExtensions
         return builder;
     }
 
-    // Resolve the handler from the HTTP request's own scope (not the SDK's per-message scope), so
-    // it shares the request's correlation context that Kaleido's middleware set — the request id
-    // the agent sent is the one every call carries and every result returns.
+    // Resolve the handler from the HTTP request's own scope (not the SDK's per-message scope), and set
+    // up that request's correlation first: the MCP endpoint is the SDK's, not a Kaleido route group, so
+    // no Kaleido endpoint filter runs (#295). The request id the agent sent is then the one every call
+    // carries and every result returns.
     private static IKaleidoMcpToolHandler Handler(IServiceProvider? services)
     {
+        var httpContext = services?.GetService<IHttpContextAccessor>()?.HttpContext;
+        httpContext?.InitializeKaleidoCorrelation();
+
         var provider =
-            services?.GetService<IHttpContextAccessor>()?.HttpContext?.RequestServices
+            httpContext?.RequestServices
             ?? services
             ?? throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.MissingRegistration,

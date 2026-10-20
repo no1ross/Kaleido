@@ -2,9 +2,8 @@ namespace Kaleido.Http.FunctionalTests.Authorization;
 
 /// <summary>
 /// In a host with authentication, the correlation identity headers (request id, calling processor
-/// and step) are honoured for an authenticated caller and ignored for an anonymous one, with the
-/// real middleware order: Kaleido's middleware is added by its startup filter, ahead of the host's
-/// <c>UseAuthentication()</c>.
+/// and step) are honoured for an authenticated caller and ignored for an anonymous one: the
+/// correlation filter runs inside Kaleido's endpoints, after the host's authentication (#295).
 /// </summary>
 public sealed class CorrelationIdentityTrustTests(
     AuthorizationAspNetCoreFixture fixture)

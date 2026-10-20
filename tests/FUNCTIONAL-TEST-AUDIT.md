@@ -85,9 +85,10 @@ caller forwarding order (`CallerForwardingTests`), delegated paging pass-through
 - `ToApiBody` serialized condition values with **default** `JsonSerializerOptions`, not
   `KaleidoJsonOptions` (fixed, #349); the round trip is pinned functionally, the wire form by a unit test.
 - `StepCandidateBuilder` uses its own serializer options, separate from the endpoint's.
-- `KaleidoStartupFilter` order (exception middleware outermost) is load-bearing for the
-  `BadHttpRequestException` thrown inside the observability middleware: pinned by
-  `AMalformedProcessIdHeader_*`.
+- The filter order on Kaleido's route groups (exception filter before the correlation filter) is
+  load-bearing for the `BadHttpRequestException` a malformed correlation header throws: pinned by
+  `AMalformedProcessIdHeader_*` and `MixedHostTests` (#295). `MixedHostTests` also pins that the
+  host's own endpoints get no Kaleido headers or error bodies.
 
 ## 5. Cross-component assumptions now protected
 
