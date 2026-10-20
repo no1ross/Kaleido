@@ -24,6 +24,14 @@ public static class KaleidoHttpServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
+        // A second call would silently replace the first one's options (#301).
+        if (builder.Services.Any(x => x.ServiceType == typeof(KaleidoHttpOptions)))
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.DuplicateRegistration,
+                "AddHttp() was called more than once on this Kaleido builder. Configure the HTTP transport in a single AddHttp() call.");
+        }
+
         // Generic ASP.NET Core infrastructure needed by HTTP transport
         builder.Services.AddRouting();
         builder.Services.AddHttpContextAccessor();

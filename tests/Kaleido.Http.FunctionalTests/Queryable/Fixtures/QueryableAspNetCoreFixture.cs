@@ -39,6 +39,7 @@ public sealed class QueryableAspNetCoreFixture
                         services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                             {
                                 o.ServiceName = "kaleido";
+                                o.AuthorizationMode = KaleidoAuthorizationMode.None;
                                 o.Assemblies = new[] { typeof(FunctionalRecordContext).Assembly };
                             })
                             .AddHttp();
@@ -79,6 +80,7 @@ public sealed class QueryableAspNetCoreFixture
         clientServices.AddKaleido(clientConfig, o =>
             {
                 o.ServiceName = "test-queryable-client";
+                o.AuthorizationMode = KaleidoAuthorizationMode.None;
                 o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
             })
             .AddHttpClients();

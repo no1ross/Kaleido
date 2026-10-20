@@ -18,6 +18,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddKaleido(builder.Configuration, o =>
     {
         o.ServiceName = "records";
+        o.AuthorizationMode = KaleidoAuthorizationMode.None;
         o.Assemblies = [typeof(SampleKaleidoRecord).Assembly, typeof(SampleKaleidoRecordSource).Assembly];
     })
     .AddHttp();
