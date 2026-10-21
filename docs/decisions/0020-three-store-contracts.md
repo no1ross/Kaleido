@@ -1,6 +1,8 @@
 # 0020. Three store contracts, one concern each
 
-- **Status:** Accepted
+- **Status:** Accepted; decision 2 (the context store writes a save's events) amended by
+  [ADR 0023](./0023-outbox-integration.md): the context store is state only, the outbox integration
+  receives every event, and a persistence package's transaction makes them atomic
 - **Date:** 2026-10-19
 - **Related:** #285, ADR 0012, ADR 0019
 

@@ -18,6 +18,15 @@ sections.
   `ForwardCallerToken()` or its own provider ([ADR 0022](docs/decisions/0022-call-credentials.md), #403).
 - **Store contracts split** into `IKaleidoContextStore`, `IKaleidoOutboxStore` and
   `IKaleidoIdempotencyStore` ([ADR 0020](docs/decisions/0020-three-store-contracts.md), #399).
+- **Outbox integration** ([ADR 0023](docs/decisions/0023-outbox-integration.md), #408): the context store is
+  state only (`SaveAsync(context)`); every event goes to `IKaleidoOutbox` - Kaleido's built-in outbox
+  (default), the host's own (`AddOutbox<T>()`) or `AddDirectPublication()` - and the optional
+  `IKaleidoTransactions` makes a state change and its event atomic. `IKaleidoOutboxStore.EnqueueEventsAsync`
+  is now `AddAsync`. New builder methods `AddContextStore`, `AddIdempotencyStore`, `AddOutboxStore`,
+  `AddTransactions`; new startup codes `conflicting_store`, `conflicting_outbox`.
+- **SQLite registrations:** `UseSqliteKaleidoContextStore` is replaced by `AddSqliteContextStore`,
+  `AddSqliteOutboxStore` and `AddSqliteIdempotencyStore` (one database; `connection_string_mismatch`);
+  `ISqliteKaleidoTransaction` lets a host's own outbox join the SQLite transaction (#408).
 - **Idempotent execution admission:** the idempotency store's `AdmitAsync`/`CompleteAsync`/`ReleaseAsync`;
   new 409 codes `pro_idempotency_in_progress` and `pro_idempotency_outcome_unknown`
   ([ADR 0019](docs/decisions/0019-idempotent-execution-admission.md), #397).
