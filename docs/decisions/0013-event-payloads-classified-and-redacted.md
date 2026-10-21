@@ -1,6 +1,6 @@
 # 0013. Event payloads stay complete; classified values are redacted before the outbox
 
-- **Status:** Accepted
+- **Status:** Accepted; the redaction policy is amended by [ADR 0025](./0025-event-redaction-policy.md): events have their own policy (`AddEventClassificationRedaction`), separate from the host's log redaction (`AddRedaction`)
 - **Date:** 2026-10-12
 - **Related:** #139, ADR 0001, ADR 0012
 

@@ -19,8 +19,9 @@ namespace Kaleido.Eventing;
 /// records), so an audit can show what was submitted and what a caller saw. Protect sensitive values
 /// <em>before</em> they are written to the outbox, not in the publisher (the outbox stores the payload
 /// until it is published): mark properties with your own <c>DataClassificationAttribute</c>
-/// subclasses (e.g. <c>[PHI]</c>, <c>[PII]</c>) and choose a redactor per classification with
-/// <c>AddRedaction</c> - without one, classified values are erased - and use
+/// subclasses (e.g. <c>[PHI]</c>, <c>[PII]</c>) and choose a redactor per classification for events with
+/// <c>AddEventClassificationRedaction</c> (separate from log redaction) - without it, classified
+/// values are erased - and use
 /// <see cref="IKaleidoEventRedactor"/> for anything attributes cannot express.
 /// </para>
 /// <para>

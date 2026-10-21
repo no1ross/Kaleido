@@ -95,35 +95,84 @@ public sealed class ProcessorStateUpdaterTests
         Assert.Equal(StepExecutionStatus.Pending, result.Steps.First().Status);
     }
 
+    // ---------------------------------------------------------------------------
+    // Versions across a deployment (ADR 0026): a step keeps the version it ran with; a step that has
+    // not run follows the deployed definition.
+
+    private static ProcessStepRegistration Registered(string name, string version, bool repeatable = false) =>
+        new(
+            typeof(object),
+            typeof(object),
+            typeof(object),
+            [],
+            [],
+            [],
+            new RepeatableOptions { Enabled = repeatable },
+            new ProcessStepMetadata { Name = name, Description = "desc", Version = version, DisplayName = name });
+
     [Fact]
-    public void Reconcile_UpdatesExistingStepVersion()
+    public void Reconcile_AStepThatHasNotRun_FollowsTheDeployedVersion()
     {
-        var context = new ProcessorContext
-        {
-            ProcessId = Guid.NewGuid(),
-            ProcessorName = "test",
-            Steps =
-            [
-                new StepContext { StepName = "test-step", Version = "1.0" }
-            ]
-        };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step", Version = "1.0" }] };
+        _registry.Setup(r => r.Registrations).Returns([Registered("test-step", "2.0")]);
 
-        var updatedRegistration = new ProcessStepRegistration(
-            typeof(object),
-            typeof(object),
-            typeof(object),
-            [],
-            [],
-            [],
-            new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "2.0", DisplayName = "display" });
+        Assert.Equal("2.0", Sut.Reconcile(context).Steps.Single().Version);
+    }
 
-        _registry.Setup(r => r.Registrations).Returns([updatedRegistration]);
+    [Fact]
+    public void Reconcile_AStepThatRan_KeepsTheVersionItRanWith()
+    {
+        var ran = new StepContext { StepName = "test-step", Version = "1.0", Status = StepExecutionStatus.Completed, FirstExecuted = DateTimeOffset.UtcNow, LastExecuted = DateTimeOffset.UtcNow };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [ran] };
+        _registry.Setup(r => r.Registrations).Returns([Registered("test-step", "2.0")]);
 
-        var result = Sut.Reconcile(context);
+        Assert.Equal("1.0", Sut.Reconcile(context).Steps.Single().Version);
+    }
 
-        Assert.Single(result.Steps);
-        Assert.Equal("2.0", result.Steps.First().Version);
+    // Each attempt records the version that ran: a repeatable step run again after the deployment.
+    [Theory]
+    [InlineData(ExecutionDecisionType.Continue)]
+    [InlineData(ExecutionDecisionType.BusinessFailure)]
+    public void ApplyExecution_RecordsTheVersionThatRan(ExecutionDecisionType decision)
+    {
+        var ran = new StepContext { StepName = "test-step", Version = "1.0", Status = StepExecutionStatus.Completed, LastExecuted = DateTimeOffset.UtcNow };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [ran] };
+        var candidate = new StepCandidate { StepName = "test-step", Registration = Registered("test-step", "2.0", repeatable: true) };
+
+        Assert.Equal("2.0", Sut.ApplyExecution(context, candidate, new ExecutionDecision { Type = decision }).Steps.Single().Version);
+    }
+
+    [Fact]
+    public void ApplyException_And_ApplyCancellation_RecordTheVersionThatRan()
+    {
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step", Version = "1.0" }] };
+        var candidate = new StepCandidate { StepName = "test-step", Registration = Registered("test-step", "2.0") };
+
+        Assert.Equal("2.0", Sut.ApplyException(context, candidate).Steps.Single().Version);
+        Assert.Equal("2.0", Sut.ApplyCancellation(context, candidate).Steps.Single().Version);
+    }
+
+    // A process started on 1.0 continues on the deployed 2.0 definition: history keeps what ran,
+    // the next steps run (and are recorded) at 2.0, a new step appears, a removed one stays in history.
+    [Fact]
+    public void AProcessSpanningADeployment_KeepsItsHistory_AndContinuesOnTheDeployedDefinition()
+    {
+        _registry.Setup(r => r.Registrations).Returns([Registered("capture", "1.0"), Registered("review", "1.0"), Registered("legacy", "1.0")]);
+        var started = Sut.ApplyExecution(
+            Sut.Initialize(Guid.NewGuid()),
+            new StepCandidate { StepName = "capture", Registration = Registered("capture", "1.0") },
+            new ExecutionDecision { Type = ExecutionDecisionType.Continue });
+
+        // Deployment: capture and review move to 2.0, legacy is removed, submit is new.
+        _registry.Setup(r => r.Registrations).Returns([Registered("capture", "2.0"), Registered("review", "2.0"), Registered("submit", "2.0")]);
+        var resumed = Sut.Reconcile(started);
+        var reviewed = Sut.ApplyExecution(resumed, new StepCandidate { StepName = "review", Registration = Registered("review", "2.0") }, new ExecutionDecision { Type = ExecutionDecisionType.Continue });
+
+        var versions = reviewed.Steps.ToDictionary(x => x.StepName, x => (x.Version, x.Status), StringComparer.Ordinal);
+        Assert.Equal(("1.0", StepExecutionStatus.Completed), versions["capture"]);
+        Assert.Equal(("2.0", StepExecutionStatus.Completed), versions["review"]);
+        Assert.Equal(("2.0", StepExecutionStatus.Pending), versions["submit"]);
+        Assert.Equal(("1.0", StepExecutionStatus.Pending), versions["legacy"]);
     }
 
     [Fact]
