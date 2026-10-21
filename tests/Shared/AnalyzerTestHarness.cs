@@ -44,6 +44,17 @@ internal sealed class TestStateCollection
     /// assembly name; one compilation is emitted per distinct name.
     /// </summary>
     public List<(string AssemblyName, string Source)> ReferenceSources { get; } = [];
+
+    /// <summary>Additional files handed to the analyzer (<c>AnalyzerOptions.AdditionalFiles</c>): path and text.</summary>
+    public List<(string Path, string Text)> AdditionalFiles { get; } = [];
+}
+
+/// <summary>An additional file held in memory.</summary>
+internal sealed class InMemoryAdditionalText(string path, string text) : AdditionalText
+{
+    public override string Path => path;
+
+    public override SourceText GetText(System.Threading.CancellationToken cancellationToken = default) => SourceText.From(text);
 }
 
 /// <summary>
@@ -176,10 +187,15 @@ internal sealed class AnalyzerTest<TAnalyzer>
                         $"{x.Id}: {x.GetMessage(System.Globalization.CultureInfo.InvariantCulture)}")));
         }
 
+        var options =
+            new AnalyzerOptions(
+                [.. TestState.AdditionalFiles.Select(x => (AdditionalText)new InMemoryAdditionalText(x.Path, x.Text))]);
+
         var actual =
             await compilation
                 .WithAnalyzers(
-                    [new TAnalyzer()])
+                    [new TAnalyzer()],
+                    options)
                 .GetAnalyzerDiagnosticsAsync();
 
         foreach (var expected in ExpectedDiagnostics)

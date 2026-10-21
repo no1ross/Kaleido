@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Kaleido.Analyzers.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -41,7 +42,7 @@ public sealed class FixtureNameMatchesSutAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        var expected = sut.Name + FixtureConventions.TestsSuffix;
+        var expected = TypeBehavior.ConventionName(sut) + FixtureConventions.TestsSuffix;
 
         if (type.Name == expected)
         {

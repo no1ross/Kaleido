@@ -57,4 +57,10 @@ internal static class DiagnosticIds
 
     /// <summary>A catch-all that calls an observability member must exclude OperationCanceledException (filter or earlier catch clause) so cancellations are not recorded as failures.</summary>
     public const string ObservabilityCancellation = "KAL0021";
+
+    /// <summary>A type with behavior is declared in a file named after it (generic twins by arity: XOfT.cs); two types with behavior never share a file.</summary>
+    public const string TypeFileName = "KAL0022";
+
+    /// <summary>[ExcludeFromCodeCoverage] is not allowed on a type with behavior: its logic is tested in its own test class.</summary>
+    public const string CoverageExclusionOnBehavior = "KAL0023";
 }
