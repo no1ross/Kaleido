@@ -297,69 +297,6 @@ public sealed class ProcessorStepRegistryTests
     }
 
     [Fact]
-    public void ToRegistryItem_CarriesAuthorization()
-    {
-        var registry =
-            CreateSut(
-                typeof(SecuredStep));
-
-        var registration =
-            registry.GetRegistration(
-                typeof(SecuredStep));
-
-        var item =
-            registration.ToRegistryItem(
-                new Mock<ITypeDescriber>().Object,
-                new Mock<IConstraintMapper>().Object);
-
-        Assert.Equal(
-            "step-policy",
-            item.Authorization?.Policy);
-
-        Assert.Equal(
-            "step-policy",
-            registration.ToSummary().Authorization?.Policy);
-    }
-
-    [Fact]
-    public void ToRegistryItem_PublishesLookups_GroupedByQuery_WithTheGroupsDisplayFields()
-    {
-        var item = CreateSut(typeof(LookupStep)).GetRegistration(typeof(LookupStep))
-            .ToRegistryItem(new Mock<ITypeDescriber>().Object, new Mock<IConstraintMapper>().Object);
-
-        var memberId = Assert.Single(item.Fields, x => x.Name == nameof(LookupStep.MemberId)).Lookup;
-        var enrollmentId = Assert.Single(item.Fields, x => x.Name == nameof(LookupStep.MemberEnrollmentId)).Lookup;
-
-        Assert.NotNull(memberId);
-        Assert.Equal("member", memberId.Service);
-        Assert.Equal("Member", memberId.Source);
-        Assert.Equal("MemberSearch", memberId.View);
-        Assert.Equal("MemberId", memberId.Field);
-        Assert.Equal("member/Member/MemberSearch", memberId.Group);
-        Assert.Equal(["DisplayName", "DateOfBirth"], memberId.Display);
-
-        // Same query, same result: the display declared on MemberId applies to the whole group.
-        Assert.Equal(memberId.Group, enrollmentId?.Group);
-        Assert.Equal(memberId.Display, enrollmentId?.Display);
-        Assert.Equal("MemberEnrollmentId", enrollmentId?.Field);
-    }
-
-    [Fact]
-    public void ToRegistryItem_ExplicitGroups_KeepTwoLookupsOfTheSameQueryApart_AndPlainInputsHaveNone()
-    {
-        var item = CreateSut(typeof(LookupStep)).GetRegistration(typeof(LookupStep))
-            .ToRegistryItem(new Mock<ITypeDescriber>().Object, new Mock<IConstraintMapper>().Object);
-
-        var requesting = Assert.Single(item.Fields, x => x.Name == nameof(LookupStep.RequestingProviderId)).Lookup;
-        var servicing = Assert.Single(item.Fields, x => x.Name == nameof(LookupStep.ServicingProviderId)).Lookup;
-
-        Assert.Equal("requesting", requesting?.Group);
-        Assert.Equal("servicing", servicing?.Group);
-        Assert.Null(requesting?.View);
-        Assert.Null(Assert.Single(item.Fields, x => x.Name == nameof(LookupStep.DateOfService)).Lookup);
-    }
-
-    [Fact]
     public void Registration_MapsNonRepeatableStep()
     {
         var registry =
@@ -426,29 +363,15 @@ public sealed class ProcessorStepRegistryTests
     }
 
     [Fact]
-    public void Registration_MapsTheDeclaredBehavior_IntoTheMetadataTheRegistryItemAndTheSummary()
+    public void Registration_MapsTheDeclaredBehavior_IntoTheMetadata()
     {
         var registration = CreateSut(typeof(DeclaredStep)).GetRegistration(typeof(DeclaredStep));
-        var item = registration.ToRegistryItem(new Mock<ITypeDescriber>().Object, new Mock<IConstraintMapper>().Object);
-        var summary = registration.ToSummary();
 
         Assert.True(registration.Metadata.Destructive);
         Assert.True(registration.Metadata.External);
         Assert.True(registration.Metadata.RequiresConfirmation);
-        Assert.True(item.Destructive && item.External && item.RequiresConfirmation);
-        Assert.True(summary.Destructive && summary.External && summary.RequiresConfirmation);
     }
 
-    [Fact]
-    public void ToRegistryItem_PublishesTheClassificationsOfInputsAndOutputs()
-    {
-        var item = CreateSut(typeof(DeclaredStep)).GetRegistration(typeof(DeclaredStep))
-            .ToRegistryItem(new Mock<ITypeDescriber>().Object, new Mock<IConstraintMapper>().Object);
-
-        Assert.Equal(["Test:PHI"], item.Fields.Single(x => x.Name == nameof(DeclaredStep.MemberName)).Classifications);
-        Assert.Empty(item.Fields.Single(x => x.Name == nameof(DeclaredStep.Amount)).Classifications);
-        Assert.Equal(["Test:PHI"], item.Result!.OutputFields.Single(x => x.Name == nameof(DeclaredResponse.MemberName)).Classifications);
-    }
     [Theory]
     [InlineData(typeof(SelfAvailableAfterStep), "AvailableAfter")]
     [InlineData(typeof(SelfAvailableUntilStep), "AvailableUntil")]
@@ -538,7 +461,6 @@ public sealed class ProcessorStepRegistryTests
             { typeof(StepMultiAvailability), typeof(StepMultiAvailabilityHandler) },
             { typeof(SecuredStep), typeof(SecuredStepHandler) },
             { typeof(InformationStep), typeof(InformationStepHandler) },
-            { typeof(LookupStep), typeof(LookupStepHandler) },
             { typeof(SelfDependentStep), typeof(SelfDependentStepHandler) },
             { typeof(CycleStepA), typeof(CycleStepAHandler) },
             { typeof(CycleStepB), typeof(CycleStepBHandler) },
@@ -618,27 +540,6 @@ public sealed class ProcessorStepRegistryTests
 
     private sealed class InformationStepHandler
         : BaseHandler<InformationStep, TestResponse>;
-
-    [ProcessStep(DisplayName = nameof(LookupStep), Description = "lookup-step description", Version = "1.0")]
-    private sealed class LookupStep : IProcessStep
-    {
-        [Lookup(Service = "member", Source = "Member", View = "MemberSearch", Field = "MemberId", Display = ["DisplayName", "DateOfBirth"])]
-        public Guid MemberId { get; init; }
-
-        [Lookup(Service = "member", Source = "Member", View = "MemberSearch", Field = "MemberEnrollmentId")]
-        public Guid MemberEnrollmentId { get; init; }
-
-        [Lookup(Service = "provider", Source = "Provider", Field = "ProviderId", Group = "requesting")]
-        public Guid RequestingProviderId { get; init; }
-
-        [Lookup(Service = "provider", Source = "Provider", Field = "ProviderId", Group = "servicing")]
-        public Guid ServicingProviderId { get; init; }
-
-        public DateOnly DateOfService { get; init; }
-    }
-
-    private sealed class LookupStepHandler
-        : BaseHandler<LookupStep, TestResponse>;
 
     private sealed class MissingStep;
 

@@ -11,7 +11,6 @@ namespace Kaleido.Processor.Context;
 /// process events and should not be stored here.
 /// </para>
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed record ProcessorContext
 {
     /// <summary>

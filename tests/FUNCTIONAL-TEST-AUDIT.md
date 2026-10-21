@@ -116,6 +116,8 @@ call credentials per purpose and destination (`CallCredentialTests`), delegated 
 | `QueryableDiscoveryTests` (strengthened) | registry dropping descriptions, classifications, operators, capabilities, view paging; removed a duplicated assertion |
 | `QueryableClientTests` (strengthened) | client/server JSON drift for any value type; error mapping |
 | `EventOutboxTests` (strengthened, +1) | `PlanBuilt` not published; classified step input published in the clear |
+| `EventOutboxTests.EventsReachACollectorOverHttp_*` (new, #325) | the composed path breaking at the network: execute over HTTP, state and events in SQLite, the relay publishing each envelope over HTTP to a collector that refuses the first deliveries; events lost, duplicated or arriving without their request and process ids |
+| `McpTrustTests` (new, #312) | a tool another caller has reaching the service; a user's cancellation not aborting the service call or logged as a failure; a slow service hanging the agent instead of a tool error with the request id; the user's token or tool arguments in logs or span tags |
 | `Processor/Cancellation/CancellationFinalizationTests` (new, in-memory and SQLite store) | a cancellation after the handler returned discarding its completion and `StepCompleted` (#286); a handler invoked for an already-cancelled request; a cancellation during the handler not saved as Canceled |
 
 Model changes: `FunctionalRecordContext` gained operators and Guid/DateTime fields, an async source

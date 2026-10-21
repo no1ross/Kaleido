@@ -45,4 +45,38 @@ public class {|#0:MissingThingTests|}
 }" + XunitStub,
             Expected.WithLocation(0).WithArguments("MissingThingTests", "MissingThing"));
     }
+
+    // #404: a generic twin's fixture carries the arity.
+    [Theory]
+    [InlineData("ResultTests")]
+    [InlineData("ResultOfTTests")]
+    [InlineData("ResultOfT2Tests")]
+    public async Task GenericTwinFixtures_ResolveByArity(string fixture)
+    {
+        await RunAsync(@"
+public sealed record Result { }
+public sealed record Result<T> { }
+public sealed record Result<T1, T2> { }
+
+public class " + fixture + @"
+{
+    [Xunit.Fact]
+    public void M_S_E() { }
+}" + XunitStub);
+    }
+
+    [Fact]
+    public async Task AnArityTheTypeDoesNotHave_Reports()
+    {
+        await RunAsync(@"
+public sealed record Result { }
+public sealed record Result<T> { }
+
+public class {|#0:ResultOfT3Tests|}
+{
+    [Xunit.Fact]
+    public void M_S_E() { }
+}" + XunitStub,
+            Expected.WithLocation(0).WithArguments("ResultOfT3Tests", "ResultOfT3"));
+    }
 }

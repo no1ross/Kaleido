@@ -111,7 +111,6 @@ internal sealed record ToolLookup
 /// a second registry: it holds nothing the registry doesn't publish, and is rebuilt when the
 /// registry revision changes.
 /// </summary>
-[ExcludeFromCodeCoverage]
 internal sealed record ToolCatalog
 {
     public static ToolCatalog Empty { get; } = new();
@@ -154,8 +153,8 @@ internal sealed record ToolCatalog
     /// <summary>Configured <see cref="KaleidoMcpOptions.ListedTools"/> names that are not tools of this caller.</summary>
     public IReadOnlyList<string> UnknownListedTools { get; init; } = [];
 
-    private FrozenDictionary<string, KaleidoTool>? byName;
-    private FrozenDictionary<string, KaleidoTool>? byUrl;
+    private FrozenDictionary<string, KaleidoTool>? _byName;
+    private FrozenDictionary<string, KaleidoTool>? _byUrl;
 
     public ToolCatalog()
     {
@@ -180,9 +179,9 @@ internal sealed record ToolCatalog
 
     public KaleidoTool? Find(string toolName)
     {
-        byName ??= Tools.ToFrozenDictionary(x => x.Definition.Name, StringComparer.Ordinal);
+        _byName ??= Tools.ToFrozenDictionary(x => x.Definition.Name, StringComparer.Ordinal);
 
-        return byName.TryGetValue(toolName, out var tool) ? tool : null;
+        return _byName.TryGetValue(toolName, out var tool) ? tool : null;
     }
 
     /// <summary>The tool that calls <paramref name="url"/> (maps next steps back to tool names).</summary>
@@ -193,11 +192,11 @@ internal sealed record ToolCatalog
             return null;
         }
 
-        byUrl ??= Tools
+        _byUrl ??= Tools
             .Where(x => !string.IsNullOrWhiteSpace(x.Url))
             .GroupBy(x => x.Url, StringComparer.OrdinalIgnoreCase)
             .ToFrozenDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
 
-        return byUrl.TryGetValue(url, out var tool) ? tool : null;
+        return _byUrl.TryGetValue(url, out var tool) ? tool : null;
     }
 }

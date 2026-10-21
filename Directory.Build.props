@@ -5,6 +5,9 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <Deterministic>true</Deterministic>
+        <!-- CI builds map source paths to /_/ so packages and symbols carry no build-machine paths and
+             Source Link resolves them (#322); local builds keep real paths for debugging. -->
+        <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
         <AnalysisLevel>latest-recommended</AnalysisLevel>
         <NuGetAudit>true</NuGetAudit>
     </PropertyGroup>

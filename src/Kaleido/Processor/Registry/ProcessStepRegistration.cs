@@ -35,7 +35,6 @@ namespace Kaleido.Processor.Registry;
 /// instance, the step input, the <see cref="ProcessStepContext"/> and a cancellation token. Set by
 /// discovery; the runtime fails with a framework error when it is <see langword="null"/>.
 /// </param>
-[ExcludeFromCodeCoverage]
 internal sealed partial record ProcessStepRegistration(
     Type StepType,
     Type? StepResultType,

@@ -12,7 +12,6 @@ namespace Kaleido.Registry;
 /// <param name="Roles">
 /// The role names, one of which the caller must be in; empty when no role is required.
 /// </param>
-[ExcludeFromCodeCoverage]
 public sealed record AuthorizationMetadata(
     string? Policy,
     IReadOnlyList<string> Roles)
