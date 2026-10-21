@@ -16,10 +16,10 @@ internal sealed class ProcessorExecutor(
     IProcessStepInvoker invoker,
     IStepExecutionEvaluator evaluator,
     IProcessorStateUpdater stateUpdater,
-    IKaleidoContextStore stateRepository,
+    IProcessorTransition transition,
     IStepAvailabilityResolver availabilityResolver,
     IProcessorEventFactory eventFactory,
-    IKaleidoEventOutbox eventOutbox,
+    IKaleidoEventWriter eventWriter,
     IProcessorObservability observability,
     IKaleidoCorrelationContextAccessor correlationAccessor)
     : IProcessorExecutor
@@ -139,26 +139,10 @@ internal sealed class ProcessorExecutor(
         var outcome = Complete(candidate, result, decision, stepObservation);
         var stepCompleted = eventFactory.CreateStepCompleted(correlationAccessor.Current, context, candidate, outcome, result);
 
-        context = await SaveAsync(context, eventOutbox.Prepare(stepCompleted), CancellationToken.None);
+        context = await transition.SaveAsync(context, eventWriter.Prepare(stepCompleted), CancellationToken.None);
         run.Outcomes.Add(outcome);
 
         return context;
-    }
-
-    // Saves the state, with the step-completed event when there is one.
-    private async Task<ProcessorContext> SaveAsync(
-        ProcessorContext context,
-        KaleidoOutboxEvent? stepEvent,
-        CancellationToken cancellationToken)
-    {
-        var saved = await stateRepository.SaveAsync(context, stepEvent is null ? [] : [stepEvent], cancellationToken);
-
-        if (stepEvent is not null)
-        {
-            eventOutbox.Saved();
-        }
-
-        return saved;
     }
 
     private IProcessorStepObservation BeginStep(StepCandidate candidate) =>
@@ -252,9 +236,9 @@ internal sealed class ProcessorExecutor(
         ExecutionRun run,
         ProcessExecutionOutcome outcome)
     {
-        var saved = await SaveAsync(
+        var saved = await transition.SaveAsync(
             context,
-            stepEvent: null,
+            transitionEvent: null,
             CancellationToken.None);
 
         run.Outcomes.Add(outcome);

@@ -205,11 +205,12 @@ internal sealed record ProcessStepResult
 
 internal sealed class ProcessorRuntime(
     IKaleidoContextStore contextStore,
+    IProcessorTransition transition,
     IProcessorStateUpdater stateUpdater,
     IProcessorPlanner planner,
     IProcessorExecutor processor,
     IProcessorEventFactory eventFactory,
-    IKaleidoEventOutbox eventOutbox,
+    IKaleidoEventWriter eventWriter,
     IProcessorObservability observability,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     KaleidoServiceOptions serviceOptions)
@@ -235,7 +236,7 @@ internal sealed class ProcessorRuntime(
 
             observation.PlanBuilt(plan.Candidates.Count, executionCandidates.Length);
             RecordRejectedInformationResponses(plan, observation);
-            await eventOutbox.EnqueueAsync(
+            await eventWriter.WriteAsync(
                 eventFactory.CreatePlanBuilt(correlationAccessor.Current, context, request, plan, executionCandidates.Length),
                 CancellationToken.None);
 
@@ -247,7 +248,7 @@ internal sealed class ProcessorRuntime(
 
             var result = CreateResult(plan, executionResult);
 
-            await eventOutbox.EnqueueAsync(
+            await eventWriter.WriteAsync(
                 eventFactory.CreateExecutionCompleted(correlationAccessor.Current, context, executionResult),
                 CancellationToken.None);
             observation.ExecutionCompleted(executionResult.State);
@@ -356,20 +357,10 @@ internal sealed class ProcessorRuntime(
             initializedContext.ProcessId);
 
         var processCreated =
-            eventOutbox.Prepare(
+            eventWriter.Prepare(
                 eventFactory.CreateProcessCreated(correlationAccessor.Current, initializedContext, request));
 
-        var saved = await contextStore.SaveAsync(
-            initializedContext,
-            processCreated is null ? [] : [processCreated],
-            cancellationToken);
-
-        if (processCreated is not null)
-        {
-            eventOutbox.Saved();
-        }
-
-        return saved;
+        return await transition.SaveAsync(initializedContext, processCreated, cancellationToken);
     }
     private static void RecordRejectedInformationResponses(
         ExecutionPlanResult plan,

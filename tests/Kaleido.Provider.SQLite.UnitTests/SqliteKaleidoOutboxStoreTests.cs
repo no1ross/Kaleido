@@ -69,7 +69,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         var now = DateTimeOffset.UtcNow;
         var oldest = Event(now.AddSeconds(-3));
         var middle = Event(now.AddSeconds(-2));
-        await sut.EnqueueEventsAsync([Event(now.AddSeconds(-1)), middle, oldest]);
+        await sut.AddAsync([Event(now.AddSeconds(-1)), middle, oldest]);
 
         var first = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
         var second = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
@@ -84,7 +84,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.EnqueueEventsAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }]);
+        await sut.AddAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }]);
 
         Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
     }
@@ -97,7 +97,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         using var first = CreateSharedDbContext(connectionString);
         using var second = CreateSharedDbContext(connectionString);
         var events = Enumerable.Range(0, 30).Select(i => Event(DateTimeOffset.UtcNow.AddSeconds(-30 + i))).ToArray();
-        await CreateSut(first).EnqueueEventsAsync(events);
+        await CreateSut(first).AddAsync(events);
         var a = CreateSut(first, Guid.NewGuid());
         var b = CreateSut(second, Guid.NewGuid());
 
@@ -122,7 +122,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext, Guid.NewGuid());
         var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
+        await sut.AddAsync([@event]);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
 
         await sut.CompleteEventAsync(@event.EventId);
@@ -140,7 +140,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         var stale = CreateSut(first, Guid.NewGuid());
         var owner = CreateSut(second, Guid.NewGuid());
         var @event = Event();
-        await stale.EnqueueEventsAsync([@event]);
+        await stale.AddAsync([@event]);
 
         await stale.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
         await Task.Delay(20);
@@ -160,7 +160,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext, Guid.NewGuid());
         var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
+        await sut.AddAsync([@event]);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
 
         await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down");
@@ -176,7 +176,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext, Guid.NewGuid());
         var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
+        await sut.AddAsync([@event]);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
 
         await sut.FailEventAsync(@event.EventId, retryAtUtc: null, new string('x', 5000));
@@ -205,9 +205,9 @@ public sealed class SqliteKaleidoOutboxStoreTests
     }
 
     [Fact]
-    public async Task EnqueueEventsAsync_WithNullEvents_Throws()
+    public async Task AddAsync_WithNullEvents_Throws()
     {
         using var dbContext = CreateDbContext();
 
-        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut(dbContext).EnqueueEventsAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut(dbContext).AddAsync(null!));
     }}

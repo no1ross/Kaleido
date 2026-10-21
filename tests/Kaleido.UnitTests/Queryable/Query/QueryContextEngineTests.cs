@@ -58,7 +58,7 @@ public sealed class QueryContextEngineTests
         Mock<IQueryContextExecutor<TView>>? executor = null,
         bool returnsNoRows = false,
         Mock<IQueryExecutionObservation>? observation = null,
-        Mock<IKaleidoEventOutbox>? outbox = null)
+        Mock<IKaleidoEventWriter>? outbox = null)
         where TView : class
     {
         var compiler = new Mock<IQueryContextCompiler>();
@@ -96,7 +96,7 @@ public sealed class QueryContextEngineTests
             applier.Object,
             executor.Object,
             Mock.Of<IQueryEventFactory>(),
-            outbox?.Object ?? Mock.Of<IKaleidoEventOutbox>(),
+            outbox?.Object ?? Mock.Of<IKaleidoEventWriter>(),
             Mock.Of<IKaleidoCorrelationContextAccessor>(),
             observability.Object,
             serviceProvider);
@@ -248,7 +248,7 @@ public sealed class QueryContextEngineTests
         var serviceProvider = new Mock<IServiceProvider>();
         serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
         var observation = new Mock<IQueryExecutionObservation>();
-        var outbox = new Mock<IKaleidoEventOutbox>();
+        var outbox = new Mock<IKaleidoEventWriter>();
 
         await CreateSut<FakeContext>(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, observation: observation, outbox: outbox)
             .ExecuteAsync(new QueryRequest(), registration);
@@ -256,7 +256,7 @@ public sealed class QueryContextEngineTests
         observation.Verify(x => x.BeginSource(), Times.Once);
         observation.Verify(x => x.BeginMaterialization(), Times.Once);
         observation.Verify(x => x.Materialized(2, 2, 50, 0), Times.Once);
-        outbox.Verify(x => x.EnqueueAsync(It.IsAny<KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>>(), CancellationToken.None), Times.Once);
+        outbox.Verify(x => x.WriteAsync(It.IsAny<KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]

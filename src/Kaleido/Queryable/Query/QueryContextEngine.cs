@@ -32,7 +32,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
     ICompiledQueryApplier<TQueryContext> applier,
     IQueryContextExecutor<TView> executor,
     IQueryEventFactory eventFactory,
-    IKaleidoEventOutbox eventOutbox,
+    IKaleidoEventWriter eventWriter,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IQueryableObservability observability,
     IServiceProvider serviceProvider) : IQueryContextEngine<TQueryContext, TView>
@@ -160,7 +160,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         QueryObservationDetails details,
         IQueryRequest request,
         QueryResult<TView> result) =>
-        eventOutbox.EnqueueAsync(
+        eventWriter.WriteAsync(
             eventFactory.CreateQueryExecuted(correlationAccessor.Current, details, request, result),
             CancellationToken.None);
 

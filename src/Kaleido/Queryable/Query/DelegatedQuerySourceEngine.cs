@@ -23,7 +23,7 @@ internal interface IDelegatedQuerySourceEngine<TQueryContext, TResult>
 internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
     IQueryContextValidator validator,
     IQueryEventFactory eventFactory,
-    IKaleidoEventOutbox eventOutbox,
+    IKaleidoEventWriter eventWriter,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IQueryableObservability observability,
     IServiceProvider serviceProvider)
@@ -133,7 +133,7 @@ internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
         QueryObservationDetails details,
         IQueryRequest request,
         QueryResult<TResult> result) =>
-        eventOutbox.EnqueueAsync(
+        eventWriter.WriteAsync(
             eventFactory.CreateQueryExecuted(correlationAccessor.Current, details, request, result),
             CancellationToken.None);
     private static Task<QueryResult<TResult>> ExecuteTypedAsync<TParameters>(

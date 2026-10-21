@@ -39,7 +39,7 @@ public sealed class DelegatedQuerySourceEngineTests
         IQueryContextValidator validator,
         IServiceProvider serviceProvider,
         Mock<IQueryExecutionObservation>? observation = null,
-        Mock<IKaleidoEventOutbox>? outbox = null)
+        Mock<IKaleidoEventWriter>? outbox = null)
     {
         var observability = new Mock<IQueryableObservability>();
         observability
@@ -49,7 +49,7 @@ public sealed class DelegatedQuerySourceEngineTests
         return new(
             validator,
             Mock.Of<IQueryEventFactory>(),
-            outbox?.Object ?? Mock.Of<IKaleidoEventOutbox>(),
+            outbox?.Object ?? Mock.Of<IKaleidoEventWriter>(),
             Mock.Of<IKaleidoCorrelationContextAccessor>(),
             observability.Object,
             serviceProvider);
@@ -104,14 +104,14 @@ public sealed class DelegatedQuerySourceEngineTests
     public async Task ExecuteAsync_OnSuccess_RecordsMaterializationAndEnqueuesTheExecutedEvent()
     {
         var observation = new Mock<IQueryExecutionObservation>();
-        var outbox = new Mock<IKaleidoEventOutbox>();
+        var outbox = new Mock<IKaleidoEventWriter>();
 
         await CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(new FakeDelegatedSource()), observation, outbox)
             .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration());
 
         observation.Verify(x => x.BeginDelegate(), Times.Once);
         observation.Verify(x => x.Materialized(120, 1, 25, 25), Times.Once);
-        outbox.Verify(x => x.EnqueueAsync(It.IsAny<KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>>(), CancellationToken.None), Times.Once);
+        outbox.Verify(x => x.WriteAsync(It.IsAny<KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
