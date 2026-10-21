@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Queryable;
 using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
 using Kaleido.Exceptions;
@@ -52,6 +53,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     .AddEventPublisher<HttpEventPublisher>()
     // Events: PHI erased, PII kept; logs are configured separately (ADR 0025).
     .AddPriorAuthEventRedaction()
+    // Full pages are counted with one SELECT COUNT(*) (EF Core's operators, #352).
+    .AddPriorAuthEfCoreQueries()
     // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
     .AddHttp(o => o.IncludeFrameworkMessages = true)
     .AddOpenTelemetry();

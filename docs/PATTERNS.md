@@ -331,17 +331,24 @@ Rules:
   | 100,000 | 55.9 ms, 31.3 MB | 3.0 ms, 84 KB |
 
   The default grows with the matching rows; the provider executor does not. The EF
-  Core executor (a MongoDB one calls `CountDocumentsAsync`/`ToListAsync` the same way):
+  Core executor (a MongoDB one calls `CountDocumentsAsync`/`ToListAsync` the same way). It is
+  registered for every source of the host, so it uses EF's operators only for EF queries
+  (`IAsyncQueryProvider`) and LINQ for any other source: EF's async operators throw on a query that
+  is not EF's, such as an in-memory view next to EF sources (#352):
 
   ```csharp
   internal sealed class EfCoreQueryContextExecutor<TView> : IQueryContextExecutor<TView>
       where TView : class
   {
       public Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
-          EntityFrameworkQueryableExtensions.CountAsync(query, cancellationToken);
+          query.Provider is IAsyncQueryProvider       // Microsoft.EntityFrameworkCore.Query
+              ? EntityFrameworkQueryableExtensions.CountAsync(query, cancellationToken)
+              : Task.FromResult(query.Count());
 
       public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
-          await EntityFrameworkQueryableExtensions.ToListAsync(query, cancellationToken);
+          query.Provider is IAsyncQueryProvider
+              ? await EntityFrameworkQueryableExtensions.ToListAsync(query, cancellationToken)
+              : query.ToList();
 
       public IQueryable<TView> ApplyPage(IQueryable<TView> query, int size, int offset) =>
           query.Skip(offset).Take(size);
