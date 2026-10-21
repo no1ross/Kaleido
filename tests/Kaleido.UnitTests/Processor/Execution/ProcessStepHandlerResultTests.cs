@@ -1,7 +1,7 @@
-using Kaleido.Exceptions;
-
 namespace Kaleido.Processor.Execution.UnitTests;
 
+// The untyped result and the factories every handler starts from. The typed result's own members
+// (Next, RequireInformation, the conversion) are in ProcessStepHandlerResultOfTTests.
 public sealed class ProcessStepHandlerResultTests
     : Kaleido.UnitTests.SutFixture
 {
@@ -11,147 +11,49 @@ public sealed class ProcessStepHandlerResultTests
     private static readonly InformationRequest Request =
         new() { InformationRequestId = "questions" };
 
+    private static ProcessStepHandlerResult CreateSut() => ProcessStepHandlerResult.Success(Note);
+
     [Fact]
-    public void Success_WithResponse_InfersTheTypedResult()
+    public void Success_IsASuccessWithoutARequiredStep()
     {
-        ProcessStepHandlerResult<Response> result = ProcessStepHandlerResult.Success(new Response("ok"), Note);
+        var result = CreateSut();
 
         Assert.True(result.Succeeded);
-        Assert.Equal("ok", result.Response!.Value);
-        Assert.Null(result.RequiredStep);
-        Assert.Equal([Note], result.Messages);
-    }
-
-    [Fact]
-    public void Next_OnASuccess_RequiresTheStepAndKeepsTheRest()
-    {
-        var result = ProcessStepHandlerResult.Success(new Response("ok"), Note).Next<NextStep>();
-
-        Assert.True(result.Succeeded);
-        Assert.Equal(typeof(NextStep), result.RequiredStep);
-        Assert.Equal("ok", result.Response!.Value);
-        Assert.Equal([Note], result.Messages);
-    }
-
-    [Fact]
-    public void RequireInformation_OnASuccess_RequiresTheInformationStepWithItsRequest()
-    {
-        var result = ProcessStepHandlerResult.Success(new Response("ok")).RequireInformation<AnswerStep>(Request);
-
-        Assert.Equal(typeof(AnswerStep), result.RequiredStep);
-        Assert.Same(Request, result.InformationRequest);
-        Assert.Equal("ok", result.Response!.Value);
-    }
-
-    [Fact]
-    public void RequireInformation_WhenRequestIsNull_Throws()
-    {
-        var success = ProcessStepHandlerResult.Success(new Response("ok"));
-
-        Assert.Throws<ArgumentNullException>(() => success.RequireInformation<AnswerStep>(null!));
-    }
-
-    [Fact]
-    public void Next_OnAFailure_Throws()
-    {
-        var failure = ProcessStepHandlerResult.Failure(new Response("no"));
-
-        var exception = Assert.Throws<KaleidoFrameworkException>(() => failure.Next<NextStep>());
-
-        Assert.Equal(ProcessorErrorCodes.InvalidRequiredStep, exception.Code);
-    }
-
-    [Fact]
-    public void Next_OnARejection_Throws()
-    {
-        ProcessStepHandlerResult<Response> rejected = ProcessStepHandlerResult.Reject(Note);
-
-        Assert.Throws<KaleidoFrameworkException>(() => rejected.Next<NextStep>());
-    }
-
-    [Fact]
-    public void RequireInformation_OnAHandOff_Throws()
-    {
-        ProcessStepHandlerResult<Response> handOff = ProcessStepHandlerResult.HandOff("billing");
-
-        Assert.Throws<KaleidoFrameworkException>(() => handOff.RequireInformation<AnswerStep>(Request));
-    }
-
-    [Fact]
-    public void Failure_WithResponse_InfersTheTypedResult()
-    {
-        var result = ProcessStepHandlerResult.Failure(new Response("no"), Note);
-
-        Assert.False(result.Succeeded);
         Assert.False(result.Rejected);
-        Assert.Equal("no", result.Response!.Value);
+        Assert.Null(result.RequiredStep);
+        Assert.Null(result.TargetProcessorName);
         Assert.Equal([Note], result.Messages);
     }
 
     [Fact]
-    public void Conversion_FromARejection_KeepsItsOutcome()
+    public void SuccessWithNextStep_RequiresThatStep()
     {
-        ProcessStepHandlerResult<Response> result = ProcessStepHandlerResult.Reject(Note);
-
-        Assert.False(result.Succeeded);
-        Assert.True(result.Rejected);
-        Assert.Null(result.Response);
-        Assert.Equal([Note], result.Messages);
-    }
-
-    [Fact]
-    public void Conversion_FromAHandOff_KeepsTheTargetProcessor()
-    {
-        ProcessStepHandlerResult<Response> result = ProcessStepHandlerResult.HandOff("billing", Note);
-
-        Assert.True(result.Succeeded);
-        Assert.Equal("billing", result.TargetProcessorName);
-    }
-
-    [Fact]
-    public void Conversion_FromAnUntypedSuccessWithNextStep_KeepsTheRequiredStep()
-    {
-        ProcessStepHandlerResult<Response> result = ProcessStepHandlerResult.Success<NextStep>();
+        var result = ProcessStepHandlerResult.Success<NextStep>(Note);
 
         Assert.True(result.Succeeded);
         Assert.Equal(typeof(NextStep), result.RequiredStep);
+        Assert.Equal([Note], result.Messages);
     }
 
     [Fact]
-    public void Conversion_FromAnUntypedRequireInformation_KeepsTheRequest()
+    public void RequireInformation_RequiresTheInformationStepWithItsRequest()
     {
-        ProcessStepHandlerResult<Response> result = ProcessStepHandlerResult.RequireInformation<AnswerStep>(Request);
+        var result = ProcessStepHandlerResult.RequireInformation<AnswerStep>(Request, Note);
 
+        Assert.True(result.Succeeded);
         Assert.Equal(typeof(AnswerStep), result.RequiredStep);
         Assert.Same(Request, result.InformationRequest);
+        Assert.Equal([Note], result.Messages);
     }
 
     [Fact]
-    public void Conversion_FromAResultWithAResponseOfAnotherType_Throws()
+    public void RequireInformation_WithoutARequest_Throws()
     {
-        var untyped = ProcessStepHandlerResult.Success() with { Response = 42 };
-
-        var exception = Assert.Throws<KaleidoFrameworkException>(() =>
-        {
-            ProcessStepHandlerResult<Response> converted = untyped;
-            return converted;
-        });
-
-        Assert.Equal(ProcessorErrorCodes.InvalidRequiredStep, exception.Code);
+        Assert.Throws<ArgumentNullException>(() => ProcessStepHandlerResult.RequireInformation<AnswerStep>(null!));
     }
 
     [Fact]
-    public void Conversion_FromAResultWithAResponseOfTheSameType_KeepsIt()
-    {
-        var untyped = ProcessStepHandlerResult.Success() with { Response = new Response("ok") };
-
-        ProcessStepHandlerResult<Response> converted = untyped;
-
-        Assert.Equal("ok", converted.Response!.Value);
-    }
-
-    [Fact]
-    public void Failure_WithoutResponse_IsANonRejectedFailureWithItsMessages()
+    public void Failure_IsANonRejectedFailureWithItsMessages()
     {
         var result = ProcessStepHandlerResult.Failure(Note);
 
@@ -159,6 +61,49 @@ public sealed class ProcessStepHandlerResultTests
         Assert.False(result.Rejected);
         Assert.Null(result.RequiredStep);
         Assert.Null(result.Response);
+        Assert.Equal([Note], result.Messages);
+    }
+
+    [Fact]
+    public void Reject_IsARejectedFailure()
+    {
+        var result = ProcessStepHandlerResult.Reject(Note);
+
+        Assert.False(result.Succeeded);
+        Assert.True(result.Rejected);
+        Assert.Equal([Note], result.Messages);
+    }
+
+    [Fact]
+    public void HandOff_IsASuccessForTheTargetProcessor()
+    {
+        var result = ProcessStepHandlerResult.HandOff("billing", Note);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("billing", result.TargetProcessorName);
+        Assert.Null(result.RequiredStep);
+        Assert.Equal([Note], result.Messages);
+    }
+
+    [Fact]
+    public void SuccessWithResponse_IsATypedSuccess()
+    {
+        ProcessStepHandlerResult<Response> result = ProcessStepHandlerResult.Success(new Response("ok"), Note);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("ok", result.Response?.Value);
+        Assert.Null(result.RequiredStep);
+        Assert.Equal([Note], result.Messages);
+    }
+
+    [Fact]
+    public void FailureWithResponse_IsATypedNonRejectedFailure()
+    {
+        var result = ProcessStepHandlerResult.Failure(new Response("no"), Note);
+
+        Assert.False(result.Succeeded);
+        Assert.False(result.Rejected);
+        Assert.Equal("no", result.Response?.Value);
         Assert.Equal([Note], result.Messages);
     }
 

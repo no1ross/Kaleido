@@ -62,7 +62,7 @@ public sealed class CollaboratorMustBeMockedAnalyzer : DiagnosticAnalyzer
             assemblyName.EndsWith("Tests", System.StringComparison.Ordinal) ||
             SymbolEqualityComparer.Default.Equals(
                 created.ContainingAssembly, context.Compilation.Assembly) ||
-            !FixtureConventions.IsTestable(created) ||
+            !FixtureConventions.IsCollaboratorCandidate(created) ||
             !ImplementsKaleidoInterface(created))
         {
             return;

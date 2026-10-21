@@ -20,3 +20,5 @@ KAL0018 | Kaleido.Design | Warning | Public API members must not expose mutable 
 KAL0019 | Kaleido.Design | Warning | Async methods must accept a CancellationToken parameter
 KAL0020 | Kaleido.Design | Warning | Endpoint names must come from an *EndpointNames type
 KAL0021 | Kaleido.Design | Warning | Catch-all that records observability must exclude OperationCanceledException
+KAL0022 | Kaleido.Layout | Warning | A type with behavior must be declared in a file named after it
+KAL0023 | Kaleido.Layout | Warning | Do not exclude a type with behavior from code coverage

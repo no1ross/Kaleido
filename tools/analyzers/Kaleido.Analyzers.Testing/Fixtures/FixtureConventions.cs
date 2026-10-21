@@ -1,4 +1,5 @@
 using System.Linq;
+using Kaleido.Analyzers.Shared;
 using Microsoft.CodeAnalysis;
 
 namespace Kaleido.Analyzers.Testing.Fixtures;
@@ -35,6 +36,9 @@ internal static class FixtureConventions
     /// source assembly the unit-test assembly is named after first, and only
     /// types accessible to the fixture's assembly match. Returns null when the
     /// fixture isn't named with the Tests suffix or no type matches the prefix.
+    /// Generic twins follow the arity convention (#404): XOfTTests is X with
+    /// one type parameter, XOfT2Tests with two, and a plain XTests is the
+    /// lowest-arity X.
     /// </summary>
     public static INamedTypeSymbol? ResolveSut(
         Compilation compilation,
@@ -53,11 +57,25 @@ internal static class FixtureConventions
             return null;
         }
 
+        return Resolve(compilation, prefix, arity: null, cancellationToken) ??
+            (TypeBehavior.ParseConventionName(prefix) is (var name, { } arity) && name != prefix
+                ? Resolve(compilation, name, arity, cancellationToken)
+                : null);
+    }
+
+    private static INamedTypeSymbol? Resolve(
+        Compilation compilation,
+        string name,
+        int? arity,
+        System.Threading.CancellationToken cancellationToken)
+    {
         var sourceHit =
             compilation
-                .GetSymbolsWithName(prefix, SymbolFilter.Type, cancellationToken)
+                .GetSymbolsWithName(name, SymbolFilter.Type, cancellationToken)
                 .OfType<INamedTypeSymbol>()
-                .FirstOrDefault(s => s.TypeKind != TypeKind.Error);
+                .Where(s => s.TypeKind != TypeKind.Error && (arity is null || s.Arity == arity))
+                .OrderBy(s => s.Arity)
+                .FirstOrDefault();
 
         if (sourceHit is not null)
         {
@@ -74,7 +92,7 @@ internal static class FixtureConventions
 
         foreach (var assembly in assemblies)
         {
-            var hit = FindType(compilation, assembly.GlobalNamespace, prefix);
+            var hit = FindType(compilation, assembly.GlobalNamespace, name, arity);
 
             if (hit is not null)
             {
@@ -131,13 +149,13 @@ internal static class FixtureConventions
     }
 
     /// <summary>
-    /// True when the type is a "testable" framework class: public or internal,
-    /// non-static, non-abstract, with behavior (at least one ordinary method).
-    /// DTOs, records, exceptions, attributes, and [ExcludeFromCodeCoverage]
-    /// types are exempt — new-ing those in a fixture is arrangement, not a
-    /// collaborator violation.
+    /// KAL1012 only: true when constructing the type in a fixture would be using a real collaborator -
+    /// a public or internal, non-static, non-abstract class with an ordinary method. DTOs, records,
+    /// exceptions, attributes, and [ExcludeFromCodeCoverage] types are exempt: new-ing those in a
+    /// fixture is arrangement (domain data the SUT consumes), not a collaborator violation. Which types
+    /// need their own fixture is decided by behavior instead (TypeBehavior, KAL1009).
     /// </summary>
-    public static bool IsTestable(INamedTypeSymbol type)
+    public static bool IsCollaboratorCandidate(INamedTypeSymbol type)
     {
         // CanBeReferencedByName: compiler-generated types (e.g. <PrivateImplementationDetails>)
         // read from a compiled reference are not flagged IsImplicitlyDeclared.
@@ -220,18 +238,21 @@ internal static class FixtureConventions
     private static INamedTypeSymbol? FindType(
         Compilation compilation,
         INamespaceSymbol ns,
-        string name)
+        string name,
+        int? arity)
     {
         var member =
             ns.GetTypeMembers(name)
-                .FirstOrDefault(t => compilation.IsSymbolAccessibleWithin(t, compilation.Assembly));
+                .Where(t => (arity is null || t.Arity == arity) && compilation.IsSymbolAccessibleWithin(t, compilation.Assembly))
+                .OrderBy(t => t.Arity)
+                .FirstOrDefault();
 
         if (member is not null)
         {
             return member;
         }
 
-        foreach (var hit in ns.GetNamespaceMembers().Select(child => FindType(compilation, child, name)))
+        foreach (var hit in ns.GetNamespaceMembers().Select(child => FindType(compilation, child, name, arity)))
         {
             if (hit is not null)
             {
