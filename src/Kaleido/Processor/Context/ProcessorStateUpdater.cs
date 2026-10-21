@@ -109,12 +109,17 @@ internal sealed class ProcessorStateUpdater(
                 continue;
             }
 
-            steps[index] =
-                steps[index] with
-                {
-                    Version =
-                        registration.Metadata.Version,
-                };
+            // A step that ran keeps the version it ran with (ADR 0026): only a step that has not run
+            // yet follows the deployed definition.
+            if (steps[index].LastExecuted is null)
+            {
+                steps[index] =
+                    steps[index] with
+                    {
+                        Version =
+                            registration.Metadata.Version,
+                    };
+            }
         }
 
         return context with
@@ -142,6 +147,7 @@ internal sealed class ProcessorStateUpdater(
         var updatedStep =
             Executed(
                 step,
+                candidate,
                 context,
                 decision.Type == ExecutionDecisionType.BusinessFailure
                     ? StepExecutionStatus.Failed
@@ -194,6 +200,7 @@ internal sealed class ProcessorStateUpdater(
         var updatedStep =
             Executed(
                 step,
+                candidate,
                 context,
                 StepExecutionStatus.Exception);
 
@@ -230,6 +237,7 @@ internal sealed class ProcessorStateUpdater(
         var updatedStep =
             Executed(
                 step,
+                candidate,
                 context,
                 StepExecutionStatus.Canceled);
 
@@ -257,11 +265,12 @@ internal sealed class ProcessorStateUpdater(
         };
     }
 
-    // An execution attempt of the step in this request: its status, the request and caller that ran
-    // it (from the context, stamped per request by the runtime), and when. The first attempt's time
-    // and caller are kept.
+    // An execution attempt of the step in this request: its status, the version that ran (ADR 0026),
+    // the request and caller that ran it (from the context, stamped per request by the runtime), and
+    // when. The first attempt's time and caller are kept.
     private static StepContext Executed(
         StepContext step,
+        StepCandidate candidate,
         ProcessorContext context,
         StepExecutionStatus status)
     {
@@ -270,6 +279,7 @@ internal sealed class ProcessorStateUpdater(
         return step with
         {
             Status = status,
+            Version = candidate.Registration?.Metadata.Version ?? step.Version,
             LatestRequestId = context.LatestRequestId,
             FirstExecuted = step.FirstExecuted ?? now,
             StartedBy = step.FirstExecuted is null ? context.UpdatedBy : step.StartedBy,
