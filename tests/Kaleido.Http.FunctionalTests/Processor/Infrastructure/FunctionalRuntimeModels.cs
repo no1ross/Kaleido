@@ -285,6 +285,14 @@ public static class RuntimeInformationRequests
                     Text = "Why?",
                     Type = InformationItemType.Choice,
                     Options = [new InformationOption { Value = "a", Display = "Reason A" }, new InformationOption { Value = "b", Display = "Reason B" }]
+                },
+                // Applies only to reason B (EnableWhen, ADR 0024).
+                new InformationItem
+                {
+                    Id = $"{informationRequestId}-detail",
+                    Text = "Describe reason B.",
+                    Type = InformationItemType.Text,
+                    EnableWhen = [new InformationCondition { Question = $"{informationRequestId}-reason", Operator = InformationConditionOperator.Equals, Answer = "b" }]
                 }
             ]
         };

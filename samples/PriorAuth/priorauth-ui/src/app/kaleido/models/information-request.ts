@@ -18,6 +18,24 @@ export interface InformationOption {
     display?: string;
 }
 
+export type InformationConditionOperator =
+    'exists'
+    | 'equals'
+    | 'notEquals'
+    | 'greaterThan'
+    | 'lessThan'
+    | 'greaterThanOrEqual'
+    | 'lessThanOrEqual';
+
+/** A condition on an earlier question's answer under which an item applies (FHIR's enableWhen). */
+export interface InformationCondition {
+    /** The id of the earlier question whose answer is tested. */
+    question: string;
+    operator: InformationConditionOperator;
+    /** The value compared with; for 'exists', 'true' (answered) or 'false' (not answered). */
+    answer?: string;
+}
+
 export interface InformationItem {
     id: string;
     text: string;
@@ -25,6 +43,11 @@ export interface InformationItem {
     repeats: boolean;
     options: InformationOption[];
     items: InformationItem[];
+    /** Answers proposed from what was stated earlier: shown pre-filled, submitted only as the user leaves them. */
+    proposedAnswers?: InformationAnswer[];
+    /** Empty or absent: always applies. Otherwise only when these conditions hold (all, or any). */
+    enableWhen?: InformationCondition[];
+    enableBehavior?: 'all' | 'any';
 }
 
 export interface InformationRequest {
