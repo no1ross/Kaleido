@@ -76,6 +76,14 @@ internal sealed record KaleidoTool
     /// through <c>next</c>, <c>search_tools</c> and <c>call_tool</c>.
     /// </summary>
     public bool Listed { get; init; } = true;
+
+    /// <summary>
+    /// What the fields of the tool's result mean (the registry's output field descriptions), by field
+    /// name, case-insensitive: the registry names them as declared (<c>VisitId</c>), results carry
+    /// them in camelCase. Returned with a result for the fields it contains (#213).
+    /// </summary>
+    public IReadOnlyDictionary<string, string> OutputDescriptions { get; init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -183,6 +191,13 @@ internal sealed record ToolCatalog
 
         return _byName.TryGetValue(toolName, out var tool) ? tool : null;
     }
+
+    /// <summary>The tool of step <paramref name="stepName"/> on <paramref name="service"/>, if the caller has it.</summary>
+    public KaleidoTool? FindStep(string service, string stepName) =>
+        Tools.FirstOrDefault(x =>
+            x.Kind == KaleidoToolKind.Step &&
+            string.Equals(x.Service, service, StringComparison.Ordinal) &&
+            string.Equals(x.CapabilityName, stepName, StringComparison.Ordinal));
 
     /// <summary>The tool that calls <paramref name="url"/> (maps next steps back to tool names).</summary>
     public KaleidoTool? FindByUrl(string? url)

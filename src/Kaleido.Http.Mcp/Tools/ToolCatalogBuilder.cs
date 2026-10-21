@@ -134,6 +134,7 @@ internal sealed partial class ToolCatalogBuilder(
             SourceName = source.Name,
             Url = source.QueryUrl ?? string.Empty,
             ParametersTakeProcessId = query.ParametersTakeProcessId,
+            OutputDescriptions = OutputDescriptions(source.OutputFields),
         });
     }
 
@@ -166,6 +167,7 @@ internal sealed partial class ToolCatalogBuilder(
             ViewName = view.Name,
             Url = view.QueryUrl,
             ParametersTakeProcessId = query.ParametersTakeProcessId,
+            OutputDescriptions = OutputDescriptions(view.OutputFields),
         });
     }
 
@@ -464,6 +466,7 @@ internal sealed partial class ToolCatalogBuilder(
             IsInitial = step.IsInitial,
             Lookups = lookups,
             ClosedBy = step.AvailableUntil.Select(x => x.Name).ToArray(),
+            OutputDescriptions = OutputDescriptions(step.Result?.OutputFields),
         });
     }
 
@@ -765,6 +768,28 @@ internal sealed partial class ToolCatalogBuilder(
             new[] { displayName?.Trim(), description?.Trim() }.Where(x => !string.IsNullOrWhiteSpace(x)));
 
         return text.EndsWith('.') ? text : text + ".";
+    }
+
+    // The described output fields by name (case-insensitive), for the results the agent receives.
+    private static Dictionary<string, string> OutputDescriptions<TField>(IReadOnlyCollection<TField>? fields)
+        where TField : class
+    {
+        var descriptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (name, description) in (fields ?? []).Select(x => x switch
+                 {
+                     QueryableQueryProperty p => (p.Name, p.Description),
+                     ProcessOutputFieldMetadata p => (p.Name, p.Description),
+                     _ => (string.Empty, null),
+                 }))
+        {
+            if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(description))
+            {
+                descriptions.TryAdd(name, description.Trim());
+            }
+        }
+
+        return descriptions;
     }
 
     private static string Returns<TField>(IReadOnlyCollection<TField>? fields)

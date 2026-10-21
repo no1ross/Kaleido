@@ -16,8 +16,6 @@ namespace Kaleido.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class InputDescriptionAnalyzer : DiagnosticAnalyzer
 {
-    private const string DescriptionAttributeFullName = "System.ComponentModel.DescriptionAttribute";
-    private const string DisplayAttributeFullName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
     private const string InformationStepInterfaceFullName = "Kaleido.Processor.IInformationStep";
     private const string QueryParametersInterfaceFullName = "Kaleido.Queryable.IQueryParameters";
 
@@ -80,7 +78,7 @@ public sealed class InputDescriptionAnalyzer : DiagnosticAnalyzer
         {
             if (member is not IPropertySymbol { IsStatic: false, DeclaredAccessibility: Accessibility.Public } property ||
                 property.Name == "EqualityContract" ||
-                HasDescription(property))
+                AttributeHelper.HasDescription(property))
             {
                 continue;
             }
@@ -92,35 +90,5 @@ public sealed class InputDescriptionAnalyzer : DiagnosticAnalyzer
             context.ReportDiagnostic(
                 Diagnostic.Create(rule, location, property.Name, type.Name));
         }
-    }
-
-    private static bool HasDescription(IPropertySymbol property)
-    {
-        foreach (var attribute in property.GetAttributes())
-        {
-            switch (attribute.AttributeClass?.ToDisplayString())
-            {
-                case DescriptionAttributeFullName
-                    when attribute.ConstructorArguments.Length == 1 &&
-                         attribute.ConstructorArguments[0].Value is string text &&
-                         !string.IsNullOrWhiteSpace(text):
-                    return true;
-
-                case DisplayAttributeFullName:
-                    foreach (var argument in attribute.NamedArguments)
-                    {
-                        if (argument.Key == "Description" &&
-                            argument.Value.Value is string description &&
-                            !string.IsNullOrWhiteSpace(description))
-                        {
-                            return true;
-                        }
-                    }
-
-                    break;
-            }
-        }
-
-        return false;
     }
 }

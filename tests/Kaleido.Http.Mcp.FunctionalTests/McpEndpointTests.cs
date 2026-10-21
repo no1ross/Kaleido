@@ -101,6 +101,9 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         Assert.NotEqual(true, result.IsError);
         var names = Body(result)["results"]!.AsArray().Select(x => x!["name"]!.GetValue<string>()).ToArray();
         Assert.Equal(["Ava Carter"], names);
+
+        // What the returned fields mean, from the registry, for the fields in the result (#213).
+        Assert.Equal("The patient's full name.", Body(result)["fieldDescriptions"]?["name"]?.GetValue<string>());
     }
 
     [Fact]

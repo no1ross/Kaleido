@@ -416,3 +416,5 @@ dotnet_diagnostic.MA0182.severity = suggestion
 dotnet_diagnostic.RCS1085.severity = suggestion
 dotnet_diagnostic.RCS1205.severity = suggestion
 dotnet_diagnostic.RCS1226.severity = suggestion
+; the samples are the reference for agent-facing metadata: what a step or view returns is described (#213)
+dotnet_diagnostic.KAL2024.severity = error
