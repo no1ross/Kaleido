@@ -39,9 +39,18 @@ internal sealed class InformationValidator : IInformationValidator
         }
 
         var ids = new HashSet<string>(StringComparer.Ordinal);
+        var questions = request.Questions().GroupBy(x => x.Id, StringComparer.Ordinal).ToDictionary(x => x.Key, x => x.First(), StringComparer.Ordinal);
+        var earlier = new Dictionary<string, InformationItem>(StringComparer.Ordinal);
 
         foreach (var item in Flatten(request.Items))
         {
+            errors.AddRange(ValidateConditions(item, questions, earlier));
+
+            if (item.Type is not (InformationItemType.Group or InformationItemType.Display) && !string.IsNullOrWhiteSpace(item.Id))
+            {
+                earlier.TryAdd(item.Id, item);
+            }
+
             if (string.IsNullOrWhiteSpace(item.Id))
             {
                 errors.Add(RequestError($"Information request '{request.InformationRequestId}' has an item without an id."));
@@ -53,34 +62,39 @@ internal sealed class InformationValidator : IInformationValidator
                 errors.Add(RequestError($"Item id '{item.Id}' is used more than once in information request '{request.InformationRequestId}'."));
             }
 
-            if (string.IsNullOrWhiteSpace(item.Text))
-            {
-                errors.Add(RequestError($"Item '{item.Id}' has no text."));
-            }
-
-            switch (item.Type)
-            {
-                case InformationItemType.Choice when item.Options.Count == 0:
-                    errors.Add(RequestError($"Choice item '{item.Id}' has no options."));
-                    break;
-
-                case InformationItemType.Choice when !HasUniqueNonEmptyValues(item.Options):
-                    errors.Add(RequestError($"Choice item '{item.Id}' has empty or duplicate option values."));
-                    break;
-
-                case InformationItemType.Group when item.Items.Count == 0:
-                    errors.Add(RequestError($"Group item '{item.Id}' has no nested items."));
-                    break;
-
-                case not InformationItemType.Group when item.Items.Count > 0:
-                    errors.Add(RequestError($"Item '{item.Id}' is a {item.Type} but has nested items; only groups nest."));
-                    break;
-            }
-
+            errors.AddRange(ValidateItem(item));
             errors.AddRange(ValidateProposedAnswers(item));
         }
 
         return errors;
+    }
+
+    // An item's text, and options or nested items as its type requires.
+    private static IEnumerable<StepProcessingMessage> ValidateItem(InformationItem item)
+    {
+        if (string.IsNullOrWhiteSpace(item.Text))
+        {
+            yield return RequestError($"Item '{item.Id}' has no text.");
+        }
+
+        switch (item.Type)
+        {
+            case InformationItemType.Choice when item.Options.Count == 0:
+                yield return RequestError($"Choice item '{item.Id}' has no options.");
+                break;
+
+            case InformationItemType.Choice when !HasUniqueNonEmptyValues(item.Options):
+                yield return RequestError($"Choice item '{item.Id}' has empty or duplicate option values.");
+                break;
+
+            case InformationItemType.Group when item.Items.Count == 0:
+                yield return RequestError($"Group item '{item.Id}' has no nested items.");
+                break;
+
+            case not InformationItemType.Group when item.Items.Count > 0:
+                yield return RequestError($"Item '{item.Id}' is a {item.Type} but has nested items; only groups nest.");
+                break;
+        }
     }
 
     public IReadOnlyCollection<StepProcessingMessage> ValidateResponse(
@@ -111,7 +125,15 @@ internal sealed class InformationValidator : IInformationValidator
 
         var answered = MatchAnswers(request, response, questions, errors);
 
-        CheckAnswers(questions.Values, answered, errors);
+        // Only the questions the answers enable must be answered; the answers of a disabled one are
+        // not counted when deciding what is enabled (ADR 0024).
+        var enabled = request.EnabledItemIds(
+            answered.ToDictionary(
+                x => x.Key,
+                x => (IReadOnlyList<string>)[.. x.Value.Answers.Select(answer => answer?.Value).OfType<string>()],
+                StringComparer.Ordinal));
+
+        CheckAnswers(questions.Values, answered, enabled, errors);
 
         return errors;
     }
@@ -154,16 +176,28 @@ internal sealed class InformationValidator : IInformationValidator
         return answered;
     }
 
-    // Every question has an answer, as many as it takes, each fitting the question's type.
+    // Every enabled question has an answer, as many as it takes, each fitting the question's type; a
+    // disabled question takes none.
     private static void CheckAnswers(
         IEnumerable<InformationItem> questions,
         Dictionary<string, InformationResponseItem> answered,
+        IReadOnlySet<string> enabled,
         List<StepProcessingMessage> errors)
     {
         foreach (var question in questions)
         {
             if (question.Type is InformationItemType.Group or InformationItemType.Display)
             {
+                continue;
+            }
+
+            if (!enabled.Contains(question.Id))
+            {
+                if (answered.TryGetValue(question.Id, out var disabled) && disabled.Answers.Count > 0)
+                {
+                    errors.Add(AnswerError($"Question '{question.Id}' does not apply to the answers given and takes no answer."));
+                }
+
                 continue;
             }
 
@@ -186,6 +220,56 @@ internal sealed class InformationValidator : IInformationValidator
             {
                 errors.Add(AnswerError($"Answer '{answer?.Value}' does not fit question '{question.Id}' ({Describe(question)})."));
             }
+        }
+    }
+
+    // A condition tests an earlier question (so conditions never form a cycle), with an operator its
+    // type supports and a value that fits it.
+    private static IEnumerable<StepProcessingMessage> ValidateConditions(
+        InformationItem item,
+        Dictionary<string, InformationItem> questions,
+        Dictionary<string, InformationItem> earlier)
+    {
+        foreach (var condition in item.EnableWhen ?? [])
+        {
+            if (condition is null || string.IsNullOrWhiteSpace(condition.Question))
+            {
+                yield return RequestError($"Item '{item.Id}' has an enableWhen condition without a question.");
+                continue;
+            }
+
+            if (!earlier.TryGetValue(condition.Question, out var question))
+            {
+                yield return RequestError(questions.ContainsKey(condition.Question) && !string.Equals(condition.Question, item.Id, StringComparison.Ordinal)
+                    ? $"Item '{item.Id}' has a condition on question '{condition.Question}', which comes after it; a condition tests an earlier question."
+                    : $"Item '{item.Id}' has a condition on '{condition.Question}', which is not an earlier question of the request.");
+                continue;
+            }
+
+            if (!Enum.IsDefined(condition.Operator))
+            {
+                yield return RequestError($"Item '{item.Id}' has a condition with an unknown operator.");
+            }
+            else if (condition.Operator == InformationConditionOperator.Exists)
+            {
+                if (!bool.TryParse(condition.Answer, out _))
+                {
+                    yield return RequestError($"Item '{item.Id}' has an exists condition on '{question.Id}' whose answer is not true or false.");
+                }
+            }
+            else if (condition.Operator is not (InformationConditionOperator.Equals or InformationConditionOperator.NotEquals) && !question.Type.IsOrdered())
+            {
+                yield return RequestError($"Item '{item.Id}' compares '{question.Id}' with {condition.Operator}, but a {question.Type} answer has no order; use Equals, NotEquals or Exists.");
+            }
+            else if (!Fits(question, condition.Answer))
+            {
+                yield return RequestError($"Item '{item.Id}' has a condition on '{question.Id}' whose answer '{condition.Answer}' does not fit the question ({Describe(question)}).");
+            }
+        }
+
+        if (!Enum.IsDefined(item.EnableBehavior))
+        {
+            yield return RequestError($"Item '{item.Id}' has an unknown enableBehavior.");
         }
     }
 
