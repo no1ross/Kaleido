@@ -7,7 +7,7 @@ using System.Reflection;
 internal sealed partial record ProcessStepRegistration
 {
     internal ProcessorStepRegistryItem ToRegistryItem(
-        ITypeDescriber TypeDescriber,
+        ITypeDescriber typeDescriber,
         IConstraintMapper constraintMapper)
     {
         return new ProcessorStepRegistryItem
@@ -24,7 +24,7 @@ internal sealed partial record ProcessStepRegistration
             Authorization = Metadata.Authorization,
             // An information step's input is described by its pending InformationRequest,
             // not by its fixed InformationRequestId/Items shape.
-            Fields = IsInformationStep ? [] : ToInputDescriptors(TypeDescriber, constraintMapper),
+            Fields = IsInformationStep ? [] : ToInputDescriptors(typeDescriber, constraintMapper),
             Dependencies = Dependencies
                 .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.ToSummary())
@@ -37,7 +37,7 @@ internal sealed partial record ProcessStepRegistration
                 .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.ToSummary())
                 .ToArray(),
-            Result = ToResultDescriptor(TypeDescriber),
+            Result = ToResultDescriptor(typeDescriber),
         };
     }
 
@@ -64,7 +64,7 @@ internal sealed partial record ProcessStepRegistration
     }
 
     private ProcessorInputFieldDescriptor[] ToInputDescriptors(
-        ITypeDescriber TypeDescriber,
+        ITypeDescriber typeDescriber,
         IConstraintMapper constraintMapper)
     {
         var properties = StepType.GetProperties();
@@ -84,7 +84,7 @@ internal sealed partial record ProcessStepRegistration
             .Select(property =>
                 ToInputDescriptor(
                     property,
-                    TypeDescriber,
+                    typeDescriber,
                     constraintMapper,
                     property.GetCustomAttribute<LookupAttribute>() is { } lookup
                         ? new LookupMetadata
@@ -109,7 +109,7 @@ internal sealed partial record ProcessStepRegistration
 
     private static ProcessorInputFieldDescriptor ToInputDescriptor(
         PropertyInfo property,
-        ITypeDescriber TypeDescriber,
+        ITypeDescriber typeDescriber,
         IConstraintMapper constraintMapper,
         LookupMetadata? lookup)
     {
@@ -123,7 +123,7 @@ internal sealed partial record ProcessStepRegistration
             Description =
                 property.GetCustomAttribute<DescriptionAttribute>()?.Description
                 ?? display?.GetDescription(),
-            DataType = TypeDescriber.GetDescriptor(property),
+            DataType = typeDescriber.GetDescriptor(property),
             Classifications = property.GetDataClassificationNames(),
             Lookup = lookup,
             Constraints = constraintMapper.Map(property),
@@ -131,7 +131,7 @@ internal sealed partial record ProcessStepRegistration
     }
 
     private ProcessorStepResultDescriptor? ToResultDescriptor(
-        ITypeDescriber TypeDescriber)
+        ITypeDescriber typeDescriber)
     {
         if (StepResultType is null)
         {
@@ -144,20 +144,20 @@ internal sealed partial record ProcessStepRegistration
                 .Select(property =>
                     ToOutputDescriptor(
                         property,
-                        TypeDescriber))
+                        typeDescriber))
                 .ToArray(),
         };
     }
 
     private static ProcessorOutputFieldDescriptor ToOutputDescriptor(
         PropertyInfo property,
-        ITypeDescriber TypeDescriber)
+        ITypeDescriber typeDescriber)
     {
         return new ProcessorOutputFieldDescriptor
         {
             Name = property.Name,
             Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description,
-            DataType = TypeDescriber.GetDescriptor(property),
+            DataType = typeDescriber.GetDescriptor(property),
             Classifications = property.GetDataClassificationNames(),
         };
     }
