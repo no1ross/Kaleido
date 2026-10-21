@@ -1,9 +1,5 @@
 using System.Text.Json;
 using Kaleido.Exceptions;
-using Kaleido.Http.Queryable;
-using Kaleido.Queryable;
-using Kaleido.Queryable.Metadata;
-using Kaleido.Queryable.Query;
 
 namespace Kaleido.Http.Queryable.UnitTests;
 
@@ -435,7 +431,7 @@ public sealed class QueryBodyResolverTests
     }
 
     public static TheoryData<Type> Int32FieldTypes { get; } =
-        new() { typeof(int), typeof(uint), typeof(short), typeof(ushort), typeof(byte), typeof(sbyte), typeof(int?) };
+        [typeof(int), typeof(uint), typeof(short), typeof(ushort), typeof(byte), typeof(sbyte), typeof(int?)];
 
     [Theory]
     [MemberData(nameof(Int32FieldTypes))]

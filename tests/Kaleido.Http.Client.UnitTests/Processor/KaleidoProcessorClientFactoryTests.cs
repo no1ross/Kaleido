@@ -1,6 +1,5 @@
 using Kaleido.Exceptions;
 using Kaleido.Http.Processor;
-using Kaleido.Observability;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Client.Processor.UnitTests;

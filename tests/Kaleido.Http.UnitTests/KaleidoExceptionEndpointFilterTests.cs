@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Kaleido.Http.Middleware;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;

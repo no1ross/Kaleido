@@ -130,7 +130,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         var builder = new Mock<IKaleidoBuilder>();
         builder.SetupGet(x => x.Assemblies).Returns([]);
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.Object.AddQueryable());
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.Object.AddQueryable);
 
         Assert.Equal(ConfigurationErrorCodes.MissingAssembly, exception.Code);
     }

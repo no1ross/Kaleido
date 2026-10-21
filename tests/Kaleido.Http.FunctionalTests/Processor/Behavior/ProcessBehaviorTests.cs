@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Kaleido.Http.Client;
-using Kaleido.Http.Processor;
 
 namespace Kaleido.Http.FunctionalTests.Processor.Behavior;
 

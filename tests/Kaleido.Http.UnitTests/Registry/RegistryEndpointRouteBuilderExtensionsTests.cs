@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Kaleido.Exceptions;
-using Kaleido.Http.Processor;
 using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry.Contracts;
 using Kaleido.UnitTests;

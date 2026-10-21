@@ -1,6 +1,5 @@
 using Kaleido.Testing;
 using Microsoft.CodeAnalysis;
-using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Queryable.QuerySourceAttributeAnalyzer>;
 

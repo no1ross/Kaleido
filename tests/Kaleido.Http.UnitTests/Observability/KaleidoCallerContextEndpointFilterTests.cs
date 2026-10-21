@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using Kaleido.Http.Observability;
-using Kaleido.Observability;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;

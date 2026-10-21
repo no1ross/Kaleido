@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Security.Claims;
-using Kaleido.Observability;
-using Kaleido.Processor.Observability;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,13 +60,24 @@ public sealed class KaleidoCorrelationEndpointFilterTests
         string? callingStep = null)
     {
         if (requestId is not null)
+        {
             context.Request.Headers[KaleidoCorrelationHeaders.RequestId] = requestId;
+        }
+
         if (processId.HasValue)
+        {
             context.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = processId.Value.ToString();
+        }
+
         if (callingProcessor is not null)
+        {
             context.Request.Headers[KaleidoCorrelationHeaders.CallingProcessor] = callingProcessor;
+        }
+
         if (callingStep is not null)
+        {
             context.Request.Headers[KaleidoCorrelationHeaders.CallingStep] = callingStep;
+        }
     }
 
     [Fact]

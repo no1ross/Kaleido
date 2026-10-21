@@ -20,6 +20,12 @@
         <!-- xUnit1000 kept enabled: internal test classes are NOT discovered by
              the runner — fixtures must stay public even when the SUT is internal -->
         <NoWarn>1591</NoWarn>
+        <!-- #406: a warning in a test project fails the build, as in src/; IDE rules (unused usings,
+             naming...) run in the build too. -->
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <!-- Needed for IDE0005 (unused usings) in the build (dotnet/roslyn#41640); CS1591 stays off. -->
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     <ItemGroup>
         <Using Include="Xunit" />

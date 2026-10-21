@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis.Diagnostics;
-using Xunit;
 
 namespace Kaleido.Analyzers.UnitTests;
 
