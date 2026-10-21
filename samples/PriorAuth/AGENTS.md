@@ -51,6 +51,14 @@
 - Request paths throw `KaleidoValidationException` with the sample's own codes (`Common/Compliance/PriorAuthErrorCodes.cs`), never `InvalidOperationException` (a 500 the caller cannot act on) and never Kaleido's `qry_*`/`pro_*` codes. Step handlers reject with a business message instead of throwing.
 - Query parameters that a source needs are `[Required]` (nullable for value types, e.g. `Guid? ProcessId`), so Kaleido rejects a missing one with 400 before the source runs.
 
+## Conditional questions
+- Configured questionnaire items carry `EnableWhen` (binding key, operator, answer). `QuestionnaireTranslation` maps them onto the information request (binding key -> item id; operator names or FHIR symbols). An unknown operator makes Kaleido reject the request as not well-formed (`pro_information_request_invalid`) instead of asking the question always.
+- Kaleido decides which questions apply (ADR 0024). The MCP adapter asks them round by round, and the UI (`information-conditions.ts`) shows a question once it applies and never sends the answers of the others.
+- A handler gets no answer for a question that did not apply. `CaptureMriInfoHandler` reads a missing Laterality (BodyPart Spine) as `Laterality.None`.
+
+## What a view returns
+- View output records describe every property (`[Description]`): KAL2024 is an error in the samples. The descriptions reach the agent with the data (`fieldDescriptions` in MCP results).
+
 ## Sensitive data in events
 - Member fields are classified with `[Phi]` (name, display name, date of birth) and `[Pii]` (email, phone, address) from `Common/Compliance/PriorAuthDataClassifications.cs`.
 - Kaleido redacts classified values in event payloads before the outbox write (ADR 0013); responses to callers keep the real values.

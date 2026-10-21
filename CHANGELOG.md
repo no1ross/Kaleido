@@ -24,6 +24,13 @@ sections.
   `IKaleidoTransactions` makes a state change and its event atomic. `IKaleidoOutboxStore.EnqueueEventsAsync`
   is now `AddAsync`. New builder methods `AddContextStore`, `AddIdempotencyStore`, `AddOutboxStore`,
   `AddTransactions`; new startup codes `conflicting_store`, `conflicting_outbox`.
+- **Conditional questions** ([ADR 0024](docs/decisions/0024-conditional-questions.md), #235):
+  `InformationItem.EnableWhen` (`InformationCondition`: question, operator, answer) and `EnableBehavior`.
+  Only enabled questions must be answered; an answer to a disabled one is rejected. The MCP adapter asks
+  in rounds (forms, and chat with `answersToken`) and never shows the agent the conditions. Additive on
+  the wire.
+- **Output descriptions for agents** (#213): new consumer rule KAL2024 (step results and view outputs
+  need descriptions; an error in the samples). MCP query and step results carry `fieldDescriptions`.
 - **SQLite registrations:** `UseSqliteKaleidoContextStore` is replaced by `AddSqliteContextStore`,
   `AddSqliteOutboxStore` and `AddSqliteIdempotencyStore` (one database; `connection_string_mismatch`);
   `ISqliteKaleidoTransaction` lets a host's own outbox join the SQLite transaction (#408).
