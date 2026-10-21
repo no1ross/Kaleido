@@ -4,8 +4,9 @@ namespace Kaleido.Samples.PriorAuth.Compliance;
 
 /// <summary>
 /// The sample's data classifications. Kaleido redacts values marked with them in event payloads
-/// (never in responses to the caller). Without <c>AddRedaction</c> they are erased; a host chooses
-/// per classification, e.g. <c>services.AddRedaction(r => r.SetHmacRedactor(..., new DataClassificationSet(PriorAuthDataClassifications.Pii)))</c>.
+/// (never in responses to the caller), per the event policy every service sets with
+/// <see cref="PriorAuthEventRedaction.AddPriorAuthEventRedaction"/>: PHI erased, PII kept. Log
+/// redaction (<c>AddRedaction</c>) is configured separately (ADR 0025).
 /// </summary>
 public static class PriorAuthDataClassifications
 {

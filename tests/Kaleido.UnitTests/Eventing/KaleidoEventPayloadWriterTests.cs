@@ -17,13 +17,16 @@ public sealed class KaleidoEventPayloadWriterTests
     private static readonly DataClassification Pii = new("test", "pii");
 
     private static KaleidoEventPayloadWriter CreateSut(
-        IRedactorProvider? redactorProvider = null,
+        IKaleidoEventRedactorProvider? redactorProvider = null,
         IEnumerable<IKaleidoEventRedactor>? redactors = null,
         ILogger<KaleidoEventPayloadWriter>? logger = null) =>
         new(
             redactors ?? [],
-            redactorProvider is null ? [] : [redactorProvider],
+            redactorProvider ?? NoEventPolicy(),
             logger ?? Mock.Of<ILogger<KaleidoEventPayloadWriter>>());
+
+    // No AddEventClassificationRedaction: nothing is configured, every classified value is erased.
+    private static IKaleidoEventRedactorProvider NoEventPolicy() => Mock.Of<IKaleidoEventRedactorProvider>();
 
     private static Member AMember() =>
         new()
@@ -77,7 +80,7 @@ public sealed class KaleidoEventPayloadWriterTests
         JsonDocument.Parse(entry.Payload).RootElement.GetProperty("event").GetProperty("records")[0];
 
     [Fact]
-    public void Write_WithoutARedactorProvider_ErasesClassifiedValuesAndKeepsTheRest()
+    public void Write_WithoutAnEventPolicy_ErasesClassifiedValuesAndKeepsTheRest()
     {
         var record = FirstRecord(CreateSut().Write(QueryEnvelope(AMember())));
 
@@ -89,7 +92,7 @@ public sealed class KaleidoEventPayloadWriterTests
     }
 
     [Fact]
-    public void Write_WithoutARedactorProvider_WarnsOnce()
+    public void Write_WithoutAnEventPolicy_WarnsOnce()
     {
         var logger = new Mock<ILogger<KaleidoEventPayloadWriter>>();
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
@@ -101,6 +104,20 @@ public sealed class KaleidoEventPayloadWriterTests
         logger.Verify(
             x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+    }
+
+    // A configured policy that erases (no redactor, no fallback) is a choice, not a mistake: no warning.
+    [Fact]
+    public void Write_WithAnEventPolicyThatErases_ErasesWithoutWarning()
+    {
+        var logger = new Mock<ILogger<KaleidoEventPayloadWriter>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        var policy = Mock.Of<IKaleidoEventRedactorProvider>(x => x.IsConfigured);
+
+        var record = FirstRecord(CreateSut(policy, logger: logger.Object).Write(QueryEnvelope(AMember())));
+
+        Assert.Equal(string.Empty, record.GetProperty("name").GetString());
+        Assert.DoesNotContain(logger.Invocations, x => x.Method.Name == nameof(ILogger.Log));
     }
 
     [Fact]
@@ -219,9 +236,11 @@ public sealed class KaleidoEventPayloadWriterTests
     }
 
     // Shows the classification and the text it was given: redacted({phi|pii|several}|{value}).
-    private sealed class EchoRedactorProvider : IRedactorProvider
+    private sealed class EchoRedactorProvider : IKaleidoEventRedactorProvider
     {
         public List<DataClassificationSet> Requested { get; } = [];
+
+        public bool IsConfigured => true;
 
         public Redactor GetRedactor(DataClassificationSet classifications)
         {

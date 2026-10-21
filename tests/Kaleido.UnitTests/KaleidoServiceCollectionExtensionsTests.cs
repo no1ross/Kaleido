@@ -359,6 +359,61 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     }
 
     // ---------------------------------------------------------------------------
+    // Event classification redaction (ADR 0025)
+
+    private static Kaleido.Eventing.KaleidoEventRedactionMap RedactionMap(IServiceCollection services) =>
+        Assert.IsType<Kaleido.Eventing.KaleidoEventRedactionMap>(Single<Kaleido.Eventing.KaleidoEventRedactionMap>(services).ImplementationInstance);
+
+    // Without AddEventClassificationRedaction the event policy is empty (classified values are erased, with a warning).
+    [Fact]
+    public void AddKaleido_RegistersAnEmptyEventRedactionPolicy_AndNoIRedactorProvider()
+    {
+        var services = NewBuilder().Services;
+
+        Assert.False(RedactionMap(services).IsConfigured);
+        Assert.Equal(typeof(Kaleido.Eventing.KaleidoEventRedactorProvider), Single<Kaleido.Eventing.IKaleidoEventRedactorProvider>(services).ImplementationType);
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(Microsoft.Extensions.Compliance.Redaction.IRedactorProvider));
+    }
+
+    [Fact]
+    public void AddEventClassificationRedaction_ConfiguresTheEventPolicy_AddingToEachCall()
+    {
+        var pii = new Microsoft.Extensions.Compliance.Classification.DataClassification("test", "pii");
+        var phi = new Microsoft.Extensions.Compliance.Classification.DataClassification("test", "phi");
+
+        var builder = NewBuilder();
+        Assert.Same(builder, builder.AddEventClassificationRedaction(r => r.SetRedactor<Microsoft.Extensions.Compliance.Redaction.NullRedactor>(new Microsoft.Extensions.Compliance.Classification.DataClassificationSet(pii))));
+        builder.AddEventClassificationRedaction(r => r.SetFallbackRedactor<Microsoft.Extensions.Compliance.Redaction.NullRedactor>());
+
+        var map = RedactionMap(builder.Services);
+        Assert.True(map.IsConfigured);
+        Assert.Equal(typeof(Microsoft.Extensions.Compliance.Redaction.NullRedactor), map.RedactorFor(new(pii)));
+        Assert.Equal(typeof(Microsoft.Extensions.Compliance.Redaction.NullRedactor), map.RedactorFor(new(phi)));
+    }
+
+    // Called on a builder whose collection has no policy yet (a host composing its own builder).
+    [Fact]
+    public void AddEventClassificationRedaction_WithoutAPolicyRegistered_RegistersOne()
+    {
+        var services = new ServiceCollection();
+        var builder = new Mock<IKaleidoBuilder>();
+        builder.SetupGet(x => x.Services).Returns(services);
+
+        builder.Object.AddEventClassificationRedaction(_ => { });
+
+        Assert.True(RedactionMap(services).IsConfigured);
+    }
+
+    [Fact]
+    public void AddEventClassificationRedaction_WithNullArguments_Throws()
+    {
+        IKaleidoBuilder? none = null;
+
+        Assert.Throws<ArgumentNullException>(() => none!.AddEventClassificationRedaction(_ => { }));
+        Assert.Throws<ArgumentNullException>(() => NewBuilder().AddEventClassificationRedaction(null!));
+    }
+
+    // ---------------------------------------------------------------------------
     // Stores, transactions and the outbox choice (ADR 0023)
 
     private static IKaleidoBuilder NewBuilder(IServiceCollection? services = null) =>

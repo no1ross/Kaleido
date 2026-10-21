@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Compliance.Classification;
-using Microsoft.Extensions.Compliance.Redaction;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Eventing;
@@ -22,20 +21,20 @@ internal sealed partial class KaleidoEventPayloadWriter : IKaleidoEventPayloadWr
     private static readonly JsonSerializerOptions FormatOptions = new DefaultJsonTypeInfoResolver().ToOutboxJsonOptions();
 
     private readonly IKaleidoEventRedactor[] _redactors;
-    private readonly IRedactorProvider? _redactorProvider;
+    private readonly IKaleidoEventRedactorProvider _redactorProvider;
     private readonly ILogger<KaleidoEventPayloadWriter> _logger;
     private readonly JsonSerializerOptions _options;
     private int _erasureLogged;
 
-    // The host's IRedactorProvider (AddRedaction) is optional: Kaleido never registers one, so it never
-    // shadows the host's. Without one, classified values are erased.
+    // The event policy (AddEventClassificationRedaction), never the host's log policy (AddRedaction): logs and events
+    // are configured independently (ADR 0025). Without a policy, classified values are erased.
     public KaleidoEventPayloadWriter(
         IEnumerable<IKaleidoEventRedactor> redactors,
-        IEnumerable<IRedactorProvider> redactorProviders,
+        IKaleidoEventRedactorProvider redactorProvider,
         ILogger<KaleidoEventPayloadWriter> logger)
     {
         _redactors = [.. redactors];
-        _redactorProvider = redactorProviders.LastOrDefault();
+        _redactorProvider = redactorProvider;
         _logger = logger;
         _options = new DefaultJsonTypeInfoResolver { Modifiers = { RedactClassifiedProperties } }.ToOutboxJsonOptions();
     }
@@ -90,14 +89,16 @@ internal sealed partial class KaleidoEventPayloadWriter : IKaleidoEventPayloadWr
 
     private Func<string, string> RedactorFor(DataClassificationSet classifications)
     {
-        if (_redactorProvider?.GetRedactor(classifications) is { } redactor)
+        if (_redactorProvider.GetRedactor(classifications) is { } redactor)
         {
             return redactor.Redact;
         }
 
+        // Erased: by the configured policy (no redactor and no fallback), or - warned once - because no
+        // event policy is configured.
         return _ =>
         {
-            if (Interlocked.Exchange(ref _erasureLogged, 1) == 0)
+            if (!_redactorProvider.IsConfigured && Interlocked.Exchange(ref _erasureLogged, 1) == 0)
             {
                 LogClassifiedValuesErased(_logger);
             }
@@ -115,6 +116,6 @@ internal sealed partial class KaleidoEventPayloadWriter : IKaleidoEventPayloadWr
             _ => JsonSerializer.Serialize(value, value.GetType(), FormatOptions),
         };
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Event payloads contain classified values (DataClassificationAttribute) and no IRedactorProvider is registered: the values are erased. Register AddRedaction to choose how each classification is redacted (erase, HMAC, encryption).")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Event payloads contain classified values (DataClassificationAttribute) and no event redaction is configured: the values are erased. Call AddEventClassificationRedaction on the Kaleido builder to choose how each classification is redacted in events (erase, HMAC, encryption, keep); log redaction (AddRedaction) does not apply to events.")]
     private static partial void LogClassifiedValuesErased(ILogger logger);
 }

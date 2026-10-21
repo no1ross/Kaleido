@@ -1,4 +1,5 @@
 using Kaleido.Authorization;
+using Microsoft.Extensions.Compliance.Redaction;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -9,7 +10,7 @@ namespace Kaleido;
 /// <summary>
 /// Registers the Kaleido core on an <see cref="IServiceCollection"/>: <see cref="AddKaleido"/> is the
 /// entry point; the other methods extend the returned <see cref="IKaleidoBuilder"/> - events
-/// (<see cref="AddEventPublisher{TPublisher}"/>, <see cref="AddEventRedactor{TRedactor}"/>), the stores
+/// (<see cref="AddEventPublisher{TPublisher}"/>, <see cref="AddEventRedactor{TRedactor}"/>, <see cref="AddEventClassificationRedaction"/>), the stores
 /// (<see cref="AddContextStore{TStore}"/>, <see cref="AddIdempotencyStore{TStore}"/>), the outbox
 /// (<see cref="AddOutboxStore{TStore}"/>, <see cref="AddOutbox{TOutbox}"/>,
 /// <see cref="AddDirectPublication"/>) and <see cref="AddTransactions{TTransactions}"/>.
@@ -107,9 +108,7 @@ public static class KaleidoServiceCollectionExtensions
         services.TryAddScoped<IKaleidoOutbox, KaleidoStoreOutbox>();
         services.TryAddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
         services.AddHostedService<KaleidoEventRelay>();
-        services.TryAddSingleton<IKaleidoEventSignal, KaleidoEventSignal>();
-        services.TryAddSingleton<IKaleidoEventPayloadWriter, KaleidoEventPayloadWriter>();
-        services.TryAddScoped<IKaleidoEventWriter, KaleidoEventWriter>();
+        AddEventWriting(services);
         services.TryAddSingleton<IKaleidoAuthorizationEvaluator, KaleidoAuthorizationEvaluator>();
         services.TryAddSingleton<ITypeDescriber, TypeDescriber>();
         services.TryAddSingleton<IConstraintMapper, ConstraintMapper>();
@@ -121,6 +120,17 @@ public static class KaleidoServiceCollectionExtensions
         builder.AddQueryable();
 
         return builder;
+    }
+
+    // How events are written: the relay's wake-up signal, the event redaction policy (empty until
+    // AddEventClassificationRedaction, ADR 0025), the payload writer that applies it and the per-request writer.
+    private static void AddEventWriting(IServiceCollection services)
+    {
+        services.TryAddSingleton<IKaleidoEventSignal, KaleidoEventSignal>();
+        services.TryAddSingleton(new KaleidoEventRedactionMap());
+        services.TryAddSingleton<IKaleidoEventRedactorProvider, KaleidoEventRedactorProvider>();
+        services.TryAddSingleton<IKaleidoEventPayloadWriter, KaleidoEventPayloadWriter>();
+        services.TryAddScoped<IKaleidoEventWriter, KaleidoEventWriter>();
     }
 
     /// <summary>
@@ -150,8 +160,8 @@ public static class KaleidoServiceCollectionExtensions
     /// registered as a singleton.
     /// </summary>
     /// <remarks>
-    /// For classified properties (<c>DataClassificationAttribute</c>) no redactor is needed: register
-    /// <c>AddRedaction</c> to choose how each classification is redacted. See
+    /// For classified properties (<c>DataClassificationAttribute</c>) no redactor is needed: choose how
+    /// each classification is redacted with <see cref="AddEventClassificationRedaction"/>. See
     /// <see cref="IKaleidoEventRedactor"/>.
     /// </remarks>
     /// <example>
@@ -167,6 +177,57 @@ public static class KaleidoServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         builder.Services.AddSingleton<IKaleidoEventRedactor, TRedactor>();
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Chooses how classified values (<c>DataClassificationAttribute</c>, e.g. <c>[Phi]</c>, <c>[Pii]</c>)
+    /// are redacted in event payloads, independently of log redaction: the host's <c>AddRedaction</c>
+    /// policy applies to logs only, this one to events only (ADR 0025).
+    /// </summary>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <param name="configure">
+    /// Maps sets of classifications to redactors with the standard <see cref="IRedactionBuilder"/> API,
+    /// so Microsoft's extensions (e.g. <c>SetHmacRedactor</c>) work in it.
+    /// </param>
+    /// <returns>The same builder, for chaining.</returns>
+    /// <remarks>
+    /// <para>
+    /// A classified value gets the redactor of its exact set of classifications, else the fallback
+    /// (<see cref="IRedactionBuilder.SetFallbackRedactor{T}"/>); without either it is erased. Without
+    /// <c>AddEventClassificationRedaction</c> every classified value is erased, and a warning says so once.
+    /// </para>
+    /// <para>
+    /// Keep a classification unredacted in events with <see cref="NullRedactor"/>. Redactor types are
+    /// registered as singletons. Calling it again adds to the same policy.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// Logs never carry PHI or PII; events keep PII and erase PHI:
+    /// <code>
+    /// builder.Services.AddRedaction(r =&gt; r.SetRedactor&lt;ErasingRedactor&gt;(new(Phi), new(Pii)));   // logs
+    ///
+    /// builder.Services.AddKaleido(builder.Configuration)
+    ///     .AddEventPublisher&lt;WarehousePublisher&gt;()
+    ///     .AddEventClassificationRedaction(r =&gt; r.SetRedactor&lt;NullRedactor&gt;(new DataClassificationSet(Pii)));  // events: PHI erased (no redactor)
+    /// </code>
+    /// </example>
+    public static IKaleidoBuilder AddEventClassificationRedaction(this IKaleidoBuilder builder, Action<IRedactionBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var map = builder.Services.LastOrDefault(x => x.ServiceType == typeof(KaleidoEventRedactionMap))?.ImplementationInstance as KaleidoEventRedactionMap;
+
+        if (map is null)
+        {
+            map = new KaleidoEventRedactionMap();
+            builder.Services.AddSingleton(map);
+        }
+
+        map.IsConfigured = true;
+        configure(new KaleidoEventRedactionBuilder(builder.Services, map));
 
         return builder;
     }
