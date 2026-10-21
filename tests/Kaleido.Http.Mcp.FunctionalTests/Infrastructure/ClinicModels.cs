@@ -106,6 +106,25 @@ public static class VisitQuestions
             }
         ]
     };
+
+    // Asked for this patient: what happened, only when the visit is urgent (EnableWhen, ADR 0024).
+    public const int ConditionalPatientId = 9;
+    public const string WhatHappened = "whatHappened";
+
+    public static InformationRequest Conditional { get; } = Request with
+    {
+        Items =
+        [
+            .. Request.Items,
+            new InformationItem
+            {
+                Id = WhatHappened,
+                Text = "What happened?",
+                Type = InformationItemType.Text,
+                EnableWhen = [new InformationCondition { Question = Urgent, Operator = InformationConditionOperator.Equals, Answer = "true" }]
+            }
+        ]
+    };
 }
 
 [ProcessStep(Version = "1.0", DisplayName = "Start visit", Description = "Opens a visit for a patient.")]
@@ -123,7 +142,8 @@ public sealed class StartVisitHandler : IProcessStepHandler<StartVisitStep>
         ProcessStepContext context,
         CancellationToken cancellationToken = default) =>
         Task.FromResult(
-            ProcessStepHandlerResult.RequireInformation<VisitQuestionsStep>(VisitQuestions.Request));
+            ProcessStepHandlerResult.RequireInformation<VisitQuestionsStep>(
+                processStep.PatientId == VisitQuestions.ConditionalPatientId ? VisitQuestions.Conditional : VisitQuestions.Request));
 }
 
 [ProcessStep(Version = "1.0", DisplayName = "Visit questions", Description = "Answers the visit intake questions.")]

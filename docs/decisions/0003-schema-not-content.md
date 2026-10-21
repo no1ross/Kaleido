@@ -1,6 +1,6 @@
 # 0003. The framework owns the schema, the implementer owns the content; two kinds of steps
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by [ADR 0024](./0024-conditional-questions.md): Kaleido evaluates the implementer's conditions; which questions to ask stays the implementer's
 - **Date:** 2026-10-08
 - **Related:** #142, #209
 

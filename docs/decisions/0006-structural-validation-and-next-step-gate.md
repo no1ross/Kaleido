@@ -1,6 +1,6 @@
 # 0006. Structural-only answer validation; only next steps run
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by [ADR 0024](./0024-conditional-questions.md): only enabled questions must be answered; an answer to a disabled question is rejected
 - **Date:** 2026-10-08
 - **Related:** #142, #138
 

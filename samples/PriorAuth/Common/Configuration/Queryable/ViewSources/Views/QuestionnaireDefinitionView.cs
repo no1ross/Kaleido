@@ -1,17 +1,25 @@
+using System.ComponentModel;
+
 namespace Kaleido.Samples.PriorAuth.Configuration.Queryable.ViewSources.Views;
 
 public sealed record QuestionnaireDefinitionView
 {
+    [Description("The identifier of the questionnaire, shared by all its versions.")]
     public string QuestionnaireId { get; init; } = string.Empty;
 
+    [Description("The version of the questionnaire definition.")]
     public string Version { get; init; } = string.Empty;
 
+    [Description("The internal name of the questionnaire.")]
     public string Name { get; init; } = string.Empty;
 
+    [Description("The title shown to the person answering the questionnaire.")]
     public string Title { get; init; } = string.Empty;
 
+    [Description("The description of the questionnaire; null if none is defined.")]
     public string? Description { get; init; }
 
+    [Description("The questions of the questionnaire, in display order, each with its answer options and enable-when conditions.")]
     public QuestionnaireItemView[] Items { get; init; } = [];
 }
 

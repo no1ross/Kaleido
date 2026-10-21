@@ -1,6 +1,6 @@
 # 0002. Information requests use Kaleido's own contract, modelled on the FHIR Questionnaire structure
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by [ADR 0024](./0024-conditional-questions.md): conditions on earlier answers (`enableWhen`) are part of the contract
 - **Date:** 2026-10-08
 - **Related:** #142
 

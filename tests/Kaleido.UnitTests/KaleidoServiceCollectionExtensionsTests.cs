@@ -408,7 +408,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var builder = NewBuilder(services);
         services.AddScoped(_ => Mock.Of<Kaleido.Storage.IKaleidoContextStore>());
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddContextStore<OwnContextStore>());
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.AddContextStore<OwnContextStore>);
 
         Assert.Equal(ConfigurationErrorCodes.ConflictingStore, exception.Code);
     }

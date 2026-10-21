@@ -100,11 +100,11 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `RepeatableStep` | `pro_repeatable_step` | Repeatable step remains eligible after prior execution |
 | `MissingStepResult` | `missing_step_result` | A process execution result had no entry for the executed step (raised as `KaleidoFrameworkException`) |
 | `StepNotAvailable` | `pro_step_not_available` | The submitted step is not a next step: not the pending required step, or not available under the process rules (the initial steps for a new process) |
-| `InformationRequestInvalid` | `pro_information_request_invalid` | A handler returned an information request that is not well-formed (no id or items, duplicate item ids, an item without text, a choice without options, a group without items, nesting outside a group) |
+| `InformationRequestInvalid` | `pro_information_request_invalid` | A handler returned an information request that is not well-formed (no id or items, duplicate item ids, an item without text, a choice without options, a group without items, nesting outside a group, an `enableWhen` condition that does not test an earlier question or whose operator or value does not fit it) |
 | `InformationRequestMissing` | `pro_information_request_missing` | An information step was required without an information request (use `RequireInformation<TNext>`) |
 | `InformationResponseMismatch` | `pro_information_response_mismatch` | Answers were submitted for a request that is not pending: another `informationRequestId`, another step, or nothing was asked |
-| `InformationResponseUnanswered` | `pro_information_response_unanswered` | A presented question has no answer (every question must be answered) |
-| `InformationResponseInvalidAnswer` | `pro_information_response_invalid_answer` | An answer does not fit its question: unknown item, wrong value for the item type, a choice that was not offered, or several answers to a question that does not repeat |
+| `InformationResponseUnanswered` | `pro_information_response_unanswered` | A question that applies has no answer (every question enabled by the answers must be answered; ADR 0024) |
+| `InformationResponseInvalidAnswer` | `pro_information_response_invalid_answer` | An answer does not fit its question: unknown item, wrong value for the item type, a choice that was not offered, several answers to a question that does not repeat, or an answer to a question that does not apply (its `enableWhen` does not hold) |
 
 Information-request validation is structural only; see [`INFORMATION_REQUESTS.md`](./INFORMATION_REQUESTS.md#validation).
 
