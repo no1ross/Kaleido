@@ -85,6 +85,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.DefaultAuthorization = new(null, ["radiology"]);
     })
     .AddEventPublisher<HttpEventPublisher>()
+    // Events: PHI erased, PII kept; logs are configured separately (ADR 0025).
+    .AddPriorAuthEventRedaction()
     // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
     .AddHttp(o => o.IncludeFrameworkMessages = true)
     // Process state, Kaleido's outbox and idempotent requests in one SQLite database: a step's state
