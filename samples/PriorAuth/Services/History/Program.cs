@@ -50,6 +50,8 @@ builder.Services.AddKaleido(builder.Configuration, o =>
         o.DefaultAuthorization = new(DevAuthPolicies.AuthenticatedUser, []);
     })
     .AddEventPublisher<HttpEventPublisher>()
+    // Events: PHI erased, PII kept; logs are configured separately (ADR 0025).
+    .AddPriorAuthEventRedaction()
     // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
     .AddHttp(o => o.IncludeFrameworkMessages = true)
     .AddOpenTelemetry();

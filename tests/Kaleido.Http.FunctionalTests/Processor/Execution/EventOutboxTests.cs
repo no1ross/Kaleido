@@ -170,7 +170,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
     public async Task AClassifiedValue_IsRedactedInTheOutboxAndForThePublisher_ButNotInTheResponse()
     {
         var failing = new RecordingPublisher(alwaysFail: true);
-        var host = await StartHostAsync(failing, retryDelay: TimeSpan.FromMinutes(10), configureServices: AddMaskingRedaction);
+        var host = await StartHostAsync(failing, retryDelay: TimeSpan.FromMinutes(10), configureKaleido: AddMaskingRedaction);
 
         var names = await QueryNamesAsync(host);
 
@@ -184,7 +184,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
 
         await ExecuteAsync("UPDATE OutboxEvents SET NextAttemptUtc = 0");
         var publisher = new RecordingPublisher();
-        await StartHostAsync(publisher, configureServices: AddMaskingRedaction);
+        await StartHostAsync(publisher, configureKaleido: AddMaskingRedaction);
 
         await WaitUntilAsync(() => Task.FromResult(publisher.Events.Any(x => x.EventType == KaleidoEventTypes.QueryExecuted)));
         var published = publisher.Events.First(x => x.EventType == KaleidoEventTypes.QueryExecuted).Event;
@@ -212,7 +212,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
     {
         const string remark = "patient said something private";
         var publisher = new RecordingPublisher();
-        await StartHostAsync(publisher, configureServices: AddMaskingRedaction);
+        await StartHostAsync(publisher, configureKaleido: AddMaskingRedaction);
         var host = _hosts[^1];
 
         using var content = new StringContent(
@@ -229,8 +229,9 @@ public sealed class EventOutboxTests : IAsyncLifetime
         Assert.Contains("***", published, StringComparison.Ordinal);
     }
 
-    private static void AddMaskingRedaction(IServiceCollection services) =>
-        services.AddRedaction(redaction => redaction.SetRedactor<MaskingRedactor>(new DataClassificationSet(FunctionalSensitiveDataAttribute.Sensitive)));
+    // The event policy (ADR 0025): the host's AddRedaction is for logs and does not reach events.
+    private static void AddMaskingRedaction(IKaleidoBuilder kaleido) =>
+        kaleido.AddEventClassificationRedaction(redaction => redaction.SetRedactor<MaskingRedactor>(new DataClassificationSet(FunctionalSensitiveDataAttribute.Sensitive)));
 
     // Runs the query and returns the names the caller got (the real values).
     private static async Task<List<string>> QueryNamesAsync(IHost host)
@@ -247,7 +248,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
         [.. queryExecuted["records"]!.AsArray().Select(x => x!["name"]?.GetValue<string>())];
 
     // Like the PriorAuth services: the host creates the store's schema at startup.
-    private async Task<IHost> StartHostAsync(IEventPublisher publisher, TimeSpan? retryDelay = null, Action<IServiceCollection>? configureServices = null)
+    private async Task<IHost> StartHostAsync(IEventPublisher publisher, TimeSpan? retryDelay = null, Action<IKaleidoBuilder>? configureKaleido = null)
     {
         var host = await new HostBuilder()
             .ConfigureWebHost(webBuilder =>
@@ -257,7 +258,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
                 {
                     services.AddRouting();
                     services.AddSingleton<FunctionalRecordData>();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+                    var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), o =>
                         {
                             o.ServiceName = FunctionalProcessorNames.TestProcessor;
                             o.AuthorizationMode = KaleidoAuthorizationMode.None;
@@ -268,7 +269,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
                         .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
                     services.RemoveAll<IEventPublisher>();
                     services.AddSingleton<IEventPublisher>(publisher);
-                    configureServices?.Invoke(services);
+                    configureKaleido?.Invoke(kaleido);
                 });
                 webBuilder.Configure(app =>
                 {
