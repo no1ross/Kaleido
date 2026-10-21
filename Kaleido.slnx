@@ -91,5 +91,7 @@
     <Project Path="tools/analyzers/Kaleido.Analyzers.Source/Kaleido.Analyzers.Source.csproj" />
     <Project Path="tools/analyzers/Kaleido.Analyzers.Testing/Kaleido.Analyzers.Testing.csproj" />
     <Project Path="tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj" />
+    <File Path="tools/benchmarks/README.md" />
+    <Project Path="tools/benchmarks/Kaleido.Benchmarks/Kaleido.Benchmarks.csproj" />
   </Folder>
 </Solution>
