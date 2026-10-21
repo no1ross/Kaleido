@@ -1014,11 +1014,11 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal("P-2", Assert.Single(posts).Body["patientId"]?.GetValue<string>());
     }
 
-    private async Task<string> MrtrStateAsync()
+    private async Task<string> MrtrStateAsync(ProcessRequiredStep? required = null)
     {
         ClientShowsForms();
         server.Setup(x => x.IsMrtrSupported).Returns(true);
-        StepReturns(StepResponse(required: QuestionsRequired));
+        StepReturns(StepResponse(required: required ?? QuestionsRequired));
 
         var outcome = await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
         posts.Clear();
@@ -1691,6 +1691,213 @@ public sealed class KaleidoToolInvokerTests
 
         Assert.Equal("follow-up", Assert.Single(posts).Body["informationRequestId"]?.GetValue<string>());
         Assert.Equal(["visit-intake", "follow-up"], body["answered"]?.AsArray().Select(x => x?.GetValue<string>()));
+    }
+
+    // ── Questions: conditional (EnableWhen, ADR 0024) ─────────────────────────
+    // The adapter asks one round at a time - only the questions the answers so far decide - and
+    // submits once; the agent and the form never see the conditions.
+
+    private static readonly InformationRequest ConditionalQuestions = new()
+    {
+        InformationRequestId = "visit-intake",
+        Items =
+        [
+            new InformationItem { Id = "urgent", Text = "Urgent?", Type = InformationItemType.Boolean },
+            new InformationItem
+            {
+                Id = "reason",
+                Text = "Why is it urgent?",
+                Type = InformationItemType.Text,
+                EnableWhen = [new InformationCondition { Question = "urgent", Operator = InformationConditionOperator.Equals, Answer = "true" }],
+            },
+        ]
+    };
+
+    private static readonly ProcessRequiredStep ConditionalRequired = QuestionsRequired with { InformationRequest = ConditionalQuestions };
+
+    private readonly List<InformationRequest> roundForms = [];
+
+    private static InformationResponseItem[] Answers(string itemId, string value) =>
+        [new InformationResponseItem { ItemId = itemId, Answers = [new InformationAnswer { Value = value }] }];
+
+    // The form of each round, and the user's answers to it in order.
+    private void FormsAnswer(params InformationResponseItem[][] rounds)
+    {
+        elicitor.Setup(x => x.ToElicitation(It.IsAny<InformationRequest>()))
+            .Callback((InformationRequest round) => roundForms.Add(round))
+            .Returns(new ElicitRequestParams { Message = "Visit intake", RequestedSchema = new ElicitRequestParams.RequestSchema() });
+
+        var sequence = elicitor.SetupSequence(x => x.ToAnswers(It.IsAny<InformationRequest>(), It.IsAny<IReadOnlyDictionary<string, JsonElement>>()));
+
+        foreach (var round in rounds)
+        {
+            sequence = sequence.Returns(round);
+        }
+    }
+
+    private static string[] Ids(InformationRequest round) => [.. round.Items.Select(x => x.Id)];
+
+    [Fact]
+    public async Task ConditionalQuestions_WithMrtr_AskTheFollowUpOnlyWhenTheAnswerEnablesIt_AndSubmitOnce()
+    {
+        FormsAnswer(Answers("urgent", "true"), Answers("reason", "Chest pain"));
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+        StepReturns(StepResponse(required: ConditionalRequired));
+        var first = (await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel)).InputRequired?.RequestState ?? throw new Xunit.Sdk.XunitException("No form.");
+        posts.Clear();
+        StateIs("clinic", StateResponse(ConditionalRequired));
+
+        var second = (await CreateSut().InvokeAsync(Start, Call(requestState: first, inputResponses: Answered("accept")), Catalog, Cancel)).InputRequired?.RequestState
+            ?? throw new Xunit.Sdk.XunitException("No follow-up form.");
+
+        Assert.Empty(posts);
+        Assert.Equal([["urgent"], ["reason"]], roundForms.Select(Ids));
+        Assert.All(roundForms, round => Assert.All(round.Items, item => Assert.Empty(item.EnableWhen)));
+
+        StepReturns(StepResponse(required: CloseRequired));
+        await CreateSut().InvokeAsync(Start, Call(requestState: second, inputResponses: Answered("accept")), Catalog, Cancel);
+
+        var submitted = Assert.Single(posts).Body["items"]?.AsArray() ?? throw new Xunit.Sdk.XunitException("No items.");
+        Assert.Equal(["urgent", "reason"], submitted.Select(x => x?["itemId"]?.GetValue<string>()));
+        Assert.Equal("Chest pain", submitted[1]?["answers"]?[0]?["value"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task ConditionalQuestions_WithMrtr_WhenTheAnswerDisablesTheFollowUp_SubmitAtOnce()
+    {
+        FormsAnswer(Answers("urgent", "false"));
+        var state = await MrtrStateAsync(ConditionalRequired);
+        StateIs("clinic", StateResponse(ConditionalRequired));
+        StepReturns(StepResponse(required: CloseRequired));
+
+        var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel);
+
+        Assert.Null(outcome.InputRequired);
+        Assert.Equal(["urgent"], Assert.Single(posts).Body["items"]?.AsArray().Select(x => x?["itemId"]?.GetValue<string>()));
+    }
+
+    [Fact]
+    public async Task ConditionalQuestions_InASession_AreAskedRoundByRound_AndSubmittedOnce()
+    {
+        FormsAnswer(Answers("urgent", "true"), Answers("reason", "Chest pain"));
+        UserAnswersInASession(Accepted(), Accepted());
+        StepsReturn(StepResponse(required: ConditionalRequired), StepResponse(required: CloseRequired));
+
+        await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
+
+        Assert.Equal(2, sessionForms.Count);
+        Assert.Equal([["urgent"], ["reason"]], roundForms.Select(Ids));
+        Assert.Equal(["urgent", "reason"], posts[1].Body["items"]?.AsArray().Select(x => x?["itemId"]?.GetValue<string>()));
+    }
+
+    [Fact]
+    public async Task ConditionalQuestions_InASession_DecliningTheFollowUp_SubmitsNothing()
+    {
+        FormsAnswer(Answers("urgent", "true"));
+        UserAnswersInASession(Accepted(), Declined());
+        StepReturns(StepResponse(required: ConditionalRequired));
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Single(posts);
+        Assert.Contains("(decline)", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    // A form accepted without answers to its questions ends the rounds instead of repeating the form.
+    [Fact]
+    public async Task ConditionalQuestions_InASession_AFollowUpAcceptedWithoutAnswers_SubmitsNothing()
+    {
+        FormsAnswer(Answers("urgent", "true"), []);
+        UserAnswersInASession(Accepted(), Accepted());
+        StepReturns(StepResponse(required: ConditionalRequired));
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Equal(2, sessionForms.Count);
+        Assert.Single(posts);
+        Assert.Contains("did not answer", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    // Chat: the agent gets only the questions that apply now, never the conditions.
+    [Fact]
+    public async Task ConditionalQuestions_ForTheAgent_ListOnlyTheQuestionsThatApplyNow()
+    {
+        StepReturns(StepResponse(required: ConditionalRequired));
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        var items = body["next"]?["informationRequest"]?["items"]?.AsArray() ?? throw new Xunit.Sdk.XunitException("No questions.");
+        Assert.Equal("urgent", Assert.Single(items)?["id"]?.GetValue<string>());
+        Assert.Null(body["next"]?[KaleidoToolInvoker.AnswersTokenArgument]);
+        Assert.DoesNotContain("enableWhen", body.ToJsonString(), StringComparison.Ordinal);
+    }
+
+    private KaleidoToolCall AnswerCall(string itemId, string value, string? answersToken = null) =>
+        Call(new Dictionary<string, object?>
+        {
+            ["service"] = "clinic",
+            ["processId"] = ProcessId,
+            ["informationRequestId"] = "visit-intake",
+            ["answers"] = new[] { new { itemId, values = new List<string> { value } } },
+            [KaleidoToolInvoker.AnswersTokenArgument] = answersToken,
+        });
+
+    [Fact]
+    public async Task ConditionalQuestions_ForTheAgent_ReturnTheFollowUpWithAToken_ThenSubmitEveryAnswer()
+    {
+        StateIs("clinic", StateResponse(ConditionalRequired));
+
+        var first = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+
+        Assert.Empty(posts);
+        Assert.Equal("reason", Assert.Single(first["next"]?["informationRequest"]?["items"]?.AsArray() ?? [])?["id"]?.GetValue<string>());
+        Assert.Contains("answersToken", first["next"]?["instruction"]?.GetValue<string>(), StringComparison.Ordinal);
+        var token = first["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
+
+        await CreateSut().InvokeAsync(Answer, AnswerCall("reason", "Chest pain", token), Catalog, Cancel);
+
+        var submitted = Assert.Single(posts).Body["items"]?.AsArray() ?? throw new Xunit.Sdk.XunitException("No items.");
+        Assert.Equal(["urgent", "reason"], submitted.Select(x => x?["itemId"]?.GetValue<string>()));
+        Assert.Equal("true", submitted[0]?["answers"]?[0]?["value"]?.GetValue<string>());
+    }
+
+    // An answer to a question the other answers disable is not sent (Kaleido would refuse it).
+    [Fact]
+    public async Task ConditionalQuestions_ForTheAgent_AnAnswerToADisabledQuestion_IsNotSubmitted()
+    {
+        StateIs("clinic", StateResponse(ConditionalRequired));
+        var call = Call(new
+        {
+            service = "clinic",
+            processId = ProcessId,
+            informationRequestId = "visit-intake",
+            answers = new[] { new { itemId = "urgent", values = new List<string> { "false" } }, new { itemId = "reason", values = new List<string> { "None" } } },
+        });
+
+        await CreateSut().InvokeAsync(Answer, call, Catalog, Cancel);
+
+        Assert.Equal(["urgent"], Assert.Single(posts).Body["items"]?.AsArray().Select(x => x?["itemId"]?.GetValue<string>()));
+    }
+
+    // A token is only read for the process and request it was issued for.
+    [Theory]
+    [InlineData("another-request")]
+    [InlineData("unreadable")]
+    public async Task ConditionalQuestions_ForTheAgent_ATokenForSomethingElse_IsIgnored(string kind)
+    {
+        StateIs("clinic", StateResponse(ConditionalRequired));
+        var first = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+        var token = first["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
+        var changed = kind == "unreadable"
+            ? "kaleido-answers:%%%"
+            : Recode(token, "kaleido-answers:", json => json["informationRequestId"] = "another");
+
+        await CreateSut().InvokeAsync(Answer, AnswerCall("reason", "Chest pain", changed), Catalog, Cancel);
+
+        // Without the earlier answers "urgent" is unanswered, so "reason" does not apply and is not sent;
+        // Kaleido then reports the unanswered question, as for any incomplete answers.
+        Assert.Empty(Assert.Single(posts).Body["items"]?.AsArray() ?? throw new Xunit.Sdk.XunitException("No items."));
     }
 
     [Fact]

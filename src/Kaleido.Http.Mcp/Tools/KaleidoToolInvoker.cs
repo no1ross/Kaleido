@@ -77,6 +77,10 @@ internal sealed partial class KaleidoToolInvoker(
     // The MRTR input-request key and the prefix of the adapter's opaque continuation state.
     private const string AnswersInputKey = "kaleido-answers";
     private const string StatePrefix = "kaleido-mcp:";
+    private const string AnswersPrefix = "kaleido-answers:";
+
+    /// <summary>The <c>answer_information_request</c> argument carrying the answers of earlier rounds.</summary>
+    internal const string AnswersTokenArgument = "answersToken";
     private const string ClientCapabilitiesMetaKey = "io.modelcontextprotocol/clientCapabilities";
 
     // The service refused or failed the call: its status and errors, for the agent to explain. A
@@ -467,33 +471,87 @@ internal sealed partial class KaleidoToolInvoker(
             return Error(
                 McpErrorCodes.InvalidArguments,
                 $"The process is waiting for answers to '{pending.Request.InformationRequestId}', not '{informationRequestId}'. Ask the user the current questions.",
-                Serialize(pending.Request));
+                ForAgent(pending.Request.NextRound(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)) ?? pending.Request));
         }
 
-        var items = new List<InformationResponseItem>();
+        // The answers of earlier rounds of the same request come back in the token (ADR 0024).
+        var earlier = DecodeAnswers(Text(arguments, AnswersTokenArgument), processId, informationRequestId);
+        var given = AnswersArgument(arguments);
+        var merged = Merge(earlier, given);
 
-        if (arguments.TryGetValue("answers", out var answers) && answers.ValueKind == JsonValueKind.Array)
+        // These answers decide further questions: hand them to the agent; nothing is submitted yet.
+        // Otherwise submit, and Kaleido validates (a missing answer is its unanswered error, as always).
+        if (DecidesMoreQuestions(pending.Request, earlier, merged))
         {
-            foreach (var answer in answers.EnumerateArray())
+            return Success(new JsonObject
             {
-                var values = answer.TryGetProperty("values", out var given) && given.ValueKind == JsonValueKind.Array
-                    ? given.EnumerateArray()
-                        .Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() ?? string.Empty : x.GetRawText())
-                        .Select(x => new InformationAnswer { Value = x })
-                        .ToArray()
-                    : [];
-
-                items.Add(new InformationResponseItem
-                {
-                    ItemId = answer.TryGetProperty("itemId", out var itemId) ? itemId.GetString() ?? string.Empty : string.Empty,
-                    Answers = values,
-                });
-            }
+                ["processId"] = processId.ToString(),
+                ["service"] = service,
+                ["next"] = Next(service, pending.Step, [], catalog, elicited: false, processId, merged),
+            });
         }
 
-        var response = await SubmitAsync(service, pending.Step, pending.Request, items, processId, cancellationToken);
+        // The agent's answers as given (Kaleido judges their shape), after the earlier rounds' answers;
+        // only answers to questions the answers disable are left out.
+        var enabled = pending.Request.EnabledItemIds(merged);
+        var questions = pending.Request.Questions().Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var givenIds = given.Select(x => x.ItemId).ToHashSet(StringComparer.Ordinal);
+        InformationResponseItem[] submitted =
+        [
+            .. earlier
+                .Where(x => !givenIds.Contains(x.Key) && enabled.Contains(x.Key))
+                .Select(x => new InformationResponseItem { ItemId = x.Key, Answers = [.. x.Value.Select(value => new InformationAnswer { Value = value })] }),
+            .. given.Where(x => !questions.Contains(x.ItemId) || enabled.Contains(x.ItemId)),
+        ];
+
+        var response = await SubmitAsync(service, pending.Step, pending.Request, submitted, processId, cancellationToken);
 
         return await FollowUpAsync(service, response, catalog, call, [], round: 0, cancellationToken);
+    }
+
+    // The answers belong to the request the form showed; when the process now asks something else, the
+    // form is not submitted and the current state is returned instead.
+    private async Task<CallToolResult?> StaleFormAsync(
+        ContinuationState state,
+        PendingQuestions pending,
+        ToolCatalog catalog,
+        CancellationToken cancellationToken) =>
+        string.Equals(pending.Request.InformationRequestId, state.InformationRequestId, StringComparison.Ordinal)
+            ? null
+            : await StateAsync(
+                state.Service,
+                state.ProcessId,
+                catalog,
+                "The process is now asking different questions; the answered form was not submitted.",
+                cancellationToken);
+
+    // The agent's answers: [{ itemId, values: [...] }], values as given (numbers and booleans as written).
+    private static List<InformationResponseItem> AnswersArgument(IReadOnlyDictionary<string, JsonElement> arguments)
+    {
+        var items = new List<InformationResponseItem>();
+
+        if (!arguments.TryGetValue("answers", out var answers) || answers.ValueKind != JsonValueKind.Array)
+        {
+            return items;
+        }
+
+        foreach (var answer in answers.EnumerateArray())
+        {
+            var values = answer.TryGetProperty("values", out var given) && given.ValueKind == JsonValueKind.Array
+                ? given.EnumerateArray()
+                    .Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() ?? string.Empty : x.GetRawText())
+                    .Select(x => new InformationAnswer { Value = x })
+                    .ToArray()
+                : [];
+
+            items.Add(new InformationResponseItem
+            {
+                ItemId = answer.TryGetProperty("itemId", out var itemId) ? itemId.GetString() ?? string.Empty : string.Empty,
+                Answers = values,
+            });
+        }
+
+        return items;
     }
 
     // The MRTR retry: submit the form answers to the process's pending request and carry on.
@@ -508,13 +566,9 @@ internal sealed partial class KaleidoToolInvoker(
         }
 
         var answered = new JsonArray(state.Answered.Select(x => (JsonNode?)JsonValue.Create(x)).ToArray());
-
-        ElicitResult? elicited = null;
-
-        if (call.InputResponses?.TryGetValue(AnswersInputKey, out var input) == true)
-        {
-            elicited = input.Deserialize(InputResponse.ElicitResultJsonTypeInfo);
-        }
+        var elicited = call.InputResponses?.TryGetValue(AnswersInputKey, out var input) == true
+            ? input.Deserialize(InputResponse.ElicitResultJsonTypeInfo)
+            : null;
 
         if (elicited is not { IsAccepted: true, Content: { } content })
         {
@@ -533,19 +587,22 @@ internal sealed partial class KaleidoToolInvoker(
             return error;
         }
 
-        // The answers belong to the round the form showed; a stale form is not submitted.
-        if (!string.Equals(pending.Request.InformationRequestId, state.InformationRequestId, StringComparison.Ordinal))
+        if (await StaleFormAsync(state, pending, catalog, cancellationToken) is { } stale)
         {
-            return await StateAsync(
-                state.Service,
-                state.ProcessId,
-                catalog,
-                "The process is now asking different questions; the answered form was not submitted.",
-                cancellationToken);
+            return stale;
         }
 
-        var items = elicitor.ToAnswers(pending.Request, content.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal));
-        var response = await SubmitAsync(state.Service, pending.Step, pending.Request, items, state.ProcessId, cancellationToken);
+        var merged = Merge(
+            state.Answers ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
+            elicitor.ToAnswers(pending.Request, content.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal)));
+
+        // The answers decide further questions of the same request: the next form, nothing submitted yet.
+        if (pending.Request.NextRound(merged) is not null)
+        {
+            return AskForAnswers(state.Service, state.ProcessId, pending.Request, state.Round, answered, merged);
+        }
+
+        var response = await SubmitAsync(state.Service, pending.Step, pending.Request, Enabled(pending.Request, merged), state.ProcessId, cancellationToken);
 
         answered.Add(state.InformationRequestId);
 
@@ -656,24 +713,22 @@ internal sealed partial class KaleidoToolInvoker(
                 else if (mode == Elicitation.Mrtr)
                 {
                     // Return the form; the client shows it and calls this tool again with the answers.
-                    return AskForAnswers(pendingService, step.ProcessId, pending, round, answered);
+                    return AskForAnswers(pendingService, step.ProcessId, pending, round, answered, new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal));
                 }
                 else
                 {
-                    var elicited = await call.Server.ElicitAsync(elicitor.ToElicitation(pending), cancellationToken);
+                    var session = await ElicitEveryRoundAsync(call, pending, cancellationToken);
 
-                    if (elicited.IsAccepted && elicited.Content is { } content)
+                    if (session.Answers is { } given)
                     {
-                        var items = elicitor.ToAnswers(pending, content.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal));
-
                         answered.Add(pending.InformationRequestId);
                         service = pendingService;
-                        step = await SubmitAsync(pendingService, required, pending, items, step.ProcessId, cancellationToken);
+                        step = await SubmitAsync(pendingService, required, pending, Enabled(pending, given), step.ProcessId, cancellationToken);
 
                         continue;
                     }
 
-                    note = $"The user did not answer the questions ({elicited.Action}). Nothing was submitted; the process is still waiting for them.";
+                    note = $"The user did not answer the questions ({session.Action}). Nothing was submitted; the process is still waiting for them.";
                 }
             }
 
@@ -681,6 +736,86 @@ internal sealed partial class KaleidoToolInvoker(
                 Summary(service, pendingService, step, required, available, answered, note, catalog),
                 step.BusinessMessages.Select(x => x.Message));
         }
+    }
+
+    // Session elicitation: one form per round of the same request (the questions the answers so far
+    // decide), until nothing is left to ask; null answers when the user declines a form.
+    private async Task<SessionAnswers> ElicitEveryRoundAsync(
+        KaleidoToolCall call,
+        InformationRequest pending,
+        CancellationToken cancellationToken)
+    {
+        var given = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+
+        while (pending.NextRound(given) is { } round)
+        {
+            var elicited = await call.Server.ElicitAsync(elicitor.ToElicitation(round), cancellationToken);
+
+            if (!elicited.IsAccepted || elicited.Content is not { } content)
+            {
+                return new SessionAnswers(Answers: null, elicited.Action);
+            }
+
+            var answers = Merge(given, elicitor.ToAnswers(round, content.ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal)));
+
+            // A form accepted without answers to its questions ends the rounds (never the same form forever).
+            if (answers.Count == given.Count && answers.All(x => given.TryGetValue(x.Key, out var before) && before.SequenceEqual(x.Value, StringComparer.Ordinal)))
+            {
+                return new SessionAnswers(Answers: null, elicited.Action);
+            }
+
+            given = answers;
+        }
+
+        return new SessionAnswers(given, Action: null);
+    }
+
+    // The answers of a round added to those of the earlier rounds (a later answer replaces an earlier one).
+    private static Dictionary<string, IReadOnlyList<string>> Merge(
+        IReadOnlyDictionary<string, IReadOnlyList<string>> earlier,
+        IEnumerable<InformationResponseItem> items)
+    {
+        var merged = new Dictionary<string, IReadOnlyList<string>>(earlier, StringComparer.Ordinal);
+
+        foreach (var item in items)
+        {
+            if (!string.IsNullOrWhiteSpace(item.ItemId))
+            {
+                merged[item.ItemId] = [.. item.Answers.Select(x => x.Value).Where(x => !string.IsNullOrWhiteSpace(x))];
+            }
+        }
+
+        return merged;
+    }
+
+    // Whether the answers just given make questions askable that were not before (only conditions do).
+    private static bool DecidesMoreQuestions(
+        InformationRequest request,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> before,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> after)
+    {
+        var askable = request.AskableQuestions(before).Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+
+        return request.AskableQuestions(after).Any(x => !askable.Contains(x.Id));
+    }
+
+    // What a form round submits: the answers of the questions that apply, in presentation order.
+    private static InformationResponseItem[] Enabled(
+        InformationRequest request,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> answers)
+    {
+        var enabled = request.EnabledItemIds(answers);
+
+        return
+        [
+            .. request.Questions()
+                .Where(x => enabled.Contains(x.Id) && answers.ContainsKey(x.Id))
+                .Select(x => new InformationResponseItem
+                {
+                    ItemId = x.Id,
+                    Answers = [.. answers[x.Id].Select(value => new InformationAnswer { Value = value })],
+                }),
+        ];
     }
 
     private Task<StepExecutionResponse<JsonElement>> SubmitAsync(
@@ -803,21 +938,29 @@ internal sealed partial class KaleidoToolInvoker(
         return summary;
     }
 
-    private ToolOutcome AskForAnswers(string service, Guid processId, InformationRequest pending, int round, JsonArray answered) =>
+    // The form of the round the answers so far decide; the state carries those answers to the next call.
+    private ToolOutcome AskForAnswers(
+        string service,
+        Guid processId,
+        InformationRequest pending,
+        int round,
+        JsonArray answered,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> answersSoFar) =>
         new()
         {
             InputRequired = new InputRequiredResult
             {
                 InputRequests = new Dictionary<string, InputRequest>(StringComparer.Ordinal)
                 {
-                    [AnswersInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(pending)),
+                    [AnswersInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(pending.NextRound(answersSoFar) ?? pending)),
                 },
                 RequestState = EncodeState(new ContinuationState(
                     service,
                     processId,
                     pending.InformationRequestId,
                     round,
-                    answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray())),
+                    answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray(),
+                    answersSoFar)),
             },
         };
 
@@ -827,26 +970,33 @@ internal sealed partial class KaleidoToolInvoker(
         IReadOnlyCollection<ProcessStepSummary> available,
         ToolCatalog catalog,
         bool elicited,
-        Guid? processId)
+        Guid? processId,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? answersSoFar = null)
     {
         var next = new JsonObject { ["service"] = service };
 
-        if (required is { InformationRequest: { } pending })
+        if (required is { InformationRequest: { } request })
         {
+            // Only the questions that apply now (ADR 0024): Kaleido applies the conditions, the agent
+            // never sees them. Later rounds carry the earlier answers in answersToken.
+            var given = answersSoFar ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+            var pending = request.NextRound(given) ?? request;
+            var moreRounds = given.Count > 0;
+
             next["required"] = new JsonObject
             {
                 ["tool"] = ToolCatalogBuilder.AnswerInformationRequestTool,
                 ["step"] = required.Name,
                 ["displayName"] = required.DisplayName,
             };
-            next["informationRequest"] = Serialize(pending);
-            next["instruction"] =
-                (elicited ? "More questions followed. " : string.Empty) +
-                "Ask the user every question exactly as written and submit only the user's answers with answer_information_request (service, processId, informationRequestId, answers). " +
-                (HasProposals(pending.Items)
-                    ? "Questions with proposedAnswers were pre-filled from what was said earlier: read each one back with its proposed answer and have the user confirm or correct it. "
-                    : string.Empty) +
-                "If the user already answered a question earlier in this conversation, read that answer back for confirmation instead of asking again. Never answer for the user, and never submit a proposed answer the user has not confirmed.";
+            next["informationRequest"] = ForAgent(pending);
+
+            if (moreRounds && processId is { } id)
+            {
+                next[AnswersTokenArgument] = EncodeAnswers(id, request.InformationRequestId, given);
+            }
+
+            next["instruction"] = AnswerInstruction(pending, elicited, moreRounds);
         }
         else if (required is not null)
         {
@@ -906,6 +1056,17 @@ internal sealed partial class KaleidoToolInvoker(
             .ToArray();
     }
 
+    // How the agent puts pending questions to the user: verbatim, the user's answers only.
+    private static string AnswerInstruction(InformationRequest pending, bool elicited, bool moreRounds) =>
+        (elicited ? "More questions followed. " : string.Empty) +
+        (moreRounds ? "The answers given so far lead to these further questions; nothing was submitted yet. " : string.Empty) +
+        "Ask the user every question exactly as written and submit only the user's answers with answer_information_request (service, processId, informationRequestId, answers" +
+        (moreRounds ? ", and this answersToken; send only the new answers" : string.Empty) + "). " +
+        (HasProposals(pending.Items)
+            ? "Questions with proposedAnswers were pre-filled from what was said earlier: read each one back with its proposed answer and have the user confirm or correct it. "
+            : string.Empty) +
+        "If the user already answered a question earlier in this conversation, read that answer back for confirmation instead of asking again. Never answer for the user, and never submit a proposed answer the user has not confirmed.";
+
     private static bool HasProposals(IEnumerable<InformationItem> items) =>
         items.Any(x => x.ProposedAnswers.Count > 0 || HasProposals(x.Items));
 
@@ -915,6 +1076,39 @@ internal sealed partial class KaleidoToolInvoker(
     // questions and the URL to submit to are always read fresh from Kaleido, never trusted from here.
     private static string EncodeState(ContinuationState state) =>
         StatePrefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options));
+
+    // The answers of earlier rounds of one request, for the agent to send back with the next round
+    // (ADR 0024). Not trusted beyond that: it must name this process and request, and Kaleido validates
+    // the full set of answers when they are submitted.
+    private static string EncodeAnswers(Guid processId, string informationRequestId, IReadOnlyDictionary<string, IReadOnlyList<string>> answers) =>
+        AnswersPrefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(new AnswersState(processId, informationRequestId, answers), KaleidoJsonOptions.Options));
+
+    private static Dictionary<string, IReadOnlyList<string>> DecodeAnswers(string? value, Guid processId, string informationRequestId)
+    {
+        var none = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+
+        if (value?.StartsWith(AnswersPrefix, StringComparison.Ordinal) != true)
+        {
+            return none;
+        }
+
+        try
+        {
+            var state = JsonSerializer.Deserialize<AnswersState>(
+                Encoding.UTF8.GetString(Convert.FromBase64String(value[AnswersPrefix.Length..])),
+                KaleidoJsonOptions.Options);
+
+            return state is not null &&
+                   state.ProcessId == processId &&
+                   string.Equals(state.InformationRequestId, informationRequestId, StringComparison.Ordinal)
+                ? new Dictionary<string, IReadOnlyList<string>>(state.Answers, StringComparer.Ordinal)
+                : none;
+        }
+        catch (Exception exception) when (exception is FormatException or JsonException)
+        {
+            return none;
+        }
+    }
 
     private static ContinuationState? DecodeState(string? value)
     {
@@ -968,6 +1162,40 @@ internal sealed partial class KaleidoToolInvoker(
             value.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined))
         {
             target[name] = JsonNode.Parse(value.GetRawText());
+        }
+    }
+
+    // Questions as the agent receives them: the round's questions without condition fields - Kaleido
+    // applies the conditions; the agent only asks (ADR 0024).
+    private static JsonNode? ForAgent(InformationRequest round)
+    {
+        var node = Serialize(round);
+        WithoutConditions(node);
+        return node;
+    }
+
+    private static void WithoutConditions(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject item:
+                item.Remove("enableWhen");
+                item.Remove("enableBehavior");
+
+                foreach (var child in item.Select(x => x.Value).ToArray())
+                {
+                    WithoutConditions(child);
+                }
+
+                break;
+
+            case JsonArray items:
+                foreach (var child in items)
+                {
+                    WithoutConditions(child);
+                }
+
+                break;
         }
     }
 
@@ -1058,7 +1286,17 @@ internal sealed partial class KaleidoToolInvoker(
         Guid ProcessId,
         string InformationRequestId,
         int Round,
-        IReadOnlyList<string> Answered);
+        IReadOnlyList<string> Answered,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? Answers = null);
+
+    private sealed record AnswersState(
+        Guid ProcessId,
+        string InformationRequestId,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> Answers);
+
+    private sealed record SessionAnswers(
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? Answers,
+        string? Action);
 
     private sealed record PendingQuestions(
         ProcessRequiredStep Step,

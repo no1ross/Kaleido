@@ -148,6 +148,40 @@ public sealed class InformationRequestExtensionsTests
         Assert.Contains("c", request.EnabledItemIds(Given(("a", ["true"]), ("b", ["fresh"]))));
     }
 
+    // What is put to the user: only the questions of this round, in their enabled groups, conditions
+    // removed (Kaleido has applied them); display text only in the first round.
+    [Fact]
+    public void NextRound_HasOnlyThisRoundsQuestions_WithoutConditions()
+    {
+        var request = Mri with { Items = [new InformationItem { Id = "intro", Text = "MRI questions", Type = InformationItemType.Display }, .. Mri.Items] };
+
+        var first = request.NextRound(Given());
+        var second = request.NextRound(Given(("bodyPart", ["Knee"]), ("therapy", ["true"])));
+
+        Assert.NotNull(first);
+        Assert.Equal(["intro", "bodyPart", "therapy"], first.Items.Select(x => x.Id));
+        Assert.NotNull(second);
+        Assert.Equal(["laterality", "therapyDetails", "either"], second.Items.Select(x => x.Id));
+        Assert.Equal(["weeks"], second.Items[1].Items.Select(x => x.Id));
+        Assert.All(second.Items, x => Assert.Empty(x.EnableWhen));
+        Assert.Equal(InformationEnableBehavior.All, second.Items[2].EnableBehavior);
+    }
+
+    [Fact]
+    public void NextRound_WhenEverythingThatAppliesIsAnswered_IsNull()
+    {
+        Assert.Null(Mri.NextRound(Given(("bodyPart", ["Spine"]), ("therapy", ["false"]))));
+    }
+
+    // Without conditions nothing changes: the request is asked as it is.
+    [Fact]
+    public void NextRound_ForARequestWithoutConditions_IsTheRequest()
+    {
+        var plain = new InformationRequest { InformationRequestId = "plain", Items = [Question("a", InformationItemType.Text)] };
+
+        Assert.Same(plain, plain.NextRound(Given()));
+    }
+
     // Rounds: first the unconditional questions, then those the answers decide.
     [Fact]
     public void AskableQuestions_AskOnlyWhatTheAnswersSoFarDecide()
