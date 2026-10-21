@@ -1,4 +1,3 @@
-using Kaleido.Http.Observability;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 

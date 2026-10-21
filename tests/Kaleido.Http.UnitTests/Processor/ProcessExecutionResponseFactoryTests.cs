@@ -1,7 +1,5 @@
 using System.Text.Json;
 using Kaleido.Exceptions;
-using Kaleido.Http.Processor;
-using Kaleido.Processor.Context;
 
 namespace Kaleido.Http.Processor.UnitTests;
 

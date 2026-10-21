@@ -4,6 +4,12 @@
         <!-- Like src/: any warning fails the build, including analyzer release tracking
              (RS2000-RS2008), so every descriptor keeps its AnalyzerReleases entry. -->
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <!-- #406: IDE rules (unused usings, naming...) run in the build, as in src/. -->
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <!-- Needed for IDE0005 (unused usings) in the build (dotnet/roslyn#41640); public members of
+             tools are not documented as a package API, so CS1591 is off. -->
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);1591</NoWarn>
     </PropertyGroup>
     <ItemGroup>
         <!-- Git-height versioning: version.json → 1.0.0-preview.{height}; v* tags flip to stable. -->

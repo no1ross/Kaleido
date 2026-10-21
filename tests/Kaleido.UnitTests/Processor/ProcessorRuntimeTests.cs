@@ -1,10 +1,10 @@
 using Kaleido.Eventing;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
-using Kaleido.Storage;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
 using Kaleido.Processor.Registry;
+using Kaleido.Storage;
 using Kaleido.UnitTests;
 
 namespace Kaleido.Processor.UnitTests;

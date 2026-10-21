@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using Kaleido.Queryable;
 
 namespace Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 

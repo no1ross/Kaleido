@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Kaleido.Http.FunctionalTests.Processor.Infrastructure;
 
 internal static class ProcessHttpJson

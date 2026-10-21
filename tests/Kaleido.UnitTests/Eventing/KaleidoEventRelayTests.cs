@@ -53,13 +53,14 @@ public sealed class KaleidoEventRelayTests
     private static KaleidoOutboxEvent Entry(int attempts = 0)
     {
         var now = DateTimeOffset.UtcNow;
-
-        return new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
+        var entry = new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
         {
             EventType = KaleidoEventTypes.ProcessCreated,
             Context = new ProcessEventContext { RequestId = "req-1", ServiceName = "svc", ProcessId = Guid.NewGuid(), StepName = "step-a" },
             Event = new ProcessCreated { OccurredOn = now, State = ProcessExecutionState.Active, CreatedUtc = now, UpdatedUtc = now, SubmittedStepCount = 1 },
-        }.ToOutboxEvent() with { Attempts = attempts };
+        }.ToOutboxEvent();
+
+        return entry with { Attempts = attempts };
     }
 
     private static Mock<IKaleidoOutboxStore> StoreClaiming(params KaleidoOutboxEvent[] entries)

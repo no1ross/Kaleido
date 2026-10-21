@@ -1,4 +1,3 @@
-using Kaleido.Http.Client;
 using Kaleido.Http.Mcp.Observability;
 using Kaleido.Observability;
 using Microsoft.Extensions.Logging;
@@ -372,7 +371,7 @@ public sealed class KaleidoMcpToolHandlerTests
         {
             Name = ToolCatalogBuilder.CallToolTool,
             Arguments = name is null
-                ? new Dictionary<string, JsonElement>()
+                ? []
                 : new Dictionary<string, JsonElement>
                 {
                     ["name"] = JsonSerializer.SerializeToElement(name),

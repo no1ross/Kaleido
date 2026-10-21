@@ -1,6 +1,3 @@
-using Kaleido.Http.Client;
-using Kaleido.Http.Registry;
-
 namespace Kaleido.Http.Client.UnitTests;
 
 public sealed class HttpClientRegistryCacheTests

@@ -1,10 +1,7 @@
 using System.Collections.Immutable;
-using System.Linq;
-using Kaleido.Analyzers.Testing.Fixtures;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Xunit;
 
 namespace Kaleido.Analyzers.Testing.Fixtures.UnitTests;
 

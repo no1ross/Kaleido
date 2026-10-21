@@ -105,7 +105,7 @@ public sealed class OtlpExportSettingsTests : SutFixture
             _ => new KaleidoOpenTelemetryOptions { ResourceAttributes = value },
         };
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => options.Validate());
+        var exception = Assert.Throws<KaleidoConfigurationException>(options.Validate);
 
         Assert.Equal(OpenTelemetryErrorCodes.InvalidOptions, exception.Code);
         Assert.Contains(setting, exception.Message, StringComparison.Ordinal);

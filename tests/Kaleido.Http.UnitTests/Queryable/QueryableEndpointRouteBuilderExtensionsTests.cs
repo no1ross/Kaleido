@@ -48,7 +48,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = "kaleido" });
         var endpoints = builder.Build();
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => endpoints.MapQueryable());
+        var exception = Assert.Throws<KaleidoConfigurationException>(endpoints.MapQueryable);
 
         Assert.Equal(QueryableErrorCodes.InvalidRegistration, exception.Code);
     }

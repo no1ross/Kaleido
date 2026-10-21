@@ -79,7 +79,7 @@ public sealed class KaleidoServiceOptionsBuilderTests : SutFixture<KaleidoServic
         var sut = CreateSut();
         sut.Events = null!;
 
-        var exception = Assert.Throws<Kaleido.Exceptions.KaleidoConfigurationException>(() => sut.Build());
+        var exception = Assert.Throws<Kaleido.Exceptions.KaleidoConfigurationException>(sut.Build);
 
         Assert.Equal(Kaleido.Exceptions.ConfigurationErrorCodes.InvalidEventOptions, exception.Code);
     }
@@ -92,7 +92,7 @@ public sealed class KaleidoServiceOptionsBuilderTests : SutFixture<KaleidoServic
         var sut = CreateSut();
         sut.DefaultAuthorization = nullDeclaration ? null! : new Kaleido.Registry.AuthorizationMetadata(null, null!);
 
-        var exception = Assert.Throws<Kaleido.Exceptions.KaleidoConfigurationException>(() => sut.Build());
+        var exception = Assert.Throws<Kaleido.Exceptions.KaleidoConfigurationException>(sut.Build);
 
         Assert.Equal(Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingAuthorization, exception.Code);
     }

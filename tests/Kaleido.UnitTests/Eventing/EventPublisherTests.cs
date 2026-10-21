@@ -1,4 +1,3 @@
-using Kaleido.Eventing;
 using Kaleido.Processor.Eventing;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
