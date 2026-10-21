@@ -95,7 +95,8 @@ keyed by item id. They use Kaleido's own schema; Kaleido is not a FHIR framework
 | Type | Fields |
 |---|---|
 | `InformationRequest` | `informationRequestId` (required, set by you), `title`, `items` |
-| `InformationItem` | `id` (unique in the request), `text` (verbatim), `type`, `repeats`, `options`, `items` (groups only), `proposedAnswers` (optional pre-filled answers the user confirms or corrects; never submitted for them) |
+| `InformationItem` | `id` (unique in the request), `text` (verbatim), `type`, `repeats`, `options`, `items` (groups only), `proposedAnswers` (optional pre-filled answers the user confirms or corrects; never submitted for them), `enableWhen` + `enableBehavior` (optional: the item applies only when earlier answers say so - see [Conditional questions](#conditional-questions)) |
+| `InformationCondition` | `question` (an earlier question's id), `operator`, `answer` (text, read by that question's type) |
 | `InformationOption` | `value` (what is submitted), `display` |
 | `IInformationStep` (the answers) | `informationRequestId`, `items` |
 | `InformationResponseItem` | `itemId`, `answers`, optional nested `items` (mirroring groups) |
@@ -118,6 +119,41 @@ Item types and the answers they accept:
 `informationRequestId` names the questionnaire (e.g. `out-of-network-attestation`). It isn't the
 correlation `RequestId`, which stays in the process state and off the contracts.
 
+## Conditional questions
+
+Some questions apply only when an earlier answer says so: laterality only when the body part is not
+the spine, the weeks of therapy only when therapy was tried. An item's `enableWhen` says when
+([ADR 0024](./decisions/0024-conditional-questions.md)):
+
+```csharp
+new InformationItem
+{
+    Id = "Laterality",
+    Text = "Which side?",
+    Type = InformationItemType.Choice,
+    Options = [new() { Value = "Left" }, new() { Value = "Right" }],
+    EnableWhen = [new() { Question = "BodyPart", Operator = InformationConditionOperator.NotEquals, Answer = "Spine" }],
+}
+```
+
+- **Operators:** `exists` (answer `true`: answered; `false`: not answered), `equals`,
+  `notEquals`, `greaterThan`, `lessThan`, `greaterThanOrEqual`, `lessThanOrEqual`. The ordering
+  operators apply to `wholeNumber`, `number`, `date` and `dateTime` questions.
+- **Several conditions:** all must hold (`enableBehavior: all`, the default) or any one (`any`).
+- **Groups:** a disabled group disables everything in it.
+- **No answer:** a condition on an unanswered or disabled question is false, except `exists` with
+  `false`. The answer of a disabled question counts as no answer.
+- **Repeating questions:** `equals` and the ordering operators hold when any answer matches,
+  `notEquals` when none does.
+
+**Who decides what is asked: Kaleido, never the agent.**
+- **AI agents:** the MCP adapter asks in rounds, first the questions with no condition, then those
+  the answers make apply. It submits once, and the agent never sees the conditions (see
+  [the MCP adapter](../src/Kaleido.Http.Mcp/README.md#conditional-questions)).
+- **UIs:** a UI that renders requests itself applies the same rules: it shows a question once it
+  applies and never sends the answers of questions that do not.
+- **Handlers:** a handler receives no answer for a question that did not apply.
+
 ## Validation
 
 Kaleido checks shape only, never meaning:
@@ -127,11 +163,12 @@ Kaleido checks shape only, never meaning:
   - unique item ids, and text on every item;
   - choice items have options with unique, non-empty values;
   - only groups have nested items, and every group has some;
-  - proposed answers fit their question like answers (an offered option, the right type), at most one unless the question `repeats`; groups and display items take none.
+  - proposed answers fit their question like answers (an offered option, the right type), at most one unless the question `repeats`; groups and display items take none;
+  - each `enableWhen` condition tests an earlier question (so conditions never form a cycle), with an operator its type supports and a value that fits the question (`true`/`false` for `exists`).
 - **Response**, against the pending request:
   - `pro_information_response_mismatch`: the step isn't the pending required step, or the `informationRequestId` differs (answers for another or an earlier round);
-  - `pro_information_response_unanswered`: every question (not `display`/`group`) must be answered. There is no optional question: if you ask, you need an answer; "none of the above" is an option you provide;
-  - `pro_information_response_invalid_answer`: unknown item ids, an answer that doesn't fit its type, a choice that wasn't offered, or several answers to a question that doesn't `repeat`.
+  - `pro_information_response_unanswered`: every question that applies (not `display`/`group`, enabled by the answers) must be answered. There is no optional question: if you ask, you need an answer; "none of the above" is an option you provide;
+  - `pro_information_response_invalid_answer`: unknown item ids, an answer that doesn't fit its type, a choice that wasn't offered, several answers to a question that doesn't `repeat`, or an answer to a question that does not apply.
 
 Whether the questions were the right ones, and what the answers mean, is the domain's
 responsibility. Converting answers to internal representations (units, codes) is the handler's
