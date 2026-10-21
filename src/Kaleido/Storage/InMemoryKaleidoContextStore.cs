@@ -4,22 +4,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Storage;
 
-// The default process-state store: in memory, for development and tests. A save's events go to the
-// registered outbox right after the state (the in-memory outbox enqueues synchronously and cannot
-// fail, so they stay together, as the durable stores keep them in the state's transaction).
+// The default process-state store: in memory, for development and tests. State only: a transition's
+// events are added by the outbox integration (no transaction in memory; neither write can fail).
 internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
 {
     private readonly ILogger<InMemoryKaleidoContextStore> _logger;
-    private readonly IKaleidoOutboxStore _outbox;
     private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
     private readonly object _lock = new();
 
-    public InMemoryKaleidoContextStore(
-        ILogger<InMemoryKaleidoContextStore> logger,
-        IKaleidoOutboxStore outbox)
+    public InMemoryKaleidoContextStore(ILogger<InMemoryKaleidoContextStore> logger)
     {
         _logger = logger;
-        _outbox = outbox;
 
         LogInMemoryStoreActive(logger);
     }
@@ -32,13 +27,11 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
         return Task.FromResult(context);
     }
 
-    public async Task<ProcessorContext> SaveAsync(
+    public Task<ProcessorContext> SaveAsync(
         ProcessorContext context,
-        IReadOnlyCollection<KaleidoOutboxEvent> events,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(events);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -58,14 +51,12 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
             _contexts[context.ProcessId] = saved;
         }
 
-        await _outbox.EnqueueEventsAsync(events, CancellationToken.None);
-
         LogSaved(_logger, context.ProcessId, context.Steps.Count);
 
-        return saved;
+        return Task.FromResult(saved);
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoContextStore is active. Process state is kept in memory only: lost on restart, and it grows without bound in long-running processes. Register a durable IKaleidoContextStore (e.g. UseSqliteKaleidoContextStore) before deploying to production.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoContextStore is active. Process state is kept in memory only: lost on restart, and it grows without bound in long-running processes. Register a durable IKaleidoContextStore (e.g. AddSqliteContextStore, or AddContextStore<T>()) before deploying to production.")]
     private static partial void LogInMemoryStoreActive(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Process context saved for process {ProcessId} ({StepCount} steps).")]

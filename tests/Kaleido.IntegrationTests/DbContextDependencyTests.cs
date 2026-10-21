@@ -55,7 +55,7 @@ public sealed class DbContextDependencyTests
             o.ServiceName = "test-integration";
             o.AuthorizationMode = KaleidoAuthorizationMode.None;
             o.Assemblies = [typeof(DbContextDependencyTests).Assembly];
-        }).UseSqliteKaleidoContextStore(connectionString);
+        }).AddSqliteContextStore(connectionString).AddSqliteOutboxStore(connectionString).AddSqliteIdempotencyStore(connectionString);
 
         using var provider = services.BuildServiceProvider();
 

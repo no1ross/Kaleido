@@ -2,13 +2,17 @@ using Kaleido.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace Kaleido;
 
 /// <summary>
 /// Registers the Kaleido core on an <see cref="IServiceCollection"/>: <see cref="AddKaleido"/> is the
-/// entry point; <see cref="AddEventPublisher{TPublisher}"/> and
-/// <see cref="AddEventRedactor{TRedactor}"/> extend the returned <see cref="IKaleidoBuilder"/>.
+/// entry point; the other methods extend the returned <see cref="IKaleidoBuilder"/> - events
+/// (<see cref="AddEventPublisher{TPublisher}"/>, <see cref="AddEventRedactor{TRedactor}"/>), the stores
+/// (<see cref="AddContextStore{TStore}"/>, <see cref="AddIdempotencyStore{TStore}"/>), the outbox
+/// (<see cref="AddOutboxStore{TStore}"/>, <see cref="AddOutbox{TOutbox}"/>,
+/// <see cref="AddDirectPublication"/>) and <see cref="AddTransactions{TTransactions}"/>.
 /// </summary>
 public static class KaleidoServiceCollectionExtensions
 {
@@ -20,11 +24,11 @@ public static class KaleidoServiceCollectionExtensions
     /// Options are bound from the <c>Kaleido</c> configuration section, then <paramref name="configure"/>
     /// runs, then the result is validated and registered as an immutable
     /// <see cref="KaleidoServiceOptions"/> singleton. Besides the runtimes it registers logging, the
-    /// scoped correlation context accessor, the event outbox and relay, and defaults the host can
-    /// replace by registering its own first: a no-op <see cref="IEventPublisher"/> (replace it with
-    /// <see cref="AddEventPublisher{TPublisher}"/>) and in-memory stores
-    /// (<see cref="IKaleidoContextStore"/>, <see cref="IKaleidoOutboxStore"/>,
-    /// <see cref="IKaleidoIdempotencyStore"/>).
+    /// scoped correlation context accessor, and defaults the builder methods replace: a no-op
+    /// <see cref="IEventPublisher"/> (<see cref="AddEventPublisher{TPublisher}"/>), in-memory stores
+    /// (<see cref="IKaleidoContextStore"/>, <see cref="IKaleidoIdempotencyStore"/>), Kaleido's built-in
+    /// outbox (<see cref="IKaleidoOutbox"/>) on an in-memory <see cref="IKaleidoOutboxStore"/> with its
+    /// relay, and no transactions (<see cref="IKaleidoTransactions"/>).
     /// Transports and providers are added on the returned builder (e.g. <c>AddHttp</c>).
     /// </remarks>
     /// <param name="services">The service collection to register into.</param>
@@ -94,16 +98,18 @@ public static class KaleidoServiceCollectionExtensions
         services.TryAddScoped<IKaleidoInboundCallerAccessor, KaleidoInboundCallerAccessor>(); // ADR 0022
         services.TryAddSingleton<IEventPublisher, EventPublisher>();
 
-        // The three stores (process state, event outbox, idempotent requests) and the relay that hands
-        // outbox entries to the publisher. The in-memory context store adds a save's events to the
-        // registered outbox.
-        services.TryAddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
+        // The stores, the transactions and the outbox integration (ADR 0023), each replaced on the
+        // builder: in memory, no transaction, and Kaleido's built-in outbox - its store and the relay
+        // that hands the entries to the publisher.
         services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
         services.TryAddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
+        services.TryAddSingleton<IKaleidoTransactions, NoKaleidoTransactions>();
+        services.TryAddScoped<IKaleidoOutbox, KaleidoStoreOutbox>();
+        services.TryAddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
+        services.AddHostedService<KaleidoEventRelay>();
         services.TryAddSingleton<IKaleidoEventSignal, KaleidoEventSignal>();
         services.TryAddSingleton<IKaleidoEventPayloadWriter, KaleidoEventPayloadWriter>();
-        services.TryAddScoped<IKaleidoEventOutbox, KaleidoEventOutbox>();
-        services.AddHostedService<KaleidoEventRelay>();
+        services.TryAddScoped<IKaleidoEventWriter, KaleidoEventWriter>();
         services.TryAddSingleton<IKaleidoAuthorizationEvaluator, KaleidoAuthorizationEvaluator>();
         services.TryAddSingleton<ITypeDescriber, TypeDescriber>();
         services.TryAddSingleton<IConstraintMapper, ConstraintMapper>();
@@ -164,4 +170,180 @@ public static class KaleidoServiceCollectionExtensions
 
         return builder;
     }
+
+    /// <summary>
+    /// Registers the process-state store, replacing the in-memory default. <typeparamref name="TStore"/>
+    /// is registered as scoped (it may share a scoped <c>DbContext</c> with the outbox).
+    /// </summary>
+    /// <exception cref="KaleidoConfigurationException">
+    /// <see cref="ConfigurationErrorCodes.ConflictingStore"/>: another context store was registered
+    /// (e.g. by a provider).
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddKaleido(builder.Configuration)
+    ///     .AddContextStore&lt;OrdersContextStore&gt;();
+    /// </code>
+    /// </example>
+    public static IKaleidoBuilder AddContextStore<TStore>(this IKaleidoBuilder builder)
+        where TStore : class, IKaleidoContextStore =>
+        Replace<IKaleidoContextStore, TStore, InMemoryKaleidoContextStore>(builder, "context store");
+
+    /// <summary>
+    /// Registers the store of idempotent requests, replacing the in-memory default. It needs no shared
+    /// transaction, so it may live in any database. <typeparamref name="TStore"/> is registered as scoped.
+    /// </summary>
+    /// <exception cref="KaleidoConfigurationException">
+    /// <see cref="ConfigurationErrorCodes.ConflictingStore"/>: another idempotency store was registered.
+    /// </exception>
+    public static IKaleidoBuilder AddIdempotencyStore<TStore>(this IKaleidoBuilder builder)
+        where TStore : class, IKaleidoIdempotencyStore =>
+        Replace<IKaleidoIdempotencyStore, TStore, InMemoryKaleidoIdempotencyStore>(builder, "idempotency store");
+
+    /// <summary>
+    /// Registers how process-state transitions become atomic for your persistence (e.g. a transaction on
+    /// the <c>DbContext</c> your context store and outbox write to). Optional: without it each store
+    /// write stands alone. <typeparamref name="TTransactions"/> is registered as scoped.
+    /// </summary>
+    /// <exception cref="KaleidoConfigurationException">
+    /// <see cref="ConfigurationErrorCodes.ConflictingStore"/>: other transactions were registered (e.g.
+    /// by <c>AddSqliteContextStore</c>): transactions belong to the persistence of the process state.
+    /// </exception>
+    public static IKaleidoBuilder AddTransactions<TTransactions>(this IKaleidoBuilder builder)
+        where TTransactions : class, IKaleidoTransactions =>
+        Replace<IKaleidoTransactions, TTransactions, NoKaleidoTransactions>(builder, "transactions");
+
+    /// <summary>
+    /// Stores Kaleido's built-in outbox in <typeparamref name="TStore"/> instead of memory; Kaleido's
+    /// relay still claims, retries and publishes the entries through <see cref="IEventPublisher"/>.
+    /// Registered as scoped. Atomic with the process state when both are on one database covered by
+    /// <see cref="IKaleidoTransactions"/>.
+    /// </summary>
+    /// <exception cref="KaleidoConfigurationException">
+    /// <see cref="ConfigurationErrorCodes.ConflictingOutbox"/>: the service uses its own outbox or direct
+    /// publication, or another outbox store was registered.
+    /// </exception>
+    public static IKaleidoBuilder AddOutboxStore<TStore>(this IKaleidoBuilder builder)
+        where TStore : class, IKaleidoOutboxStore
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        if (RegisteredType<IKaleidoOutbox>(builder.Services) is { } outbox && outbox != typeof(KaleidoStoreOutbox))
+        {
+            ThrowConflictingOutbox($"AddOutboxStore<{typeof(TStore).Name}>() stores Kaleido's built-in outbox, but the service already uses {outbox.Name}.");
+        }
+
+        return Replace<IKaleidoOutboxStore, TStore, InMemoryKaleidoOutboxStore>(builder, "outbox store", ConfigurationErrorCodes.ConflictingOutbox);
+    }
+
+    /// <summary>
+    /// Uses the host's own outbox instead of Kaleido's: <typeparamref name="TOutbox"/> receives every
+    /// event (<see cref="IKaleidoOutbox"/>) and its outbox delivers them. Kaleido's outbox store and relay
+    /// are removed, and no <see cref="IEventPublisher"/> is needed. Registered as scoped.
+    /// </summary>
+    /// <remarks>
+    /// State and events are atomic when <typeparamref name="TOutbox"/> writes to the database of the
+    /// process state inside the transaction of <see cref="IKaleidoTransactions"/> (e.g. the same
+    /// <c>DbContext</c>, or a provider's transaction it joins).
+    /// </remarks>
+    /// <exception cref="KaleidoConfigurationException">
+    /// <see cref="ConfigurationErrorCodes.ConflictingOutbox"/>: another outbox choice (an outbox store,
+    /// another outbox, or direct publication) was registered.
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddKaleido(builder.Configuration)
+    ///     .AddContextStore&lt;OrdersContextStore&gt;()
+    ///     .AddOutbox&lt;OrdersOutbox&gt;()
+    ///     .AddTransactions&lt;OrdersTransactions&gt;();
+    /// </code>
+    /// </example>
+    public static IKaleidoBuilder AddOutbox<TOutbox>(this IKaleidoBuilder builder)
+        where TOutbox : class, IKaleidoOutbox =>
+        ReplaceOutbox(builder, typeof(TOutbox), $"AddOutbox<{typeof(TOutbox).Name}>()");
+
+    /// <summary>
+    /// Publishes events directly instead of through an outbox: once a transition is committed, its
+    /// events are handed to <see cref="IEventPublisher"/> once. Weaker by choice - an event is lost when
+    /// publishing fails or the process stops first; there is no retry. Kaleido's outbox store and relay
+    /// are removed.
+    /// </summary>
+    /// <exception cref="KaleidoConfigurationException">
+    /// <see cref="ConfigurationErrorCodes.ConflictingOutbox"/>: another outbox choice was registered.
+    /// </exception>
+    public static IKaleidoBuilder AddDirectPublication(this IKaleidoBuilder builder) =>
+        ReplaceOutbox(builder, typeof(KaleidoDirectPublicationOutbox), "AddDirectPublication()");
+
+    // One outbox choice per service: the built-in outbox (default, or with an outbox store), the host's
+    // own, or direct publication.
+    private static IKaleidoBuilder ReplaceOutbox(IKaleidoBuilder builder, Type outbox, string call)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        var services = builder.Services;
+
+        if (RegisteredType<IKaleidoOutbox>(services) is { } registered && registered != typeof(KaleidoStoreOutbox))
+        {
+            ThrowConflictingOutbox($"{call} replaces Kaleido's outbox, but the service already uses {registered.Name}.");
+        }
+
+        if (RegisteredType<IKaleidoOutboxStore>(services) is { } store && store != typeof(InMemoryKaleidoOutboxStore))
+        {
+            ThrowConflictingOutbox($"{call} replaces Kaleido's outbox, but an outbox store ({store.Name}) was registered for it.");
+        }
+
+        services.RemoveAll<IKaleidoOutbox>();
+        services.RemoveAll<IKaleidoOutboxStore>();
+        foreach (var relay in services.Where(x => x.ServiceType == typeof(IHostedService) && x.ImplementationType == typeof(KaleidoEventRelay)).ToList())
+        {
+            services.Remove(relay);
+        }
+
+        services.AddScoped(typeof(IKaleidoOutbox), outbox);
+
+        return builder;
+    }
+
+    // Replaces the default; the same implementation again is a no-op, a different one a conflict.
+    private static IKaleidoBuilder Replace<TService, TImplementation, TDefault>(
+        IKaleidoBuilder builder,
+        string what,
+        string code = ConfigurationErrorCodes.ConflictingStore)
+        where TService : class
+        where TImplementation : class, TService
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        var registered = RegisteredType<TService>(builder.Services);
+
+        if (registered == typeof(TImplementation))
+        {
+            return builder;
+        }
+
+        if (registered is not null && registered != typeof(TDefault))
+        {
+            throw new KaleidoConfigurationException(
+                code,
+                $"Two {what} implementations were registered: {registered.Name} and {typeof(TImplementation).Name}. A service has one {what}.");
+        }
+
+        builder.Services.RemoveAll<TService>();
+        builder.Services.AddScoped<TService, TImplementation>();
+
+        return builder;
+    }
+
+    // The implementation registered for a service: its type, an instance's type, or - for a factory,
+    // whose type is unknown until resolved - the service type itself (never a default).
+    private static Type? RegisteredType<TService>(IServiceCollection services) =>
+        services.LastOrDefault(x => x.ServiceType == typeof(TService)) is { } registration
+            ? registration.ImplementationType ?? registration.ImplementationInstance?.GetType() ?? typeof(TService)
+            : null;
+
+    [DoesNotReturn]
+    private static void ThrowConflictingOutbox(string message) =>
+        throw new KaleidoConfigurationException(
+            ConfigurationErrorCodes.ConflictingOutbox,
+            message + " A service has one outbox: Kaleido's (with one outbox store), its own (AddOutbox), or direct publication (AddDirectPublication).");
 }

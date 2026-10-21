@@ -44,7 +44,7 @@ One place owns each fact: a project's README lists its types and entry points, [
 | [`Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) | typed clients for remote Kaleido services, configured from `Kaleido:Clients` | server-side logic, endpoint mapping |
 | [`Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md) | the MCP adapter: tools built per caller from the registry, calls through the Kaleido clients as the caller | transport or client logic |
 | [`Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) | wiring Kaleido's activity sources and meters into OpenTelemetry (one of many possible `Kaleido.Observability.<Technology>` providers) | the instrumentation itself, which lives in core on BCL `ActivitySource`/`Meter` |
-| [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) | reference implementations of the three store contracts (`IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore`) on one SQLite database | production guarantees; production hosts implement the store on their own infrastructure |
+| [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) | reference implementations of the store contracts (`IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore`) and of `IKaleidoTransactions` on one SQLite database | production guarantees; production hosts implement the store on their own infrastructure |
 
 ## General contributor rules
 
@@ -252,4 +252,4 @@ dotnet test Kaleido.slnx --no-build --
 - If the concern is calling a remote Kaleido service over HTTP, it belongs in `Kaleido.Http.Client`.
 - If the concern is publishing capabilities to AI agents as MCP tools (tool listing, schemas, forms, `call_tool`), it belongs in `Kaleido.Http.Mcp`.
 - If the concern is OpenTelemetry provider wiring (exporters, instrumentation, resource config), it belongs in `Kaleido.Observability.OpenTelemetry`.
-- If the concern is a store contract (`IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore`), it belongs in `Kaleido` (`Storage/`); the SQLite reference implementation belongs in `Kaleido.Provider.SQLite`.
+- If the concern is a store or outbox contract (`IKaleidoContextStore`, `IKaleidoOutbox`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore`, `IKaleidoTransactions`), it belongs in `Kaleido` (`Storage/`); the SQLite reference implementation, including its transactions, belongs in `Kaleido.Provider.SQLite`.
