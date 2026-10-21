@@ -25,8 +25,13 @@ public sealed class CaptureMriInfoHandler(
     {
         // Kaleido has already checked the answers fit the presented questions; translating them
         // into the domain's own values is the handler's job.
+        // Laterality is configured to apply only when the body part has sides (not the spine): Kaleido
+        // has checked every question that applies is answered, so no answer means it did not apply.
+        var laterality = Laterality.None;
+
         if (!TryRead(processStep, BodyPartItem, out MriBodyPart bodyPart, out var failure) ||
-            !TryRead(processStep, LateralityItem, out Laterality laterality, out failure) ||
+            (ConfiguredInformationRequests.Answer(processStep, LateralityItem) is not null &&
+             !TryRead(processStep, LateralityItem, out laterality, out failure)) ||
             !TryRead(processStep, ContrastItem, out ContrastOption contrast, out failure))
         {
             return ProcessStepHandlerResult.Reject(failure!);

@@ -135,6 +135,29 @@ public sealed class ToolCatalogBuilderTests
         Assert.EndsWith("Read-only.", tool.Definition.Description, StringComparison.Ordinal);
     }
 
+    // What the result fields mean, for the agent reading the data (#213); undescribed fields are left out.
+    [Fact]
+    public void Tools_KeepTheDescribedOutputFields_ByNameIgnoringCase()
+    {
+        var patients = Patients() with
+        {
+            OutputFields = [new QueryableQueryProperty { Name = "Id", Description = " The patient's id. ", DataType = Text }, new QueryableQueryProperty { Name = "Name", DataType = Text }],
+            Views = [Patients().Views.First() with { OutputFields = [new QueryableQueryProperty { Name = "Card", Description = "The printed card.", DataType = Text }] }],
+        };
+        var visits = Visits() with
+        {
+            Steps = [(Visits().Steps ?? []).First() with { Result = new ProcessStepResultMetadata { OutputFields = [new ProcessOutputFieldMetadata { Name = "VisitId", Description = "The visit opened.", DataType = Text }] } }],
+        };
+
+        var catalog = Build(new AggregatedRegistryResponse { Queryables = [patients], Processes = [visits] });
+
+        var source = Tool(catalog, "clinic_patientsource").OutputDescriptions;
+        Assert.Equal("The patient's id.", source["id"]);
+        Assert.False(source.ContainsKey("Name"));
+        Assert.Equal("The printed card.", Tool(catalog, "clinic_patientcardviewsource").OutputDescriptions["card"]);
+        Assert.Equal("The visit opened.", Tool(catalog, "clinic_startvisitstep").OutputDescriptions["visitId"]);
+    }
+
     [Fact]
     public void QueryTool_SchemaOffersOnlyWhatTheSourceSupports()
     {

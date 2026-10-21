@@ -81,9 +81,36 @@ public static class QuestionnaireTranslation
             Type = type,
             Repeats = item.Repeats,
             Options = options,
-            ProposedAnswers = proposal is null ? [] : [new InformationAnswer { Value = proposal }]
+            ProposedAnswers = proposal is null ? [] : [new InformationAnswer { Value = proposal }],
+            // The configured conditions, on the binding keys the item ids are made of; Kaleido decides
+            // from them which questions are asked (ADR 0024).
+            EnableWhen = item.EnableWhen
+                .Select(condition => new InformationCondition
+                {
+                    Question = condition.QuestionBindingKey,
+                    Operator = ToOperator(condition.Operator),
+                    Answer = condition.AnswerValue
+                })
+                .ToArray()
         };
     }
+
+    // The operator names the configuration uses (enum names or FHIR's symbols). A name it does not
+    // know is left undefined, so Kaleido rejects the request as not well-formed instead of the
+    // question silently being asked always.
+    private static InformationConditionOperator ToOperator(
+        string value) =>
+        value.Trim() switch
+        {
+            "=" => InformationConditionOperator.Equals,
+            "!=" => InformationConditionOperator.NotEquals,
+            ">" => InformationConditionOperator.GreaterThan,
+            "<" => InformationConditionOperator.LessThan,
+            ">=" => InformationConditionOperator.GreaterThanOrEqual,
+            "<=" => InformationConditionOperator.LessThanOrEqual,
+            var name when Enum.TryParse<InformationConditionOperator>(name, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed) => parsed,
+            _ => (InformationConditionOperator)(-1)
+        };
 
     // Only a value the caller could submit unchanged is proposed.
     private static bool Fits(

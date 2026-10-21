@@ -105,6 +105,54 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
         Assert.Equal(round, state.RequiredStep?.InformationRequest?.InformationRequestId);
     }
 
+    // A conditional question travels with its condition, and only applies when the answers enable it.
+    [Fact]
+    public async Task AConditionalQuestion_TravelsWithItsCondition_OnTheWire()
+    {
+        using var request = CreateRequest(AskUrl, new RuntimeAskStep(), processId: null);
+
+        using var response = await fixture.Client.SendAsync(request);
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("\"enableWhen\":[{\"question\":\"runtime-first-round-reason\",\"operator\":\"equals\",\"answer\":\"b\"}]", json);
+    }
+
+    [Fact]
+    public async Task AConditionalQuestion_IsRequired_OnlyWhenTheAnswersEnableIt()
+    {
+        var round = RuntimeInformationRequests.FirstRound;
+        var processId = await StartAskingAsync();
+
+        var missing = await PostAsync(AnswerUrl, ReasonB(round), processId);
+
+        Assert.NotEqual(StepExecutionOutcome.Completed, missing.Outcome);
+        Assert.Equal(ProcessExecutionState.AwaitingInformation, (await GetStateAsync(processId)).State);
+
+        var answered = await PostAsync(AnswerUrl, ReasonB(round) with { Items = [.. ReasonB(round).Items, Answer($"{round}-detail", "Because")] }, processId);
+
+        Assert.Equal(StepExecutionOutcome.Completed, answered.Outcome);
+    }
+
+    [Fact]
+    public async Task AnAnswerToAQuestionThatDoesNotApply_IsRejected()
+    {
+        var round = RuntimeInformationRequests.FirstRound;
+        var processId = await StartAskingAsync();
+        var answers = Answers(round, more: false);
+
+        var rejected = await PostAsync(AnswerUrl, answers with { Items = [.. answers.Items, Answer($"{round}-detail", "Not asked")] }, processId);
+
+        Assert.NotEqual(StepExecutionOutcome.Completed, rejected.Outcome);
+        Assert.Equal(ProcessExecutionState.AwaitingInformation, (await GetStateAsync(processId)).State);
+    }
+
+    private static RuntimeAnswerStep ReasonB(string round) =>
+        new()
+        {
+            InformationRequestId = round,
+            Items = [Answer($"{round}-more", "false"), Answer($"{round}-reason", "b")]
+        };
+
     [Fact]
     public async Task AnotherStep_CannotBypassThePendingRequest()
     {

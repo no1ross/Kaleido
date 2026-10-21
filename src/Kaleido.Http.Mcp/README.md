@@ -83,6 +83,12 @@ Classified fields (`DataClassificationAttribute`, e.g. `[PHI]`) are marked in in
 ("Sensitive (PHI).") and in the "Returns:" list (`Name (PHI)`), so an agent does not repeat or store
 them carelessly.
 
+**What the returned fields mean.** A query result or a step result comes with `fieldDescriptions`:
+the registry's description of each field the result contains (from `[Description]` on the query
+context, the view's output record or the step's result type; KAL2018 and KAL2024 ask for them). Tool
+descriptions keep listing only the field names, so the tool list stays short and the meaning arrives
+with the data (#213).
+
 ## After a step
 
 A step's result is summarized for the agent: the outcome, the step's result, `next`, and the two
@@ -128,6 +134,25 @@ forms. Sessions for those clients are an opt-in not offered yet
 ([#350](https://github.com/no1ross/Kaleido/issues/350)).
 
 Proposed answers open the form pre-filled; the user confirms or corrects them.
+
+### Conditional questions
+
+A question with `enableWhen` applies only when earlier answers say so
+([ADR 0024](../../docs/decisions/0024-conditional-questions.md)). The adapter applies the conditions;
+the agent never sees them and only asks what it is handed:
+
+- **Forms** (MRTR and session) show one round at a time: first the questions with no condition, then
+  those the answers so far make apply. The answers given so far travel in the continuation state, and
+  one complete submission reaches the service. A form declined, or accepted without answers, submits
+  nothing.
+- **Chat:** `next.informationRequest` lists only the questions that apply now, without condition
+  fields. When the answers given to `answer_information_request` make further questions apply, the
+  result returns them with an `answersToken` and submits nothing. The agent asks those, then calls
+  `answer_information_request` again with the new answers and the token. When nothing more applies,
+  everything is submitted and the service validates it as always. An answer to a question that does
+  not apply is not sent.
+- The token holds the earlier answers for that process and request only; a token for anything else is
+  ignored. It is not a security boundary: the service validates the complete submission.
 
 ## Lookups
 
