@@ -232,7 +232,7 @@ dotnet_diagnostic.MA0004.severity = none      ; StringComparison — CA1862 cove
 dotnet_diagnostic.MA0006.severity = warning   ; Use string.Equals for ordinal comparisons
 dotnet_diagnostic.MA0016.severity = warning   ; Prefer collection abstraction over concrete type
 dotnet_diagnostic.MA0037.severity = warning    ; Remove empty statements (enforced, #257)
-dotnet_diagnostic.MA0048.severity = none ; File name must match type name - off: small related types (records, an interface and its implementation) share a file on purpose
+dotnet_diagnostic.MA0048.severity = none ; File name must match type name - off: small related types (data records, an interface and its implementation) share a file on purpose; a type with behavior gets its own file through KAL0022 (#404)
 dotnet_diagnostic.MA0051.severity = warning    ; Method is too long (over 60 lines): split it into named steps
 
 ; RCS1194: Kaleido exceptions require a 'code' parameter by design — the BCL
