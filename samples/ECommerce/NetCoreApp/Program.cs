@@ -38,6 +38,9 @@ builder.Services.AddDbContext<ECommerceDbContext>(options =>
     options.UseSqlite("Data Source=kaleido-sample-ecomerce.sqlite");
 });
 
+// Full pages are counted with one SELECT COUNT(*) (EF Core's operators); the in-memory cart views use LINQ (#352).
+builder.Services.AddSingleton(typeof(Kaleido.Queryable.Runtime.IQueryContextExecutor<>), typeof(EfCoreQueryContextExecutor<>));
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
