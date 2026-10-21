@@ -14,7 +14,7 @@ internal sealed class RegistrySnapshot(
     KaleidoServiceOptions serviceOptions)
     : IDisposable
 {
-    private readonly HttpRegistryCache cache = new(store, $"kaleido:{serviceOptions.ServiceName}");
+    private readonly HttpRegistryCache _cache = new(store, $"kaleido:{serviceOptions.ServiceName}");
 
     /// <summary>True once the registry endpoint is mapped (and the settings decided).</summary>
     public bool IsMapped { get; private set; }
@@ -50,7 +50,7 @@ internal sealed class RegistrySnapshot(
         bool refresh,
         Func<CancellationToken, Task<AggregatedRegistryResponse>> build,
         CancellationToken cancellationToken = default) =>
-        cache.GetOrBuildAsync(CacheTtl, RefreshCooldown, refresh, build, cancellationToken);
+        _cache.GetOrBuildAsync(CacheTtl, RefreshCooldown, refresh, build, cancellationToken);
 
-    public void Dispose() => cache.Dispose();
+    public void Dispose() => _cache.Dispose();
 }

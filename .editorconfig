@@ -95,7 +95,7 @@ csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
 csharp_style_prefer_collection_expression = when_types_exactly_match:suggestion
 csharp_style_prefer_pattern_matching = true:suggestion
 
-; Naming conventions
+; Naming conventions (enforced in src/: see the [src/**/*.cs] section)
 ; — const fields: PascalCase
 dotnet_naming_rule.constant_fields_should_be_pascal_case.severity = suggestion
 dotnet_naming_rule.constant_fields_should_be_pascal_case.symbols  = constant_fields
@@ -104,6 +104,12 @@ dotnet_naming_symbols.constant_fields.applicable_kinds   = field
 dotnet_naming_symbols.constant_fields.required_modifiers = const
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 ; — private/internal fields: _camelCase
+dotnet_naming_rule.pascal_case_for_static_fields.severity = suggestion
+dotnet_naming_rule.pascal_case_for_static_fields.symbols  = static_fields
+dotnet_naming_rule.pascal_case_for_static_fields.style    = pascal_case_style
+dotnet_naming_symbols.static_fields.applicable_kinds   = field
+dotnet_naming_symbols.static_fields.required_modifiers = static
+
 dotnet_naming_rule.camel_case_for_private_internal_fields.severity = suggestion
 dotnet_naming_rule.camel_case_for_private_internal_fields.symbols  = private_internal_fields
 dotnet_naming_rule.camel_case_for_private_internal_fields.style    = camel_case_underscore_style
@@ -112,6 +118,12 @@ dotnet_naming_symbols.private_internal_fields.applicable_accessibilities = priva
 dotnet_naming_style.camel_case_underscore_style.required_prefix = _
 dotnet_naming_style.camel_case_underscore_style.capitalization = camel_case
 ; — interfaces: IPascalCase
+dotnet_naming_rule.parameters_should_be_camel_case.severity = suggestion
+dotnet_naming_rule.parameters_should_be_camel_case.symbols  = parameters
+dotnet_naming_rule.parameters_should_be_camel_case.style    = camel_case_style
+dotnet_naming_symbols.parameters.applicable_kinds = parameter
+dotnet_naming_style.camel_case_style.capitalization = camel_case
+
 dotnet_naming_rule.interfaces_should_be_i_pascal.severity = suggestion
 dotnet_naming_rule.interfaces_should_be_i_pascal.symbols  = interfaces
 dotnet_naming_rule.interfaces_should_be_i_pascal.style    = i_pascal_style
@@ -282,6 +294,17 @@ dotnet_diagnostic.MA0018.severity = none       ; Deprecated duplicate of CA1000
 
 ; Internal types here are used by Kaleido.Http and Kaleido.Http.Client through InternalsVisibleTo,
 ; which MA0182 cannot see - every finding is a false positive
+; Naming is enforced in src/ (#329): any violation fails the build there (TreatWarningsAsErrors +
+; EnforceCodeStyleInBuild in src/Directory.Build.props). Instance fields _camelCase; static and const fields
+; PascalCase; interfaces IPascal; parameters camelCase. Elsewhere the same rules are suggestions.
+[src/**/*.cs]
+dotnet_diagnostic.IDE1006.severity = warning
+dotnet_naming_rule.constant_fields_should_be_pascal_case.severity = warning
+dotnet_naming_rule.pascal_case_for_static_fields.severity = warning
+dotnet_naming_rule.camel_case_for_private_internal_fields.severity = warning
+dotnet_naming_rule.interfaces_should_be_i_pascal.severity = warning
+dotnet_naming_rule.parameters_should_be_camel_case.severity = warning
+
 [src/Kaleido.Http.Abstractions/{*.cs,**/*.cs}]
 dotnet_diagnostic.MA0182.severity = none
 
