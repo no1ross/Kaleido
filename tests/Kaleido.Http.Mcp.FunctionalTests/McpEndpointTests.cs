@@ -18,6 +18,9 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
 
     private static readonly string[] Checkup = ["checkup"];
     private static readonly string[] NotUrgent = ["false"];
+    private static readonly string[] Injury = ["injury"];
+    private static readonly string[] IsUrgent = ["true"];
+    private static readonly string[] Ladder = ["Fell off a ladder"];
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -164,6 +167,83 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
                 new { itemId = VisitQuestions.Reason, values = Checkup },
                 new { itemId = VisitQuestions.Urgent, values = NotUrgent }
             }
+        }));
+
+        Assert.Equal("completed", answered["outcome"]!.GetValue<string>());
+        Assert.Equal("clinic_close_visit", answered["next"]!["required"]!["tool"]!.GetValue<string>());
+    }
+
+    // Conditional questions (ADR 0024): the follow-up is asked only once the answer enables it, in a
+    // second form; one submission reaches Kaleido.
+    [Fact]
+    public async Task WithElicitation_AConditionalQuestion_IsAskedInASecondForm_OnlyWhenEnabled()
+    {
+        var forms = new List<string[]>();
+
+        await using var client = await fixture.ConnectAsync(
+            Nurse,
+            (request, _) =>
+            {
+                var asked = request?.RequestedSchema?.Properties?.Keys.ToArray() ?? [];
+                forms.Add(asked);
+
+                return ValueTask.FromResult(new ElicitResult
+                {
+                    Action = "accept",
+                    Content = asked.Contains(VisitQuestions.WhatHappened)
+                        ? new Dictionary<string, JsonElement> { [VisitQuestions.WhatHappened] = JsonSerializer.SerializeToElement("Fell off a ladder") }
+                        : new Dictionary<string, JsonElement>
+                        {
+                            [VisitQuestions.Reason] = JsonSerializer.SerializeToElement("injury"),
+                            [VisitQuestions.Urgent] = JsonSerializer.SerializeToElement(true)
+                        }
+                });
+            });
+
+        var started = Body(await Call(client, "clinic_start_visit", new() { ["patientId"] = VisitQuestions.ConditionalPatientId }));
+
+        Assert.Equal([[VisitQuestions.Reason, VisitQuestions.Urgent], [VisitQuestions.WhatHappened]], forms);
+        Assert.Equal(VisitQuestions.RequestId, started["answered"]![0]!.GetValue<string>());
+        Assert.Equal("clinic_close_visit", started["next"]!["required"]!["tool"]!.GetValue<string>());
+    }
+
+    // Chat: the agent is handed only the questions that apply now, never the conditions; the
+    // follow-up comes back with a token once the answer enables it.
+    [Fact]
+    public async Task WithoutElicitation_AConditionalQuestion_ComesBackAfterTheAnswerThatEnablesIt()
+    {
+        await using var client = await fixture.ConnectAsync(Nurse);
+        var started = Body(await Call(client, "clinic_start_visit", new() { ["patientId"] = VisitQuestions.ConditionalPatientId }));
+        var processId = started["processId"]!.GetValue<string>();
+
+        Assert.Equal(
+            [VisitQuestions.Reason, VisitQuestions.Urgent],
+            started["next"]!["informationRequest"]!["items"]!.AsArray().Select(x => x!["id"]!.GetValue<string>()));
+        Assert.DoesNotContain("enableWhen", started.ToJsonString(), StringComparison.Ordinal);
+
+        var followUp = Body(await Call(client, "answer_information_request", new()
+        {
+            ["service"] = "clinic",
+            ["processId"] = processId,
+            ["informationRequestId"] = VisitQuestions.RequestId,
+            ["answers"] = new object[]
+            {
+                new { itemId = VisitQuestions.Reason, values = Injury },
+                new { itemId = VisitQuestions.Urgent, values = IsUrgent }
+            }
+        }));
+
+        Assert.Equal(
+            VisitQuestions.WhatHappened,
+            Assert.Single(followUp["next"]!["informationRequest"]!["items"]!.AsArray())!["id"]!.GetValue<string>());
+
+        var answered = Body(await Call(client, "answer_information_request", new()
+        {
+            ["service"] = "clinic",
+            ["processId"] = processId,
+            ["informationRequestId"] = VisitQuestions.RequestId,
+            ["answers"] = new object[] { new { itemId = VisitQuestions.WhatHappened, values = Ladder } },
+            ["answersToken"] = followUp["next"]!["answersToken"]!.GetValue<string>()
         }));
 
         Assert.Equal("completed", answered["outcome"]!.GetValue<string>());

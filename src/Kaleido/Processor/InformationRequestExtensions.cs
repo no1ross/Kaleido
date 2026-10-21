@@ -49,6 +49,52 @@ internal static class InformationRequestExtensions
         ];
     }
 
+    // The request as it is put to a person or an agent now: only the questions askable with the
+    // answers so far (in their enabled groups; display text in the first round), conditions removed -
+    // Kaleido has already applied them. Null when nothing is left to ask. A request without conditions,
+    // asked for the first time, is returned as is.
+    public static InformationRequest? NextRound(
+        this InformationRequest request,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> answers)
+    {
+        var askable = request.AskableQuestions(answers).Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+
+        if (askable.Count == 0)
+        {
+            return null;
+        }
+
+        if (answers.Count == 0 && !Flatten(request.Items, []).Any(x => x.Conditions.Count > 0))
+        {
+            return request;
+        }
+
+        var enabled = request.EnabledItemIds(answers);
+
+        return request with { Items = Round(request.Items, askable, enabled, firstRound: answers.Count == 0) };
+    }
+
+    private static InformationItem[] Round(
+        IReadOnlyList<InformationItem> items,
+        HashSet<string> askable,
+        IReadOnlySet<string> enabled,
+        bool firstRound) =>
+        [
+            .. items
+                .Select(item => item.Type switch
+                {
+                    InformationItemType.Group when enabled.Contains(item.Id) =>
+                        Round(item.Items, askable, enabled, firstRound) is { Length: > 0 } nested ? Plain(item) with { Items = nested } : null,
+                    InformationItemType.Group => null,
+                    InformationItemType.Display => firstRound && enabled.Contains(item.Id) ? Plain(item) : null,
+                    _ => askable.Contains(item.Id) ? Plain(item) : null,
+                })
+                .OfType<InformationItem>(),
+        ];
+
+    private static InformationItem Plain(InformationItem item) =>
+        item with { EnableWhen = [], EnableBehavior = InformationEnableBehavior.All };
+
     // Whether a condition holds for the answers of its tested question (none when unanswered or disabled).
     public static bool Holds(this InformationCondition condition, InformationItem question, IReadOnlyList<string> answers)
     {

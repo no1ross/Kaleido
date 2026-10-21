@@ -701,6 +701,11 @@ internal sealed partial class ToolCatalogBuilder(
                         ["required"] = new JsonArray("itemId", "values"),
                     },
                 },
+                [KaleidoToolInvoker.AnswersTokenArgument] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Only when a previous answer_information_request result returned further questions with an answersToken: pass it back unchanged with the answers to those questions.",
+                },
             },
             ["required"] = new JsonArray("service", "processId", "informationRequestId", "answers"),
         };
