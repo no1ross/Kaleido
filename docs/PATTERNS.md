@@ -208,6 +208,20 @@ no `X-Kaleido-*` headers and no Kaleido error bodies; a host endpoint that calls
 a Kaleido client sends no inbound request id, so the downstream service
 generates one. All filters are internal; hosts never register them (#295).
 
+### Changing a step, source or view
+
+`Version` is a label for audit and clients: Kaleido publishes and records it but never routes on it
+([ADR 0026](decisions/0026-versioning-concept.md)). A capability has one live version, addressed by
+its name.
+
+- **Compatible** (keep the name, bump the version): wording, a new optional input, a new output field.
+- **Breaking** (publish a new capability, e.g. `CaptureMemberStepV2`): removing, renaming or
+  requiring an input; changing a type or a value's meaning; relationships that would strand stored
+  processes.
+- **In-flight processes continue on the deployed definition.** Completed steps keep the version they
+  ran with. To retire a step, close it first (`AvailableUntil`), and remove it in a later deployment,
+  once no stored process can require it.
+
 ## Transport-neutral response semantics
 
 Design the meaning of response fields before choosing JSON, gRPC, or another
@@ -228,7 +242,7 @@ What Kaleido guarantees, and what stays with the step handler:
 - **Client calls are resilient by default:** timeouts, retries of safe requests (reads and requests with an idempotency key), a circuit breaker - configured under `Kaleido:Resilience`, per client in `Kaleido:Clients:{name}:Resilience` ([`Kaleido.Http.Client`](../src/Kaleido.Http.Client/README.md#resilience)).
 - **A handler's own side effects are the handler's concern.** On a 409 the handler has already run; only the process state was not saved. A handler that writes to another system or calls one should make that write idempotent (an upsert, a business key, the process id as a reference) so running the step again for the same process is harmless - Kaleido cannot make a handler's external write atomic with its state.
 - **Events are handed to the publisher at least once** with Kaleido's built-in outbox (the default). Every event goes to the outbox (a step's `StepCompleted` and a new process's `ProcessCreated` in the same transaction as the state when the persistence provides one, e.g. SQLite), and the event relay of each instance publishes it, retrying with backoff until it succeeds - configured under `Kaleido:Events` (`BatchSize`, `MaxConcurrentPublishes`, `Resilience`). A publisher never slows down or fails a request. Consumers drop duplicates by `IKaleidoEvent.EventId` ([ADR 0012](decisions/0012-events-at-least-once-through-the-store.md)). A host that already runs an outbox plugs it in instead (`AddOutbox<T>()`); `AddDirectPublication()` publishes once after the commit, without retries ([ADR 0023](decisions/0023-outbox-integration.md)).
-- **Event payloads are complete; sensitive values are redacted before the outbox.** Mark PHI/PII properties of your view, source and step types with your own `DataClassificationAttribute` subclasses (`[PHI]`, `[PII]`; `[property: PHI]` on positional records) and choose a redactor per classification with `AddRedaction` (`Microsoft.Extensions.Compliance.Redaction`): erase, HMAC, or your own encrypting redactor. Without one, classified values are erased. For anything else (information-request answers, per-view rules) register an `IKaleidoEventRedactor` (`AddEventRedactor<T>()`). Responses to the caller are never redacted ([ADR 0013](decisions/0013-event-payloads-classified-and-redacted.md)).
+- **Event payloads are complete; sensitive values are redacted before the outbox.** Mark PHI/PII properties of your view, source and step types with your own `DataClassificationAttribute` subclasses (`[PHI]`, `[PII]`; `[property: PHI]` on positional records) and choose a redactor per classification for events with `AddEventClassificationRedaction(r => ...)` (the standard `IRedactionBuilder` API): erase, HMAC, keep (`NullRedactor`), or your own encrypting redactor. Without it, classified values are erased. Logs are configured separately with `AddRedaction`, so the two channels can differ (e.g. logs: no PHI or PII; events: PII kept) ([ADR 0025](decisions/0025-event-redaction-policy.md)). For anything else (information-request answers, per-view rules) register an `IKaleidoEventRedactor` (`AddEventRedactor<T>()`). Responses to the caller are never redacted ([ADR 0013](decisions/0013-event-payloads-classified-and-redacted.md)).
 - **Custom stores** implement the conditional save (state only), the idempotent-result methods, and either the built-in outbox's storage (`IKaleidoOutboxStore`, with leased claims) or their own outbox (`IKaleidoOutbox`), plus `IKaleidoTransactions` to keep a state change and its event atomic on one database ([store contract](../src/Kaleido.Provider.SQLite/README.md#implementing-your-own-store), [ADR 0023](decisions/0023-outbox-integration.md)).
 
 ## Queryable: sources, views and query contexts

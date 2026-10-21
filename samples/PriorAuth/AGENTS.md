@@ -62,7 +62,7 @@
 ## Sensitive data in events
 - Member fields are classified with `[Phi]` (name, display name, date of birth) and `[Pii]` (email, phone, address) from `Common/Compliance/PriorAuthDataClassifications.cs`.
 - Kaleido redacts classified values in event payloads before the outbox write (ADR 0013); responses to callers keep the real values.
-- The sample registers no `AddRedaction`, so classified values are erased in events (a warning is logged once). To pseudonymize or encrypt instead, add `Microsoft.Extensions.Compliance.Redaction` to a host and call `services.AddRedaction(...)` per classification.
+- Every event-publishing service calls `AddPriorAuthEventRedaction()` (`Common/Compliance/PriorAuthEventRedaction.cs`): events keep PII and erase PHI. It is the event policy only (`AddEventClassificationRedaction`, ADR 0025); log redaction (`AddRedaction`) would be configured separately. To pseudonymize instead, map a classification to an HMAC or encrypting redactor there.
 
 ## Configuration per environment
 - **Containers run as Production** (images are built `Release`; compose sets no `ASPNETCORE_ENVIRONMENT`), so they read only each host's `appsettings.json`: container addresses (`http://member:8080`, `http://eventcollector:8080`), `data/...` paths (`/app/data` in the container) and the dashboard's OTLP endpoint `http://aspire-dashboard:18889`. Swagger is Development-only, so it is off in containers.

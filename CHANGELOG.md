@@ -24,6 +24,15 @@ sections.
   `IKaleidoTransactions` makes a state change and its event atomic. `IKaleidoOutboxStore.EnqueueEventsAsync`
   is now `AddAsync`. New builder methods `AddContextStore`, `AddIdempotencyStore`, `AddOutboxStore`,
   `AddTransactions`; new startup codes `conflicting_store`, `conflicting_outbox`.
+- **Event redaction separate from log redaction** ([ADR 0025](docs/decisions/0025-event-redaction-policy.md), #278):
+  `AddEventClassificationRedaction(r => ...)` sets the event policy with the standard `IRedactionBuilder`
+  API; the host's `AddRedaction` now applies to logs only. **Behavior change:** without
+  `AddEventClassificationRedaction`, classified values in events are erased (with a one-time warning),
+  even when the host has a log policy.
+- **Versioning concept** ([ADR 0026](docs/decisions/0026-versioning-concept.md), #197): a version is a label;
+  one live version per capability (a breaking change takes a new name); in-flight processes continue on
+  the deployed definition. Fix: a step that ran keeps the version it ran with (`StepContext.Version`)
+  instead of taking the deployed one at the next request.
 - **Conditional questions** ([ADR 0024](docs/decisions/0024-conditional-questions.md), #235):
   `InformationItem.EnableWhen` (`InformationCondition`: question, operator, answer) and `EnableBehavior`.
   Only enabled questions must be answered; an answer to a disabled one is rejected. The MCP adapter asks
