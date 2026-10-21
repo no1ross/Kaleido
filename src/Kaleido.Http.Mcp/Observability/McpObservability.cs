@@ -110,10 +110,10 @@ internal sealed partial class McpObservability(
         ILogger logger)
         : IMcpToolCallObservation
     {
-        private readonly long started = Stopwatch.GetTimestamp();
-        private string kind = "unknown";
-        private string service = string.Empty;
-        private bool recorded;
+        private readonly long _started = Stopwatch.GetTimestamp();
+        private string _kind = "unknown";
+        private string _service = string.Empty;
+        private bool _recorded;
 
         public void Resolved(KaleidoTool tool, string? processId)
         {
@@ -122,7 +122,7 @@ internal sealed partial class McpObservability(
                 activity?.SetTag(KaleidoTelemetryTags.ProcessId, processId);
             }
 
-            kind = tool.Kind switch
+            _kind = tool.Kind switch
             {
                 KaleidoToolKind.Query => "query",
                 KaleidoToolKind.Step => "step",
@@ -131,9 +131,9 @@ internal sealed partial class McpObservability(
                 _ => "unknown",
             };
 
-            service = tool.Service;
+            _service = tool.Service;
 
-            activity?.SetTag(McpTelemetry.TagToolKind, kind);
+            activity?.SetTag(McpTelemetry.TagToolKind, _kind);
             activity?.SetTag(McpTelemetry.TagService, tool.Service);
             activity?.SetTag(McpTelemetry.TagCapability, tool.CapabilityName);
         }
@@ -187,21 +187,21 @@ internal sealed partial class McpObservability(
         // log reports the same measurement as the duration histogram.
         private long Record(string outcome, string? errorCode)
         {
-            var elapsed = Stopwatch.GetElapsedTime(started);
+            var elapsed = Stopwatch.GetElapsedTime(_started);
 
-            if (recorded)
+            if (_recorded)
             {
                 return (long)elapsed.TotalMilliseconds;
             }
 
-            recorded = true;
+            _recorded = true;
 
             activity?.SetTag(McpTelemetry.TagOutcome, outcome);
 
             TagList tags =
             [
-                new(McpTelemetry.TagToolKind, kind),
-                new(McpTelemetry.TagService, service),
+                new(McpTelemetry.TagToolKind, _kind),
+                new(McpTelemetry.TagService, _service),
                 new(McpTelemetry.TagOutcome, outcome),
             ];
 

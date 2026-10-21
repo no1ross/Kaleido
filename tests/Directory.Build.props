@@ -9,6 +9,9 @@
         <PackageReference Include="Moq" />
         <PackageReference Include="xunit.v3" />
         <ProjectReference Include="$(MSBuildThisFileDirectory)..\tools\analyzers\Kaleido.Analyzers.Testing\Kaleido.Analyzers.Testing.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+        <!-- KAL1003 finds a SUT's file among these paths: src/ is referenced as compiled assemblies,
+             so the compilation has no syntax for it (#405). Only the paths are used, never the text. -->
+        <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\src\**\*.cs" Exclude="$(MSBuildThisFileDirectory)..\src\**\bin\**;$(MSBuildThisFileDirectory)..\src\**\obj\**" Visible="false" />
     </ItemGroup>
     <PropertyGroup>
         <IsPackable>false</IsPackable>

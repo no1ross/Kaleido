@@ -301,11 +301,23 @@ Rules:
   `QueryResult` through untouched. Delegated sources have no views.
 - **How a source is fulfilled (local or delegated) is not published:** consumers see
   every source the same way.
-- **EF Core (or any async provider): register an executor.** Kaleido counts the
-  results when a page is full. The default `IQueryContextExecutor<TView>` is
-  provider-neutral: it counts an async query by enumerating it, so the database
-  streams every matching row to count them. An EF Core host registers an executor
-  that uses EF's operators, and the count is one `SELECT COUNT(*)`:
+- **An async query provider (EF Core, MongoDB, ...): register its executor.** Kaleido
+  counts the results when a page is full, through `IQueryContextExecutor<TView>`.
+  Core knows no provider, so its default can only use what every `IQueryable` offers:
+  a query that is also `IAsyncEnumerable<T>` is counted by reading every matching
+  row; any other query by LINQ `Count()`, translated by the provider but run
+  synchronously. A host on an async provider registers an executor that calls the
+  provider's own async operators, so a count is one server-side count. Measured on EF
+  Core with SQLite and a full page of 50 (`tools/benchmarks`, #326):
+
+  | Rows | Default executor | Provider executor (`SELECT COUNT`) |
+  |---|---|---|
+  | 1,000 | 0.66 ms, 395 KB | 0.13 ms, 84 KB |
+  | 10,000 | 5.9 ms, 3.2 MB | 0.37 ms, 84 KB |
+  | 100,000 | 55.9 ms, 31.3 MB | 3.0 ms, 84 KB |
+
+  The default grows with the matching rows; the provider executor does not. The EF
+  Core executor (a MongoDB one calls `CountDocumentsAsync`/`ToListAsync` the same way):
 
   ```csharp
   internal sealed class EfCoreQueryContextExecutor<TView> : IQueryContextExecutor<TView>

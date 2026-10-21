@@ -99,6 +99,8 @@ Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 | KAL0019 | Public and internal async methods returning `Task`/`Task<T>` must accept a `CancellationToken` parameter | `Async method '{0}' does not accept a CancellationToken — add 'CancellationToken cancellationToken = default' so callers can propagate cancellation` |
 | KAL0020 | ASP.NET Core `WithName(...)` must take a constant or factory method from a type whose name ends in `EndpointNames` | `Pass a member of an *EndpointNames type to WithName instead of '{0}'` |
 | KAL0021 | A catch-all (`catch` / `catch (Exception)`) that calls a member on an `*Observation`/`*Observability` type must exclude `OperationCanceledException`, via a `when` filter or an earlier `catch (OperationCanceledException)` | `This catch-all calls '{0}' but does not exclude OperationCanceledException — add 'when (ex is not OperationCanceledException)' or an earlier catch (OperationCanceledException)` |
+| KAL0022 | A type with behavior is declared in a file named after it - its [convention name](#types-with-behavior) (`ProcessStepHandlerResult<T>` in `ProcessStepHandlerResultOfT.cs`); partial parts in `{Name}.{Part}.cs` | `Type '{0}' has behavior and must be declared in '{1}' (or a '{2}.*.cs' part), not '{3}' — a type with behavior has its own file and its own test class` |
+| KAL0023 | `[ExcludeFromCodeCoverage]` is not allowed on a type with behavior | `Type '{0}' has behavior: remove [ExcludeFromCodeCoverage] and test it in its own test class` |
 
 ### What the security-relevant rules prevent
 
@@ -117,6 +119,8 @@ Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 | KAL0019 | Async methods without `CancellationToken` — cancellations stop propagating |
 | KAL0020 | Ad-hoc endpoint names — typos break link generation and OpenAPI operation ids silently |
 | KAL0021 | Cancellations recorded as failures in observability catch-alls — inflated error metrics, false alerts |
+| KAL0022 | Logic hidden in another type's file - its test class is missing without anyone seeing it, and indirect tests stand in for it |
+| KAL0023 | Logic excluded from the coverage gate |
 
 ### Scope notes
 
@@ -125,6 +129,8 @@ Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 **API design rules (KAL0018–KAL0019).** KAL0018 applies to all `src/` projects (suppressed for `Kaleido.Provider.SQLite` where EF Core entity navigation properties conventionally use `ICollection<T>`). **Ownership:** the diagnostic is reported at the member that declares the contract, once. An override, or an explicit or implicit interface implementation, is never reported: its type was fixed by the base or interface, which is reported itself when it is source in this compilation; a contract from another assembly (metadata) is that assembly's to report. Generated code is not analyzed, and a deliberate mutable surface is suppressed at its declaration (#306). A collection built once and only read (registries, lookups) is a `FrozenDictionary<K,V>`/`FrozenSet<T>`; one filled after construction is written through methods and exposed read-only - no `#pragma` needed. KAL0019 applies to all `src/` projects. Overrides, explicit interface implementations, and the ASP.NET Core middleware `InvokeAsync(HttpContext)` convention are exempt from KAL0019.
 
 **Cancellation in observability catch-alls (KAL0021).** The filter and earlier-clause rules are shared with KAL2004; see [how a filter is read](#cancellation-filters). The observability call is any member of a type whose name contains `Observation` or `Observability`.
+
+**One type with behavior per file (KAL0022, KAL0023).** Both use the shared [definition of behavior](#types-with-behavior), the same one KAL1009 uses, so the file rule and the fixture rule never disagree. Data-only records, interfaces (KAL0015 keeps one with its implementation), exceptions and attributes may share a file; MA0048 stays off for them. Files written by generators (`obj/`, `*.g.cs`) are skipped.
 
 **Endpoint names (KAL0020).** Endpoint names are declared as `const string` fields or name-factory methods on a `*EndpointNames` class in `Kaleido.Http.Abstractions` (`ProcessEndpointNames`, `RegistryEndpointNames`) or `Kaleido.Http` (`QueryableEndpointNames`). All names follow one pattern, `Kaleido` + area + action with `_` before any variable part (`KaleidoProcessExecute`, `KaleidoProcessStepExecute_{step}`, `KaleidoQueryableQuery_{source}`, `KaleidoQueryableViewQuery_{source}_{view}`, `KaleidoRegistry`); the prefix keeps them from colliding with the host app's own endpoint names. An inline literal or a constant from any other type passed to `WithName()` is reported. Endpoint names are link targets and OpenAPI operation ids, and an unenforced literal let the `KaleidoProcessStepREgistry` typo ship (HP-015, [#62](https://github.com/no1ross/Kaleido/issues/62)).
 
@@ -144,29 +150,38 @@ For the remaining rules, see their implementations under [`Kaleido.Analyzers.Sou
 | ID | Rule | Diagnostic message |
 |---|---|---|
 | KAL1001 | Test fixtures are named after their subject under test: `{SutName}Tests` | `Test fixture '{0}' must be named after its subject under test ('{1}Tests')` |
-| KAL1002 | The fixture's `{Sut}Tests` prefix must resolve to a real type | `Test fixture '{0}' does not map to a type named '{1}' — fixtures are named {SutName}Tests` |
-| KAL1003 | The fixture's file location mirrors the SUT's location: `src/{Project}/{path}/Sut.cs` → `tests/{TestProject}/{path}/SutTests.cs` | `Test fixture '{0}' must live at '{1}' (mirroring SUT path '{2}')` |
+| KAL1002 | The fixture's `{Sut}Tests` prefix must resolve to a real type (`XOfTTests` resolves to `X` with one type parameter, `XOfT{n}Tests` with n; a plain `XTests` to the lowest arity) | `Test fixture '{0}' does not map to a type named '{1}' — fixtures are named {SutName}Tests` |
+| KAL1003 | The fixture's file location mirrors the SUT's location: `src/{Project}/{path}/Sut.cs` → `tests/{TestProject}/{path}/SutTests.cs`. A SUT from a referenced assembly (every `src/` project, for a unit-test project) is found among the `src/**/*.cs` paths `tests/Directory.Build.props` passes as additional files, by its convention file name | `Test fixture '{0}' must live at '{1}' (mirroring SUT path '{2}')` |
 | KAL1004 | One fixture per subject under test | `Test fixture '{0}' duplicates '{1}' — both map to SUT '{2}'` |
 | KAL1005 | Test-built `ServiceProvider`s must validate scopes and validate on build | `BuildServiceProvider() must pass 'new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }'` |
 | KAL1006 | Unit-test fixtures must inherit `SutFixture<TSut>` — every test declares its SUT | `Test fixture '{0}' must inherit SutFixture<{1}> — every unit test declares its subject under test` |
-| KAL1007 | Fixture name must equal `{TSut.Name}Tests` | `Test fixture '{0}' declares SUT '{1}' — it must be named '{2}'` |
+| KAL1007 | Fixture name must equal `{ConventionName}Tests` (`ProcessStepHandlerResultOfTTests` for `SutFixture<ProcessStepHandlerResult<T>>`) | `Test fixture '{0}' declares SUT '{1}' — it must be named '{2}'` |
 | KAL1008 | The SUT may only be constructed inside `CreateSut()` | `'{0}' may only be constructed inside CreateSut() — use CreateSut() or the Sut property` |
-| KAL1009 | Every testable type in the matching `Kaleido.*` source assembly must have a `{Name}Tests` fixture | `Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture` |
+| KAL1009 | Every [type with behavior](#types-with-behavior) in the matching `Kaleido.*` source assembly must have its own `{ConventionName}Tests` fixture | `Type '{0}' in '{1}' has no '{2}' fixture — every type with behavior must have its own unit-test fixture` |
 | KAL1010 | A concrete `*Tests` class that declares ordinary methods but no `[Fact]`/`[Theory]` is a helper-only stub, not evidence of tests; a class with no ordinary methods is exempt | `Fixture '{0}' has no [Fact] or [Theory] test methods — add at least one test or remove the empty stub` |
-| KAL1012 | Fixtures may not `new` a framework collaborator — a testable Kaleido type implementing a service interface; mock it instead | `'{0}' is a collaborator, not the SUT — mock it instead of new-ing a real instance` |
+| KAL1012 | Fixtures may not `new` a framework collaborator — a Kaleido class with methods implementing a service interface (records, DTOs and exceptions are data, not collaborators); mock it instead | `'{0}' is a collaborator, not the SUT — mock it instead of new-ing a real instance` |
 | KAL1013 | A unit-test fixture is declared in its SUT's namespace with `.UnitTests` appended (`Kaleido.Queryable.Query.QueryContextEngine` → `Kaleido.Queryable.Query.UnitTests`); `*.UnitTests` assemblies only | `Test fixture '{0}' tests '{1}' — declare it in namespace '{2}'` |
 
 **Effective severities and why each rule stays (#307).** These are repository conventions, not runtime-correctness checks; each is kept because it makes the suite predictable to navigate and to generate:
 - every KAL1xxx rule is an `Error`, except **KAL1009**, a `Warning` by default (a new type without a fixture is flagged without breaking the build); KAL1006 is off in the functional and integration test projects (their fixtures are hosts, not a single SUT);
-- **KAL1009** (a fixture per testable type) - kept: it is what makes "where is X tested" answerable by name;
+- **KAL1009** (a fixture per type with behavior) - kept: it is what makes "where is X tested" answerable by name; since #404 it judges behavior, not type kind, so a record's logic is tested in its own fixture rather than through another type's;
 - **KAL1012** (mock collaborators) - kept with its exemptions, which are the justified counterexamples and are tested: domain data and records/DTOs implementing no Kaleido interface, test-assembly doubles, BCL and third-party scaffolding (`ServiceCollection`, `HttpClient`), and the SUT itself;
 - the fixture-shape rules (KAL1003, KAL1006-KAL1008, KAL1010, KAL1013) - kept: they keep one SUT per fixture, found at the mirrored path and namespace;
 - **KAL0015** (an interface in its implementation's file) - kept as a layout convention; provider contracts are exempt.
 
+### Types with behavior
+
+One definition, shared by KAL0022, KAL0023 and KAL1009 ([`TypeBehavior`](../tools/analyzers/Shared/TypeBehavior.cs), #404), decides which types need their own file and their own unit-test class:
+- **Candidates:** top-level (not nested), non-abstract, non-static public or internal classes, records and structs. Exceptions, attributes and EF Core model configuration (`IEntityTypeConfiguration<T>`, `DbContext`, covered end to end by the store's tests) are exempt.
+- **Behavior:** a member written by hand - an ordinary method (instance or static), a user-defined operator or conversion, or a property accessor with a body (explicit interface implementations included). Auto-properties, positional record members, compiler-written record members and generated code (`[LoggerMessage]`) do not count; neither do constructors (not visible from metadata). The analyzers cannot tell trivial logic from real logic: a one-line factory counts.
+- **Convention name:** the type name; for a generic type with a same-name, lower-arity twin in its namespace, the name with its arity - `XOfT` for one type parameter, `XOfT{n}` for more (`ProcessStepHandlerResult<T>`: `ProcessStepHandlerResultOfT.cs`, `ProcessStepHandlerResultOfTTests`). The type keeps its name in code.
+
+A type with behavior may still be *used* as input data by another type's tests (KAL1012 allows domain data), but its own logic is tested only in its own fixture.
+
 ### SutFixture notes (KAL1006–KAL1009)
 
-`SutFixture<TSut>` lives in `Kaleido.UnitTests` (the base test project — other `*.UnitTests` projects reference it). Testable means public or internal class, non-static, non-abstract, with at least one ordinary method; records, exceptions, attributes, DTO-suffix types, and static `*Extensions` classes are exempt. KAL1009 runs only in `*.UnitTests` assemblies; KAL1006 is disabled for functional/integration projects in `.editorconfig`. Those suites are scenario-scoped and do not normally use `SutFixture`, while the other fixture-shape rules activate only when their specific fixture pattern occurs.
+`SutFixture<TSut>` lives in `Kaleido.UnitTests` (the base test project — other `*.UnitTests` projects reference it). KAL1009 runs only in `*.UnitTests` assemblies; KAL1006 is disabled for functional/integration projects in `.editorconfig`. Those suites are scenario-scoped and do not normally use `SutFixture`, while the other fixture-shape rules activate only when their specific fixture pattern occurs.
 
 ### Examples
 
-- **KAL1010 — no helper-only fixtures.** A concrete `WidgetTests : SutFixture<Widget>` with `CreateSut()` and only helper methods, but no `[Fact]` or `[Theory]`, reports KAL1010; add a real test rather than an empty assertion. A `*Tests` class with **no ordinary methods at all** is intentionally skipped, as are abstract/static or differently named classes. KAL1009 independently looks for an actual `[Fact]`/`[Theory]` fixture for a testable source type in a matching `*.UnitTests` assembly. [Implementation](../tools/analyzers/Kaleido.Analyzers.Testing/Fixtures/FixtureEmptyAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Testing.UnitTests/Fixtures/FixtureEmptyAnalyzerTests.cs).
+- **KAL1010 — no helper-only fixtures.** A concrete `WidgetTests : SutFixture<Widget>` with `CreateSut()` and only helper methods, but no `[Fact]` or `[Theory]`, reports KAL1010; add a real test rather than an empty assertion. A `*Tests` class with **no ordinary methods at all** is intentionally skipped, as are abstract/static or differently named classes. KAL1009 independently looks for an actual `[Fact]`/`[Theory]` fixture for a source type with behavior in a matching `*.UnitTests` assembly. [Implementation](../tools/analyzers/Kaleido.Analyzers.Testing/Fixtures/FixtureEmptyAnalyzer.cs) · [tests](../tests/Kaleido.Analyzers.Testing.UnitTests/Fixtures/FixtureEmptyAnalyzerTests.cs).

@@ -63,7 +63,7 @@ The core project is organized into two main namespaces:
 **`Kaleido.Queryable`**
 - Registration: `QueryableServiceCollectionExtensions` (internal, invoked by `AddKaleido()`)
 - Runtime: `QueryableService` (dispatch by queried type), `QueryContextEngine`, `DelegatedQuerySourceEngine`, `QueryContextExecutor`
-- Extension point: `IQueryContextExecutor<TView>` is public — consumers on async-capable providers (e.g. EF Core) should register their own implementation so `CountAsync`/`ToListAsync` call provider-native async operators instead of the default `IAsyncEnumerable`/sync fallback.
+- Extension point: `IQueryContextExecutor<TView>` is public — consumers on async-capable providers (e.g. EF Core, MongoDB) should register their own implementation so `CountAsync`/`ToListAsync` call provider-native async operators instead of the default `IAsyncEnumerable`/sync fallback.
 - Planning: `QueryRequestCompiler`, `QueryRequestValidator`
 - Registries: `IQuerySourceRegistry`, `IQueryViewRegistry`, `IQueryableRegistry` (published projection)
 - Observability: `QueryableObservability`

@@ -66,31 +66,6 @@ public sealed record QueryRequest(
         Query: Query);
 
 /// <summary>
-/// A query request carrying a parameters record of type <typeparamref name="TParameters"/>.
-/// </summary>
-/// <typeparam name="TParameters">The parameters record of the query view or delegated source.</typeparam>
-/// <param name="ViewParameters">
-/// The parameters record, or <see langword="null"/> when none is supplied. Validated with its
-/// DataAnnotations before the query runs: a missing required member fails with
-/// <see cref="QueryableErrorCodes.MissingParameter"/>, any other failed annotation with
-/// <see cref="QueryableErrorCodes.InvalidParameterValue"/>.
-/// </param>
-/// <param name="Query">The search, filter, sort and paging to apply, or <see langword="null"/> for none.</param>
-[ExcludeFromCodeCoverage]
-public record QueryRequest<TParameters>(
-    TParameters? ViewParameters,
-    QueryBody? Query = null)
-    : IQueryRequest<TParameters>
-    where TParameters : class
-{
-    object? IQueryRequest.ViewParameters =>
-        ViewParameters;
-
-    Type IQueryRequest.ViewParametersType =>
-        typeof(TParameters);
-}
-
-/// <summary>
 /// What a query asks for: free-text search, a filter tree, sort order and a page. Every part is
 /// optional.
 /// </summary>
@@ -124,67 +99,6 @@ public record QueryBody
 );
 
 #region Filters
-
-/// <summary>
-/// A node of a filter tree: either a single <see cref="QueryFilterCondition"/> or a
-/// <see cref="QueryFilterGroup"/> of child nodes. Use <see cref="CreateCondition"/> and
-/// <see cref="CreateGroup"/> to build one.
-/// </summary>
-/// <remarks>
-/// Exactly one of <c>Condition</c> and <c>Group</c> must be set; both or neither fails with
-/// <see cref="QueryableErrorCodes.InvalidFilterNode"/>. Groups may be nested up to ten levels
-/// below the root (<see cref="QueryableErrorCodes.FilterDepthExceeded"/>).
-/// </remarks>
-/// <example>
-/// <code>
-/// var filter = QueryFilterNode.CreateGroup(
-///     LogicalOperator.And,
-///     QueryFilterNode.CreateCondition("Status", FilterOperator.In, "Open", "Pending"),
-///     QueryFilterNode.CreateCondition("Amount", FilterOperator.Between, 100m, 500m));
-/// </code>
-/// </example>
-/// <param name="Condition">The condition this node tests, or <see langword="null"/> when it is a group.</param>
-/// <param name="Group">The group this node combines, or <see langword="null"/> when it is a condition.</param>
-[ExcludeFromCodeCoverage]
-public sealed record QueryFilterNode
-(
-    QueryFilterCondition? Condition,
-    QueryFilterGroup? Group
-)
-{
-    /// <summary>Creates a node that tests a single field.</summary>
-    /// <param name="field">The query context field to test (matched case-insensitively).</param>
-    /// <param name="operator">The operator; it must be one the field declares as filterable.</param>
-    /// <param name="values">The operator's values; see <see cref="QueryFilterCondition"/>.</param>
-    /// <returns>A node with <c>Condition</c> set and no <c>Group</c>.</returns>
-    public static QueryFilterNode CreateCondition(
-        string field,
-        FilterOperator @operator,
-        params object?[] values)
-    {
-        return new(
-            new QueryFilterCondition(
-                field,
-                @operator,
-                values),
-                Group: null);
-    }
-
-    /// <summary>Creates a node that combines child nodes with a logical operator.</summary>
-    /// <param name="operator">How the children are combined.</param>
-    /// <param name="filters">The child nodes; at least one is required (<see cref="QueryableErrorCodes.EmptyFilterGroup"/>).</param>
-    /// <returns>A node with <c>Group</c> set and no <c>Condition</c>.</returns>
-    public static QueryFilterNode CreateGroup(
-        LogicalOperator @operator,
-        params QueryFilterNode[] filters)
-    {
-        return new(
-        Condition: null,
-            new QueryFilterGroup(
-                @operator,
-                filters.ToList()));
-    }
-}
 
 /// <summary>
 /// A test of one query context field: the field, the operator, and the operator's values.

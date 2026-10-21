@@ -14,4 +14,7 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
 	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\Shared\TypeBehavior.cs" Link="Shared\TypeBehavior.cs" />
+	</ItemGroup>
 </Project>

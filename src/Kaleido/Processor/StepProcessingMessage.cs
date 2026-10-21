@@ -10,7 +10,6 @@ namespace Kaleido.Processor;
 /// messages report a process violation, a validation failure thrown by the handler, an unexpected
 /// error, or a cancellation.
 /// </remarks>
-[ExcludeFromCodeCoverage]
 public sealed record StepProcessingMessage
 {
     /// <summary>

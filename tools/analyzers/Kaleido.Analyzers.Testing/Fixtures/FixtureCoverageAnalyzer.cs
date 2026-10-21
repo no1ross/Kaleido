@@ -1,17 +1,18 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using Kaleido.Analyzers.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1009 — every testable type in the source assembly must have a
-/// {TypeName}Tests fixture in the matching unit-test project. Testable means:
-/// public or internal class, non-static, non-abstract, with behavior (at
-/// least one ordinary method). DTOs, records, exceptions, attributes, and
-/// static extension classes are exempt.
+/// KAL1009 — every type with behavior in the source assembly must have its own
+/// fixture in the matching unit-test project, named after the type's convention
+/// name ({TypeName}Tests, or {TypeName}OfTTests for a generic twin). Behavior is
+/// decided by TypeBehavior (#404): records count like classes, and neither a
+/// name suffix nor [ExcludeFromCodeCoverage] exempts a type.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
@@ -19,8 +20,8 @@ public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule =
         new(
             DiagnosticIds.FixtureCoverage,
-            "Testable source type has no unit-test fixture",
-            "Type '{0}' in '{1}' has no '{2}' fixture — every testable type must have a unit-test fixture",
+            "Source type with behavior has no unit-test fixture",
+            "Type '{0}' in '{1}' has no '{2}' fixture — every type with behavior must have its own unit-test fixture",
             "Kaleido.Tests",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
@@ -72,12 +73,12 @@ public sealed class FixtureCoverageAnalyzer : DiagnosticAnalyzer
         foreach (var type in FixtureConventions.EnumerateTypes(
                      sourceAssembly.GlobalNamespace))
         {
-            if (!FixtureConventions.IsTestable(type))
+            if (!TypeBehavior.HasBehavior(type))
             {
                 continue;
             }
 
-            var fixtureName = type.Name + FixtureConventions.TestsSuffix;
+            var fixtureName = TypeBehavior.ConventionName(type) + FixtureConventions.TestsSuffix;
 
             var fixtureExists =
                 context.Compilation

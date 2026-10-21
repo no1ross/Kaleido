@@ -9,6 +9,7 @@ using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 using Kaleido.Provider.SQLite;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Compliance.Classification;
@@ -65,6 +66,41 @@ public sealed class EventOutboxTests : IAsyncLifetime
         Assert.Contains(publisher.Published, x => x.EventType == KaleidoEventTypes.ProcessPlanBuilt);
         Assert.Contains(publisher.Published, x => x.EventType == KaleidoEventTypes.ProcessStepCompleted);
         Assert.Contains(publisher.Published, x => x.EventType == KaleidoEventTypes.ProcessExecutionCompleted);
+    }
+
+    // #325: the whole path over the network - execute over HTTP, process state and events in SQLite,
+    // the relay publishing each event over HTTP to a collector (like the PriorAuth EventCollector).
+    // The collector refuses the first deliveries; every event still arrives, once, with its context.
+    [Fact]
+    public async Task EventsReachACollectorOverHttp_ExactlyOnce_AfterItRefusesTheFirstDeliveries()
+    {
+        var collector = await StartCollectorAsync(refuseFirst: 3);
+        var publisher = new HttpPublisher(collector.Host.GetTestClient());
+        var host = await StartHostAsync(publisher);
+        var requestId = $"req-{Guid.NewGuid():N}";
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, RootStepUrl)
+        {
+            Content = new StringContent("""{"processStep":{}}""", Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Add(KaleidoCorrelationHeaders.RequestId, requestId);
+        using var response = await host.GetTestClient().SendAsync(request, Cancel);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var processId = JsonNode.Parse(await response.Content.ReadAsStringAsync(Cancel))!["processId"]!.GetValue<Guid>();
+
+        await WaitUntilAsync(async () => await OutboxCountAsync() == 0);
+
+        var received = collector.Received.ToArray();
+        Assert.Equal(3, collector.Refused);
+        Assert.Equal(received.Length, received.Select(x => x["event"]!["eventId"]!.GetValue<Guid>()).Distinct().Count());
+        Assert.Equal(
+            [KaleidoEventTypes.ProcessCreated, KaleidoEventTypes.ProcessExecutionCompleted, KaleidoEventTypes.ProcessPlanBuilt, KaleidoEventTypes.ProcessStepCompleted],
+            received.Select(x => x["eventType"]!.GetValue<string>()).Distinct().Order(StringComparer.Ordinal));
+        Assert.All(received, x =>
+        {
+            Assert.Equal(requestId, x["context"]!["requestId"]!.GetValue<string>());
+            Assert.Equal(processId, x["context"]!["processId"]!.GetValue<Guid>());
+        });
     }
 
     [Fact]
@@ -211,7 +247,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
         [.. queryExecuted["records"]!.AsArray().Select(x => x!["name"]?.GetValue<string>())];
 
     // Like the PriorAuth services: the host creates the store's schema at startup.
-    private async Task<IHost> StartHostAsync(RecordingPublisher publisher, TimeSpan? retryDelay = null, Action<IServiceCollection>? configureServices = null)
+    private async Task<IHost> StartHostAsync(IEventPublisher publisher, TimeSpan? retryDelay = null, Action<IServiceCollection>? configureServices = null)
     {
         var host = await new HostBuilder()
             .ConfigureWebHost(webBuilder =>
@@ -316,6 +352,61 @@ public sealed class EventOutboxTests : IAsyncLifetime
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    // Publishes each event as its JSON envelope over HTTP; a non-success answer is a failed attempt.
+    private sealed class HttpPublisher(HttpClient collector) : IEventPublisher
+    {
+        public async Task PublishAsync<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope, CancellationToken cancellationToken = default)
+            where TEvent : IKaleidoEvent
+        {
+            using var response = await collector.PostAsJsonAsync("/events", envelope, JsonOptions, cancellationToken);
+            response.EnsureSuccessStatusCode();
+        }
+    }
+
+    // A collector that answers 503 to its first deliveries, then records every envelope it receives.
+    private sealed class Collector(int refuseFirst)
+    {
+        private int _deliveries;
+
+        public IHost Host { get; set; } = null!;
+
+        public ConcurrentQueue<JsonNode> Received { get; } = new();
+
+        public int Refused => Math.Min(Volatile.Read(ref _deliveries), refuseFirst);
+
+        public async Task<IResult> ReceiveAsync(HttpRequest request)
+        {
+            if (Interlocked.Increment(ref _deliveries) <= refuseFirst)
+            {
+                return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
+            Received.Enqueue((await JsonNode.ParseAsync(request.Body, cancellationToken: request.HttpContext.RequestAborted))!);
+            return Results.Ok();
+        }
+    }
+
+    private async Task<Collector> StartCollectorAsync(int refuseFirst)
+    {
+        var collector = new Collector(refuseFirst);
+
+        collector.Host = await new HostBuilder()
+            .ConfigureWebHost(webBuilder =>
+            {
+                webBuilder.UseTestServer();
+                webBuilder.ConfigureServices(services => services.AddRouting());
+                webBuilder.Configure(app =>
+                {
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints => endpoints.MapPost("/events", (HttpRequest request) => collector.ReceiveAsync(request)));
+                });
+            })
+            .StartAsync(Cancel);
+
+        _hosts.Add(collector.Host);
+        return collector;
+    }
 
     // Replaces every classified value with ***.
     private sealed class MaskingRedactor : Redactor

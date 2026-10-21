@@ -64,8 +64,17 @@ jobs:
         global-json-file: global.json
         dotnet-version: 8.0.x
 
+    # CI builds every project but the Docker Compose one (#322): Kaleido.CI.slnf. It must list every
+    # project of Kaleido.slnx except the .dcproj, so a project added to the solution is never left
+    # out of CI silently.
+    - name: Check the CI solution filter
+      run: |
+        expected=$(grep -oP '<Project Path="\K[^"]+' Kaleido.slnx | grep -v '\.dcproj$' | sort)
+        actual=$(python3 -c "import json; print('\n'.join(sorted(p.replace(chr(92), '/') for p in json.load(open('Kaleido.CI.slnf'))['solution']['projects'])))")
+        diff <(echo "$expected") <(echo "$actual") || { echo "::error::Kaleido.CI.slnf must list every project of Kaleido.slnx except the .dcproj."; exit 1; }
+
     - name: Restore
-      run: dotnet restore
+      run: dotnet restore Kaleido.CI.slnf
 
     - name: Set up Java (Sonar scanner)
       if: ${{ env.SONAR_TOKEN != '' }}
@@ -97,13 +106,13 @@ jobs:
           /d:sonar.qualitygate.wait=true
 
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build Kaleido.CI.slnf --configuration Release --no-restore
 
     # xunit.v3 runs under Microsoft.Testing.Platform (global.json test.runner);
     # VSTest collectors are ignored there, so coverage uses the MTP extension
     # (Microsoft.Testing.Extensions.CodeCoverage in tests/Directory.Build.props).
     - name: Test
-      run: dotnet test --configuration Release --no-build -- --coverage --coverage-output-format cobertura
+      run: dotnet test --solution Kaleido.CI.slnf --configuration Release --no-build -- --coverage --coverage-output-format cobertura
 
     # Merge per-project cobertura into a union report. Summing hits across files
     # would double-count shared src assemblies; reportgenerator merges hits.
@@ -155,7 +164,7 @@ jobs:
         if-no-files-found: ignore
 
     # Pack shipped src/ projects and the consumer analyzer on PRs and master
-    # merges; master uploads artifacts. NuGet publish is deliberately not wired up.
+    # merges; master uploads artifacts. Publishing is the release workflow's (release.yml, RELEASING.md).
     - name: Pack
       run: |
         for project in src/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do
@@ -169,7 +178,7 @@ jobs:
     # local feed builds without repository-only rules and fails a deliberate violation with KAL2001.
     - name: Test packages in a clean consumer
       shell: pwsh
-      run: ./tools/packaging/Test-PackageConsumer.ps1 -Packages artifacts
+      run: ./tools/packaging/Test-PackageConsumer.ps1 -Packages artifacts -RequireDeterministic
 
     - name: Upload packages
       if: github.event_name == 'push'

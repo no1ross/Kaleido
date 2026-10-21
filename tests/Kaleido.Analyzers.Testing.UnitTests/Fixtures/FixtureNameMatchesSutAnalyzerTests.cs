@@ -23,6 +23,8 @@ public abstract class SutFixture<TSut> where TSut : class
 }
 public class Widget { }
 public class Other { }
+public sealed class Result { }
+public sealed class Result<T> { }
 ";
 
     private static readonly DiagnosticResult Expected =
@@ -51,5 +53,31 @@ public class {|#0:WidgetTests|} : SutFixture<Other>
     public void M_S_E() { }
 }" + Stubs,
             Expected.WithLocation(0).WithArguments("WidgetTests", "Other", "OtherTests"));
+    }
+
+    // #404: the generic twin's fixture is named by arity.
+    [Fact]
+    public async Task AGenericTwinsFixture_NamedByArity_NoDiagnostic()
+    {
+        await RunAsync(@"
+public class ResultOfTTests : SutFixture<Result<int>>
+{
+    protected override Result<int> CreateSut() => new Result<int>();
+    [Xunit.Fact]
+    public void M_S_E() { }
+}" + Stubs);
+    }
+
+    [Fact]
+    public async Task AGenericTwinsFixture_WithThePlainName_Reports()
+    {
+        await RunAsync(@"
+public class {|#0:ResultTests|} : SutFixture<Result<int>>
+{
+    protected override Result<int> CreateSut() => new Result<int>();
+    [Xunit.Fact]
+    public void M_S_E() { }
+}" + Stubs,
+            Expected.WithLocation(0).WithArguments("ResultTests", "Result", "ResultOfTTests"));
     }
 }

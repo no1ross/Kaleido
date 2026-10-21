@@ -12,7 +12,7 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 - [`README.md`](./README.md)
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 - [`AGENTS.md`](./AGENTS.md)
-- [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`SECURITY.md`](./SECURITY.md), [`SUPPORT.md`](./SUPPORT.md), [`docs/VERSIONING.md`](./docs/VERSIONING.md) — the human-facing summary of these rules, the vulnerability-reporting route, where to ask, and the preview policy
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`SECURITY.md`](./SECURITY.md), [`SUPPORT.md`](./SUPPORT.md), [`docs/VERSIONING.md`](./docs/VERSIONING.md), [`RELEASING.md`](./RELEASING.md), [`CHANGELOG.md`](./CHANGELOG.md) — the human-facing summary of these rules, the vulnerability-reporting route, where to ask, and the preview policy
 
 ### Source docs
 - [`src/AGENTS.md`](./src/AGENTS.md) — source-level contributor guide
