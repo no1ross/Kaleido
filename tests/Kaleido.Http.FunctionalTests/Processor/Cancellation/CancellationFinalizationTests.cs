@@ -120,7 +120,7 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
 
                     if (store == "sqlite")
                     {
-                        kaleido.UseSqliteKaleidoContextStore($"Data Source={_databasePath}");
+                        kaleido.AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
                     }
 
                     services.RemoveAll<IEventPublisher>();

@@ -82,4 +82,18 @@ public static class ConfigurationErrorCodes
     /// the first one's options).
     /// </summary>
     public const string DuplicateRegistration = "duplicate_registration";
+
+    /// <summary>
+    /// Two outbox choices were registered: a service has one - Kaleido's built-in outbox (with its
+    /// storage, <c>AddOutboxStore</c>), the host's own (<c>AddOutbox</c>) or direct publication
+    /// (<c>AddDirectPublication</c>) - and one storage for the built-in outbox (ADR 0023).
+    /// </summary>
+    public const string ConflictingOutbox = "conflicting_outbox";
+
+    /// <summary>
+    /// Two different implementations were registered for one store or for the transactions (e.g.
+    /// <c>AddSqliteContextStore</c> and <c>AddContextStore&lt;T&gt;()</c>): each has one implementation
+    /// per service.
+    /// </summary>
+    public const string ConflictingStore = "conflicting_store";
 }

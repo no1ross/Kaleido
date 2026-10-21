@@ -67,7 +67,11 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     .AddEventPublisher<HttpEventPublisher>()
     // Sample: return framework diagnostics (e.g. pro_step_not_available) in frameworkMessages.
     .AddHttp(o => o.IncludeFrameworkMessages = true)
-    .UseSqliteKaleidoContextStore(processConnectionString)
+    // Process state, Kaleido's outbox and idempotent requests in one SQLite database: a step's state
+    // and its event commit together (ADR 0023).
+    .AddSqliteContextStore(processConnectionString)
+    .AddSqliteOutboxStore(processConnectionString)
+    .AddSqliteIdempotencyStore(processConnectionString)
     .AddHttpClients()
     // Outgoing calls: an on-behalf-of dev token for the caller (user + roles + this service as actor),
     // a service token for the service's own calls (ADR 0022).

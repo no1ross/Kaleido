@@ -2,8 +2,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Storage;
 
-// The default outbox: in memory. It survives a publisher outage, not a restart; each instance relays
-// only the events it wrote itself, including those the in-memory context store adds with a save.
+// The default storage of the built-in outbox: in memory. It survives a publisher outage, not a
+// restart; each instance relays only the events it wrote itself.
 internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
 {
     private readonly Dictionary<Guid, OutboxEntry> _outbox = [];
@@ -12,7 +12,7 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
     public InMemoryKaleidoOutboxStore(ILogger<InMemoryKaleidoOutboxStore> logger) =>
         LogInMemoryStoreActive(logger);
 
-    public Task EnqueueEventsAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
+    public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(events);
 
@@ -96,6 +96,6 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
         public DateTimeOffset LeaseUntil { get; set; } = DateTimeOffset.MinValue;
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoOutboxStore is active. Events waiting to be published are kept in memory only: lost on restart, and each instance relays only its own. Register a durable IKaleidoOutboxStore, in the same database as the IKaleidoContextStore (e.g. UseSqliteKaleidoContextStore), before deploying to production.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoOutboxStore is active. Events waiting to be published are kept in memory only: lost on restart, and each instance relays only its own. Register a durable outbox store on the database of the process state (e.g. AddSqliteOutboxStore, or AddOutboxStore<T>()), or your own outbox (AddOutbox<T>()), before deploying to production.")]
     private static partial void LogInMemoryStoreActive(ILogger logger);
 }

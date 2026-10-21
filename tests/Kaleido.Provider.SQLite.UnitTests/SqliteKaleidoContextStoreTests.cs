@@ -126,6 +126,11 @@ public sealed class SqliteKaleidoContextStoreTests
             UpdatedBy = SubjectOnly,
         };
 
+    // The database refuses every INSERT or UPDATE of a process row (not a conflict: another failure).
+    private static Task<int> RejectAsync(SqliteKaleidoContextDbContext dbContext, string operation) =>
+        dbContext.Database.ExecuteSqlRawAsync(
+            string.Concat("CREATE TRIGGER reject_", operation, " BEFORE ", operation, " ON ProcessContexts BEGIN SELECT RAISE(ABORT, 'rejected'); END;"));
+
     private static readonly KaleidoCaller Alice = new() { Name = "alice", Id = "sub-alice" };
     private static readonly KaleidoCaller SubjectOnly = new() { Id = "sub-42" };
 
@@ -147,7 +152,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var sut = CreateSut(dbContext);
         var expected = CreateContext(Guid.NewGuid());
 
-        await sut.SaveAsync(expected, []);
+        await sut.SaveAsync(expected);
 
         var loaded = await sut.LoadAsync(expected.ProcessId);
 
@@ -172,7 +177,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var sut = CreateSut(dbContext);
         var expected = CreateContext(Guid.NewGuid());
 
-        await sut.SaveAsync(expected, []);
+        await sut.SaveAsync(expected);
 
         var loaded = await sut.LoadAsync(expected.ProcessId);
 
@@ -203,7 +208,7 @@ public sealed class SqliteKaleidoContextStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        var saved = await sut.SaveAsync(CreateContext(Guid.NewGuid()), []);
+        var saved = await sut.SaveAsync(CreateContext(Guid.NewGuid()));
         var bob = new KaleidoCaller { Name = "bob" };
         var updated = saved with
         {
@@ -211,7 +216,7 @@ public sealed class SqliteKaleidoContextStoreTests
             Steps = [.. saved.Steps.Select(x => x.StepName == "StepB" ? x with { StartedBy = bob, LastUpdatedBy = bob } : x)],
         };
 
-        await sut.SaveAsync(updated, []);
+        await sut.SaveAsync(updated);
         var loaded = await sut.LoadAsync(saved.ProcessId);
 
         Assert.Equal(bob, loaded!.UpdatedBy);
@@ -254,7 +259,7 @@ public sealed class SqliteKaleidoContextStoreTests
                 }
             };
 
-        await sut.SaveAsync(expected, []);
+        await sut.SaveAsync(expected);
 
         var loaded = await sut.LoadAsync(expected.ProcessId);
 
@@ -282,7 +287,7 @@ public sealed class SqliteKaleidoContextStoreTests
                 RequiredStep = "StepB",
                 TargetProcessorName = null,
                 RequiredInformationRequest = new InformationRequest { InformationRequestId = "out-of-network" }
-            }, []);
+            });
 
         await sut.SaveAsync(
             CreateContext(processId) with
@@ -291,7 +296,7 @@ public sealed class SqliteKaleidoContextStoreTests
                 RequiredStep = "StepB",
                 TargetProcessorName = null,
                 RequiredInformationRequest = null
-            }, []);
+            });
 
         var loaded = await sut.LoadAsync(processId);
 
@@ -307,7 +312,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var sut = CreateSut(dbContext);
         var processId = Guid.NewGuid();
 
-        var saved = await sut.SaveAsync(CreateContext(processId, ProcessExecutionState.Active), []);
+        var saved = await sut.SaveAsync(CreateContext(processId, ProcessExecutionState.Active));
 
         var updated = CreateContext(processId, ProcessExecutionState.Complete) with
         {
@@ -317,7 +322,7 @@ public sealed class SqliteKaleidoContextStoreTests
             Steps = []
         };
 
-        await sut.SaveAsync(updated, []);
+        await sut.SaveAsync(updated);
 
         var loaded = await sut.LoadAsync(processId);
 
@@ -336,8 +341,8 @@ public sealed class SqliteKaleidoContextStoreTests
         var first = CreateContext(Guid.NewGuid());
         var second = CreateContext(Guid.NewGuid(), ProcessExecutionState.Complete);
 
-        await sut.SaveAsync(first, []);
-        await sut.SaveAsync(second, []);
+        await sut.SaveAsync(first);
+        await sut.SaveAsync(second);
 
         var loaded = await sut.LoadAsync(first.ProcessId);
 
@@ -353,8 +358,8 @@ public sealed class SqliteKaleidoContextStoreTests
         var sut = CreateSut(dbContext);
         var processId = Guid.NewGuid();
 
-        var first = await sut.SaveAsync(CreateContext(processId), []);
-        var second = await sut.SaveAsync(first with { State = ProcessExecutionState.Complete }, []);
+        var first = await sut.SaveAsync(CreateContext(processId));
+        var second = await sut.SaveAsync(first with { State = ProcessExecutionState.Complete });
 
         Assert.Equal(1, first.Version);
         Assert.Equal(2, second.Version);
@@ -366,12 +371,12 @@ public sealed class SqliteKaleidoContextStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        var loaded = await sut.SaveAsync(CreateContext(Guid.NewGuid()), []);
+        var loaded = await sut.SaveAsync(CreateContext(Guid.NewGuid()));
 
-        await sut.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, []);
+        await sut.SaveAsync(loaded with { State = ProcessExecutionState.Complete });
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            sut.SaveAsync(loaded with { State = ProcessExecutionState.Exception }, []));
+            sut.SaveAsync(loaded with { State = ProcessExecutionState.Exception }));
 
         Assert.Equal(loaded.ProcessId, exception.ProcessId);
         Assert.Equal(ProcessExecutionState.Complete, (await sut.LoadAsync(loaded.ProcessId))!.State);
@@ -383,9 +388,9 @@ public sealed class SqliteKaleidoContextStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
         var context = CreateContext(Guid.NewGuid());
-        await sut.SaveAsync(context, []);
+        await sut.SaveAsync(context);
 
-        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context, []));
+        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context));
     }
 
     // Two service instances (separate DbContexts) on one database: both read version 1, the first
@@ -398,14 +403,14 @@ public sealed class SqliteKaleidoContextStoreTests
         using var second = CreateSharedDbContext(connectionString);
         var processId = Guid.NewGuid();
 
-        await CreateSut(first).SaveAsync(CreateContext(processId), []);
+        await CreateSut(first).SaveAsync(CreateContext(processId));
         var loadedByFirst = await CreateSut(first).LoadAsync(processId);
         var loadedBySecond = await CreateSut(second).LoadAsync(processId);
 
-        await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete }, []);
+        await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete });
 
         await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            CreateSut(second).SaveAsync(loadedBySecond! with { State = ProcessExecutionState.Exception }, []));
+            CreateSut(second).SaveAsync(loadedBySecond! with { State = ProcessExecutionState.Exception }));
     }
 
     private static SqliteKaleidoContextDbContext CreateSharedDbContext(string connectionString)
@@ -421,52 +426,6 @@ public sealed class SqliteKaleidoContextStoreTests
     }
 
 
-    private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null)
-    {
-        var occurred = occurredUtc ?? DateTimeOffset.UtcNow.AddSeconds(-1);
-
-        return new KaleidoOutboxEvent
-        {
-            EventId = Guid.NewGuid(),
-            EventType = "process.step-completed.v1",
-            Payload = """{"eventType":"process.step-completed.v1"}""",
-            OccurredUtc = occurred,
-            NextAttemptUtc = occurred,
-        };
-    }
-
-    [Fact]
-    public async Task SaveAsync_WithEvents_StoresThemWithTheState()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext);
-        var @event = Event();
-
-        await sut.SaveAsync(CreateContext(Guid.NewGuid()), [@event]);
-
-        // In the outbox table that SqliteKaleidoOutboxStore claims from.
-        var row = Assert.Single(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
-        Assert.Equal(@event.EventId, row.EventId);
-        Assert.Equal(@event.EventType, row.EventType);
-        Assert.Equal(@event.Payload, row.Payload);
-        Assert.Equal(@event.OccurredUtc.UtcTicks, row.OccurredUtc);
-    }
-
-    [Fact]
-    public async Task SaveAsync_WhenItConflicts_StoresNoEvents()
-    {
-        using var dbContext = CreateDbContext();
-        var sut = CreateSut(dbContext);
-        var context = CreateContext(Guid.NewGuid());
-        await sut.SaveAsync(context, []);
-
-        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context, [Event()]));
-
-        dbContext.ChangeTracker.Clear();
-        Assert.Empty(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
-    }
-
-
     [Fact]
     public async Task LoadAsync_And_SaveAsync_TraceTheProcessId()
     {
@@ -476,7 +435,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var sut = CreateSut(dbContext);
         var context = CreateContext(Guid.NewGuid());
 
-        await sut.SaveAsync(context, []);
+        await sut.SaveAsync(context);
         await sut.LoadAsync(context.ProcessId);
 
         Assert.Equal(ActivityStatusCode.Unset, StoppedActivity(stopped, SqliteTelemetry.SaveActivityName, context.ProcessId).Status);
@@ -521,7 +480,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var context = CreateContext(Guid.NewGuid());
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.LoadAsync(context.ProcessId, new CancellationToken(true)));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.SaveAsync(context, [], new CancellationToken(true)));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.SaveAsync(context, new CancellationToken(true)));
         Assert.Null(await sut.LoadAsync(context.ProcessId));
     }
 
@@ -533,7 +492,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var logger = CreateLogger();
         var sut = CreateSut(dbContext, logger: logger.Object);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), [], cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), cancellation.Token));
 
         Assert.Equal(0, LoggedCount(logger, LogLevel.Error));
     }
@@ -546,11 +505,11 @@ public sealed class SqliteKaleidoContextStoreTests
         using var dbContext = CreateDbContext();
         var logger = CreateLogger();
         var sut = CreateSut(dbContext, logger: logger.Object);
-        var @event = Event();
-        var saved = await sut.SaveAsync(CreateContext(Guid.NewGuid()), [@event]);
+        var saved = await sut.SaveAsync(CreateContext(Guid.NewGuid()));
         dbContext.ChangeTracker.Clear();
+        await RejectAsync(dbContext, "UPDATE");
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(saved with { State = ProcessExecutionState.Complete }, [@event]));
+        await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(saved with { State = ProcessExecutionState.Complete }));
 
         Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
         Assert.Contains(stopped, x => x.OperationName == SqliteTelemetry.SaveActivityName && x.Status == ActivityStatusCode.Error);
@@ -566,31 +525,15 @@ public sealed class SqliteKaleidoContextStoreTests
         using var dbContext = CreateDbContext();
         var logger = CreateLogger();
         var sut = CreateSut(dbContext, logger: logger.Object);
-        var @event = Event();
-        await sut.SaveAsync(CreateContext(Guid.NewGuid()), [@event]);
-        dbContext.ChangeTracker.Clear();
+        await RejectAsync(dbContext, "INSERT");
         var newProcess = CreateContext(Guid.NewGuid());
 
-        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(newProcess, [@event]));
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(newProcess));
 
         Assert.IsNotType<Kaleido.Exceptions.KaleidoConcurrencyException>(exception);
         Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
         dbContext.ChangeTracker.Clear();
         Assert.Null(await sut.LoadAsync(newProcess.ProcessId));
-    }
-
-    [Fact]
-    public async Task SaveAsync_ANewProcessWhoseEventsCannotBeStored_IsAFailureNotAConflict()
-    {
-        using var dbContext = CreateDbContext();
-        var logger = CreateLogger();
-        var sut = CreateSut(dbContext, logger: logger.Object);
-        await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE OutboxEvents");
-
-        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), [Event()]));
-
-        Assert.IsNotType<Kaleido.Exceptions.KaleidoConcurrencyException>(exception);
-        Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
     }
 
     [Fact]
@@ -600,7 +543,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var logger = CreateLogger();
         var sut = CreateSut(dbContext, logger: logger.Object);
 
-        var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), []));
+        var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid())));
 
         Assert.IsType<DbUpdateException>(exception.InnerException);
         Assert.Equal(0, LoggedCount(logger, LogLevel.Error));
@@ -643,12 +586,12 @@ public sealed class SqliteKaleidoContextStoreTests
         using var first = CreateSharedDbContext(connectionString);
         using var second = CreateSharedDbContext(connectionString);
         var processId = Guid.NewGuid();
-        var savedBySecond = await CreateSut(second).SaveAsync(CreateContext(processId), []);
+        var savedBySecond = await CreateSut(second).SaveAsync(CreateContext(processId));
         var loadedByFirst = await CreateSut(first).LoadAsync(processId);
-        await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete }, []);
+        await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete });
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            CreateSut(second).SaveAsync(savedBySecond with { State = ProcessExecutionState.Exception }, []));
+            CreateSut(second).SaveAsync(savedBySecond with { State = ProcessExecutionState.Exception }));
 
         Assert.IsType<DbUpdateConcurrencyException>(exception.InnerException);
         Assert.Equal(ProcessExecutionState.Complete, (await CreateSut(first).LoadAsync(processId))!.State);
@@ -662,7 +605,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var context = CreateContext(Guid.NewGuid()) with { CreatedUtc = default, UpdatedUtc = default };
         var before = DateTimeOffset.UtcNow;
 
-        await sut.SaveAsync(context, []);
+        await sut.SaveAsync(context);
 
         var after = DateTimeOffset.UtcNow;
         var loaded = await sut.LoadAsync(context.ProcessId);
@@ -684,7 +627,7 @@ public sealed class SqliteKaleidoContextStoreTests
             TargetProcessorName = null
         };
 
-        await sut.SaveAsync(context, []);
+        await sut.SaveAsync(context);
 
         var loaded = await sut.LoadAsync(context.ProcessId);
         Assert.NotNull(loaded);
@@ -702,7 +645,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var logger = CreateLogger();
         var sut = CreateSut(dbContext, logger: logger.Object);
 
-        await sut.SaveAsync(CreateContext(Guid.NewGuid()), []);
+        await sut.SaveAsync(CreateContext(Guid.NewGuid()));
 
         Assert.Equal(1, LoggedCount(logger, LogLevel.Debug));
         Assert.Equal(0, LoggedCount(logger, LogLevel.Error));
@@ -714,7 +657,6 @@ public sealed class SqliteKaleidoContextStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
 
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(null!, []));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(null!));
     }
 }
