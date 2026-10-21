@@ -42,7 +42,8 @@
       "tests/Kaleido.UnitTests/Kaleido.UnitTests.csproj",
       "tools/analyzers/Kaleido.Analyzers.Source/Kaleido.Analyzers.Source.csproj",
       "tools/analyzers/Kaleido.Analyzers.Testing/Kaleido.Analyzers.Testing.csproj",
-      "tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj"
+      "tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj",
+      "tools/benchmarks/Kaleido.Benchmarks/Kaleido.Benchmarks.csproj"
     ]
   }
 }

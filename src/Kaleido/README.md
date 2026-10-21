@@ -29,7 +29,7 @@ For the full repository model, see:
 - `IQueryableService` / `QueryableService` (internal; called by the HTTP transport) — main dispatch service (by queried type: view, local source, or delegated source)
 - `IQuerySourceRegistry` / `IQueryViewRegistry` (internal) — runtime registries (sources keyed by source type and name; views keyed by view type)
 - `QueryContextEngine` / `DelegatedQuerySourceEngine` / `QueryContextExecutor` — query execution pipeline
-- `IQueryContextExecutor<TView>` — public extension point: register your own implementation to plug in provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`). Default executor uses `IAsyncEnumerable<T>` when supported, sync LINQ otherwise; it counts an async query by reading every matching row, so EF Core hosts should register an EF executor ([docs/PATTERNS.md](../../docs/PATTERNS.md#queryable-sources-views-and-query-contexts)).
+- `IQueryContextExecutor<TView>` — public extension point: register your own implementation to plug in provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`, MongoDB `CountDocumentsAsync`). The default knows no provider: it uses `IAsyncEnumerable<T>` when supported, sync LINQ otherwise, and counts an async query by reading every matching row, so a host on an async provider registers that provider's executor ([docs/PATTERNS.md](../../docs/PATTERNS.md#queryable-sources-views-and-query-contexts)).
 - `QueryRequestCompiler` / `QueryRequestValidator` — validation and compilation
 - `QueryableObservability` (internal) — logs, traces and metrics of the Queryable runtime
 - `IQuerySource<T>` / `IQuerySourceAsync<T>` / `IDelegatedQuerySource<…>` — source interfaces (the identity, described by `[QuerySource]`)
