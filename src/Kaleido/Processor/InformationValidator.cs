@@ -128,15 +128,15 @@ internal sealed class InformationValidator : IInformationValidator
         // Only the questions the answers enable must be answered; the answers of a disabled one are
         // not counted when deciding what is enabled (ADR 0024).
         var enabled = request.EnabledItemIds(
-            answered.ToDictionary(
-                x => x.Key,
-                x => (IReadOnlyList<string>)[.. x.Value.Answers.Select(answer => answer?.Value).OfType<string>()],
-                StringComparer.Ordinal));
+            answered.ToDictionary(x => x.Key, x => AnswerValues(x.Value), StringComparer.Ordinal));
 
         CheckAnswers(questions.Values, answered, enabled, errors);
 
         return errors;
     }
+
+    private static IReadOnlyList<string> AnswerValues(InformationResponseItem item) =>
+        [.. item.Answers.Select(answer => answer?.Value).OfType<string>()];
 
     // Each answer item matched to its question: unknown items, answers to groups or display items,
     // and items answered twice are errors.
