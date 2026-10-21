@@ -459,6 +459,140 @@ public sealed class InformationValidatorTests
             ]
         };
 
+    // ---------------------------------------------------------------------------
+    // Conditional questions (EnableWhen, ADR 0024)
+
+    // MRI: laterality only when the body part is not the spine; weeks of therapy only when therapy was tried.
+    private static readonly InformationRequest Conditional =
+        new()
+        {
+            InformationRequestId = "mri",
+            Items =
+            [
+                new InformationItem
+                {
+                    Id = "bodyPart",
+                    Text = "Which body part?",
+                    Type = InformationItemType.Choice,
+                    Options = [new() { Value = "Spine" }, new() { Value = "Knee" }],
+                },
+                new InformationItem
+                {
+                    Id = "laterality",
+                    Text = "Which side?",
+                    Type = InformationItemType.Choice,
+                    Options = [new() { Value = "Left" }, new() { Value = "Right" }],
+                    EnableWhen = [When("bodyPart", InformationConditionOperator.NotEquals, "Spine")],
+                },
+                new InformationItem { Id = "therapy", Text = "Was physical therapy tried?", Type = InformationItemType.Boolean },
+                new InformationItem
+                {
+                    Id = "therapyDetails",
+                    Text = "Therapy",
+                    Type = InformationItemType.Group,
+                    EnableWhen = [When("therapy", InformationConditionOperator.Equals, "true")],
+                    Items = [new InformationItem { Id = "weeks", Text = "For how many weeks?", Type = InformationItemType.WholeNumber }],
+                },
+            ],
+        };
+
+    private static InformationCondition When(string question, InformationConditionOperator op, string? answer) =>
+        new() { Question = question, Operator = op, Answer = answer };
+
+    private static Answers ConditionalAnswers(params InformationResponseItem[] items) =>
+        new() { InformationRequestId = "mri", Items = items };
+
+    [Fact]
+    public void ValidateRequest_WithConditionsOnEarlierQuestions_IsWellFormed()
+    {
+        Assert.Empty(CreateSut().ValidateRequest(Conditional));
+    }
+
+    public static TheoryData<InformationCondition, string> InvalidConditions() =>
+        new()
+        {
+            { When("", InformationConditionOperator.Equals, "x"), "without a question" },
+            { When("unknown", InformationConditionOperator.Equals, "x"), "not an earlier question" },
+            { When("later", InformationConditionOperator.Exists, "true"), "comes after it" },
+            { When("target", InformationConditionOperator.Exists, "true"), "not an earlier question" },
+            { When("intro", InformationConditionOperator.Exists, "true"), "not an earlier question" },
+            { When("side", InformationConditionOperator.GreaterThan, "Left"), "has no order" },
+            { When("side", InformationConditionOperator.Equals, "Up"), "does not fit" },
+            { When("count", InformationConditionOperator.LessThan, "many"), "does not fit" },
+            { When("side", InformationConditionOperator.Exists, "maybe"), "not true or false" },
+            { When("side", (InformationConditionOperator)42, "Left"), "unknown operator" },
+        };
+
+    // A condition tests an earlier question (so no cycles), with an operator its type supports and a fitting value.
+    [Theory]
+    [MemberData(nameof(InvalidConditions))]
+    public void ValidateRequest_AnInvalidCondition_IsReported(InformationCondition condition, string expected)
+    {
+        var request = new InformationRequest
+        {
+            InformationRequestId = "conditions",
+            Items =
+            [
+                new InformationItem { Id = "intro", Text = "Intro", Type = InformationItemType.Display },
+                new InformationItem { Id = "side", Text = "Side", Type = InformationItemType.Choice, Options = [new() { Value = "Left" }] },
+                new InformationItem { Id = "count", Text = "Count", Type = InformationItemType.WholeNumber },
+                new InformationItem { Id = "target", Text = "Target", Type = InformationItemType.Text, EnableWhen = [condition] },
+                new InformationItem { Id = "later", Text = "Later", Type = InformationItemType.Text },
+            ],
+        };
+
+        var problem = Assert.Single(CreateSut().ValidateRequest(request));
+
+        Assert.Equal(ProcessorErrorCodes.InformationRequestInvalid, problem.Code);
+        Assert.Contains(expected, problem.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ValidateRequest_AnUnknownEnableBehavior_IsReported()
+    {
+        var request = Conditional with { Items = [Conditional.Items[0], Conditional.Items[1] with { EnableBehavior = (InformationEnableBehavior)7 }] };
+
+        Assert.Contains(CreateSut().ValidateRequest(request), x => x.Message.Contains("unknown enableBehavior", StringComparison.Ordinal));
+    }
+
+    // Spine: laterality does not apply, so it is neither required nor accepted.
+    [Fact]
+    public void ValidateResponse_ADisabledQuestion_IsNotRequired()
+    {
+        Assert.Empty(CreateSut().ValidateResponse(Conditional, ConditionalAnswers(Answer("bodyPart", "Spine"), Answer("therapy", "false"))));
+    }
+
+    [Fact]
+    public void ValidateResponse_AnEnabledQuestion_IsRequired()
+    {
+        var problem = Assert.Single(CreateSut().ValidateResponse(Conditional, ConditionalAnswers(Answer("bodyPart", "Knee"), Answer("therapy", "false"))));
+
+        Assert.Equal(ProcessorErrorCodes.InformationResponseUnanswered, problem.Code);
+        Assert.Contains("'laterality'", problem.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ValidateResponse_AnAnswerToADisabledQuestion_IsRejected()
+    {
+        var problem = Assert.Single(CreateSut().ValidateResponse(
+            Conditional,
+            ConditionalAnswers(Answer("bodyPart", "Spine"), Answer("laterality", "Left"), Answer("therapy", "false"))));
+
+        Assert.Equal(ProcessorErrorCodes.InformationResponseInvalidAnswer, problem.Code);
+        Assert.Contains("does not apply", problem.Message, StringComparison.Ordinal);
+    }
+
+    // A disabled group disables its questions; an enabled one requires them.
+    [Fact]
+    public void ValidateResponse_AGroupsCondition_AppliesToItsQuestions()
+    {
+        Assert.Empty(CreateSut().ValidateResponse(Conditional, ConditionalAnswers(Answer("bodyPart", "Spine"), Answer("therapy", "false"))));
+        Assert.Contains(
+            CreateSut().ValidateResponse(Conditional, ConditionalAnswers(Answer("bodyPart", "Spine"), Answer("therapy", "true"))),
+            x => x.Code == ProcessorErrorCodes.InformationResponseUnanswered && x.Message.Contains("'weeks'", StringComparison.Ordinal));
+        Assert.Empty(CreateSut().ValidateResponse(Conditional, ConditionalAnswers(Answer("bodyPart", "Spine"), Answer("therapy", "true"), Answer("weeks", "6"))));
+    }
+
     private static InformationResponseItem Answer(string itemId, params string[] values) =>
         new()
         {
