@@ -778,12 +778,9 @@ internal sealed partial class KaleidoToolInvoker(
     {
         var merged = new Dictionary<string, IReadOnlyList<string>>(earlier, StringComparer.Ordinal);
 
-        foreach (var item in items)
+        foreach (var item in items.Where(x => !string.IsNullOrWhiteSpace(x.ItemId)))
         {
-            if (!string.IsNullOrWhiteSpace(item.ItemId))
-            {
-                merged[item.ItemId] = [.. item.Answers.Select(x => x.Value).Where(x => !string.IsNullOrWhiteSpace(x))];
-            }
+            merged[item.ItemId] = [.. item.Answers.Select(x => x.Value).Where(x => !string.IsNullOrWhiteSpace(x))];
         }
 
         return merged;
@@ -1069,12 +1066,9 @@ internal sealed partial class KaleidoToolInvoker(
 
         var described = new JsonObject();
 
-        foreach (var name in FieldNames(data))
+        foreach (var name in FieldNames(data).Where(tool.OutputDescriptions.ContainsKey))
         {
-            if (!described.ContainsKey(name) && tool.OutputDescriptions.TryGetValue(name, out var description))
-            {
-                described[name] = description;
-            }
+            described[name] = tool.OutputDescriptions[name];
         }
 
         if (described.Count > 0)

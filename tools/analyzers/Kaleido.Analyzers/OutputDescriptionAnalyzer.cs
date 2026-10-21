@@ -62,18 +62,19 @@ public sealed class OutputDescriptionAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        foreach (var output in Outputs(type))
+        // TryAdd claims an output type, so one used by several handlers or views is reported once.
+        foreach (var output in Outputs(type).OfType<INamedTypeSymbol>().Where(IsDescribedHere).Where(x => reported.TryAdd(x, true)))
         {
-            if (output is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct } named &&
-                named.Locations.Any(location => location.IsInSource) &&
-                !QueryableSymbols.IsQueryContext(named) &&
-                !ProcessStepSymbols.ImplementsProcessStep(named) &&
-                reported.TryAdd(named, true))
-            {
-                Report(context, named);
-            }
+            Report(context, output);
         }
     }
+
+    // A class or struct declared in this project that no other rule covers (query contexts: KAL2018).
+    private static bool IsDescribedHere(INamedTypeSymbol output) =>
+        output.TypeKind is TypeKind.Class or TypeKind.Struct &&
+        output.Locations.Any(location => location.IsInSource) &&
+        !QueryableSymbols.IsQueryContext(output) &&
+        !ProcessStepSymbols.ImplementsProcessStep(output);
 
     // The result types of the step handlers and the output records of the views the type implements.
     private static IEnumerable<ITypeSymbol> Outputs(INamedTypeSymbol type)
