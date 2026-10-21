@@ -12,7 +12,7 @@ At the highest level, the repository is organized around seven source projects:
 - [`Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients for consuming remote Process and Queryable endpoints
 - [`Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md) — MCP adapter: publishes the host's (aggregated) registry to AI agents as MCP tools
 - [`Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — optional OpenTelemetry provider (logging, tracing, metrics, OTLP)
-- [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — reference implementations of the three store contracts on one SQLite database (process state, event outbox, idempotent requests)
+- [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) - reference implementations of the store contracts on one SQLite database (process state, the built-in outbox's storage, idempotent requests) and the transactions that make a state change and its event atomic
 
 See also:
 - [`README.md`](./README.md)

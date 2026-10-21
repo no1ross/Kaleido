@@ -229,12 +229,15 @@ See the [HTTP client](src/Kaleido.Http.Client/README.md) and [MCP adapter](src/K
 The default store is in memory. For local persistence, add the SQLite reference provider to the existing business-service registration **before `builder.Build()`**:
 
 ```csharp
-kaleido.UseSqliteKaleidoContextStore("Data Source=kaleido-process.db");
+kaleido
+    .AddSqliteContextStore("Data Source=kaleido-process.db")
+    .AddSqliteOutboxStore("Data Source=kaleido-process.db")
+    .AddSqliteIdempotencyStore("Data Source=kaleido-process.db");
 ```
 
 [`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite/README.md) is a **reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Kaleido.Provider.SQLite/README.md#using-the-example-implementation)), and `EnsureCreated` never migrates an existing database.
 
-Production deployments provide and validate stores suited to their infrastructure: `IKaleidoContextStore` (process state), `IKaleidoOutboxStore` (the event outbox, in the same database) and `IKaleidoIdempotencyStore` (requests sent with an idempotency key).
+Production deployments provide and validate stores suited to their infrastructure: `IKaleidoContextStore` (process state), the outbox (storage for Kaleido's built-in outbox, `IKaleidoOutboxStore`, or the outbox they already run, `IKaleidoOutbox`), `IKaleidoTransactions` (state and events atomic on one database) and `IKaleidoIdempotencyStore` (requests sent with an idempotency key) - see [ADR 0023](docs/decisions/0023-outbox-integration.md).
 
 ## The capability model
 

@@ -63,13 +63,10 @@ internal sealed partial class SqliteKaleidoContextStore(
 
     public async Task<ProcessorContext> SaveAsync(
         ProcessorContext context,
-        IReadOnlyCollection<KaleidoOutboxEvent> events,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(
             context);
-        ArgumentNullException.ThrowIfNull(
-            events);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -79,9 +76,12 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         try
         {
+            // Inside a transition, the transaction SqliteKaleidoTransactions opened on this DbContext
+            // covers the save (and the outbox's rows); on its own, the save opens one.
             await using var transaction =
-                await dbContext.Database.BeginTransactionAsync(
-                    cancellationToken);
+                dbContext.Database.CurrentTransaction is null
+                    ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+                    : null;
 
             var entity = await LoadOrAddEntityAsync(context.ProcessId, cancellationToken);
             var storedVersion = dbContext.Entry(entity).State == EntityState.Added ? 0 : entity.Version;
@@ -105,13 +105,12 @@ internal sealed partial class SqliteKaleidoContextStore(
             SyncAvailableSteps(entity, context);
             SyncRequiredStep(entity, context, serviceOptions.ServiceName);
 
-            // Same transaction: the events (claimed by SqliteKaleidoOutboxStore) are saved only with the state.
-            dbContext.OutboxEvents.AddRange(events.Select(x => x.ToEntity()));
-
             await SaveChangesAsync(context, cancellationToken);
 
-            await transaction.CommitAsync(
-                cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
 
             LogSaved(logger, context.ProcessId, context.Steps.Count);
 

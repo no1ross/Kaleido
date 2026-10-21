@@ -1,21 +1,24 @@
 namespace Kaleido.Storage;
 
 /// <summary>
-/// The event outbox of a Kaleido service: events waiting to be handed to <see cref="IEventPublisher"/>,
-/// with their delivery state. Registered by <c>AddKaleido()</c> for every service.
+/// The storage of Kaleido's built-in outbox: events waiting to be handed to
+/// <see cref="IEventPublisher"/>, with their delivery state. In memory by default; durable with a
+/// provider (e.g. <c>AddSqliteOutboxStore</c>) or your own (<c>AddOutboxStore&lt;T&gt;()</c>). Not used
+/// when the host brings its own outbox (<see cref="IKaleidoOutbox"/>, <c>AddOutbox&lt;T&gt;()</c>) or
+/// publishes directly (ADR 0023).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <strong>At least once:</strong> Kaleido never publishes events directly (ADR 0012). It writes them
-/// to the outbox - process events that describe a save in the same transaction as the state
-/// (<see cref="IKaleidoContextStore.SaveAsync"/>), others right after
-/// (<see cref="EnqueueEventsAsync"/>) - and a background relay hands each one to
-/// <see cref="IEventPublisher"/>, retrying until it succeeds.
+/// <strong>At least once:</strong> the built-in outbox adds Kaleido's events here
+/// (<see cref="AddAsync"/>) - a transition's events inside its transaction - and a background relay
+/// claims each one and hands it to <see cref="IEventPublisher"/>, retrying until it succeeds, across
+/// restarts when the storage is durable.
 /// </para>
 /// <para>
-/// <strong>Same database as the process state:</strong> the entries <see cref="IKaleidoContextStore"/>
-/// adds with a save are the ones this store claims, so both implementations share their database
-/// (e.g. one <c>DbContext</c>) and are replaced together.
+/// <strong>Atomic with the process state</strong> when both are on one database and
+/// <see cref="IKaleidoTransactions"/> covers it (e.g. <c>AddSqliteContextStore</c> and
+/// <c>AddSqliteOutboxStore</c> on one SQLite database): write in the open transaction when there is
+/// one, on your own otherwise.
 /// </para>
 /// <para>
 /// <strong>Several instances:</strong> with several instances on one shared store, each relay claims
@@ -26,10 +29,12 @@ namespace Kaleido.Storage;
 public interface IKaleidoOutboxStore
 {
     /// <summary>
-    /// Adds events that do not describe a save (plan built, execution completed, query executed) to
-    /// the outbox.
+    /// Adds events to the outbox, due now: within the current transition's transaction when one is
+    /// open on this store's database, otherwise on their own.
     /// </summary>
-    Task EnqueueEventsAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default);
+    /// <param name="events">The entries to add.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Claims up to <paramref name="maxCount"/> entries that are due (not parked,

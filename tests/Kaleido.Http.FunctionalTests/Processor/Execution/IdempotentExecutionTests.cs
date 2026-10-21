@@ -164,7 +164,7 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
                             o.Assemblies = [typeof(RuntimeRootStep).Assembly];
                         })
                         .AddHttp()
-                        .UseSqliteKaleidoContextStore($"Data Source={_databasePath}");
+                        .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
                 });
                 webBuilder.Configure(app =>
                 {

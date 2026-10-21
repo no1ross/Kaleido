@@ -6,6 +6,12 @@ namespace Kaleido.Provider.SQLite;
 /// </summary>
 public static class SqliteErrorCodes
 {
-    /// <summary>The SQLite process context store connection string cannot be parsed.</summary>
+    /// <summary>A SQLite store's connection string cannot be parsed.</summary>
     public const string InvalidConnectionString = "invalid_connection_string";
+
+    /// <summary>
+    /// The SQLite stores (<c>AddSqliteContextStore</c>, <c>AddSqliteOutboxStore</c>,
+    /// <c>AddSqliteIdempotencyStore</c>) were given different connection strings; they share one database.
+    /// </summary>
+    public const string ConnectionStringMismatch = "connection_string_mismatch";
 }

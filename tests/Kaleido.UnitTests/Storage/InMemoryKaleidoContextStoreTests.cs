@@ -1,4 +1,3 @@
-using Kaleido.Eventing;
 using Kaleido.Processor.Context;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
@@ -8,10 +7,8 @@ namespace Kaleido.Storage.UnitTests;
 public sealed class InMemoryKaleidoContextStoreTests
     : SutFixture
 {
-    private readonly Mock<IKaleidoOutboxStore> outbox = new();
-
     private InMemoryKaleidoContextStore CreateSut(ILogger<InMemoryKaleidoContextStore>? logger = null) =>
-        new(logger ?? new Mock<ILogger<InMemoryKaleidoContextStore>>().Object, outbox.Object);
+        new(logger ?? new Mock<ILogger<InMemoryKaleidoContextStore>>().Object);
 
     [Fact]
     public async Task SaveAsync_WhenContextIsNull_Throws()
@@ -19,7 +16,7 @@ public sealed class InMemoryKaleidoContextStoreTests
         var store = CreateSut();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            store.SaveAsync(null!, []));
+            store.SaveAsync(null!));
     }
 
     [Fact]
@@ -33,7 +30,7 @@ public sealed class InMemoryKaleidoContextStoreTests
             State = ProcessExecutionState.Active
         };
 
-        await store.SaveAsync(context, [], CancellationToken.None);
+        await store.SaveAsync(context, CancellationToken.None);
 
         var loaded = await store.LoadAsync(context.ProcessId, CancellationToken.None);
 
@@ -74,7 +71,7 @@ public sealed class InMemoryKaleidoContextStoreTests
             ],
         };
 
-        await store.SaveAsync(context, [], CancellationToken.None);
+        await store.SaveAsync(context, CancellationToken.None);
         var loaded = await store.LoadAsync(context.ProcessId, CancellationToken.None);
 
         Assert.NotNull(loaded);
@@ -103,8 +100,8 @@ public sealed class InMemoryKaleidoContextStoreTests
             State = ProcessExecutionState.Complete
         };
 
-        var saved = await store.SaveAsync(context1, [], CancellationToken.None);
-        await store.SaveAsync(context2 with { Version = saved.Version }, [], CancellationToken.None);
+        var saved = await store.SaveAsync(context1, CancellationToken.None);
+        await store.SaveAsync(context2 with { Version = saved.Version }, CancellationToken.None);
 
         var loaded = await store.LoadAsync(processId, CancellationToken.None);
 
@@ -126,7 +123,7 @@ public sealed class InMemoryKaleidoContextStoreTests
         cts.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            store.SaveAsync(context, [], cts.Token));
+            store.SaveAsync(context, cts.Token));
     }
 
     [Fact]
@@ -146,8 +143,8 @@ public sealed class InMemoryKaleidoContextStoreTests
         var store = CreateSut();
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
 
-        var first = await store.SaveAsync(context, [], CancellationToken.None);
-        var second = await store.SaveAsync(first, [], CancellationToken.None);
+        var first = await store.SaveAsync(context, CancellationToken.None);
+        var second = await store.SaveAsync(first, CancellationToken.None);
 
         Assert.Equal(1, first.Version);
         Assert.Equal(2, second.Version);
@@ -160,13 +157,12 @@ public sealed class InMemoryKaleidoContextStoreTests
         var store = CreateSut();
         var loaded = await store.SaveAsync(
             new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor", State = ProcessExecutionState.Active },
-            [],
             CancellationToken.None);
 
-        await store.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, [], CancellationToken.None);
+        await store.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, CancellationToken.None);
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            store.SaveAsync(loaded with { State = ProcessExecutionState.Exception }, [], CancellationToken.None));
+            store.SaveAsync(loaded with { State = ProcessExecutionState.Exception }, CancellationToken.None));
 
         Assert.Equal(loaded.ProcessId, exception.ProcessId);
         Assert.Equal(ProcessorErrorCodes.ProcessConflict, exception.Code);
@@ -178,10 +174,10 @@ public sealed class InMemoryKaleidoContextStoreTests
     {
         var store = CreateSut();
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
-        await store.SaveAsync(context, [], CancellationToken.None);
+        await store.SaveAsync(context, CancellationToken.None);
 
         await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            store.SaveAsync(context, [], CancellationToken.None));
+            store.SaveAsync(context, CancellationToken.None));
     }
 
     [Fact]
@@ -191,46 +187,13 @@ public sealed class InMemoryKaleidoContextStoreTests
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
         var store = CreateSut(logger.Object);
-        await store.SaveAsync(NewProcess(), []);
+        await store.SaveAsync(NewProcess());
 
         var levels = logger.Invocations.Where(x => x.Method.Name == nameof(ILogger.Log)).Select(x => (LogLevel)x.Arguments[0]).ToList();
         Assert.Equal([LogLevel.Warning, LogLevel.Debug], levels);
         Assert.Contains("InMemoryKaleidoContextStore is active", logger.Invocations.First(x => x.Method.Name == nameof(ILogger.Log)).Arguments[2].ToString());
     }
 
-    private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null) =>
-        new()
-        {
-            EventId = Guid.NewGuid(),
-            EventType = KaleidoEventTypes.ProcessStepCompleted,
-            Payload = "{}",
-            OccurredUtc = occurredUtc ?? DateTimeOffset.UtcNow.AddSeconds(-1),
-            NextAttemptUtc = occurredUtc ?? DateTimeOffset.UtcNow.AddSeconds(-1),
-        };
-
     private static ProcessorContext NewProcess() =>
         new() { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
-
-    [Fact]
-    public async Task SaveAsync_WithEvents_AddsThemToTheOutboxAfterTheState()
-    {
-        var sut = CreateSut();
-        var @event = Event();
-
-        await sut.SaveAsync(NewProcess(), [@event]);
-
-        outbox.Verify(x => x.EnqueueEventsAsync(It.Is<IReadOnlyCollection<KaleidoOutboxEvent>>(e => e.Single().EventId == @event.EventId), CancellationToken.None), Times.Once);
-    }
-
-    [Fact]
-    public async Task SaveAsync_WhenItConflicts_AddsNoEvents()
-    {
-        var sut = CreateSut();
-        var context = NewProcess();
-        await sut.SaveAsync(context, []);
-
-        await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() => sut.SaveAsync(context, [Event()]));
-
-        outbox.Verify(x => x.EnqueueEventsAsync(It.Is<IReadOnlyCollection<KaleidoOutboxEvent>>(e => e.Count > 0), It.IsAny<CancellationToken>()), Times.Never);
-    }
 }

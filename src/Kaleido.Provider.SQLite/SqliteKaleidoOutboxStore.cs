@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Provider.SQLite;
 
-// The event outbox, in the OutboxEvents table of the same database as the process state:
-// SqliteKaleidoContextStore adds a save's events in the state's transaction, this store enqueues the
-// others and leases entries to the relay of this instance.
+// The storage of Kaleido's built-in outbox, in the OutboxEvents table: entries are added inside the
+// transition's transaction when SqliteKaleidoTransactions opened one on this DbContext (state and
+// events commit together), on their own otherwise, and leased to the relay of this instance.
 internal sealed class SqliteKaleidoOutboxStore(
     SqliteKaleidoContextDbContext dbContext,
     KaleidoServiceOptions serviceOptions)
@@ -14,7 +14,7 @@ internal sealed class SqliteKaleidoOutboxStore(
 {
     internal const int MaxErrorLength = 2000;
 
-    public async Task EnqueueEventsAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
+    public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(events);
 

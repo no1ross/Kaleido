@@ -8,18 +8,17 @@ namespace Kaleido.Storage;
 /// </summary>
 /// <remarks>
 /// <para>
-/// One of the three store contracts, each with one concern: process state (this one), the event
-/// outbox (<see cref="IKaleidoOutboxStore"/>) and idempotent requests
-/// (<see cref="IKaleidoIdempotencyStore"/>). The defaults keep everything in memory, suitable for
-/// development and testing only: nothing survives a restart, and process state grows without bound in
-/// long-running services. Register durable implementations before deploying to production (e.g.
-/// <c>UseSqliteKaleidoContextStore</c>, which registers all three on one database, or your own).
+/// Process state only. Events are the outbox integration's (<see cref="IKaleidoOutbox"/>), and the
+/// idempotent requests are <see cref="IKaleidoIdempotencyStore"/>'s. The default keeps state in
+/// memory, suitable for development and testing only: nothing survives a restart, and state grows
+/// without bound in long-running services. Register a durable implementation before deploying to
+/// production (e.g. <c>AddSqliteContextStore</c>, or your own with <c>AddContextStore&lt;T&gt;()</c>).
 /// </para>
 /// <para>
-/// <strong>Same database as the outbox:</strong> <see cref="SaveAsync"/> adds the events that
-/// describe a save to the outbox in the same transaction as the state, so an implementation of this
-/// contract and of <see cref="IKaleidoOutboxStore"/> must share their database (e.g. one
-/// <c>DbContext</c>). Replace both together.
+/// <strong>Transitions:</strong> Kaleido calls <see cref="SaveAsync"/> inside the transaction of
+/// <see cref="IKaleidoTransactions"/> and adds the transition's events to the outbox in the same
+/// transaction, then commits (ADR 0023). An implementation writes the state in that transaction when
+/// one is open on its database (e.g. the shared <c>DbContext</c>), and on its own otherwise.
 /// </para>
 /// <para>
 /// <strong>Concurrency (optimistic):</strong> every save is conditional on
@@ -36,22 +35,16 @@ public interface IKaleidoContextStore
     /// <summary>
     /// Saves <paramref name="context"/> when the stored version still equals
     /// <see cref="ProcessorContext.Version"/> (0: the process must not exist yet), stores it with the
-    /// version incremented, adds <paramref name="events"/> to the outbox - all in one transaction:
-    /// state and events are saved together or not at all - and returns the saved context (with the
-    /// new version).
+    /// version incremented, and returns the saved context (with the new version).
     /// </summary>
     /// <param name="context">The process state to save.</param>
-    /// <param name="events">
-    /// Outbox entries describing this save (may be empty), written to the outbox that
-    /// <see cref="IKaleidoOutboxStore"/> claims from.
-    /// </param>
     /// <param name="cancellationToken">Cancels the save.</param>
     /// <exception cref="KaleidoConcurrencyException">
     /// The stored version differs - another request saved the process since it was loaded, or a process
-    /// with that id already exists for a context with version 0. Nothing is saved, no event is added.
+    /// with that id already exists for a context with version 0. Nothing is saved, and Kaleido adds none
+    /// of the transition's events.
     /// </exception>
     Task<ProcessorContext> SaveAsync(
         ProcessorContext context,
-        IReadOnlyCollection<KaleidoOutboxEvent> events,
         CancellationToken cancellationToken = default);
 }

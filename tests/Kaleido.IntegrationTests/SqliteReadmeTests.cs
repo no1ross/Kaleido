@@ -37,7 +37,7 @@ public sealed class SqliteReadmeTests : IDisposable
         await using (var scope = provider.CreateAsyncScope())
         {
             var saved = await scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>()
-                .SaveAsync(new ProcessorContext { ProcessId = processId, ProcessorName = "myservice" }, [], Cancel);
+                .SaveAsync(new ProcessorContext { ProcessId = processId, ProcessorName = "myservice" }, Cancel);
             Assert.Equal(1, saved.Version);
         }
 
@@ -58,7 +58,7 @@ public sealed class SqliteReadmeTests : IDisposable
 
         await Assert.ThrowsAsync<SqliteException>(() =>
             scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>()
-                .SaveAsync(new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "myservice" }, [], Cancel));
+                .SaveAsync(new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "myservice" }, Cancel));
     }
 
     private ServiceProvider BuildProvider()
@@ -71,7 +71,7 @@ public sealed class SqliteReadmeTests : IDisposable
                 o.Assemblies = [typeof(SqliteReadmeTests).Assembly];
                 o.TypeFilter = _ => false;
             })
-            .UseSqliteKaleidoContextStore($"Data Source={_databasePath}");
+            .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }

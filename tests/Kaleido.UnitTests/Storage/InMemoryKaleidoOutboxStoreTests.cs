@@ -15,7 +15,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
     {
         var store = CreateSut();
         var @event = Event();
-        await store.EnqueueEventsAsync([@event]);
+        await store.AddAsync([@event]);
         var claimed = Assert.Single(await store.ClaimEventsAsync(10, TimeSpan.Zero));
 
         await store.CompleteEventAsync(claimed.EventId);
@@ -44,7 +44,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
         var now = DateTimeOffset.UtcNow;
         var oldest = Event(now.AddSeconds(-3));
         var middle = Event(now.AddSeconds(-2));
-        await sut.EnqueueEventsAsync([Event(now.AddSeconds(-1)), middle, oldest]);
+        await sut.AddAsync([Event(now.AddSeconds(-1)), middle, oldest]);
 
         var first = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
         var second = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
@@ -58,7 +58,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
     public async Task ClaimEventsAsync_SkipsEntriesThatAreNotDueYet()
     {
         var sut = CreateSut();
-        await sut.EnqueueEventsAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }]);
+        await sut.AddAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }]);
 
         Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
     }
@@ -67,7 +67,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
     public async Task ClaimEventsAsync_AfterTheLeaseExpired_ClaimsTheEntryAgain()
     {
         var sut = CreateSut();
-        await sut.EnqueueEventsAsync([Event()]);
+        await sut.AddAsync([Event()]);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
         await Task.Delay(20);
 
@@ -79,7 +79,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
     {
         var sut = CreateSut();
         var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
+        await sut.AddAsync([@event]);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(200));
 
         await sut.CompleteEventAsync(@event.EventId);
@@ -93,7 +93,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
     {
         var sut = CreateSut();
         var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
+        await sut.AddAsync([@event]);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
         await Task.Delay(20);
 
@@ -107,7 +107,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
     {
         var sut = CreateSut();
         var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
+        await sut.AddAsync([@event]);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
 
         await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down");
@@ -123,7 +123,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
     {
         var sut = CreateSut();
         var @event = Event();
-        await sut.EnqueueEventsAsync([@event]);
+        await sut.AddAsync([@event]);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
 
         await sut.FailEventAsync(@event.EventId, retryAtUtc: null, "gave up");

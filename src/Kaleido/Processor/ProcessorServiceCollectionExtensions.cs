@@ -239,6 +239,7 @@ internal static class ProcessorServiceCollectionExtensions
         services.TryAddScoped<IProcessorObservability, ProcessorObservability>();
         services.TryAddScoped<IProcessorRuntime, ProcessorRuntime>();
         services.TryAddScoped<IProcessorExecutor, ProcessorExecutor>();
+        services.TryAddScoped<IProcessorTransition, ProcessorTransition>();
     }
 
     private static Type RegisterHandler(

@@ -35,9 +35,10 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0017](./0017-transport-contract-placement.md) | Transport contracts (including the error body) live in `Kaleido.Http.Abstractions` under the `Kaleido.Http` namespace; `IRegistrySnapshotStore` stays a public async seam | Accepted | #298, #293 |
 | [0018](./0018-options-are-startup-inputs.md) | Options are startup inputs: no defensive copies; KAL0018 stays the immutability rule, no deep-immutability analyzer | Accepted | #294, #305 |
 | [0019](./0019-idempotent-execution-admission.md) | Idempotent execution: an `Idempotency-Key` is admitted before its step runs; at most once per key, not exactly-once external work | Accepted | #285 |
-| [0020](./0020-three-store-contracts.md) | Three store contracts, one concern each: process state, event outbox, idempotent requests; the context and outbox stores share a database | Accepted | #285 |
+| [0020](./0020-three-store-contracts.md) | Three store contracts, one concern each: process state, event outbox, idempotent requests; the context and outbox stores share a database | Accepted; its store coupling amended by [0023](./0023-outbox-integration.md) | #285 |
 | [0021](./0021-authenticated-by-default.md) | Authorization is enforced by default (`Authenticated`); an open host sets `None` explicitly | Accepted | #288 |
 | [0022](./0022-call-credentials.md) | One credential model for every outgoing call: a host-owned provider per destination and purpose; a caller's call never uses the host's own credentials. Provenance behind a front door: informational origin end to end, trusted actor per hop | Accepted | #287, #402 |
+| [0023](./0023-outbox-integration.md) | Outbox integration: Kaleido owns *when* an event belongs to a state transition, the outbox integration owns *how* it is stored and delivered; built-in outbox (default), the host's own, or direct publication; transactions from persistence packages | Accepted | #408 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are
