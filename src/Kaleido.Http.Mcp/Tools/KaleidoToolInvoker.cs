@@ -290,6 +290,7 @@ internal sealed partial class KaleidoToolInvoker(
             : await client.QuerySourceAsync<JsonObject, JsonObject>(source, request, cancellationToken);
 
         var answer = Serialize(result) as JsonObject ?? [];
+        AddFieldDescriptions(answer, tool, answer["results"]);
 
         if (processId is { } id)
         {
@@ -889,6 +890,7 @@ internal sealed partial class KaleidoToolInvoker(
         if (step.Result.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
         {
             summary["result"] = JsonNode.Parse(step.Result.GetRawText());
+            AddFieldDescriptions(summary, catalog.FindStep(service, step.StepName), summary["result"]);
         }
 
         // Two streams, kept apart as the step response keeps them: business messages are the
@@ -1055,6 +1057,40 @@ internal sealed partial class KaleidoToolInvoker(
             })
             .ToArray();
     }
+
+    // What the fields of a result mean, for those it contains, so the agent reads the data with its
+    // meaning (#213). Nothing is added when the tool has no described fields in the data.
+    private static void AddFieldDescriptions(JsonObject answer, KaleidoTool? tool, JsonNode? data)
+    {
+        if (tool is not { OutputDescriptions.Count: > 0 })
+        {
+            return;
+        }
+
+        var described = new JsonObject();
+
+        foreach (var name in FieldNames(data))
+        {
+            if (!described.ContainsKey(name) && tool.OutputDescriptions.TryGetValue(name, out var description))
+            {
+                described[name] = description;
+            }
+        }
+
+        if (described.Count > 0)
+        {
+            answer["fieldDescriptions"] = described;
+        }
+    }
+
+    // The top-level field names of a result object, or of the rows of a result list.
+    private static IEnumerable<string> FieldNames(JsonNode? data) =>
+        data switch
+        {
+            JsonObject item => item.Select(x => x.Key),
+            JsonArray rows => rows.OfType<JsonObject>().SelectMany(row => row.Select(x => x.Key)),
+            _ => [],
+        };
 
     // How the agent puts pending questions to the user: verbatim, the user's answers only.
     private static string AnswerInstruction(InformationRequest pending, bool elicited, bool moreRounds) =>

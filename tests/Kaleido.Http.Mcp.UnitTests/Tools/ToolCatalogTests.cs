@@ -25,6 +25,18 @@ public sealed class ToolCatalogTests
     }
 
     [Fact]
+    public void FindStep_ByServiceAndStepName_AmongStepTools()
+    {
+        var step = new KaleidoTool { Definition = new Tool { Name = "clinic_start_visit" }, Kind = KaleidoToolKind.Step, Service = "clinic", CapabilityName = "StartVisitStep" };
+        var query = new KaleidoTool { Definition = new Tool { Name = "clinic_start" }, Kind = KaleidoToolKind.Query, Service = "clinic", CapabilityName = "StartVisitStep" };
+        var sut = CreateSut(query, step);
+
+        Assert.Same(step, sut.FindStep("clinic", "StartVisitStep"));
+        Assert.Null(sut.FindStep("radiology", "StartVisitStep"));
+        Assert.Null(sut.FindStep("clinic", "startvisitstep"));
+    }
+
+    [Fact]
     public void FindByUrl_IgnoresCase()
     {
         Assert.Same(StartVisit, CreateSut(Patient, StartVisit).FindByUrl("/CLINIC/processes/steps/StartVisit"));

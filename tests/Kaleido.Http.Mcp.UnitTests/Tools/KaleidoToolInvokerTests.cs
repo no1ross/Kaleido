@@ -1693,6 +1693,41 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(["visit-intake", "follow-up"], body["answered"]?.AsArray().Select(x => x?.GetValue<string>()));
     }
 
+    // ── Output descriptions (#213) ───────────────────────────────────────────
+    // The agent receives what the returned fields mean, for the fields the result contains.
+
+    private static readonly Dictionary<string, string> PatientFields =
+        new(StringComparer.OrdinalIgnoreCase) { ["Name"] = "The patient's full name.", ["Phone"] = "Not in the result." };
+
+    [Fact]
+    public async Task AQueryResult_CarriesTheDescriptionsOfItsFields()
+    {
+        var body = Body(await CreateSut().InvokeAsync(Search with { OutputDescriptions = PatientFields }, Call(), Catalog, Cancel));
+
+        var described = body["fieldDescriptions"]?.AsObject() ?? throw new Xunit.Sdk.XunitException("No field descriptions.");
+        Assert.Equal("The patient's full name.", described["name"]?.GetValue<string>());
+        Assert.Single(described);
+    }
+
+    [Fact]
+    public async Task AQueryResult_WithoutDescribedFields_HasNoFieldDescriptions()
+    {
+        var body = Body(await CreateSut().InvokeAsync(Search, Call(), Catalog, Cancel));
+
+        Assert.Null(body["fieldDescriptions"]);
+    }
+
+    [Fact]
+    public async Task AStepResult_CarriesTheDescriptionsOfItsFields()
+    {
+        var start = Start with { OutputDescriptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["VisitId"] = "The visit opened." } };
+        StepReturns(StepResponse() with { Result = JsonSerializer.SerializeToElement(new { visitId = "v-1" }) });
+
+        var body = Body(await CreateSut().InvokeAsync(start, Call(), new ToolCatalog { Tools = [start, Close, Answer, State] }, Cancel));
+
+        Assert.Equal("The visit opened.", body["fieldDescriptions"]?["visitId"]?.GetValue<string>());
+    }
+
     // ── Questions: conditional (EnableWhen, ADR 0024) ─────────────────────────
     // The adapter asks one round at a time - only the questions the answers so far decide - and
     // submits once; the agent and the form never see the conditions.
