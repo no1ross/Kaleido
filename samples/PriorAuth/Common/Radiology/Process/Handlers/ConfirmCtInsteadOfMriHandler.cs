@@ -14,7 +14,7 @@ public sealed class ConfirmCtInsteadOfMriHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         ConfirmCtInsteadOfMriStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await informationRequests.RecordAnswersAsync(context.ProcessId, nameof(ConfirmCtInsteadOfMriStep), processStep, cancellationToken);
 

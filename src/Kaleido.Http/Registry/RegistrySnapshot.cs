@@ -49,7 +49,7 @@ internal sealed class RegistrySnapshot(
     public Task<AggregatedRegistryResponse> GetOrBuildAsync(
         bool refresh,
         Func<CancellationToken, Task<AggregatedRegistryResponse>> build,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         _cache.GetOrBuildAsync(CacheTtl, RefreshCooldown, refresh, build, cancellationToken);
 
     public void Dispose() => _cache.Dispose();

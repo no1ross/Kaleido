@@ -10,7 +10,7 @@ namespace Kaleido;
 /// <summary>
 /// Registers the Kaleido core on an <see cref="IServiceCollection"/>: <see cref="AddKaleido"/> is the
 /// entry point; the other methods extend the returned <see cref="IKaleidoBuilder"/> - events
-/// (<see cref="AddEventPublisher{TPublisher}"/>, <see cref="AddEventRedactor{TRedactor}"/>, <see cref="AddEventClassificationRedaction"/>), the stores
+/// (<see cref="AddEventPublisher{TPublisher}"/>, <see cref="AddEventRedactor{TRedactor}"/>, <see cref="AddEventRedaction"/>), the stores
 /// (<see cref="AddContextStore{TStore}"/>, <see cref="AddIdempotencyStore{TStore}"/>), the outbox
 /// (<see cref="AddOutboxStore{TStore}"/>, <see cref="AddOutbox{TOutbox}"/>,
 /// <see cref="AddDirectPublication"/>) and <see cref="AddTransactions{TTransactions}"/>.
@@ -123,7 +123,7 @@ public static class KaleidoServiceCollectionExtensions
     }
 
     // How events are written: the relay's wake-up signal, the event redaction policy (empty until
-    // AddEventClassificationRedaction, ADR 0025), the payload writer that applies it and the per-request writer.
+    // AddEventRedaction, ADR 0025), the payload writer that applies it and the per-request writer.
     private static void AddEventWriting(IServiceCollection services)
     {
         services.TryAddSingleton<IKaleidoEventSignal, KaleidoEventSignal>();
@@ -161,7 +161,7 @@ public static class KaleidoServiceCollectionExtensions
     /// </summary>
     /// <remarks>
     /// For classified properties (<c>DataClassificationAttribute</c>) no redactor is needed: choose how
-    /// each classification is redacted with <see cref="AddEventClassificationRedaction"/>. See
+    /// each classification is redacted with <see cref="AddEventRedaction"/>. See
     /// <see cref="IKaleidoEventRedactor"/>.
     /// </remarks>
     /// <example>
@@ -196,7 +196,7 @@ public static class KaleidoServiceCollectionExtensions
     /// <para>
     /// A classified value gets the redactor of its exact set of classifications, else the fallback
     /// (<see cref="IRedactionBuilder.SetFallbackRedactor{T}"/>); without either it is erased. Without
-    /// <c>AddEventClassificationRedaction</c> every classified value is erased, and a warning says so once.
+    /// <c>AddEventRedaction</c> every classified value is erased, and a warning says so once.
     /// </para>
     /// <para>
     /// Keep a classification unredacted in events with <see cref="NullRedactor"/>. Redactor types are
@@ -210,10 +210,10 @@ public static class KaleidoServiceCollectionExtensions
     ///
     /// builder.Services.AddKaleido(builder.Configuration)
     ///     .AddEventPublisher&lt;WarehousePublisher&gt;()
-    ///     .AddEventClassificationRedaction(r =&gt; r.SetRedactor&lt;NullRedactor&gt;(new DataClassificationSet(Pii)));  // events: PHI erased (no redactor)
+    ///     .AddEventRedaction(r =&gt; r.SetRedactor&lt;NullRedactor&gt;(new DataClassificationSet(Pii)));  // events: PHI erased (no redactor)
     /// </code>
     /// </example>
-    public static IKaleidoBuilder AddEventClassificationRedaction(this IKaleidoBuilder builder, Action<IRedactionBuilder> configure)
+    public static IKaleidoBuilder AddEventRedaction(this IKaleidoBuilder builder, Action<IRedactionBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);

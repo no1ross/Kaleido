@@ -12,7 +12,7 @@ internal sealed class ProcessCartHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         ProcessCartStep step,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var customer =
             await dbContext.Customers

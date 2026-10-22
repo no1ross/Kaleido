@@ -10,10 +10,10 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers;
 
 /// <summary>
-/// KAL2024: what a step returns (<c>TResult</c> of <c>IProcessStepHandler&lt;TStep, TResult&gt;</c>) and what
+/// KAL2021: what a step returns (<c>TResult</c> of <c>IProcessStepHandler&lt;TStep, TResult&gt;</c>) and what
 /// a view returns (<c>TView</c> of <c>IQueryViewSource*</c>) is read by agents and UIs; the registry
 /// publishes each property's description, and the MCP adapter hands it to the agent with the data.
-/// A source's output is its query context, already covered by KAL2018.
+/// A source's output is its query context, already covered by KAL2015.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class OutputDescriptionAnalyzer : DiagnosticAnalyzer
@@ -69,7 +69,7 @@ public sealed class OutputDescriptionAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    // A class or struct declared in this project that no other rule covers (query contexts: KAL2018).
+    // A class or struct declared in this project that no other rule covers (query contexts: KAL2015).
     private static bool IsDescribedHere(INamedTypeSymbol output) =>
         output.TypeKind is TypeKind.Class or TypeKind.Struct &&
         output.Locations.Any(location => location.IsInSource) &&

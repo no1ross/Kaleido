@@ -46,27 +46,27 @@ Every unit-test fixture must declare its subject under test by inheriting
 
 **Which types get a fixture (#404).** Every type with behavior - a hand-written method, operator or
 computed property, whatever its kind: records and `*Options`/`*Request` types included - has its
-own fixture (KAL1009), and lives in its own file (KAL0022). The definition is in
+own fixture (KAL1009), and lives in its own file (KAL0019). The definition is in
 [`docs/ANALYZERS.md`](../docs/ANALYZERS.md#types-with-behavior).
-- **One SUT, its own logic.** An injected collaborator is mocked, never tested through (KAL1012). A
+- **One SUT, its own logic.** An injected collaborator is mocked, never tested through (KAL1011). A
   record or other data type with behavior may be *used* as input in another fixture, but its logic is
   tested in its own fixture: `ProcessorContextTests` covers `HasCompletedStep`; the runtime's tests
   only pass contexts in.
 - **Generic twins** keep their type names; files and fixtures carry the arity:
   `ProcessStepHandlerResult` → `ProcessStepHandlerResultTests`, `ProcessStepHandlerResult<T>` →
   `ProcessStepHandlerResultOfTTests` (`XOfT{n}Tests` with n type parameters).
-- `[ExcludeFromCodeCoverage]` is for data types only (KAL0023): logic is measured and tested.
+- `[ExcludeFromCodeCoverage]` is for data types only (KAL0020): logic is measured and tested.
 
 Rules enforced at build time: fixtures are named `{Sut}Tests` (KAL1007; `{Sut}OfTTests` for a generic twin), the
 SUT may only be constructed inside a `CreateSut` method or via `Sut` (KAL1008),
 collaborators must be mocked — never `new` a real Kaleido service
-implementation (KAL1012; domain data the SUT consumes is exempt) — and the
+implementation (KAL1011; domain data the SUT consumes is exempt) — and the
 fixture file must mirror the SUT's source path (KAL1003 — e.g.
 `src/Kaleido/Queryable/Metadata/QueryMetadataExtensions.cs` → `tests/Kaleido.UnitTests/Queryable/Metadata/QueryMetadataExtensionsTests.cs`;
 the analyzer finds the SUT's file among the `src/` paths `tests/Directory.Build.props` passes as
 additional files).
 The fixture's namespace is the SUT's namespace with `.UnitTests` appended, not
-the folder path (KAL1013 — e.g. `Kaleido.Queryable.Query.QueryContextEngine` →
+the folder path (KAL1012 — e.g. `Kaleido.Queryable.Query.QueryContextEngine` →
 `namespace Kaleido.Queryable.Query.UnitTests;`), so the SUT's types resolve
 without a `using`. Shared helpers (`SutFixture`, analyzer harnesses) stay in
 `Kaleido.UnitTests` / `Kaleido.Testing`; functional and integration test

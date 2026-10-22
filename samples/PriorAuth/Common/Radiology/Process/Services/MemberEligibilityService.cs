@@ -14,19 +14,19 @@ public interface IMemberEligibilityService
         Guid memberEnrollmentId,
         DateOnly dateOfService,
         Guid processId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>The member's eligibility on the date of service only, for a request that is not recorded yet.</summary>
     Task<MemberEligibilityResult> CheckEligibilityAsync(
         Guid memberId,
         Guid memberEnrollmentId,
         DateOnly dateOfService,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     Task<ModalityRoutingResult> RouteByModalityAsync(
         Guid processId,
         MemberDetailsView memberDetails,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -54,7 +54,7 @@ public sealed class MemberEligibilityService(
         Guid memberEnrollmentId,
         DateOnly dateOfService,
         Guid processId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var priorAuthExists =
             await dbContext.PriorAuthorizations
@@ -79,7 +79,7 @@ public sealed class MemberEligibilityService(
         Guid memberId,
         Guid memberEnrollmentId,
         DateOnly dateOfService,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var memberDetails =
             await memberDetailsClient.GetMemberDetailsAsync(
@@ -123,7 +123,7 @@ public sealed class MemberEligibilityService(
     public async Task<ModalityRoutingResult> RouteByModalityAsync(
         Guid processId,
         MemberDetailsView memberDetails,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var requestedService =
             await dbContext.PriorAuthorizationRequestedServices

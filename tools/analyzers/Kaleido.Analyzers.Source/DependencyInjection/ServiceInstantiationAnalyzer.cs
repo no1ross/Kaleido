@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0006 — the framework resolves services from DI; newing up a type that is
+/// KAL0005 — the framework resolves services from DI; newing up a type that is
 /// registered as a service implementation bypasses the seam. The registered
 /// implementation set is harvested from *ServiceCollectionExtensions classes
 /// in the same compilation. *ServiceCollectionExtensions classes are exempt —

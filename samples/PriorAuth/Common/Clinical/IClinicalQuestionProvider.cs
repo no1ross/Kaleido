@@ -11,14 +11,14 @@ public interface IClinicalQuestionProvider
     /// <summary>The first round for this request, or null when no clinical review applies.</summary>
     Task<ClinicalRound?> StartAsync(
         ClinicalContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>After the caller answered <paramref name="round"/>: the next round, or done.</summary>
     Task<ClinicalNext> ContinueAsync(
         ClinicalContext context,
         ClinicalRound round,
         IInformationStep answers,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 /// <summary>What a provider may use to choose and evaluate questions.</summary>

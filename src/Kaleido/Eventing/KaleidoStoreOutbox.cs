@@ -5,10 +5,10 @@ namespace Kaleido.Eventing;
 // they are committed, hands them to the publisher.
 internal sealed class KaleidoStoreOutbox(IKaleidoOutboxStore store, IKaleidoEventSignal signal) : IKaleidoPublisherOutbox
 {
-    public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default) =>
+    public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken) =>
         store.AddAsync(events, cancellationToken);
 
-    public Task CommittedAsync(CancellationToken cancellationToken = default)
+    public Task CommittedAsync(CancellationToken cancellationToken)
     {
         signal.Notify();
         return Task.CompletedTask;

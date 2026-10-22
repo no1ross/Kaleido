@@ -36,9 +36,9 @@ public sealed class InMemoryKaleidoIdempotencyStoreTests
     {
         var sut = CreateSut();
 
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:k1")));
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken));
 
-        var existing = await sut.AdmitAsync(Admission("svc:alice:k1", hash: "other"));
+        var existing = await sut.AdmitAsync(Admission("svc:alice:k1", hash: "other"), TestContext.Current.CancellationToken);
         Assert.NotNull(existing);
         Assert.Equal(IdempotentResultState.InProgress, existing.State);
         Assert.Equal("hash", existing.RequestHash);
@@ -50,7 +50,7 @@ public sealed class InMemoryKaleidoIdempotencyStoreTests
     {
         var sut = CreateSut();
 
-        var outcomes = await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => Task.Run(() => sut.AdmitAsync(Admission("svc:alice:race")))));
+        var outcomes = await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => Task.Run(() => sut.AdmitAsync(Admission("svc:alice:race"), TestContext.Current.CancellationToken))));
 
         Assert.Single(outcomes, x => x is null);
     }
@@ -59,11 +59,11 @@ public sealed class InMemoryKaleidoIdempotencyStoreTests
     public async Task CompleteAsync_ThenAdmitAsync_ReturnsTheCompletedAnswer()
     {
         var sut = CreateSut();
-        await sut.AdmitAsync(Admission("svc:alice:k1"));
+        await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken);
 
-        await sut.CompleteAsync(Completed("svc:alice:k1", """{"processId":"p"}"""));
+        await sut.CompleteAsync(Completed("svc:alice:k1", """{"processId":"p"}"""), TestContext.Current.CancellationToken);
 
-        var existing = await sut.AdmitAsync(Admission("svc:alice:k1"));
+        var existing = await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken);
         Assert.NotNull(existing);
         Assert.Equal(IdempotentResultState.Completed, existing.State);
         Assert.Equal(200, existing.StatusCode);
@@ -74,24 +74,24 @@ public sealed class InMemoryKaleidoIdempotencyStoreTests
     public async Task ReleaseAsync_FreesAKeyInProgress_ButKeepsACompletedOne()
     {
         var sut = CreateSut();
-        await sut.AdmitAsync(Admission("svc:alice:failed"));
-        await sut.AdmitAsync(Admission("svc:alice:done"));
-        await sut.CompleteAsync(Completed("svc:alice:done", "{}"));
+        await sut.AdmitAsync(Admission("svc:alice:failed"), TestContext.Current.CancellationToken);
+        await sut.AdmitAsync(Admission("svc:alice:done"), TestContext.Current.CancellationToken);
+        await sut.CompleteAsync(Completed("svc:alice:done", "{}"), TestContext.Current.CancellationToken);
 
-        await sut.ReleaseAsync("svc:alice:failed");
-        await sut.ReleaseAsync("svc:alice:done");
+        await sut.ReleaseAsync("svc:alice:failed", TestContext.Current.CancellationToken);
+        await sut.ReleaseAsync("svc:alice:done", TestContext.Current.CancellationToken);
 
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:failed")));
-        Assert.Equal(IdempotentResultState.Completed, (await sut.AdmitAsync(Admission("svc:alice:done")))?.State);
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:failed"), TestContext.Current.CancellationToken));
+        Assert.Equal(IdempotentResultState.Completed, (await sut.AdmitAsync(Admission("svc:alice:done"), TestContext.Current.CancellationToken))?.State);
     }
 
     [Fact]
     public async Task AdmitAsync_OverAnExpiredRecord_AdmitsTheKeyAgain()
     {
         var sut = CreateSut();
-        await sut.AdmitAsync(Admission("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)));
+        await sut.AdmitAsync(Admission("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)), TestContext.Current.CancellationToken);
 
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old")));
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old"), TestContext.Current.CancellationToken));
     }
 
     [Fact]

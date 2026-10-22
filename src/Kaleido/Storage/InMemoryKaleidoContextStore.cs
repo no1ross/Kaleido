@@ -19,7 +19,7 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
         LogInMemoryStoreActive(logger);
     }
 
-    public Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default)
+    public Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -29,7 +29,7 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
 
     public Task<ProcessorContext> SaveAsync(
         ProcessorContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
 

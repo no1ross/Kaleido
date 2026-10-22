@@ -44,7 +44,7 @@ internal interface IKaleidoAuthorizationEvaluator
         AuthorizationMetadata? authorization,
         KaleidoCorrelationContext caller,
         Func<string, CancellationToken, Task<bool>>? policyEvaluator,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Like <see cref="CanAccessAsync"/> but throws
@@ -55,7 +55,7 @@ internal interface IKaleidoAuthorizationEvaluator
         string capabilityName,
         KaleidoCorrelationContext caller,
         Func<string, CancellationToken, Task<bool>>? policyEvaluator,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 /// <inheritdoc cref="IKaleidoAuthorizationEvaluator"/>
@@ -74,7 +74,7 @@ internal sealed partial class KaleidoAuthorizationEvaluator(
         AuthorizationMetadata? authorization,
         KaleidoCorrelationContext caller,
         Func<string, CancellationToken, Task<bool>>? policyEvaluator,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(caller);
 
@@ -128,7 +128,7 @@ internal sealed partial class KaleidoAuthorizationEvaluator(
         string capabilityName,
         KaleidoCorrelationContext caller,
         Func<string, CancellationToken, Task<bool>>? policyEvaluator,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(capabilityName);
         ArgumentNullException.ThrowIfNull(caller);

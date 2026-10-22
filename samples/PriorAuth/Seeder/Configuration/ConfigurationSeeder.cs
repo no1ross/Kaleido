@@ -12,7 +12,7 @@ internal sealed class ConfigurationSeeder(
     public SupportedDomain Domain => SupportedDomain.Configuration;
 
     public async Task SeedAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await using var provider =
             projectContextFactory.CreateSqliteDbContextProvider<ConfigurationDbContext>(

@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0005 — service-like types must not be static. A static class named like
+/// KAL0004 — service-like types must not be static. A static class named like
 /// an injectable component (*Service, *Handler, *Executor, *Processor,
 /// *Provider, *Factory, *Reader, *Writer) declaring non-extension methods is
 /// stateful behavior hiding in a static shape — make it an injectable type.

@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0008 — inject abstractions, not concrete service implementations. A
+/// KAL0007 — inject abstractions, not concrete service implementations. A
 /// constructor parameter typed as a concrete class that was registered under
 /// an I* service key hard-codes the implementation and defeats the seam.
 /// Types registered as themselves (concrete key) are exempt — injecting them

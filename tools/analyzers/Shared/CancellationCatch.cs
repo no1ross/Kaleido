@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Operations;
 namespace Kaleido.Analyzers.Shared;
 
 /// <summary>
-/// Shared by KAL2004 (Kaleido.Analyzers) and KAL0021 (Kaleido.Analyzers.Source): decides whether a
+/// Shared by KAL2004 (Kaleido.Analyzers) and KAL0018 (Kaleido.Analyzers.Source): decides whether a
 /// catch-all clause (<c>catch</c> or <c>catch (Exception)</c>) can receive an
 /// <see cref="System.OperationCanceledException"/> as a general failure.
 /// </summary>

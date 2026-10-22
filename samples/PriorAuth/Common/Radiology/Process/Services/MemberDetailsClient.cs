@@ -10,7 +10,7 @@ public sealed class MemberDetailsClient(
     public async Task<MemberDetailsView?> GetMemberDetailsAsync(
         Guid memberId,
         Guid memberEnrollmentId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var result = await queryableClientFactory
             .GetClient("Member")

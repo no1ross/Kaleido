@@ -23,14 +23,14 @@ public sealed class SimulatedCriteriaServiceProvider : IClinicalQuestionProvider
 
     public Task<ClinicalRound?> StartAsync(
         ClinicalContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.FromResult<ClinicalRound?>(Round("reason", sessionId: $"vendor-{Guid.NewGuid():N}"));
 
     public Task<ClinicalNext> ContinueAsync(
         ClinicalContext context,
         ClinicalRound round,
         IInformationStep answers,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var answer = answers.Items.FirstOrDefault()?.Answers.FirstOrDefault()?.Value;
 

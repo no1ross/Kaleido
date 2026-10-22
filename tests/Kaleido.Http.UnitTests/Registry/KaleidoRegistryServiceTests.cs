@@ -89,7 +89,7 @@ public sealed class KaleidoRegistryServiceTests
     [Fact]
     public async Task GetForCaller_MergesLocalAndDownstream_WhenAggregating()
     {
-        var registry = await CreateSut().Sut.GetForCallerAsync(cancellationToken: Cancel);
+        var registry = await CreateSut().Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         Assert.Equal(["radiology", "router"], registry.Processes.Select(x => x.Name));
         Assert.Equal(["MemberSource"], registry.Queryables.Select(x => x.Name));
@@ -103,7 +103,7 @@ public sealed class KaleidoRegistryServiceTests
     {
         var sut = CreateSut(cooldown: TimeSpan.Zero).Sut;
 
-        var first = await sut.GetForCallerAsync(cancellationToken: Cancel);
+        var first = await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
         await Task.Delay(TimeSpan.FromMilliseconds(20), Cancel);
         var rebuilt = await sut.GetForCallerAsync(refresh: true, cancellationToken: Cancel);
 
@@ -114,7 +114,7 @@ public sealed class KaleidoRegistryServiceTests
     [Fact]
     public async Task GetForCaller_WithoutAggregation_ServesOnlyLocalRegistrations()
     {
-        var registry = await CreateSut(aggregate: false).Sut.GetForCallerAsync(cancellationToken: Cancel);
+        var registry = await CreateSut(aggregate: false).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         Assert.Equal(["router"], registry.Processes.Select(x => x.Name));
         downstream.Verify(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -125,8 +125,8 @@ public sealed class KaleidoRegistryServiceTests
     {
         var (sut, _) = CreateSut(cooldown: TimeSpan.Zero);
 
-        await sut.GetForCallerAsync(cancellationToken: Cancel);
-        await sut.GetForCallerAsync(cancellationToken: Cancel);
+        await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
+        await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
         downstream.Verify(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Once);
 
         await sut.GetForCallerAsync(refresh: true, cancellationToken: Cancel);
@@ -142,8 +142,8 @@ public sealed class KaleidoRegistryServiceTests
             .ReturnsAsync(new DownstreamRegistries([], [], [new RegistryClientError { ClientName = "radiology", ClientType = "Registry", Reason = "down" }]));
         var (sut, _) = CreateSut();
 
-        var first = await sut.GetForCallerAsync(cancellationToken: Cancel);
-        await sut.GetForCallerAsync(cancellationToken: Cancel);
+        var first = await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
+        await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         Assert.True(first.IsPartial);
         Assert.Equal("radiology", Assert.Single(first.ClientErrors).ClientName);
@@ -154,7 +154,7 @@ public sealed class KaleidoRegistryServiceTests
     public async Task GetForCaller_WhenEnforced_FiltersForTheCaller_AndTheRevisionFollowsTheContent()
     {
         var (sut, _) = CreateSut();
-        var unfiltered = await sut.GetForCallerAsync(cancellationToken: Cancel);
+        var unfiltered = await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         authorizer.Setup(x => x.IsEnforced).Returns(true);
         authorizer.Setup(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -166,11 +166,11 @@ public sealed class KaleidoRegistryServiceTests
         authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<QueryableViewResponse>>(), It.IsAny<Func<QueryableViewResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyCollection<QueryableViewResponse> items, Func<QueryableViewResponse, AuthorizationMetadata?> _, CancellationToken _) => items.ToArray());
 
-        var filtered = await sut.GetForCallerAsync(cancellationToken: Cancel);
+        var filtered = await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         Assert.Equal(["router"], filtered.Processes.Select(x => x.Name));
         Assert.NotEqual(unfiltered.Revision, filtered.Revision);
-        Assert.Equal(filtered.Revision, (await sut.GetForCallerAsync(cancellationToken: Cancel)).Revision);
+        Assert.Equal(filtered.Revision, (await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel)).Revision);
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public sealed class KaleidoRegistryServiceTests
         authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<QueryableViewResponse>>(), It.IsAny<Func<QueryableViewResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyCollection<QueryableViewResponse> items, Func<QueryableViewResponse, AuthorizationMetadata?> _, CancellationToken _) => items.ToArray());
 
-        var source = Assert.Single((await CreateSut().Sut.GetForCallerAsync(cancellationToken: Cancel)).Queryables);
+        var source = Assert.Single((await CreateSut().Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel)).Queryables);
 
         Assert.Null(source.QueryUrl);
         Assert.Equal("ChartCard", Assert.Single(source.Views).Name);
@@ -211,7 +211,7 @@ public sealed class KaleidoRegistryServiceTests
             .Returns((ProcessorRegistryItem _, KaleidoServiceOptions options) => new ProcessorRegistryResponse { Name = options.ServiceName, IsEntryProcessor = true });
         localProcessors.Add(new ProcessorRegistryItem());
 
-        await Assert.ThrowsAsync<KaleidoConfigurationException>(() => CreateSut(aggregate: false).Sut.GetForCallerAsync(cancellationToken: Cancel));
+        await Assert.ThrowsAsync<KaleidoConfigurationException>(() => CreateSut(aggregate: false).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel));
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public sealed class KaleidoRegistryServiceTests
     {
         var logger = CreateLogger();
 
-        await CreateSut(logger: logger.Object).Sut.GetForCallerAsync(cancellationToken: Cancel);
+        await CreateSut(logger: logger.Object).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         var log = Assert.Single(Logs(logger));
         Assert.Equal(LogLevel.Debug, log.Level);
@@ -237,7 +237,7 @@ public sealed class KaleidoRegistryServiceTests
     {
         var logger = CreateLogger();
         var sut = CreateSut(cooldown: TimeSpan.Zero, logger: logger.Object).Sut;
-        await sut.GetForCallerAsync(cancellationToken: Cancel);
+        await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         await sut.GetForCallerAsync(refresh: true, cancellationToken: Cancel);
 
@@ -257,7 +257,7 @@ public sealed class KaleidoRegistryServiceTests
                 ]));
         var logger = CreateLogger();
 
-        await CreateSut(logger: logger.Object).Sut.GetForCallerAsync(cancellationToken: Cancel);
+        await CreateSut(logger: logger.Object).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         var log = Assert.Single(Logs(logger));
         Assert.Equal(LogLevel.Warning, log.Level);
@@ -278,7 +278,7 @@ public sealed class KaleidoRegistryServiceTests
         var accessor = Mock.Of<IHttpContextAccessor>(x => x.HttpContext == httpContext);
         AllowEverything();
 
-        await CreateSut(httpContextAccessor: accessor).Sut.GetForCallerAsync(cancellationToken: Cancel);
+        await CreateSut(httpContextAccessor: accessor).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         initializer.Verify(x => x.Initialize(It.IsAny<KaleidoCorrelationContext>()), Times.Once);
     }
@@ -337,7 +337,7 @@ public sealed class KaleidoRegistryServiceTests
             .ReturnsAsync((IReadOnlyCollection<QueryableViewResponse> items, Func<QueryableViewResponse, AuthorizationMetadata?> rule, CancellationToken _) =>
                 items.Where(x => Allowed(rule(x), ruleChecks)).ToArray());
 
-        var registry = await CreateSut().Sut.GetForCallerAsync(cancellationToken: Cancel);
+        var registry = await CreateSut().Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         Assert.Equal(["empty", "initial-only"], registry.Processes.Select(x => x.Name));
         Assert.Null(registry.Processes.First().Steps);

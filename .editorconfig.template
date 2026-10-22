@@ -69,4 +69,4 @@ dotnet_naming_style.i_pascal_style.capitalization = pascal_case
 ; Exceptions of note when consuming Kaleido:
 ; - step handlers legitimately return results, not throw — keep
 ;   catch(Exception) blocks filtering OperationCanceledException when they
-;   touch observability (see docs/ANALYZERS.md KAL0021).
+;   touch observability (see docs/ANALYZERS.md KAL0018).

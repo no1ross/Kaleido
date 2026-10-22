@@ -35,8 +35,8 @@ internal static class DiagnosticIds
     public const string FixtureEmpty = "KAL1010";
 
     /// <summary>Unit-test fixtures must not new up testable framework types other than the declared SUT — collaborators are mocked.</summary>
-    public const string CollaboratorMustBeMocked = "KAL1012";
+    public const string CollaboratorMustBeMocked = "KAL1011";
 
     /// <summary>A unit-test fixture must be declared in its SUT's namespace with '.UnitTests' appended (Kaleido.Queryable.Query → Kaleido.Queryable.Query.UnitTests).</summary>
-    public const string FixtureNamespace = "KAL1013";
+    public const string FixtureNamespace = "KAL1012";
 }

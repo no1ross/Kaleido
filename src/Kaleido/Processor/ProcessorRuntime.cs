@@ -38,7 +38,7 @@ internal interface IProcessorRuntime
     /// </exception>
     Task<ProcessResult> ExecuteAsync(
         ProcessRequest request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -219,7 +219,7 @@ internal sealed class ProcessorRuntime(
 
     public async Task<ProcessResult> ExecuteAsync(
         ProcessRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 

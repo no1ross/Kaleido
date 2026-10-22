@@ -17,7 +17,7 @@ public sealed class HttpEventPublisher(
 
     public async Task PublishAsync<TEvent, TContext>(
         KaleidoEventEnvelope<TEvent, TContext> envelope,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent
     {
         ArgumentNullException.ThrowIfNull(envelope);

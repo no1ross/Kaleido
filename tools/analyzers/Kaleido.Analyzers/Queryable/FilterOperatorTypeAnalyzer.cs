@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Queryable;
 
 /// <summary>
-/// KAL2023 — a [Filterable] operator does not apply to the property's type: a comparison
+/// KAL2020 — a [Filterable] operator does not apply to the property's type: a comparison
 /// (GreaterThan, Between, ...) on a type that cannot be compared, a string operator (Contains,
 /// StartsWith, ...) on a non-string, IsTrue/IsFalse on a non-bool, IsNull/IsNotNull on a type that
 /// cannot be null, or Equals/NotEquals on a struct without an equality operator. Startup fails with

@@ -12,7 +12,7 @@ internal sealed class ReferenceDataSeeder(
     public SupportedDomain Domain => SupportedDomain.ReferenceData;
 
     public async Task SeedAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await using var provider =
             projectContextFactory.CreateSqliteDbContextProvider<ReferenceDataDbContext>(

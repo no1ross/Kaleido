@@ -231,7 +231,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
 
     // The event policy (ADR 0025): the host's AddRedaction is for logs and does not reach events.
     private static void AddMaskingRedaction(IKaleidoBuilder kaleido) =>
-        kaleido.AddEventClassificationRedaction(redaction => redaction.SetRedactor<MaskingRedactor>(new DataClassificationSet(FunctionalSensitiveDataAttribute.Sensitive)));
+        kaleido.AddEventRedaction(redaction => redaction.SetRedactor<MaskingRedactor>(new DataClassificationSet(FunctionalSensitiveDataAttribute.Sensitive)));
 
     // Runs the query and returns the names the caller got (the real values).
     private static async Task<List<string>> QueryNamesAsync(IHost host)

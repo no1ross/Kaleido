@@ -93,8 +93,8 @@ public class QueryCountBenchmarks : IDisposable
         await using var db = CreateDb();
         var query = db.Members.AsNoTracking().Where(x => x.City == "Austin").OrderBy(x => x.Id);
 
-        var page = await executor.ToListAsync(executor.ApplyPage(query, PageSize, 0));
-        var total = await executor.CountAsync(query);
+        var page = await executor.ToListAsync(executor.ApplyPage(query, PageSize, 0), CancellationToken.None);
+        var total = await executor.CountAsync(query, CancellationToken.None);
 
         return page.Count + total;
     }
@@ -146,11 +146,11 @@ public sealed class EfCoreQueryContextExecutor<TView> : IQueryContextExecutor<TV
     where TView : class
 {
     /// <inheritdoc />
-    public Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
+    public Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken) =>
         EntityFrameworkQueryableExtensions.CountAsync(query, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken) =>
         await EntityFrameworkQueryableExtensions.ToListAsync(query, cancellationToken);
 
     /// <inheritdoc />

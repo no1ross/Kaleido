@@ -50,12 +50,12 @@ public sealed class OutboxMessage
 // Process state only, saved conditionally: a stale version is a conflict (409), never an overwrite.
 public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStore
 {
-    public async Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default) =>
+    public async Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken) =>
         await db.Processes.AsNoTracking().SingleOrDefaultAsync(x => x.ProcessId == processId, cancellationToken) is { } row
             ? JsonSerializer.Deserialize<ProcessorContext>(row.State)
             : null;
 
-    public async Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default)
+    public async Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken)
     {
         var saved = context with { Version = context.Version + 1 };
         var state = JsonSerializer.Serialize(saved);
@@ -85,7 +85,7 @@ public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStor
 // Your outbox: Kaleido hands it every event; a state transition's event inside the transaction.
 public sealed class OrdersOutbox(OrdersDbContext db) : IKaleidoOutbox
 {
-    public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
+    public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
         db.OutboxMessages.AddRange(events.Select(x => new OutboxMessage
         {
@@ -99,7 +99,7 @@ public sealed class OrdersOutbox(OrdersDbContext db) : IKaleidoOutbox
     }
 
     // Optional: after the commit, wake your dispatcher instead of waiting for its next poll.
-    public Task CommittedAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task CommittedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
 // end snippet
 
@@ -108,12 +108,12 @@ public sealed class OrdersOutbox(OrdersDbContext db) : IKaleidoOutbox
 // commit together, or neither is kept.
 public sealed class OrdersTransactions(OrdersDbContext db) : IKaleidoTransactions
 {
-    public async Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken = default) =>
+    public async Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken) =>
         new Transaction(await db.Database.BeginTransactionAsync(cancellationToken));
 
     private sealed class Transaction(IDbContextTransaction transaction) : IKaleidoTransaction
     {
-        public Task CommitAsync(CancellationToken cancellationToken = default) => transaction.CommitAsync(cancellationToken);
+        public Task CommitAsync(CancellationToken cancellationToken) => transaction.CommitAsync(cancellationToken);
 
         public ValueTask DisposeAsync() => transaction.DisposeAsync();   // without a commit: rolled back
     }

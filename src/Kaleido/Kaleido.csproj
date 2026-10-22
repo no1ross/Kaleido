@@ -16,10 +16,6 @@
 		<PackageReference Include="Polly.Core" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<InternalsVisibleTo Include="Kaleido.UnitTests" />
-	</ItemGroup>
-
 	<!-- EXT-05: this reference exists only so Kaleido.nupkg declares a package
 	     dependency on Kaleido.Analyzers, which flows the consumer rules to every
 	     service that installs Kaleido. It is not an Analyzer item, so the rules do
@@ -36,4 +32,16 @@
 			PrivateAssets="none" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- Transports are built into the solution: the HTTP transport uses core's transport seams (authorization evaluation, correlation initialization) without making them public API; the outgoing clients and the MCP adapter read the inbound caller the transport set (ADR 0022). -->
+		<InternalsVisibleTo Include="Kaleido.Http" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Http.Mcp" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.IntegrationTests" />
+	</ItemGroup>
 </Project>

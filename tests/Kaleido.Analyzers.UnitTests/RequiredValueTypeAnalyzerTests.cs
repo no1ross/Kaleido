@@ -44,10 +44,10 @@ namespace Kaleido.Queryable
 public enum ProcedureCodeSystem { Unknown, Cpt }";
 
     private static readonly DiagnosticResult StepInput =
-        new("KAL2021", DiagnosticSeverity.Warning);
+        new("KAL2018", DiagnosticSeverity.Warning);
 
     private static readonly DiagnosticResult QueryParameter =
-        new("KAL2022", DiagnosticSeverity.Warning);
+        new("KAL2019", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task RequiredValueTypeStepInputs_Report()

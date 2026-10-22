@@ -60,7 +60,7 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         ShipOrderStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         // Cannot proceed: the process ends.
         if (processStep.Address.Contains("Antarctica", StringComparison.OrdinalIgnoreCase))
@@ -104,7 +104,7 @@ public sealed class ReturnOrderHandler : IProcessStepHandler<ReturnOrderStep>
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         ReturnOrderStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.FromResult(ProcessStepHandlerResult.HandOff("returns"));
 }
 // end snippet
@@ -114,7 +114,7 @@ public sealed class AddNoteHandler : IProcessStepHandler<AddNoteStep>
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         AddNoteStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.FromResult(ProcessStepHandlerResult.Success());
 }
 
@@ -123,6 +123,6 @@ public sealed class CancelOrderHandler : IProcessStepHandler<CancelOrderStep>
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         CancelOrderStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.FromResult(ProcessStepHandlerResult.Success());
 }

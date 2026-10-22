@@ -17,18 +17,18 @@ internal sealed partial class KaleidoProcessorClient(
     : IKaleidoProcessorClient
 {
     public async Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         return await EnsureRegistryAsync(cancellationToken);
     }
 
     public Task InvalidateRegistryAsync(
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         remoteRegistry.InvalidateAsync(clientName, cancellationToken);
 
     public async Task<ProcessStateResponse?> GetProcessStateAsync(
         Guid processId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         using var httpRequest = new HttpRequestMessage(
             HttpMethod.Get,
@@ -61,7 +61,7 @@ internal sealed partial class KaleidoProcessorClient(
 
     public async Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var url = ProcessContractUrls.Execute(serviceName);
 
@@ -92,7 +92,7 @@ internal sealed partial class KaleidoProcessorClient(
 
     public async Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
         TStep processStep,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TStep : class
     {
         var url = StepUrl(typeof(TStep).Name);
@@ -129,7 +129,7 @@ internal sealed partial class KaleidoProcessorClient(
 
     public async Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
         TStep processStep,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TStep : class
     {
         var url = StepUrl(typeof(TStep).Name);
@@ -167,8 +167,8 @@ internal sealed partial class KaleidoProcessorClient(
     public async Task<StepExecutionResponse<JsonElement>> ExecuteStepAsync(
         string stepName,
         JsonElement processStep,
-        Guid? processId = null,
-        CancellationToken cancellationToken = default)
+        Guid? processId,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
 

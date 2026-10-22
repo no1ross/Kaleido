@@ -20,7 +20,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 {
     public async Task<ProcessorContext?> LoadAsync(
         Guid processId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -63,7 +63,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 
     public async Task<ProcessorContext> SaveAsync(
         ProcessorContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(
             context);

@@ -90,7 +90,7 @@ public sealed record QueryRequest(
 /// capability accepts a page.
 /// </param>
 [ExcludeFromCodeCoverage]
-public record QueryBody
+public sealed record QueryBody
 (
     string? SearchText = null,
     QueryFilterNode? Filter = null,
@@ -168,7 +168,7 @@ public sealed record QueryFilterGroup
 /// with one; keys with equal or no sequence keep their order in the list.
 /// </param>
 [ExcludeFromCodeCoverage]
-public record QuerySort(
+public sealed record QuerySort(
     string Field,
     SortDirection Direction,
     int? Sequence = null);
@@ -194,7 +194,7 @@ public record QuerySort(
 /// with <see cref="QueryableErrorCodes.InvalidPageOffset"/>.
 /// </param>
 [ExcludeFromCodeCoverage]
-public record QueryPage(
+public sealed record QueryPage(
     int? Size,
     int? Offset);
 

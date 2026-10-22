@@ -18,7 +18,7 @@ public sealed class UpsertPriorAuthRecordHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         UpsertPriorAuthRecordStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         if (correlation.Current.CallingProcessorName is not { Length: > 0 } processorName)
         {

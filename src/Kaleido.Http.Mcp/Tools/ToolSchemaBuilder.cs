@@ -17,7 +17,7 @@ namespace Kaleido.Http.Mcp.Tools;
 /// stays inside the limits the service validates).</description></item>
 /// <item><description><c>description</c> (and step field <c>displayName</c>/<c>prompt</c> hints) →
 /// <c>description</c>: what the argument means. Undescribed inputs leave the model guessing from the
-/// name, which is why KAL2017/KAL2018 ask for descriptions.</description></item>
+/// name, which is why KAL2014/KAL2015 ask for descriptions.</description></item>
 /// </list>
 /// </remarks>
 internal interface IToolSchemaBuilder

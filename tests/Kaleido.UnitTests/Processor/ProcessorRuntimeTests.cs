@@ -126,7 +126,7 @@ public sealed class ProcessorRuntimeTests
                 CreateCorrelationAccessor("REQ-INITIAL-MULTI"));
 
         var result =
-            await runtime.ExecuteAsync(request);
+            await runtime.ExecuteAsync(request, TestContext.Current.CancellationToken);
 
         Assert.NotEqual(Guid.Empty, result.ProcessId);
 
@@ -214,7 +214,7 @@ public sealed class ProcessorRuntimeTests
                 CreateObservability().Object,
                 CreateCorrelationAccessor(callingProcessor: "intake"));
 
-        await runtime.ExecuteAsync(request);
+        await runtime.ExecuteAsync(request, TestContext.Current.CancellationToken);
 
         stateUpdater.Verify(
             x =>
@@ -407,7 +407,7 @@ public sealed class ProcessorRuntimeTests
                 CreateObservability().Object,
                 CreateCorrelationAccessor());
 
-        await runtime.ExecuteAsync(request);
+        await runtime.ExecuteAsync(request, TestContext.Current.CancellationToken);
 
         stateUpdater.Verify(
             x =>
@@ -514,7 +514,7 @@ public sealed class ProcessorRuntimeTests
                 CreateObservability().Object,
                 CreateCorrelationAccessor());
 
-        await runtime.ExecuteAsync(request);
+        await runtime.ExecuteAsync(request, TestContext.Current.CancellationToken);
 
         Assert.NotNull(capturedCandidates);
 
@@ -636,7 +636,7 @@ public sealed class ProcessorRuntimeTests
                 CreateCorrelationAccessor());
 
         var result =
-            await runtime.ExecuteAsync(request);
+            await runtime.ExecuteAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             ProcessExecutionState.Complete,
@@ -732,7 +732,7 @@ public sealed class ProcessorRuntimeTests
                 CreateObservability().Object,
                 CreateCorrelationAccessor());
 
-        await runtime.ExecuteAsync(request);
+        await runtime.ExecuteAsync(request, TestContext.Current.CancellationToken);
 
         contextStore.VerifyAll();
         stateUpdater.VerifyAll();
@@ -812,7 +812,7 @@ public sealed class ProcessorRuntimeTests
             return CreateExecutionResult(context.ProcessId);
         });
 
-        await CreateNewProcessSut(store, new Mock<IKaleidoEventWriter>(), processor, Alice).ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() });
+        await CreateNewProcessSut(store, new Mock<IKaleidoEventWriter>(), processor, Alice).ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() }, TestContext.Current.CancellationToken);
 
         Assert.Equal(Alice, executedWith!.CreatedBy);
         Assert.Equal(Alice, executedWith.UpdatedBy);
@@ -842,7 +842,7 @@ public sealed class ProcessorRuntimeTests
                 store.Object, stateUpdater.Object, planner.Object, processor.Object,
                 CreateProcessEventFactory().Object, new Mock<IKaleidoEventWriter>().Object, CreateObservability().Object,
                 CreateCorrelationAccessor(caller: Alice))
-            .ExecuteAsync(request);
+            .ExecuteAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(bob, executedWith!.CreatedBy);
         Assert.Equal(Alice, executedWith.UpdatedBy);
@@ -885,7 +885,7 @@ public sealed class ProcessorRuntimeTests
                 store.Object, stateUpdater.Object, planner.Object, ProcessorReturning(x => CreateExecutionResult(x.ProcessId)).Object,
                 CreateProcessEventFactory().Object, new Mock<IKaleidoEventWriter>().Object, observability.Object,
                 CreateCorrelationAccessor())
-            .ExecuteAsync(request);
+            .ExecuteAsync(request, TestContext.Current.CancellationToken);
 
         observation.Verify(x => x.InformationResponseRejected(nameof(InfoStep), ProcessorErrorCodes.InformationResponseUnanswered), Times.Once);
         observation.Verify(x => x.InformationResponseRejected(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
@@ -907,7 +907,7 @@ public sealed class ProcessorRuntimeTests
             return CreateExecutionResult(context.ProcessId);
         });
 
-        await CreateNewProcessSut(store, outbox, processor, transitionEvents: transitionEvents).ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() });
+        await CreateNewProcessSut(store, outbox, processor, transitionEvents: transitionEvents).ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() }, TestContext.Current.CancellationToken);
 
         Assert.Equal(created, Assert.Single(transitionEvents));
         Assert.Equal(1, executedWith!.Version);
@@ -922,7 +922,7 @@ public sealed class ProcessorRuntimeTests
         var outbox = new Mock<IKaleidoEventWriter>();
 
         await CreateNewProcessSut(store, outbox, ProcessorReturning(context => CreateExecutionResult(context.ProcessId)), transitionEvents: transitionEvents)
-            .ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() });
+            .ExecuteAsync(new ProcessRequest { Processor = new ProcessorRequest() }, TestContext.Current.CancellationToken);
 
         Assert.Null(Assert.Single(transitionEvents));
         store.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<CancellationToken>()), Times.Once);

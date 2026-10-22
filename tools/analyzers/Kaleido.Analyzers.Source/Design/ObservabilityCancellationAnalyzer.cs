@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.Design;
 
 /// <summary>
-/// KAL0021 — a catch-all (<c>catch</c> / <c>catch (Exception)</c>) that calls an
+/// KAL0018 — a catch-all (<c>catch</c> / <c>catch (Exception)</c>) that calls an
 /// observability member must not see <see cref="System.OperationCanceledException"/>:
 /// either filter it out (<c>when (ex is not OperationCanceledException)</c>) or handle
 /// it in an earlier <c>catch (OperationCanceledException)</c> clause. Otherwise a

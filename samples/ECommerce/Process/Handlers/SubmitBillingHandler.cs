@@ -13,7 +13,7 @@
 //    public async Task<ProcessStepHandlerResult<SubmitBillingResponse>> ExecuteAsync(
 //        SubmitBillingStep step,
 //        ProcessStepContext context,
-//        CancellationToken cancellationToken = default)
+//        CancellationToken cancellationToken)
 //    {
 //        var now =
 //            DateTimeOffset.UtcNow;

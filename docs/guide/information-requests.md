@@ -49,7 +49,7 @@ public sealed class GiftWrapHandler : IProcessStepHandler<GiftWrapStep>
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         GiftWrapStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.FromResult(ProcessStepHandlerResult.RequireInformation<GiftWrapAnswersStep>(new InformationRequest
         {
             InformationRequestId = "gift-wrap",
@@ -119,7 +119,7 @@ public sealed class GiftWrapAnswersHandler : IProcessStepHandler<GiftWrapAnswers
     public Task<ProcessStepHandlerResult<GiftWrapChoice>> ExecuteAsync(
         GiftWrapAnswersStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         // Kaleido checked the answers against the request it sent; what they mean is yours.
         var paper = processStep.Items.SingleOrDefault(x => x.ItemId == "paper")?.Answers is [var answer, ..] ? answer.Value : null;

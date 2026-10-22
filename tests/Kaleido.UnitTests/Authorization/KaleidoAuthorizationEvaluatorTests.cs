@@ -52,7 +52,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 authorization: null,
                 Caller(),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 new AuthorizationMetadata(null, ["radiology"]),
                 Caller(),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 new AuthorizationMetadata("can-view", []),
                 Caller(),
-                (_, _) => throw new InvalidOperationException("must not be called")));
+                (_, _) => throw new InvalidOperationException("must not be called"), TestContext.Current.CancellationToken));
     }
 
     // -- CanAccessAsync: enforced --------------------------------------------
@@ -90,7 +90,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 authorization: null,
                 Caller(),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 authorization: null,
                 Caller("alice"),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 new AuthorizationMetadata(null, []),
                 Caller(),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 Anonymous,
                 Caller(),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 new AuthorizationMetadata(null, ["radiology"]),
                 Caller("bob", "radiology"),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 new AuthorizationMetadata(null, ["radiology"]),
                 Caller("bob", "viewer"),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 new AuthorizationMetadata("can-view", []),
                 Caller("alice"),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 new AuthorizationMetadata("can-view", []),
                 Caller("alice"),
-                (_, _) => Task.FromResult(true)));
+                (_, _) => Task.FromResult(true), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             await sut.CanAccessAsync(
                 new AuthorizationMetadata("can-view", []),
                 Caller(),
-                (_, _) => Task.FromResult(true)));
+                (_, _) => Task.FromResult(true), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -194,8 +194,8 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     {
         var sut = CreateSut(KaleidoAuthorizationMode.ZeroTrust);
 
-        Assert.False(await sut.CanAccessAsync(null, Caller("alice"), null));
-        Assert.False(await sut.CanAccessAsync(new AuthorizationMetadata(null, []), Caller("alice"), null));
+        Assert.False(await sut.CanAccessAsync(null, Caller("alice"), null, TestContext.Current.CancellationToken));
+        Assert.False(await sut.CanAccessAsync(new AuthorizationMetadata(null, []), Caller("alice"), null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -204,10 +204,10 @@ public sealed class KaleidoAuthorizationEvaluatorTests
         var sut = CreateSut(KaleidoAuthorizationMode.ZeroTrust);
 
         Assert.True(await sut.CanAccessAsync(
-            new AuthorizationMetadata(null, ["radiology"]), Caller("bob", "radiology"), null));
+            new AuthorizationMetadata(null, ["radiology"]), Caller("bob", "radiology"), null, TestContext.Current.CancellationToken));
         Assert.True(await sut.CanAccessAsync(
-            new AuthorizationMetadata("can-view", []), Caller("alice"), (_, _) => Task.FromResult(true)));
-        Assert.True(await sut.CanAccessAsync(Anonymous, Caller(), null));
+            new AuthorizationMetadata("can-view", []), Caller("alice"), (_, _) => Task.FromResult(true), TestContext.Current.CancellationToken));
+        Assert.True(await sut.CanAccessAsync(Anonymous, Caller(), null, TestContext.Current.CancellationToken));
     }
 
     // -- AuthorizeAsync ------------------------------------------------------
@@ -222,7 +222,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
                 null,
                 "cap",
                 Caller(),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
 
         Assert.False(anonymous.CallerIsAuthenticated);
 
@@ -231,7 +231,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
                 new AuthorizationMetadata(null, ["radiology"]),
                 "cap",
                 Caller("bob"),
-                policyEvaluator: null));
+                policyEvaluator: null, TestContext.Current.CancellationToken));
 
         Assert.True(authenticated.CallerIsAuthenticated);
     }
@@ -241,7 +241,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     {
         var sut = CreateSut();
 
-        await sut.AuthorizeAsync(new AuthorizationMetadata(null, ["radiology"]), "cap", Caller("bob", "RADIOLOGY"), policyEvaluator: null);
+        await sut.AuthorizeAsync(new AuthorizationMetadata(null, ["radiology"]), "cap", Caller("bob", "RADIOLOGY"), policyEvaluator: null, TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -250,13 +250,13 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     public async Task AuthorizeAsync_WithoutACapabilityName_Throws(string? capabilityName)
     {
         await Assert.ThrowsAnyAsync<ArgumentException>(
-            () => CreateSut().AuthorizeAsync(null, capabilityName!, Caller("bob"), policyEvaluator: null));
+            () => CreateSut().AuthorizeAsync(null, capabilityName!, Caller("bob"), policyEvaluator: null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task CanAccessAsync_WithoutACaller_Throws()
     {
-        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().CanAccessAsync(null, null!, null));
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().CanAccessAsync(null, null!, null, TestContext.Current.CancellationToken));
 
         Assert.Equal("caller", exception.ParamName);
     }
@@ -290,7 +290,7 @@ public sealed class KaleidoAuthorizationEvaluatorTests
         var logger = new Mock<Microsoft.Extensions.Logging.ILogger<KaleidoAuthorizationEvaluator>>();
         logger.Setup(x => x.IsEnabled(It.IsAny<Microsoft.Extensions.Logging.LogLevel>())).Returns(true);
 
-        await CreateSut(logger: logger.Object).CanAccessAsync(new AuthorizationMetadata("can-view", []), Caller("alice"), policyEvaluator: null);
+        await CreateSut(logger: logger.Object).CanAccessAsync(new AuthorizationMetadata("can-view", []), Caller("alice"), policyEvaluator: null, TestContext.Current.CancellationToken);
 
         var logged = Assert.Single(logger.Invocations, x => x.Method.Name == nameof(Microsoft.Extensions.Logging.ILogger.Log));
         Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Warning, logged.Arguments[0]);

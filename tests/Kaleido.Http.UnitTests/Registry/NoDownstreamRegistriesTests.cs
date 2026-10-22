@@ -8,7 +8,7 @@ public sealed class NoDownstreamRegistriesTests
     [Fact]
     public async Task GetAsync_ReturnsNoDownstreamRegistries()
     {
-        var registries = await CreateSut().GetAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var registries = await CreateSut().GetAsync(maxParallelism: null, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Same(DownstreamRegistries.None, registries);
         Assert.Empty(registries.Processes);

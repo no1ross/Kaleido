@@ -12,7 +12,7 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
     public InMemoryKaleidoOutboxStore(ILogger<InMemoryKaleidoOutboxStore> logger) =>
         LogInMemoryStoreActive(logger);
 
-    public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
+    public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(events);
 
@@ -29,7 +29,7 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -52,7 +52,7 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
         }
     }
 
-    public Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken = default)
+    public Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken)
     {
         lock (_lock)
         {
@@ -65,7 +65,7 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
         return Task.CompletedTask;
     }
 
-    public Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken = default)
+    public Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken)
     {
         lock (_lock)
         {

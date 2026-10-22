@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Operations;
 namespace Kaleido.Analyzers.Source.Design;
 
 /// <summary>
-/// KAL0020 — <c>.WithName(...)</c> must take its name from an <c>*EndpointNames</c>
+/// KAL0017 — <c>.WithName(...)</c> must take its name from an <c>*EndpointNames</c>
 /// constant or factory method, never an ad-hoc string. Endpoint names are link
 /// targets (<c>LinkGenerator</c>, OpenAPI operation ids); an unenforced literal let
 /// the <c>KaleidoProcessStepREgistry</c> typo ship (HP-015, #62).

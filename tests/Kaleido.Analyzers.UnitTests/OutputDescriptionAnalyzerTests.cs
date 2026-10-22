@@ -45,7 +45,7 @@ public sealed record MemberContext : Kaleido.Queryable.IQueryContext { public st
 public sealed class MemberSource : Kaleido.Queryable.IQuerySource<MemberContext> { }";
 
     private static readonly DiagnosticResult OutputProperty =
-        new("KAL2024", DiagnosticSeverity.Warning);
+        new("KAL2021", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task AStepResultPropertyWithoutDescription_Reports()
@@ -119,7 +119,7 @@ public sealed class SecondHandler : Kaleido.Processor.IProcessStepHandler<Captur
             OutputProperty.WithLocation(0).WithArguments("Code", "SharedResult"));
     }
 
-    // Covered elsewhere or not the consumer's to describe: query contexts (KAL2018), types from
+    // Covered elsewhere or not the consumer's to describe: query contexts (KAL2015), types from
     // other assemblies (string), handlers without a result, abstract handlers.
     [Fact]
     public async Task OutputsNotDescribedHere_NoDiagnostic()

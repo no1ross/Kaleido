@@ -37,28 +37,28 @@ Each concern is its own contract ([ADR 0020](../../docs/decisions/0020-three-sto
 ```csharp
 public interface IKaleidoContextStore
 {
-    Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default);
-    Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken = default);
+    Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken);
+    Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken);
 }
 
 public interface IKaleidoTransactions   // optional
 {
-    Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken = default);   // IKaleidoTransaction: CommitAsync; disposing without a commit rolls back
+    Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken);   // IKaleidoTransaction: CommitAsync; disposing without a commit rolls back
 }
 
 public interface IKaleidoIdempotencyStore
 {
-    Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken = default);
-    Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken = default);
-    Task ReleaseAsync(string key, CancellationToken cancellationToken = default);
+    Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken);
+    Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken);
+    Task ReleaseAsync(string key, CancellationToken cancellationToken);
 }
 
 public interface IKaleidoOutboxStore
 {
-    Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken = default);
-    Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken = default);
-    Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken = default);
+    Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken);
+    Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken);
+    Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken);
+    Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken);
 }
 ```
 
@@ -158,7 +158,7 @@ builder.Services.AddKaleido(builder.Configuration, o => { /* ... */ })
 
 public sealed class IntakeOutbox(IntakeDbContext db, ISqliteKaleidoTransaction transaction) : IKaleidoOutbox
 {
-    public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
+    public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
         if (transaction.Current is { } current)                        // inside a transition: join it
         {

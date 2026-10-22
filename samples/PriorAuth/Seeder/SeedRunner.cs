@@ -5,7 +5,7 @@ internal sealed class SeedRunner(
 {
     public async Task RunAsync(
         IReadOnlyCollection<SupportedDomain> requestedDomains,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         foreach (var domainSeeder in domainSeeders)
         {

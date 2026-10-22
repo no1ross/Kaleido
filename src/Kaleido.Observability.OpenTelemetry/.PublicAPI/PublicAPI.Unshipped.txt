@@ -1,0 +1,40 @@
+#nullable enable
+const Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.SectionName = "OpenTelemetry" -> string!
+const Kaleido.Observability.OpenTelemetry.OpenTelemetryErrorCodes.InvalidOptions = "otel_invalid_options" -> string!
+Kaleido.Observability.OpenTelemetry.KaleidoObservabilityOpenTelemetryExtensions
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Endpoint.get -> System.Uri?
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Endpoint.set -> void
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Headers.get -> string?
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Headers.set -> void
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.HostInstrumentation.get -> bool
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.HostInstrumentation.set -> void
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.KaleidoOpenTelemetryOptions() -> void
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Logs.get -> bool
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Logs.set -> void
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Metrics.get -> bool
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Metrics.set -> void
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Protocol.get -> string?
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Protocol.set -> void
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.ResourceAttributes.get -> string?
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.ResourceAttributes.set -> void
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.ServiceVersion.get -> string?
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.ServiceVersion.set -> void
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Traces.get -> bool
+Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions.Traces.set -> void
+Kaleido.Observability.OpenTelemetry.McpOpenTelemetryExtensions
+Kaleido.Observability.OpenTelemetry.OpenTelemetryErrorCodes
+Kaleido.Observability.OpenTelemetry.ProcessorOpenTelemetryExtensions
+Kaleido.Observability.OpenTelemetry.QueryableOpenTelemetryExtensions
+Kaleido.Observability.OpenTelemetry.SqliteOpenTelemetryExtensions
+static Kaleido.Observability.OpenTelemetry.KaleidoObservabilityOpenTelemetryExtensions.AddKaleidoInstrumentation(this OpenTelemetry.Metrics.MeterProviderBuilder! builder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
+static Kaleido.Observability.OpenTelemetry.KaleidoObservabilityOpenTelemetryExtensions.AddKaleidoInstrumentation(this OpenTelemetry.Trace.TracerProviderBuilder! builder) -> OpenTelemetry.Trace.TracerProviderBuilder!
+static Kaleido.Observability.OpenTelemetry.KaleidoObservabilityOpenTelemetryExtensions.AddOpenTelemetry(this Kaleido.IKaleidoBuilder! builder, System.Action<Kaleido.Observability.OpenTelemetry.KaleidoOpenTelemetryOptions!>? configure = null, System.Action<OpenTelemetry.Trace.TracerProviderBuilder!>? configureTracing = null, System.Action<OpenTelemetry.Metrics.MeterProviderBuilder!>? configureMetrics = null) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Observability.OpenTelemetry.McpOpenTelemetryExtensions.AddKaleidoMcpInstrumentation(this OpenTelemetry.Metrics.MeterProviderBuilder! builder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
+static Kaleido.Observability.OpenTelemetry.McpOpenTelemetryExtensions.AddKaleidoMcpInstrumentation(this OpenTelemetry.Trace.TracerProviderBuilder! builder) -> OpenTelemetry.Trace.TracerProviderBuilder!
+static Kaleido.Observability.OpenTelemetry.ProcessorOpenTelemetryExtensions.AddKaleidoProcessorInstrumentation(this OpenTelemetry.Metrics.MeterProviderBuilder! builder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
+static Kaleido.Observability.OpenTelemetry.ProcessorOpenTelemetryExtensions.AddKaleidoProcessorInstrumentation(this OpenTelemetry.Trace.TracerProviderBuilder! builder) -> OpenTelemetry.Trace.TracerProviderBuilder!
+static Kaleido.Observability.OpenTelemetry.QueryableOpenTelemetryExtensions.AddKaleidoQueryableInstrumentation(this OpenTelemetry.Metrics.MeterProviderBuilder! builder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
+static Kaleido.Observability.OpenTelemetry.QueryableOpenTelemetryExtensions.AddKaleidoQueryableInstrumentation(this OpenTelemetry.Trace.TracerProviderBuilder! builder) -> OpenTelemetry.Trace.TracerProviderBuilder!
+static Kaleido.Observability.OpenTelemetry.SqliteOpenTelemetryExtensions.AddKaleidoSqliteInstrumentation(this OpenTelemetry.Metrics.MeterProviderBuilder! builder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
+static Kaleido.Observability.OpenTelemetry.SqliteOpenTelemetryExtensions.AddKaleidoSqliteInstrumentation(this OpenTelemetry.Trace.TracerProviderBuilder! builder) -> OpenTelemetry.Trace.TracerProviderBuilder!

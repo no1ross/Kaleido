@@ -6,7 +6,7 @@ internal sealed class NoKaleidoTransactions : IKaleidoTransactions
 {
     private static readonly Task<IKaleidoTransaction> None = Task.FromResult<IKaleidoTransaction>(new NoTransaction());
 
-    public Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken = default)
+    public Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -15,7 +15,7 @@ internal sealed class NoKaleidoTransactions : IKaleidoTransactions
 
     private sealed class NoTransaction : IKaleidoTransaction
     {
-        public Task CommitAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task CommitAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

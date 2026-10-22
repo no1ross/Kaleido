@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0011 — DI constructors must not perform work on injected dependencies.
+/// KAL0010 — DI constructors must not perform work on injected dependencies.
 /// Assignment, argument guards, self-contained state building (LINQ shaping,
 /// private helpers on this), and telemetry are fine; invoking behavior on an
 /// injected dependency, I/O, Task.Run, or service resolution inside a

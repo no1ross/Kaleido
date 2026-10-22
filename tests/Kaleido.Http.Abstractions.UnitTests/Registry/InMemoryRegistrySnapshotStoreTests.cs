@@ -11,7 +11,7 @@ public sealed class InMemoryRegistrySnapshotStoreTests
     {
         var store = CreateSut();
 
-        var result = await store.GetAsync("missing");
+        var result = await store.GetAsync("missing", TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -26,8 +26,8 @@ public sealed class InMemoryRegistrySnapshotStoreTests
             GeneratedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
         };
 
-        await store.SetAsync("kaleido:member", snapshot);
-        var result = await store.GetAsync("kaleido:member");
+        await store.SetAsync("kaleido:member", snapshot, TestContext.Current.CancellationToken);
+        var result = await store.GetAsync("kaleido:member", TestContext.Current.CancellationToken);
 
         Assert.Same(snapshot, result);
     }
@@ -39,10 +39,10 @@ public sealed class InMemoryRegistrySnapshotStoreTests
 
         var snapshot = new AggregatedRegistryResponse();
 
-        await store.SetAsync("kaleido:member", snapshot);
-        await store.RemoveAsync("kaleido:member");
+        await store.SetAsync("kaleido:member", snapshot, TestContext.Current.CancellationToken);
+        await store.RemoveAsync("kaleido:member", TestContext.Current.CancellationToken);
 
-        Assert.Null(await store.GetAsync("kaleido:member"));
+        Assert.Null(await store.GetAsync("kaleido:member", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -52,8 +52,8 @@ public sealed class InMemoryRegistrySnapshotStoreTests
 
         var snapshot = new AggregatedRegistryResponse();
 
-        await store.SetAsync("Kaleido:Member", snapshot);
+        await store.SetAsync("Kaleido:Member", snapshot, TestContext.Current.CancellationToken);
 
-        Assert.Same(snapshot, await store.GetAsync("kaleido:member"));
+        Assert.Same(snapshot, await store.GetAsync("kaleido:member", TestContext.Current.CancellationToken));
     }
 }

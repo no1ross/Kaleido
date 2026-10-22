@@ -31,7 +31,7 @@ namespace Acme
 ";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL1013", DiagnosticSeverity.Error);
+        new("KAL1012", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task SutFixtureInSutNamespacePlusUnitTests_NoDiagnostic()

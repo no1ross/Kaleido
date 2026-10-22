@@ -26,7 +26,7 @@ internal sealed partial class KaleidoEventPayloadWriter : IKaleidoEventPayloadWr
     private readonly JsonSerializerOptions _options;
     private int _erasureLogged;
 
-    // The event policy (AddEventClassificationRedaction), never the host's log policy (AddRedaction): logs and events
+    // The event policy (AddEventRedaction), never the host's log policy (AddRedaction): logs and events
     // are configured independently (ADR 0025). Without a policy, classified values are erased.
     public KaleidoEventPayloadWriter(
         IEnumerable<IKaleidoEventRedactor> redactors,
@@ -116,6 +116,6 @@ internal sealed partial class KaleidoEventPayloadWriter : IKaleidoEventPayloadWr
             _ => JsonSerializer.Serialize(value, value.GetType(), FormatOptions),
         };
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Event payloads contain classified values (DataClassificationAttribute) and no event redaction is configured: the values are erased. Call AddEventClassificationRedaction on the Kaleido builder to choose how each classification is redacted in events (erase, HMAC, encryption, keep); log redaction (AddRedaction) does not apply to events.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Event payloads contain classified values (DataClassificationAttribute) and no event redaction is configured: the values are erased. Call AddEventRedaction on the Kaleido builder to choose how each classification is redacted in events (erase, HMAC, encryption, keep); log redaction (AddRedaction) does not apply to events.")]
     private static partial void LogClassifiedValuesErased(ILogger logger);
 }

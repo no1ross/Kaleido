@@ -7,19 +7,19 @@ KAL2002 | Kaleido.Usage | Error | [QuerySource] Version, DisplayName, and Descri
 KAL2003 | Kaleido.Usage | Error | [QueryView] Version, DisplayName, and Description must be non-empty
 KAL2004 | Kaleido.Usage | Warning | Step handler catch (Exception) must filter OperationCanceledException
 KAL2005 | Kaleido.Usage | Warning | ServiceName must be lowercase letters, digits, '-' and '_'
-KAL2009 | Kaleido.Usage | Warning | AddKaleido() options lambda does not set Assemblies
-KAL2010 | Kaleido.Usage | Error | [ProcessStep] type must implement IProcessStep
-KAL2011 | Kaleido.Usage | Error | IProcessStep type must have [ProcessStep]
-KAL2012 | Kaleido.Usage | Error | [QuerySource]/[QueryView] type must implement the matching interface
-KAL2013 | Kaleido.Usage | Error | Query source/view must have [QuerySource]/[QueryView]
-KAL2014 | Kaleido.Usage | Warning | [Filterable]/[Searchable]/[Sortable] only apply to IQueryContext records
-KAL2015 | Kaleido.Usage | Error | An information step declares only InformationRequestId and Items
-KAL2016 | Kaleido.Usage | Error | Information steps are required with RequireInformation, not Success
-KAL2017 | Kaleido.Usage | Warning | Process step input property has no description
-KAL2018 | Kaleido.Usage | Warning | Query context or parameters property has no description
-KAL2019 | Kaleido.Usage | Warning | Capability type name is too long for an MCP tool name
-KAL2020 | Kaleido.Usage | Warning | ServiceName is too long for MCP tool names
-KAL2021 | Kaleido.Usage | Warning | A [Required] process step input has a non-nullable value type
-KAL2022 | Kaleido.Usage | Warning | A [Required] query parameter has a non-nullable value type
-KAL2023 | Kaleido.Usage | Error | A [Filterable] operator does not apply to the property's type
-KAL2024 | Kaleido.Usage | Warning | Step result or view output property has no description
+KAL2006 | Kaleido.Usage | Warning | AddKaleido() options lambda does not set Assemblies
+KAL2007 | Kaleido.Usage | Error | [ProcessStep] type must implement IProcessStep
+KAL2008 | Kaleido.Usage | Error | IProcessStep type must have [ProcessStep]
+KAL2009 | Kaleido.Usage | Error | [QuerySource]/[QueryView] type must implement the matching interface
+KAL2010 | Kaleido.Usage | Error | Query source/view must have [QuerySource]/[QueryView]
+KAL2011 | Kaleido.Usage | Warning | [Filterable]/[Searchable]/[Sortable] only apply to IQueryContext records
+KAL2012 | Kaleido.Usage | Error | An information step declares only InformationRequestId and Items
+KAL2013 | Kaleido.Usage | Error | Information steps are required with RequireInformation, not Success
+KAL2014 | Kaleido.Usage | Warning | Process step input property has no description
+KAL2015 | Kaleido.Usage | Warning | Query context or parameters property has no description
+KAL2016 | Kaleido.Usage | Warning | Capability type name is too long for an MCP tool name
+KAL2017 | Kaleido.Usage | Warning | ServiceName is too long for MCP tool names
+KAL2018 | Kaleido.Usage | Warning | A [Required] process step input has a non-nullable value type
+KAL2019 | Kaleido.Usage | Warning | A [Required] query parameter has a non-nullable value type
+KAL2020 | Kaleido.Usage | Error | A [Filterable] operator does not apply to the property's type
+KAL2021 | Kaleido.Usage | Warning | Step result or view output property has no description

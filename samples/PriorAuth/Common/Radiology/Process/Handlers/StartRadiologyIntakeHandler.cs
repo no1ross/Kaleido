@@ -26,7 +26,7 @@ public sealed class StartRadiologyIntakeHandler(
     public Task<ProcessStepHandlerResult<StartRadiologyIntakeResponse>> ExecuteAsync(
         StartRadiologyIntakeStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         HistoryRecording.InTransactionAsync<ProcessStepHandlerResult<StartRadiologyIntakeResponse>>(
             dbContext,
             () => RunAsync(processStep, context, cancellationToken),

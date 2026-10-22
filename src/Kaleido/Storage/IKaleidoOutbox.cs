@@ -44,7 +44,7 @@ namespace Kaleido.Storage;
 /// // The host's own outbox table, on the DbContext that also holds its process state:
 /// public sealed class OrdersOutbox(OrdersDbContext db) : IKaleidoOutbox
 /// {
-///     public async Task AddAsync(IReadOnlyCollection&lt;KaleidoOutboxEvent&gt; events, CancellationToken cancellationToken = default)
+///     public async Task AddAsync(IReadOnlyCollection&lt;KaleidoOutboxEvent&gt; events, CancellationToken cancellationToken)
 ///     {
 ///         db.OutboxMessages.AddRange(events.Select(e => new OutboxMessage(e.EventId, e.EventType, e.Payload, e.OccurredUtc)));
 ///         await db.SaveChangesAsync(cancellationToken); // inside the transition's transaction when there is one
@@ -72,7 +72,7 @@ public interface IKaleidoOutbox
     /// A failure within a transition fails the transition (nothing is committed). A failure for events
     /// outside a transition is logged and counted by Kaleido and never fails the request.
     /// </remarks>
-    Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default);
+    Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken);
 
     /// <summary>
     /// Called after the events added since the last call are committed: the outbox may deliver them
@@ -80,5 +80,5 @@ public interface IKaleidoOutbox
     /// </summary>
     /// <param name="cancellationToken">Cancels the notification (Kaleido passes <see cref="CancellationToken.None"/>).</param>
     /// <remarks>A failure is logged by Kaleido and never fails the request: the state is already committed.</remarks>
-    Task CommittedAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    Task CommittedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
