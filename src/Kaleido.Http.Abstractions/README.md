@@ -97,7 +97,7 @@ When a contract must change, also update:
 
 - `Processor/ProcessContracts.cs` — all Process HTTP request/response types; `Processor/IKaleidoProcessorClient*.cs` — the process client interfaces
 - `Queryable/QueryableContracts.cs` and `Queryable/QueryApiBody.cs` — all Queryable HTTP request/response types; `Queryable/IKaleidoQueryableClient*.cs` — the queryable client interfaces
-- `Registry/` — `AggregatedRegistryResponse`, `IRegistrySnapshotStore`, `RegistryEndpointNames`, and the metadata shared by Process and Queryable registry entries (`DataTypeMetadata`, `EnumValueMetadata`, `ConstraintMetadata`, `ConstraintParameterMetadata`)
+- `Registry/` — `AggregatedRegistryResponse`, `IRegistrySnapshotStore` (in memory by default; `AddDistributedRegistrySnapshots()` stores snapshots in the host's `IDistributedCache`, #275), `RegistryEndpointNames`, and the metadata shared by Process and Queryable registry entries (`DataTypeMetadata`, `EnumValueMetadata`, `ConstraintMetadata`, `ConstraintParameterMetadata`)
 
 The registry contracts are self-contained: they neither inherit from nor carry core's registry descriptors, which are internal; `Kaleido.Http` maps the runtime registries to them (#356).
 - `KaleidoJsonOptions.cs`, `KaleidoCorrelationHeaders.cs`, `HttpHeaderSanitizer.cs`

@@ -1,4 +1,8 @@
 #nullable enable
+~Kaleido.Http.Queryable.QueryApiRequest<TParameters>.<Clone>$() -> Kaleido.Http.Queryable.QueryApiRequest<TParameters>!
+~Kaleido.Http.Queryable.QueryApiRequest<TParameters>.Equals(Kaleido.Http.Queryable.QueryApiRequest<TParameters>? other) -> bool
+~static Kaleido.Http.Queryable.QueryApiRequest<TParameters>.operator !=(Kaleido.Http.Queryable.QueryApiRequest<TParameters>? left, Kaleido.Http.Queryable.QueryApiRequest<TParameters>? right) -> bool
+~static Kaleido.Http.Queryable.QueryApiRequest<TParameters>.operator ==(Kaleido.Http.Queryable.QueryApiRequest<TParameters>? left, Kaleido.Http.Queryable.QueryApiRequest<TParameters>? right) -> bool
 abstract Kaleido.Http.Processor.ProcessStepContract.<Clone>$() -> Kaleido.Http.Processor.ProcessStepContract!
 const Kaleido.Http.KaleidoCorrelationHeaders.CallingProcessor = "X-Kaleido-Calling-Processor" -> string!
 const Kaleido.Http.KaleidoCorrelationHeaders.CallingStep = "X-Kaleido-Calling-Step" -> string!
@@ -32,6 +36,7 @@ Kaleido.Http.KaleidoErrorResponse.Errors.init -> void
 Kaleido.Http.KaleidoErrorResponse.KaleidoErrorResponse(System.Collections.Generic.IReadOnlyList<Kaleido.Http.KaleidoError!>! Errors) -> void
 Kaleido.Http.KaleidoIdempotencyHeaders
 Kaleido.Http.KaleidoJsonOptions
+Kaleido.Http.KaleidoRegistrySnapshotServiceCollectionExtensions
 Kaleido.Http.Processor.ExecuteProcessRequest
 Kaleido.Http.Processor.ExecuteProcessRequest.<Clone>$() -> Kaleido.Http.Processor.ExecuteProcessRequest!
 Kaleido.Http.Processor.ExecuteProcessRequest.Equals(Kaleido.Http.Processor.ExecuteProcessRequest? other) -> bool
@@ -675,6 +680,7 @@ static Kaleido.Http.KaleidoError.operator !=(Kaleido.Http.KaleidoError? left, Ka
 static Kaleido.Http.KaleidoError.operator ==(Kaleido.Http.KaleidoError? left, Kaleido.Http.KaleidoError? right) -> bool
 static Kaleido.Http.KaleidoErrorResponse.operator !=(Kaleido.Http.KaleidoErrorResponse? left, Kaleido.Http.KaleidoErrorResponse? right) -> bool
 static Kaleido.Http.KaleidoErrorResponse.operator ==(Kaleido.Http.KaleidoErrorResponse? left, Kaleido.Http.KaleidoErrorResponse? right) -> bool
+static Kaleido.Http.KaleidoRegistrySnapshotServiceCollectionExtensions.AddDistributedRegistrySnapshots(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Http.Processor.ExecuteProcessRequest.operator !=(Kaleido.Http.Processor.ExecuteProcessRequest? left, Kaleido.Http.Processor.ExecuteProcessRequest? right) -> bool
 static Kaleido.Http.Processor.ExecuteProcessRequest.operator ==(Kaleido.Http.Processor.ExecuteProcessRequest? left, Kaleido.Http.Processor.ExecuteProcessRequest? right) -> bool
 static Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.operator !=(Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>? left, Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>? right) -> bool
@@ -762,7 +768,3 @@ virtual Kaleido.Http.Queryable.QueryApiBody.<Clone>$() -> Kaleido.Http.Queryable
 virtual Kaleido.Http.Queryable.QueryApiBody.EqualityContract.get -> System.Type!
 virtual Kaleido.Http.Queryable.QueryApiBody.Equals(Kaleido.Http.Queryable.QueryApiBody? other) -> bool
 virtual Kaleido.Http.Queryable.QueryApiBody.PrintMembers(System.Text.StringBuilder! builder) -> bool
-~Kaleido.Http.Queryable.QueryApiRequest<TParameters>.<Clone>$() -> Kaleido.Http.Queryable.QueryApiRequest<TParameters>!
-~Kaleido.Http.Queryable.QueryApiRequest<TParameters>.Equals(Kaleido.Http.Queryable.QueryApiRequest<TParameters>? other) -> bool
-~static Kaleido.Http.Queryable.QueryApiRequest<TParameters>.operator !=(Kaleido.Http.Queryable.QueryApiRequest<TParameters>? left, Kaleido.Http.Queryable.QueryApiRequest<TParameters>? right) -> bool
-~static Kaleido.Http.Queryable.QueryApiRequest<TParameters>.operator ==(Kaleido.Http.Queryable.QueryApiRequest<TParameters>? left, Kaleido.Http.Queryable.QueryApiRequest<TParameters>? right) -> bool

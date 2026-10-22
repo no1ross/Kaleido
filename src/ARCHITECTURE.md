@@ -132,7 +132,7 @@ Public seams consumers are expected to implement or replace:
 - `GET /{prefix}/registry` — unified discovery envelope (`AggregatedRegistryResponse`: `Processes`, `Queryables`, `ClientErrors`)
 - Leaf mode returns this service's local registrations; `MapKaleidoHttp(o => o.AggregateRegistry = true)` also fans out to every `AddHttpClients()` client — one `GET /{svc}/registry` fetch per client, shared via `KaleidoRemoteRegistry`
 - Freshness: `GeneratedAt`, `Revision` (SHA-256 of the filtered payload), `IsPartial`; `ETag`/`Cache-Control` headers, `If-None-Match` → 304; `?strict` → 502 when partial (body still included); `?refresh` forces rebuild, throttled by `KaleidoHttpMapOptions.RegistryRefreshCooldown`
-- Snapshots live in `IRegistrySnapshotStore` (in-memory default; distributed impl optional) under canonical key `kaleido:{ServiceName}` (the unfiltered union, filtered per caller on every request); consumers' client copies use their own `kaleido-client:{ServiceName}:{clientName}` keys, so a shared store never mixes them; only clean snapshots are committed, so degraded states are re-probed per request
+- Snapshots live in `IRegistrySnapshotStore` (in-memory default; `AddDistributedRegistrySnapshots()` puts them in the host's `IDistributedCache`, mirrored in memory so an unreachable cache never fails a read) under canonical key `kaleido:{ServiceName}` (the unfiltered union, filtered per caller on every request); consumers' client copies use their own `kaleido-client:{ServiceName}:{clientName}` keys, so a shared store never mixes them; only clean snapshots are committed, so degraded states are re-probed per request
 - Always returns HTTP 200 unless `?strict` is requested; unreachable downstream clients populate `ClientErrors`
 
 **URL generation**
