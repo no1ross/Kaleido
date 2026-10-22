@@ -12,14 +12,9 @@ namespace Kaleido.Http.FunctionalTests.Queryable.Client;
 /// wired through DI (no captive-dependency lifetime errors) and that outbound requests carry the
 /// expected correlation headers.
 /// </summary>
-public sealed class QueryableClientHeaderTests : IClassFixture<QueryableAspNetCoreFixture>
+public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixture) : IClassFixture<QueryableAspNetCoreFixture>
 {
-    private readonly QueryableAspNetCoreFixture _fixture;
-
-    public QueryableClientHeaderTests(QueryableAspNetCoreFixture fixture)
-    {
-        _fixture = fixture;
-    }
+    private readonly QueryableAspNetCoreFixture _fixture = fixture;
 
     // ---------------------------------------------------------------------------
     // DI lifetime validation

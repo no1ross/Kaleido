@@ -16,12 +16,15 @@ namespace Kaleido.Http.Client;
 /// <remarks>
 /// A remote registry is filtered for the caller that fetched it, so this cache is used only for
 /// discovery and aggregation (<c>GetRegistryAsync</c>), never to route capability calls, and it is
-/// stored under its own key, <c>kaleido-client:{clientName}</c>: never under the remote service's
-/// <c>kaleido:{ServiceName}</c>, where that service keeps its unfiltered snapshot (#381).
+/// stored under its own key, <c>kaleido-client:{ServiceName}:{clientName}</c> with this service's own
+/// name: never under the remote service's <c>kaleido:{ServiceName}</c>, where that service keeps its
+/// unfiltered snapshot (#381), and never shared with another consuming service, whose copy is
+/// filtered for a different caller (#275).
 /// </remarks>
 internal sealed partial class KaleidoRemoteRegistry(
     IHttpClientFactory httpClientFactory,
     IRegistrySnapshotStore snapshotStore,
+    KaleidoServiceOptions serviceOptions,
     ILogger<KaleidoRemoteRegistry> logger)
 {
     private readonly ConcurrentDictionary<string, HttpClientRegistryCache> _caches =
@@ -35,16 +38,17 @@ internal sealed partial class KaleidoRemoteRegistry(
         CancellationToken cancellationToken) =>
         _caches.GetOrAdd(
                 clientName,
-                static (name, store) => new HttpClientRegistryCache(store, CacheKey(name)),
-                snapshotStore)
+                static (name, state) => new HttpClientRegistryCache(state.Store, CacheKey(state.ServiceName, name)),
+                (Store: snapshotStore, serviceOptions.ServiceName))
             .GetOrRevalidateAsync(
                 registryTtl,
                 (revision, ct) => FetchAsync(clientName, routePrefix, stamper, revision, ct),
                 cancellationToken);
 
-    // The client's own key: a caller-filtered copy must never replace the service's unfiltered
-    // snapshot (kaleido:{ServiceName}) in a shared store.
-    internal static string CacheKey(string clientName) => $"kaleido-client:{clientName}";
+    // The client's own key, scoped to this (consuming) service: in a shared store a caller-filtered
+    // copy must never replace the remote service's unfiltered snapshot (kaleido:{ServiceName}), nor
+    // be read by another service, whose copy is filtered for a different caller.
+    internal static string CacheKey(string serviceName, string clientName) => $"kaleido-client:{serviceName}:{clientName}";
 
     public async Task InvalidateAsync(
         string clientName,

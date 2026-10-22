@@ -581,16 +581,10 @@ public sealed class ProcessorStepInvokerTests
         public string Value { get; init; } = string.Empty;
     }
 
-    private sealed class SuccessHandler :
+    private sealed class SuccessHandler(HandlerRecorder recorder) :
         IProcessStepHandler<TestStep, TestStepResponse>
     {
-        private readonly HandlerRecorder _recorder;
-
-        public SuccessHandler(
-            HandlerRecorder recorder)
-        {
-            _recorder = recorder;
-        }
+        private readonly HandlerRecorder _recorder = recorder;
 
         public Task<ProcessStepHandlerResult<TestStepResponse>> ExecuteAsync(
             TestStep processStep,

@@ -206,10 +206,21 @@ A client whose `RoutePrefix` equals this service's `ServiceName` is skipped (sel
 
 **Freshness contract:** every response carries `GeneratedAt` (snapshot build time - reflects data age even when served from cache), `Revision` (SHA-256 of the filtered payload, without the build time: a rebuilt but unchanged registry keeps its revision), an `ETag` header, and `Cache-Control: private` with the snapshot's `max-age` (private: the registry is filtered per caller, so a shared cache must not serve it to another caller). Clients may send `If-None-Match` to get a **304** when nothing changed. `Revision` is computed on the per-caller filtered payload, so ETags are correct per persona.
 
-**Caching & TTL:** the built snapshot is stored under the canonical key `kaleido:{ServiceName}` in `IRegistrySnapshotStore` (in-memory by default; register a distributed implementation — e.g. Redis over `IDistributedCache` — on multi-replica aggregators so replicas share one snapshot and one downstream fan-out). Only fully-clean snapshots are committed: a partial result is served but never cached, so every request while degraded naturally re-probes the failed services. Options on `MapKaleidoHttp`:
+**Caching & TTL:** the built snapshot is stored under the canonical key `kaleido:{ServiceName}` in `IRegistrySnapshotStore` (in-memory by default; on a router with several replicas, `AddDistributedRegistrySnapshots()` stores it in the host's `IDistributedCache`, e.g. Redis, so replicas share one snapshot and one downstream fan-out per `RegistryCacheTtl` - see [Shared snapshots](#shared-snapshots-across-replicas)). Only fully-clean snapshots are committed: a partial result is served but never cached, so every request while degraded naturally re-probes the failed services. Options on `MapKaleidoHttp`:
 - `RegistryCacheTtl` - how long the snapshot is served before the next request rebuilds it (default **30 seconds**; null = never on its own). On an aggregating host the rebuild checks every downstream with its ETag, so an unchanged downstream costs one small request with an empty 304; a deployed one is picked up. This is how a router - and the MCP tool list built from it - learns about deployments without a restart. It also bounds how long a clean snapshot can mask a newly-failing downstream.
 - `RegistryRefreshCooldown` — minimum interval between honored `?refresh` requests (default 30s). Refreshes inside the window serve the cache instead of re-fanning-out; an honored refresh first invalidates each downstream client snapshot so the rebuild re-fetches.
 - `RegistryDownstreamMaxParallelism` — maximum number of downstream registry fetches in flight at once during an aggregate build (default: unbounded). Set it on a router that aggregates many services.
+
+**Shared snapshots across replicas:** `AddDistributedRegistrySnapshots()` (on `IKaleidoBuilder`, from `Kaleido.Http.Abstractions`) replaces the in-memory store with one on the host's `IDistributedCache`; the host registers the cache itself, and Kaleido references no cache technology:
+
+```csharp
+builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConnection);
+builder.Services.AddKaleido(builder.Configuration).AddHttp().AddHttpClients().AddDistributedRegistrySnapshots();
+```
+
+- The router's snapshot (`kaleido:{ServiceName}`) is built by the first replica that finds it stale; the others serve it. Each client's copy of a downstream registry (`kaleido-client:{ServiceName}:{clientName}`) is shared the same way, so a replica that rebuilds merges the copies another stored while they are fresh.
+- Snapshots are stored as JSON without a cache expiry; freshness stays with `RegistryCacheTtl` and the clients' `RegistryTtl`. Without a distributed lock, replicas that find the snapshot stale at the same moment may each rebuild once.
+- **The cache never fails a registry read.** Every snapshot is also kept in memory. While the cache is unreachable, a replica serves and keeps its own snapshots, logs one warning, and tries the cache again 30 seconds later.
 
 In-host consumers (such as the MCP adapter) read the same caller-filtered payload without HTTP through `IKaleidoRegistryService`: `GetForCallerAsync()` returns it with its revision, and `IsMapped` reports whether `MapKaleidoHttp()` has run.
 

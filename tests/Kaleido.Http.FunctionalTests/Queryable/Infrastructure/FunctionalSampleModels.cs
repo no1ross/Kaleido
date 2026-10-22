@@ -170,14 +170,9 @@ public sealed class FunctionalRecordViewParameters : IQueryParameters
     Source = "AspNetCore Functional Test Data",
     DefaultSortField = nameof(FunctionalRecordContext.Id))]
 [Pageable(DefaultSize = 3, MaxSize = 10)]
-public sealed class FunctionalRecordContextSource : IQuerySource<FunctionalRecordContext>
+public sealed class FunctionalRecordContextSource(FunctionalRecordData data) : IQuerySource<FunctionalRecordContext>
 {
-    private readonly FunctionalRecordData _data;
-
-    public FunctionalRecordContextSource(FunctionalRecordData data)
-    {
-        _data = data;
-    }
+    private readonly FunctionalRecordData _data = data;
 
     // Reversed on purpose: results in Id order prove the DefaultSortField is applied, not the data's order.
     public IQueryable<FunctionalRecordContext> CreateQuery(QueryExecutionContext executionContext) =>
