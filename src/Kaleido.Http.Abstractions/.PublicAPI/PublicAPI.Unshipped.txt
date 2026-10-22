@@ -1,0 +1,768 @@
+#nullable enable
+abstract Kaleido.Http.Processor.ProcessStepContract.<Clone>$() -> Kaleido.Http.Processor.ProcessStepContract!
+const Kaleido.Http.KaleidoCorrelationHeaders.CallingProcessor = "X-Kaleido-Calling-Processor" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.CallingStep = "X-Kaleido-Calling-Step" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.Origin = "X-Kaleido-Origin" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.OriginTool = "X-Kaleido-Origin-Tool" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.ProcessId = "X-Kaleido-Process-Id" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.RequestId = "X-Kaleido-Request-Id" -> string!
+const Kaleido.Http.KaleidoErrorCodes.ArgumentError = "argument_error" -> string!
+const Kaleido.Http.KaleidoErrorCodes.FrameworkError = "framework_error" -> string!
+const Kaleido.Http.KaleidoIdempotencyHeaders.IdempotencyKey = "Idempotency-Key" -> string!
+const Kaleido.Http.KaleidoIdempotencyHeaders.Replayed = "Idempotent-Replayed" -> string!
+Kaleido.Http.KaleidoCorrelationHeaders
+Kaleido.Http.KaleidoError
+Kaleido.Http.KaleidoError.<Clone>$() -> Kaleido.Http.KaleidoError!
+Kaleido.Http.KaleidoError.Code.get -> string!
+Kaleido.Http.KaleidoError.Code.init -> void
+Kaleido.Http.KaleidoError.Deconstruct(out string! Code, out string! Message, out string? Field) -> void
+Kaleido.Http.KaleidoError.Equals(Kaleido.Http.KaleidoError? other) -> bool
+Kaleido.Http.KaleidoError.Field.get -> string?
+Kaleido.Http.KaleidoError.Field.init -> void
+Kaleido.Http.KaleidoError.KaleidoError(string! Code, string! Message, string? Field = null) -> void
+Kaleido.Http.KaleidoError.Message.get -> string!
+Kaleido.Http.KaleidoError.Message.init -> void
+Kaleido.Http.KaleidoErrorCodes
+Kaleido.Http.KaleidoErrorResponse
+Kaleido.Http.KaleidoErrorResponse.<Clone>$() -> Kaleido.Http.KaleidoErrorResponse!
+Kaleido.Http.KaleidoErrorResponse.Deconstruct(out System.Collections.Generic.IReadOnlyList<Kaleido.Http.KaleidoError!>! Errors) -> void
+Kaleido.Http.KaleidoErrorResponse.Equals(Kaleido.Http.KaleidoErrorResponse? other) -> bool
+Kaleido.Http.KaleidoErrorResponse.Errors.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Http.KaleidoError!>!
+Kaleido.Http.KaleidoErrorResponse.Errors.init -> void
+Kaleido.Http.KaleidoErrorResponse.KaleidoErrorResponse(System.Collections.Generic.IReadOnlyList<Kaleido.Http.KaleidoError!>! Errors) -> void
+Kaleido.Http.KaleidoIdempotencyHeaders
+Kaleido.Http.KaleidoJsonOptions
+Kaleido.Http.Processor.ExecuteProcessRequest
+Kaleido.Http.Processor.ExecuteProcessRequest.<Clone>$() -> Kaleido.Http.Processor.ExecuteProcessRequest!
+Kaleido.Http.Processor.ExecuteProcessRequest.Equals(Kaleido.Http.Processor.ExecuteProcessRequest? other) -> bool
+Kaleido.Http.Processor.ExecuteProcessRequest.ExecuteProcessRequest() -> void
+Kaleido.Http.Processor.ExecuteProcessRequest.Steps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepRequest!>!
+Kaleido.Http.Processor.ExecuteProcessRequest.Steps.init -> void
+Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>
+Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.<Clone>$() -> Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>!
+Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.Equals(Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>? other) -> bool
+Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.ExecuteStepRequest() -> void
+Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.ProcessStep.get -> TProcessStep
+Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.ProcessStep.init -> void
+Kaleido.Http.Processor.IKaleidoProcessorClient
+Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteAsync(Kaleido.Http.Processor.ExecuteProcessRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.ProcessExecutionResponse!>!
+Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteStepAsync(string! stepName, System.Text.Json.JsonElement processStep, System.Guid? processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.StepExecutionResponse<System.Text.Json.JsonElement>!>!
+Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteStepAsync<TStep, TResponse>(TStep! processStep, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.StepExecutionResponse<TResponse>!>!
+Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteStepAsync<TStep>(TStep! processStep, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.StepExecutionResponse!>!
+Kaleido.Http.Processor.IKaleidoProcessorClient.GetProcessStateAsync(System.Guid processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.ProcessStateResponse?>!
+Kaleido.Http.Processor.IKaleidoProcessorClient.GetRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Kaleido.Http.Processor.ProcessorRegistryResponse!>!>!
+Kaleido.Http.Processor.IKaleidoProcessorClient.InvalidateRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Http.Processor.IKaleidoProcessorClientFactory
+Kaleido.Http.Processor.IKaleidoProcessorClientFactory.GetClient(string! name) -> Kaleido.Http.Processor.IKaleidoProcessorClient!
+Kaleido.Http.Processor.IKaleidoProcessorClientFactory.TryGetClientForService(string! serviceName, out Kaleido.Http.Processor.IKaleidoProcessorClient? client) -> bool
+Kaleido.Http.Processor.ProcessExecutionResponse
+Kaleido.Http.Processor.ProcessExecutionResponse.<Clone>$() -> Kaleido.Http.Processor.ProcessExecutionResponse!
+Kaleido.Http.Processor.ProcessExecutionResponse.AvailableSteps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepSummary!>!
+Kaleido.Http.Processor.ProcessExecutionResponse.AvailableSteps.init -> void
+Kaleido.Http.Processor.ProcessExecutionResponse.Equals(Kaleido.Http.Processor.ProcessExecutionResponse? other) -> bool
+Kaleido.Http.Processor.ProcessExecutionResponse.ProcessExecutionResponse() -> void
+Kaleido.Http.Processor.ProcessExecutionResponse.ProcessId.get -> System.Guid
+Kaleido.Http.Processor.ProcessExecutionResponse.ProcessId.init -> void
+Kaleido.Http.Processor.ProcessExecutionResponse.RequiredStep.get -> Kaleido.Http.Processor.ProcessRequiredStep?
+Kaleido.Http.Processor.ProcessExecutionResponse.RequiredStep.init -> void
+Kaleido.Http.Processor.ProcessExecutionResponse.Results.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessExecutionStepResponse!>!
+Kaleido.Http.Processor.ProcessExecutionResponse.Results.init -> void
+Kaleido.Http.Processor.ProcessExecutionResponse.TargetProcessorName.get -> string?
+Kaleido.Http.Processor.ProcessExecutionResponse.TargetProcessorName.init -> void
+Kaleido.Http.Processor.ProcessExecutionStepResponse
+Kaleido.Http.Processor.ProcessExecutionStepResponse.<Clone>$() -> Kaleido.Http.Processor.ProcessExecutionStepResponse!
+Kaleido.Http.Processor.ProcessExecutionStepResponse.BusinessMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
+Kaleido.Http.Processor.ProcessExecutionStepResponse.BusinessMessages.init -> void
+Kaleido.Http.Processor.ProcessExecutionStepResponse.Equals(Kaleido.Http.Processor.ProcessExecutionStepResponse? other) -> bool
+Kaleido.Http.Processor.ProcessExecutionStepResponse.FrameworkMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
+Kaleido.Http.Processor.ProcessExecutionStepResponse.FrameworkMessages.init -> void
+Kaleido.Http.Processor.ProcessExecutionStepResponse.ProcessExecutionStepResponse() -> void
+Kaleido.Http.Processor.ProcessExecutionStepResponse.Response.get -> object!
+Kaleido.Http.Processor.ProcessExecutionStepResponse.Response.init -> void
+Kaleido.Http.Processor.ProcessExecutionStepResponse.StepName.get -> string!
+Kaleido.Http.Processor.ProcessExecutionStepResponse.StepName.init -> void
+Kaleido.Http.Processor.ProcessFieldLookup
+Kaleido.Http.Processor.ProcessFieldLookup.<Clone>$() -> Kaleido.Http.Processor.ProcessFieldLookup!
+Kaleido.Http.Processor.ProcessFieldLookup.Display.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Http.Processor.ProcessFieldLookup.Display.init -> void
+Kaleido.Http.Processor.ProcessFieldLookup.Equals(Kaleido.Http.Processor.ProcessFieldLookup? other) -> bool
+Kaleido.Http.Processor.ProcessFieldLookup.Field.get -> string!
+Kaleido.Http.Processor.ProcessFieldLookup.Field.init -> void
+Kaleido.Http.Processor.ProcessFieldLookup.Group.get -> string!
+Kaleido.Http.Processor.ProcessFieldLookup.Group.init -> void
+Kaleido.Http.Processor.ProcessFieldLookup.ProcessFieldLookup() -> void
+Kaleido.Http.Processor.ProcessFieldLookup.Service.get -> string!
+Kaleido.Http.Processor.ProcessFieldLookup.Service.init -> void
+Kaleido.Http.Processor.ProcessFieldLookup.Source.get -> string!
+Kaleido.Http.Processor.ProcessFieldLookup.Source.init -> void
+Kaleido.Http.Processor.ProcessFieldLookup.View.get -> string?
+Kaleido.Http.Processor.ProcessFieldLookup.View.init -> void
+Kaleido.Http.Processor.ProcessFieldMetadata
+Kaleido.Http.Processor.ProcessFieldMetadata.<Clone>$() -> Kaleido.Http.Processor.ProcessFieldMetadata!
+Kaleido.Http.Processor.ProcessFieldMetadata.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Http.Processor.ProcessFieldMetadata.Classifications.init -> void
+Kaleido.Http.Processor.ProcessFieldMetadata.Constraints.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.ConstraintMetadata!>!
+Kaleido.Http.Processor.ProcessFieldMetadata.Constraints.init -> void
+Kaleido.Http.Processor.ProcessFieldMetadata.DataType.get -> Kaleido.Http.Registry.DataTypeMetadata!
+Kaleido.Http.Processor.ProcessFieldMetadata.DataType.init -> void
+Kaleido.Http.Processor.ProcessFieldMetadata.Description.get -> string?
+Kaleido.Http.Processor.ProcessFieldMetadata.Description.init -> void
+Kaleido.Http.Processor.ProcessFieldMetadata.DisplayName.get -> string?
+Kaleido.Http.Processor.ProcessFieldMetadata.DisplayName.init -> void
+Kaleido.Http.Processor.ProcessFieldMetadata.Equals(Kaleido.Http.Processor.ProcessFieldMetadata? other) -> bool
+Kaleido.Http.Processor.ProcessFieldMetadata.Lookup.get -> Kaleido.Http.Processor.ProcessFieldLookup?
+Kaleido.Http.Processor.ProcessFieldMetadata.Lookup.init -> void
+Kaleido.Http.Processor.ProcessFieldMetadata.Name.get -> string!
+Kaleido.Http.Processor.ProcessFieldMetadata.Name.init -> void
+Kaleido.Http.Processor.ProcessFieldMetadata.ProcessFieldMetadata() -> void
+Kaleido.Http.Processor.ProcessFieldMetadata.Prompt.get -> string?
+Kaleido.Http.Processor.ProcessFieldMetadata.Prompt.init -> void
+Kaleido.Http.Processor.ProcessorRegistryResponse
+Kaleido.Http.Processor.ProcessorRegistryResponse.<Clone>$() -> Kaleido.Http.Processor.ProcessorRegistryResponse!
+Kaleido.Http.Processor.ProcessorRegistryResponse.Description.get -> string?
+Kaleido.Http.Processor.ProcessorRegistryResponse.Description.init -> void
+Kaleido.Http.Processor.ProcessorRegistryResponse.DisplayName.get -> string?
+Kaleido.Http.Processor.ProcessorRegistryResponse.DisplayName.init -> void
+Kaleido.Http.Processor.ProcessorRegistryResponse.Equals(Kaleido.Http.Processor.ProcessorRegistryResponse? other) -> bool
+Kaleido.Http.Processor.ProcessorRegistryResponse.InitialSteps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepSummary!>!
+Kaleido.Http.Processor.ProcessorRegistryResponse.InitialSteps.init -> void
+Kaleido.Http.Processor.ProcessorRegistryResponse.IsEntryProcessor.get -> bool
+Kaleido.Http.Processor.ProcessorRegistryResponse.IsEntryProcessor.init -> void
+Kaleido.Http.Processor.ProcessorRegistryResponse.Name.get -> string!
+Kaleido.Http.Processor.ProcessorRegistryResponse.Name.init -> void
+Kaleido.Http.Processor.ProcessorRegistryResponse.ProcessorRegistryResponse() -> void
+Kaleido.Http.Processor.ProcessorRegistryResponse.RegistryUrl.get -> string!
+Kaleido.Http.Processor.ProcessorRegistryResponse.RegistryUrl.init -> void
+Kaleido.Http.Processor.ProcessorRegistryResponse.ServiceName.get -> string!
+Kaleido.Http.Processor.ProcessorRegistryResponse.ServiceName.init -> void
+Kaleido.Http.Processor.ProcessorRegistryResponse.Steps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepResponse!>?
+Kaleido.Http.Processor.ProcessorRegistryResponse.Steps.init -> void
+Kaleido.Http.Processor.ProcessOutputFieldMetadata
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.<Clone>$() -> Kaleido.Http.Processor.ProcessOutputFieldMetadata!
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.Classifications.init -> void
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.DataType.get -> Kaleido.Http.Registry.DataTypeMetadata!
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.DataType.init -> void
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.Description.get -> string?
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.Description.init -> void
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.Equals(Kaleido.Http.Processor.ProcessOutputFieldMetadata? other) -> bool
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.Name.get -> string!
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.Name.init -> void
+Kaleido.Http.Processor.ProcessOutputFieldMetadata.ProcessOutputFieldMetadata() -> void
+Kaleido.Http.Processor.ProcessRequiredStep
+Kaleido.Http.Processor.ProcessRequiredStep.Equals(Kaleido.Http.Processor.ProcessRequiredStep? other) -> bool
+Kaleido.Http.Processor.ProcessRequiredStep.InformationRequest.get -> Kaleido.Processor.InformationRequest?
+Kaleido.Http.Processor.ProcessRequiredStep.InformationRequest.init -> void
+Kaleido.Http.Processor.ProcessRequiredStep.ProcessRequiredStep() -> void
+Kaleido.Http.Processor.ProcessStateResponse
+Kaleido.Http.Processor.ProcessStateResponse.<Clone>$() -> Kaleido.Http.Processor.ProcessStateResponse!
+Kaleido.Http.Processor.ProcessStateResponse.AvailableSteps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepSummary!>!
+Kaleido.Http.Processor.ProcessStateResponse.AvailableSteps.init -> void
+Kaleido.Http.Processor.ProcessStateResponse.CreatedBy.get -> Kaleido.Observability.KaleidoCaller?
+Kaleido.Http.Processor.ProcessStateResponse.CreatedBy.init -> void
+Kaleido.Http.Processor.ProcessStateResponse.CreatedUtc.get -> System.DateTimeOffset
+Kaleido.Http.Processor.ProcessStateResponse.CreatedUtc.init -> void
+Kaleido.Http.Processor.ProcessStateResponse.Equals(Kaleido.Http.Processor.ProcessStateResponse? other) -> bool
+Kaleido.Http.Processor.ProcessStateResponse.ProcessId.get -> System.Guid
+Kaleido.Http.Processor.ProcessStateResponse.ProcessId.init -> void
+Kaleido.Http.Processor.ProcessStateResponse.ProcessStateResponse() -> void
+Kaleido.Http.Processor.ProcessStateResponse.RequiredStep.get -> Kaleido.Http.Processor.ProcessRequiredStep?
+Kaleido.Http.Processor.ProcessStateResponse.RequiredStep.init -> void
+Kaleido.Http.Processor.ProcessStateResponse.State.get -> Kaleido.Processor.ProcessExecutionState
+Kaleido.Http.Processor.ProcessStateResponse.State.init -> void
+Kaleido.Http.Processor.ProcessStateResponse.Steps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepHistory!>!
+Kaleido.Http.Processor.ProcessStateResponse.Steps.init -> void
+Kaleido.Http.Processor.ProcessStateResponse.TargetProcessorName.get -> string?
+Kaleido.Http.Processor.ProcessStateResponse.TargetProcessorName.init -> void
+Kaleido.Http.Processor.ProcessStateResponse.UpdatedBy.get -> Kaleido.Observability.KaleidoCaller?
+Kaleido.Http.Processor.ProcessStateResponse.UpdatedBy.init -> void
+Kaleido.Http.Processor.ProcessStateResponse.UpdatedUtc.get -> System.DateTimeOffset
+Kaleido.Http.Processor.ProcessStateResponse.UpdatedUtc.init -> void
+Kaleido.Http.Processor.ProcessStepContract
+Kaleido.Http.Processor.ProcessStepContract.Authorization.get -> Kaleido.Registry.AuthorizationMetadata?
+Kaleido.Http.Processor.ProcessStepContract.Authorization.init -> void
+Kaleido.Http.Processor.ProcessStepContract.Description.get -> string?
+Kaleido.Http.Processor.ProcessStepContract.Description.init -> void
+Kaleido.Http.Processor.ProcessStepContract.Destructive.get -> bool
+Kaleido.Http.Processor.ProcessStepContract.Destructive.init -> void
+Kaleido.Http.Processor.ProcessStepContract.DisplayName.get -> string?
+Kaleido.Http.Processor.ProcessStepContract.DisplayName.init -> void
+Kaleido.Http.Processor.ProcessStepContract.ExecuteUrl.get -> string!
+Kaleido.Http.Processor.ProcessStepContract.ExecuteUrl.init -> void
+Kaleido.Http.Processor.ProcessStepContract.External.get -> bool
+Kaleido.Http.Processor.ProcessStepContract.External.init -> void
+Kaleido.Http.Processor.ProcessStepContract.IsInformationStep.get -> bool
+Kaleido.Http.Processor.ProcessStepContract.IsInformationStep.init -> void
+Kaleido.Http.Processor.ProcessStepContract.Name.get -> string!
+Kaleido.Http.Processor.ProcessStepContract.Name.init -> void
+Kaleido.Http.Processor.ProcessStepContract.ProcessStepContract() -> void
+Kaleido.Http.Processor.ProcessStepContract.ProcessStepContract(Kaleido.Http.Processor.ProcessStepContract! original) -> void
+Kaleido.Http.Processor.ProcessStepContract.Repeatable.get -> bool
+Kaleido.Http.Processor.ProcessStepContract.Repeatable.init -> void
+Kaleido.Http.Processor.ProcessStepContract.RequiresConfirmation.get -> bool
+Kaleido.Http.Processor.ProcessStepContract.RequiresConfirmation.init -> void
+Kaleido.Http.Processor.ProcessStepContract.Version.get -> string?
+Kaleido.Http.Processor.ProcessStepContract.Version.init -> void
+Kaleido.Http.Processor.ProcessStepHistory
+Kaleido.Http.Processor.ProcessStepHistory.<Clone>$() -> Kaleido.Http.Processor.ProcessStepHistory!
+Kaleido.Http.Processor.ProcessStepHistory.Equals(Kaleido.Http.Processor.ProcessStepHistory? other) -> bool
+Kaleido.Http.Processor.ProcessStepHistory.FirstExecuted.get -> System.DateTimeOffset?
+Kaleido.Http.Processor.ProcessStepHistory.FirstExecuted.init -> void
+Kaleido.Http.Processor.ProcessStepHistory.LastExecuted.get -> System.DateTimeOffset?
+Kaleido.Http.Processor.ProcessStepHistory.LastExecuted.init -> void
+Kaleido.Http.Processor.ProcessStepHistory.LastUpdatedBy.get -> Kaleido.Observability.KaleidoCaller?
+Kaleido.Http.Processor.ProcessStepHistory.LastUpdatedBy.init -> void
+Kaleido.Http.Processor.ProcessStepHistory.ProcessStepHistory() -> void
+Kaleido.Http.Processor.ProcessStepHistory.StartedBy.get -> Kaleido.Observability.KaleidoCaller?
+Kaleido.Http.Processor.ProcessStepHistory.StartedBy.init -> void
+Kaleido.Http.Processor.ProcessStepHistory.Status.get -> Kaleido.Processor.StepExecutionStatus
+Kaleido.Http.Processor.ProcessStepHistory.Status.init -> void
+Kaleido.Http.Processor.ProcessStepHistory.StepName.get -> string!
+Kaleido.Http.Processor.ProcessStepHistory.StepName.init -> void
+Kaleido.Http.Processor.ProcessStepHistory.Version.get -> string!
+Kaleido.Http.Processor.ProcessStepHistory.Version.init -> void
+Kaleido.Http.Processor.ProcessStepRequest
+Kaleido.Http.Processor.ProcessStepRequest.<Clone>$() -> Kaleido.Http.Processor.ProcessStepRequest!
+Kaleido.Http.Processor.ProcessStepRequest.Equals(Kaleido.Http.Processor.ProcessStepRequest? other) -> bool
+Kaleido.Http.Processor.ProcessStepRequest.ProcessStepRequest() -> void
+Kaleido.Http.Processor.ProcessStepRequest.Request.get -> System.Text.Json.JsonElement
+Kaleido.Http.Processor.ProcessStepRequest.Request.init -> void
+Kaleido.Http.Processor.ProcessStepRequest.StepName.get -> string!
+Kaleido.Http.Processor.ProcessStepRequest.StepName.init -> void
+Kaleido.Http.Processor.ProcessStepResponse
+Kaleido.Http.Processor.ProcessStepResponse.AvailableAfter.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepSummary!>!
+Kaleido.Http.Processor.ProcessStepResponse.AvailableAfter.init -> void
+Kaleido.Http.Processor.ProcessStepResponse.AvailableUntil.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepSummary!>!
+Kaleido.Http.Processor.ProcessStepResponse.AvailableUntil.init -> void
+Kaleido.Http.Processor.ProcessStepResponse.Dependencies.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepSummary!>!
+Kaleido.Http.Processor.ProcessStepResponse.Dependencies.init -> void
+Kaleido.Http.Processor.ProcessStepResponse.Equals(Kaleido.Http.Processor.ProcessStepResponse? other) -> bool
+Kaleido.Http.Processor.ProcessStepResponse.Fields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessFieldMetadata!>!
+Kaleido.Http.Processor.ProcessStepResponse.Fields.init -> void
+Kaleido.Http.Processor.ProcessStepResponse.IsInitial.get -> bool
+Kaleido.Http.Processor.ProcessStepResponse.IsInitial.init -> void
+Kaleido.Http.Processor.ProcessStepResponse.ProcessStepResponse() -> void
+Kaleido.Http.Processor.ProcessStepResponse.Result.get -> Kaleido.Http.Processor.ProcessStepResultMetadata?
+Kaleido.Http.Processor.ProcessStepResponse.Result.init -> void
+Kaleido.Http.Processor.ProcessStepResultMetadata
+Kaleido.Http.Processor.ProcessStepResultMetadata.<Clone>$() -> Kaleido.Http.Processor.ProcessStepResultMetadata!
+Kaleido.Http.Processor.ProcessStepResultMetadata.Equals(Kaleido.Http.Processor.ProcessStepResultMetadata? other) -> bool
+Kaleido.Http.Processor.ProcessStepResultMetadata.OutputFields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessOutputFieldMetadata!>!
+Kaleido.Http.Processor.ProcessStepResultMetadata.OutputFields.init -> void
+Kaleido.Http.Processor.ProcessStepResultMetadata.ProcessStepResultMetadata() -> void
+Kaleido.Http.Processor.ProcessStepSummary
+Kaleido.Http.Processor.ProcessStepSummary.Equals(Kaleido.Http.Processor.ProcessStepSummary? other) -> bool
+Kaleido.Http.Processor.ProcessStepSummary.ProcessStepSummary() -> void
+Kaleido.Http.Processor.StepExecutionResponse
+Kaleido.Http.Processor.StepExecutionResponse.AvailableSteps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepSummary!>!
+Kaleido.Http.Processor.StepExecutionResponse.AvailableSteps.init -> void
+Kaleido.Http.Processor.StepExecutionResponse.BusinessMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
+Kaleido.Http.Processor.StepExecutionResponse.BusinessMessages.init -> void
+Kaleido.Http.Processor.StepExecutionResponse.FrameworkMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
+Kaleido.Http.Processor.StepExecutionResponse.FrameworkMessages.init -> void
+Kaleido.Http.Processor.StepExecutionResponse.Outcome.get -> Kaleido.Processor.StepExecutionOutcome
+Kaleido.Http.Processor.StepExecutionResponse.Outcome.init -> void
+Kaleido.Http.Processor.StepExecutionResponse.ProcessId.get -> System.Guid
+Kaleido.Http.Processor.StepExecutionResponse.ProcessId.init -> void
+Kaleido.Http.Processor.StepExecutionResponse.RequiredStep.get -> Kaleido.Http.Processor.ProcessRequiredStep?
+Kaleido.Http.Processor.StepExecutionResponse.RequiredStep.init -> void
+Kaleido.Http.Processor.StepExecutionResponse.StepExecutionResponse() -> void
+Kaleido.Http.Processor.StepExecutionResponse.StepExecutionResponse(Kaleido.Http.Processor.StepExecutionResponse! original) -> void
+Kaleido.Http.Processor.StepExecutionResponse.StepName.get -> string!
+Kaleido.Http.Processor.StepExecutionResponse.StepName.init -> void
+Kaleido.Http.Processor.StepExecutionResponse.TargetProcessorName.get -> string?
+Kaleido.Http.Processor.StepExecutionResponse.TargetProcessorName.init -> void
+Kaleido.Http.Processor.StepExecutionResponse<TResponse>
+Kaleido.Http.Processor.StepExecutionResponse<TResponse>.Equals(Kaleido.Http.Processor.StepExecutionResponse<TResponse>? other) -> bool
+Kaleido.Http.Processor.StepExecutionResponse<TResponse>.Result.get -> TResponse?
+Kaleido.Http.Processor.StepExecutionResponse<TResponse>.Result.init -> void
+Kaleido.Http.Processor.StepExecutionResponse<TResponse>.StepExecutionResponse() -> void
+Kaleido.Http.Queryable.IKaleidoQueryableClient
+Kaleido.Http.Queryable.IKaleidoQueryableClient.GetRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Kaleido.Http.Queryable.QueryableSourceResponse!>!>!
+Kaleido.Http.Queryable.IKaleidoQueryableClient.InvalidateRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Http.Queryable.IKaleidoQueryableClient.QuerySourceAsync<TParameters, TResult>(string! source, Kaleido.Http.Queryable.QueryApiRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
+Kaleido.Http.Queryable.IKaleidoQueryableClient.QuerySourceAsync<TResult>(string! source, Kaleido.Http.Queryable.QueryApiRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
+Kaleido.Http.Queryable.IKaleidoQueryableClient.QueryViewAsync<TParameters, TView>(string! source, string! view, Kaleido.Http.Queryable.QueryApiRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TView!>!>!
+Kaleido.Http.Queryable.IKaleidoQueryableClientFactory
+Kaleido.Http.Queryable.IKaleidoQueryableClientFactory.GetClient(string! name) -> Kaleido.Http.Queryable.IKaleidoQueryableClient!
+Kaleido.Http.Queryable.IKaleidoQueryableClientFactory.TryGetClientForService(string! serviceName, out Kaleido.Http.Queryable.IKaleidoQueryableClient? client) -> bool
+Kaleido.Http.Queryable.QueryableFieldMetadata
+Kaleido.Http.Queryable.QueryableFieldMetadata.<Clone>$() -> Kaleido.Http.Queryable.QueryableFieldMetadata!
+Kaleido.Http.Queryable.QueryableFieldMetadata.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Http.Queryable.QueryableFieldMetadata.Classifications.init -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.DataType.get -> Kaleido.Http.Registry.DataTypeMetadata!
+Kaleido.Http.Queryable.QueryableFieldMetadata.DataType.init -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.Description.get -> string?
+Kaleido.Http.Queryable.QueryableFieldMetadata.Description.init -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.Equals(Kaleido.Http.Queryable.QueryableFieldMetadata? other) -> bool
+Kaleido.Http.Queryable.QueryableFieldMetadata.FilterOperators.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Queryable.FilterOperator>!
+Kaleido.Http.Queryable.QueryableFieldMetadata.FilterOperators.init -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.IsFilterable.get -> bool
+Kaleido.Http.Queryable.QueryableFieldMetadata.IsFilterable.init -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.IsSearchable.get -> bool
+Kaleido.Http.Queryable.QueryableFieldMetadata.IsSearchable.init -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.IsSortable.get -> bool
+Kaleido.Http.Queryable.QueryableFieldMetadata.IsSortable.init -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.MatchMode.get -> Kaleido.Queryable.MatchMode?
+Kaleido.Http.Queryable.QueryableFieldMetadata.MatchMode.init -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.Name.get -> string!
+Kaleido.Http.Queryable.QueryableFieldMetadata.Name.init -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.QueryableFieldMetadata() -> void
+Kaleido.Http.Queryable.QueryableFieldMetadata.SearchPriority.get -> int?
+Kaleido.Http.Queryable.QueryableFieldMetadata.SearchPriority.init -> void
+Kaleido.Http.Queryable.QueryablePagingMetadata
+Kaleido.Http.Queryable.QueryablePagingMetadata.<Clone>$() -> Kaleido.Http.Queryable.QueryablePagingMetadata!
+Kaleido.Http.Queryable.QueryablePagingMetadata.Deconstruct(out int DefaultSize, out int MaxSize, out string? DefaultSortField) -> void
+Kaleido.Http.Queryable.QueryablePagingMetadata.DefaultSize.get -> int
+Kaleido.Http.Queryable.QueryablePagingMetadata.DefaultSize.init -> void
+Kaleido.Http.Queryable.QueryablePagingMetadata.DefaultSortField.get -> string?
+Kaleido.Http.Queryable.QueryablePagingMetadata.DefaultSortField.init -> void
+Kaleido.Http.Queryable.QueryablePagingMetadata.Equals(Kaleido.Http.Queryable.QueryablePagingMetadata? other) -> bool
+Kaleido.Http.Queryable.QueryablePagingMetadata.MaxSize.get -> int
+Kaleido.Http.Queryable.QueryablePagingMetadata.MaxSize.init -> void
+Kaleido.Http.Queryable.QueryablePagingMetadata.QueryablePagingMetadata(int DefaultSize, int MaxSize, string? DefaultSortField = null) -> void
+Kaleido.Http.Queryable.QueryableQueryParameter
+Kaleido.Http.Queryable.QueryableQueryParameter.<Clone>$() -> Kaleido.Http.Queryable.QueryableQueryParameter!
+Kaleido.Http.Queryable.QueryableQueryParameter.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Http.Queryable.QueryableQueryParameter.Classifications.init -> void
+Kaleido.Http.Queryable.QueryableQueryParameter.Constraints.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.ConstraintMetadata!>!
+Kaleido.Http.Queryable.QueryableQueryParameter.Constraints.init -> void
+Kaleido.Http.Queryable.QueryableQueryParameter.DataType.get -> Kaleido.Http.Registry.DataTypeMetadata!
+Kaleido.Http.Queryable.QueryableQueryParameter.DataType.init -> void
+Kaleido.Http.Queryable.QueryableQueryParameter.Description.get -> string?
+Kaleido.Http.Queryable.QueryableQueryParameter.Description.init -> void
+Kaleido.Http.Queryable.QueryableQueryParameter.Equals(Kaleido.Http.Queryable.QueryableQueryParameter? other) -> bool
+Kaleido.Http.Queryable.QueryableQueryParameter.Name.get -> string!
+Kaleido.Http.Queryable.QueryableQueryParameter.Name.init -> void
+Kaleido.Http.Queryable.QueryableQueryParameter.QueryableQueryParameter() -> void
+Kaleido.Http.Queryable.QueryableQueryProperty
+Kaleido.Http.Queryable.QueryableQueryProperty.<Clone>$() -> Kaleido.Http.Queryable.QueryableQueryProperty!
+Kaleido.Http.Queryable.QueryableQueryProperty.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Http.Queryable.QueryableQueryProperty.Classifications.init -> void
+Kaleido.Http.Queryable.QueryableQueryProperty.DataType.get -> Kaleido.Http.Registry.DataTypeMetadata!
+Kaleido.Http.Queryable.QueryableQueryProperty.DataType.init -> void
+Kaleido.Http.Queryable.QueryableQueryProperty.Description.get -> string?
+Kaleido.Http.Queryable.QueryableQueryProperty.Description.init -> void
+Kaleido.Http.Queryable.QueryableQueryProperty.Equals(Kaleido.Http.Queryable.QueryableQueryProperty? other) -> bool
+Kaleido.Http.Queryable.QueryableQueryProperty.Name.get -> string!
+Kaleido.Http.Queryable.QueryableQueryProperty.Name.init -> void
+Kaleido.Http.Queryable.QueryableQueryProperty.QueryableQueryProperty() -> void
+Kaleido.Http.Queryable.QueryableSourceResponse
+Kaleido.Http.Queryable.QueryableSourceResponse.<Clone>$() -> Kaleido.Http.Queryable.QueryableSourceResponse!
+Kaleido.Http.Queryable.QueryableSourceResponse.Authorization.get -> Kaleido.Registry.AuthorizationMetadata?
+Kaleido.Http.Queryable.QueryableSourceResponse.Authorization.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.Description.get -> string?
+Kaleido.Http.Queryable.QueryableSourceResponse.Description.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.DisplayName.get -> string?
+Kaleido.Http.Queryable.QueryableSourceResponse.DisplayName.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.Equals(Kaleido.Http.Queryable.QueryableSourceResponse? other) -> bool
+Kaleido.Http.Queryable.QueryableSourceResponse.Fields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableFieldMetadata!>!
+Kaleido.Http.Queryable.QueryableSourceResponse.Fields.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.Name.get -> string!
+Kaleido.Http.Queryable.QueryableSourceResponse.Name.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.OutputFields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableQueryProperty!>!
+Kaleido.Http.Queryable.QueryableSourceResponse.OutputFields.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.Pageable.get -> Kaleido.Http.Queryable.QueryablePagingMetadata?
+Kaleido.Http.Queryable.QueryableSourceResponse.Pageable.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.Parameters.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableQueryParameter!>!
+Kaleido.Http.Queryable.QueryableSourceResponse.Parameters.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.QueryableSourceResponse() -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.QueryUrl.get -> string?
+Kaleido.Http.Queryable.QueryableSourceResponse.QueryUrl.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.RegistryUrl.get -> string!
+Kaleido.Http.Queryable.QueryableSourceResponse.RegistryUrl.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.ServiceName.get -> string!
+Kaleido.Http.Queryable.QueryableSourceResponse.ServiceName.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.Source.get -> string?
+Kaleido.Http.Queryable.QueryableSourceResponse.Source.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.Version.get -> string?
+Kaleido.Http.Queryable.QueryableSourceResponse.Version.init -> void
+Kaleido.Http.Queryable.QueryableSourceResponse.Views.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableViewResponse!>!
+Kaleido.Http.Queryable.QueryableSourceResponse.Views.init -> void
+Kaleido.Http.Queryable.QueryableViewResponse
+Kaleido.Http.Queryable.QueryableViewResponse.<Clone>$() -> Kaleido.Http.Queryable.QueryableViewResponse!
+Kaleido.Http.Queryable.QueryableViewResponse.Authorization.get -> Kaleido.Registry.AuthorizationMetadata?
+Kaleido.Http.Queryable.QueryableViewResponse.Authorization.init -> void
+Kaleido.Http.Queryable.QueryableViewResponse.Description.get -> string?
+Kaleido.Http.Queryable.QueryableViewResponse.Description.init -> void
+Kaleido.Http.Queryable.QueryableViewResponse.DisplayName.get -> string?
+Kaleido.Http.Queryable.QueryableViewResponse.DisplayName.init -> void
+Kaleido.Http.Queryable.QueryableViewResponse.Equals(Kaleido.Http.Queryable.QueryableViewResponse? other) -> bool
+Kaleido.Http.Queryable.QueryableViewResponse.Name.get -> string!
+Kaleido.Http.Queryable.QueryableViewResponse.Name.init -> void
+Kaleido.Http.Queryable.QueryableViewResponse.OutputFields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableQueryProperty!>!
+Kaleido.Http.Queryable.QueryableViewResponse.OutputFields.init -> void
+Kaleido.Http.Queryable.QueryableViewResponse.Pageable.get -> Kaleido.Http.Queryable.QueryablePagingMetadata?
+Kaleido.Http.Queryable.QueryableViewResponse.Pageable.init -> void
+Kaleido.Http.Queryable.QueryableViewResponse.Parameters.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableQueryParameter!>!
+Kaleido.Http.Queryable.QueryableViewResponse.Parameters.init -> void
+Kaleido.Http.Queryable.QueryableViewResponse.QueryableViewResponse() -> void
+Kaleido.Http.Queryable.QueryableViewResponse.QueryUrl.get -> string!
+Kaleido.Http.Queryable.QueryableViewResponse.QueryUrl.init -> void
+Kaleido.Http.Queryable.QueryableViewResponse.Version.get -> string?
+Kaleido.Http.Queryable.QueryableViewResponse.Version.init -> void
+Kaleido.Http.Queryable.QueryApiBody
+Kaleido.Http.Queryable.QueryApiBody.Filter.get -> Kaleido.Http.Queryable.QueryApiFilterNode?
+Kaleido.Http.Queryable.QueryApiBody.Filter.init -> void
+Kaleido.Http.Queryable.QueryApiBody.Page.get -> Kaleido.Http.Queryable.QueryApiPage?
+Kaleido.Http.Queryable.QueryApiBody.Page.init -> void
+Kaleido.Http.Queryable.QueryApiBody.QueryApiBody() -> void
+Kaleido.Http.Queryable.QueryApiBody.QueryApiBody(Kaleido.Http.Queryable.QueryApiBody! original) -> void
+Kaleido.Http.Queryable.QueryApiBody.SearchText.get -> string?
+Kaleido.Http.Queryable.QueryApiBody.SearchText.init -> void
+Kaleido.Http.Queryable.QueryApiBody.Sort.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Http.Queryable.QueryApiSort!>?
+Kaleido.Http.Queryable.QueryApiBody.Sort.init -> void
+Kaleido.Http.Queryable.QueryApiBodyExtensions
+Kaleido.Http.Queryable.QueryApiFilterCondition
+Kaleido.Http.Queryable.QueryApiFilterCondition.<Clone>$() -> Kaleido.Http.Queryable.QueryApiFilterCondition!
+Kaleido.Http.Queryable.QueryApiFilterCondition.Equals(Kaleido.Http.Queryable.QueryApiFilterCondition? other) -> bool
+Kaleido.Http.Queryable.QueryApiFilterCondition.Field.get -> string!
+Kaleido.Http.Queryable.QueryApiFilterCondition.Field.init -> void
+Kaleido.Http.Queryable.QueryApiFilterCondition.Operator.get -> string!
+Kaleido.Http.Queryable.QueryApiFilterCondition.Operator.init -> void
+Kaleido.Http.Queryable.QueryApiFilterCondition.QueryApiFilterCondition() -> void
+Kaleido.Http.Queryable.QueryApiFilterCondition.Values.get -> System.Collections.Generic.IReadOnlyList<System.Text.Json.JsonElement>?
+Kaleido.Http.Queryable.QueryApiFilterCondition.Values.init -> void
+Kaleido.Http.Queryable.QueryApiFilterGroup
+Kaleido.Http.Queryable.QueryApiFilterGroup.<Clone>$() -> Kaleido.Http.Queryable.QueryApiFilterGroup!
+Kaleido.Http.Queryable.QueryApiFilterGroup.Equals(Kaleido.Http.Queryable.QueryApiFilterGroup? other) -> bool
+Kaleido.Http.Queryable.QueryApiFilterGroup.Filters.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Http.Queryable.QueryApiFilterNode!>?
+Kaleido.Http.Queryable.QueryApiFilterGroup.Filters.init -> void
+Kaleido.Http.Queryable.QueryApiFilterGroup.Operator.get -> string!
+Kaleido.Http.Queryable.QueryApiFilterGroup.Operator.init -> void
+Kaleido.Http.Queryable.QueryApiFilterGroup.QueryApiFilterGroup() -> void
+Kaleido.Http.Queryable.QueryApiFilterNode
+Kaleido.Http.Queryable.QueryApiFilterNode.<Clone>$() -> Kaleido.Http.Queryable.QueryApiFilterNode!
+Kaleido.Http.Queryable.QueryApiFilterNode.Condition.get -> Kaleido.Http.Queryable.QueryApiFilterCondition?
+Kaleido.Http.Queryable.QueryApiFilterNode.Condition.init -> void
+Kaleido.Http.Queryable.QueryApiFilterNode.Equals(Kaleido.Http.Queryable.QueryApiFilterNode? other) -> bool
+Kaleido.Http.Queryable.QueryApiFilterNode.Group.get -> Kaleido.Http.Queryable.QueryApiFilterGroup?
+Kaleido.Http.Queryable.QueryApiFilterNode.Group.init -> void
+Kaleido.Http.Queryable.QueryApiFilterNode.QueryApiFilterNode() -> void
+Kaleido.Http.Queryable.QueryApiPage
+Kaleido.Http.Queryable.QueryApiPage.<Clone>$() -> Kaleido.Http.Queryable.QueryApiPage!
+Kaleido.Http.Queryable.QueryApiPage.Equals(Kaleido.Http.Queryable.QueryApiPage? other) -> bool
+Kaleido.Http.Queryable.QueryApiPage.Offset.get -> int?
+Kaleido.Http.Queryable.QueryApiPage.Offset.init -> void
+Kaleido.Http.Queryable.QueryApiPage.QueryApiPage() -> void
+Kaleido.Http.Queryable.QueryApiPage.Size.get -> int?
+Kaleido.Http.Queryable.QueryApiPage.Size.init -> void
+Kaleido.Http.Queryable.QueryApiRequest
+Kaleido.Http.Queryable.QueryApiRequest.<Clone>$() -> Kaleido.Http.Queryable.QueryApiRequest!
+Kaleido.Http.Queryable.QueryApiRequest.Deconstruct(out Kaleido.Http.Queryable.QueryApiBody? Query) -> void
+Kaleido.Http.Queryable.QueryApiRequest.Equals(Kaleido.Http.Queryable.QueryApiRequest? other) -> bool
+Kaleido.Http.Queryable.QueryApiRequest.Query.get -> Kaleido.Http.Queryable.QueryApiBody?
+Kaleido.Http.Queryable.QueryApiRequest.Query.init -> void
+Kaleido.Http.Queryable.QueryApiRequest.QueryApiRequest(Kaleido.Http.Queryable.QueryApiBody? Query = null) -> void
+Kaleido.Http.Queryable.QueryApiRequest<TParameters>
+Kaleido.Http.Queryable.QueryApiRequest<TParameters>.Deconstruct(out TParameters? Parameters, out Kaleido.Http.Queryable.QueryApiBody? Query) -> void
+Kaleido.Http.Queryable.QueryApiRequest<TParameters>.Parameters.get -> TParameters?
+Kaleido.Http.Queryable.QueryApiRequest<TParameters>.Parameters.init -> void
+Kaleido.Http.Queryable.QueryApiRequest<TParameters>.Query.get -> Kaleido.Http.Queryable.QueryApiBody?
+Kaleido.Http.Queryable.QueryApiRequest<TParameters>.Query.init -> void
+Kaleido.Http.Queryable.QueryApiRequest<TParameters>.QueryApiRequest(TParameters? Parameters = null, Kaleido.Http.Queryable.QueryApiBody? Query = null) -> void
+Kaleido.Http.Queryable.QueryApiSort
+Kaleido.Http.Queryable.QueryApiSort.<Clone>$() -> Kaleido.Http.Queryable.QueryApiSort!
+Kaleido.Http.Queryable.QueryApiSort.Direction.get -> string!
+Kaleido.Http.Queryable.QueryApiSort.Direction.init -> void
+Kaleido.Http.Queryable.QueryApiSort.Equals(Kaleido.Http.Queryable.QueryApiSort? other) -> bool
+Kaleido.Http.Queryable.QueryApiSort.Field.get -> string!
+Kaleido.Http.Queryable.QueryApiSort.Field.init -> void
+Kaleido.Http.Queryable.QueryApiSort.QueryApiSort() -> void
+Kaleido.Http.Queryable.QueryApiSort.Sequence.get -> int?
+Kaleido.Http.Queryable.QueryApiSort.Sequence.init -> void
+Kaleido.Http.Registry.AggregatedRegistryResponse
+Kaleido.Http.Registry.AggregatedRegistryResponse.<Clone>$() -> Kaleido.Http.Registry.AggregatedRegistryResponse!
+Kaleido.Http.Registry.AggregatedRegistryResponse.AggregatedRegistryResponse() -> void
+Kaleido.Http.Registry.AggregatedRegistryResponse.ClientErrors.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.RegistryClientError!>!
+Kaleido.Http.Registry.AggregatedRegistryResponse.ClientErrors.init -> void
+Kaleido.Http.Registry.AggregatedRegistryResponse.Equals(Kaleido.Http.Registry.AggregatedRegistryResponse? other) -> bool
+Kaleido.Http.Registry.AggregatedRegistryResponse.GeneratedAt.get -> System.DateTimeOffset
+Kaleido.Http.Registry.AggregatedRegistryResponse.GeneratedAt.init -> void
+Kaleido.Http.Registry.AggregatedRegistryResponse.IsPartial.get -> bool
+Kaleido.Http.Registry.AggregatedRegistryResponse.IsPartial.init -> void
+Kaleido.Http.Registry.AggregatedRegistryResponse.Processes.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessorRegistryResponse!>!
+Kaleido.Http.Registry.AggregatedRegistryResponse.Processes.init -> void
+Kaleido.Http.Registry.AggregatedRegistryResponse.Queryables.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableSourceResponse!>!
+Kaleido.Http.Registry.AggregatedRegistryResponse.Queryables.init -> void
+Kaleido.Http.Registry.AggregatedRegistryResponse.Revision.get -> string?
+Kaleido.Http.Registry.AggregatedRegistryResponse.Revision.init -> void
+Kaleido.Http.Registry.ConstraintMetadata
+Kaleido.Http.Registry.ConstraintMetadata.<Clone>$() -> Kaleido.Http.Registry.ConstraintMetadata!
+Kaleido.Http.Registry.ConstraintMetadata.ConstraintMetadata() -> void
+Kaleido.Http.Registry.ConstraintMetadata.Equals(Kaleido.Http.Registry.ConstraintMetadata? other) -> bool
+Kaleido.Http.Registry.ConstraintMetadata.Parameters.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.ConstraintParameterMetadata!>!
+Kaleido.Http.Registry.ConstraintMetadata.Parameters.init -> void
+Kaleido.Http.Registry.ConstraintMetadata.Type.get -> string!
+Kaleido.Http.Registry.ConstraintMetadata.Type.init -> void
+Kaleido.Http.Registry.ConstraintParameterMetadata
+Kaleido.Http.Registry.ConstraintParameterMetadata.<Clone>$() -> Kaleido.Http.Registry.ConstraintParameterMetadata!
+Kaleido.Http.Registry.ConstraintParameterMetadata.ConstraintParameterMetadata() -> void
+Kaleido.Http.Registry.ConstraintParameterMetadata.Equals(Kaleido.Http.Registry.ConstraintParameterMetadata? other) -> bool
+Kaleido.Http.Registry.ConstraintParameterMetadata.Name.get -> string!
+Kaleido.Http.Registry.ConstraintParameterMetadata.Name.init -> void
+Kaleido.Http.Registry.ConstraintParameterMetadata.Value.get -> object?
+Kaleido.Http.Registry.ConstraintParameterMetadata.Value.init -> void
+Kaleido.Http.Registry.DataTypeMetadata
+Kaleido.Http.Registry.DataTypeMetadata.<Clone>$() -> Kaleido.Http.Registry.DataTypeMetadata!
+Kaleido.Http.Registry.DataTypeMetadata.DataTypeMetadata(string! Type, string? Format = null, bool Nullable = false, System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.EnumValueMetadata!>? EnumValues = null, Kaleido.Http.Registry.DataTypeMetadata? ItemType = null) -> void
+Kaleido.Http.Registry.DataTypeMetadata.Deconstruct(out string! Type, out string? Format, out bool Nullable, out System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.EnumValueMetadata!>? EnumValues, out Kaleido.Http.Registry.DataTypeMetadata? ItemType) -> void
+Kaleido.Http.Registry.DataTypeMetadata.EnumValues.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.EnumValueMetadata!>?
+Kaleido.Http.Registry.DataTypeMetadata.EnumValues.init -> void
+Kaleido.Http.Registry.DataTypeMetadata.Equals(Kaleido.Http.Registry.DataTypeMetadata? other) -> bool
+Kaleido.Http.Registry.DataTypeMetadata.Format.get -> string?
+Kaleido.Http.Registry.DataTypeMetadata.Format.init -> void
+Kaleido.Http.Registry.DataTypeMetadata.ItemType.get -> Kaleido.Http.Registry.DataTypeMetadata?
+Kaleido.Http.Registry.DataTypeMetadata.ItemType.init -> void
+Kaleido.Http.Registry.DataTypeMetadata.Nullable.get -> bool
+Kaleido.Http.Registry.DataTypeMetadata.Nullable.init -> void
+Kaleido.Http.Registry.DataTypeMetadata.Type.get -> string!
+Kaleido.Http.Registry.DataTypeMetadata.Type.init -> void
+Kaleido.Http.Registry.EnumValueMetadata
+Kaleido.Http.Registry.EnumValueMetadata.<Clone>$() -> Kaleido.Http.Registry.EnumValueMetadata!
+Kaleido.Http.Registry.EnumValueMetadata.Deconstruct(out int Value, out string! Name, out string? Description) -> void
+Kaleido.Http.Registry.EnumValueMetadata.Description.get -> string?
+Kaleido.Http.Registry.EnumValueMetadata.Description.init -> void
+Kaleido.Http.Registry.EnumValueMetadata.EnumValueMetadata(int Value, string! Name, string? Description) -> void
+Kaleido.Http.Registry.EnumValueMetadata.Equals(Kaleido.Http.Registry.EnumValueMetadata? other) -> bool
+Kaleido.Http.Registry.EnumValueMetadata.Name.get -> string!
+Kaleido.Http.Registry.EnumValueMetadata.Name.init -> void
+Kaleido.Http.Registry.EnumValueMetadata.Value.get -> int
+Kaleido.Http.Registry.EnumValueMetadata.Value.init -> void
+Kaleido.Http.Registry.IRegistrySnapshotStore
+Kaleido.Http.Registry.IRegistrySnapshotStore.GetAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Kaleido.Http.Registry.AggregatedRegistryResponse?>
+Kaleido.Http.Registry.IRegistrySnapshotStore.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Kaleido.Http.Registry.IRegistrySnapshotStore.SetAsync(string! key, Kaleido.Http.Registry.AggregatedRegistryResponse! snapshot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Kaleido.Http.Registry.RegistryClientError
+Kaleido.Http.Registry.RegistryClientError.<Clone>$() -> Kaleido.Http.Registry.RegistryClientError!
+Kaleido.Http.Registry.RegistryClientError.ClientName.get -> string!
+Kaleido.Http.Registry.RegistryClientError.ClientName.init -> void
+Kaleido.Http.Registry.RegistryClientError.ClientType.get -> string!
+Kaleido.Http.Registry.RegistryClientError.ClientType.init -> void
+Kaleido.Http.Registry.RegistryClientError.Equals(Kaleido.Http.Registry.RegistryClientError? other) -> bool
+Kaleido.Http.Registry.RegistryClientError.Reason.get -> string!
+Kaleido.Http.Registry.RegistryClientError.Reason.init -> void
+Kaleido.Http.Registry.RegistryClientError.RegistryClientError() -> void
+override Kaleido.Http.KaleidoError.Equals(object? obj) -> bool
+override Kaleido.Http.KaleidoError.GetHashCode() -> int
+override Kaleido.Http.KaleidoError.ToString() -> string!
+override Kaleido.Http.KaleidoErrorResponse.Equals(object? obj) -> bool
+override Kaleido.Http.KaleidoErrorResponse.GetHashCode() -> int
+override Kaleido.Http.KaleidoErrorResponse.ToString() -> string!
+override Kaleido.Http.Processor.ExecuteProcessRequest.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ExecuteProcessRequest.GetHashCode() -> int
+override Kaleido.Http.Processor.ExecuteProcessRequest.ToString() -> string!
+override Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.GetHashCode() -> int
+override Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.ToString() -> string!
+override Kaleido.Http.Processor.ProcessExecutionResponse.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessExecutionResponse.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessExecutionResponse.ToString() -> string!
+override Kaleido.Http.Processor.ProcessExecutionStepResponse.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessExecutionStepResponse.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessExecutionStepResponse.ToString() -> string!
+override Kaleido.Http.Processor.ProcessFieldLookup.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessFieldLookup.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessFieldLookup.ToString() -> string!
+override Kaleido.Http.Processor.ProcessFieldMetadata.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessFieldMetadata.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessFieldMetadata.ToString() -> string!
+override Kaleido.Http.Processor.ProcessorRegistryResponse.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessorRegistryResponse.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessorRegistryResponse.ToString() -> string!
+override Kaleido.Http.Processor.ProcessOutputFieldMetadata.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessOutputFieldMetadata.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessOutputFieldMetadata.ToString() -> string!
+override Kaleido.Http.Processor.ProcessRequiredStep.<Clone>$() -> Kaleido.Http.Processor.ProcessRequiredStep!
+override Kaleido.Http.Processor.ProcessRequiredStep.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessRequiredStep.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessRequiredStep.ToString() -> string!
+override Kaleido.Http.Processor.ProcessStateResponse.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessStateResponse.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessStateResponse.ToString() -> string!
+override Kaleido.Http.Processor.ProcessStepContract.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessStepContract.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessStepContract.ToString() -> string!
+override Kaleido.Http.Processor.ProcessStepHistory.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessStepHistory.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessStepHistory.ToString() -> string!
+override Kaleido.Http.Processor.ProcessStepRequest.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessStepRequest.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessStepRequest.ToString() -> string!
+override Kaleido.Http.Processor.ProcessStepResponse.<Clone>$() -> Kaleido.Http.Processor.ProcessStepResponse!
+override Kaleido.Http.Processor.ProcessStepResponse.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessStepResponse.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessStepResponse.ToString() -> string!
+override Kaleido.Http.Processor.ProcessStepResultMetadata.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessStepResultMetadata.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessStepResultMetadata.ToString() -> string!
+override Kaleido.Http.Processor.ProcessStepSummary.<Clone>$() -> Kaleido.Http.Processor.ProcessStepSummary!
+override Kaleido.Http.Processor.ProcessStepSummary.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.ProcessStepSummary.GetHashCode() -> int
+override Kaleido.Http.Processor.ProcessStepSummary.ToString() -> string!
+override Kaleido.Http.Processor.StepExecutionResponse.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.StepExecutionResponse.GetHashCode() -> int
+override Kaleido.Http.Processor.StepExecutionResponse.ToString() -> string!
+override Kaleido.Http.Processor.StepExecutionResponse<TResponse>.<Clone>$() -> Kaleido.Http.Processor.StepExecutionResponse<TResponse>!
+override Kaleido.Http.Processor.StepExecutionResponse<TResponse>.Equals(object? obj) -> bool
+override Kaleido.Http.Processor.StepExecutionResponse<TResponse>.GetHashCode() -> int
+override Kaleido.Http.Processor.StepExecutionResponse<TResponse>.ToString() -> string!
+override Kaleido.Http.Queryable.QueryableFieldMetadata.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryableFieldMetadata.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryableFieldMetadata.ToString() -> string!
+override Kaleido.Http.Queryable.QueryablePagingMetadata.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryablePagingMetadata.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryablePagingMetadata.ToString() -> string!
+override Kaleido.Http.Queryable.QueryableQueryParameter.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryableQueryParameter.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryableQueryParameter.ToString() -> string!
+override Kaleido.Http.Queryable.QueryableQueryProperty.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryableQueryProperty.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryableQueryProperty.ToString() -> string!
+override Kaleido.Http.Queryable.QueryableSourceResponse.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryableSourceResponse.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryableSourceResponse.ToString() -> string!
+override Kaleido.Http.Queryable.QueryableViewResponse.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryableViewResponse.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryableViewResponse.ToString() -> string!
+override Kaleido.Http.Queryable.QueryApiBody.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryApiBody.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryApiBody.ToString() -> string!
+override Kaleido.Http.Queryable.QueryApiFilterCondition.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryApiFilterCondition.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryApiFilterCondition.ToString() -> string!
+override Kaleido.Http.Queryable.QueryApiFilterGroup.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryApiFilterGroup.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryApiFilterGroup.ToString() -> string!
+override Kaleido.Http.Queryable.QueryApiFilterNode.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryApiFilterNode.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryApiFilterNode.ToString() -> string!
+override Kaleido.Http.Queryable.QueryApiPage.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryApiPage.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryApiPage.ToString() -> string!
+override Kaleido.Http.Queryable.QueryApiRequest.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryApiRequest.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryApiRequest.ToString() -> string!
+override Kaleido.Http.Queryable.QueryApiRequest<TParameters>.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryApiRequest<TParameters>.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryApiRequest<TParameters>.ToString() -> string!
+override Kaleido.Http.Queryable.QueryApiSort.Equals(object? obj) -> bool
+override Kaleido.Http.Queryable.QueryApiSort.GetHashCode() -> int
+override Kaleido.Http.Queryable.QueryApiSort.ToString() -> string!
+override Kaleido.Http.Registry.AggregatedRegistryResponse.Equals(object? obj) -> bool
+override Kaleido.Http.Registry.AggregatedRegistryResponse.GetHashCode() -> int
+override Kaleido.Http.Registry.AggregatedRegistryResponse.ToString() -> string!
+override Kaleido.Http.Registry.ConstraintMetadata.Equals(object? obj) -> bool
+override Kaleido.Http.Registry.ConstraintMetadata.GetHashCode() -> int
+override Kaleido.Http.Registry.ConstraintMetadata.ToString() -> string!
+override Kaleido.Http.Registry.ConstraintParameterMetadata.Equals(object? obj) -> bool
+override Kaleido.Http.Registry.ConstraintParameterMetadata.GetHashCode() -> int
+override Kaleido.Http.Registry.ConstraintParameterMetadata.ToString() -> string!
+override Kaleido.Http.Registry.DataTypeMetadata.Equals(object? obj) -> bool
+override Kaleido.Http.Registry.DataTypeMetadata.GetHashCode() -> int
+override Kaleido.Http.Registry.DataTypeMetadata.ToString() -> string!
+override Kaleido.Http.Registry.EnumValueMetadata.Equals(object? obj) -> bool
+override Kaleido.Http.Registry.EnumValueMetadata.GetHashCode() -> int
+override Kaleido.Http.Registry.EnumValueMetadata.ToString() -> string!
+override Kaleido.Http.Registry.RegistryClientError.Equals(object? obj) -> bool
+override Kaleido.Http.Registry.RegistryClientError.GetHashCode() -> int
+override Kaleido.Http.Registry.RegistryClientError.ToString() -> string!
+override sealed Kaleido.Http.Processor.ProcessRequiredStep.Equals(Kaleido.Http.Processor.ProcessStepContract? other) -> bool
+override sealed Kaleido.Http.Processor.ProcessStepResponse.Equals(Kaleido.Http.Processor.ProcessStepContract? other) -> bool
+override sealed Kaleido.Http.Processor.ProcessStepSummary.Equals(Kaleido.Http.Processor.ProcessStepContract? other) -> bool
+override sealed Kaleido.Http.Processor.StepExecutionResponse<TResponse>.Equals(Kaleido.Http.Processor.StepExecutionResponse? other) -> bool
+static Kaleido.Http.KaleidoError.operator !=(Kaleido.Http.KaleidoError? left, Kaleido.Http.KaleidoError? right) -> bool
+static Kaleido.Http.KaleidoError.operator ==(Kaleido.Http.KaleidoError? left, Kaleido.Http.KaleidoError? right) -> bool
+static Kaleido.Http.KaleidoErrorResponse.operator !=(Kaleido.Http.KaleidoErrorResponse? left, Kaleido.Http.KaleidoErrorResponse? right) -> bool
+static Kaleido.Http.KaleidoErrorResponse.operator ==(Kaleido.Http.KaleidoErrorResponse? left, Kaleido.Http.KaleidoErrorResponse? right) -> bool
+static Kaleido.Http.Processor.ExecuteProcessRequest.operator !=(Kaleido.Http.Processor.ExecuteProcessRequest? left, Kaleido.Http.Processor.ExecuteProcessRequest? right) -> bool
+static Kaleido.Http.Processor.ExecuteProcessRequest.operator ==(Kaleido.Http.Processor.ExecuteProcessRequest? left, Kaleido.Http.Processor.ExecuteProcessRequest? right) -> bool
+static Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.operator !=(Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>? left, Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>? right) -> bool
+static Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.operator ==(Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>? left, Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>? right) -> bool
+static Kaleido.Http.Processor.ProcessExecutionResponse.operator !=(Kaleido.Http.Processor.ProcessExecutionResponse? left, Kaleido.Http.Processor.ProcessExecutionResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessExecutionResponse.operator ==(Kaleido.Http.Processor.ProcessExecutionResponse? left, Kaleido.Http.Processor.ProcessExecutionResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessExecutionStepResponse.operator !=(Kaleido.Http.Processor.ProcessExecutionStepResponse? left, Kaleido.Http.Processor.ProcessExecutionStepResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessExecutionStepResponse.operator ==(Kaleido.Http.Processor.ProcessExecutionStepResponse? left, Kaleido.Http.Processor.ProcessExecutionStepResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessFieldLookup.operator !=(Kaleido.Http.Processor.ProcessFieldLookup? left, Kaleido.Http.Processor.ProcessFieldLookup? right) -> bool
+static Kaleido.Http.Processor.ProcessFieldLookup.operator ==(Kaleido.Http.Processor.ProcessFieldLookup? left, Kaleido.Http.Processor.ProcessFieldLookup? right) -> bool
+static Kaleido.Http.Processor.ProcessFieldMetadata.operator !=(Kaleido.Http.Processor.ProcessFieldMetadata? left, Kaleido.Http.Processor.ProcessFieldMetadata? right) -> bool
+static Kaleido.Http.Processor.ProcessFieldMetadata.operator ==(Kaleido.Http.Processor.ProcessFieldMetadata? left, Kaleido.Http.Processor.ProcessFieldMetadata? right) -> bool
+static Kaleido.Http.Processor.ProcessorRegistryResponse.operator !=(Kaleido.Http.Processor.ProcessorRegistryResponse? left, Kaleido.Http.Processor.ProcessorRegistryResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessorRegistryResponse.operator ==(Kaleido.Http.Processor.ProcessorRegistryResponse? left, Kaleido.Http.Processor.ProcessorRegistryResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessOutputFieldMetadata.operator !=(Kaleido.Http.Processor.ProcessOutputFieldMetadata? left, Kaleido.Http.Processor.ProcessOutputFieldMetadata? right) -> bool
+static Kaleido.Http.Processor.ProcessOutputFieldMetadata.operator ==(Kaleido.Http.Processor.ProcessOutputFieldMetadata? left, Kaleido.Http.Processor.ProcessOutputFieldMetadata? right) -> bool
+static Kaleido.Http.Processor.ProcessRequiredStep.operator !=(Kaleido.Http.Processor.ProcessRequiredStep? left, Kaleido.Http.Processor.ProcessRequiredStep? right) -> bool
+static Kaleido.Http.Processor.ProcessRequiredStep.operator ==(Kaleido.Http.Processor.ProcessRequiredStep? left, Kaleido.Http.Processor.ProcessRequiredStep? right) -> bool
+static Kaleido.Http.Processor.ProcessStateResponse.operator !=(Kaleido.Http.Processor.ProcessStateResponse? left, Kaleido.Http.Processor.ProcessStateResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessStateResponse.operator ==(Kaleido.Http.Processor.ProcessStateResponse? left, Kaleido.Http.Processor.ProcessStateResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessStepContract.operator !=(Kaleido.Http.Processor.ProcessStepContract? left, Kaleido.Http.Processor.ProcessStepContract? right) -> bool
+static Kaleido.Http.Processor.ProcessStepContract.operator ==(Kaleido.Http.Processor.ProcessStepContract? left, Kaleido.Http.Processor.ProcessStepContract? right) -> bool
+static Kaleido.Http.Processor.ProcessStepHistory.operator !=(Kaleido.Http.Processor.ProcessStepHistory? left, Kaleido.Http.Processor.ProcessStepHistory? right) -> bool
+static Kaleido.Http.Processor.ProcessStepHistory.operator ==(Kaleido.Http.Processor.ProcessStepHistory? left, Kaleido.Http.Processor.ProcessStepHistory? right) -> bool
+static Kaleido.Http.Processor.ProcessStepRequest.operator !=(Kaleido.Http.Processor.ProcessStepRequest? left, Kaleido.Http.Processor.ProcessStepRequest? right) -> bool
+static Kaleido.Http.Processor.ProcessStepRequest.operator ==(Kaleido.Http.Processor.ProcessStepRequest? left, Kaleido.Http.Processor.ProcessStepRequest? right) -> bool
+static Kaleido.Http.Processor.ProcessStepResponse.operator !=(Kaleido.Http.Processor.ProcessStepResponse? left, Kaleido.Http.Processor.ProcessStepResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessStepResponse.operator ==(Kaleido.Http.Processor.ProcessStepResponse? left, Kaleido.Http.Processor.ProcessStepResponse? right) -> bool
+static Kaleido.Http.Processor.ProcessStepResultMetadata.operator !=(Kaleido.Http.Processor.ProcessStepResultMetadata? left, Kaleido.Http.Processor.ProcessStepResultMetadata? right) -> bool
+static Kaleido.Http.Processor.ProcessStepResultMetadata.operator ==(Kaleido.Http.Processor.ProcessStepResultMetadata? left, Kaleido.Http.Processor.ProcessStepResultMetadata? right) -> bool
+static Kaleido.Http.Processor.ProcessStepSummary.operator !=(Kaleido.Http.Processor.ProcessStepSummary? left, Kaleido.Http.Processor.ProcessStepSummary? right) -> bool
+static Kaleido.Http.Processor.ProcessStepSummary.operator ==(Kaleido.Http.Processor.ProcessStepSummary? left, Kaleido.Http.Processor.ProcessStepSummary? right) -> bool
+static Kaleido.Http.Processor.StepExecutionResponse.operator !=(Kaleido.Http.Processor.StepExecutionResponse? left, Kaleido.Http.Processor.StepExecutionResponse? right) -> bool
+static Kaleido.Http.Processor.StepExecutionResponse.operator ==(Kaleido.Http.Processor.StepExecutionResponse? left, Kaleido.Http.Processor.StepExecutionResponse? right) -> bool
+static Kaleido.Http.Processor.StepExecutionResponse<TResponse>.operator !=(Kaleido.Http.Processor.StepExecutionResponse<TResponse>? left, Kaleido.Http.Processor.StepExecutionResponse<TResponse>? right) -> bool
+static Kaleido.Http.Processor.StepExecutionResponse<TResponse>.operator ==(Kaleido.Http.Processor.StepExecutionResponse<TResponse>? left, Kaleido.Http.Processor.StepExecutionResponse<TResponse>? right) -> bool
+static Kaleido.Http.Queryable.QueryableFieldMetadata.operator !=(Kaleido.Http.Queryable.QueryableFieldMetadata? left, Kaleido.Http.Queryable.QueryableFieldMetadata? right) -> bool
+static Kaleido.Http.Queryable.QueryableFieldMetadata.operator ==(Kaleido.Http.Queryable.QueryableFieldMetadata? left, Kaleido.Http.Queryable.QueryableFieldMetadata? right) -> bool
+static Kaleido.Http.Queryable.QueryablePagingMetadata.operator !=(Kaleido.Http.Queryable.QueryablePagingMetadata? left, Kaleido.Http.Queryable.QueryablePagingMetadata? right) -> bool
+static Kaleido.Http.Queryable.QueryablePagingMetadata.operator ==(Kaleido.Http.Queryable.QueryablePagingMetadata? left, Kaleido.Http.Queryable.QueryablePagingMetadata? right) -> bool
+static Kaleido.Http.Queryable.QueryableQueryParameter.operator !=(Kaleido.Http.Queryable.QueryableQueryParameter? left, Kaleido.Http.Queryable.QueryableQueryParameter? right) -> bool
+static Kaleido.Http.Queryable.QueryableQueryParameter.operator ==(Kaleido.Http.Queryable.QueryableQueryParameter? left, Kaleido.Http.Queryable.QueryableQueryParameter? right) -> bool
+static Kaleido.Http.Queryable.QueryableQueryProperty.operator !=(Kaleido.Http.Queryable.QueryableQueryProperty? left, Kaleido.Http.Queryable.QueryableQueryProperty? right) -> bool
+static Kaleido.Http.Queryable.QueryableQueryProperty.operator ==(Kaleido.Http.Queryable.QueryableQueryProperty? left, Kaleido.Http.Queryable.QueryableQueryProperty? right) -> bool
+static Kaleido.Http.Queryable.QueryableSourceResponse.operator !=(Kaleido.Http.Queryable.QueryableSourceResponse? left, Kaleido.Http.Queryable.QueryableSourceResponse? right) -> bool
+static Kaleido.Http.Queryable.QueryableSourceResponse.operator ==(Kaleido.Http.Queryable.QueryableSourceResponse? left, Kaleido.Http.Queryable.QueryableSourceResponse? right) -> bool
+static Kaleido.Http.Queryable.QueryableViewResponse.operator !=(Kaleido.Http.Queryable.QueryableViewResponse? left, Kaleido.Http.Queryable.QueryableViewResponse? right) -> bool
+static Kaleido.Http.Queryable.QueryableViewResponse.operator ==(Kaleido.Http.Queryable.QueryableViewResponse? left, Kaleido.Http.Queryable.QueryableViewResponse? right) -> bool
+static Kaleido.Http.Queryable.QueryApiBody.operator !=(Kaleido.Http.Queryable.QueryApiBody? left, Kaleido.Http.Queryable.QueryApiBody? right) -> bool
+static Kaleido.Http.Queryable.QueryApiBody.operator ==(Kaleido.Http.Queryable.QueryApiBody? left, Kaleido.Http.Queryable.QueryApiBody? right) -> bool
+static Kaleido.Http.Queryable.QueryApiBodyExtensions.ToApiBody(this Kaleido.Queryable.Query.QueryBody? body) -> Kaleido.Http.Queryable.QueryApiBody?
+static Kaleido.Http.Queryable.QueryApiFilterCondition.operator !=(Kaleido.Http.Queryable.QueryApiFilterCondition? left, Kaleido.Http.Queryable.QueryApiFilterCondition? right) -> bool
+static Kaleido.Http.Queryable.QueryApiFilterCondition.operator ==(Kaleido.Http.Queryable.QueryApiFilterCondition? left, Kaleido.Http.Queryable.QueryApiFilterCondition? right) -> bool
+static Kaleido.Http.Queryable.QueryApiFilterGroup.operator !=(Kaleido.Http.Queryable.QueryApiFilterGroup? left, Kaleido.Http.Queryable.QueryApiFilterGroup? right) -> bool
+static Kaleido.Http.Queryable.QueryApiFilterGroup.operator ==(Kaleido.Http.Queryable.QueryApiFilterGroup? left, Kaleido.Http.Queryable.QueryApiFilterGroup? right) -> bool
+static Kaleido.Http.Queryable.QueryApiFilterNode.operator !=(Kaleido.Http.Queryable.QueryApiFilterNode? left, Kaleido.Http.Queryable.QueryApiFilterNode? right) -> bool
+static Kaleido.Http.Queryable.QueryApiFilterNode.operator ==(Kaleido.Http.Queryable.QueryApiFilterNode? left, Kaleido.Http.Queryable.QueryApiFilterNode? right) -> bool
+static Kaleido.Http.Queryable.QueryApiPage.operator !=(Kaleido.Http.Queryable.QueryApiPage? left, Kaleido.Http.Queryable.QueryApiPage? right) -> bool
+static Kaleido.Http.Queryable.QueryApiPage.operator ==(Kaleido.Http.Queryable.QueryApiPage? left, Kaleido.Http.Queryable.QueryApiPage? right) -> bool
+static Kaleido.Http.Queryable.QueryApiRequest.operator !=(Kaleido.Http.Queryable.QueryApiRequest? left, Kaleido.Http.Queryable.QueryApiRequest? right) -> bool
+static Kaleido.Http.Queryable.QueryApiRequest.operator ==(Kaleido.Http.Queryable.QueryApiRequest? left, Kaleido.Http.Queryable.QueryApiRequest? right) -> bool
+static Kaleido.Http.Queryable.QueryApiSort.operator !=(Kaleido.Http.Queryable.QueryApiSort? left, Kaleido.Http.Queryable.QueryApiSort? right) -> bool
+static Kaleido.Http.Queryable.QueryApiSort.operator ==(Kaleido.Http.Queryable.QueryApiSort? left, Kaleido.Http.Queryable.QueryApiSort? right) -> bool
+static Kaleido.Http.Registry.AggregatedRegistryResponse.operator !=(Kaleido.Http.Registry.AggregatedRegistryResponse? left, Kaleido.Http.Registry.AggregatedRegistryResponse? right) -> bool
+static Kaleido.Http.Registry.AggregatedRegistryResponse.operator ==(Kaleido.Http.Registry.AggregatedRegistryResponse? left, Kaleido.Http.Registry.AggregatedRegistryResponse? right) -> bool
+static Kaleido.Http.Registry.ConstraintMetadata.operator !=(Kaleido.Http.Registry.ConstraintMetadata? left, Kaleido.Http.Registry.ConstraintMetadata? right) -> bool
+static Kaleido.Http.Registry.ConstraintMetadata.operator ==(Kaleido.Http.Registry.ConstraintMetadata? left, Kaleido.Http.Registry.ConstraintMetadata? right) -> bool
+static Kaleido.Http.Registry.ConstraintParameterMetadata.operator !=(Kaleido.Http.Registry.ConstraintParameterMetadata? left, Kaleido.Http.Registry.ConstraintParameterMetadata? right) -> bool
+static Kaleido.Http.Registry.ConstraintParameterMetadata.operator ==(Kaleido.Http.Registry.ConstraintParameterMetadata? left, Kaleido.Http.Registry.ConstraintParameterMetadata? right) -> bool
+static Kaleido.Http.Registry.DataTypeMetadata.operator !=(Kaleido.Http.Registry.DataTypeMetadata? left, Kaleido.Http.Registry.DataTypeMetadata? right) -> bool
+static Kaleido.Http.Registry.DataTypeMetadata.operator ==(Kaleido.Http.Registry.DataTypeMetadata? left, Kaleido.Http.Registry.DataTypeMetadata? right) -> bool
+static Kaleido.Http.Registry.EnumValueMetadata.operator !=(Kaleido.Http.Registry.EnumValueMetadata? left, Kaleido.Http.Registry.EnumValueMetadata? right) -> bool
+static Kaleido.Http.Registry.EnumValueMetadata.operator ==(Kaleido.Http.Registry.EnumValueMetadata? left, Kaleido.Http.Registry.EnumValueMetadata? right) -> bool
+static Kaleido.Http.Registry.RegistryClientError.operator !=(Kaleido.Http.Registry.RegistryClientError? left, Kaleido.Http.Registry.RegistryClientError? right) -> bool
+static Kaleido.Http.Registry.RegistryClientError.operator ==(Kaleido.Http.Registry.RegistryClientError? left, Kaleido.Http.Registry.RegistryClientError? right) -> bool
+static readonly Kaleido.Http.KaleidoJsonOptions.Options -> System.Text.Json.JsonSerializerOptions!
+virtual Kaleido.Http.Processor.ProcessStepContract.EqualityContract.get -> System.Type!
+virtual Kaleido.Http.Processor.ProcessStepContract.Equals(Kaleido.Http.Processor.ProcessStepContract? other) -> bool
+virtual Kaleido.Http.Processor.ProcessStepContract.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Kaleido.Http.Processor.StepExecutionResponse.<Clone>$() -> Kaleido.Http.Processor.StepExecutionResponse!
+virtual Kaleido.Http.Processor.StepExecutionResponse.EqualityContract.get -> System.Type!
+virtual Kaleido.Http.Processor.StepExecutionResponse.Equals(Kaleido.Http.Processor.StepExecutionResponse? other) -> bool
+virtual Kaleido.Http.Processor.StepExecutionResponse.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Kaleido.Http.Queryable.QueryApiBody.<Clone>$() -> Kaleido.Http.Queryable.QueryApiBody!
+virtual Kaleido.Http.Queryable.QueryApiBody.EqualityContract.get -> System.Type!
+virtual Kaleido.Http.Queryable.QueryApiBody.Equals(Kaleido.Http.Queryable.QueryApiBody? other) -> bool
+virtual Kaleido.Http.Queryable.QueryApiBody.PrintMembers(System.Text.StringBuilder! builder) -> bool
+~Kaleido.Http.Queryable.QueryApiRequest<TParameters>.<Clone>$() -> Kaleido.Http.Queryable.QueryApiRequest<TParameters>!
+~Kaleido.Http.Queryable.QueryApiRequest<TParameters>.Equals(Kaleido.Http.Queryable.QueryApiRequest<TParameters>? other) -> bool
+~static Kaleido.Http.Queryable.QueryApiRequest<TParameters>.operator !=(Kaleido.Http.Queryable.QueryApiRequest<TParameters>? left, Kaleido.Http.Queryable.QueryApiRequest<TParameters>? right) -> bool
+~static Kaleido.Http.Queryable.QueryApiRequest<TParameters>.operator ==(Kaleido.Http.Queryable.QueryApiRequest<TParameters>? left, Kaleido.Http.Queryable.QueryApiRequest<TParameters>? right) -> bool

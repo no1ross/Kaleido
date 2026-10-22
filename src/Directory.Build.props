@@ -13,6 +13,11 @@
         <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" />
         <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
         <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all" />
+        <!-- #313: each package's public API is recorded in its .PublicAPI/PublicAPI.Shipped.txt and
+             PublicAPI.Unshipped.txt; an unrecorded addition or removal fails the build (RS0016/RS0017). -->
+        <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+        <AdditionalFiles Include="$(MSBuildProjectDirectory)\.PublicAPI\PublicAPI.Shipped.txt" />
+        <AdditionalFiles Include="$(MSBuildProjectDirectory)\.PublicAPI\PublicAPI.Unshipped.txt" />
         <ProjectReference Include="$(MSBuildThisFileDirectory)..\tools\analyzers\Kaleido.Analyzers.Source\Kaleido.Analyzers.Source.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
     </ItemGroup>
 </Project>

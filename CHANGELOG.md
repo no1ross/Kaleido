@@ -52,6 +52,9 @@ sections.
   400 for a step it cannot build (#392).
 - **Public API surface:** core runtime internals and registry descriptors made internal; wire contracts
   self-contained in `Kaleido.Http.Abstractions` ([ADR 0017](docs/decisions/0017-transport-contract-placement.md), #389, #390).
+- **Public API baseline** (#313): each package's public API is recorded in `PublicAPI.Shipped.txt` /
+  `PublicAPI.Unshipped.txt`; an unrecorded change fails the build. `KaleidoHttpClientException` has
+  one constructor: `(code, message, statusCode, errors = null, innerException = null)`.
 - **Cancellation tokens are required** (#313): no public async API defaults its `CancellationToken`
   any more (handlers, async sources and views, delegated sources, `IEventPublisher`, the store
   contracts, `IKaleidoOutbox`, `IKaleidoTransactions`, the Kaleido clients, `IRegistrySnapshotStore`),

@@ -1,0 +1,28 @@
+#nullable enable
+Kaleido.Http.KaleidoEndpointRouteBuilderExtensions
+Kaleido.Http.KaleidoHttpMapOptions
+Kaleido.Http.KaleidoHttpMapOptions.AggregateRegistry.get -> bool
+Kaleido.Http.KaleidoHttpMapOptions.AggregateRegistry.set -> void
+Kaleido.Http.KaleidoHttpMapOptions.KaleidoHttpMapOptions() -> void
+Kaleido.Http.KaleidoHttpMapOptions.RegistryCacheTtl.get -> System.TimeSpan?
+Kaleido.Http.KaleidoHttpMapOptions.RegistryCacheTtl.set -> void
+Kaleido.Http.KaleidoHttpMapOptions.RegistryDownstreamMaxParallelism.get -> int?
+Kaleido.Http.KaleidoHttpMapOptions.RegistryDownstreamMaxParallelism.set -> void
+Kaleido.Http.KaleidoHttpMapOptions.RegistryRefreshCooldown.get -> System.TimeSpan
+Kaleido.Http.KaleidoHttpMapOptions.RegistryRefreshCooldown.set -> void
+Kaleido.Http.KaleidoHttpOptions
+Kaleido.Http.KaleidoHttpOptions.IdempotencyLease.get -> System.TimeSpan
+Kaleido.Http.KaleidoHttpOptions.IdempotencyLease.set -> void
+Kaleido.Http.KaleidoHttpOptions.IdempotencyRetention.get -> System.TimeSpan
+Kaleido.Http.KaleidoHttpOptions.IdempotencyRetention.set -> void
+Kaleido.Http.KaleidoHttpOptions.IncludeFrameworkMessages.get -> bool
+Kaleido.Http.KaleidoHttpOptions.IncludeFrameworkMessages.set -> void
+Kaleido.Http.KaleidoHttpOptions.KaleidoHttpOptions() -> void
+Kaleido.Http.KaleidoHttpOptions.TrustCorrelationIdentity.get -> System.Func<Microsoft.AspNetCore.Http.HttpContext!, bool>?
+Kaleido.Http.KaleidoHttpOptions.TrustCorrelationIdentity.set -> void
+Kaleido.Http.KaleidoHttpServiceCollectionExtensions
+Kaleido.Http.Registry.IKaleidoRegistryService
+Kaleido.Http.Registry.IKaleidoRegistryService.GetForCallerAsync(bool refresh, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Registry.AggregatedRegistryResponse!>!
+Kaleido.Http.Registry.IKaleidoRegistryService.IsMapped.get -> bool
+static Kaleido.Http.KaleidoEndpointRouteBuilderExtensions.MapKaleidoHttp(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, System.Action<Kaleido.Http.KaleidoHttpMapOptions!>? configure = null) -> Microsoft.AspNetCore.Builder.IEndpointConventionBuilder!
+static Kaleido.Http.KaleidoHttpServiceCollectionExtensions.AddHttp(this Kaleido.IKaleidoBuilder! builder, System.Action<Kaleido.Http.KaleidoHttpOptions!>? configure = null) -> Kaleido.IKaleidoBuilder!
