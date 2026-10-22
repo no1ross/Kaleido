@@ -8,6 +8,8 @@
 > - SQLite's single-writer file model is deliberately unsuitable for the multi-node, multi-instance scenarios durable process state is designed for. Shipping it to production is an anti-pattern.
 > - The `Kaleido.Provider.SQLite.UnitTests` suite is the **executable contract specification**: if your implementation passes equivalent round-trip fidelity, update, and multi-instance tests, it satisfies the contracts.
 
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
+
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - [`../Kaleido/README.md`](../Kaleido/README.md)

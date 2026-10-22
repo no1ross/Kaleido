@@ -2,6 +2,8 @@
 
 This project is Kaleido's core runtime. It contains everything needed to bootstrap the framework and run Process and Queryable capabilities at the application layer, without requiring any transport or ASP.NET Core dependency.
 
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
+
 For the full repository model, see:
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 - [`../AGENTS.md`](../AGENTS.md)

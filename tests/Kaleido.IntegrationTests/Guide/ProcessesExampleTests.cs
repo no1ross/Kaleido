@@ -1,0 +1,106 @@
+using System.Text.Json;
+
+namespace Kaleido.IntegrationTests.Guide;
+
+// docs/guide/processes.md, run: relationships, outcomes and a handoff, as the page states them.
+public sealed class ProcessesExampleTests
+{
+    private static readonly object Book = new { item = "Book" };
+
+    private static IEnumerable<string> Available(JsonElement answer) =>
+        answer.TryGetProperty("availableSteps", out var steps) && steps.ValueKind == JsonValueKind.Array
+            ? steps.EnumerateArray().Select(x => x.GetProperty("name").GetString() ?? string.Empty)
+            : [];
+
+    private static async Task<Guid> ConfirmedOrderAsync(GuideHost host)
+    {
+        var placed = await host.StepAsync("PlaceOrderStep", Book);
+        var processId = placed.GetProperty("processId").GetGuid();
+        await host.StepAsync("ConfirmOrderStep", new { }, processId);
+        return processId;
+    }
+
+    [Fact]
+    public async Task ARejectedStep_LeavesTheProcessAsItWas_AndCanBeCalledAgain()
+    {
+        await using var host = await GuideHost.StartAsync();
+        var processId = await ConfirmedOrderAsync(host);
+
+        var rejected = await host.StepAsync("ShipOrderStep", new { carrier = "courier", address = "1 Main St" }, processId);
+        var shipped = await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "1 Main St" }, processId);
+
+        Assert.Equal("rejected", rejected.GetProperty("outcome").GetString());
+        Assert.Contains("ShipOrderStep", Available(rejected));
+        Assert.Equal("completed", shipped.GetProperty("outcome").GetString());
+    }
+
+    [Fact]
+    public async Task AFailedStep_EndsTheProcess()
+    {
+        await using var host = await GuideHost.StartAsync();
+        var processId = await ConfirmedOrderAsync(host);
+
+        var failed = await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "Base 1, Antarctica" }, processId);
+        var (_, state) = await host.SendAsync(HttpMethod.Get, $"/orders/processes/{processId}");
+
+        Assert.Equal("failed", failed.GetProperty("outcome").GetString());
+        Assert.Equal("businessFailure", state.GetProperty("state").GetString());
+    }
+
+    // While a step is required, another step does not run: the answer is pending, with the required
+    // step again (not an error).
+    [Fact]
+    public async Task WhileAStepIsRequired_AnotherStepIsAnsweredPending_WithTheRequiredStep()
+    {
+        await using var host = await GuideHost.StartAsync();
+        var placed = await host.StepAsync("PlaceOrderStep", Book);
+
+        var note = await host.StepAsync("AddNoteStep", new { text = "Leave at the door" }, placed.GetProperty("processId").GetGuid());
+
+        Assert.Equal("pending", note.GetProperty("outcome").GetString());
+        Assert.Equal("ConfirmOrderStep", note.GetProperty("requiredStep").GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task ARepeatableStep_RunsAgain_AndAStepWithoutRepeatable_IsNotOfferedAgain()
+    {
+        await using var host = await GuideHost.StartAsync();
+        var processId = await ConfirmedOrderAsync(host);
+
+        var first = await host.StepAsync("AddNoteStep", new { text = "Leave at the door" }, processId);
+        var second = await host.StepAsync("AddNoteStep", new { text = "Ring twice" }, processId);
+
+        Assert.Equal("completed", first.GetProperty("outcome").GetString());
+        Assert.Equal("completed", second.GetProperty("outcome").GetString());
+        Assert.Contains("AddNoteStep", Available(second));
+        Assert.DoesNotContain("ConfirmOrderStep", Available(second));
+    }
+
+    [Fact]
+    public async Task AvailableUntil_ClosesCancelOnceShipped_AndShippingOnceCancelled()
+    {
+        await using var host = await GuideHost.StartAsync();
+        var shippedProcess = await ConfirmedOrderAsync(host);
+        var cancelledProcess = await ConfirmedOrderAsync(host);
+
+        var shipped = await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "1 Main St" }, shippedProcess);
+        var cancelled = await host.StepAsync("CancelOrderStep", new { }, cancelledProcess);
+
+        Assert.DoesNotContain("CancelOrderStep", Available(shipped));
+        Assert.Contains("ReturnOrderStep", Available(shipped));
+        Assert.DoesNotContain("ShipOrderStep", Available(cancelled));
+    }
+
+    [Fact]
+    public async Task AHandOff_NamesTheProcessorThatContinues()
+    {
+        await using var host = await GuideHost.StartAsync();
+        var processId = await ConfirmedOrderAsync(host);
+        await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "1 Main St" }, processId);
+
+        var returned = await host.StepAsync("ReturnOrderStep", new { }, processId);
+
+        Assert.Equal("completed", returned.GetProperty("outcome").GetString());
+        Assert.Equal("returns", returned.GetProperty("targetProcessorName").GetString());
+    }
+}

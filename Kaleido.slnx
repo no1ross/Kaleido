@@ -9,6 +9,9 @@
     <File Path="docs/PATTERNS.md" />
     <File Path="docs/VERSIONING.md" />
   </Folder>
+  <Folder Name="/docs/guide/">
+    <Project Path="docs/guide/examples/Kaleido.Guide.Examples.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <File Path="samples/Directory.Build.props" />
     <File Path="samples/Directory.Packages.props" />
