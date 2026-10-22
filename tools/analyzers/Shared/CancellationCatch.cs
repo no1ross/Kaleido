@@ -148,26 +148,18 @@ internal static class CancellationCatch
     }
 
     // Whether the filter can be true / false for a cancellation, and for any other exception.
-    private readonly struct Outcome
+    private readonly struct Outcome(bool cancellationTrue, bool cancellationFalse, bool otherTrue, bool otherFalse)
     {
         public static readonly Outcome Unknown = new(true, true, true, true);
         public static readonly Outcome Always = new(true, false, true, false);
 
-        public Outcome(bool cancellationTrue, bool cancellationFalse, bool otherTrue, bool otherFalse)
-        {
-            CancellationTrue = cancellationTrue;
-            CancellationFalse = cancellationFalse;
-            OtherTrue = otherTrue;
-            OtherFalse = otherFalse;
-        }
+        public bool CancellationTrue { get; } = cancellationTrue;
 
-        public bool CancellationTrue { get; }
+        public bool CancellationFalse { get; } = cancellationFalse;
 
-        public bool CancellationFalse { get; }
+        public bool OtherTrue { get; } = otherTrue;
 
-        public bool OtherTrue { get; }
-
-        public bool OtherFalse { get; }
+        public bool OtherFalse { get; } = otherFalse;
 
         public Outcome Not() => new(CancellationFalse, CancellationTrue, OtherFalse, OtherTrue);
 

@@ -6,14 +6,9 @@ using Kaleido.Http.Registry;
 namespace Kaleido.Http.FunctionalTests.Processor.Discovery;
 
 [Collection(nameof(ProcessorAspNetCoreSuite))]
-public sealed class ProcessDiscoveryTests
+public sealed class ProcessDiscoveryTests(ProcessorAspNetCoreFixture fixture)
 {
-    private readonly HttpClient _client;
-
-    public ProcessDiscoveryTests(ProcessorAspNetCoreFixture fixture)
-    {
-        _client = fixture.Client;
-    }
+    private readonly HttpClient _client = fixture.Client;
 
     [Fact]
     public async Task GetRegistry_ReturnsProcessorsWithInitialSteps()

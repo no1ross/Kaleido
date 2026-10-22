@@ -6,20 +6,14 @@ using Kaleido.Http.Queryable;
 
 namespace Kaleido.Http.FunctionalTests.Queryable.Execution;
 
-public sealed class DelegatedQuerySourceTests : IClassFixture<QueryableAspNetCoreFixture>
+public sealed class DelegatedQuerySourceTests(QueryableAspNetCoreFixture fixture) : IClassFixture<QueryableAspNetCoreFixture>
 {
     private const string QueryUrl = "/kaleido/queryable/functionalrecordsummarysource/query";
 
     private static readonly string[] EastRegion = ["East"];
 
-    private readonly HttpClient _client;
-    private readonly IKaleidoQueryableClientFactory _factory;
-
-    public DelegatedQuerySourceTests(QueryableAspNetCoreFixture fixture)
-    {
-        _client = fixture.Client;
-        _factory = fixture.ClientFactory;
-    }
+    private readonly HttpClient _client = fixture.Client;
+    private readonly IKaleidoQueryableClientFactory _factory = fixture.ClientFactory;
 
     [Fact]
     public async Task Registry_PublishesDelegatedSourceLikeAnyOtherSource()
