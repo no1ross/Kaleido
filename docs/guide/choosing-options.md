@@ -55,7 +55,7 @@ See [Processes - Concurrent and repeated calls](processes.md#concurrent-and-repe
 
 | Situation | Register | See |
 |---|---|---|
-| Classified fields in events | `AddEventClassificationRedaction(...)` or `AddEventRedactor<T>()` | [Events - Redaction](events-and-outbox.md#redaction) |
+| Classified fields in events | `AddEventRedaction(...)` or `AddEventRedactor<T>()` | [Events - Redaction](events-and-outbox.md#redaction) |
 | Export traces and metrics | `AddOpenTelemetry()` | [OpenTelemetry README](../../src/Kaleido.Observability.OpenTelemetry/README.md) |
 
 ## Queries on EF Core

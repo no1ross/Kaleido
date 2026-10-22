@@ -112,13 +112,13 @@ registration, the shipping step's event carries no address:
 ```csharp
 kaleido
     .AddEventPublisher<WarehousePublisher>()
-    .AddEventClassificationRedaction(r =>
+    .AddEventRedaction(r =>
         r.SetRedactor<ErasingRedactor>(new DataClassificationSet(ShopClassifications.Personal)));
 ```
 
 | Registration | Effect |
 |---|---|
-| `AddEventClassificationRedaction(...)` | the events' redactor per classification (`ErasingRedactor`, a hashing redactor, ...) |
+| `AddEventRedaction(...)` | the events' redactor per classification (`ErasingRedactor`, a hashing redactor, ...) |
 | `AddEventRedactor<T>()` | your own `IKaleidoEventRedactor` |
 | (neither) | classified fields are erased, with a warning at startup |
 
