@@ -18,6 +18,10 @@
   - `npm run build`
 - If a change touches UI + backend integration, validate both
 
+## UI dependencies
+- `npm audit` in `priorauth-ui` is kept at 0 (#97). Upgrade with versions published at least 7 days earlier (Dependabot's cooldown is 7 days); never `npm audit fix --force`. `npm install --before=<date>` re-resolves without picking a newer transitive release.
+- `package.json` `overrides` pin `vite` 7.3.7 and `@modelcontextprotocol/sdk` 1.32.1, the fixed versions that `@angular/build`/`@angular/cli` 21.2.28 depend on. **Remove both overrides when Angular is updated to 21.2.28 or later**: they would otherwise hold back the Vite and MCP SDK versions Angular asks for.
+
 ## Local run workflow
 - Prefer the compose file under `samples/PriorAuth/Compose/` (`docker-compose.yml`; `docker-compose.override.yml` is for local overrides and sets nothing by default): it runs the router, every service and the UI as Production (see [Configuration per environment](#configuration-per-environment))
 - For backend-only work, `dotnet run` the affected services instead
