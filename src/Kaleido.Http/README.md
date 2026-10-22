@@ -211,7 +211,15 @@ A client whose `RoutePrefix` equals this service's `ServiceName` is skipped (sel
 - `RegistryRefreshCooldown` — minimum interval between honored `?refresh` requests (default 30s). Refreshes inside the window serve the cache instead of re-fanning-out; an honored refresh first invalidates each downstream client snapshot so the rebuild re-fetches.
 - `RegistryDownstreamMaxParallelism` — maximum number of downstream registry fetches in flight at once during an aggregate build (default: unbounded). Set it on a router that aggregates many services.
 
-**Shared snapshots across replicas:** `AddDistributedRegistrySnapshots()` (on `IKaleidoBuilder`, from `Kaleido.Http.Abstractions`) replaces the in-memory store with one on the host's `IDistributedCache`; the host registers the cache itself, and Kaleido references no cache technology:
+In-host consumers (such as the MCP adapter) read the same caller-filtered payload without HTTP through `IKaleidoRegistryService`: `GetForCallerAsync()` returns it with its revision, and `IsMapped` reports whether `MapKaleidoHttp()` has run.
+
+The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
+
+**Route-prefix contract:** every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. Downstream consumers address a service through a named client whose `RoutePrefix` must equal that service's `ServiceName`. `RoutePrefix` defaults to the client key lowercased — so a client named `"Member"` expects the Member service to have `Kaleido:ServiceName = "member"`. A mismatch produces silent 404s at call time, not startup errors. `ServiceName` must match `[a-z0-9][a-z0-9_-]*` (lowercase ASCII letters, digits, `-` and `_`, starting with a letter or digit); `AddKaleido` rejects any other value at startup (`invalid_service_name`) and KAL2005 reports constant values at build time.
+
+### Shared snapshots across replicas
+
+`AddDistributedRegistrySnapshots()` (on `IKaleidoBuilder`, from `Kaleido.Http.Abstractions`) replaces the in-memory store with one on the host's `IDistributedCache`; the host registers the cache itself, and Kaleido references no cache technology:
 
 ```csharp
 builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConnection);
@@ -221,12 +229,6 @@ builder.Services.AddKaleido(builder.Configuration).AddHttp().AddHttpClients().Ad
 - The router's snapshot (`kaleido:{ServiceName}`) is built by the first replica that finds it stale; the others serve it. Each client's copy of a downstream registry (`kaleido-client:{ServiceName}:{clientName}`) is shared the same way, so a replica that rebuilds merges the copies another stored while they are fresh.
 - Snapshots are stored as JSON without a cache expiry; freshness stays with `RegistryCacheTtl` and the clients' `RegistryTtl`. Without a distributed lock, replicas that find the snapshot stale at the same moment may each rebuild once.
 - **The cache never fails a registry read.** Every snapshot is also kept in memory. While the cache is unreachable, a replica serves and keeps its own snapshots, logs one warning, and tries the cache again 30 seconds later.
-
-In-host consumers (such as the MCP adapter) read the same caller-filtered payload without HTTP through `IKaleidoRegistryService`: `GetForCallerAsync()` returns it with its revision, and `IsMapped` reports whether `MapKaleidoHttp()` has run.
-
-The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
-
-**Route-prefix contract:** every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. Downstream consumers address a service through a named client whose `RoutePrefix` must equal that service's `ServiceName`. `RoutePrefix` defaults to the client key lowercased — so a client named `"Member"` expects the Member service to have `Kaleido:ServiceName = "member"`. A mismatch produces silent 404s at call time, not startup errors. `ServiceName` must match `[a-z0-9][a-z0-9_-]*` (lowercase ASCII letters, digits, `-` and `_`, starting with a letter or digit); `AddKaleido` rejects any other value at startup (`invalid_service_name`) and KAL2005 reports constant values at build time.
 
 ---
 
