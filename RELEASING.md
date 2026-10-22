@@ -43,7 +43,14 @@ run, without a GitHub Release. Check:
 ## Releasing a version
 
 1. **Changelog.** Move the `Unreleased` entries in [`CHANGELOG.md`](CHANGELOG.md) under a heading for
-   the version (with the date), and list its breaking changes. Merge it.
+   the version (with the date), and list its breaking changes. For a stable release (1.0 and later),
+   in the same pull request:
+   - move each package's `PublicAPI.Unshipped.txt` lines to its `PublicAPI.Shipped.txt`, leaving
+     only the `#nullable enable` header ([public API baseline](docs/VERSIONING.md#the-public-api-baseline));
+   - move the `KAL2xxx` rows to `AnalyzerReleases.Shipped.md` under `## Release <version>`.
+
+   Merge it. After 1.0 has shipped, enable package validation against it (`EnablePackageValidation`
+   with `PackageValidationBaselineVersion` 1.0.0) in `src/Directory.Build.props`.
 2. **Version.** Set the version in `version.json` (e.g. `"1.0.0"` for a stable release, or keep
    `1.0.0-preview.{height}` for a preview) in a pull request; merge it. A `v*` tag does not change the
    version by itself.

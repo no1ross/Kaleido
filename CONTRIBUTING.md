@@ -48,6 +48,9 @@ The commit message says why, names the issue (`Fixes #N`) and records the gate r
 - CI must be green: build, tests, the coverage gate (95% line coverage of `src/`), the documentation
   checks, Sonar and CodeQL.
 - New public types and members carry XML documentation (the build enforces it).
+- A public API change updates the package's `PublicAPI.Unshipped.txt` (the build fails otherwise:
+  RS0016/RS0017; the IDE code fix writes the line). The diff is the API review
+  ([public API baseline](./docs/VERSIONING.md#the-public-api-baseline)).
 
 ### Pull requests written by AI agents
 

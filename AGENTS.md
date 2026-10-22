@@ -65,6 +65,7 @@ One place owns each fact: a project's README lists its types and entry points, [
 - Every public type and public member in `src/` must carry strong XML documentation (`<summary>`, plus `<remarks>`, `<typeparam>`, `<param>`, `<returns>`, `<exception>`, `<example>` where they add meaning). Public APIs are consumed by people, generated docs, and AI agents — the docs are part of the contract.
 - Document behavior and intent, not restated signatures: what it is for, invariants, failure modes, and how it relates to neighbouring types.
 - Keep docs truthful to the code — verify semantics before writing them, and update them in the same change when behavior changes.
+- Every public API change is recorded in the package's `PublicAPI.Unshipped.txt` (RS0016/RS0017 fail the build otherwise; #313). No public async method defaults its `CancellationToken` (KAL0016), and no two overloads both take optional parameters (RS0026/RS0027). See [the public API baseline](./docs/VERSIONING.md#the-public-api-baseline).
 
 ### Primary constructors
 - Use primary constructor syntax for simple dependency injection: `class MyClass(IService service)`

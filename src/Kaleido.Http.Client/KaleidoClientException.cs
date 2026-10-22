@@ -22,37 +22,13 @@ public sealed class KaleidoHttpClientException : Exception
     /// <param name="errors">
     /// The structured errors from the remote error body; <see langword="null"/> becomes an empty list.
     /// </param>
+    /// <param name="innerException">The exception that caused the failure, if any (a timeout, a broken connection).</param>
     public KaleidoHttpClientException(
         string code,
         string message,
         HttpStatusCode statusCode,
-        IReadOnlyList<KaleidoError>? errors = null)
-        : base(message)
-    {
-        Code = code;
-        StatusCode = statusCode;
-        Errors = errors ?? [];
-    }
-
-    /// <summary>
-    /// Creates the exception for a failed remote Kaleido call, wrapping the exception that caused it.
-    /// </summary>
-    /// <param name="code">The diagnostic code, a <see cref="HttpClientErrorCodes"/> value.</param>
-    /// <param name="message">A description of the call and why it failed.</param>
-    /// <param name="statusCode">
-    /// The status of the remote response, or the status that best describes a failure detected by
-    /// the client itself.
-    /// </param>
-    /// <param name="innerException">The exception that caused the failure.</param>
-    /// <param name="errors">
-    /// The structured errors from the remote error body; <see langword="null"/> becomes an empty list.
-    /// </param>
-    public KaleidoHttpClientException(
-        string code,
-        string message,
-        HttpStatusCode statusCode,
-        Exception innerException,
-        IReadOnlyList<KaleidoError>? errors = null)
+        IReadOnlyList<KaleidoError>? errors = null,
+        Exception? innerException = null)
         : base(message, innerException)
     {
         Code = code;
