@@ -5,6 +5,8 @@ tools. The tools are generated from the registry (the host's own capabilities, o
 of its clients on a router), filtered per caller, and every call runs **as the caller**, through
 the Kaleido HTTP clients with the caller's token forwarded.
 
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
+
 ```csharp
 builder.Services
     .AddKaleido(builder.Configuration, o => o.ServiceName = "router")

@@ -55,6 +55,9 @@ sections.
 - **Consumer analyzer rules:** KAL2008 removed; KAL0004/KAL1011 removed (#401).
 
 ### Added
+- Consumer guide (`docs/guide`): concepts, events and the outbox, persistence, deployment and choosing options, around one orders service whose examples are compiled, checked against the pages in CI (`tools/docs/check-guide-snippets.py`) and run by tests (#409).
+- Warnings fail the build in `tests/` and `samples/`; IDE code-style rules run in `tests/` and `tools/` (#406).
+- The samples count full query pages with one `SELECT COUNT`; the documented EF Core executor also serves non-EF sources in the same host (#352).
 - Front-door provenance on events and spans: `Origin`/`OriginTool` end to end, `CallerActor` per hop (#403).
 - MCP trust-boundary, instructions-resource and integration documentation; functional trust tests (#403).
 - Help links on every consumer analyzer rule; a clean-consumer package test in CI (#401).
