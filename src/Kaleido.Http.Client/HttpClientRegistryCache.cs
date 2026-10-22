@@ -3,7 +3,7 @@ namespace Kaleido.Http.Client;
 /// <summary>
 /// Thread-safe cache for one remote registry payload, backed by
 /// <see cref="IRegistrySnapshotStore"/> under the client's own key
-/// (<c>kaleido-client:{clientName}</c>, never the remote service's
+/// (<c>kaleido-client:{ServiceName}:{clientName}</c>, never the remote service's
 /// <c>kaleido:{ServiceName}</c>). With a distributed store registered, replicas of
 /// the consuming host share the same entry per client. Owns the SemaphoreSlim and
 /// double-check locking for <see cref="KaleidoRemoteRegistry"/>. Failed fetches

@@ -24,6 +24,7 @@ public sealed class KaleidoQueryableClientTests
         var remoteRegistry = new KaleidoRemoteRegistry(
             factory.Object,
             CreateSnapshotStore(),
+            new KaleidoServiceOptions { ServiceName = "consumer" },
             NullLogger<KaleidoRemoteRegistry>.Instance);
 
         return new(
