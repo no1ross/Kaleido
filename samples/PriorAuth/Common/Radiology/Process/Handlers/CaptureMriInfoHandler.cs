@@ -21,7 +21,7 @@ public sealed class CaptureMriInfoHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureMriInfoStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         // Kaleido has already checked the answers fit the presented questions; translating them
         // into the domain's own values is the handler's job.

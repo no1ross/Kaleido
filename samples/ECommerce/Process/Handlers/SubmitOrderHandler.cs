@@ -13,7 +13,7 @@ internal sealed class SubmitOrderHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         SubmitOrderStep step,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var order =
             await dbContext.Orders

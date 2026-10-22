@@ -17,7 +17,7 @@ internal interface IDelegatedQuerySourceEngine<TQueryContext, TResult>
     Task<QueryResult<TResult>> ExecuteAsync(
         IQueryRequest request,
         QuerySourceRegistration source,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
@@ -48,7 +48,7 @@ internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
     public async Task<QueryResult<TResult>> ExecuteAsync(
         IQueryRequest request,
         QuerySourceRegistration source,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var details =
             new QueryObservationDetails(

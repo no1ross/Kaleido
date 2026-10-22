@@ -52,6 +52,13 @@ sections.
   400 for a step it cannot build (#392).
 - **Public API surface:** core runtime internals and registry descriptors made internal; wire contracts
   self-contained in `Kaleido.Http.Abstractions` ([ADR 0017](docs/decisions/0017-transport-contract-placement.md), #389, #390).
+- **Cancellation tokens are required** (#313): no public async API defaults its `CancellationToken`
+  any more (handlers, async sources and views, delegated sources, `IEventPublisher`, the store
+  contracts, `IKaleidoOutbox`, `IKaleidoTransactions`, the Kaleido clients, `IRegistrySnapshotStore`),
+  so a caller cannot silently drop cancellation. Callers pass their token; an implementation may keep
+  a default. Parameters that preceded the token became required too: the by-name
+  `ExecuteStepAsync(stepName, processStep, processId, cancellationToken)` (pass `null` for no
+  process). `QueryApiRequest` and `QueryApiRequest<TParameters>` are sealed.
 - **Analyzer rule IDs renumbered** (#416): rules removed before the first release (#401 and earlier) no
   longer leave gaps; each family is numbered contiguously. A preview's suppressions or `.editorconfig`
   severities by ID need the new number:

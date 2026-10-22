@@ -145,7 +145,7 @@ public sealed class ShippingRateSource
 {
     public Task<QueryResult<ShippingRate>> ExecuteAsync(
         IQueryRequest<ShippingRateParameters> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         // In a real service: call the price service with the request's filter and paging.
         ShippingRate[] rates = request.ViewParameters?.Country == "NL"

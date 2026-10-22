@@ -14,7 +14,7 @@ internal sealed class ReconcileCartHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         ReconcileCartStep step,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var customer =
             await dbContext.Customers

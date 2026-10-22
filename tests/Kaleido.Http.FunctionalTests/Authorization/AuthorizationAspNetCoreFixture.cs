@@ -109,7 +109,7 @@ public sealed class AuthorizationAspNetCoreFixture
                             endpoints.MapGet(
                                 InProcessRegistryUrl,
                                 async (Kaleido.Http.Registry.IKaleidoRegistryService registry, CancellationToken cancellationToken) =>
-                                    Results.Json(await registry.GetForCallerAsync(cancellationToken: cancellationToken), KaleidoJsonOptions.Options));
+                                    Results.Json(await registry.GetForCallerAsync(refresh: false, cancellationToken: cancellationToken), KaleidoJsonOptions.Options));
                         });
                     });
                 })

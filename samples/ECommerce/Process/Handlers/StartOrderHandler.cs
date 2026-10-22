@@ -13,7 +13,7 @@
 //    public async Task<ProcessStepHandlerResult<StartOrderResponse>> ExecuteAsync(
 //        StartOrderStep step,
 //        ProcessStepContext context,
-//        CancellationToken cancellationToken = default)
+//        CancellationToken cancellationToken)
 //    {
 //        var now =
 //            DateTimeOffset.UtcNow;

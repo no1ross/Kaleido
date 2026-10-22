@@ -127,7 +127,7 @@ public sealed class HttpRegistryCacheTests
         await store.SetAsync(Key, new AggregatedRegistryResponse
         {
             GeneratedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
-        });
+        }, TestContext.Current.CancellationToken);
 
         using var sut = CreateSut(store);
         var buildCount = 0;
@@ -153,7 +153,7 @@ public sealed class HttpRegistryCacheTests
         await store.SetAsync(Key, new AggregatedRegistryResponse
         {
             GeneratedAt = DateTimeOffset.UtcNow
-        });
+        }, TestContext.Current.CancellationToken);
 
         using var sut = CreateSut(store);
         var buildCount = 0;
@@ -249,7 +249,7 @@ public sealed class HttpRegistryCacheTests
         await store.SetAsync(Key, new AggregatedRegistryResponse
         {
             GeneratedAt = DateTimeOffset.UtcNow.AddMinutes(-1)
-        });
+        }, TestContext.Current.CancellationToken);
 
         using var sut = CreateSut(store);
         var buildCount = 0;

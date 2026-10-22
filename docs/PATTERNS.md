@@ -340,12 +340,12 @@ Rules:
   internal sealed class EfCoreQueryContextExecutor<TView> : IQueryContextExecutor<TView>
       where TView : class
   {
-      public Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
+      public Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken) =>
           query.Provider is IAsyncQueryProvider       // Microsoft.EntityFrameworkCore.Query
               ? EntityFrameworkQueryableExtensions.CountAsync(query, cancellationToken)
               : Task.FromResult(query.Count());
 
-      public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
+      public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken) =>
           query.Provider is IAsyncQueryProvider
               ? await EntityFrameworkQueryableExtensions.ToListAsync(query, cancellationToken)
               : query.ToList();

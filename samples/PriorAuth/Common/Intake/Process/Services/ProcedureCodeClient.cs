@@ -10,7 +10,7 @@ public sealed class ProcedureCodeClient(
     public async Task<ProcedureCodeQueryContext?> GetProcedureCodeAsync(
         string codeValue,
         ProcedureCodeSystem codeSystem,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var result = await queryableClientFactory
             .GetClient("CodeSet")

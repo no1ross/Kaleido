@@ -20,7 +20,7 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
     [Fact]
     public async Task GetRegistryAsync_ReturnsAllSources()
     {
-        var registry = await _factory.GetClient("test").GetRegistryAsync();
+        var registry = await _factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
 
         Assert.Contains(registry, r => r.Name == "FunctionalRecordContextSource");
     }
@@ -28,7 +28,7 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
     [Fact]
     public async Task GetRegistryAsync_ContainsExpectedQueryUrls()
     {
-        var registry = await _factory.GetClient("test").GetRegistryAsync();
+        var registry = await _factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
 
         var record = Assert.Single(registry, r => r.Name == "FunctionalRecordContextSource");
         Assert.Equal("/kaleido/queryable/functionalrecordcontextsource/query", record.QueryUrl);
@@ -46,7 +46,7 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
             "FunctionalRecordGridView",
             new QueryApiRequest<FunctionalRecordViewParameters>(
                 new FunctionalRecordViewParameters { Category = "Alpha" },
-                new QueryApiBody()));
+                new QueryApiBody()), TestContext.Current.CancellationToken);
 
         // The view's default page (3) in its default order, with the total of all its rows.
         Assert.Equal(6, result.TotalCount);
@@ -64,7 +64,7 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
     {
         var result = await _factory.GetClient("test").QuerySourceAsync<FunctionalRecordContext>(
             "FunctionalRecordContextSource",
-            new QueryApiRequest(new QueryApiBody { Page = new QueryApiPage { Size = 10 } }));
+            new QueryApiRequest(new QueryApiBody { Page = new QueryApiPage { Size = 10 } }), TestContext.Current.CancellationToken);
 
         var expected = new FunctionalRecordData().Records.OrderBy(x => x.Id).ToArray();
         Assert.Equal(6, result.TotalCount);
@@ -98,7 +98,7 @@ public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixt
 
         var exception =
             await Assert.ThrowsAsync<Kaleido.Http.Client.KaleidoHttpClientException>(() =>
-                _factory.GetClient("test").QuerySourceAsync<FunctionalRecordContext>("FunctionalRecordContextSource", new QueryApiRequest(body)));
+                _factory.GetClient("test").QuerySourceAsync<FunctionalRecordContext>("FunctionalRecordContextSource", new QueryApiRequest(body), TestContext.Current.CancellationToken));
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, exception.StatusCode);
         Assert.Contains(exception.Errors, x => x.Code == "qry_field_not_filterable");

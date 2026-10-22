@@ -58,7 +58,7 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
 
         var (factory, captured) = BuildClientFactory(ctx);
 
-        await factory.GetClient("test").GetRegistryAsync();
+        await factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
 
         var request = Assert.Single(captured);
         Assert.Equal("req-process-header-test",
@@ -84,7 +84,7 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
 
         var (factory, captured) = BuildClientFactory(ctx);
 
-        await factory.GetClient("test").GetRegistryAsync();
+        await factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
 
         var request = Assert.Single(captured);
         Assert.Equal("req-process-header-test",
@@ -98,7 +98,7 @@ public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCore
     {
         var (factory, captured) = BuildClientFactory(new KaleidoCorrelationContext());
 
-        await factory.GetClient("test").GetRegistryAsync();
+        await factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
 
         var request = Assert.Single(captured);
         Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.RequestId));

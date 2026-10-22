@@ -31,7 +31,7 @@ public interface IKaleidoProcessorClient
     /// request fails or returns no payload.
     /// </remarks>
     Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Drops the cached registry snapshot of this client's service so the next operation re-fetches
@@ -41,7 +41,7 @@ public interface IKaleidoProcessorClient
     /// <param name="cancellationToken">Cancels the removal from the snapshot store.</param>
     /// <returns>A task that completes once the snapshot has been removed.</returns>
     Task InvalidateRegistryAsync(
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Gets the current state of a remote process (<c>GET /{service}/processes/{processId}</c>).
@@ -59,7 +59,7 @@ public interface IKaleidoProcessorClient
     /// </remarks>
     Task<ProcessStateResponse?> GetProcessStateAsync(
         Guid processId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Executes one or more steps in a single call to the remote multi-step execute endpoint
@@ -76,7 +76,7 @@ public interface IKaleidoProcessorClient
     /// </remarks>
     Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Executes a process step remotely. The step is identified by the type name of
@@ -97,7 +97,7 @@ public interface IKaleidoProcessorClient
     /// </remarks>
     Task<StepExecutionResponse> ExecuteStepAsync<TStep>(
         TStep processStep,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TStep : class;
 
     /// <summary>
@@ -118,7 +118,7 @@ public interface IKaleidoProcessorClient
     /// </remarks>
     Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(
         TStep processStep,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TStep : class;
 
     /// <summary>
@@ -142,6 +142,6 @@ public interface IKaleidoProcessorClient
     Task<StepExecutionResponse<JsonElement>> ExecuteStepAsync(
         string stepName,
         JsonElement processStep,
-        Guid? processId = null,
-        CancellationToken cancellationToken = default);
+        Guid? processId,
+        CancellationToken cancellationToken);
 }

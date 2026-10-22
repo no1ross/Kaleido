@@ -15,7 +15,7 @@ namespace Kaleido.Http.Mcp.Tools;
 /// </remarks>
 internal interface IToolCatalogProvider
 {
-    Task<ToolCatalog> GetAsync(CancellationToken cancellationToken = default);
+    Task<ToolCatalog> GetAsync(CancellationToken cancellationToken);
 }
 
 internal sealed partial class ToolCatalogProvider(
@@ -32,7 +32,7 @@ internal sealed partial class ToolCatalogProvider(
     // the listing is part of the key, so hosts with different settings never share a catalog).
     private static readonly ConcurrentDictionary<string, ToolCatalog> Catalogs = new(StringComparer.Ordinal);
 
-    public async Task<ToolCatalog> GetAsync(CancellationToken cancellationToken = default)
+    public async Task<ToolCatalog> GetAsync(CancellationToken cancellationToken)
     {
         if (!registry.IsMapped)
         {
@@ -42,7 +42,7 @@ internal sealed partial class ToolCatalogProvider(
             };
         }
 
-        var response = await registry.GetForCallerAsync(cancellationToken: cancellationToken);
+        var response = await registry.GetForCallerAsync(refresh: false, cancellationToken: cancellationToken);
         var revision = response.Revision ?? string.Empty;
         var key = $"{options.ToolListing}|{string.Join(',', options.ListedTools)}|{revision}";
 

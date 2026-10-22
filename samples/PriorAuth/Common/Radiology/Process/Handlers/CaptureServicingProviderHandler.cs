@@ -26,7 +26,7 @@ public sealed class CaptureServicingProviderHandler(
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureServicingProviderStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         HistoryRecording.InTransactionAsync(
             dbContext,
             () => RunAsync(processStep, context, cancellationToken),

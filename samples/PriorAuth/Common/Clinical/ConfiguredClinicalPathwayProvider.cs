@@ -16,7 +16,7 @@ public sealed class ConfiguredClinicalPathwayProvider(
 {
     public async Task<ClinicalRound?> StartAsync(
         ClinicalContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var first = await questionnaires.FindAsync(
             new QuestionnaireDefinitionViewParameters
@@ -38,7 +38,7 @@ public sealed class ConfiguredClinicalPathwayProvider(
         ClinicalContext context,
         ClinicalRound round,
         IInformationStep answers,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var transitions = await questionnaires.TransitionsAsync(round.RoundId, cancellationToken);
 

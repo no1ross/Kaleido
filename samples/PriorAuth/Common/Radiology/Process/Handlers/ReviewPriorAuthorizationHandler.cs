@@ -20,7 +20,7 @@ public sealed class ReviewPriorAuthorizationHandler(
     public async Task<ProcessStepHandlerResult<PriorAuthorizationReview>> ExecuteAsync(
         ReviewPriorAuthorizationStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         try
         {

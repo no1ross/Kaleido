@@ -15,7 +15,7 @@ internal sealed class ProviderSearchSeeder(
     public SupportedDomain Domain => SupportedDomain.ProviderSearch;
 
     public async Task SeedAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await using var serviceProvider =
             projectContextFactory.CreateSqliteDbContextProvider<ProviderSearchDbContext>(

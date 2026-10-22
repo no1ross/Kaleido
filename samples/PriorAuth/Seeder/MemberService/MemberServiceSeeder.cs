@@ -13,7 +13,7 @@ internal sealed class MemberServiceSeeder(
     public SupportedDomain Domain => SupportedDomain.MemberService;
 
     public async Task SeedAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await using var provider =
             projectContextFactory.CreateSqliteDbContextProvider<MemberDbContext>(

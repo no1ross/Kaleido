@@ -45,4 +45,4 @@ var runner =
                 projectContextFactory)
         ]);
 
-await runner.RunAsync(requestedDomains);
+await runner.RunAsync(requestedDomains, CancellationToken.None);

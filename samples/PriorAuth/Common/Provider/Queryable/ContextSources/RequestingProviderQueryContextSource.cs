@@ -23,7 +23,7 @@ internal sealed class RequestingProviderQueryContextSource(
 {
     public async Task<IQueryable<RequestingProviderQueryContext>> CreateQueryAsync(
         QueryExecutionContext executionContext,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         // Kaleido validates [Required] parameters before the query runs; these guards keep the
         // nullable contract explicit and answer 400 if they are ever reached.

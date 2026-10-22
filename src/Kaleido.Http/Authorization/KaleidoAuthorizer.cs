@@ -30,7 +30,7 @@ internal interface IKaleidoAuthorizer
     /// </summary>
     Task<bool> CanAccessAsync(
         AuthorizationMetadata? authorization,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Like <see cref="CanAccessAsync"/> but throws
@@ -39,7 +39,7 @@ internal interface IKaleidoAuthorizer
     Task AuthorizeAsync(
         AuthorizationMetadata? authorization,
         string capabilityName,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Filters a collection to the items whose selected
@@ -49,7 +49,7 @@ internal interface IKaleidoAuthorizer
     Task<IReadOnlyList<T>> FilterAsync<T>(
         IEnumerable<T> items,
         Func<T, AuthorizationMetadata?> authorization,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 internal sealed class KaleidoAuthorizer(
@@ -62,7 +62,7 @@ internal sealed class KaleidoAuthorizer(
 
     public Task<bool> CanAccessAsync(
         AuthorizationMetadata? authorization,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         evaluator.CanAccessAsync(
             authorization,
             correlationAccessor.Current,
@@ -72,7 +72,7 @@ internal sealed class KaleidoAuthorizer(
     public Task AuthorizeAsync(
         AuthorizationMetadata? authorization,
         string capabilityName,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         evaluator.AuthorizeAsync(
             authorization,
             capabilityName,
@@ -83,7 +83,7 @@ internal sealed class KaleidoAuthorizer(
     public async Task<IReadOnlyList<T>> FilterAsync<T>(
         IEnumerable<T> items,
         Func<T, AuthorizationMetadata?> authorization,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(authorization);

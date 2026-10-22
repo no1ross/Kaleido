@@ -35,7 +35,7 @@ public sealed class EventPublisherTests
             }
         };
 
-        await sut.PublishAsync(envelope);
+        await sut.PublishAsync(envelope, TestContext.Current.CancellationToken);
     }
 
     [Fact]

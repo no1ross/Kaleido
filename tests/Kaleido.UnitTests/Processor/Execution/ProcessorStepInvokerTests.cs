@@ -40,7 +40,7 @@ public sealed class ProcessorStepInvokerTests
         await invoker.ExecuteAsync(
             registration,
             step,
-            context);
+            context, TestContext.Current.CancellationToken);
 
         Assert.True(recorder.Executed);
         Assert.Same(step, recorder.ProcessStep);
@@ -99,7 +99,7 @@ public sealed class ProcessorStepInvokerTests
             await invoker.ExecuteAsync(
                 registration,
                 new TestStep(),
-                CreateContext());
+                CreateContext(), TestContext.Current.CancellationToken);
 
         Assert.True(result.Succeeded);
         Assert.NotNull(result.RequiredStep);
@@ -130,7 +130,7 @@ public sealed class ProcessorStepInvokerTests
             await invoker.ExecuteAsync(
                 registration,
                 new TestStep(),
-                CreateContext());
+                CreateContext(), TestContext.Current.CancellationToken);
 
         Assert.False(result.Succeeded);
         Assert.Null(result.RequiredStep);
@@ -156,7 +156,7 @@ public sealed class ProcessorStepInvokerTests
             invoker.ExecuteAsync(
                 registration,
                 new TestStep(),
-                CreateContext()));
+                CreateContext(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public sealed class ProcessorStepInvokerTests
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
-                    CreateContext()));
+                    CreateContext(), TestContext.Current.CancellationToken));
 
         Assert.Contains(
             "has no cached invoker",
@@ -202,7 +202,7 @@ public sealed class ProcessorStepInvokerTests
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
-                    CreateContext()));
+                    CreateContext(), TestContext.Current.CancellationToken));
 
         Assert.Contains(
             "returned null",
@@ -236,7 +236,7 @@ public sealed class ProcessorStepInvokerTests
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
-                    CreateContext()));
+                    CreateContext(), TestContext.Current.CancellationToken));
 
         Assert.Contains(
             "returned an invalid handler result",
@@ -261,7 +261,7 @@ public sealed class ProcessorStepInvokerTests
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
-                    CreateContext()));
+                    CreateContext(), TestContext.Current.CancellationToken));
 
         Assert.Contains(
             "returned an invalid handler result",
@@ -295,7 +295,7 @@ public sealed class ProcessorStepInvokerTests
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
-                    CreateContext()));
+                    CreateContext(), TestContext.Current.CancellationToken));
 
         Assert.Equal(
             "handler failed",
@@ -333,7 +333,7 @@ public sealed class ProcessorStepInvokerTests
                 invoker.ExecuteAsync(
                     registration,
                     new TestStep(),
-                    CreateContext()));
+                    CreateContext(), TestContext.Current.CancellationToken));
 
         Assert.Equal(
             "pro_custom_validation",
@@ -360,7 +360,7 @@ public sealed class ProcessorStepInvokerTests
                 invoker.ExecuteAsync(
                     CreateRegistration<CorrelationCapturingHandler>(withoutResultExtractor: true),
                     new TestStep(),
-                    CreateContext()));
+                    CreateContext(), TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.InvalidHandlerResult, exception.Code);
         Assert.Contains("has no cached result extractor", exception.Message);
@@ -396,7 +396,7 @@ public sealed class ProcessorStepInvokerTests
         await invoker.ExecuteAsync(
             CreateRegistration<CorrelationCapturingHandler>(),
             new TestStep(),
-            context);
+            context, TestContext.Current.CancellationToken);
 
         var seen = Assert.IsType<KaleidoCorrelationContext>(recorder.Seen);
         Assert.Equal("req-1", seen.RequestId);

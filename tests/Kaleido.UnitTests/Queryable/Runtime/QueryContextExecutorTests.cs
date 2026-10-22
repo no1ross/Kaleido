@@ -12,7 +12,7 @@ public sealed class QueryContextExecutorTests
     [Fact]
     public async Task CountAsync_ReturnsCount()
     {
-        var result = await Sut.CountAsync(TestData().AsQueryable());
+        var result = await Sut.CountAsync(TestData().AsQueryable(), TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result);
     }
@@ -30,7 +30,7 @@ public sealed class QueryContextExecutorTests
     [Fact]
     public async Task ToListAsync_ReturnsItemsInOrder()
     {
-        var result = await Sut.ToListAsync(TestData().OrderByDescending(x => x.Id).AsQueryable());
+        var result = await Sut.ToListAsync(TestData().OrderByDescending(x => x.Id).AsQueryable(), TestContext.Current.CancellationToken);
 
         Assert.Equal([3, 2, 1], result.Select(x => x.Id));
     }
@@ -57,7 +57,7 @@ public sealed class QueryContextExecutorTests
     [Fact]
     public async Task CountAsync_WhenQueryIsNull_Throws()
     {
-        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => Sut.CountAsync(null!));
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => Sut.CountAsync(null!, TestContext.Current.CancellationToken));
 
         Assert.Equal("query", exception.ParamName);
     }
@@ -65,7 +65,7 @@ public sealed class QueryContextExecutorTests
     [Fact]
     public async Task ToListAsync_WhenQueryIsNull_Throws()
     {
-        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => Sut.ToListAsync(null!));
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => Sut.ToListAsync(null!, TestContext.Current.CancellationToken));
 
         Assert.Equal("query", exception.ParamName);
     }
@@ -75,7 +75,7 @@ public sealed class QueryContextExecutorTests
     {
         var query = new AsyncQueryable(TestData());
 
-        var result = await Sut.CountAsync(query);
+        var result = await Sut.CountAsync(query, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result);
         Assert.True(query.AsyncEnumerated);
@@ -86,7 +86,7 @@ public sealed class QueryContextExecutorTests
     {
         var query = new AsyncQueryable(TestData());
 
-        var result = await Sut.ToListAsync(query);
+        var result = await Sut.ToListAsync(query, TestContext.Current.CancellationToken);
 
         Assert.Equal([1, 2, 3], result.Select(x => x.Id));
         Assert.True(query.AsyncEnumerated);

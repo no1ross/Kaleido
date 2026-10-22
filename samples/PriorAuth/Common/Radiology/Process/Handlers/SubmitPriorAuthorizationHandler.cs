@@ -23,7 +23,7 @@ public sealed class SubmitPriorAuthorizationHandler(
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         SubmitPriorAuthorizationStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         HistoryRecording.InTransactionAsync(
             dbContext,
             () => RunAsync(processStep, context, cancellationToken),

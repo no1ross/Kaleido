@@ -9,7 +9,7 @@ internal interface IProcessorExecutor
     Task<ProcessExecutionResult> ExecuteAsync(
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 internal sealed class ProcessorExecutor(
@@ -28,7 +28,7 @@ internal sealed class ProcessorExecutor(
     public async Task<ProcessExecutionResult> ExecuteAsync(
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);

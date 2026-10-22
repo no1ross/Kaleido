@@ -85,7 +85,7 @@ public sealed class PlaceOrderHandler(OrderBook orders) : IProcessStepHandler<Pl
     public Task<ProcessStepHandlerResult<PlacedOrder>> ExecuteAsync(
         PlaceOrderStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.FromResult(
             ProcessStepHandlerResult
                 .Success(new PlacedOrder { Number = orders.Place(processStep.Item, processStep.Quantity) })
@@ -105,7 +105,7 @@ public sealed class ConfirmOrderHandler : IProcessStepHandler<ConfirmOrderStep>
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         ConfirmOrderStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.FromResult(ProcessStepHandlerResult.Success());
 }
 // end snippet

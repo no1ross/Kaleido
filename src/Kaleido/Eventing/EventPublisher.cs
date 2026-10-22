@@ -65,7 +65,7 @@ public interface IEventPublisher
     /// </summary>
     Task PublishAsync<TEvent, TContext>(
         KaleidoEventEnvelope<TEvent, TContext> envelope,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent;
 }
 
@@ -101,7 +101,7 @@ internal sealed partial class EventPublisher : INoOpEventPublisher
 
     public Task PublishAsync<TEvent, TContext>(
         KaleidoEventEnvelope<TEvent, TContext> envelope,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent
         => Task.CompletedTask;
 

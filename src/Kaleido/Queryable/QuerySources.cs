@@ -133,7 +133,7 @@ public interface IQuerySourceAsync<TQueryContext> : ILocalQuerySource<TQueryCont
     /// <returns>The source's queryable.</returns>
     Task<IQueryable<TQueryContext>> CreateQueryAsync(
         QueryExecutionContext executionContext,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -200,7 +200,7 @@ public interface IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParam
     Task<IQueryable<TView>> CreateViewAsync(
         IQueryable<TQueryContext> query,
         QueryExecutionContext executionContext,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 /// <summary>An asynchronous local query view without parameters; see <see cref="IQueryViewSourceAsync{TSource,TQueryContext,TView,TViewParameters}"/>.</summary>
@@ -250,7 +250,7 @@ public interface IDelegatedQuerySource<TQueryContext, TResult, TParameters>
     /// <returns>The mapped results with the downstream paging information.</returns>
     Task<QueryResult<TResult>> ExecuteAsync(
         IQueryRequest<TParameters> request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 /// <summary>A delegated query source without parameters; see <see cref="IDelegatedQuerySource{TQueryContext,TResult,TParameters}"/>.</summary>

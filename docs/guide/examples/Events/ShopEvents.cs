@@ -28,7 +28,7 @@ public sealed class WarehousePublisher(IWarehouseFeed feed) : IEventPublisher
 {
     public Task PublishAsync<TEvent, TContext>(
         KaleidoEventEnvelope<TEvent, TContext> envelope,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent =>
         feed.SendAsync(envelope.EventType, JsonSerializer.Serialize(envelope), cancellationToken);
 }
