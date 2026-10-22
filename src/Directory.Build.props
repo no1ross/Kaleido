@@ -20,4 +20,11 @@
         <AdditionalFiles Include="$(MSBuildProjectDirectory)\.PublicAPI\PublicAPI.Unshipped.txt" />
         <ProjectReference Include="$(MSBuildThisFileDirectory)..\tools\analyzers\Kaleido.Analyzers.Source\Kaleido.Analyzers.Source.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
     </ItemGroup>
+    <ItemGroup>
+        <!-- InternalsVisibleTo: one pattern, MSBuild items. Every package opens its internals to its own
+             unit tests and to Moq's proxy assembly (it mocks internal interfaces); any other friend
+             assembly is listed in the package's .csproj, with the reason. -->
+        <InternalsVisibleTo Include="$(MSBuildProjectName).UnitTests" />
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    </ItemGroup>
 </Project>

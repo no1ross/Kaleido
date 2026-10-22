@@ -18,7 +18,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Kaleido.Http.Client.UnitTests" />
+		<!-- The MCP adapter calls services as the caller, and for a process, through these clients' forwarding scopes, which are not public API. -->
+		<InternalsVisibleTo Include="Kaleido.Http.Mcp" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Mcp.FunctionalTests" />
 	</ItemGroup>
-
 </Project>
