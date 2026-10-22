@@ -1,10 +1,12 @@
+using Kaleido.Samples.PriorAuth.Audit;
+
 namespace Kaleido.Samples.PriorAuth.History.Data.Entities;
 
 /// <summary>
 /// The latest information for one prior authorization request, keyed by its process: one record per
 /// process, overwritten by every recording the processors make as the request moves on.
 /// </summary>
-public sealed class PriorAuthRecord
+public sealed class PriorAuthRecord : IAuditable
 {
     public Guid ProcessId { get; set; }
 
@@ -26,7 +28,21 @@ public sealed class PriorAuthRecord
 
     public string PrimaryProcedureDescription { get; set; } = string.Empty;
 
+    /// <inheritdoc />
+    public string CreatedBy { get; set; } = string.Empty;
+
+    /// <inheritdoc />
+    public string? CreatedVia { get; set; }
+
+    /// <inheritdoc />
     public DateTimeOffset CreatedUtc { get; set; }
 
-    public DateTimeOffset LastUpdatedUtc { get; set; }
+    /// <inheritdoc />
+    public string UpdatedBy { get; set; } = string.Empty;
+
+    /// <inheritdoc />
+    public string? UpdatedVia { get; set; }
+
+    /// <inheritdoc />
+    public DateTimeOffset UpdatedUtc { get; set; }
 }

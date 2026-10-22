@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Audit;
 using Kaleido.Samples.PriorAuth.Queryable;
 using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
@@ -28,8 +29,10 @@ var processConnectionString =
         PriorAuthErrorCodes.MissingConnectionString,
         "ConnectionStrings:RadiologyProcess is required.");
 
+// Who created and last changed each row, through which application, and when (Common/Audit).
+builder.Services.AddPriorAuthAuditing();
 builder.Services.AddDbContext<RadiologyDbContext>(
-    options => options.UseSqlite(radiologyConnectionString));
+    (services, options) => options.UseSqlite(radiologyConnectionString).UseAuditing(services));
 
 builder.Services.AddScoped<IMemberEligibilityService, MemberEligibilityService>();
 builder.Services.AddScoped<MemberDetailsClient>();

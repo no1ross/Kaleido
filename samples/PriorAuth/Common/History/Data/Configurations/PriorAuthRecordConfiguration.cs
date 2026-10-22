@@ -12,13 +12,7 @@ internal sealed class PriorAuthRecordConfiguration : IEntityTypeConfiguration<Pr
 
         builder.HasIndex(x => x.PriorAuthorizationId);
 
-        builder.HasIndex(x => x.LastUpdatedUtc);
-
-        builder.Property(x => x.CreatedUtc)
-            .HasConversion<long>();
-
-        builder.Property(x => x.LastUpdatedUtc)
-            .HasConversion<long>();
+        builder.HasIndex(x => x.UpdatedUtc);
 
         builder.Property(x => x.ProcessorName)
             .HasMaxLength(100)

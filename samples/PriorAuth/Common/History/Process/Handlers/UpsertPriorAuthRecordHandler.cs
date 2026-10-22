@@ -37,8 +37,7 @@ public sealed class UpsertPriorAuthRecordHandler(
         {
             record = new PriorAuthRecord
             {
-                ProcessId = context.ProcessId,
-                CreatedUtc = DateTimeOffset.UtcNow
+                ProcessId = context.ProcessId
             };
 
             dbContext.PriorAuthRecords.Add(record);
@@ -52,7 +51,6 @@ public sealed class UpsertPriorAuthRecordHandler(
         record.DateOfService = processStep.DateOfService;
         record.PrimaryProcedureCode = processStep.PrimaryProcedureCode;
         record.PrimaryProcedureDescription = processStep.PrimaryProcedureDescription;
-        record.LastUpdatedUtc = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

@@ -92,8 +92,7 @@ public sealed class StartRadiologyIntakeHandler(
                     {
                         PriorAuthorizationId = Guid.NewGuid(),
                         ProcessId = context.ProcessId,
-                        Status = PriorAuthorizationStatus.Draft,
-                        CreatedUtc = DateTimeOffset.UtcNow
+                        Status = PriorAuthorizationStatus.Draft
                     };
 
                 dbContext.PriorAuthorizations.Add(priorAuthorization);
@@ -119,7 +118,6 @@ public sealed class StartRadiologyIntakeHandler(
                         ResolvedCodeValue = procedureCode.CodeValue,
                         ResolvedCodeSystem = procedureCode.CodeSystem,
                         Description = procedureCode.ShortDescription,
-                        CreatedUtc = DateTimeOffset.UtcNow,
                         StatedDetailsJson = StatedServiceDetails.ToJson(processStep.BodyPart, processStep.Laterality, processStep.Contrast)
                     });
             }

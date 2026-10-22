@@ -18,6 +18,10 @@
   - `npm run build`
 - If a change touches UI + backend integration, validate both
 
+## UI dependencies
+- `npm audit` in `priorauth-ui` is kept at 0 (#97). Upgrade with versions published at least 7 days earlier (Dependabot's cooldown is 7 days); never `npm audit fix --force`. `npm install --before=<date>` re-resolves without picking a newer transitive release.
+- `package.json` `overrides` pin `vite` 7.3.7 and `@modelcontextprotocol/sdk` 1.32.1, the fixed versions that `@angular/build`/`@angular/cli` 21.2.28 depend on. **Remove both overrides when Angular is updated to 21.2.28 or later**: they would otherwise hold back the Vite and MCP SDK versions Angular asks for.
+
 ## Local run workflow
 - Prefer the compose file under `samples/PriorAuth/Compose/` (`docker-compose.yml`; `docker-compose.override.yml` is for local overrides and sets nothing by default): it runs the router, every service and the UI as Production (see [Configuration per environment](#configuration-per-environment))
 - For backend-only work, `dotnet run` the affected services instead
@@ -36,6 +40,13 @@
 - Every Intake/Radiology step that changes what History shows calls its `HistoryClient.RecordAsync(processId)`, which sends the full current snapshot read from the service's own database. The recording processor is the calling processor Kaleido stamps on the call, not a payload field.
 - Recording is a hard stop: the step runs in `HistoryRecording.InTransactionAsync`, which commits the service's changes only when the step succeeds. If History does not record (HTTP failure, or an outcome other than completed; logged at Error), the step is rolled back and rejected with `HISTORY_NOT_RECORDED`.
 - This is the sample's choice. A production system would feed History from Kaleido's process events (outbox, at-least-once) instead of synchronous calls.
+
+## Audit fields
+- Every row of the services' own databases (Intake, Radiology, History; `IAuditable` in `Common/Audit`) records `CreatedBy`/`CreatedVia`/`CreatedUtc` and `UpdatedBy`/`UpdatedVia`/`UpdatedUtc`. Handlers never set them: `AuditSaveChangesInterceptor` stamps them on every save (`AddPriorAuthAuditing()` + `UseAuditing(services)` on the context).
+- **By** is the caller Kaleido read from the token (`Caller.Name`, else `Caller.Id`): the user on their own call and on an on-behalf-of hop, `svc-{service}` on a service's own call, `system` without a caller. **Via** is the application that made the hop (`CallerActor`, the token's actor claim): e.g. `intake` when Intake hands bob's request to Radiology, `radiology` when Radiology records History for him; empty on a direct user call.
+- An added row gets equal Created and Updated values; a changed row gets new Updated values and keeps its Created values. A save that changes nothing (History recording the same snapshot again) leaves `UpdatedUtc` as it was.
+- History's list sorts by `UpdatedUtc` (it replaced `LastUpdatedUtc`).
+- After pulling this change, the existing `intake.db`, `radiology.db` and `history.db` lack the columns (`EnsureCreated` never alters a file): delete them and their `*-process.db` (see Local run workflow); they are recreated at startup.
 
 ## Process id on every call (MCP and UI)
 - A request's queries are tracked with its process: every query of a request must carry its process id (`X-Kaleido-Process-Id`).

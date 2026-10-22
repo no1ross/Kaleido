@@ -60,8 +60,7 @@ public sealed class CaptureMemberHandler(
                     new IntakeSession
                     {
                         IntakeSessionId = Guid.NewGuid(),
-                        ProcessId = context.ProcessId,
-                        CreatedUtc = DateTimeOffset.UtcNow
+                        ProcessId = context.ProcessId
                     };
 
                 dbContext.IntakeSessions.Add(session);

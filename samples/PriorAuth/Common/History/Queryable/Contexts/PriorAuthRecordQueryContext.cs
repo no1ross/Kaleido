@@ -51,6 +51,6 @@ public sealed class PriorAuthRecordQueryContext : IQueryContext
     public DateTimeOffset CreatedUtc { get; init; }
 
     [Sortable]
-    [Description("When the latest snapshot was recorded, in UTC.")]
-    public DateTimeOffset LastUpdatedUtc { get; init; }
+    [Description("When the record last changed (the latest recorded snapshot differed), in UTC.")]
+    public DateTimeOffset UpdatedUtc { get; init; }
 }

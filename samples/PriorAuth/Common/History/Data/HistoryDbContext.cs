@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Audit;
 using Kaleido.Samples.PriorAuth.History.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,5 +15,7 @@ public sealed class HistoryDbContext(
 
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(HistoryDbContext).Assembly);
+
+        modelBuilder.ApplyAuditColumns();
     }
 }
