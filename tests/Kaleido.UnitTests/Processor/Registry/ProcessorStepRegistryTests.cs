@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Kaleido.Processor.Registry;
 using Kaleido.Registry;
 
 using Kaleido.UnitTests;

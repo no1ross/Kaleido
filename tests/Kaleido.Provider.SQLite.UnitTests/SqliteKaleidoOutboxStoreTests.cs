@@ -1,15 +1,7 @@
-using System.Collections.Concurrent;
-using System.Data.Common;
-using System.Diagnostics;
-using Kaleido.Observability;
-using Kaleido.Processor.Context;
+using Kaleido.Provider.SQLite.Entities;
 using Kaleido.Storage;
-using Kaleido.Provider.SQLite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Kaleido.Provider.SQLite.Entities;
 
 namespace Kaleido.Provider.SQLite.UnitTests;
 
@@ -210,4 +202,5 @@ public sealed class SqliteKaleidoOutboxStoreTests
         using var dbContext = CreateDbContext();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut(dbContext).AddAsync(null!));
-    }}
+    }
+}

@@ -1,7 +1,6 @@
 using Kaleido.Testing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Xunit;
 using static Kaleido.Analyzers.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Bootstrap.ServiceNameAnalyzer>;
 

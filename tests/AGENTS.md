@@ -16,7 +16,11 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Analyzers.UnitTests` | `tools/analyzers/Kaleido.Analyzers` (consumer `KAL2xxx` rules) |
 | `Kaleido.Analyzers.Source.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Source` (contributor `KAL0xxx` rules) |
 | `Kaleido.Analyzers.Testing.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Testing` (test `KAL1xxx` rules) |
-| `Kaleido.IntegrationTests` | cross-project DI and EF Core registration behavior |
+| `Kaleido.IntegrationTests` | cross-project DI and EF Core registration behavior; the consumer guide's examples (`Guide/`, over `docs/guide/examples`), run as each guide page states them |
+
+## Warnings
+Test projects build like `src/`: a warning is an error, and IDE code-style rules (unused usings, naming,
+braces...) run in the build (#406, root [`AGENTS.md`](../AGENTS.md#per-commit-quality-gate)).
 
 ## Testing conventions
 - When adding unit tests, scope them to a single class

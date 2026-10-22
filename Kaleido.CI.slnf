@@ -2,6 +2,7 @@
   "solution": {
     "path": "Kaleido.slnx",
     "projects": [
+      "docs/guide/examples/Kaleido.Guide.Examples.csproj",
       "samples/SQLite/Kaleido.Samples.SQLite.csproj",
       "samples/ECommerce/Data/Kaleido.Samples.ECommerce.Data.csproj",
       "samples/ECommerce/NetCoreApp/Kaleido.Samples.ECommerce.NetCoreApp.csproj",

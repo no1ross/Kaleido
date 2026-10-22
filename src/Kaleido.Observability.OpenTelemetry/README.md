@@ -2,6 +2,8 @@
 
 Optional OpenTelemetry provider for Kaleido. Wires full observability (structured logs, distributed traces, metrics) into a Kaleido service in a single call, exporting via OTLP to any compatible backend (Elastic APM, Grafana, Honeycomb, Jaeger, Datadog, etc.).
 
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
+
 ## Quick start
 
 ```csharp

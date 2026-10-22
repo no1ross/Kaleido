@@ -227,6 +227,17 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 3. **If the commit touches a UI sample:** `npm run build` (0 errors) and `npm test` in that UI folder.
 4. **Record the result in the commit message body**, e.g. `Gate: build 0 errors / 0 warnings; tests 812 passed; priorauth-ui build + test OK`.
 
+**Warnings fail the build in every area (#406)**, so the "0 warnings" gate is enforced, not only observed:
+
+| Area | Warnings are errors | IDE code-style rules in the build |
+|---|---|---|
+| `src/` | yes | yes |
+| `tools/` | yes | yes |
+| `tests/` | yes | yes |
+| `samples/` | yes | no: the samples keep their relaxed style (`[samples/**/*.cs]` in `.editorconfig`) until they move to their own repositories (#95) |
+
+IDE0005 (unused usings) needs `GenerateDocumentationFile`, so `tests/` and `tools/` generate XML docs with CS1591 off. `dotnet format <solution> style --diagnostics IDE0005 --include tests/` fixes unused usings in bulk; IDE0005 reports one per file at a time, so build again until clean.
+
 CI (`build.yml`) also checks that every Kaleido type or member named in the Markdown docs exists in the sources (`python3 tools/docs/check-doc-symbols.py`; ADRs and audit records are skipped as historical; a deliberate non-symbol in code style goes in the script's `ALLOWED` list with its reason). Run it before committing doc changes.
 
 CI (`build.yml`) also enforces a **coverage gate**: merged line coverage of the shipped `src/` assemblies (tests, analyzers and samples excluded) must be at least the `COVERAGE_FLOOR` (95%), or the build fails. Raise the floor, never lower it. To check locally, run the tests with `-- --coverage --coverage-output-format cobertura` and merge the reports with `reportgenerator` using the workflow's `-assemblyfilters`.

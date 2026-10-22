@@ -69,7 +69,6 @@ public sealed class McpObservabilityTests
             Entries.Add((logLevel, formatter(state, exception)));
     }
 
-
     private static readonly KaleidoTool Step = new()
     {
         Definition = new Tool { Name = "clinic_start_visit" },

@@ -4,6 +4,7 @@ using Kaleido.Queryable.Runtime;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -43,6 +44,25 @@ public sealed class EfCoreQueryContextExecutorTests : IAsyncLifetime
         Assert.Equal(2, commands.Length);
         Assert.Contains(commands, x => x.Contains("COUNT(*)", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(commands, x => x.Contains("LIMIT", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // The executor is registered for every source of the host: a source that is not EF Core (here in
+    // memory) must still be listed and counted, by LINQ.
+    [Fact]
+    public async Task AnEfCoreExecutor_AlsoServesASourceThatIsNotEfCore_InTheSameHost()
+    {
+        await using var provider = CreateProvider(services => services.AddSingleton(typeof(IQueryContextExecutor<>), typeof(EfCoreQueryContextExecutor<>)));
+        using var scope = provider.CreateScope();
+
+        // The default page of 2 is full, so the total of 3 must be counted.
+        var regions = await scope.ServiceProvider.GetRequiredService<IQueryableService>()
+            .QueryAsync<RegionSource, RegionQueryContext>(new QueryRequest(new QueryBody()), TestContext.Current.CancellationToken);
+        var members = await QueryFirstPageAsync(provider);
+
+        Assert.Equal(["east", "north"], regions.Results.Select(x => x.Code));
+        Assert.Equal(3, regions.TotalCount);
+        Assert.Equal(7, members.TotalCount);
+        Assert.Contains(_commands.Texts, x => x.Contains("COUNT(*)", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -86,15 +106,20 @@ public sealed class EfCoreQueryContextExecutorTests : IAsyncLifetime
             .QueryAsync<MemberSource, MemberQueryContext>(new QueryRequest(new QueryBody()), TestContext.Current.CancellationToken);
     }
 
-    // What an EF Core host registers: EF's own async operators, translated by the provider.
+    // What an EF Core host registers (docs/PATTERNS.md): EF's own async operators for EF queries,
+    // translated by the provider; LINQ for any other source of the host (it serves every source).
     private sealed class EfCoreQueryContextExecutor<TView> : IQueryContextExecutor<TView>
         where TView : class
     {
         public Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
-            EntityFrameworkQueryableExtensions.CountAsync(query, cancellationToken);
+            query.Provider is IAsyncQueryProvider
+                ? EntityFrameworkQueryableExtensions.CountAsync(query, cancellationToken)
+                : Task.FromResult(query.Count());
 
         public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
-            await EntityFrameworkQueryableExtensions.ToListAsync(query, cancellationToken);
+            query.Provider is IAsyncQueryProvider
+                ? await EntityFrameworkQueryableExtensions.ToListAsync(query, cancellationToken)
+                : query.ToList();
 
         public IQueryable<TView> ApplyPage(IQueryable<TView> query, int size, int offset) =>
             query.Skip(offset).Take(size);

@@ -1,6 +1,3 @@
-using Kaleido.Processor.Registry;
-using Kaleido.Queryable.Metadata;
-
 namespace Kaleido.Http.Registry.UnitTests;
 
 public sealed class RegistryMetadataMapperTests

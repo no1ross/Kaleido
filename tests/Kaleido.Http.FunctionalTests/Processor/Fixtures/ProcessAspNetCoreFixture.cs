@@ -1,7 +1,5 @@
-using Kaleido.Http;
 using Kaleido.Http.Client;
 using Kaleido.Http.Processor;
-using Kaleido.Http.Registry;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;

@@ -1,5 +1,3 @@
-using Kaleido.Http.Registry;
-
 namespace Kaleido.Http.Registry.UnitTests;
 
 public sealed class RegistrySnapshotTests

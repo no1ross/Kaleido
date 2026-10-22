@@ -1,4 +1,3 @@
-using Kaleido.Http.Registry;
 using Kaleido.Queryable.Registry;
 
 namespace Kaleido.Http.Registry.UnitTests;

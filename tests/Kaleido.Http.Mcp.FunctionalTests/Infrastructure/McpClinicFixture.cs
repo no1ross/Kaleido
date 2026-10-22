@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Kaleido.Http.Client;
-using Kaleido.Observability;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;

@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Http.Resilience;
 using Polly;
 
 namespace Kaleido.Http.Client.UnitTests;

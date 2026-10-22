@@ -1,5 +1,4 @@
 using System.Globalization;
-using Kaleido.Http.Registry;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 

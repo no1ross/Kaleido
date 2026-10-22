@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Kaleido.Exceptions;
 using Kaleido.Http.Authorization;
 using Kaleido.Http.Queryable;
-using Kaleido.Http.Registry;
 using Kaleido.Queryable.Registry;
 using Kaleido.Registry;
 using Microsoft.AspNetCore.Http;

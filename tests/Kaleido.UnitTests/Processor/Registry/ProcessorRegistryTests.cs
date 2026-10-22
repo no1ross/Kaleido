@@ -1,4 +1,3 @@
-using Kaleido.Processor.Registry;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
 

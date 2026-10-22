@@ -2,6 +2,8 @@
 
 This project contains the shared HTTP request/response contract types used across Kaleido's server-side endpoint projects and the client-side consumption project.
 
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
+
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - [`../Kaleido.Http/README.md`](../Kaleido.Http/README.md)

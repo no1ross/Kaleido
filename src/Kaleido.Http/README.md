@@ -2,6 +2,8 @@
 
 This project publishes all Kaleido HTTP endpoints. It maps Process, Queryable, and Registry routes onto an ASP.NET Core application.
 
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
+
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - [`../../AGENTS.md`](../../AGENTS.md)

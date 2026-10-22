@@ -3,6 +3,9 @@
     <PropertyGroup>
         <IsPackable>false</IsPackable>
         <NoWarn>$(NoWarn);1591</NoWarn>
+        <!-- #406: a warning in a sample fails the build. IDE code-style rules are not run in the build
+             here: the samples keep their relaxed style until they move to their own repositories (#95). -->
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
     <!-- Consumer analyzers (KAL2xxx), as a NuGet consumer of Kaleido gets them: samples are consumers too. -->
     <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">

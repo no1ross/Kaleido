@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Kaleido.Processor;
 using Kaleido.Processor.Registry;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Configuration;
@@ -207,8 +206,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         builder.SetupGet(x => x.Assemblies).Returns([]);
 
         var ex =
-            Assert.Throws<KaleidoConfigurationException>(() =>
-                builder.Object.AddProcessor());
+            Assert.Throws<KaleidoConfigurationException>(builder.Object.AddProcessor);
 
         Assert.Equal(ConfigurationErrorCodes.MissingAssembly, ex.Code);
     }

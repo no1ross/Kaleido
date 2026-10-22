@@ -1,10 +1,7 @@
 using Kaleido.Exceptions;
-using Kaleido.Http.Authorization;
-using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Processor.UnitTests;

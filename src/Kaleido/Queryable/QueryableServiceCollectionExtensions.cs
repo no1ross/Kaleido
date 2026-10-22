@@ -69,7 +69,8 @@ internal static class QueryableServiceCollectionExtensions
     {
         services.TryAddSingleton<IQueryContextValidator, QueryRequestValidator>();
         services.TryAddSingleton<IQueryContextCompiler, QueryRequestCompiler>();
-        services.TryAddSingleton<IQueryableService, QueryableService>();
+        // Scoped: it reads the request's correlation, which the query's own scope starts from (#413).
+        services.TryAddScoped<IQueryableService, QueryableService>();
 
         services.TryAddSingleton(
             typeof(ICompiledQueryApplier<>),
