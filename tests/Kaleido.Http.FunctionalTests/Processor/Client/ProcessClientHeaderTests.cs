@@ -12,14 +12,9 @@ namespace Kaleido.Http.FunctionalTests.Processor.Client;
 /// wired through DI (no captive-dependency lifetime errors) and that outbound requests carry the
 /// expected correlation headers.
 /// </summary>
-public sealed class ProcessClientHeaderTests : IClassFixture<ProcessorAspNetCoreFixture>
+public sealed class ProcessClientHeaderTests(ProcessorAspNetCoreFixture fixture) : IClassFixture<ProcessorAspNetCoreFixture>
 {
-    private readonly ProcessorAspNetCoreFixture _fixture;
-
-    public ProcessClientHeaderTests(ProcessorAspNetCoreFixture fixture)
-    {
-        _fixture = fixture;
-    }
+    private readonly ProcessorAspNetCoreFixture _fixture = fixture;
 
     // ---------------------------------------------------------------------------
     // DI lifetime validation

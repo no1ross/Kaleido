@@ -102,6 +102,7 @@ call credentials per purpose and destination (`CallCredentialTests`), delegated 
 - Process client uses the default route prefix (lower-cased client name) and resumes by id
   (`TheTypedClient_*`).
 - A router's registry merges a live downstream (`RegistryAggregationTests`).
+- Router replicas over one `IDistributedCache` share the router's snapshot and the clients' copies (one downstream check between them), and an unreachable cache never fails a registry read (`DistributedRegistrySnapshotTests`, #275).
 - MCP tool schema (fields/operators) is what the service accepts (`AQueryTool_UsesTheFieldsAndOperatorsItAdvertises_*`).
 
 ## 6. Tests added or changed
@@ -112,6 +113,7 @@ call credentials per purpose and destination (`CallCredentialTests`), delegated 
 | `IntegrationTests/EfCore/EfCoreQueryableTests` (new) | expressions EF Core cannot translate; SQL semantics for nulls, enums, Guid, DateTime, In/Between; paging + count; view projection |
 | `Processor/Behavior/ProcessBehaviorTests` (new) | DependsOn, AvailableUntil, AvailableAfter, Repeatable, non-repeatable rerun, Reject leaves state, DataAnnotations, unexpected failure hidden + retryable, handoff out/in, self-handoff refused, 409 conflict saves nothing, multi-step ordering, `/execute` resume and idempotency, error-path RequestId echo, 500 shape, malformed process id, typed process client |
 | `Registry/RegistryAggregationTests` (new) | aggregated registry missing downstream capabilities; strict read of a healthy aggregate |
+| `Registry/DistributedRegistrySnapshotTests` (new, #275) | router replicas each fanning out despite a shared cache; client copies not shared or keyed per consuming service; a cache outage failing registry reads or the replica not sharing again after it |
 | `Mcp.FunctionalTests/McpContractTests` (new) | query arguments reshaped wrongly; service errors mapped to internal errors; business messages lost or not marked for the user; rejection changing state; MRTR round trip; decline submitting answers; questions lost for older clients |
 | `QueryableDiscoveryTests` (strengthened) | registry dropping descriptions, classifications, operators, capabilities, view paging; removed a duplicated assertion |
 | `QueryableClientTests` (strengthened) | client/server JSON drift for any value type; error mapping |

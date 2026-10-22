@@ -4,7 +4,7 @@ public sealed class KaleidoClientRouteOptionsMapTests
     : Kaleido.UnitTests.SutFixture
 {
     private static TestRouteOptionsMap CreateSut() =>
-        new TestRouteOptionsMap();
+        new();
 
     [Fact]
     public void NewMap_HasNoEntries()

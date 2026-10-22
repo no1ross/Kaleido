@@ -4,14 +4,9 @@ using Kaleido.Http.Queryable;
 
 namespace Kaleido.Http.FunctionalTests.Queryable.Client;
 
-public sealed class QueryableClientTests : IClassFixture<QueryableAspNetCoreFixture>
+public sealed class QueryableClientTests(QueryableAspNetCoreFixture fixture) : IClassFixture<QueryableAspNetCoreFixture>
 {
-    private readonly IKaleidoQueryableClientFactory _factory;
-
-    public QueryableClientTests(QueryableAspNetCoreFixture fixture)
-    {
-        _factory = fixture.ClientFactory;
-    }
+    private readonly IKaleidoQueryableClientFactory _factory = fixture.ClientFactory;
 
     // ---------------------------------------------------------------------------
     // GetRegistryAsync

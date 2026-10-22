@@ -7,17 +7,12 @@ using Kaleido.Http.Processor;
 namespace Kaleido.Http.FunctionalTests.Processor.Execution;
 
 [Collection(nameof(ProcessorAspNetCoreSuite))]
-public sealed class StepExecutionEndpointTests
+public sealed class StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixture)
 {
     private const string RootStepUrl = "/kaleido/processes/steps/runtimerootstep";
     private const string InputStepUrl = "/kaleido/processes/steps/runtimeinputstep";
 
-    private readonly HttpClient _client;
-
-    public StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixture)
-    {
-        _client = fixture.Client;
-    }
+    private readonly HttpClient _client = fixture.Client;
 
     [Theory]
     [InlineData(false)]

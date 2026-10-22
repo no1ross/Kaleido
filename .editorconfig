@@ -61,6 +61,11 @@ trim_trailing_whitespace = false
 [*.cs]
 indent_size = 4
 
+; Severity suffixes (#418): an option whose rule has a dotnet_diagnostic severity (below) carries no
+; ':suggestion' suffix. With the suffix, 'dotnet build' does not run the rule at all, whatever the
+; dotnet_diagnostic line says; only a build that writes an error log (Sonar's, in CI) runs it. The
+; suffixes left are on options whose rule has no dotnet_diagnostic severity.
+
 ; Qualifier / predefined types
 dotnet_sort_system_directives_first = true
 dotnet_style_qualification_for_field = false:suggestion
@@ -69,9 +74,9 @@ dotnet_style_predefined_type_for_locals_parameters_members = true:suggestion
 dotnet_style_predefined_type_for_member_access = true:suggestion
 
 ; var usage
-csharp_style_var_for_built_in_types = true:suggestion
-csharp_style_var_when_type_is_apparent = true:suggestion
-csharp_style_var_elsewhere = true:suggestion
+csharp_style_var_for_built_in_types = true
+csharp_style_var_when_type_is_apparent = true
+csharp_style_var_elsewhere = true
 
 ; Expression / statement style
 csharp_style_throw_expression = false:suggestion
@@ -87,13 +92,13 @@ csharp_new_line_before_members_in_anonymous_types = true
 
 ; Namespace / modifier style
 csharp_style_namespace_declarations = file_scoped
-csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:suggestion
+csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async
 
 ; C# 12+ style (see AGENTS.md coding patterns)
-csharp_style_prefer_primary_constructors = true:suggestion
-csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
-csharp_style_prefer_collection_expression = when_types_exactly_match:suggestion
-csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_primary_constructors = true
+csharp_style_implicit_object_creation_when_type_is_apparent = true
+csharp_style_prefer_collection_expression = when_types_exactly_match
+csharp_style_prefer_pattern_matching = true
 
 ; Naming conventions (enforced in src/: see the [src/**/*.cs] section)
 ; — const fields: PascalCase

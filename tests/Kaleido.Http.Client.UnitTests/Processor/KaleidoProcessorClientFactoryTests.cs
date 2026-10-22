@@ -19,6 +19,7 @@ public sealed class KaleidoProcessorClientFactoryTests
             new KaleidoRemoteRegistry(
                 httpClientFactory,
                 store ?? Mock.Of<IRegistrySnapshotStore>(),
+                new KaleidoServiceOptions { ServiceName = "consumer" },
                 NullLogger<KaleidoRemoteRegistry>.Instance));
 
     private static IRegistrySnapshotStore CreateSnapshotStore()

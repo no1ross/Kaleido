@@ -6,14 +6,9 @@ using Kaleido.Http.Registry;
 
 namespace Kaleido.Http.FunctionalTests.Queryable.Discovery;
 
-public sealed class QueryableDiscoveryTests : IClassFixture<QueryableAspNetCoreFixture>
+public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) : IClassFixture<QueryableAspNetCoreFixture>
 {
-    private readonly HttpClient _client;
-
-    public QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture)
-    {
-        _client = fixture.Client;
-    }
+    private readonly HttpClient _client = fixture.Client;
 
     [Fact]
     public async Task GetRegistry_ReturnsOk()
