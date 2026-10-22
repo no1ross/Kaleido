@@ -14,7 +14,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Kaleido.Http.UnitTests" />
+		<!-- The MCP adapter is a front door built into the solution: it sets up the request's correlation for its own endpoint (not a Kaleido route group) with the transport's internal helper. -->
+		<InternalsVisibleTo Include="Kaleido.Http.Mcp" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 	</ItemGroup>
-
 </Project>

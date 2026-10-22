@@ -14,7 +14,7 @@ internal sealed class SqliteKaleidoOutboxStore(
 {
     internal const int MaxErrorLength = 2000;
 
-    public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
+    public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(events);
 
@@ -25,7 +25,7 @@ internal sealed class SqliteKaleidoOutboxStore(
     // Each statement is atomic in SQLite (writers are serialized): the UPDATE re-checks that an entry
     // is still unleased, so two instances claiming at once never lease the same entry, and each
     // reads back only the entries it leased itself.
-    public async Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow.UtcTicks;
         var leaseUntil = now + lease.Ticks;
@@ -61,7 +61,7 @@ internal sealed class SqliteKaleidoOutboxStore(
     }
 
     // Only while this instance still holds the lease.
-    public async Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken = default)
+    public async Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow.UtcTicks;
 
@@ -71,7 +71,7 @@ internal sealed class SqliteKaleidoOutboxStore(
     }
 
     // Only while this instance still holds the lease; releases it.
-    public async Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken = default)
+    public async Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow.UtcTicks;
         var lastError = errorMessage.Length > MaxErrorLength ? errorMessage[..MaxErrorLength] : errorMessage;

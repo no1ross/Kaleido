@@ -364,7 +364,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     private static Kaleido.Eventing.KaleidoEventRedactionMap RedactionMap(IServiceCollection services) =>
         Assert.IsType<Kaleido.Eventing.KaleidoEventRedactionMap>(Single<Kaleido.Eventing.KaleidoEventRedactionMap>(services).ImplementationInstance);
 
-    // Without AddEventClassificationRedaction the event policy is empty (classified values are erased, with a warning).
+    // Without AddEventRedaction the event policy is empty (classified values are erased, with a warning).
     [Fact]
     public void AddKaleido_RegistersAnEmptyEventRedactionPolicy_AndNoIRedactorProvider()
     {
@@ -376,14 +376,14 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddEventClassificationRedaction_ConfiguresTheEventPolicy_AddingToEachCall()
+    public void AddEventRedaction_ConfiguresTheEventPolicy_AddingToEachCall()
     {
         var pii = new Microsoft.Extensions.Compliance.Classification.DataClassification("test", "pii");
         var phi = new Microsoft.Extensions.Compliance.Classification.DataClassification("test", "phi");
 
         var builder = NewBuilder();
-        Assert.Same(builder, builder.AddEventClassificationRedaction(r => r.SetRedactor<Microsoft.Extensions.Compliance.Redaction.NullRedactor>(new Microsoft.Extensions.Compliance.Classification.DataClassificationSet(pii))));
-        builder.AddEventClassificationRedaction(r => r.SetFallbackRedactor<Microsoft.Extensions.Compliance.Redaction.NullRedactor>());
+        Assert.Same(builder, builder.AddEventRedaction(r => r.SetRedactor<Microsoft.Extensions.Compliance.Redaction.NullRedactor>(new Microsoft.Extensions.Compliance.Classification.DataClassificationSet(pii))));
+        builder.AddEventRedaction(r => r.SetFallbackRedactor<Microsoft.Extensions.Compliance.Redaction.NullRedactor>());
 
         var map = RedactionMap(builder.Services);
         Assert.True(map.IsConfigured);
@@ -393,24 +393,24 @@ public sealed class KaleidoServiceCollectionExtensionsTests
 
     // Called on a builder whose collection has no policy yet (a host composing its own builder).
     [Fact]
-    public void AddEventClassificationRedaction_WithoutAPolicyRegistered_RegistersOne()
+    public void AddEventRedaction_WithoutAPolicyRegistered_RegistersOne()
     {
         var services = new ServiceCollection();
         var builder = new Mock<IKaleidoBuilder>();
         builder.SetupGet(x => x.Services).Returns(services);
 
-        builder.Object.AddEventClassificationRedaction(_ => { });
+        builder.Object.AddEventRedaction(_ => { });
 
         Assert.True(RedactionMap(services).IsConfigured);
     }
 
     [Fact]
-    public void AddEventClassificationRedaction_WithNullArguments_Throws()
+    public void AddEventRedaction_WithNullArguments_Throws()
     {
         IKaleidoBuilder? none = null;
 
-        Assert.Throws<ArgumentNullException>(() => none!.AddEventClassificationRedaction(_ => { }));
-        Assert.Throws<ArgumentNullException>(() => NewBuilder().AddEventClassificationRedaction(null!));
+        Assert.Throws<ArgumentNullException>(() => none!.AddEventRedaction(_ => { }));
+        Assert.Throws<ArgumentNullException>(() => NewBuilder().AddEventRedaction(null!));
     }
 
     // ---------------------------------------------------------------------------

@@ -17,7 +17,7 @@ namespace Kaleido.Provider.SQLite;
 /// <code>
 /// public sealed class IntakeOutbox(IntakeDbContext db, ISqliteKaleidoTransaction transaction) : IKaleidoOutbox
 /// {
-///     public async Task AddAsync(IReadOnlyCollection&lt;KaleidoOutboxEvent&gt; events, CancellationToken cancellationToken = default)
+///     public async Task AddAsync(IReadOnlyCollection&lt;KaleidoOutboxEvent&gt; events, CancellationToken cancellationToken)
 ///     {
 ///         if (transaction.Current is { } current)                       // inside a transition: join it
 ///         {

@@ -8,7 +8,7 @@ public sealed class PlanNetworkClient(
 {
     public async Task<IReadOnlySet<Guid>> GetNetworkIdsByPlanIdAsync(
         string planId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var result = await queryableClientFactory
             .GetClient("ReferenceData")

@@ -61,7 +61,7 @@ public sealed class KaleidoAuthorizerTests
             new KaleidoCorrelationContext { CallerName = "alice" };
         var sut = CreateSut(evaluator, caller);
 
-        Assert.True(await sut.CanAccessAsync(null));
+        Assert.True(await sut.CanAccessAsync(null, TestContext.Current.CancellationToken));
 
         evaluator.Verify(
             x => x.CanAccessAsync(
@@ -81,7 +81,7 @@ public sealed class KaleidoAuthorizerTests
 
         await sut.AuthorizeAsync(
             new AuthorizationMetadata(null, ["radiology"]),
-            "cap");
+            "cap", TestContext.Current.CancellationToken);
 
         evaluator.Verify(
             x => x.AuthorizeAsync(
@@ -116,7 +116,7 @@ public sealed class KaleidoAuthorizerTests
         };
 
         var filtered =
-            await sut.FilterAsync(items, i => i.Authorization);
+            await sut.FilterAsync(items, i => i.Authorization, TestContext.Current.CancellationToken);
 
         var item = Assert.Single(filtered);
         Assert.Equal("open", item.Name);
@@ -136,7 +136,7 @@ public sealed class KaleidoAuthorizerTests
         };
 
         var filtered =
-            await sut.FilterAsync(items, i => i.Authorization);
+            await sut.FilterAsync(items, i => i.Authorization, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, filtered.Count);
 
@@ -194,7 +194,7 @@ public sealed class KaleidoAuthorizerTests
             httpContextAccessor: httpContextAccessor);
 
         await sut.CanAccessAsync(
-            new AuthorizationMetadata("hipaa", []));
+            new AuthorizationMetadata("hipaa", []), TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
         Assert.True(await captured("hipaa", CancellationToken.None));
@@ -221,7 +221,7 @@ public sealed class KaleidoAuthorizerTests
         var sut = CreateSut(evaluator);
 
         await sut.CanAccessAsync(
-            new AuthorizationMetadata("hipaa", []));
+            new AuthorizationMetadata("hipaa", []), TestContext.Current.CancellationToken);
 
         Assert.Null(captured);
     }
@@ -263,7 +263,7 @@ public sealed class KaleidoAuthorizerTests
         var sut = CreateSut(evaluator, httpContextAccessor: httpContextAccessor);
 
         await sut.CanAccessAsync(
-            new AuthorizationMetadata("hipaa", []));
+            new AuthorizationMetadata("hipaa", []), TestContext.Current.CancellationToken);
 
         Assert.True(invoked);
         Assert.Null(captured);

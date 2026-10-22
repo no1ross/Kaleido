@@ -17,7 +17,7 @@ internal sealed partial class KaleidoDirectPublicationOutbox(
 
     private readonly List<KaleidoOutboxEvent> _pending = [];
 
-    public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
+    public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(events);
         cancellationToken.ThrowIfCancellationRequested();
@@ -26,7 +26,7 @@ internal sealed partial class KaleidoDirectPublicationOutbox(
         return Task.CompletedTask;
     }
 
-    public async Task CommittedAsync(CancellationToken cancellationToken = default)
+    public async Task CommittedAsync(CancellationToken cancellationToken)
     {
         KaleidoOutboxEvent[] committed = [.. _pending];
         _pending.Clear();

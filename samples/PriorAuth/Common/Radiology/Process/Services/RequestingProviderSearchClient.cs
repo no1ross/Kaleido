@@ -23,7 +23,7 @@ public sealed class RequestingProviderSearchClient(
         Guid processId,
         Guid providerLocationId,
         ProviderType providerType,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var result = await SearchAsync(
             processId,
@@ -37,8 +37,8 @@ public sealed class RequestingProviderSearchClient(
     public async Task<QueryResult<RequestingProviderSearchView>> SearchAsync(
         Guid processId,
         QueryBody? query,
-        ProviderType providerType = ProviderType.RequestingProvider,
-        CancellationToken cancellationToken = default)
+        ProviderType providerType,
+        CancellationToken cancellationToken)
     {
         var planId =
             await dbContext.PriorAuthorizations

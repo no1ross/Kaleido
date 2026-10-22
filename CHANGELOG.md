@@ -25,9 +25,9 @@ sections.
   is now `AddAsync`. New builder methods `AddContextStore`, `AddIdempotencyStore`, `AddOutboxStore`,
   `AddTransactions`; new startup codes `conflicting_store`, `conflicting_outbox`.
 - **Event redaction separate from log redaction** ([ADR 0025](docs/decisions/0025-event-redaction-policy.md), #278):
-  `AddEventClassificationRedaction(r => ...)` sets the event policy with the standard `IRedactionBuilder`
+  `AddEventRedaction(r => ...)` sets the event policy with the standard `IRedactionBuilder`
   API; the host's `AddRedaction` now applies to logs only. **Behavior change:** without
-  `AddEventClassificationRedaction`, classified values in events are erased (with a one-time warning),
+  `AddEventRedaction`, classified values in events are erased (with a one-time warning),
   even when the host has a log policy.
 - **Versioning concept** ([ADR 0026](docs/decisions/0026-versioning-concept.md), #197): a version is a label;
   one live version per capability (a breaking change takes a new name); in-flight processes continue on
@@ -38,7 +38,7 @@ sections.
   Only enabled questions must be answered; an answer to a disabled one is rejected. The MCP adapter asks
   in rounds (forms, and chat with `answersToken`) and never shows the agent the conditions. Additive on
   the wire.
-- **Output descriptions for agents** (#213): new consumer rule KAL2024 (step results and view outputs
+- **Output descriptions for agents** (#213): new consumer rule KAL2021 (step results and view outputs
   need descriptions; an error in the samples). MCP query and step results carry `fieldDescriptions`.
 - **SQLite registrations:** `UseSqliteKaleidoContextStore` is replaced by `AddSqliteContextStore`,
   `AddSqliteOutboxStore` and `AddSqliteIdempotencyStore` (one database; `connection_string_mismatch`);
@@ -52,7 +52,26 @@ sections.
   400 for a step it cannot build (#392).
 - **Public API surface:** core runtime internals and registry descriptors made internal; wire contracts
   self-contained in `Kaleido.Http.Abstractions` ([ADR 0017](docs/decisions/0017-transport-contract-placement.md), #389, #390).
-- **Consumer analyzer rules:** KAL2008 removed; KAL0004/KAL1011 removed (#401).
+- **Public API baseline** (#313): each package's public API is recorded in `PublicAPI.Shipped.txt` /
+  `PublicAPI.Unshipped.txt`; an unrecorded change fails the build. `KaleidoHttpClientException` has
+  one constructor: `(code, message, statusCode, errors = null, innerException = null)`.
+- **Public API trimmed** (#313): `QueryBody`, `QuerySort` and `QueryPage` are sealed. The properties of
+  `ProcessStepHandlerResult` and `ProcessStepHandlerResult<T>` can no longer be set by consumers: a
+  result comes from `Success`, `Reject`, `Failure`, `HandOff`, `RequireInformation` or `Next`, so it
+  cannot contradict itself (e.g. succeeded and rejected at once).
+- **Cancellation tokens are required** (#313): no public async API defaults its `CancellationToken`
+  any more (handlers, async sources and views, delegated sources, `IEventPublisher`, the store
+  contracts, `IKaleidoOutbox`, `IKaleidoTransactions`, the Kaleido clients, `IRegistrySnapshotStore`),
+  so a caller cannot silently drop cancellation. Callers pass their token; an implementation may keep
+  a default. Parameters that preceded the token became required too: the by-name
+  `ExecuteStepAsync(stepName, processStep, processId, cancellationToken)` (pass `null` for no
+  process). `QueryApiRequest` and `QueryApiRequest<TParameters>` are sealed.
+- **Analyzer rule IDs renumbered** (#416): rules removed before the first release (#401 and earlier) no
+  longer leave gaps; each family is numbered contiguously. A preview's suppressions or `.editorconfig`
+  severities by ID need the new number:
+  - consumer: KAL2009..KAL2024 are now KAL2006..KAL2021;
+  - source: KAL0005..KAL0015 are now KAL0004..KAL0014, KAL0018..KAL0023 are now KAL0015..KAL0020;
+  - test: KAL1012 and KAL1013 are now KAL1011 and KAL1012.
 
 ### Added
 - Consumer guide (`docs/guide`): concepts, events and the outbox, persistence, deployment and choosing options, around one orders service whose examples are compiled, checked against the pages in CI (`tools/docs/check-guide-snippets.py`) and run by tests (#409).

@@ -136,7 +136,7 @@ public sealed class KaleidoQueryableClientTests
     {
         var (client, _) = CreateClient();
 
-        var result = await client.GetRegistryAsync();
+        var result = await client.GetRegistryAsync(TestContext.Current.CancellationToken);
 
         Assert.Single(result, r => r.Name == "my-context");
     }
@@ -151,8 +151,8 @@ public sealed class KaleidoQueryableClientTests
             return JsonOk(FakeRegistry);
         });
 
-        await client.GetRegistryAsync();
-        await client.GetRegistryAsync();
+        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
+        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(1, callCount);
     }
@@ -190,7 +190,7 @@ public sealed class KaleidoQueryableClientTests
         var client = CreateSut(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
 
         await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.GetRegistryAsync());
+            () => client.GetRegistryAsync(TestContext.Current.CancellationToken));
     }
 
     // ---------------------------------------------------------------------------
@@ -215,7 +215,7 @@ public sealed class KaleidoQueryableClientTests
 
         var result = await client.QueryViewAsync<FakeParams, FakeView>(
             "my-context", "grid",
-            new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody()));
+            new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody()), TestContext.Current.CancellationToken);
 
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(42, result.Results.First().Id);
@@ -234,7 +234,7 @@ public sealed class KaleidoQueryableClientTests
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 source, view,
-                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody())));
+                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody()), TestContext.Current.CancellationToken));
 
         Assert.Equal(status, ex.StatusCode);
         Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
@@ -252,7 +252,7 @@ public sealed class KaleidoQueryableClientTests
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QueryViewAsync<FakeParams, FakeView>(
                 "my-context", "grid",
-                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody())));
+                new QueryApiRequest<FakeParams>(new FakeParams(), new QueryApiBody()), TestContext.Current.CancellationToken));
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, ex.StatusCode);
     }
@@ -274,7 +274,7 @@ public sealed class KaleidoQueryableClientTests
 
         var result = await client.QuerySourceAsync<FakeView>(
             "my-context",
-            new QueryApiRequest(new QueryApiBody()));
+            new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.TotalCount);
     }
@@ -295,7 +295,7 @@ public sealed class KaleidoQueryableClientTests
 
         var result = await client.QuerySourceAsync<FakeSearchParams, FakeView>(
             "my-context",
-            new QueryApiRequest<FakeSearchParams>(new FakeSearchParams { ProcessId = "p-1" }, new QueryApiBody()));
+            new QueryApiRequest<FakeSearchParams>(new FakeSearchParams { ProcessId = "p-1" }, new QueryApiBody()), TestContext.Current.CancellationToken);
 
         Assert.Equal("/queryable/my-context/query", postedUrl);
         Assert.Contains("p-1", postedBody);
@@ -312,7 +312,7 @@ public sealed class KaleidoQueryableClientTests
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
             () => client.QuerySourceAsync<FakeView>(
                 "my-context",
-                new QueryApiRequest(new QueryApiBody())));
+                new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
 
         Assert.Equal(HttpStatusCode.Forbidden, ex.StatusCode);
     }
@@ -331,7 +331,7 @@ public sealed class KaleidoQueryableClientTests
             return JsonOk(FakeRegistry);
         });
 
-        await client.GetRegistryAsync();
+        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("/radiology/registry", registryUrl);
     }
@@ -346,7 +346,7 @@ public sealed class KaleidoQueryableClientTests
             return JsonOk(FakeRegistry);
         });
 
-        await client.GetRegistryAsync();
+        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("/registry", registryUrl);
     }
@@ -372,7 +372,7 @@ public sealed class KaleidoQueryableClientTests
         var stamper = new Mock<ICorrelationHeaderStamper>();
 
         var client = CreateSut(httpClient, stamper.Object);
-        await client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()));
+        await client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken);
 
         stamper.Verify(x => x.Stamp(It.IsAny<HttpRequestMessage>()), Times.AtLeastOnce);
     }
@@ -548,10 +548,10 @@ public sealed class KaleidoQueryableClientTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
 
-        await client.GetRegistryAsync();
+        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
         await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
-            client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest()));
-        await client.GetRegistryAsync();
+            client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(), TestContext.Current.CancellationToken));
+        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(2, registryReads);
     }

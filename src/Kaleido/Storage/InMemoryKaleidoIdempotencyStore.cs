@@ -12,7 +12,7 @@ internal sealed partial class InMemoryKaleidoIdempotencyStore : IKaleidoIdempote
     public InMemoryKaleidoIdempotencyStore(ILogger<InMemoryKaleidoIdempotencyStore> logger) =>
         LogInMemoryStoreActive(logger);
 
-    public Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken = default)
+    public Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(admission);
 
@@ -40,7 +40,7 @@ internal sealed partial class InMemoryKaleidoIdempotencyStore : IKaleidoIdempote
         }
     }
 
-    public Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken = default)
+    public Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(result);
 
@@ -54,7 +54,7 @@ internal sealed partial class InMemoryKaleidoIdempotencyStore : IKaleidoIdempote
         return Task.CompletedTask;
     }
 
-    public Task ReleaseAsync(string key, CancellationToken cancellationToken = default)
+    public Task ReleaseAsync(string key, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(key);
 

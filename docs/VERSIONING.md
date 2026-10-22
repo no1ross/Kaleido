@@ -27,6 +27,26 @@ decided at 1.0. Nothing here promises a support period or a date.
 Use previews for evaluation and experimentation, not as a compatibility or production-readiness
 commitment.
 
+## The public API baseline
+
+Each package records its public API in two files in its project's `.PublicAPI` folder (`Microsoft.CodeAnalysis.PublicApiAnalyzers`, #313):
+
+| File | Holds |
+|---|---|
+| `PublicAPI.Shipped.txt` | the API of the released versions (empty until 1.0) |
+| `PublicAPI.Unshipped.txt` | what changed since the last release (during the preview, the whole API) |
+
+- A public type or member that is added, changed or removed without its line fails the build
+  (RS0016 for an unrecorded addition, RS0017 for a recorded member that no longer exists). So every
+  public API change is a visible diff of `PublicAPI.Unshipped.txt` in its pull request.
+- The IDE's code fix for RS0016 writes the line; `dotnet format analyzers <project> --diagnostics RS0016`
+  does it for a whole project.
+- Several overloads with optional parameters are rejected (RS0026/RS0027), since adding a parameter
+  later would break compiled callers: one overload takes the optional parameters.
+- **At each release** the `Unshipped` lines move to `Shipped` ([releasing](../RELEASING.md)).
+- **After 1.0 ships**, package validation (`EnablePackageValidation`) compares each package with the
+  released 1.0 package, so a binary-breaking change in a 1.x is caught at pack time.
+
 ## Runtime
 
 - The packages target **`net8.0`**: a service runs on .NET 8 or later. `Kaleido.Http` and
@@ -44,7 +64,8 @@ The 1.0 contract freeze ([#241](https://github.com/no1ross/Kaleido/issues/241)) 
 - the deprecation rule for 1.x (how long an `[Obsolete]` member stays before removal);
 - the supported runtimes and how long each is supported.
 
-At 1.0 the consumer analyzer rules (`KAL2xxx`) move to `AnalyzerReleases.Shipped.md`, so later changes to
-them are recorded per release ([`tools/analyzers/README.md`](../tools/analyzers/README.md#rule-inventory-and-release-tracking)).
+At 1.0 the public API baselines (`PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`) and the consumer
+analyzer rules (`KAL2xxx`, to `AnalyzerReleases.Shipped.md`) are moved, so later changes to them are
+recorded per release ([`tools/analyzers/README.md`](../tools/analyzers/README.md#rule-inventory-and-release-tracking)).
 
 Until then, this page is the policy.

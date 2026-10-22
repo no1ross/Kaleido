@@ -11,6 +11,6 @@ public static class PriorAuthEventRedaction
     /// for it, so it is erased). Log redaction is separate: this policy applies to events only (ADR 0025).
     /// </summary>
     public static IKaleidoBuilder AddPriorAuthEventRedaction(this IKaleidoBuilder builder) =>
-        builder.AddEventClassificationRedaction(r =>
+        builder.AddEventRedaction(r =>
             r.SetRedactor<NullRedactor>(new DataClassificationSet(PriorAuthDataClassifications.Pii)));
 }

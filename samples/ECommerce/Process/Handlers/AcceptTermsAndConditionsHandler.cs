@@ -13,7 +13,7 @@
 //    public async Task<ProcessStepHandlerResult<AcceptTermsAndConditionsResponse>> ExecuteAsync(
 //        AcceptTermsAndConditionsStep step,
 //        ProcessStepContext context,
-//        CancellationToken cancellationToken = default)
+//        CancellationToken cancellationToken)
 //    {
 //        var orderId =
 //            Guid.Parse(step.OrderId);

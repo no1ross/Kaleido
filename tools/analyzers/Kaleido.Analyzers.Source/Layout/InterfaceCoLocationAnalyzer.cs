@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.Layout;
 
 /// <summary>
-/// KAL0015 — the interface for a concrete class belongs in the same file as
+/// KAL0014 — the interface for a concrete class belongs in the same file as
 /// its implementation (IProcessorRuntime lives in ProcessorRuntime.cs). Provider
 /// contracts are exempt by construction: an interface with no same-named
 /// implementation in the assembly (IKaleidoContextStore, IProcessStepHandler)

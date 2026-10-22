@@ -14,7 +14,7 @@ public sealed class GenerateSnapshotHandler(
     public async Task<ProcessStepHandlerResult<GenerateSnapshotResponse>> ExecuteAsync(
         GenerateSnapshotStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var enrollment =
             await dbContext.MemberEnrollments

@@ -12,7 +12,7 @@ public sealed class ConcreteDependencyAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0008", DiagnosticSeverity.Error);
+        new("KAL0007", DiagnosticSeverity.Error);
 
     private const string Registrations = @"
 public static class AppServiceCollectionExtensions

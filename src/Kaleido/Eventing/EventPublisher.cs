@@ -20,7 +20,7 @@ namespace Kaleido.Eventing;
 /// <em>before</em> they are written to the outbox, not in the publisher (the outbox stores the payload
 /// until it is published): mark properties with your own <c>DataClassificationAttribute</c>
 /// subclasses (e.g. <c>[PHI]</c>, <c>[PII]</c>) and choose a redactor per classification for events with
-/// <c>AddEventClassificationRedaction</c> (separate from log redaction) - without it, classified
+/// <c>AddEventRedaction</c> (separate from log redaction) - without it, classified
 /// values are erased - and use
 /// <see cref="IKaleidoEventRedactor"/> for anything attributes cannot express.
 /// </para>
@@ -65,7 +65,7 @@ public interface IEventPublisher
     /// </summary>
     Task PublishAsync<TEvent, TContext>(
         KaleidoEventEnvelope<TEvent, TContext> envelope,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent;
 }
 
@@ -101,7 +101,7 @@ internal sealed partial class EventPublisher : INoOpEventPublisher
 
     public Task PublishAsync<TEvent, TContext>(
         KaleidoEventEnvelope<TEvent, TContext> envelope,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent
         => Task.CompletedTask;
 

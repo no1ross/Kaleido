@@ -6,9 +6,9 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers;
 
 /// <summary>
-/// KAL2021 — a process step input marked [Required] has a non-nullable value type and is not a
+/// KAL2018 — a process step input marked [Required] has a non-nullable value type and is not a
 /// C# <c>required</c> member.
-/// KAL2022 — the same for a query parameter.
+/// KAL2019 — the same for a query parameter.
 /// The [Required] attribute can only fail on a value that can be missing: an omitted Guid, DateOnly,
 /// enum or number becomes its default and passes, so the input is silently "provided". The
 /// <c>required</c> keyword makes the caller supply it (the compiler for in-process callers,

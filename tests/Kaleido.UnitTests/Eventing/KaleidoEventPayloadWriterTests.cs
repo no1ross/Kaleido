@@ -25,7 +25,7 @@ public sealed class KaleidoEventPayloadWriterTests
             redactorProvider ?? NoEventPolicy(),
             logger ?? Mock.Of<ILogger<KaleidoEventPayloadWriter>>());
 
-    // No AddEventClassificationRedaction: nothing is configured, every classified value is erased.
+    // No AddEventRedaction: nothing is configured, every classified value is erased.
     private static IKaleidoEventRedactorProvider NoEventPolicy() => Mock.Of<IKaleidoEventRedactorProvider>();
 
     private static Member AMember() =>

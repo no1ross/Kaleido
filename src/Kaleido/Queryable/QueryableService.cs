@@ -24,7 +24,7 @@ internal interface IQueryableService
     /// <typeparamref name="TQuery"/> is not a registered source or view, or
     /// <typeparamref name="TResult"/> does not match what it returns.
     /// </exception>
-    Task<QueryResult<TResult>> QueryAsync<TQuery, TResult>(IQueryRequest request, CancellationToken cancellationToken = default)
+    Task<QueryResult<TResult>> QueryAsync<TQuery, TResult>(IQueryRequest request, CancellationToken cancellationToken)
         where TQuery : class
         where TResult : class;
 }
@@ -52,7 +52,7 @@ internal sealed class QueryableService(
 
     public async Task<QueryResult<TResult>> QueryAsync<TQuery, TResult>(
         IQueryRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TQuery : class
         where TResult : class
     {

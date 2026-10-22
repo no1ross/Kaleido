@@ -10,7 +10,7 @@ namespace Kaleido.Http.Queryable;
 /// </summary>
 /// <param name="Query">The search, filter, sort and page to apply; <see langword="null"/> for none of them.</param>
 [ExcludeFromCodeCoverage]
-public record QueryApiRequest(
+public sealed record QueryApiRequest(
     QueryApiBody? Query = null);
 
 /// <summary>
@@ -24,7 +24,7 @@ public record QueryApiRequest(
 /// <param name="Parameters">The parameter values; <see langword="null"/> when none are supplied.</param>
 /// <param name="Query">The search, filter, sort and page to apply; <see langword="null"/> for none of them.</param>
 [ExcludeFromCodeCoverage]
-public record QueryApiRequest<TParameters>(
+public sealed record QueryApiRequest<TParameters>(
     TParameters? Parameters = null,
     QueryApiBody? Query = null)
     where TParameters : class;

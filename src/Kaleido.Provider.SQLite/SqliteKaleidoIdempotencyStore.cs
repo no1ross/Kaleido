@@ -11,7 +11,7 @@ internal sealed class SqliteKaleidoIdempotencyStore(
     SqliteKaleidoContextDbContext dbContext)
     : IKaleidoIdempotencyStore
 {
-    public async Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken = default)
+    public async Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(admission);
 
@@ -45,7 +45,7 @@ internal sealed class SqliteKaleidoIdempotencyStore(
             : ToResult(existing);
     }
 
-    public async Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken = default)
+    public async Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(result);
 
@@ -64,7 +64,7 @@ internal sealed class SqliteKaleidoIdempotencyStore(
             cancellationToken);
     }
 
-    public async Task ReleaseAsync(string key, CancellationToken cancellationToken = default)
+    public async Task ReleaseAsync(string key, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(key);
 

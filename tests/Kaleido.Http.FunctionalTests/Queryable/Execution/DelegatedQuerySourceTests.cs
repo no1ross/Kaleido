@@ -24,7 +24,7 @@ public sealed class DelegatedQuerySourceTests : IClassFixture<QueryableAspNetCor
     [Fact]
     public async Task Registry_PublishesDelegatedSourceLikeAnyOtherSource()
     {
-        var registry = await _factory.GetClient("test").GetRegistryAsync();
+        var registry = await _factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
 
         var source = Assert.Single(registry, r => r.Name == nameof(FunctionalRecordSummarySource));
 
@@ -58,7 +58,7 @@ public sealed class DelegatedQuerySourceTests : IClassFixture<QueryableAspNetCor
                     nameof(FunctionalRecordSummarySource),
                     new QueryApiRequest<FunctionalRecordSummaryParameters>(
                         new FunctionalRecordSummaryParameters { Category = "Alpha" },
-                        new QueryApiBody { Page = new QueryApiPage { Size = 2, Offset = 4 } }));
+                        new QueryApiBody { Page = new QueryApiPage { Size = 2, Offset = 4 } }), TestContext.Current.CancellationToken);
 
         Assert.Equal(FunctionalRecordSummarySource.DownstreamTotalCount, result.TotalCount);
         Assert.Equal(4, result.Offset);

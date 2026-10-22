@@ -28,7 +28,7 @@ public sealed class WarehousePublisher(IWarehouseFeed feed) : IEventPublisher
 {
     public Task PublishAsync<TEvent, TContext>(
         KaleidoEventEnvelope<TEvent, TContext> envelope,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent =>
         feed.SendAsync(envelope.EventType, JsonSerializer.Serialize(envelope), cancellationToken);
 }
@@ -41,7 +41,7 @@ public static class ShopEvents
         // snippet: events-registration
         kaleido
             .AddEventPublisher<WarehousePublisher>()
-            .AddEventClassificationRedaction(r =>
+            .AddEventRedaction(r =>
                 r.SetRedactor<ErasingRedactor>(new DataClassificationSet(ShopClassifications.Personal)));
         // end snippet
     }

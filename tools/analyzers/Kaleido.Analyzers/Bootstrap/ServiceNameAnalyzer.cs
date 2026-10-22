@@ -11,7 +11,7 @@ namespace Kaleido.Analyzers.Bootstrap;
 /// KAL2005 — a constant <c>ServiceName</c> must match the runtime rule <c>[a-z0-9][a-z0-9_-]*</c>
 /// (<c>KaleidoServiceOptions.ValidateServiceName</c>): it is the HTTP route prefix and the MCP tool-name
 /// prefix. Both are tested against the shared table in <c>tests/Shared/ServiceNameCases.cs</c>.
-/// KAL2020 — the constant is longer than <see cref="MaxLength"/> characters. It prefixes every MCP
+/// KAL2017 — the constant is longer than <see cref="MaxLength"/> characters. It prefixes every MCP
 /// tool name (<c>{service}_{capability}</c>), and MCP limits tool names to 64 characters.
 /// Only assignments to Kaleido's <c>ServiceName</c> properties with a compile-time constant value are
 /// checked (literals, <c>const</c> fields and locals, constant interpolations, <c>nameof</c>); a value
@@ -34,7 +34,7 @@ public sealed class ServiceNameAnalyzer : DiagnosticAnalyzer
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             helpLinkUri: HelpLinks.For(DiagnosticIds.ServiceNameLength),
-            description: "AI agents call Kaleido capabilities as MCP tools named {service}_{capability}; the service name has a 15-character budget and the capability part 40 (KAL2019).");
+            description: "AI agents call Kaleido capabilities as MCP tools named {service}_{capability}; the service name has a 15-character budget and the capability part 40 (KAL2016).");
 
     private static readonly DiagnosticDescriptor Rule =
         new(

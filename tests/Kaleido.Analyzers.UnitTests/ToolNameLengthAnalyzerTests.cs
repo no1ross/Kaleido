@@ -34,7 +34,7 @@ namespace Kaleido.Queryable
     private const string LongStep = "CaptureTheRequestingProviderAndTheirOfficeStep";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL2019", DiagnosticSeverity.Warning);
+        new("KAL2016", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task AStepWithinTheBudget_NoDiagnostic()

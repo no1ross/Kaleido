@@ -17,7 +17,7 @@ public sealed class CaptureClinicalInfoHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureClinicalInfoStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         try
         {

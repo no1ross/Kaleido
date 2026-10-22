@@ -7,9 +7,9 @@ namespace Kaleido.Analyzers.Queryable;
 /// <summary>
 /// Queryable identity rules. The interfaces are the identity; the attributes only describe.
 /// <list type="bullet">
-/// <item><description>KAL2012 — [QuerySource] or [QueryView] on a type that does not implement the matching interface (discovery never sees it).</description></item>
-/// <item><description>KAL2013 — a concrete query source or view without its required attribute (startup fails).</description></item>
-/// <item><description>KAL2014 — [Filterable], [Searchable] or [Sortable] on a property of a type that is not an IQueryContext (the rule is ignored).</description></item>
+/// <item><description>KAL2009 — [QuerySource] or [QueryView] on a type that does not implement the matching interface (discovery never sees it).</description></item>
+/// <item><description>KAL2010 — a concrete query source or view without its required attribute (startup fails).</description></item>
+/// <item><description>KAL2011 — [Filterable], [Searchable] or [Sortable] on a property of a type that is not an IQueryContext (the rule is ignored).</description></item>
 /// </list>
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]

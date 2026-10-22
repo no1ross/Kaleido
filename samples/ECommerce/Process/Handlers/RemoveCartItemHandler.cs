@@ -11,7 +11,7 @@ public sealed class RemoveCartItemHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         RemoveCartItemStep step,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var shoppingCart =
             await dbContext.ShoppingCarts

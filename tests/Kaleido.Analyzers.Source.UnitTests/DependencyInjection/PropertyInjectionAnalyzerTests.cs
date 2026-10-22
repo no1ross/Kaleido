@@ -12,7 +12,7 @@ public sealed class PropertyInjectionAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0009", DiagnosticSeverity.Error);
+        new("KAL0008", DiagnosticSeverity.Error);
 
     private const string Registrations = @"
 public static class AppServiceCollectionExtensions

@@ -64,7 +64,7 @@ public sealed class ClientDownstreamRegistriesTests
         Client("Intake", "intake");
         Client("Radiology", "radiology");
 
-        var registries = await CreateSut().GetAsync(cancellationToken: Cancel);
+        var registries = await CreateSut().GetAsync(maxParallelism: null, cancellationToken: Cancel);
 
         Assert.Equal(["intake", "radiology"], registries.Processes.Select(x => x.Name).Order());
         Assert.Equal(["intake-source", "radiology-source"], registries.Queryables.Select(x => x.Name).Order());
@@ -77,7 +77,7 @@ public sealed class ClientDownstreamRegistriesTests
         Client("Self", "router");
         Client("Intake", "intake");
 
-        var registries = await CreateSut("router").GetAsync(cancellationToken: Cancel);
+        var registries = await CreateSut("router").GetAsync(maxParallelism: null, cancellationToken: Cancel);
 
         Assert.Equal(["intake"], registries.Processes.Select(x => x.Name));
         processClients["Self"].Verify(x => x.GetRegistryAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -104,7 +104,7 @@ public sealed class ClientDownstreamRegistriesTests
         await cancellation.CancelAsync();
         Client("Intake", "intake", failure: new OperationCanceledException(cancellation.Token));
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().GetAsync(cancellationToken: cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().GetAsync(maxParallelism: null, cancellationToken: cancellation.Token));
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public sealed class ClientDownstreamRegistriesTests
         Client("Intake", "intake");
         Client("Radiology", "radiology", failure: new TaskCanceledException("timed out"));
 
-        var registries = await CreateSut().GetAsync(cancellationToken: Cancel);
+        var registries = await CreateSut().GetAsync(maxParallelism: null, cancellationToken: Cancel);
 
         Assert.Equal(["intake"], registries.Processes.Select(x => x.Name));
         Assert.Equal("Radiology", Assert.Single(registries.Errors).ClientName);
@@ -162,7 +162,7 @@ public sealed class ClientDownstreamRegistriesTests
         Client("Intake", "intake", failure: new HttpRequestException("intake down"));
         Client("Radiology", "radiology", failure: new HttpRequestException("radiology down"));
 
-        var registries = await CreateSut(logger: logger).GetAsync(cancellationToken: Cancel);
+        var registries = await CreateSut(logger: logger).GetAsync(maxParallelism: null, cancellationToken: Cancel);
 
         Assert.Equal(["Intake", "Radiology"], registries.Errors.Select(e => e.ClientName).Order());
         Assert.Equal(

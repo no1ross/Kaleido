@@ -10,7 +10,7 @@ public sealed class ProductCodeMappingClient(
     public async Task<string?> GetProcessorNameAsync(
         string codeValue,
         ProcedureCodeSystem codeSystem,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var result = await queryableClientFactory
             .GetClient("Configuration")

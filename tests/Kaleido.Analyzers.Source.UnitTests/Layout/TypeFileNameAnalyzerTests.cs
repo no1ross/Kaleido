@@ -12,7 +12,7 @@ public sealed class TypeFileNameAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0022", DiagnosticSeverity.Warning);
+        new("KAL0019", DiagnosticSeverity.Warning);
 
     private static async Task RunFilesAsync(DiagnosticResult[] expected, params (string Name, string Code)[] files)
     {

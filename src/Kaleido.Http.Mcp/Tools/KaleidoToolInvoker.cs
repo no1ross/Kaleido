@@ -62,7 +62,7 @@ internal interface IKaleidoToolInvoker
         KaleidoTool tool,
         KaleidoToolCall call,
         ToolCatalog catalog,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 internal sealed partial class KaleidoToolInvoker(
@@ -120,7 +120,7 @@ internal sealed partial class KaleidoToolInvoker(
         KaleidoTool tool,
         KaleidoToolCall call,
         ToolCatalog catalog,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(tool);
         ArgumentNullException.ThrowIfNull(call);

@@ -15,7 +15,7 @@ public interface IKaleidoQueryableClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The remote query sources with their views.</returns>
     Task<IReadOnlyList<QueryableSourceResponse>> GetRegistryAsync(
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Drops the cached registry snapshot of this client's service so the next operation re-fetches
@@ -25,7 +25,7 @@ public interface IKaleidoQueryableClient
     /// <param name="cancellationToken">Cancels the removal from the snapshot store.</param>
     /// <returns>A task that completes once the snapshot has been removed.</returns>
     Task InvalidateRegistryAsync(
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>Queries a view of a remote query source.</summary>
     /// <typeparam name="TParameters">The view's parameters record (a local mirror is fine).</typeparam>
@@ -44,7 +44,7 @@ public interface IKaleidoQueryableClient
         string source,
         string view,
         QueryApiRequest<TParameters> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TParameters : class
         where TView : class;
 
@@ -62,7 +62,7 @@ public interface IKaleidoQueryableClient
     Task<QueryResult<TResult>> QuerySourceAsync<TResult>(
         string source,
         QueryApiRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TResult : class;
 
     /// <summary>Queries a remote query source directly, with parameters.</summary>
@@ -80,7 +80,7 @@ public interface IKaleidoQueryableClient
     Task<QueryResult<TResult>> QuerySourceAsync<TParameters, TResult>(
         string source,
         QueryApiRequest<TParameters> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TParameters : class
         where TResult : class;
 }

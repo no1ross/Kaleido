@@ -60,7 +60,7 @@ and quoting its description; nothing is sent to the service.
 Names are `{service}_{capability}` in snake case, where the capability part is the type name
 without a `QueryContextSource`, `QueryViewSource`, `ViewSource`, `Source` or `Step` suffix
 (`MemberSearchSource` in service `member` becomes `member_member_search`). A name longer than MCP's
-64 characters is shortened with a hash suffix and logged at Warning; KAL2020 and KAL2019 keep the
+64 characters is shortened with a hash suffix and logged at Warning; KAL2017 and KAL2016 keep the
 service name (15) and the capability part (40) inside the budget. When two capabilities produce the
 same name, the later one says what it is (`_view`, `_source`, `_step`), and the collision is logged.
 
@@ -87,7 +87,7 @@ them carelessly.
 
 **What the returned fields mean.** A query result or a step result comes with `fieldDescriptions`:
 the registry's description of each field the result contains (from `[Description]` on the query
-context, the view's output record or the step's result type; KAL2018 and KAL2024 ask for them). Tool
+context, the view's output record or the step's result type; KAL2015 and KAL2021 ask for them). Tool
 descriptions keep listing only the field names, so the tool list stays short and the meaning arrives
 with the data (#213).
 

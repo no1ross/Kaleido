@@ -89,7 +89,7 @@ public sealed class HttpClientRegistryCacheTests
     public async Task GetOrFetchAsync_WhenSnapshotOlderThanTtl_Refetches()
     {
         var store = CreateStore();
-        await store.SetAsync(Key, Stale);
+        await store.SetAsync(Key, Stale, TestContext.Current.CancellationToken);
 
         using var sut = CreateSut(store);
         var fetchCount = 0;
@@ -111,7 +111,7 @@ public sealed class HttpClientRegistryCacheTests
     public async Task GetOrFetchAsync_WhenSnapshotWithinTtl_ServesCached()
     {
         var store = CreateStore();
-        await store.SetAsync(Key, Fresh);
+        await store.SetAsync(Key, Fresh, TestContext.Current.CancellationToken);
 
         using var sut = CreateSut(store);
         var fetchCount = 0;
@@ -208,7 +208,7 @@ public sealed class HttpClientRegistryCacheTests
     public async Task GetOrRevalidateAsync_WhenTheSnapshotIsDue_ChecksWithItsRevision()
     {
         var store = CreateStore();
-        await store.SetAsync(Key, StaleWithRevision);
+        await store.SetAsync(Key, StaleWithRevision, TestContext.Current.CancellationToken);
         using var sut = CreateSut(store);
         string? sentRevision = null;
 
@@ -228,7 +228,7 @@ public sealed class HttpClientRegistryCacheTests
     public async Task GetOrRevalidateAsync_WhenUnchanged_KeepsTheSnapshotAndCountsItAsChecked()
     {
         var store = CreateStore();
-        await store.SetAsync(Key, StaleWithRevision);
+        await store.SetAsync(Key, StaleWithRevision, TestContext.Current.CancellationToken);
         using var sut = CreateSut(store);
         var checks = 0;
 
@@ -250,7 +250,7 @@ public sealed class HttpClientRegistryCacheTests
     public async Task GetOrRevalidateAsync_WhenChanged_StoresAndReturnsTheNewRegistry()
     {
         var store = CreateStore();
-        await store.SetAsync(Key, StaleWithRevision);
+        await store.SetAsync(Key, StaleWithRevision, TestContext.Current.CancellationToken);
         using var sut = CreateSut(store);
 
         var result = await sut.GetOrRevalidateAsync(
@@ -259,7 +259,7 @@ public sealed class HttpClientRegistryCacheTests
             CancellationToken.None);
 
         Assert.Same(Fresh, result);
-        Assert.Same(Fresh, await store.GetAsync(Key));
+        Assert.Same(Fresh, await store.GetAsync(Key, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -267,7 +267,7 @@ public sealed class HttpClientRegistryCacheTests
     {
         var store = CreateStore();
         var undated = new AggregatedRegistryResponse { Revision = "r1" };
-        await store.SetAsync(Key, undated);
+        await store.SetAsync(Key, undated, TestContext.Current.CancellationToken);
         using var sut = CreateSut(store);
         var checks = 0;
 

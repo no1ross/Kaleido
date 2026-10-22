@@ -13,7 +13,7 @@ public sealed class MriProcedureCodeResolverClient(
         MriBodyPart bodyPart,
         Laterality laterality,
         ContrastOption contrast,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var result = await queryableClientFactory
             .GetClient("Configuration")

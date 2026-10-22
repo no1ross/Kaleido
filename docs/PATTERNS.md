@@ -34,8 +34,8 @@ public sealed class CaptureServiceHandler(IHistoryClient history)
 
 Rules:
 - **`IProcessStep` is the step's identity**; `[ProcessStep]` only describes it. Every
-  `IProcessStep` type needs `[ProcessStep]` (KAL2011), and `[ProcessStep]` is only
-  valid on `IProcessStep` types (KAL2010).
+  `IProcessStep` type needs `[ProcessStep]` (KAL2008), and `[ProcessStep]` is only
+  valid on `IProcessStep` types (KAL2007).
 - **The step name is the type name** (`Type.Name`, unmodified) — in the registry, on
   the wire, in persisted state, and in events. Renaming the type renames the step.
 - `[ProcessStep]` declares non-empty `Version`, `DisplayName`, and `Description`
@@ -43,7 +43,7 @@ Rules:
   them for that audience.
 - **Required inputs are `required` members.** Inputs are validated with DataAnnotations, and
   `[Required]` cannot see an omitted value type (it is already its default). Declare required
-  value-type inputs with the C# keyword too (KAL2021):
+  value-type inputs with the C# keyword too (KAL2018):
   `[Required] public required Guid MemberId { get; init; }`. Callers must then supply it: the
   compiler checks in-process callers, and a request body that leaves it out is answered 400
   naming it. The handler reads a plain `Guid`.
@@ -77,7 +77,7 @@ Rules:
   `OperationCanceledException` in `catch (Exception)` — filter it or let the
   executor own cancellation (KAL2004).
 - **Describe inputs** with `[Description("…")]` or `[Display(Description = "…")]`
-  (KAL2017); `[Display(Name, Prompt)]` are optional hints. The registry publishes
+  (KAL2014); `[Display(Name, Prompt)]` are optional hints. The registry publishes
   them — UIs and AI agents use them to know what to ask for.
 - **Declare what only you know about the step's effects** ([ADR 0015](./decisions/0015-declared-step-behavior.md)) -
   clients and AI agents read it from the registry, and the MCP adapter maps it onto tool hints:
@@ -150,7 +150,7 @@ return ProcessStepHandlerResult.RequireInformation<CaptureOutOfNetworkResponseSt
         ]
     });
 
-// The information step: its payload is the answers; nothing else (KAL2015).
+// The information step: its payload is the answers; nothing else (KAL2012).
 [ProcessStep(Version = "1.0", DisplayName = "Out-of-network responses", Description = "Answers the out-of-network attestation.")]
 public sealed record CaptureOutOfNetworkResponseStep : IInformationStep
 {
@@ -161,7 +161,7 @@ public sealed record CaptureOutOfNetworkResponseStep : IInformationStep
 
 Rules:
 - Require an information step only with `RequireInformation<TNext>(request)` — never
-  `Success<TNext>()` (KAL2016).
+  `Success<TNext>()` (KAL2013).
 - Kaleido validates the answers structurally against the pending request before the
   handler runs; the handler translates them into domain values.
 - To ask again (adaptive rounds), make the information step `[Repeatable]` and have its
@@ -178,7 +178,7 @@ services.AddKaleido(builder.Configuration, o =>
 {
     o.ServiceName = "intake";                       // lowercase letters, digits, '-' and '_' (KAL2005)
     // AuthorizationMode: Authenticated unless set - add host authentication, or set None explicitly (ADR 0021)
-    o.Assemblies = [typeof(Program).Assembly];      // explicit — never omit (KAL2009)
+    o.Assemblies = [typeof(Program).Assembly];      // explicit — never omit (KAL2006)
 })
     .AddHttp();
 ```
@@ -242,7 +242,7 @@ What Kaleido guarantees, and what stays with the step handler:
 - **Client calls are resilient by default:** timeouts, retries of safe requests (reads and requests with an idempotency key), a circuit breaker - configured under `Kaleido:Resilience`, per client in `Kaleido:Clients:{name}:Resilience` ([`Kaleido.Http.Client`](../src/Kaleido.Http.Client/README.md#resilience)).
 - **A handler's own side effects are the handler's concern.** On a 409 the handler has already run; only the process state was not saved. A handler that writes to another system or calls one should make that write idempotent (an upsert, a business key, the process id as a reference) so running the step again for the same process is harmless - Kaleido cannot make a handler's external write atomic with its state.
 - **Events are handed to the publisher at least once** with Kaleido's built-in outbox (the default). Every event goes to the outbox (a step's `StepCompleted` and a new process's `ProcessCreated` in the same transaction as the state when the persistence provides one, e.g. SQLite), and the event relay of each instance publishes it, retrying with backoff until it succeeds - configured under `Kaleido:Events` (`BatchSize`, `MaxConcurrentPublishes`, `Resilience`). A publisher never slows down or fails a request. Consumers drop duplicates by `IKaleidoEvent.EventId` ([ADR 0012](decisions/0012-events-at-least-once-through-the-store.md)). A host that already runs an outbox plugs it in instead (`AddOutbox<T>()`); `AddDirectPublication()` publishes once after the commit, without retries ([ADR 0023](decisions/0023-outbox-integration.md)).
-- **Event payloads are complete; sensitive values are redacted before the outbox.** Mark PHI/PII properties of your view, source and step types with your own `DataClassificationAttribute` subclasses (`[PHI]`, `[PII]`; `[property: PHI]` on positional records) and choose a redactor per classification for events with `AddEventClassificationRedaction(r => ...)` (the standard `IRedactionBuilder` API): erase, HMAC, keep (`NullRedactor`), or your own encrypting redactor. Without it, classified values are erased. Logs are configured separately with `AddRedaction`, so the two channels can differ (e.g. logs: no PHI or PII; events: PII kept) ([ADR 0025](decisions/0025-event-redaction-policy.md)). For anything else (information-request answers, per-view rules) register an `IKaleidoEventRedactor` (`AddEventRedactor<T>()`). Responses to the caller are never redacted ([ADR 0013](decisions/0013-event-payloads-classified-and-redacted.md)).
+- **Event payloads are complete; sensitive values are redacted before the outbox.** Mark PHI/PII properties of your view, source and step types with your own `DataClassificationAttribute` subclasses (`[PHI]`, `[PII]`; `[property: PHI]` on positional records) and choose a redactor per classification for events with `AddEventRedaction(r => ...)` (the standard `IRedactionBuilder` API): erase, HMAC, keep (`NullRedactor`), or your own encrypting redactor. Without it, classified values are erased. Logs are configured separately with `AddRedaction`, so the two channels can differ (e.g. logs: no PHI or PII; events: PII kept) ([ADR 0025](decisions/0025-event-redaction-policy.md)). For anything else (information-request answers, per-view rules) register an `IKaleidoEventRedactor` (`AddEventRedactor<T>()`). Responses to the caller are never redacted ([ADR 0013](decisions/0013-event-payloads-classified-and-redacted.md)).
 - **Custom stores** implement the conditional save (state only), the idempotent-result methods, and either the built-in outbox's storage (`IKaleidoOutboxStore`, with leased claims) or their own outbox (`IKaleidoOutbox`), plus `IKaleidoTransactions` to keep a state change and its event atomic on one database ([store contract](../src/Kaleido.Provider.SQLite/README.md#implementing-your-own-store), [ADR 0023](decisions/0023-outbox-integration.md)).
 
 ## Queryable: sources, views and query contexts
@@ -284,15 +284,15 @@ internal sealed class MemberSearchView : IQueryViewSource<MemberQuerySource, Mem
 Rules:
 - **Interfaces are the identity; attributes describe** (as for steps). Discovery is
   interface-only:
-  - every source needs `[QuerySource]`, every view needs `[QueryView]` (KAL2013);
-  - an attribute without its interface is never discovered (KAL2012);
+  - every source needs `[QuerySource]`, every view needs `[QueryView]` (KAL2010);
+  - an attribute without its interface is never discovered (KAL2009);
   - both attributes require a non-empty `Version`, `DisplayName` and `Description`
     (KAL2002, KAL2003).
 - **Public names are type names:** a source's name is its `Type.Name`, unique per
   service; a view's name is its `Type.Name`, unique per source.
 - **Query contexts implement `IQueryContext`** and carry the query rules
   (`[Filterable]`, `[Searchable]`, `[Sortable]`). Those attributes on any other type
-  have no effect (KAL2014). A context can back several sources.
+  have no effect (KAL2011). A context can back several sources.
 - **Parameter records implement `IQueryParameters`.** View and result records are
   plain output shapes, with no marker.
 - **Paging:** a source's `[Pageable]` applies to direct queries of that source, a
@@ -340,12 +340,12 @@ Rules:
   internal sealed class EfCoreQueryContextExecutor<TView> : IQueryContextExecutor<TView>
       where TView : class
   {
-      public Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
+      public Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken) =>
           query.Provider is IAsyncQueryProvider       // Microsoft.EntityFrameworkCore.Query
               ? EntityFrameworkQueryableExtensions.CountAsync(query, cancellationToken)
               : Task.FromResult(query.Count());
 
-      public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken = default) =>
+      public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken) =>
           query.Provider is IAsyncQueryProvider
               ? await EntityFrameworkQueryableExtensions.ToListAsync(query, cancellationToken)
               : query.ToList();
@@ -386,7 +386,7 @@ for every project including the host-agnostic `Kaleido`, `Kaleido.Http.Client` a
 ## Dependency injection
 
 Constructor injection, service abstractions, readonly fields — enforced by
-KAL0005–KAL0014 (see the source rules in `ANALYZERS.md`). AddHttpClients /
+KAL0004–KAL0013 (see the source rules in `ANALYZERS.md`). AddHttpClients /
 AddKaleido configure lambdas are composition roots; `IServiceProvider` resolution
 belongs there or in `HttpContext.RequestServices` — nowhere else.
 
@@ -410,7 +410,7 @@ and is forwarded automatically by the typed clients. See the invariants in
 One fixture per SUT, named `{Sut}Tests`, mirroring the SUT's path
 (KAL1001–KAL1004). Inherit `SutFixture<TSut>` and construct only inside
 `CreateSut()` (KAL1006–KAL1008). Mock collaborators — `new` on a Kaleido
-service interface implementation is KAL1012. `BuildServiceProvider` must pass
+service interface implementation is KAL1011. `BuildServiceProvider` must pass
 `ValidateScopes + ValidateOnBuild` (KAL1005).
 
 ## Endpoint metadata

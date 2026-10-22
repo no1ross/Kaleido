@@ -15,7 +15,7 @@ namespace Kaleido.Http.Mcp.Tools;
 /// </remarks>
 internal interface IToolCatalogProvider
 {
-    Task<ToolCatalog> GetAsync(CancellationToken cancellationToken = default);
+    Task<ToolCatalog> GetAsync(CancellationToken cancellationToken);
 }
 
 internal sealed partial class ToolCatalogProvider(
@@ -32,7 +32,7 @@ internal sealed partial class ToolCatalogProvider(
     // the listing is part of the key, so hosts with different settings never share a catalog).
     private static readonly ConcurrentDictionary<string, ToolCatalog> Catalogs = new(StringComparer.Ordinal);
 
-    public async Task<ToolCatalog> GetAsync(CancellationToken cancellationToken = default)
+    public async Task<ToolCatalog> GetAsync(CancellationToken cancellationToken)
     {
         if (!registry.IsMapped)
         {
@@ -42,7 +42,7 @@ internal sealed partial class ToolCatalogProvider(
             };
         }
 
-        var response = await registry.GetForCallerAsync(cancellationToken: cancellationToken);
+        var response = await registry.GetForCallerAsync(refresh: false, cancellationToken: cancellationToken);
         var revision = response.Revision ?? string.Empty;
         var key = $"{options.ToolListing}|{string.Join(',', options.ListedTools)}|{revision}";
 
@@ -107,7 +107,7 @@ internal sealed partial class ToolCatalogProvider(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} tool(s) or argument(s) have no description, so agents must guess what they mean. Add [Description] to: {Missing}.")]
     private static partial void LogMissingDescriptions(ILogger logger, int count, string missing);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} tool name(s) exceeded MCP's 64-character limit and were shortened; rename the capability types (KAL2019): {Names}.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} tool name(s) exceeded MCP's 64-character limit and were shortened; rename the capability types (KAL2016): {Names}.")]
     private static partial void LogTruncatedNames(ILogger logger, int count, string names);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} capability name(s) collide, so their tools carry a kind suffix; rename the capability types so each name says what it is: {Collisions}.")]

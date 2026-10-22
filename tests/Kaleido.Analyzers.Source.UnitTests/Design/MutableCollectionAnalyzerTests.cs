@@ -12,7 +12,7 @@ public sealed class MutableCollectionAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0018", DiagnosticSeverity.Warning);
+        new("KAL0015", DiagnosticSeverity.Warning);
 
     // -- No-diagnostic cases --------------------------------------------------
 
@@ -118,9 +118,9 @@ internal class Impl
 using System.Collections.Generic;
 public abstract class Base
 {
-#pragma warning disable KAL0018
+#pragma warning disable KAL0015
     public abstract List<string> GetItems();
-#pragma warning restore KAL0018
+#pragma warning restore KAL0015
 }
 public class Derived : Base
 {
@@ -137,9 +137,9 @@ public class Derived : Base
 using System.Collections.Generic;
 public interface IApi
 {
-#pragma warning disable KAL0018
+#pragma warning disable KAL0015
     List<string> GetItems();
-#pragma warning restore KAL0018
+#pragma warning restore KAL0015
 }
 public class Api : IApi
 {
@@ -233,9 +233,9 @@ public class Generated
 using System.Collections.Generic;
 public class Api
 {
-#pragma warning disable KAL0018 // a deliberate mutable surface
+#pragma warning disable KAL0015 // a deliberate mutable surface
     public List<string> Items { get; } = new();
-#pragma warning restore KAL0018
+#pragma warning restore KAL0015
 }");
     }
 

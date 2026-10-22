@@ -15,7 +15,7 @@ public sealed class StartIntakeHandler(
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         StartIntakeStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         HistoryRecording.InTransactionAsync(
             dbContext,
             () => RunAsync(context, cancellationToken),

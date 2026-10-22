@@ -12,7 +12,7 @@ public sealed class ValidateMemberHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         ValidateMemberStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         try
         {

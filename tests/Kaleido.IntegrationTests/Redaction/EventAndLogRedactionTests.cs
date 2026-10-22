@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kaleido.IntegrationTests.Redaction;
 
 // One host, two policies (ADR 0025): logs never carry PHI or PII (the host's AddRedaction); events
-// keep PII and erase PHI (AddEventClassificationRedaction). Each channel follows its own policy.
+// keep PII and erase PHI (AddEventRedaction). Each channel follows its own policy.
 public sealed class EventAndLogRedactionTests
 {
     private static readonly DataClassification Phi = new("clinic", "phi");
@@ -74,7 +74,7 @@ public sealed class EventAndLogRedactionTests
     [Fact]
     public void LogsAndEvents_InOneHost_FollowTheirOwnPolicies()
     {
-        using var provider = Build(kaleido => kaleido.AddEventClassificationRedaction(r => r.SetRedactor<NullRedactor>(new DataClassificationSet(Pii))));
+        using var provider = Build(kaleido => kaleido.AddEventRedaction(r => r.SetRedactor<NullRedactor>(new DataClassificationSet(Pii))));
 
         var logs = provider.GetRequiredService<IRedactorProvider>();
         var patient = WrittenPatient(provider);

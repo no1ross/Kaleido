@@ -26,10 +26,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Kaleido.Http.Mcp.UnitTests" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
 		<InternalsVisibleTo Include="Kaleido.Http.Mcp.FunctionalTests" />
 		<InternalsVisibleTo Include="Kaleido.Observability.OpenTelemetry.UnitTests" />
-		<InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
 	</ItemGroup>
-
 </Project>

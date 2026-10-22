@@ -12,7 +12,7 @@ public sealed class ServiceLocatorAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0007", DiagnosticSeverity.Error);
+        new("KAL0006", DiagnosticSeverity.Error);
 
     private const string References = @"
 using Microsoft.Extensions.DependencyInjection;

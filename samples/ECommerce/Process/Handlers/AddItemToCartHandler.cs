@@ -13,7 +13,7 @@ public sealed class AddItemToCartHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         AddItemToCartStep step,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var messages = new List<ProcessMessage>();
 

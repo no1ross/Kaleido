@@ -7,8 +7,8 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers;
 
 /// <summary>
-/// KAL2017 — a process step input property without a description.
-/// KAL2018 — a query context or query parameters property without a description.
+/// KAL2014 — a process step input property without a description.
+/// KAL2015 — a query context or query parameters property without a description.
 /// Descriptions are what UIs and AI agents (MCP tool schemas) read to know what an input is.
 /// Only a description is asked for: [Description("…")] or [Display(Description = "…")];
 /// Display Name and Prompt stay optional hints. Warnings, not errors.

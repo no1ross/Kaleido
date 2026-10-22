@@ -38,7 +38,7 @@ public interface IKaleidoIdempotencyStore
     /// That is what keeps a retry from running alongside the first attempt. A store may delete
     /// expired records here.
     /// </remarks>
-    Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken = default);
+    Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken);
 
     /// <summary>
     /// Stores the answer for an admitted key (state <see cref="IdempotentResultState.Completed"/>),
@@ -46,7 +46,7 @@ public interface IKaleidoIdempotencyStore
     /// </summary>
     /// <param name="result">The completed record, with the answer and its expiry.</param>
     /// <param name="cancellationToken">Cancels the save. Kaleido passes <see cref="CancellationToken.None"/>: the answer of an attempt whose caller has gone must still be stored.</param>
-    Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken = default);
+    Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken);
 
     /// <summary>
     /// Removes an admitted key that did not complete with an answer to keep (its request failed),
@@ -54,5 +54,5 @@ public interface IKaleidoIdempotencyStore
     /// </summary>
     /// <param name="key">The scoped idempotency key.</param>
     /// <param name="cancellationToken">Cancels the removal. Kaleido passes <see cref="CancellationToken.None"/>.</param>
-    Task ReleaseAsync(string key, CancellationToken cancellationToken = default);
+    Task ReleaseAsync(string key, CancellationToken cancellationToken);
 }

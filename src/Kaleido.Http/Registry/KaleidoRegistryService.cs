@@ -30,8 +30,8 @@ public interface IKaleidoRegistryService
     /// </param>
     /// <param name="cancellationToken">Cancels the build.</param>
     Task<AggregatedRegistryResponse> GetForCallerAsync(
-        bool refresh = false,
-        CancellationToken cancellationToken = default);
+        bool refresh,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -50,8 +50,8 @@ internal sealed partial class KaleidoRegistryService(
     public bool IsMapped => snapshot.IsMapped;
 
     public async Task<AggregatedRegistryResponse> GetForCallerAsync(
-        bool refresh = false,
-        CancellationToken cancellationToken = default)
+        bool refresh,
+        CancellationToken cancellationToken)
     {
         var response = await snapshot.GetOrBuildAsync(
             refresh,

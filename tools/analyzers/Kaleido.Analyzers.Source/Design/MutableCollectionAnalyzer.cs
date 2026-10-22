@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.Design;
 
 /// <summary>
-/// KAL0018 — public and internal API members (properties, method return types,
+/// KAL0015 — public and internal API members (properties, method return types,
 /// method parameters) must not expose mutable collection types.
 /// Use IReadOnlyCollection&lt;T&gt;, IReadOnlyList&lt;T&gt;, IReadOnlyDictionary&lt;K,V&gt;,
 /// or IEnumerable&lt;T&gt; instead of List&lt;T&gt;, IList&lt;T&gt;, Dictionary&lt;K,V&gt;,

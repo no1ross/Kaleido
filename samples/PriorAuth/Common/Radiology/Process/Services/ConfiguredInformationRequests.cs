@@ -31,7 +31,7 @@ public sealed class ConfiguredInformationRequests(
         string stepName,
         ProcedureModality? procedureModality,
         string? procedureCodeValue,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var priorAuthorization = await LoadAsync(processId, cancellationToken);
 
@@ -64,7 +64,7 @@ public sealed class ConfiguredInformationRequests(
     /// <summary>What the caller stated about the service captured last (binding key → value).</summary>
     public async Task<IReadOnlyDictionary<string, string>> StatedDetailsAsync(
         Guid processId,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         StatedDetails(await LoadAsync(processId, cancellationToken));
 
     /// <summary>Keeps a presented request under <paramref name="key"/> (clearing earlier answers).</summary>
@@ -74,7 +74,7 @@ public sealed class ConfiguredInformationRequests(
         string questionnaireId,
         string version,
         InformationRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var assignment =
             await dbContext.PriorAuthorizationQuestionnaireAssignments
@@ -108,7 +108,7 @@ public sealed class ConfiguredInformationRequests(
         Guid processId,
         string key,
         IInformationStep answers,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var assignment =
             await dbContext.PriorAuthorizationQuestionnaireAssignments
@@ -146,7 +146,7 @@ public sealed class ConfiguredInformationRequests(
     /// <summary>Every answered questionnaire of the process, in the order it was answered.</summary>
     public async Task<IReadOnlyList<RecordedQuestionnaire>> AnswersAsync(
         Guid processId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var assignments =
             await dbContext.PriorAuthorizationQuestionnaireAssignments

@@ -1,0 +1,12 @@
+#nullable enable
+const Kaleido.Provider.SQLite.SqliteErrorCodes.ConnectionStringMismatch = "connection_string_mismatch" -> string!
+const Kaleido.Provider.SQLite.SqliteErrorCodes.InvalidConnectionString = "invalid_connection_string" -> string!
+Kaleido.Provider.SQLite.ISqliteKaleidoTransaction
+Kaleido.Provider.SQLite.ISqliteKaleidoTransaction.Current.get -> System.Data.Common.DbTransaction?
+Kaleido.Provider.SQLite.SqliteErrorCodes
+Kaleido.Provider.SQLite.SqliteKaleidoContextDbContext
+Kaleido.Provider.SQLite.SqliteKaleidoContextDbContext.SqliteKaleidoContextDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<Kaleido.Provider.SQLite.SqliteKaleidoContextDbContext!>! options) -> void
+Kaleido.Provider.SQLite.SqliteKaleidoServiceCollectionExtensions
+static Kaleido.Provider.SQLite.SqliteKaleidoServiceCollectionExtensions.AddSqliteContextStore(this Kaleido.IKaleidoBuilder! builder, string! connectionString) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Provider.SQLite.SqliteKaleidoServiceCollectionExtensions.AddSqliteIdempotencyStore(this Kaleido.IKaleidoBuilder! builder, string! connectionString) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Provider.SQLite.SqliteKaleidoServiceCollectionExtensions.AddSqliteOutboxStore(this Kaleido.IKaleidoBuilder! builder, string! connectionString) -> Kaleido.IKaleidoBuilder!

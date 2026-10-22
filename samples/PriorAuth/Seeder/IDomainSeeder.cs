@@ -5,5 +5,5 @@ internal interface IDomainSeeder
     SupportedDomain Domain { get; }
 
     Task SeedAsync(
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }

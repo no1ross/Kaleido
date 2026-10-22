@@ -12,7 +12,7 @@ internal sealed class CodeSetSeeder(
     public SupportedDomain Domain => SupportedDomain.CodeSet;
 
     public async Task SeedAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await using var provider =
             projectContextFactory.CreateSqliteDbContextProvider<CodeSetDbContext>(

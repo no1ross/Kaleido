@@ -65,9 +65,9 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         var sut = CreateSut(dbContext);
         var lease = DateTimeOffset.UtcNow.AddMinutes(5);
 
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:k1", leaseUntilUtc: lease)));
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:k1", leaseUntilUtc: lease), TestContext.Current.CancellationToken));
 
-        var existing = await sut.AdmitAsync(Admission("svc:alice:k1", hash: "other"));
+        var existing = await sut.AdmitAsync(Admission("svc:alice:k1", hash: "other"), TestContext.Current.CancellationToken);
         Assert.NotNull(existing);
         Assert.Equal(IdempotentResultState.InProgress, existing.State);
         Assert.Equal("hash", existing.RequestHash);
@@ -84,8 +84,8 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         using var second = CreateSharedDbContext(connectionString);
 
         var outcomes = await Task.WhenAll(
-            CreateSut(first).AdmitAsync(Admission("svc:alice:race")),
-            CreateSut(second).AdmitAsync(Admission("svc:alice:race")));
+            CreateSut(first).AdmitAsync(Admission("svc:alice:race"), TestContext.Current.CancellationToken),
+            CreateSut(second).AdmitAsync(Admission("svc:alice:race"), TestContext.Current.CancellationToken));
 
         Assert.Single(outcomes, x => x is null);
     }
@@ -101,11 +101,11 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
 
         using (var before = CreateSharedDbContext(connectionString))
         {
-            await CreateSut(before).AdmitAsync(Admission("svc:alice:k1", leaseUntilUtc: expiredLease));
+            await CreateSut(before).AdmitAsync(Admission("svc:alice:k1", leaseUntilUtc: expiredLease), TestContext.Current.CancellationToken);
         }
 
         using var after = CreateSharedDbContext(connectionString);
-        var existing = await CreateSut(after).AdmitAsync(Admission("svc:alice:k1"));
+        var existing = await CreateSut(after).AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken);
 
         Assert.NotNull(existing);
         Assert.Equal(IdempotentResultState.InProgress, existing.State);
@@ -117,11 +117,11 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.AdmitAsync(Admission("svc:alice:k1"));
+        await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken);
 
-        await sut.CompleteAsync(Completed("svc:alice:k1", """{"processId":"p"}"""));
+        await sut.CompleteAsync(Completed("svc:alice:k1", """{"processId":"p"}"""), TestContext.Current.CancellationToken);
 
-        var existing = await sut.AdmitAsync(Admission("svc:alice:k1"));
+        var existing = await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken);
         Assert.NotNull(existing);
         Assert.Equal(IdempotentResultState.Completed, existing.State);
         Assert.Equal(200, existing.StatusCode);
@@ -133,15 +133,15 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.AdmitAsync(Admission("svc:alice:failed"));
-        await sut.AdmitAsync(Admission("svc:alice:done"));
-        await sut.CompleteAsync(Completed("svc:alice:done", "{}"));
+        await sut.AdmitAsync(Admission("svc:alice:failed"), TestContext.Current.CancellationToken);
+        await sut.AdmitAsync(Admission("svc:alice:done"), TestContext.Current.CancellationToken);
+        await sut.CompleteAsync(Completed("svc:alice:done", "{}"), TestContext.Current.CancellationToken);
 
-        await sut.ReleaseAsync("svc:alice:failed");
-        await sut.ReleaseAsync("svc:alice:done");
+        await sut.ReleaseAsync("svc:alice:failed", TestContext.Current.CancellationToken);
+        await sut.ReleaseAsync("svc:alice:done", TestContext.Current.CancellationToken);
 
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:failed")));
-        Assert.Equal(IdempotentResultState.Completed, (await sut.AdmitAsync(Admission("svc:alice:done")))?.State);
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:failed"), TestContext.Current.CancellationToken));
+        Assert.Equal(IdempotentResultState.Completed, (await sut.AdmitAsync(Admission("svc:alice:done"), TestContext.Current.CancellationToken))?.State);
     }
 
     [Fact]
@@ -149,9 +149,9 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.AdmitAsync(Admission("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)));
+        await sut.AdmitAsync(Admission("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)), TestContext.Current.CancellationToken);
 
-        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old")));
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -160,8 +160,8 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
 
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.AdmitAsync(null!));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.CompleteAsync(null!));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.ReleaseAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.AdmitAsync(null!, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.CompleteAsync(null!, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.ReleaseAsync(null!, TestContext.Current.CancellationToken));
     }
 }

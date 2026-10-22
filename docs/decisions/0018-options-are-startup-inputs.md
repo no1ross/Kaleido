@@ -14,7 +14,7 @@ The pre-1.0 review raised two related questions:
   callback; the registry endpoint reads `KaleidoHttpMapOptions.RegistryCacheTtl` per request; and
   the OpenTelemetry wiring keeps `KaleidoOpenTelemetryOptions` for delegates the SDK runs later.
 - **#305 (CLN-018):** one source treated deep immutability of public objects as a requirement and
-  asked for a stronger analyzer than KAL0018 (no mutable collections in the public API); another
+  asked for a stronger analyzer than KAL0015 (no mutable collections in the public API); another
   saw no justification for one.
 
 Only code that keeps a reference to an options object it configured, and changes it after startup,
@@ -29,7 +29,7 @@ is affected. That is the host's own code; there is no trust boundary between it 
 2. **The builders stay for what they do.** `KaleidoServiceOptionsBuilder` and the MCP options builder
    validate and normalize (service name, assemblies, roles, tool names) when they build the options;
    that is why they exist, not to defend against mutation.
-3. **Deep immutability is not a requirement.** KAL0018 (no mutable collections in the public API)
+3. **Deep immutability is not a requirement.** KAL0015 (no mutable collections in the public API)
    stays the rule. No transitive-immutability specification or analyzer is added.
 
 ## Alternatives considered

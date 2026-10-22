@@ -68,12 +68,12 @@
 - The executor serves every source of the service: a query that is not EF Core's (Radiology's delegated provider searches) uses LINQ.
 
 ## What a view returns
-- View output records describe every property (`[Description]`): KAL2024 is an error in the samples. The descriptions reach the agent with the data (`fieldDescriptions` in MCP results).
+- View output records describe every property (`[Description]`): KAL2021 is an error in the samples. The descriptions reach the agent with the data (`fieldDescriptions` in MCP results).
 
 ## Sensitive data in events
 - Member fields are classified with `[Phi]` (name, display name, date of birth) and `[Pii]` (email, phone, address) from `Common/Compliance/PriorAuthDataClassifications.cs`.
 - Kaleido redacts classified values in event payloads before the outbox write (ADR 0013); responses to callers keep the real values.
-- Every event-publishing service calls `AddPriorAuthEventRedaction()` (`Common/Compliance/PriorAuthEventRedaction.cs`): events keep PII and erase PHI. It is the event policy only (`AddEventClassificationRedaction`, ADR 0025); log redaction (`AddRedaction`) would be configured separately. To pseudonymize instead, map a classification to an HMAC or encrypting redactor there.
+- Every event-publishing service calls `AddPriorAuthEventRedaction()` (`Common/Compliance/PriorAuthEventRedaction.cs`): events keep PII and erase PHI. It is the event policy only (`AddEventRedaction`, ADR 0025); log redaction (`AddRedaction`) would be configured separately. To pseudonymize instead, map a classification to an HMAC or encrypting redactor there.
 
 ## Configuration per environment
 - **Containers run as Production** (images are built `Release`; compose sets no `ASPNETCORE_ENVIRONMENT`), so they read only each host's `appsettings.json`: container addresses (`http://member:8080`, `http://eventcollector:8080`), `data/...` paths (`/app/data` in the container) and the dashboard's OTLP endpoint `http://aspire-dashboard:18889`. Swagger is Development-only, so it is off in containers.

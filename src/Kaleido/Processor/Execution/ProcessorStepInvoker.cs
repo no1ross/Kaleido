@@ -10,7 +10,7 @@ internal interface IProcessStepInvoker
         ProcessStepRegistration registration,
         object processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 [ExcludeFromCodeCoverage]
@@ -43,7 +43,7 @@ internal sealed class ProcessorStepInvoker(
         ProcessStepRegistration registration,
         object processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(registration);
         ArgumentNullException.ThrowIfNull(processStep);

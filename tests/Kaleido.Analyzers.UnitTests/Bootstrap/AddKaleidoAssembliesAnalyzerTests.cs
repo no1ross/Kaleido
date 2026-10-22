@@ -30,7 +30,7 @@ namespace Kaleido
 }";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL2009", DiagnosticSeverity.Warning);
+        new("KAL2006", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task Lambda_NoAssemblies_Reports()
