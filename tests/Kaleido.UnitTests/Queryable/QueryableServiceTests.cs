@@ -1,4 +1,5 @@
 using Kaleido.Exceptions;
+using Kaleido.Observability;
 using Kaleido.Queryable.Registry;
 using Kaleido.Registry;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,14 +9,32 @@ namespace Kaleido.Queryable.UnitTests;
 public sealed class QueryableServiceTests
     : Kaleido.UnitTests.SutFixture
 {
+    // The request's correlation, as the HTTP transport leaves it for the query.
+    private static readonly KaleidoCorrelationContext RequestCorrelation = new()
+    {
+        RequestId = "req-413",
+        ProcessId = Guid.NewGuid(),
+        CallerName = "ann",
+        CallerRoles = ["clerk"],
+    };
+
+    // What the query's own scope was initialized with.
+    private readonly List<KaleidoCorrelationContext> _initialized = [];
+
     private static QueryableService CreateSut(
         IServiceScopeFactory scopeFactory,
         IQueryViewRegistry viewRegistry,
-        IQuerySourceRegistry sourceRegistry) =>
-        new(
+        IQuerySourceRegistry sourceRegistry)
+    {
+        var accessor = new Mock<IKaleidoCorrelationContextAccessor>();
+        accessor.SetupGet(x => x.Current).Returns(RequestCorrelation);
+
+        return new(
             scopeFactory,
+            accessor.Object,
             viewRegistry,
             sourceRegistry);
+    }
 
     [Fact]
     public async Task QueryAsync_WhenTypeIsView_UsesLocalEngineWithViewAndItsSource()
@@ -180,10 +199,14 @@ public sealed class QueryableServiceTests
         await Assert.ThrowsAsync<OperationCanceledException>(() => service.QueryAsync<TestSource, TestContext>(request));
     }
 
-    private static IServiceScopeFactory ScopeFactoryReturning(Type serviceType, object service)
+    private IServiceScopeFactory ScopeFactoryReturning(Type serviceType, object service)
     {
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        initializer.Setup(x => x.Initialize(It.IsAny<KaleidoCorrelationContext>())).Callback<KaleidoCorrelationContext>(_initialized.Add);
+
         var provider = new Mock<IServiceProvider>();
         provider.Setup(x => x.GetService(serviceType)).Returns(service);
+        provider.Setup(x => x.GetService(typeof(IKaleidoCorrelationContextInitializer))).Returns(initializer.Object);
 
         var scope = new Mock<IServiceScope>();
         scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
@@ -192,6 +215,48 @@ public sealed class QueryableServiceTests
         scopeFactory.Setup(x => x.CreateScope()).Returns(scope.Object);
 
         return scopeFactory.Object;
+    }
+
+    // #413: sources and views run in the query's own scope; it starts from the request's correlation
+    // (caller, request id, process id), never an empty one - whichever lane runs the query.
+    [Fact]
+    public async Task QueryAsync_View_RunsWithTheRequestsCorrelation()
+    {
+        var source = CreateSourceRegistration(typeof(TestSource), QuerySourceKind.Local, typeof(TestContext));
+        var view = CreateViewRegistration();
+        var engine = new Mock<IQueryContextEngine<TestContext, TestViewRecord>>();
+        engine.Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest>(), source, view, It.IsAny<CancellationToken>())).ReturnsAsync(new QueryResult<TestViewRecord>(0, 0, 25, []));
+        var service = CreateSut(ScopeFactoryReturning(typeof(IQueryContextEngine<TestContext, TestViewRecord>), engine.Object), ViewRegistryWith(view), SourceRegistryWith(typeof(TestSource), source));
+
+        await service.QueryAsync<TestView, TestViewRecord>(new QueryRequest());
+
+        Assert.Same(RequestCorrelation, Assert.Single(_initialized));
+    }
+
+    [Fact]
+    public async Task QueryAsync_LocalSource_RunsWithTheRequestsCorrelation()
+    {
+        var source = CreateSourceRegistration(typeof(TestSource), QuerySourceKind.Local, typeof(TestContext));
+        var engine = new Mock<IQueryContextEngine<TestContext, TestContext>>();
+        engine.Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest>(), source, It.IsAny<CancellationToken>())).ReturnsAsync(new QueryResult<TestContext>(0, 0, 25, []));
+        var service = CreateSut(ScopeFactoryReturning(typeof(IQueryContextEngine<TestContext, TestContext>), engine.Object), ViewRegistryWith(null), SourceRegistryWith(typeof(TestSource), source));
+
+        await service.QueryAsync<TestSource, TestContext>(new QueryRequest());
+
+        Assert.Same(RequestCorrelation, Assert.Single(_initialized));
+    }
+
+    [Fact]
+    public async Task QueryAsync_DelegatedSource_RunsWithTheRequestsCorrelation()
+    {
+        var source = CreateSourceRegistration(typeof(TestDelegatedSource), QuerySourceKind.Delegated, typeof(TestViewRecord));
+        var engine = new Mock<IDelegatedQuerySourceEngine<TestContext, TestViewRecord>>();
+        engine.Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest>(), source, It.IsAny<CancellationToken>())).ReturnsAsync(new QueryResult<TestViewRecord>(0, 0, 25, []));
+        var service = CreateSut(ScopeFactoryReturning(typeof(IDelegatedQuerySourceEngine<TestContext, TestViewRecord>), engine.Object), ViewRegistryWith(null), SourceRegistryWith(typeof(TestDelegatedSource), source));
+
+        await service.QueryAsync<TestDelegatedSource, TestViewRecord>(new QueryRequest());
+
+        Assert.Same(RequestCorrelation, Assert.Single(_initialized));
     }
 
     private static IQueryViewRegistry ViewRegistryWith(QueryViewRegistration? registration)
