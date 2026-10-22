@@ -21,29 +21,29 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     internal ProcessStepHandlerResult() { }
 
     /// <inheritdoc />
-    public bool Succeeded { get; init; }
+    public bool Succeeded { get; internal init; }
 
     /// <inheritdoc />
-    public bool Rejected { get; init; }
+    public bool Rejected { get; internal init; }
 
     /// <inheritdoc />
-    public Type? RequiredStep { get; init; }
+    public Type? RequiredStep { get; internal init; }
 
     /// <inheritdoc />
-    public InformationRequest? InformationRequest { get; init; }
+    public InformationRequest? InformationRequest { get; internal init; }
 
     /// <inheritdoc />
-    public string? TargetProcessorName { get; init; }
+    public string? TargetProcessorName { get; internal init; }
 
     /// <summary>
     /// The typed response payload.
     /// </summary>
-    public TProcessStepResult? Response { get; init; }
+    public TProcessStepResult? Response { get; internal init; }
 
     object? IProcessStepHandlerResult.Response => Response;
 
     /// <inheritdoc />
-    public IReadOnlyCollection<ProcessMessage> Messages { get; init; }
+    public IReadOnlyCollection<ProcessMessage> Messages { get; internal init; }
         = [];
 
     /// <summary>

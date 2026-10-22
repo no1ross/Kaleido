@@ -55,6 +55,10 @@ sections.
 - **Public API baseline** (#313): each package's public API is recorded in `PublicAPI.Shipped.txt` /
   `PublicAPI.Unshipped.txt`; an unrecorded change fails the build. `KaleidoHttpClientException` has
   one constructor: `(code, message, statusCode, errors = null, innerException = null)`.
+- **Public API trimmed** (#313): `QueryBody`, `QuerySort` and `QueryPage` are sealed. The properties of
+  `ProcessStepHandlerResult` and `ProcessStepHandlerResult<T>` can no longer be set by consumers: a
+  result comes from `Success`, `Reject`, `Failure`, `HandOff`, `RequireInformation` or `Next`, so it
+  cannot contradict itself (e.g. succeeded and rejected at once).
 - **Cancellation tokens are required** (#313): no public async API defaults its `CancellationToken`
   any more (handlers, async sources and views, delegated sources, `IEventPublisher`, the store
   contracts, `IKaleidoOutbox`, `IKaleidoTransactions`, the Kaleido clients, `IRegistrySnapshotStore`),

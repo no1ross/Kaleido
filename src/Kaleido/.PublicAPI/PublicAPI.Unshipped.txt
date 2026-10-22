@@ -1,4 +1,13 @@
 #nullable enable
+~Kaleido.Queryable.Query.QueryRequest<TParameters>.QueryRequest(Kaleido.Queryable.Query.QueryRequest<TParameters>! original) -> void
+~Kaleido.Queryable.Query.QueryResult<TView>.<Clone>$() -> Kaleido.Queryable.Query.QueryResult<TView>!
+~Kaleido.Queryable.Query.QueryResult<TView>.Equals(Kaleido.Queryable.Query.QueryResult<TView>? other) -> bool
+~static Kaleido.Queryable.Query.QueryRequest<TParameters>.operator !=(Kaleido.Queryable.Query.QueryRequest<TParameters>? left, Kaleido.Queryable.Query.QueryRequest<TParameters>? right) -> bool
+~static Kaleido.Queryable.Query.QueryRequest<TParameters>.operator ==(Kaleido.Queryable.Query.QueryRequest<TParameters>? left, Kaleido.Queryable.Query.QueryRequest<TParameters>? right) -> bool
+~static Kaleido.Queryable.Query.QueryResult<TView>.operator !=(Kaleido.Queryable.Query.QueryResult<TView>? left, Kaleido.Queryable.Query.QueryResult<TView>? right) -> bool
+~static Kaleido.Queryable.Query.QueryResult<TView>.operator ==(Kaleido.Queryable.Query.QueryResult<TView>? left, Kaleido.Queryable.Query.QueryResult<TView>? right) -> bool
+~virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.<Clone>$() -> Kaleido.Queryable.Query.QueryRequest<TParameters>!
+~virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.Equals(Kaleido.Queryable.Query.QueryRequest<TParameters>? other) -> bool
 abstract Kaleido.Processor.Eventing.ProcessEventBase.<Clone>$() -> Kaleido.Processor.Eventing.ProcessEventBase!
 const Kaleido.Eventing.KaleidoEventOptions.SectionName = "Events" -> string!
 const Kaleido.Eventing.KaleidoEventTelemetry.EnqueueFailuresCounterName = "kaleido.events.enqueue_failures" -> string!
@@ -617,38 +626,24 @@ Kaleido.Processor.Execution.ProcessStepHandlerResult
 Kaleido.Processor.Execution.ProcessStepHandlerResult.<Clone>$() -> Kaleido.Processor.Execution.ProcessStepHandlerResult!
 Kaleido.Processor.Execution.ProcessStepHandlerResult.Equals(Kaleido.Processor.Execution.ProcessStepHandlerResult? other) -> bool
 Kaleido.Processor.Execution.ProcessStepHandlerResult.InformationRequest.get -> Kaleido.Processor.InformationRequest?
-Kaleido.Processor.Execution.ProcessStepHandlerResult.InformationRequest.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult.Messages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
-Kaleido.Processor.Execution.ProcessStepHandlerResult.Messages.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult.Rejected.get -> bool
-Kaleido.Processor.Execution.ProcessStepHandlerResult.Rejected.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult.RequiredStep.get -> System.Type?
-Kaleido.Processor.Execution.ProcessStepHandlerResult.RequiredStep.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult.Response.get -> object?
-Kaleido.Processor.Execution.ProcessStepHandlerResult.Response.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult.Succeeded.get -> bool
-Kaleido.Processor.Execution.ProcessStepHandlerResult.Succeeded.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult.TargetProcessorName.get -> string?
-Kaleido.Processor.Execution.ProcessStepHandlerResult.TargetProcessorName.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.<Clone>$() -> Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>!
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Equals(Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>? other) -> bool
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.InformationRequest.get -> Kaleido.Processor.InformationRequest?
-Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.InformationRequest.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Messages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
-Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Messages.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Next<TNext>() -> Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>!
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Rejected.get -> bool
-Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Rejected.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.RequiredStep.get -> System.Type?
-Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.RequiredStep.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.RequireInformation<TNext>(Kaleido.Processor.InformationRequest! request) -> Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>!
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Response.get -> TProcessStepResult?
-Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Response.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Succeeded.get -> bool
-Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Succeeded.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.TargetProcessorName.get -> string?
-Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.TargetProcessorName.init -> void
 Kaleido.Processor.ExecutionDecisionType
 Kaleido.Processor.ExecutionDecisionType.AwaitingInformation = 7 -> Kaleido.Processor.ExecutionDecisionType
 Kaleido.Processor.ExecutionDecisionType.AwaitingRequiredStep = 5 -> Kaleido.Processor.ExecutionDecisionType
@@ -942,12 +937,13 @@ Kaleido.Queryable.Query.IQueryRequest.ViewParametersType.get -> System.Type!
 Kaleido.Queryable.Query.IQueryRequest<TParameters>
 Kaleido.Queryable.Query.IQueryRequest<TParameters>.ViewParameters.get -> TParameters?
 Kaleido.Queryable.Query.QueryBody
+Kaleido.Queryable.Query.QueryBody.<Clone>$() -> Kaleido.Queryable.Query.QueryBody!
 Kaleido.Queryable.Query.QueryBody.Deconstruct(out string? SearchText, out Kaleido.Queryable.Query.QueryFilterNode? Filter, out System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Query.QuerySort!>? Sort, out Kaleido.Queryable.Query.QueryPage? Page) -> void
+Kaleido.Queryable.Query.QueryBody.Equals(Kaleido.Queryable.Query.QueryBody? other) -> bool
 Kaleido.Queryable.Query.QueryBody.Filter.get -> Kaleido.Queryable.Query.QueryFilterNode?
 Kaleido.Queryable.Query.QueryBody.Filter.init -> void
 Kaleido.Queryable.Query.QueryBody.Page.get -> Kaleido.Queryable.Query.QueryPage?
 Kaleido.Queryable.Query.QueryBody.Page.init -> void
-Kaleido.Queryable.Query.QueryBody.QueryBody(Kaleido.Queryable.Query.QueryBody! original) -> void
 Kaleido.Queryable.Query.QueryBody.QueryBody(string? SearchText = null, Kaleido.Queryable.Query.QueryFilterNode? Filter = null, System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Query.QuerySort!>? Sort = null, Kaleido.Queryable.Query.QueryPage? Page = null) -> void
 Kaleido.Queryable.Query.QueryBody.SearchText.get -> string?
 Kaleido.Queryable.Query.QueryBody.SearchText.init -> void
@@ -991,11 +987,12 @@ Kaleido.Queryable.Query.QueryFilterNode.Group.get -> Kaleido.Queryable.Query.Que
 Kaleido.Queryable.Query.QueryFilterNode.Group.init -> void
 Kaleido.Queryable.Query.QueryFilterNode.QueryFilterNode(Kaleido.Queryable.Query.QueryFilterCondition? Condition, Kaleido.Queryable.Query.QueryFilterGroup? Group) -> void
 Kaleido.Queryable.Query.QueryPage
+Kaleido.Queryable.Query.QueryPage.<Clone>$() -> Kaleido.Queryable.Query.QueryPage!
 Kaleido.Queryable.Query.QueryPage.Deconstruct(out int? Size, out int? Offset) -> void
+Kaleido.Queryable.Query.QueryPage.Equals(Kaleido.Queryable.Query.QueryPage? other) -> bool
 Kaleido.Queryable.Query.QueryPage.Offset.get -> int?
 Kaleido.Queryable.Query.QueryPage.Offset.init -> void
 Kaleido.Queryable.Query.QueryPage.QueryPage(int? Size, int? Offset) -> void
-Kaleido.Queryable.Query.QueryPage.QueryPage(Kaleido.Queryable.Query.QueryPage! original) -> void
 Kaleido.Queryable.Query.QueryPage.Size.get -> int?
 Kaleido.Queryable.Query.QueryPage.Size.init -> void
 Kaleido.Queryable.Query.QueryRequest
@@ -1021,12 +1018,13 @@ Kaleido.Queryable.Query.QueryResult<TView>.Results.init -> void
 Kaleido.Queryable.Query.QueryResult<TView>.TotalCount.get -> int
 Kaleido.Queryable.Query.QueryResult<TView>.TotalCount.init -> void
 Kaleido.Queryable.Query.QuerySort
+Kaleido.Queryable.Query.QuerySort.<Clone>$() -> Kaleido.Queryable.Query.QuerySort!
 Kaleido.Queryable.Query.QuerySort.Deconstruct(out string! Field, out Kaleido.Queryable.SortDirection Direction, out int? Sequence) -> void
 Kaleido.Queryable.Query.QuerySort.Direction.get -> Kaleido.Queryable.SortDirection
 Kaleido.Queryable.Query.QuerySort.Direction.init -> void
+Kaleido.Queryable.Query.QuerySort.Equals(Kaleido.Queryable.Query.QuerySort? other) -> bool
 Kaleido.Queryable.Query.QuerySort.Field.get -> string!
 Kaleido.Queryable.Query.QuerySort.Field.init -> void
-Kaleido.Queryable.Query.QuerySort.QuerySort(Kaleido.Queryable.Query.QuerySort! original) -> void
 Kaleido.Queryable.Query.QuerySort.QuerySort(string! Field, Kaleido.Queryable.SortDirection Direction, int? Sequence = null) -> void
 Kaleido.Queryable.Query.QuerySort.Sequence.get -> int?
 Kaleido.Queryable.Query.QuerySort.Sequence.init -> void
@@ -1353,26 +1351,5 @@ static Kaleido.Storage.KaleidoOutboxEvent.operator ==(Kaleido.Storage.KaleidoOut
 virtual Kaleido.Processor.Eventing.ProcessEventBase.EqualityContract.get -> System.Type!
 virtual Kaleido.Processor.Eventing.ProcessEventBase.Equals(Kaleido.Processor.Eventing.ProcessEventBase? other) -> bool
 virtual Kaleido.Processor.Eventing.ProcessEventBase.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Kaleido.Queryable.Query.QueryBody.<Clone>$() -> Kaleido.Queryable.Query.QueryBody!
-virtual Kaleido.Queryable.Query.QueryBody.EqualityContract.get -> System.Type!
-virtual Kaleido.Queryable.Query.QueryBody.Equals(Kaleido.Queryable.Query.QueryBody? other) -> bool
-virtual Kaleido.Queryable.Query.QueryBody.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Kaleido.Queryable.Query.QueryPage.<Clone>$() -> Kaleido.Queryable.Query.QueryPage!
-virtual Kaleido.Queryable.Query.QueryPage.EqualityContract.get -> System.Type!
-virtual Kaleido.Queryable.Query.QueryPage.Equals(Kaleido.Queryable.Query.QueryPage? other) -> bool
-virtual Kaleido.Queryable.Query.QueryPage.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.EqualityContract.get -> System.Type!
 virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Kaleido.Queryable.Query.QuerySort.<Clone>$() -> Kaleido.Queryable.Query.QuerySort!
-virtual Kaleido.Queryable.Query.QuerySort.EqualityContract.get -> System.Type!
-virtual Kaleido.Queryable.Query.QuerySort.Equals(Kaleido.Queryable.Query.QuerySort? other) -> bool
-virtual Kaleido.Queryable.Query.QuerySort.PrintMembers(System.Text.StringBuilder! builder) -> bool
-~Kaleido.Queryable.Query.QueryRequest<TParameters>.QueryRequest(Kaleido.Queryable.Query.QueryRequest<TParameters>! original) -> void
-~Kaleido.Queryable.Query.QueryResult<TView>.<Clone>$() -> Kaleido.Queryable.Query.QueryResult<TView>!
-~Kaleido.Queryable.Query.QueryResult<TView>.Equals(Kaleido.Queryable.Query.QueryResult<TView>? other) -> bool
-~static Kaleido.Queryable.Query.QueryRequest<TParameters>.operator !=(Kaleido.Queryable.Query.QueryRequest<TParameters>? left, Kaleido.Queryable.Query.QueryRequest<TParameters>? right) -> bool
-~static Kaleido.Queryable.Query.QueryRequest<TParameters>.operator ==(Kaleido.Queryable.Query.QueryRequest<TParameters>? left, Kaleido.Queryable.Query.QueryRequest<TParameters>? right) -> bool
-~static Kaleido.Queryable.Query.QueryResult<TView>.operator !=(Kaleido.Queryable.Query.QueryResult<TView>? left, Kaleido.Queryable.Query.QueryResult<TView>? right) -> bool
-~static Kaleido.Queryable.Query.QueryResult<TView>.operator ==(Kaleido.Queryable.Query.QueryResult<TView>? left, Kaleido.Queryable.Query.QueryResult<TView>? right) -> bool
-~virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.<Clone>$() -> Kaleido.Queryable.Query.QueryRequest<TParameters>!
-~virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.Equals(Kaleido.Queryable.Query.QueryRequest<TParameters>? other) -> bool
