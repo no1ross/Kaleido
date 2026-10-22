@@ -64,6 +64,7 @@ sections.
 - Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
 
 ### Fixed
+- The PriorAuth UI sends an `Idempotency-Key` with every execute call, reuses it on its own retries and for a double submit, and reloads the state when an earlier attempt's outcome is unknown (#396).
 - Query sources and views see the request's correlation (the caller, request id and process id):
   their DI scope started empty, so a source could not filter by caller and a delegated source did not
   forward the request's ids (#413).

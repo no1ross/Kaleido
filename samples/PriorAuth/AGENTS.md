@@ -43,6 +43,13 @@
 - MCP: the router uses `Kaleido:Mcp:ToolListing = FrontDoor` (ADR 0016) with `ListedTools = [history_prior_auth_record_list]`. Its instructions tell the agent to start the intake first and pass that processId on every call, searches included; the adapter sends it as the header and fills a search's own `processId` parameter from it.
 - Radiology's steps and the provider searches they need are not on the agent's tool list: they arrive in `next` (inputs, hints, the search with the processId pre-filled) and run with `call_tool`.
 
+## Idempotent execute calls (UI)
+- Every step call goes through `ProcessService.executeStep`, which sends it with `IdempotentExecuteService`: a new `Idempotency-Key` per logical call, as the Kaleido .NET clients do (`src/Kaleido.Http/README.md`, Idempotent execution).
+- The UI's own retries send the same key: after `409 pro_idempotency_in_progress` (waiting `Retry-After`, 1 s when unreadable) and after a lost response (status 0, 502, 503, 504); at most 3 attempts.
+- An identical call (same URL, process id and body) made while one is in flight reuses its key: a double click runs the step once, and both get its answer.
+- `409 pro_idempotency_outcome_unknown` (the service stopped while an earlier attempt ran): the UI reloads the process state and shows a warning; the user decides whether to try again.
+- Every service's CORS policy exposes `Retry-After` and `Idempotent-Replayed`, so the UI can read them in `direct` mode (cross-origin).
+
 ## The member cannot change once the request is under way
 - Radiology's `ValidateMemberStep` / `CaptureMemberStep` exist for a request handed off without a member (service captured first in Intake; `StartRadiologyIntake` then requires Validate Member). They close when the MRI or CT questions are answered (`[AvailableUntil<CaptureMriInfoStep>]`, `[AvailableUntil<ConfirmCtInsteadOfMriStep>]`): the member is settled before those questions in every path.
 - After that, Radiology offers only Capture Requested Service, Remove Requested Service and Capture Requesting Provider (which closes the other two). Calling a member step then is refused with `pro_step_not_available`.
