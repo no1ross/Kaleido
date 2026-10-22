@@ -103,5 +103,5 @@ public sealed class ServiceNameAnalyzer : DiagnosticAnalyzer
 
     private static bool IsAllowed(char c) => IsLowercaseLetterOrDigit(c) || c == '-' || c == '_';
 
-    private static bool IsLowercaseLetterOrDigit(char c) => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+    private static bool IsLowercaseLetterOrDigit(char c) => c is (>= 'a' and <= 'z') or (>= '0' and <= '9');
 }

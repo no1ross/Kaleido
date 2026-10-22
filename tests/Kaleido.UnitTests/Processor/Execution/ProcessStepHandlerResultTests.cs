@@ -88,7 +88,7 @@ public sealed class ProcessStepHandlerResultTests
     [Fact]
     public void SuccessWithResponse_IsATypedSuccess()
     {
-        ProcessStepHandlerResult<Response> result = ProcessStepHandlerResult.Success(new Response("ok"), Note);
+        var result = ProcessStepHandlerResult.Success(new Response("ok"), Note);
 
         Assert.True(result.Succeeded);
         Assert.Equal("ok", result.Response?.Value);

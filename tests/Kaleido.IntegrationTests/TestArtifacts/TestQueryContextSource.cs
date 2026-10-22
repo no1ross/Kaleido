@@ -4,14 +4,9 @@ namespace Kaleido.IntegrationTests.TestArtifacts;
     Version = "1.0.0",
     DisplayName = "Test Query",
     Description = "Test query context")]
-public sealed class TestQueryContextSource : IQuerySource<TestQueryContext>
+public sealed class TestQueryContextSource(TestDbContext dbContext) : IQuerySource<TestQueryContext>
 {
-    private readonly TestDbContext _dbContext;
-
-    public TestQueryContextSource(TestDbContext dbContext)
-    {
-        _dbContext = dbContext;
-    }
+    private readonly TestDbContext _dbContext = dbContext;
 
     public IQueryable<TestQueryContext> CreateQuery(QueryExecutionContext executionContext)
     {
