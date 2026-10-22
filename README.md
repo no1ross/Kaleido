@@ -40,6 +40,18 @@ Applications use those capabilities through HTTP. A compatible AI agent connects
 
 **It describes the work. It also runs the work.** Kaleido is not just an API catalog, and it is not an AI model. Its core runtime remains independent of the optional HTTP and MCP adapters.
 
+### What it is for, and what it is not
+
+**Kaleido is for** a contract-first process and query layer over the systems of record you already run: one definition of each business action and query, used the same way by screens, integrations and AI agents. It modernizes the experience over systems that cannot be replaced yet.
+
+| Kaleido is not | Instead |
+|---|---|
+| A general workflow or orchestration engine | No timers, scheduled waits, sagas or compensation. A process moves when a consumer runs its next step; long-running orchestration stays with a dedicated engine. |
+| A system of record | Kaleido keeps the process state (progress, pending questions, who ran what). Business data stays in your systems, behind your handlers and sources. |
+| A decision maker | Your handlers decide; Kaleido applies the rules you declare ([ADR 0001](docs/decisions/0001-process-engine-not-decision-maker.md)). |
+
+**Compatibility promise.** During the 1.0 preview any release may break the public API, the wire contracts, error codes or configuration; each break is named in its pull request and the [changelog](CHANGELOG.md), and the public API is recorded so no change goes unnoticed. From 1.0 the packages follow Semantic Versioning: a breaking change to the public API, the HTTP wire contracts, the error codes or the telemetry names needs a new major version. Details: [Versioning, compatibility and support](docs/VERSIONING.md).
+
 ## Why Kaleido?
 
 A business process should not have to be implemented again inside every screen, integration, or conversational agent. When both a service and an agent maintain the workflow, a business change requires coordinated implementation, testing, and releases across teams.
@@ -196,7 +208,7 @@ In a **separate router host**, configure the downstream services under `Kaleido:
 }
 ```
 
-Then register the HTTP clients and MCP adapter, and enable registry aggregation:
+Then register the HTTP clients, how tool calls are authorized for the agent's user, and the MCP adapter, and enable registry aggregation:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -210,6 +222,7 @@ builder.Services
     })
     .AddHttp()
     .AddHttpClients()
+    .ForwardCallerToken() // tool calls carry the agent user's token; required before AddMcp()
     .AddMcp(options => options.ServerName = "business");
 
 var app = builder.Build();
@@ -220,7 +233,7 @@ app.MapKaleidoMcp("/mcp");
 app.Run();
 ```
 
-Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. Each `RoutePrefix` must match the downstream `ServiceName`; adjust addresses and ports for your environment.
+Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. `AddMcp()` refuses to start without a call-credential registration: `ForwardCallerToken()` sends the user's token unchanged, `AddCallCredentials<TProvider>()` exchanges it per service ([ADR 0022](docs/decisions/0022-call-credentials.md)). Each `RoutePrefix` must match the downstream `ServiceName`; adjust addresses and ports for your environment.
 
 See the [HTTP client](src/Kaleido.Http.Client/README.md) and [MCP adapter](src/Kaleido.Http.Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
 
@@ -257,7 +270,7 @@ Each service's registry (`GET /{service}/registry`) publishes its capabilities' 
 
 The application and host retain business authority: authentication, authorization, downstream credentials, record-level access, domain validation, and required approvals. A `processId` identifies work; it is not proof of permission. Tool descriptions, prompts, lookups, and confirmation hints guide interaction; they do not enforce permission or prove human consent.
 
-Validate production storage, recovery, privacy, and retry behavior for the deployment. Business side effects and framework-state persistence are not automatically one transaction; Kaleido does not promise exactly-once execution of arbitrary external effects.
+Validate production storage, recovery, privacy, and retry behavior for the deployment. Running several instances is covered in the guide's [deployment page](docs/guide/deployment.md#several-instances). Business side effects and framework-state persistence are not automatically one transaction; Kaleido does not promise exactly-once execution of arbitrary external effects.
 
 ## Packages
 
@@ -265,7 +278,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 |---|---|
 | [`Kaleido`](src/Kaleido) | Core Process and Queryable runtimes, metadata, process state, and shared framework mechanisms |
 | [`Kaleido.Http`](src/Kaleido.Http) | ASP.NET Core HTTP hosting, endpoint publication, and registry aggregation |
-| [`Kaleido.Http.Abstractions`](src/Kaleido.Http.Abstractions) | Shared HTTP request, response, discovery, and client contracts |
+| [`Kaleido.Http.Abstractions`](src/Kaleido.Http.Abstractions) | Shared HTTP request, response, discovery, and client contracts; registry snapshot storage (in memory, or shared across replicas in the host's `IDistributedCache`) |
 | [`Kaleido.Http.Client`](src/Kaleido.Http.Client) | Typed clients and registry access for configured remote Kaleido services |
 | [`Kaleido.Http.Mcp`](src/Kaleido.Http.Mcp) | Registry-derived MCP tools, input schemas, guided interaction, and process continuation for AI agents |
 | [`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite) | Reference store for process state, stored execution responses, and the event outbox |
@@ -279,9 +292,11 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 
 ### Install
 
-The packages are previews and are not published to nuget.org yet: CI builds them on every change to `master` (the `packages` workflow artifact). Add the feed you host them on (`dotnet nuget add source …`), then add what the service needs:
+The packages are previews and are not published to nuget.org yet. The release workflow publishes them to the repository's GitHub Packages feed, `https://nuget.pkg.github.com/no1ross/index.json` ([releasing](RELEASING.md)); add it as a source with a GitHub token that can read packages, then add what the service needs:
 
 ```bash
+dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name kaleido --username <github-user> --password <token-with-read:packages>
+
 dotnet add package Kaleido --prerelease                              # core runtimes (always)
 dotnet add package Kaleido.Http --prerelease                         # publish the service over HTTP
 dotnet add package Kaleido.Http.Client --prerelease                  # call other Kaleido services
