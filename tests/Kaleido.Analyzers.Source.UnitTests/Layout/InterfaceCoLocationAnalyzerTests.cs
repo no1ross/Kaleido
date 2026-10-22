@@ -12,7 +12,7 @@ public sealed class InterfaceCoLocationAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0015", DiagnosticSeverity.Error);
+        new("KAL0014", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task InterfaceInSameFileAsImpl_NoDiagnostic()

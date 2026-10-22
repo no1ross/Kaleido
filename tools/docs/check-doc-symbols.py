@@ -17,9 +17,9 @@ HISTORICAL = ("docs/decisions/", "docs/DOCUMENTATION-AUDIT.md", "tests/FUNCTIONA
 
 # Names that are not symbols, each with the reason it is written in code style.
 ALLOWED = {
-    "KaleidoProcessExecute": "endpoint-name value (docs/ANALYZERS.md, KAL0020)",
-    "KaleidoRegistry": "endpoint-name value (docs/ANALYZERS.md, KAL0020)",
-    "KaleidoProcessStepREgistry": "the historical endpoint-name typo KAL0020 prevents",
+    "KaleidoProcessExecute": "endpoint-name value (docs/ANALYZERS.md, KAL0017)",
+    "KaleidoRegistry": "endpoint-name value (docs/ANALYZERS.md, KAL0017)",
+    "KaleidoProcessStepREgistry": "the historical endpoint-name typo KAL0017 prevents",
     "QueryContextSource": "type-name suffix the MCP adapter strips from tool names",
     "QueryViewSource": "type-name suffix the MCP adapter strips from tool names",
     "ProcessorMappings": "named in the PriorAuth handoff guide as a setting that does not exist",

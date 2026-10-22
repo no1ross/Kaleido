@@ -43,10 +43,10 @@ namespace Kaleido.Queryable
 }";
 
     private static readonly DiagnosticResult StepProperty =
-        new("KAL2017", DiagnosticSeverity.Warning);
+        new("KAL2014", DiagnosticSeverity.Warning);
 
     private static readonly DiagnosticResult QueryProperty =
-        new("KAL2018", DiagnosticSeverity.Warning);
+        new("KAL2015", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task StepPropertyWithoutDescription_Reports()

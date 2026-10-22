@@ -9,8 +9,8 @@ using Microsoft.CodeAnalysis.Operations;
 namespace Kaleido.Analyzers.Process;
 
 /// <summary>
-/// KAL2015 — an IInformationStep declares a property other than InformationRequestId and Items.
-/// KAL2016 — Success&lt;TNext&gt;() or Next&lt;TNext&gt;() names an information step, which needs a request to answer.
+/// KAL2012 — an IInformationStep declares a property other than InformationRequestId and Items.
+/// KAL2013 — Success&lt;TNext&gt;() or Next&lt;TNext&gt;() names an information step, which needs a request to answer.
 /// Both fail at runtime (pro_invalid_registration at startup, pro_information_request_missing
 /// when the step completes), so they are reported at compile time.
 /// </summary>

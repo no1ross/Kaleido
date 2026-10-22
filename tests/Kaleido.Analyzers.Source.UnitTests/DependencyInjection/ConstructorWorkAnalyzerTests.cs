@@ -12,7 +12,7 @@ public sealed class ConstructorWorkAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0011", DiagnosticSeverity.Error);
+        new("KAL0010", DiagnosticSeverity.Error);
 
     private const string Registrations = @"
 public static class AppServiceCollectionExtensions

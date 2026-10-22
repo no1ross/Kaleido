@@ -12,7 +12,7 @@ public sealed class CoverageExclusionAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0023", DiagnosticSeverity.Warning);
+        new("KAL0020", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task OnATypeWithBehavior_Reports()

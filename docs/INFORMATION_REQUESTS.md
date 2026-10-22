@@ -16,7 +16,7 @@ options and what an answer means all belong to the implementer
 | | Step with properties | Information step |
 |---|---|---|
 | **When** | The required information is known up front (member ID, date of birth, procedure code) | The questions are decided at runtime |
-| **Shape** | `IProcessStep` record with typed properties + validation attributes | `IInformationStep`: only `InformationRequestId` and `Items` (KAL2015, startup `pro_invalid_registration`) |
+| **Shape** | `IProcessStep` record with typed properties + validation attributes | `IInformationStep`: only `InformationRequestId` and `Items` (KAL2012, startup `pro_invalid_registration`) |
 | **Describes its input with** | Properties, `[Description]`, `[Display(Name, Prompt, Description)]` (published in the registry; hints for UIs and AI agents) | The pending information request on the required step |
 | **Validation** | Data annotations | Structural checks against the pending request |
 
@@ -35,7 +35,7 @@ with the next request (adaptive rounds).
 
    `TNext` must be an `IInformationStep` (a compile-time constraint). A request only ever
    travels with the **required** step. An information step required with `Success<TNext>()` or `Next<TNext>()`
-   fails with `pro_information_request_missing` (and KAL2016 at compile time).
+   fails with `pro_information_request_missing` (and KAL2013 at compile time).
 2. **Wait.** The process state becomes `AwaitingInformation`. The response's `requiredStep` is
    an object carrying the request:
 
@@ -208,8 +208,8 @@ job.
 
 ## Analyzers
 
-KAL2015 (information-step shape), KAL2016 (`Success<TNext>` with an information step),
-KAL2017/KAL2018 (describe step and query inputs). See [`ANALYZERS.md`](./ANALYZERS.md).
+KAL2012 (information-step shape), KAL2013 (`Success<TNext>` with an information step),
+KAL2014/KAL2015 (describe step and query inputs). See [`ANALYZERS.md`](./ANALYZERS.md).
 
 ## Sample
 

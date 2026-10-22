@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0009 — services use constructor injection only. A registered
+/// KAL0008 — services use constructor injection only. A registered
 /// implementation with a settable service-typed property (or a Set* method
 /// injecting a service) hides a dependency behind mutable state.
 /// </summary>

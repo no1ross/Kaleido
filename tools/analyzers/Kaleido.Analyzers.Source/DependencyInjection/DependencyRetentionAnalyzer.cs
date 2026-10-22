@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0010 — injected dependency fields must be readonly. A mutable field
+/// KAL0009 — injected dependency fields must be readonly. A mutable field
 /// typed as a registered service can be reassigned after construction,
 /// hiding state changes and defeating the immutability contract of DI.
 /// Unused injected parameters are already caught by IDE0060.

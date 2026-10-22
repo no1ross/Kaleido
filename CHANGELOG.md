@@ -38,7 +38,7 @@ sections.
   Only enabled questions must be answered; an answer to a disabled one is rejected. The MCP adapter asks
   in rounds (forms, and chat with `answersToken`) and never shows the agent the conditions. Additive on
   the wire.
-- **Output descriptions for agents** (#213): new consumer rule KAL2024 (step results and view outputs
+- **Output descriptions for agents** (#213): new consumer rule KAL2021 (step results and view outputs
   need descriptions; an error in the samples). MCP query and step results carry `fieldDescriptions`.
 - **SQLite registrations:** `UseSqliteKaleidoContextStore` is replaced by `AddSqliteContextStore`,
   `AddSqliteOutboxStore` and `AddSqliteIdempotencyStore` (one database; `connection_string_mismatch`);
@@ -52,7 +52,12 @@ sections.
   400 for a step it cannot build (#392).
 - **Public API surface:** core runtime internals and registry descriptors made internal; wire contracts
   self-contained in `Kaleido.Http.Abstractions` ([ADR 0017](docs/decisions/0017-transport-contract-placement.md), #389, #390).
-- **Consumer analyzer rules:** KAL2008 removed; KAL0004/KAL1011 removed (#401).
+- **Analyzer rule IDs renumbered** (#416): rules removed before the first release (#401 and earlier) no
+  longer leave gaps; each family is numbered contiguously. A preview's suppressions or `.editorconfig`
+  severities by ID need the new number:
+  - consumer: KAL2009..KAL2024 are now KAL2006..KAL2021;
+  - source: KAL0005..KAL0015 are now KAL0004..KAL0014, KAL0018..KAL0023 are now KAL0015..KAL0020;
+  - test: KAL1012 and KAL1013 are now KAL1011 and KAL1012.
 
 ### Added
 - Consumer guide (`docs/guide`): concepts, events and the outbox, persistence, deployment and choosing options, around one orders service whose examples are compiled, checked against the pages in CI (`tools/docs/check-guide-snippets.py`) and run by tests (#409).

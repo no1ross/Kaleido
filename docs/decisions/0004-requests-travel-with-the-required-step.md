@@ -16,7 +16,7 @@ must be attested. Consumers need to know, in one response, what to do next and w
 - **Receiver = the step type.** The required information step receives the answers.
 - **A request only travels with the required step.** There are no builders for available
   steps and no eager building. Plain `Success<TNext>()` carries none. Requiring an information
-  step without a request is a process violation (`pro_information_request_missing`; KAL2016).
+  step without a request is a process violation (`pro_information_request_missing`; KAL2013).
 - **New decision and state, `AwaitingInformation`,** distinct from `AwaitingRequiredStep`.
 - **`RequiredStep` is an object** on step, multi-step and state responses: the same shape as an
   available step, plus `informationRequest`. Events carry `RequiredInformationRequest`.

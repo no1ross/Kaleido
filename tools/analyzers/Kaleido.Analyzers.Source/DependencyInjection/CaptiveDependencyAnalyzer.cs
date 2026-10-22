@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0014 — singleton registrations must not capture scoped services.
+/// KAL0013 — singleton registrations must not capture scoped services.
 /// Resolving a scoped service inside an AddSingleton factory lambda creates
 /// a captive dependency that lives forever. Flagged only when both lifetimes
 /// are known from registrations in the same compilation.

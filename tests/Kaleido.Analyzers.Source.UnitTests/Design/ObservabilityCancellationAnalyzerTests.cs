@@ -24,7 +24,7 @@ public interface ILog
 }";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0021", DiagnosticSeverity.Warning);
+        new("KAL0018", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task CatchException_CallsObservation_Reports()

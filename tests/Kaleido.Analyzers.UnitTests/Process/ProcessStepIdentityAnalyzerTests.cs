@@ -26,10 +26,10 @@ namespace Kaleido.Processor
 }";
 
     private static readonly DiagnosticResult AttributeWithoutInterface =
-        new("KAL2010", DiagnosticSeverity.Error);
+        new("KAL2007", DiagnosticSeverity.Error);
 
     private static readonly DiagnosticResult InterfaceWithoutAttribute =
-        new("KAL2011", DiagnosticSeverity.Error);
+        new("KAL2008", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task AttributeWithoutInterface_Reports()

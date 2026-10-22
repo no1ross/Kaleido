@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.Design;
 
 /// <summary>
-/// KAL0019 — public and internal async methods (returning Task or Task&lt;T&gt;)
+/// KAL0016 — public and internal async methods (returning Task or Task&lt;T&gt;)
 /// must accept a CancellationToken parameter so callers can propagate cancellation.
 /// Exempt: overrides and explicit interface implementations (token is fixed at
 /// the interface/base), and the ASP.NET Core middleware InvokeAsync(HttpContext)

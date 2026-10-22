@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0007 — no service locator. Resolving IServiceProvider.GetService /
+/// KAL0006 — no service locator. Resolving IServiceProvider.GetService /
 /// GetServices / GetRequiredService outside composition roots hides
 /// dependencies; constructor injection makes them explicit.
 /// *ServiceCollectionExtensions classes are exempt — registration factories

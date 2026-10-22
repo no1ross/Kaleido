@@ -5,8 +5,8 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Process;
 
 /// <summary>
-/// KAL2010 — [ProcessStep] applied to a type that does not implement IProcessStep.
-/// KAL2011 — a concrete IProcessStep type without the required [ProcessStep] attribute.
+/// KAL2007 — [ProcessStep] applied to a type that does not implement IProcessStep.
+/// KAL2008 — a concrete IProcessStep type without the required [ProcessStep] attribute.
 /// IProcessStep is the step's identity; [ProcessStep] only describes it. Both mismatches
 /// fail startup registration, so they are reported at compile time.
 /// </summary>

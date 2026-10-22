@@ -4,7 +4,7 @@ namespace Kaleido.Testing;
 /// The one valid/invalid ServiceName table: <c>[a-z0-9][a-z0-9_-]*</c>. Runtime validation
 /// (<c>KaleidoServiceOptions.Validate</c>) and the consumer analyzer (KAL2005) are both tested
 /// against it, so the build-time and startup rules cannot drift apart. Names stay within the
-/// 15-character MCP budget so the length warning (KAL2020) does not mix into these cases.
+/// 15-character MCP budget so the length warning (KAL2017) does not mix into these cases.
 /// </summary>
 internal static class ServiceNameCases
 {

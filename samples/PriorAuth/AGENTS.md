@@ -68,7 +68,7 @@
 - The executor serves every source of the service: a query that is not EF Core's (Radiology's delegated provider searches) uses LINQ.
 
 ## What a view returns
-- View output records describe every property (`[Description]`): KAL2024 is an error in the samples. The descriptions reach the agent with the data (`fieldDescriptions` in MCP results).
+- View output records describe every property (`[Description]`): KAL2021 is an error in the samples. The descriptions reach the agent with the data (`fieldDescriptions` in MCP results).
 
 ## Sensitive data in events
 - Member fields are classified with `[Phi]` (name, display name, date of birth) and `[Pii]` (email, phone, address) from `Common/Compliance/PriorAuthDataClassifications.cs`.

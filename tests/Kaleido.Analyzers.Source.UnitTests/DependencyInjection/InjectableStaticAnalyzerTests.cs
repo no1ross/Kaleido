@@ -12,7 +12,7 @@ public sealed class InjectableStaticAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0005", DiagnosticSeverity.Error);
+        new("KAL0004", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task StaticServiceClass_Reports()

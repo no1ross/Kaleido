@@ -25,7 +25,7 @@ namespace Kaleido
         new("KAL2005", DiagnosticSeverity.Warning);
 
     private static readonly DiagnosticResult TooLong =
-        new("KAL2020", DiagnosticSeverity.Warning);
+        new("KAL2017", DiagnosticSeverity.Warning);
 
     private static string Assign(string expression, string members = "") => @"
 public class Program

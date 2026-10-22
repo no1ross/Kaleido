@@ -14,53 +14,53 @@ internal static class DiagnosticIds
     public const string NullForgivingOperator = "KAL0003";
 
     /// <summary>Service-like types (suffixed Service, Handler, Executor, etc.) must not be static; make them injectable instance classes.</summary>
-    public const string InjectableStatic = "KAL0005";
+    public const string InjectableStatic = "KAL0004";
 
     /// <summary>DI-registered service implementation types must be resolved from the container, not newed up directly.</summary>
-    public const string ServiceInstantiation = "KAL0006";
+    public const string ServiceInstantiation = "KAL0005";
 
     /// <summary>Calling GetService/GetRequiredService on IServiceProvider outside a composition root is the service-locator anti-pattern; inject the dependency through the constructor instead.</summary>
-    public const string ServiceLocator = "KAL0007";
+    public const string ServiceLocator = "KAL0006";
 
     /// <summary>Constructor parameters must be typed as service abstractions (interfaces), not concrete implementations that are registered under an interface key.</summary>
-    public const string ConcreteDependency = "KAL0008";
+    public const string ConcreteDependency = "KAL0007";
 
     /// <summary>Services must use constructor injection; settable service-typed properties or Set* methods that inject dependencies hide mutable state.</summary>
-    public const string PropertyInjection = "KAL0009";
+    public const string PropertyInjection = "KAL0008";
 
     /// <summary>Injected dependency fields must be readonly; a mutable field typed as a registered service can be reassigned after construction. Unused injected parameters are covered by IDE0060.</summary>
-    public const string DependencyRetention = "KAL0010";
+    public const string DependencyRetention = "KAL0009";
 
     /// <summary>DI constructors must not invoke behavior on injected dependencies, perform I/O, start background work, or call service resolution.</summary>
-    public const string ConstructorWork = "KAL0011";
+    public const string ConstructorWork = "KAL0010";
 
     /// <summary>Infrastructure types (HttpClient, ServiceCollection, LoggerFactory, DbContext) must not be newed up; inject the corresponding container-managed factory or abstraction.</summary>
-    public const string InfrastructureInstantiation = "KAL0012";
+    public const string InfrastructureInstantiation = "KAL0011";
 
     /// <summary>Container-owned (injected) services must not be disposed by consumers; the container manages the service lifetime.</summary>
-    public const string InjectedDisposal = "KAL0013";
+    public const string InjectedDisposal = "KAL0012";
 
     /// <summary>Singleton factory lambdas must not resolve scoped services; doing so captures the scoped instance for the application lifetime.</summary>
-    public const string CaptiveDependency = "KAL0014";
+    public const string CaptiveDependency = "KAL0013";
 
     /// <summary>An interface and its concrete implementation must be declared in the same source file (e.g. IProcessorRuntime lives in ProcessorRuntime.cs).</summary>
-    public const string InterfaceCoLocation = "KAL0015";
+    public const string InterfaceCoLocation = "KAL0014";
 
     /// <summary>Public API members must not expose mutable collection types; use IReadOnlyCollection, IReadOnlyList, IReadOnlyDictionary, or IEnumerable instead.</summary>
-    public const string MutableCollectionInPublicApi = "KAL0018";
+    public const string MutableCollectionInPublicApi = "KAL0015";
 
     /// <summary>Public and internal async methods must accept a CancellationToken parameter so callers can propagate cancellation.</summary>
-    public const string AsyncMissingCancellationToken = "KAL0019";
+    public const string AsyncMissingCancellationToken = "KAL0016";
 
     /// <summary>Endpoint names passed to WithName must reference an *EndpointNames constant or factory method, not an ad-hoc string.</summary>
-    public const string EndpointNameConstant = "KAL0020";
+    public const string EndpointNameConstant = "KAL0017";
 
     /// <summary>A catch-all that calls an observability member must exclude OperationCanceledException (filter or earlier catch clause) so cancellations are not recorded as failures.</summary>
-    public const string ObservabilityCancellation = "KAL0021";
+    public const string ObservabilityCancellation = "KAL0018";
 
     /// <summary>A type with behavior is declared in a file named after it (generic twins by arity: XOfT.cs); two types with behavior never share a file.</summary>
-    public const string TypeFileName = "KAL0022";
+    public const string TypeFileName = "KAL0019";
 
     /// <summary>[ExcludeFromCodeCoverage] is not allowed on a type with behavior: its logic is tested in its own test class.</summary>
-    public const string CoverageExclusionOnBehavior = "KAL0023";
+    public const string CoverageExclusionOnBehavior = "KAL0020";
 }

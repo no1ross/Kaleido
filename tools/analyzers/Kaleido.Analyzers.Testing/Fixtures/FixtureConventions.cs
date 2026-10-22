@@ -149,7 +149,7 @@ internal static class FixtureConventions
     }
 
     /// <summary>
-    /// KAL1012 only: true when constructing the type in a fixture would be using a real collaborator -
+    /// KAL1011 only: true when constructing the type in a fixture would be using a real collaborator -
     /// a public or internal, non-static, non-abstract class with an ordinary method. DTOs, records,
     /// exceptions, attributes, and [ExcludeFromCodeCoverage] types are exempt: new-ing those in a
     /// fixture is arrangement (domain data the SUT consumes), not a collaborator violation. Which types

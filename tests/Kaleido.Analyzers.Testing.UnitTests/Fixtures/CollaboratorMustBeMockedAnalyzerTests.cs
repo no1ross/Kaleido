@@ -57,7 +57,7 @@ namespace Kaleido.Runtime
 ";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL1012", DiagnosticSeverity.Error);
+        new("KAL1011", DiagnosticSeverity.Error);
 
     private static Task RunAsync(string source, params DiagnosticResult[] expected)
     {

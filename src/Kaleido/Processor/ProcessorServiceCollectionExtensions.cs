@@ -169,7 +169,7 @@ internal static class ProcessorServiceCollectionExtensions
     }
 
     // [ProcessStep] on a type that is no IProcessStep would otherwise be silently ignored. The
-    // analyzer (KAL2010) reports it at compile time, but analyzers can be switched off:
+    // analyzer (KAL2007) reports it at compile time, but analyzers can be switched off:
     // registration enforces it at startup, on purpose (#204).
     private static void ValidateAttributesHaveInterface(
         IEnumerable<Type> types)

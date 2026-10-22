@@ -33,7 +33,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0015](./0015-declared-step-behavior.md) | Step behavior (destructive, external, confirmation) is declared; idempotence derived; classifications published | Accepted | #137 |
 | [0016](./0016-mcp-front-door-tool-listing.md) | The MCP adapter can list a front door (derived from initial steps and their lookups); open steps arrive in `next` and run with `call_tool` | Accepted | #338 |
 | [0017](./0017-transport-contract-placement.md) | Transport contracts (including the error body) live in `Kaleido.Http.Abstractions` under the `Kaleido.Http` namespace; `IRegistrySnapshotStore` stays a public async seam | Accepted | #298, #293 |
-| [0018](./0018-options-are-startup-inputs.md) | Options are startup inputs: no defensive copies; KAL0018 stays the immutability rule, no deep-immutability analyzer | Accepted | #294, #305 |
+| [0018](./0018-options-are-startup-inputs.md) | Options are startup inputs: no defensive copies; KAL0015 stays the immutability rule, no deep-immutability analyzer | Accepted | #294, #305 |
 | [0019](./0019-idempotent-execution-admission.md) | Idempotent execution: an `Idempotency-Key` is admitted before its step runs; at most once per key, not exactly-once external work | Accepted | #285 |
 | [0020](./0020-three-store-contracts.md) | Three store contracts, one concern each: process state, event outbox, idempotent requests; the context and outbox stores share a database | Accepted; its store coupling amended by [0023](./0023-outbox-integration.md) | #285 |
 | [0021](./0021-authenticated-by-default.md) | Authorization is enforced by default (`Authenticated`); an open host sets `None` explicitly | Accepted | #288 |

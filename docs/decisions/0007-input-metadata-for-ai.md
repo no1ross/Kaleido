@@ -15,10 +15,10 @@ it can't tell a person from a process.
   client may phrase the question its own way. There is no per-client text provider and no
   projection into questionnaires.
 - **Analyzers nudge without being strict:**
-  - KAL2017 (a step input without a description) and KAL2018 (an `IQueryContext` or
+  - KAL2014 (a step input without a description) and KAL2015 (an `IQueryContext` or
     `IQueryParameters` property without a description) are **warnings**, and only a
     description is asked for;
-  - KAL2015 and KAL2016 are **errors**, because they mirror runtime failures.
+  - KAL2012 and KAL2013 are **errors**, because they mirror runtime failures.
 - **Verbatim:** business messages and information-request text are always delivered verbatim.
   `[Display]` hints may be phrased naturally. Pronunciation belongs to the channel.
 - **No "a human must answer" rule in core:** Kaleido only sees an authenticated identity.
