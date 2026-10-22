@@ -20,7 +20,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Kaleido.Provider.SQLite.UnitTests" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.IntegrationTests" />
+		<InternalsVisibleTo Include="Kaleido.Observability.OpenTelemetry.UnitTests" />
 	</ItemGroup>
-
 </Project>
