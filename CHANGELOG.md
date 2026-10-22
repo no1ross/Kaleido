@@ -61,6 +61,9 @@ sections.
 - Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
 
 ### Fixed
+- Query sources and views see the request's correlation (the caller, request id and process id):
+  their DI scope started empty, so a source could not filter by caller and a delegated source did not
+  forward the request's ids (#413).
 - Analyzer packaging and rules, cancellation finalization, SQLite provider, sample handoff authorization,
   client registry cache (#382).
 

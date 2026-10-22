@@ -31,6 +31,7 @@ internal interface IQueryableService
 
 internal sealed class QueryableService(
     IServiceScopeFactory scopeFactory,
+    IKaleidoCorrelationContextAccessor correlationAccessor,
     IQueryViewRegistry viewRegistry,
     IQuerySourceRegistry sourceRegistry)
     : IQueryableService
@@ -59,6 +60,13 @@ internal sealed class QueryableService(
 
         using var scope =
             scopeFactory.CreateScope();
+
+        // The query runs in its own scope, whose scoped correlation would otherwise be empty (#413):
+        // carry the request's correlation in, as the Process runtime does for a step handler, so
+        // sources and views see the caller and their outbound calls forward the request's ids.
+        scope.ServiceProvider
+            .GetRequiredService<IKaleidoCorrelationContextInitializer>()
+            .Initialize(correlationAccessor.Current);
 
         // A type is exactly one capability (enforced at startup), so a view lookup and a
         // source lookup never both match.

@@ -231,6 +231,11 @@ Public seams consumers are expected to implement or replace:
 
 These are framework invariants — code that violates them produces split traces:
 
+- **A runtime's own scope starts from the request's correlation** — a step handler
+  (`ProcessorStepInvoker`) and a query's sources and views (`QueryableService`) each run in their
+  own DI scope, initialized with the request's `KaleidoCorrelationContext` (the handler's with its
+  process id and executing step). An empty scope would lose the caller, the request id and the
+  process id: no record-level filtering by caller, no forwarding of the ids downstream (#413).
 - **Exactly one RequestId per HTTP request** — `KaleidoCorrelationEndpointFilter` echoes the inbound
   `X-Kaleido-Request-Id` if present, else generates one. Handlers and downstream calls must
   propagate the ambient `RequestId`, never mint a second one.
