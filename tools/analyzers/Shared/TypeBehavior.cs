@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Kaleido.Analyzers.Shared;
 
 /// <summary>
-/// Shared by KAL0022/KAL0023 (Kaleido.Analyzers.Source) and KAL1009/KAL1002/KAL1003/KAL1007
+/// Shared by KAL0019/KAL0020 (Kaleido.Analyzers.Source) and KAL1009/KAL1002/KAL1003/KAL1007
 /// (Kaleido.Analyzers.Testing): which types have behavior - and so need their own file and their own
 /// unit-test class - and the name that file and test class carry (#404).
 /// </summary>

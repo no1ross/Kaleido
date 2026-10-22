@@ -12,7 +12,7 @@ public sealed class InfrastructureInstantiationAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0012", DiagnosticSeverity.Error);
+        new("KAL0011", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task NewHttpClient_Reports()

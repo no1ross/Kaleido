@@ -164,7 +164,7 @@ internal static class QueryMetadataExtensions
 
     // Every declared filter operator must apply to the field's type, the way the query engine
     // (CompiledQueryApplier) builds it; otherwise the registry would advertise an operator that
-    // fails every request that uses it. Analyzer KAL2023 reports the same mistakes at compile time.
+    // fails every request that uses it. Analyzer KAL2020 reports the same mistakes at compile time.
     private static IReadOnlyList<FilterOperator> ValidateFilterOperators(
         this PropertyInfo property,
         IReadOnlyList<FilterOperator> operators)

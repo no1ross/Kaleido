@@ -60,10 +60,10 @@ public sealed record CaptureStep : Kaleido.Processor.IProcessStep;
 ";
 
     private static readonly DiagnosticResult Shape =
-        new("KAL2015", DiagnosticSeverity.Error);
+        new("KAL2012", DiagnosticSeverity.Error);
 
     private static readonly DiagnosticResult SuccessWithInformationStep =
-        new("KAL2016", DiagnosticSeverity.Error);
+        new("KAL2013", DiagnosticSeverity.Error);
 
     [Fact]
     public async Task InformationStepWithOnlyItsResponse_NoDiagnostic()

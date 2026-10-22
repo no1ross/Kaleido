@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Bootstrap;
 
 /// <summary>
-/// KAL2009 — AddKaleido() options lambdas should set Assemblies explicitly.
+/// KAL2006 — AddKaleido() options lambdas should set Assemblies explicitly.
 /// Missing or empty assemblies now fail during AddKaleido() registration.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]

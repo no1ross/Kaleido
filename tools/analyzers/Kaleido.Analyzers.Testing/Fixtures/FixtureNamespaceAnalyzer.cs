@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1013 — a unit-test fixture lives in its SUT's namespace with <c>.UnitTests</c>
+/// KAL1012 — a unit-test fixture lives in its SUT's namespace with <c>.UnitTests</c>
 /// appended: a fixture for <c>Kaleido.Queryable.Query.QueryContextEngine</c> is declared in
 /// <c>Kaleido.Queryable.Query.UnitTests</c>. The SUT is the <c>SutFixture&lt;TSut&gt;</c> type
 /// argument, or else the type named by the fixture's <c>{Sut}Tests</c> prefix.

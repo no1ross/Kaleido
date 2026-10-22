@@ -17,7 +17,7 @@ runtime. Mixing the two on one step puts the same data in two places.
   - a step with properties, for known inputs;
   - an information step (`IInformationStep`), whose payload *is* the answers. It declares only
     `InformationRequestId` and `Items`, enforced at startup (`pro_invalid_registration`) and by
-    KAL2015.
+    KAL2012.
 - **The interface is the marker**, consistent with `IProcessStep` as step identity (#195).
   Handlers are ordinary `IProcessStepHandler<TStep>`; there is no special handler type.
 - **`[Repeatable]` stays orthogonal:** an information step without it is one questionnaire and

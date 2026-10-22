@@ -14,7 +14,7 @@ namespace Kaleido.Analyzers.Process;
 /// cancellations, causing false failures in observability and masking client disconnects.
 /// Add a when (ex is not OperationCanceledException) filter or a separate catch block.
 /// Whether a filter excludes cancellation is proven from its semantics, not its text
-/// (<see cref="CancellationCatch"/>, shared with KAL0021).
+/// (<see cref="CancellationCatch"/>, shared with KAL0018).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class StepHandlerOceAnalyzer : DiagnosticAnalyzer

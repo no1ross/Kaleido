@@ -15,8 +15,8 @@ namespace Kaleido.Http.Mcp.Tools;
 /// <remarks>
 /// MCP tool names must match <c>[a-zA-Z0-9_-]{1,64}</c>. Kaleido keeps names inside that limit at
 /// authoring time: a service name of at most <see cref="ToolNameBuilder.MaxServiceLength"/>
-/// characters (KAL2020) and a capability part of at most
-/// <see cref="ToolNameBuilder.MaxCapabilityLength"/> characters (KAL2019). A name that still
+/// characters (KAL2017) and a capability part of at most
+/// <see cref="ToolNameBuilder.MaxCapabilityLength"/> characters (KAL2016). A name that still
 /// exceeds the limit is cut, given a stable hash suffix and reported (<see cref="ToolName.Truncated"/>).
 /// </remarks>
 internal interface IToolNameBuilder
@@ -34,10 +34,10 @@ internal sealed partial class ToolNameBuilder : IToolNameBuilder
     /// <summary>MCP's limit on tool names.</summary>
     public const int MaxLength = 64;
 
-    /// <summary>The service-name budget (reported for constant <c>ServiceName</c> values by KAL2020).</summary>
+    /// <summary>The service-name budget (reported for constant <c>ServiceName</c> values by KAL2017).</summary>
     public const int MaxServiceLength = 15;
 
-    /// <summary>The capability-part budget (enforced for capability type names by KAL2019).</summary>
+    /// <summary>The capability-part budget (enforced for capability type names by KAL2016).</summary>
     public const int MaxCapabilityLength = 40;
 
     // Longest first, so "QueryViewSource" is trimmed before "Source".

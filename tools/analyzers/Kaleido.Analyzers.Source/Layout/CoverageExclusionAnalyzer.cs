@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.Layout;
 
 /// <summary>
-/// KAL0023 — <c>[ExcludeFromCodeCoverage]</c> is for types without behavior (data holders). On a type
+/// KAL0020 — <c>[ExcludeFromCodeCoverage]</c> is for types without behavior (data holders). On a type
 /// with behavior (TypeBehavior) it hides logic from the coverage gate; that logic is tested in the
 /// type's own test class instead (#404).
 /// </summary>

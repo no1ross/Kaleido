@@ -5,7 +5,7 @@ namespace Kaleido.Queryable;
 /// </summary>
 /// <remarks>
 /// Each operator must apply to the property's type, or startup fails with
-/// <see cref="QueryableErrorCodes.InvalidRegistration"/> (analyzer KAL2023 reports it at compile
+/// <see cref="QueryableErrorCodes.InvalidRegistration"/> (analyzer KAL2020 reports it at compile
 /// time): comparisons and <see cref="FilterOperator.Between"/> need a number or a type with
 /// comparison operators (dates, times, <see cref="Guid"/>), string operators need a
 /// <see langword="string"/>, <see cref="FilterOperator.IsTrue"/>/<see cref="FilterOperator.IsFalse"/> need a

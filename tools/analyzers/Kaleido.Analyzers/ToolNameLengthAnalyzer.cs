@@ -8,12 +8,12 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers;
 
 /// <summary>
-/// KAL2019 — a process step, query source or query view whose type name makes an MCP tool name
+/// KAL2016 — a process step, query source or query view whose type name makes an MCP tool name
 /// longer than the budget. Tools are named <c>{service}_{capability}</c> in snake_case, where the
 /// capability part is the type name without its <c>Step</c>, <c>QueryContextSource</c>,
 /// <c>QueryViewSource</c>, <c>ViewSource</c> or <c>Source</c> suffix; MCP limits tool names to 64
 /// characters, so the capability part may use at most <see cref="MaxCapabilityLength"/> (the service
-/// name has 15, KAL2020). Must stay in step with <c>ToolNameBuilder</c> in Kaleido.Http.Mcp.
+/// name has 15, KAL2017). Must stay in step with <c>ToolNameBuilder</c> in Kaleido.Http.Mcp.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ToolNameLengthAnalyzer : DiagnosticAnalyzer

@@ -12,7 +12,7 @@ public sealed class AsyncCancellationTokenAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0019", DiagnosticSeverity.Warning);
+        new("KAL0016", DiagnosticSeverity.Warning);
 
     // Minimal stubs — the HttpContext name must match the full CLR name the
     // analyzer checks, so we declare it in the right namespace.
@@ -57,9 +57,9 @@ public class Service
 using System.Threading.Tasks;
 public abstract class Base
 {
-#pragma warning disable KAL0019
+#pragma warning disable KAL0016
     public abstract Task DoWorkAsync();
-#pragma warning restore KAL0019
+#pragma warning restore KAL0016
 }
 public class Derived : Base
 {
@@ -76,9 +76,9 @@ public class Derived : Base
 using System.Threading.Tasks;
 public interface IService
 {
-#pragma warning disable KAL0019
+#pragma warning disable KAL0016
     Task DoWorkAsync();
-#pragma warning restore KAL0019
+#pragma warning restore KAL0016
 }
 public class Service : IService
 {

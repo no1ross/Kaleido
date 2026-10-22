@@ -31,7 +31,7 @@ public sealed class OrderBook
 
 A **query context** describes what callers may ask: which fields they can filter, search and sort
 by. The **source** returns an `IQueryable` of it; Kaleido applies the caller's filters, search, sort
-and paging. Descriptions are published in the registry, which is what UIs and agents read (KAL2018).
+and paging. Descriptions are published in the registry, which is what UIs and agents read (KAL2015).
 
 <!-- snippet: getting-started-source -->
 ```csharp

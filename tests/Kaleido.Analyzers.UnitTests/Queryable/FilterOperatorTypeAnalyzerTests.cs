@@ -41,7 +41,7 @@ public sealed class Person { }";
     private const string NoEqualityOperator = "the type has no equality operator";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL2023", DiagnosticSeverity.Error);
+        new("KAL2020", DiagnosticSeverity.Error);
 
     [Theory]
     [InlineData("string", "GreaterThan", Compare)]

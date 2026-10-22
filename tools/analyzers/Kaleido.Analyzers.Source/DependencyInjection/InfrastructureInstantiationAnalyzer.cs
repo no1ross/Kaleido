@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0012 — do not manually instantiate infrastructure dependencies.
+/// KAL0011 — do not manually instantiate infrastructure dependencies.
 /// new HttpClient(), new ServiceCollection(), new LoggerFactory(), or new-ing
 /// a DbContext bypasses the factories and lifetimes the container manages
 /// (IHttpClientFactory, ILogger&lt;T&gt;, IServiceScopeFactory,

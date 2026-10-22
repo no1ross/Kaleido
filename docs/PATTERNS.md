@@ -34,8 +34,8 @@ public sealed class CaptureServiceHandler(IHistoryClient history)
 
 Rules:
 - **`IProcessStep` is the step's identity**; `[ProcessStep]` only describes it. Every
-  `IProcessStep` type needs `[ProcessStep]` (KAL2011), and `[ProcessStep]` is only
-  valid on `IProcessStep` types (KAL2010).
+  `IProcessStep` type needs `[ProcessStep]` (KAL2008), and `[ProcessStep]` is only
+  valid on `IProcessStep` types (KAL2007).
 - **The step name is the type name** (`Type.Name`, unmodified) — in the registry, on
   the wire, in persisted state, and in events. Renaming the type renames the step.
 - `[ProcessStep]` declares non-empty `Version`, `DisplayName`, and `Description`
@@ -43,7 +43,7 @@ Rules:
   them for that audience.
 - **Required inputs are `required` members.** Inputs are validated with DataAnnotations, and
   `[Required]` cannot see an omitted value type (it is already its default). Declare required
-  value-type inputs with the C# keyword too (KAL2021):
+  value-type inputs with the C# keyword too (KAL2018):
   `[Required] public required Guid MemberId { get; init; }`. Callers must then supply it: the
   compiler checks in-process callers, and a request body that leaves it out is answered 400
   naming it. The handler reads a plain `Guid`.
@@ -77,7 +77,7 @@ Rules:
   `OperationCanceledException` in `catch (Exception)` — filter it or let the
   executor own cancellation (KAL2004).
 - **Describe inputs** with `[Description("…")]` or `[Display(Description = "…")]`
-  (KAL2017); `[Display(Name, Prompt)]` are optional hints. The registry publishes
+  (KAL2014); `[Display(Name, Prompt)]` are optional hints. The registry publishes
   them — UIs and AI agents use them to know what to ask for.
 - **Declare what only you know about the step's effects** ([ADR 0015](./decisions/0015-declared-step-behavior.md)) -
   clients and AI agents read it from the registry, and the MCP adapter maps it onto tool hints:
@@ -150,7 +150,7 @@ return ProcessStepHandlerResult.RequireInformation<CaptureOutOfNetworkResponseSt
         ]
     });
 
-// The information step: its payload is the answers; nothing else (KAL2015).
+// The information step: its payload is the answers; nothing else (KAL2012).
 [ProcessStep(Version = "1.0", DisplayName = "Out-of-network responses", Description = "Answers the out-of-network attestation.")]
 public sealed record CaptureOutOfNetworkResponseStep : IInformationStep
 {
@@ -161,7 +161,7 @@ public sealed record CaptureOutOfNetworkResponseStep : IInformationStep
 
 Rules:
 - Require an information step only with `RequireInformation<TNext>(request)` — never
-  `Success<TNext>()` (KAL2016).
+  `Success<TNext>()` (KAL2013).
 - Kaleido validates the answers structurally against the pending request before the
   handler runs; the handler translates them into domain values.
 - To ask again (adaptive rounds), make the information step `[Repeatable]` and have its
@@ -178,7 +178,7 @@ services.AddKaleido(builder.Configuration, o =>
 {
     o.ServiceName = "intake";                       // lowercase letters, digits, '-' and '_' (KAL2005)
     // AuthorizationMode: Authenticated unless set - add host authentication, or set None explicitly (ADR 0021)
-    o.Assemblies = [typeof(Program).Assembly];      // explicit — never omit (KAL2009)
+    o.Assemblies = [typeof(Program).Assembly];      // explicit — never omit (KAL2006)
 })
     .AddHttp();
 ```
@@ -284,15 +284,15 @@ internal sealed class MemberSearchView : IQueryViewSource<MemberQuerySource, Mem
 Rules:
 - **Interfaces are the identity; attributes describe** (as for steps). Discovery is
   interface-only:
-  - every source needs `[QuerySource]`, every view needs `[QueryView]` (KAL2013);
-  - an attribute without its interface is never discovered (KAL2012);
+  - every source needs `[QuerySource]`, every view needs `[QueryView]` (KAL2010);
+  - an attribute without its interface is never discovered (KAL2009);
   - both attributes require a non-empty `Version`, `DisplayName` and `Description`
     (KAL2002, KAL2003).
 - **Public names are type names:** a source's name is its `Type.Name`, unique per
   service; a view's name is its `Type.Name`, unique per source.
 - **Query contexts implement `IQueryContext`** and carry the query rules
   (`[Filterable]`, `[Searchable]`, `[Sortable]`). Those attributes on any other type
-  have no effect (KAL2014). A context can back several sources.
+  have no effect (KAL2011). A context can back several sources.
 - **Parameter records implement `IQueryParameters`.** View and result records are
   plain output shapes, with no marker.
 - **Paging:** a source's `[Pageable]` applies to direct queries of that source, a
@@ -386,7 +386,7 @@ for every project including the host-agnostic `Kaleido`, `Kaleido.Http.Client` a
 ## Dependency injection
 
 Constructor injection, service abstractions, readonly fields — enforced by
-KAL0005–KAL0014 (see the source rules in `ANALYZERS.md`). AddHttpClients /
+KAL0004–KAL0013 (see the source rules in `ANALYZERS.md`). AddHttpClients /
 AddKaleido configure lambdas are composition roots; `IServiceProvider` resolution
 belongs there or in `HttpContext.RequestServices` — nowhere else.
 
@@ -410,7 +410,7 @@ and is forwarded automatically by the typed clients. See the invariants in
 One fixture per SUT, named `{Sut}Tests`, mirroring the SUT's path
 (KAL1001–KAL1004). Inherit `SutFixture<TSut>` and construct only inside
 `CreateSut()` (KAL1006–KAL1008). Mock collaborators — `new` on a Kaleido
-service interface implementation is KAL1012. `BuildServiceProvider` must pass
+service interface implementation is KAL1011. `BuildServiceProvider` must pass
 `ValidateScopes + ValidateOnBuild` (KAL1005).
 
 ## Endpoint metadata

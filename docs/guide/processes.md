@@ -11,9 +11,9 @@ each behavior described here.
 - A step is an `IProcessStep` record: its type name is its name everywhere (registry, wire, state,
   events). `[ProcessStep]` describes it (`Version`, `DisplayName`, `Description`, required).
 - Its inputs are the record's properties, validated with data annotations; required value types use
-  the C# `required` keyword (KAL2021).
+  the C# `required` keyword (KAL2018).
 - Exactly one handler per step: `IProcessStepHandler<TStep>`, or `IProcessStepHandler<TStep, TResult>`
-  to return a result (described for agents, KAL2024).
+  to return a result (described for agents, KAL2021).
 - Every rule: [PATTERNS - Step + handler](../PATTERNS.md#step--handler).
 
 ## What happens on a call

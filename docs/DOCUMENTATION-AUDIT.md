@@ -55,8 +55,8 @@ below).
 | `src/Kaleido.Http.Mcp/Instructions/DefaultInstructions.md` (sent to agents) | a user-facing refusal reason is any code but `qry_*`, `pro_*`, `argument_error` | The adapter also excludes `httpclient_*`, `mcp_*`, `framework_error` (`KaleidoToolInvoker.cs` `ServiceReasons`). |
 | `src/Kaleido.Http.Mcp/README.md` | missing-description warnings "at startup"; session clients get elicitation | Logged when the tools are built (first request, each registry change); session elicitation corrected earlier (#350). |
 | `src/Kaleido.Provider.SQLite/README.md` | the in-memory store warns "at registration" | It warns when created (first resolution; `InMemoryKaleidoContextStore` constructor). |
-| `docs/ANALYZERS.md` | KAL0010 also reports unused constructor parameters | The analyzer has only the readonly-field descriptor (`DependencyRetentionAnalyzer.cs`; unused parameters are IDE0060). KAL0002's allow-list also covers `FormatException` and MCP's `InputRequiredException`. |
-| `tools/analyzers/Kaleido.Analyzers.Testing/AnalyzerReleases.Unshipped.md` | KAL1012 missing; KAL1006 severity `Disabled` | KAL1012 exists (Error); KAL1006's descriptor severity is Error (the per-project disable lives in `.editorconfig`). |
+| `docs/ANALYZERS.md` | KAL0009 also reports unused constructor parameters | The analyzer has only the readonly-field descriptor (`DependencyRetentionAnalyzer.cs`; unused parameters are IDE0060). KAL0002's allow-list also covers `FormatException` and MCP's `InputRequiredException`. |
+| `tools/analyzers/Kaleido.Analyzers.Testing/AnalyzerReleases.Unshipped.md` | KAL1011 missing; KAL1006 severity `Disabled` | KAL1011 exists (Error); KAL1006's descriptor severity is Error (the per-project disable lives in `.editorconfig`). |
 | `tests/AGENTS.md` | `ProcessAspNetCoreFixture` | The class is `ProcessorAspNetCoreFixture`. |
 | `samples/PriorAuth/AGENTS.md` | handoff calls `/processes/execute` with the original payload; `*.Artifacts/` projects; a "smaller compose file"; ports labelled `providersearch`, `memberservice` | The handler calls the entry step with a typed payload through the process client (`CaptureRequestedServiceHandler.cs`); no `*.Artifacts`; one compose file; the compose services are `provider` and `member`. |
 | `src/Kaleido.Http.Abstractions/README.md`, `src/Kaleido.Http.Client/README.md` | "Where to look" paths `Process/Contracts/`, `Processor/IKaleidoProcessorClient.cs` (in the client) | Real paths: `Processor/ProcessContracts.cs`, `Queryable/QueryableContracts.cs`, client interfaces in `Kaleido.Http.Abstractions`. |
@@ -73,7 +73,7 @@ below).
 - **MCP:** startup failures `mcp_missing_http`, `mcp_missing_clients`,
   `mcp_missing_instructions_file` and that `AddHttp()`/`AddHttpClients()` must come **before**
   `AddMcp()`; `mcp_no_pending_information_request`; built-in process tools exist only when the host
-  has processes; tool naming (suffix stripping, 64-character hash shortening, KAL2019/KAL2020).
+  has processes; tool naming (suffix stripping, 64-character hash shortening, KAL2016/KAL2017).
 - **HTTP:** `RegistryDownstreamMaxParallelism`; `IKaleidoRegistryService` for in-host consumers;
   `destructive`/`external`/`requiresConfirmation` on `requiredStep`; URL helpers and endpoint-name
   constants are internal (consumers take URLs from the registry).
@@ -88,7 +88,7 @@ below).
   (`QueryableRegistry.cs`).
 - **OpenTelemetry:** the `configureTracing`/`configureMetrics` hooks; the export and resource
   configuration and its precedence (#354).
-- **Analyzers:** KAL2019 and KAL2020 were shipped but undocumented.
+- **Analyzers:** KAL2016 and KAL2017 were shipped but undocumented.
 - **Front door:** the root README now links authorization, error codes, correlation, analyzers,
   patterns, contracts and the decision records.
 

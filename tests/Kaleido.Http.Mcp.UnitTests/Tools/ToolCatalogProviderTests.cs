@@ -74,7 +74,7 @@ public sealed class ToolCatalogProviderTests
         Assert.Equal(
             [
                 "Kaleido MCP: 2 tool(s) or argument(s) have no description, so agents must guess what they mean. Add [Description] to: clinic_patient, clinic_patient.name.",
-                "Kaleido MCP: 1 tool name(s) exceeded MCP's 64-character limit and were shortened; rename the capability types (KAL2019): clinic_a_very_long_name.",
+                "Kaleido MCP: 1 tool name(s) exceeded MCP's 64-character limit and were shortened; rename the capability types (KAL2016): clinic_a_very_long_name.",
                 "Kaleido MCP: 1 capability name(s) collide, so their tools carry a kind suffix; rename the capability types so each name says what it is: Patient -> clinic_patient_query.",
                 "Kaleido MCP: 1 step input lookup(s) name a query that is not published or not visible to this caller, so agents must ask for the value: clinic_pick.patientId -> clinic/Patient.",
                 "Kaleido MCP: 1 name(s) in Kaleido:Mcp:ListedTools are not tools of this caller, so they are not listed (check the names, or the caller's access): clinic_missing.",

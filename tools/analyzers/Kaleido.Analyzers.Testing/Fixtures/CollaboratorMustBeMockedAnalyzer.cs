@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
-/// KAL1012 — a unit-test fixture may not new up a framework collaborator:
+/// KAL1011 — a unit-test fixture may not new up a framework collaborator:
 /// a testable Kaleido.* type that implements a Kaleido service interface
 /// (the mockable seam). Domain data the SUT consumes (types implementing no
 /// framework interface, e.g. StepCandidate) is arrangement, not a collaborator.

@@ -35,7 +35,7 @@ public static class OtherNames
 }";
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0020", DiagnosticSeverity.Warning);
+        new("KAL0017", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task WithName_StringLiteral_Reports()

@@ -60,13 +60,13 @@ public class MemberQueryContext : Kaleido.Queryable.IQueryContext
 public class MemberView { }";
 
     private static readonly DiagnosticResult AttributeWithoutInterface =
-        new("KAL2012", DiagnosticSeverity.Error);
+        new("KAL2009", DiagnosticSeverity.Error);
 
     private static readonly DiagnosticResult InterfaceWithoutAttribute =
-        new("KAL2013", DiagnosticSeverity.Error);
+        new("KAL2010", DiagnosticSeverity.Error);
 
     private static readonly DiagnosticResult QueryRuleOutsideContext =
-        new("KAL2014", DiagnosticSeverity.Warning);
+        new("KAL2011", DiagnosticSeverity.Warning);
 
     [Fact]
     public async Task SourceAttributeWithoutInterface_Reports()

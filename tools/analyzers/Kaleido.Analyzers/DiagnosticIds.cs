@@ -24,48 +24,48 @@ internal static class DiagnosticIds
     public const string ServiceNameFormat = "KAL2005";
 
     /// <summary>AddKaleido() lambda never sets o.Assemblies.</summary>
-    public const string AddKaleidoMissingAssemblies = "KAL2009";
+    public const string AddKaleidoMissingAssemblies = "KAL2006";
 
     /// <summary>[ProcessStep] applied to a type that does not implement IProcessStep.</summary>
-    public const string ProcessStepAttributeWithoutInterface = "KAL2010";
+    public const string ProcessStepAttributeWithoutInterface = "KAL2007";
 
     /// <summary>IProcessStep type is missing the required [ProcessStep] attribute.</summary>
-    public const string ProcessStepMissingAttribute = "KAL2011";
+    public const string ProcessStepMissingAttribute = "KAL2008";
 
     /// <summary>[QuerySource] or [QueryView] applied to a type without the matching interface.</summary>
-    public const string QueryableAttributeWithoutInterface = "KAL2012";
+    public const string QueryableAttributeWithoutInterface = "KAL2009";
 
     /// <summary>Query source or view is missing its required [QuerySource] or [QueryView] attribute.</summary>
-    public const string QueryableMissingAttribute = "KAL2013";
+    public const string QueryableMissingAttribute = "KAL2010";
 
     /// <summary>[Filterable]/[Searchable]/[Sortable] on a property of a type that is not an IQueryContext.</summary>
-    public const string QueryRuleAttributeOutsideQueryContext = "KAL2014";
+    public const string QueryRuleAttributeOutsideQueryContext = "KAL2011";
 
     /// <summary>An IInformationStep declares properties other than InformationRequestId and Items.</summary>
-    public const string InformationStepShape = "KAL2015";
+    public const string InformationStepShape = "KAL2012";
 
     /// <summary>Success&lt;TNext&gt;() names an information step; use RequireInformation&lt;TNext&gt;(request).</summary>
-    public const string InformationStepRequiredWithoutRequest = "KAL2016";
+    public const string InformationStepRequiredWithoutRequest = "KAL2013";
 
     /// <summary>A process step input property has no description.</summary>
-    public const string ProcessStepPropertyDescription = "KAL2017";
+    public const string ProcessStepPropertyDescription = "KAL2014";
 
     /// <summary>A query context or parameters property has no description.</summary>
-    public const string QueryPropertyDescription = "KAL2018";
+    public const string QueryPropertyDescription = "KAL2015";
 
     /// <summary>A step, source or view type name makes an MCP tool name part longer than 40 characters.</summary>
-    public const string ToolNameLength = "KAL2019";
+    public const string ToolNameLength = "KAL2016";
 
     /// <summary>o.ServiceName is longer than 15 characters (the MCP tool-name prefix budget).</summary>
-    public const string ServiceNameLength = "KAL2020";
+    public const string ServiceNameLength = "KAL2017";
 
     /// <summary>A [Required] process step input has a non-nullable value type, so it can never be missing.</summary>
-    public const string ProcessStepRequiredValueType = "KAL2021";
+    public const string ProcessStepRequiredValueType = "KAL2018";
 
     /// <summary>A [Required] query parameter has a non-nullable value type, so it can never be missing.</summary>
-    public const string QueryParameterRequiredValueType = "KAL2022";
+    public const string QueryParameterRequiredValueType = "KAL2019";
 
     /// <summary>A [Filterable] operator does not apply to the property's type.</summary>
-    public const string FilterOperatorTypeMismatch = "KAL2023";
-    public const string OutputPropertyDescription = "KAL2024";
+    public const string FilterOperatorTypeMismatch = "KAL2020";
+    public const string OutputPropertyDescription = "KAL2021";
 }

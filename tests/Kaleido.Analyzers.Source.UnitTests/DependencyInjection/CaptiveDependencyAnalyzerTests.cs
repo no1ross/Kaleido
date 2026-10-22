@@ -12,7 +12,7 @@ public sealed class CaptiveDependencyAnalyzerTests
         new();
 
     private static readonly DiagnosticResult Expected =
-        new("KAL0014", DiagnosticSeverity.Error);
+        new("KAL0013", DiagnosticSeverity.Error);
 
     private const string Registrations = @"
 public interface IScoped { }

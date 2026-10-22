@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// KAL0013 — container-owned dependencies must not be disposed by consumers.
+/// KAL0012 — container-owned dependencies must not be disposed by consumers.
 /// The container owns the lifetime of injected services; calling Dispose()
 /// on a field/parameter typed as a registered service (or using it in a
 /// using statement) breaks shared lifetimes. Resources the class creates

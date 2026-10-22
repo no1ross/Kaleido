@@ -11,7 +11,7 @@ namespace Kaleido.Analyzers.Source.DependencyInjection;
 /// Shared model of the DI registrations visible in a compilation, harvested
 /// from *ServiceCollectionExtensions classes: implementation types,
 /// abstraction→implementation pairs, and service lifetimes. Used by the
-/// KAL0005–KAL0014 DI enforcement rules.
+/// KAL0004–KAL0013 DI enforcement rules.
 /// </summary>
 internal sealed class ServiceRegistrationModel
 {

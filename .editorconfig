@@ -244,7 +244,7 @@ dotnet_diagnostic.MA0004.severity = none      ; StringComparison — CA1862 cove
 dotnet_diagnostic.MA0006.severity = warning   ; Use string.Equals for ordinal comparisons
 dotnet_diagnostic.MA0016.severity = warning   ; Prefer collection abstraction over concrete type
 dotnet_diagnostic.MA0037.severity = warning    ; Remove empty statements (enforced, #257)
-dotnet_diagnostic.MA0048.severity = none ; File name must match type name - off: small related types (data records, an interface and its implementation) share a file on purpose; a type with behavior gets its own file through KAL0022 (#404)
+dotnet_diagnostic.MA0048.severity = none ; File name must match type name - off: small related types (data records, an interface and its implementation) share a file on purpose; a type with behavior gets its own file through KAL0019 (#404)
 dotnet_diagnostic.MA0051.severity = warning    ; Method is too long (over 60 lines): split it into named steps
 
 ; RCS1194: Kaleido exceptions require a 'code' parameter by design — the BCL
@@ -310,7 +310,7 @@ dotnet_diagnostic.MA0182.severity = none
 
 ; EF Core entity navigation properties use ICollection<T> by convention
 [src/Kaleido.Provider.SQLite/**/*.cs]
-dotnet_diagnostic.KAL0018.severity = none
+dotnet_diagnostic.KAL0015.severity = none
 
 ; ════════════════════════════════════════════════════════════════════════════
 ; tests/ — all test projects
@@ -329,7 +329,7 @@ dotnet_diagnostic.CA1711.severity = silent
 ; CA1822: stub handlers must stay instance methods — resolved via BindingFlags.Instance
 dotnet_diagnostic.CA1822.severity = silent
 
-; IDE0130: unit-test fixtures use their SUT's namespace + .UnitTests (KAL1013), not
+; IDE0130: unit-test fixtures use their SUT's namespace + .UnitTests (KAL1012), not
 ;          the folder path; folders still mirror src/ (KAL1003)
 dotnet_style_namespace_match_folder = false
 dotnet_diagnostic.IDE0130.severity = none
@@ -346,17 +346,17 @@ dotnet_diagnostic.KAL0002.severity = none
 ; KAL0003: test code uses '!' for Assert.NotNull follow-ons and null! arg injection
 dotnet_diagnostic.KAL0003.severity = none
 
-; KAL0007: tests resolve services from IServiceProvider to verify DI registrations
-dotnet_diagnostic.KAL0007.severity = none
+; KAL0006: tests resolve services from IServiceProvider to verify DI registrations
+dotnet_diagnostic.KAL0006.severity = none
 
-; KAL0012: tests legitimately use new ServiceCollection() and new HttpClient() to build
+; KAL0011: tests legitimately use new ServiceCollection() and new HttpClient() to build
 ;          test containers — this is the test composition root, not production DI
-dotnet_diagnostic.KAL0012.severity = none
+dotnet_diagnostic.KAL0011.severity = none
 
-; KAL0019: xUnit async test methods do not take CancellationToken — that is the xUnit contract
-dotnet_diagnostic.KAL0019.severity = none
+; KAL0016: xUnit async test methods do not take CancellationToken — that is the xUnit contract
+dotnet_diagnostic.KAL0016.severity = none
 
-; xUnit1051: test code doesn't thread CancellationToken (same rationale as KAL0019);
+; xUnit1051: test code doesn't thread CancellationToken (same rationale as KAL0016);
 ;            ~150 call sites would gain noise, not responsiveness
 dotnet_diagnostic.xUnit1051.severity = none
 
@@ -417,4 +417,4 @@ dotnet_diagnostic.RCS1085.severity = suggestion
 dotnet_diagnostic.RCS1205.severity = suggestion
 dotnet_diagnostic.RCS1226.severity = suggestion
 ; the samples are the reference for agent-facing metadata: what a step or view returns is described (#213)
-dotnet_diagnostic.KAL2024.severity = error
+dotnet_diagnostic.KAL2021.severity = error
