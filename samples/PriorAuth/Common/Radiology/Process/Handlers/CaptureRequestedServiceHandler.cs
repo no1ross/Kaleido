@@ -113,7 +113,6 @@ public sealed class CaptureRequestedServiceHandler(
                     ResolvedCodeValue = procedureCode.CodeValue,
                     ResolvedCodeSystem = procedureCode.CodeSystem,
                     Description = procedureCode.ShortDescription,
-                    CreatedUtc = DateTimeOffset.UtcNow,
                     StatedDetailsJson = StatedServiceDetails.ToJson(processStep.BodyPart, processStep.Laterality, processStep.Contrast)
                 });
 

@@ -30,8 +30,7 @@ public sealed class StartIntakeHandler(
             new IntakeSession
             {
                 IntakeSessionId = Guid.NewGuid(),
-                ProcessId = context.ProcessId,
-                CreatedUtc = DateTimeOffset.UtcNow
+                ProcessId = context.ProcessId
             });
 
         await dbContext.SaveChangesAsync(cancellationToken);

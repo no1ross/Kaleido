@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Audit;
 using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
 using Kaleido.Exceptions;
@@ -25,8 +26,10 @@ var processConnectionString =
         PriorAuthErrorCodes.MissingConnectionString,
         "ConnectionStrings:IntakeProcess is required.");
 
+// Who created and last changed each row, through which application, and when (Common/Audit).
+builder.Services.AddPriorAuthAuditing();
 builder.Services.AddDbContext<IntakeDbContext>(
-    options => options.UseSqlite(intakeConnectionString));
+    (services, options) => options.UseSqlite(intakeConnectionString).UseAuditing(services));
 
 builder.Services.AddScoped<MemberDetailsClient>();
 builder.Services.AddScoped<ProcedureCodeClient>();

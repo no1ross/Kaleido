@@ -32,7 +32,7 @@ internal sealed class PriorAuthRecordQueryContextSource(
                     PrimaryProcedureCode = x.PrimaryProcedureCode,
                     PrimaryProcedureDescription = x.PrimaryProcedureDescription,
                     CreatedUtc = x.CreatedUtc,
-                    LastUpdatedUtc = x.LastUpdatedUtc
+                    UpdatedUtc = x.UpdatedUtc
                 });
     }
 }

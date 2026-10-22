@@ -11,5 +11,5 @@ export interface PriorAuthRecordView {
     primaryProcedureCode: string;
     primaryProcedureDescription: string;
     createdUtc: string;
-    lastUpdatedUtc: string;
+    updatedUtc: string;
 }

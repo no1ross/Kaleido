@@ -34,6 +34,6 @@ public sealed record PriorAuthRecordView
     [Description("When the record was first created, in UTC.")]
     public DateTimeOffset CreatedUtc { get; init; }
 
-    [Description("When the latest snapshot was recorded, in UTC.")]
-    public DateTimeOffset LastUpdatedUtc { get; init; }
+    [Description("When the record last changed (the latest recorded snapshot differed), in UTC.")]
+    public DateTimeOffset UpdatedUtc { get; init; }
 }

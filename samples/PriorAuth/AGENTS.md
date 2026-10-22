@@ -37,6 +37,13 @@
 - Recording is a hard stop: the step runs in `HistoryRecording.InTransactionAsync`, which commits the service's changes only when the step succeeds. If History does not record (HTTP failure, or an outcome other than completed; logged at Error), the step is rolled back and rejected with `HISTORY_NOT_RECORDED`.
 - This is the sample's choice. A production system would feed History from Kaleido's process events (outbox, at-least-once) instead of synchronous calls.
 
+## Audit fields
+- Every row of the services' own databases (Intake, Radiology, History; `IAuditable` in `Common/Audit`) records `CreatedBy`/`CreatedVia`/`CreatedUtc` and `UpdatedBy`/`UpdatedVia`/`UpdatedUtc`. Handlers never set them: `AuditSaveChangesInterceptor` stamps them on every save (`AddPriorAuthAuditing()` + `UseAuditing(services)` on the context).
+- **By** is the caller Kaleido read from the token (`Caller.Name`, else `Caller.Id`): the user on their own call and on an on-behalf-of hop, `svc-{service}` on a service's own call, `system` without a caller. **Via** is the application that made the hop (`CallerActor`, the token's actor claim): e.g. `intake` when Intake hands bob's request to Radiology, `radiology` when Radiology records History for him; empty on a direct user call.
+- An added row gets equal Created and Updated values; a changed row gets new Updated values and keeps its Created values. A save that changes nothing (History recording the same snapshot again) leaves `UpdatedUtc` as it was.
+- History's list sorts by `UpdatedUtc` (it replaced `LastUpdatedUtc`).
+- After pulling this change, the existing `intake.db`, `radiology.db` and `history.db` lack the columns (`EnsureCreated` never alters a file): delete them and their `*-process.db` (see Local run workflow); they are recreated at startup.
+
 ## Process id on every call (MCP and UI)
 - A request's queries are tracked with its process: every query of a request must carry its process id (`X-Kaleido-Process-Id`).
 - UI: the global `kaleido-correlation-interceptor` already sends it on every request while a process is active; member search etc. still work without one before a process exists.
