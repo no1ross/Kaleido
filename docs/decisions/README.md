@@ -40,7 +40,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0022](./0022-call-credentials.md) | One credential model for every outgoing call: a host-owned provider per destination and purpose; a caller's call never uses the host's own credentials. Provenance behind a front door: informational origin end to end, trusted actor per hop | Accepted | #287, #402 |
 | [0023](./0023-outbox-integration.md) | Outbox integration: Kaleido owns *when* an event belongs to a state transition, the outbox integration owns *how* it is stored and delivered; built-in outbox (default), the host's own, or direct publication; transactions from persistence packages | Accepted | #408 |
 | [0024](./0024-conditional-questions.md) | Conditional questions (`enableWhen`): Kaleido decides which questions apply - in validation, the MCP adapter's rounds and UIs - never the agent | Accepted | #235 |
-| [0025](./0025-event-redaction-policy.md) | Events have their own redaction policy (`AddEventClassificationRedaction`), separate from the host's log redaction (`AddRedaction`) | Accepted | #278 |
+| [0025](./0025-event-redaction-policy.md) | Events have their own redaction policy (`AddEventRedaction`), separate from the host's log redaction (`AddRedaction`) | Accepted | #278 |
 | [0026](./0026-versioning-concept.md) | Versions are labels; one live version per capability (a breaking change takes a new name); in-flight processes continue on the deployed definition, and steps keep the version they ran with | Accepted | #197 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code

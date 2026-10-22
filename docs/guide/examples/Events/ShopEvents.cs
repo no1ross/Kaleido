@@ -41,7 +41,7 @@ public static class ShopEvents
         // snippet: events-registration
         kaleido
             .AddEventPublisher<WarehousePublisher>()
-            .AddEventClassificationRedaction(r =>
+            .AddEventRedaction(r =>
                 r.SetRedactor<ErasingRedactor>(new DataClassificationSet(ShopClassifications.Personal)));
         // end snippet
     }

@@ -15,18 +15,18 @@ PII (the downstream systems need contact details) but not PHI.** With one shared
 impossible.
 
 ## Decision
-1. **Events have their own policy:** `AddEventClassificationRedaction(r => ...)` on the Kaleido builder,
+1. **Events have their own policy:** `AddEventRedaction(r => ...)` on the Kaleido builder,
    with the standard `IRedactionBuilder` API (`SetRedactor<T>(sets)`, `SetFallbackRedactor<T>()`), so
    Microsoft's extensions (`SetHmacRedactor`, ...) and any `Redactor` work in it. It never registers an
    `IRedactorProvider`: the host's `AddRedaction` remains the log policy, untouched.
 2. **Matching:** a classified value gets the redactor of its exact set of classifications, else the
    fallback, else it is erased. `NullRedactor` keeps a classification unredacted in events.
-3. **Safe default:** without `AddEventClassificationRedaction`, every classified value in events is
+3. **Safe default:** without `AddEventRedaction`, every classified value in events is
    erased and a warning says so once - also when the host has a log policy that would keep it.
 4. **The same attributes serve both channels;** only the configuration differs. Code-based event
    redactors (`AddEventRedactor<T>()`, `IKaleidoEventRedactor`) are unchanged and still run first, for
    what attributes cannot express (information-request answers, per-view rules).
-5. **Naming:** `AddEventClassificationRedaction` - not `AddEventRedaction` - so it does not read like
+5. **Naming:** `AddEventRedaction` - not `AddEventRedaction` - so it does not read like
    `AddEventRedactor<T>()`, which registers code-based redactors.
 
 ```csharp
@@ -35,7 +35,7 @@ builder.Services.AddRedaction(r =>                                   // logs: no
 
 builder.Services.AddKaleido(builder.Configuration)
     .AddEventPublisher<WarehousePublisher>()
-    .AddEventClassificationRedaction(r =>                            // events: PII kept, PHI erased
+    .AddEventRedaction(r =>                            // events: PII kept, PHI erased
         r.SetRedactor<NullRedactor>(new DataClassificationSet(Pii)));
 ```
 
@@ -49,7 +49,7 @@ builder.Services.AddKaleido(builder.Configuration)
 
 ## Consequences
 - **Behavior change (preview).** A host that relied on `AddRedaction` for events now gets erasure, with
-  the warning, until it calls `AddEventClassificationRedaction`. Erasure is the safe direction: nothing
+  the warning, until it calls `AddEventRedaction`. Erasure is the safe direction: nothing
   is published that was not before.
 - **Redactor types are singletons**, registered by the builder as `AddRedaction` does; options a
   redactor reads (e.g. HMAC keys) are shared with the log policy when both use the same redactor type.

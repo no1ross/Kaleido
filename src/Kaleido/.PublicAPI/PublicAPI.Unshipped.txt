@@ -1255,7 +1255,7 @@ static Kaleido.Eventing.QueryableEventContext.operator !=(Kaleido.Eventing.Query
 static Kaleido.Eventing.QueryableEventContext.operator ==(Kaleido.Eventing.QueryableEventContext? left, Kaleido.Eventing.QueryableEventContext? right) -> bool
 static Kaleido.KaleidoServiceCollectionExtensions.AddContextStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddDirectPublication(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
-static Kaleido.KaleidoServiceCollectionExtensions.AddEventClassificationRedaction(this Kaleido.IKaleidoBuilder! builder, System.Action<Microsoft.Extensions.Compliance.Redaction.IRedactionBuilder!>! configure) -> Kaleido.IKaleidoBuilder!
+static Kaleido.KaleidoServiceCollectionExtensions.AddEventRedaction(this Kaleido.IKaleidoBuilder! builder, System.Action<Microsoft.Extensions.Compliance.Redaction.IRedactionBuilder!>! configure) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddEventPublisher<TPublisher>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddEventRedactor<TRedactor>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddIdempotencyStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

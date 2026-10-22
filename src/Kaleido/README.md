@@ -23,7 +23,7 @@ For the full repository model, see:
 - `IConstraintMapper` / `ConstraintMapper` (internal) — converts `ValidationAttribute` usage into metadata constraint contracts
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - `IEventPublisher` / `IKaleidoEvent` - infrastructure-agnostic event publication seam; events reach the publisher at least once through the outbox and the event relay (`KaleidoEventRelay`, `KaleidoEventOptions`, ADR 0012)
-- `IKaleidoEventRedactor` / `AddEventRedactor<T>()` - reduce events before the outbox write; properties marked with a `DataClassificationAttribute` are redacted per the event policy `AddEventClassificationRedaction(r => ...)` sets (separate from the host's log redaction, `AddRedaction`), or erased without one (ADR 0013, ADR 0025)
+- `IKaleidoEventRedactor` / `AddEventRedactor<T>()` - reduce events before the outbox write; properties marked with a `DataClassificationAttribute` are redacted per the event policy `AddEventRedaction(r => ...)` sets (separate from the host's log redaction, `AddRedaction`), or erased without one (ADR 0013, ADR 0025)
 - `Kaleido.Exceptions` — `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConcurrencyException` (409), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500); the HTTP transport maps them to the error body `KaleidoErrorResponse`, which lives in `Kaleido.Http.Abstractions` (see [`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md), ADR 0017)
 
 ### Queryable runtime

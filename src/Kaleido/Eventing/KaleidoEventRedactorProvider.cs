@@ -4,12 +4,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Eventing;
 
-// The redactors of event payloads, per the policy AddEventClassificationRedaction configured (ADR 0025).
+// The redactors of event payloads, per the policy AddEventRedaction configured (ADR 0025).
 // Deliberately not an IRedactorProvider registration: the host's IRedactorProvider (AddRedaction)
 // stays the log policy, untouched, and logs and events are configured independently.
 internal interface IKaleidoEventRedactorProvider
 {
-    // Whether AddEventClassificationRedaction was called (without it, classified values are erased with a warning).
+    // Whether AddEventRedaction was called (without it, classified values are erased with a warning).
     bool IsConfigured { get; }
 
     // The redactor for a property's classifications: its own, else the fallback; null when the value
