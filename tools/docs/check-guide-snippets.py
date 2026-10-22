@@ -24,7 +24,9 @@ import sys
 GUIDE = pathlib.Path("docs/guide")
 EXAMPLES = GUIDE / "examples"
 
-MARKER = re.compile(r"<!--\s*(snippet|not-compiled):\s*([^>]*?)\s*-->\s*$")
+# The marker's value is stripped in code: no two quantifiers here compete for the same characters,
+# so a line that is not a marker fails fast (no backtracking).
+MARKER = re.compile(r"<!--\s*(snippet|not-compiled):([^>]*)-->$")
 REGION_START = re.compile(r"^\s*// snippet: (\S+)\s*$")
 REGION_END = re.compile(r"^\s*// end snippet\s*$")
 
@@ -67,7 +69,7 @@ def blocks(path):
     while number < len(lines):
         line = lines[number]
         if match := MARKER.match(line.strip()):
-            marker = (match.group(1), match.group(2))
+            marker = (match.group(1), match.group(2).strip())
         elif line.strip().startswith("```"):
             fence = line.strip()
             end = number + 1

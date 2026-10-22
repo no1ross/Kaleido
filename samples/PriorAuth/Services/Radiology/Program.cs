@@ -64,7 +64,9 @@ builder.Services.AddCors(options =>
         policy
             .AllowAnyOrigin()
             .AllowAnyMethod()
-            .AllowAnyHeader();
+            .AllowAnyHeader()
+            // The UI reads the idempotency headers of execute answers across origins (#396).
+            .WithExposedHeaders("Retry-After", "Idempotent-Replayed");
     });
 });
 builder.Services.AddDevSwagger();
