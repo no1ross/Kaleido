@@ -36,6 +36,7 @@ public sealed class KaleidoRemoteRegistryTests
         return new KaleidoRemoteRegistry(
             httpClientFactory,
             store.Object,
+            new KaleidoServiceOptions { ServiceName = "consumer" },
             logger ?? NullLogger<KaleidoRemoteRegistry>.Instance);
     }
 
@@ -190,8 +191,18 @@ public sealed class KaleidoRemoteRegistryTests
         Assert.Equal(1, callCount);
         Assert.Single(result.Processes);
         Assert.Same(serviceSnapshot, data["kaleido:remote-svc"]);
-        Assert.True(data.ContainsKey(KaleidoRemoteRegistry.CacheKey("remote")));
-        Assert.Equal("kaleido-client:remote", KaleidoRemoteRegistry.CacheKey("remote"));
+        Assert.True(data.ContainsKey(KaleidoRemoteRegistry.CacheKey("consumer", "remote")));
+        Assert.Equal("kaleido-client:consumer:remote", KaleidoRemoteRegistry.CacheKey("consumer", "remote"));
+    }
+
+    // Two consuming services with a client of the same name hold copies filtered for different
+    // callers: in a shared store each keeps its own (#275).
+    [Fact]
+    public void CacheKey_IsScopedToTheConsumingService()
+    {
+        Assert.NotEqual(
+            KaleidoRemoteRegistry.CacheKey("orders", "member"),
+            KaleidoRemoteRegistry.CacheKey("billing", "member"));
     }
 
     [Fact]
