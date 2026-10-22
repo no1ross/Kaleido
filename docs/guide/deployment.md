@@ -30,6 +30,7 @@ flowchart LR
 | A retried call on another instance | the idempotency record is in the shared store, so the retry is answered from it |
 | Every instance runs the event relay | events are **claimed with a lease**: one instance publishes each; a crashed instance's claims expire and are taken over (at least once) |
 | In-memory stores | each instance sees only its own processes and events: **not** for several instances |
+| Registry snapshots on several router replicas | each replica keeps its own snapshot by default (correct, with one round of downstream checks per replica); `AddDistributedRegistrySnapshots()` shares them through the host's `IDistributedCache`, and an unreachable cache never fails a registry read ([Http README](../../src/Kaleido.Http/README.md#shared-snapshots-across-replicas)) |
 
 ## The database schema
 
