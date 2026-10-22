@@ -27,11 +27,11 @@ internal interface IKaleidoMcpToolHandler
 {
     ValueTask<ListToolsResult> ListToolsAsync(
         RequestContext<ListToolsRequestParams> request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     ValueTask<CallToolResult> CallToolAsync(
         RequestContext<CallToolRequestParams> request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 internal sealed partial class KaleidoMcpToolHandler(
@@ -46,7 +46,7 @@ internal sealed partial class KaleidoMcpToolHandler(
 {
     public async ValueTask<ListToolsResult> ListToolsAsync(
         RequestContext<ListToolsRequestParams> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         using var observation = observability.BeginToolsList();
 
@@ -71,7 +71,7 @@ internal sealed partial class KaleidoMcpToolHandler(
 
     public async ValueTask<CallToolResult> CallToolAsync(
         RequestContext<CallToolRequestParams> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 

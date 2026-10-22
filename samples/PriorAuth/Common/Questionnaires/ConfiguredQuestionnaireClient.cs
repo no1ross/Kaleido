@@ -17,7 +17,7 @@ public sealed class ConfiguredQuestionnaireClient(
     /// <summary>The questionnaire the rules select for a step and context, or a specific one by id.</summary>
     public async Task<QuestionnaireDefinitionView?> FindAsync(
         QuestionnaireDefinitionViewParameters parameters,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var result = await queryableClientFactory
             .GetClient(ConfigurationClient)
@@ -33,7 +33,7 @@ public sealed class ConfiguredQuestionnaireClient(
     /// <summary>The transitions out of a questionnaire, highest priority first.</summary>
     public async Task<IReadOnlyList<ClinicalPathwayTransitionQueryContext>> TransitionsAsync(
         string fromQuestionnaireId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var result = await queryableClientFactory
             .GetClient(ConfigurationClient)

@@ -55,7 +55,7 @@ public sealed class QueryableServiceTests
             ViewRegistryWith(view),
             sourceRegistry.Object);
 
-        var result = await service.QueryAsync<TestView, TestViewRecord>(request);
+        var result = await service.QueryAsync<TestView, TestViewRecord>(request, Xunit.TestContext.Current.CancellationToken);
 
         Assert.Same(expected, result);
         engine.Verify(x => x.ExecuteAsync(request, source, view, It.IsAny<CancellationToken>()), Times.Once);
@@ -76,7 +76,7 @@ public sealed class QueryableServiceTests
             ViewRegistryWith(null),
             SourceRegistryWith(typeof(TestSource), source));
 
-        var result = await service.QueryAsync<TestSource, TestContext>(request);
+        var result = await service.QueryAsync<TestSource, TestContext>(request, Xunit.TestContext.Current.CancellationToken);
 
         Assert.Same(expected, result);
         engine.Verify(x => x.ExecuteAsync(request, source, It.IsAny<CancellationToken>()), Times.Once);
@@ -97,7 +97,7 @@ public sealed class QueryableServiceTests
             ViewRegistryWith(null),
             SourceRegistryWith(typeof(TestDelegatedSource), source));
 
-        var result = await service.QueryAsync<TestDelegatedSource, TestViewRecord>(request);
+        var result = await service.QueryAsync<TestDelegatedSource, TestViewRecord>(request, Xunit.TestContext.Current.CancellationToken);
 
         Assert.Same(expected, result);
         engine.Verify(x => x.ExecuteAsync(request, source, It.IsAny<CancellationToken>()), Times.Once);
@@ -114,7 +114,7 @@ public sealed class QueryableServiceTests
             Mock.Of<IQuerySourceRegistry>());
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            service.QueryAsync<TestView, TestViewRecord>(new QueryRequest()));
+            service.QueryAsync<TestView, TestViewRecord>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
     }
@@ -130,7 +130,7 @@ public sealed class QueryableServiceTests
             SourceRegistryWith(typeof(TestSource), source));
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            service.QueryAsync<TestSource, TestViewRecord>(new QueryRequest()));
+            service.QueryAsync<TestSource, TestViewRecord>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
     }
@@ -149,7 +149,7 @@ public sealed class QueryableServiceTests
             sourceRegistry.Object);
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            service.QueryAsync<AnotherRecord, AnotherRecord>(new QueryRequest()));
+            service.QueryAsync<AnotherRecord, AnotherRecord>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
     }
@@ -168,7 +168,7 @@ public sealed class QueryableServiceTests
             SourceRegistryWith(typeof(TestSource), source));
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            service.QueryAsync<TestSource, TestContext>(request));
+            service.QueryAsync<TestSource, TestContext>(request, Xunit.TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
     }
@@ -178,7 +178,7 @@ public sealed class QueryableServiceTests
     {
         var service = CreateSut(Mock.Of<IServiceScopeFactory>(), ViewRegistryWith(null), Mock.Of<IQuerySourceRegistry>());
 
-        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => service.QueryAsync<TestSource, TestContext>(null!));
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => service.QueryAsync<TestSource, TestContext>(null!, Xunit.TestContext.Current.CancellationToken));
 
         Assert.Equal("request", exception.ParamName);
     }
@@ -196,7 +196,7 @@ public sealed class QueryableServiceTests
             ViewRegistryWith(null),
             SourceRegistryWith(typeof(TestSource), source));
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => service.QueryAsync<TestSource, TestContext>(request));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => service.QueryAsync<TestSource, TestContext>(request, Xunit.TestContext.Current.CancellationToken));
     }
 
     private IServiceScopeFactory ScopeFactoryReturning(Type serviceType, object service)
@@ -228,7 +228,7 @@ public sealed class QueryableServiceTests
         engine.Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest>(), source, view, It.IsAny<CancellationToken>())).ReturnsAsync(new QueryResult<TestViewRecord>(0, 0, 25, []));
         var service = CreateSut(ScopeFactoryReturning(typeof(IQueryContextEngine<TestContext, TestViewRecord>), engine.Object), ViewRegistryWith(view), SourceRegistryWith(typeof(TestSource), source));
 
-        await service.QueryAsync<TestView, TestViewRecord>(new QueryRequest());
+        await service.QueryAsync<TestView, TestViewRecord>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken);
 
         Assert.Same(RequestCorrelation, Assert.Single(_initialized));
     }
@@ -241,7 +241,7 @@ public sealed class QueryableServiceTests
         engine.Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest>(), source, It.IsAny<CancellationToken>())).ReturnsAsync(new QueryResult<TestContext>(0, 0, 25, []));
         var service = CreateSut(ScopeFactoryReturning(typeof(IQueryContextEngine<TestContext, TestContext>), engine.Object), ViewRegistryWith(null), SourceRegistryWith(typeof(TestSource), source));
 
-        await service.QueryAsync<TestSource, TestContext>(new QueryRequest());
+        await service.QueryAsync<TestSource, TestContext>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken);
 
         Assert.Same(RequestCorrelation, Assert.Single(_initialized));
     }
@@ -254,7 +254,7 @@ public sealed class QueryableServiceTests
         engine.Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest>(), source, It.IsAny<CancellationToken>())).ReturnsAsync(new QueryResult<TestViewRecord>(0, 0, 25, []));
         var service = CreateSut(ScopeFactoryReturning(typeof(IDelegatedQuerySourceEngine<TestContext, TestViewRecord>), engine.Object), ViewRegistryWith(null), SourceRegistryWith(typeof(TestDelegatedSource), source));
 
-        await service.QueryAsync<TestDelegatedSource, TestViewRecord>(new QueryRequest());
+        await service.QueryAsync<TestDelegatedSource, TestViewRecord>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken);
 
         Assert.Same(RequestCorrelation, Assert.Single(_initialized));
     }

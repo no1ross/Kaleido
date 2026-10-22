@@ -17,7 +17,7 @@ KAL0012 | Kaleido.Design | Error | Do not dispose container-owned dependencies
 KAL0013 | Kaleido.Design | Error | Singleton registrations must not capture scoped services
 KAL0014 | Kaleido.Layout | Error | Interface must live in the same file as its implementation
 KAL0015 | Kaleido.Design | Warning | Public API members must not expose mutable collection types
-KAL0016 | Kaleido.Design | Warning | Async methods must accept a CancellationToken parameter
+KAL0016 | Kaleido.Design | Warning | Async methods must accept a CancellationToken, without a default value
 KAL0017 | Kaleido.Design | Warning | Endpoint names must come from an *EndpointNames type
 KAL0018 | Kaleido.Design | Warning | Catch-all that records observability must exclude OperationCanceledException
 KAL0019 | Kaleido.Layout | Warning | A type with behavior must be declared in a file named after it

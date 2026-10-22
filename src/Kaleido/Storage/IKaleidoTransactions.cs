@@ -24,12 +24,12 @@ namespace Kaleido.Storage;
 /// // EF Core: one transaction on the DbContext both the context store and the outbox write to.
 /// public sealed class OrdersTransactions(OrdersDbContext db) : IKaleidoTransactions
 /// {
-///     public async Task&lt;IKaleidoTransaction&gt; BeginAsync(CancellationToken cancellationToken = default) =>
+///     public async Task&lt;IKaleidoTransaction&gt; BeginAsync(CancellationToken cancellationToken) =>
 ///         new OrdersTransaction(await db.Database.BeginTransactionAsync(cancellationToken));
 ///
 ///     private sealed class OrdersTransaction(IDbContextTransaction transaction) : IKaleidoTransaction
 ///     {
-///         public Task CommitAsync(CancellationToken cancellationToken = default) => transaction.CommitAsync(cancellationToken);
+///         public Task CommitAsync(CancellationToken cancellationToken) => transaction.CommitAsync(cancellationToken);
 ///
 ///         public ValueTask DisposeAsync() => transaction.DisposeAsync(); // rolls back when not committed
 ///     }
@@ -41,7 +41,7 @@ public interface IKaleidoTransactions
     /// <summary>Begins the transaction of one process-state transition.</summary>
     /// <param name="cancellationToken">Cancels beginning the transaction.</param>
     /// <returns>The transaction; disposing it without <see cref="IKaleidoTransaction.CommitAsync"/> rolls it back.</returns>
-    Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken = default);
+    Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -53,5 +53,5 @@ public interface IKaleidoTransaction : IAsyncDisposable
 {
     /// <summary>Commits the state and the events written since the transaction began.</summary>
     /// <param name="cancellationToken">Cancels the commit (Kaleido passes <see cref="CancellationToken.None"/> once the step's outcome is final).</param>
-    Task CommitAsync(CancellationToken cancellationToken = default);
+    Task CommitAsync(CancellationToken cancellationToken);
 }

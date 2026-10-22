@@ -64,7 +64,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var request = new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid()));
 
         var result = await CreateSut(validator.Object, ServiceProviderFor(source))
-            .ExecuteAsync(request, registration);
+            .ExecuteAsync(request, registration, TestContext.Current.CancellationToken);
 
         validator.Verify(x => x.Validate(request, registration.Metadata, registration.Metadata.Pageable), Times.Once);
         Assert.Same(request, source.ReceivedRequest);
@@ -84,7 +84,7 @@ public sealed class DelegatedQuerySourceEngineTests
 
         await Assert.ThrowsAsync<KaleidoValidationException>(() =>
             CreateSut(validator.Object, ServiceProviderFor(source))
-                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration()));
+                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         Assert.Null(source.ReceivedRequest);
     }
@@ -95,7 +95,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var exception =
             await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
                 CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(new FakeDelegatedSource()))
-                    .ExecuteAsync(new QueryRequest(), CreateRegistration()));
+                    .ExecuteAsync(new QueryRequest(), CreateRegistration(), TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
     }
@@ -107,7 +107,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var outbox = new Mock<IKaleidoEventWriter>();
 
         await CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(new FakeDelegatedSource()), observation, outbox)
-            .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration());
+            .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken);
 
         observation.Verify(x => x.BeginDelegate(), Times.Once);
         observation.Verify(x => x.Materialized(120, 1, 25, 25), Times.Once);
@@ -126,7 +126,7 @@ public sealed class DelegatedQuerySourceEngineTests
 
         await Assert.ThrowsAsync<KaleidoValidationException>(() =>
             CreateSut(validator.Object, ServiceProviderFor(new FakeDelegatedSource()), observation)
-                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration()));
+                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         observation.Verify(x => x.ValidationFailed(failure), Times.Once);
         observation.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
@@ -143,7 +143,7 @@ public sealed class DelegatedQuerySourceEngineTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(source.Object), observation)
-                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration()));
+                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         observation.Verify(x => x.Canceled(), Times.Once);
         observation.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
@@ -161,7 +161,7 @@ public sealed class DelegatedQuerySourceEngineTests
 
         var thrown = await Assert.ThrowsAsync<HttpRequestException>(() =>
             CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(source.Object), observation)
-                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration()));
+                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         Assert.Same(failure, thrown);
         observation.Verify(x => x.ExecutionFailed(failure), Times.Once);
@@ -179,7 +179,7 @@ public sealed class DelegatedQuerySourceEngineTests
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
             CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(source.Object), observation)
-                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration()));
+                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
         observation.Verify(x => x.ExecutionFailed(exception), Times.Once);
@@ -192,7 +192,7 @@ public sealed class DelegatedQuerySourceEngineTests
 
         var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
             CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(new object()), observation)
-                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration()));
+                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         var framework = exception as KaleidoFrameworkException ?? Assert.IsType<KaleidoFrameworkException>(exception.InnerException);
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, framework.Code);
@@ -209,7 +209,7 @@ public sealed class DelegatedQuerySourceEngineTests
 
         var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
             CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(new FakeDelegatedSource()), observation)
-                .ExecuteAsync(request.Object, CreateRegistration()));
+                .ExecuteAsync(request.Object, CreateRegistration(), TestContext.Current.CancellationToken));
 
         var framework = exception as KaleidoFrameworkException ?? Assert.IsType<KaleidoFrameworkException>(exception.InnerException);
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, framework.Code);

@@ -34,7 +34,7 @@ public interface IKaleidoOutboxStore
     /// </summary>
     /// <param name="events">The entries to add.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
-    Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default);
+    Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken);
 
     /// <summary>
     /// Claims up to <paramref name="maxCount"/> entries that are due (not parked,
@@ -48,13 +48,13 @@ public interface IKaleidoOutboxStore
     /// time never get the same entry. An entry whose lease expired (its instance stopped) can be
     /// claimed again - that is how another instance takes over.
     /// </remarks>
-    Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken);
 
     /// <summary>
     /// Removes a published entry - only while this instance still holds its lease (an instance whose
     /// lease expired must not remove an entry another instance has claimed since).
     /// </summary>
-    Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken = default);
+    Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Records a failed publish attempt and releases the lease - only while this instance still
@@ -62,7 +62,7 @@ public interface IKaleidoOutboxStore
     /// <paramref name="errorMessage"/>, and schedules the next attempt at <paramref name="retryAtUtc"/>; null
     /// parks the entry (kept, never claimed again).
     /// </summary>
-    Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken = default);
+    Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken);
 }
 
 /// <summary>

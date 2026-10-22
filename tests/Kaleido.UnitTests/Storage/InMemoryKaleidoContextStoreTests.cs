@@ -16,7 +16,7 @@ public sealed class InMemoryKaleidoContextStoreTests
         var store = CreateSut();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            store.SaveAsync(null!));
+            store.SaveAsync(null!, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public sealed class InMemoryKaleidoContextStoreTests
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
         var store = CreateSut(logger.Object);
-        await store.SaveAsync(NewProcess());
+        await store.SaveAsync(NewProcess(), TestContext.Current.CancellationToken);
 
         var levels = logger.Invocations.Where(x => x.Method.Name == nameof(ILogger.Log)).Select(x => (LogLevel)x.Arguments[0]).ToList();
         Assert.Equal([LogLevel.Warning, LogLevel.Debug], levels);

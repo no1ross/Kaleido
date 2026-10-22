@@ -10,7 +10,7 @@ public sealed class ProcedureModalityClient(
     public async Task<ProcedureModality> DetermineModalityAsync(
         string codeValue,
         ProcedureCodeSystem codeSystem,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         if (!int.TryParse(codeValue, out var numericCode))
         {

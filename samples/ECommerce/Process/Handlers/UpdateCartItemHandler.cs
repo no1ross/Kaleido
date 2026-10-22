@@ -10,7 +10,7 @@ public sealed class UpdateQuantityHandler(
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
         UpdateCartItemStep step,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var shoppingCart =
             await dbContext.ShoppingCarts

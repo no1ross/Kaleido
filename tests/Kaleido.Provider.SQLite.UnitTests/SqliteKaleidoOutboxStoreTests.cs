@@ -61,14 +61,14 @@ public sealed class SqliteKaleidoOutboxStoreTests
         var now = DateTimeOffset.UtcNow;
         var oldest = Event(now.AddSeconds(-3));
         var middle = Event(now.AddSeconds(-2));
-        await sut.AddAsync([Event(now.AddSeconds(-1)), middle, oldest]);
+        await sut.AddAsync([Event(now.AddSeconds(-1)), middle, oldest], TestContext.Current.CancellationToken);
 
-        var first = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
-        var second = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1));
+        var first = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+        var second = await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
 
         Assert.Equal([oldest.EventId, middle.EventId], first.Select(x => x.EventId));
         Assert.Single(second);
-        Assert.Empty(await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1)));
+        Assert.Empty(await sut.ClaimEventsAsync(2, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -76,9 +76,9 @@ public sealed class SqliteKaleidoOutboxStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.AddAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }]);
+        await sut.AddAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }], TestContext.Current.CancellationToken);
 
-        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
     }
 
     // Two instances on one database claiming at the same time: each entry goes to exactly one.
@@ -89,7 +89,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         using var first = CreateSharedDbContext(connectionString);
         using var second = CreateSharedDbContext(connectionString);
         var events = Enumerable.Range(0, 30).Select(i => Event(DateTimeOffset.UtcNow.AddSeconds(-30 + i))).ToArray();
-        await CreateSut(first).AddAsync(events);
+        await CreateSut(first).AddAsync(events, TestContext.Current.CancellationToken);
         var a = CreateSut(first, Guid.NewGuid());
         var b = CreateSut(second, Guid.NewGuid());
 
@@ -98,7 +98,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
 
         for (var round = 0; round < 4; round++)
         {
-            var claims = await Task.WhenAll(a.ClaimEventsAsync(5, TimeSpan.FromMinutes(1)), b.ClaimEventsAsync(5, TimeSpan.FromMinutes(1)));
+            var claims = await Task.WhenAll(a.ClaimEventsAsync(5, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken), b.ClaimEventsAsync(5, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
             claimedByA.AddRange(claims[0].Select(x => x.EventId));
             claimedByB.AddRange(claims[1].Select(x => x.EventId));
         }
@@ -114,10 +114,10 @@ public sealed class SqliteKaleidoOutboxStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext, Guid.NewGuid());
         var @event = Event();
-        await sut.AddAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
+        await sut.AddAsync([@event], TestContext.Current.CancellationToken);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
 
-        await sut.CompleteEventAsync(@event.EventId);
+        await sut.CompleteEventAsync(@event.EventId, TestContext.Current.CancellationToken);
 
         Assert.Empty(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
     }
@@ -132,14 +132,14 @@ public sealed class SqliteKaleidoOutboxStoreTests
         var stale = CreateSut(first, Guid.NewGuid());
         var owner = CreateSut(second, Guid.NewGuid());
         var @event = Event();
-        await stale.AddAsync([@event]);
+        await stale.AddAsync([@event], TestContext.Current.CancellationToken);
 
-        await stale.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1));
+        await stale.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1), TestContext.Current.CancellationToken);
         await Task.Delay(20);
-        Assert.Single(await owner.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        Assert.Single(await owner.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
 
-        await stale.CompleteEventAsync(@event.EventId);
-        await stale.FailEventAsync(@event.EventId, retryAtUtc: null, "stale");
+        await stale.CompleteEventAsync(@event.EventId, TestContext.Current.CancellationToken);
+        await stale.FailEventAsync(@event.EventId, retryAtUtc: null, "stale", TestContext.Current.CancellationToken);
 
         var entry = Assert.Single(await second.OutboxEvents.AsNoTracking().ToListAsync());
         Assert.False(entry.IsParked);
@@ -152,12 +152,12 @@ public sealed class SqliteKaleidoOutboxStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext, Guid.NewGuid());
         var @event = Event();
-        await sut.AddAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
+        await sut.AddAsync([@event], TestContext.Current.CancellationToken);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
 
-        await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down");
+        await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down", TestContext.Current.CancellationToken);
 
-        var retried = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        var retried = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
         Assert.Equal(1, retried.Attempts);
         Assert.Equal("broker down", retried.LastError);
     }
@@ -168,12 +168,12 @@ public sealed class SqliteKaleidoOutboxStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext, Guid.NewGuid());
         var @event = Event();
-        await sut.AddAsync([@event]);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1));
+        await sut.AddAsync([@event], TestContext.Current.CancellationToken);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
 
-        await sut.FailEventAsync(@event.EventId, retryAtUtc: null, new string('x', 5000));
+        await sut.FailEventAsync(@event.EventId, retryAtUtc: null, new string('x', 5000), TestContext.Current.CancellationToken);
 
-        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
         var parked = Assert.Single(await dbContext.OutboxEvents.AsNoTracking().ToListAsync());
         Assert.True(parked.IsParked);
         Assert.Equal(SqliteKaleidoOutboxStore.MaxErrorLength, parked.LastError!.Length);
@@ -189,7 +189,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         dbContext.OutboxEvents.Add(@event.ToEntity());
         await dbContext.SaveChangesAsync();
 
-        var claimed = Assert.Single(await CreateSut(dbContext).ClaimEventsAsync(10, TimeSpan.FromMinutes(1)));
+        var claimed = Assert.Single(await CreateSut(dbContext).ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
 
         Assert.Equal(@event.EventId, claimed.EventId);
         Assert.Equal(@event.Payload, claimed.Payload);
@@ -201,6 +201,6 @@ public sealed class SqliteKaleidoOutboxStoreTests
     {
         using var dbContext = CreateDbContext();
 
-        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut(dbContext).AddAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut(dbContext).AddAsync(null!, TestContext.Current.CancellationToken));
     }
 }

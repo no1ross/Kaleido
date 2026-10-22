@@ -32,7 +32,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [],
-                context);
+                context, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             context.State,
@@ -98,7 +98,7 @@ public sealed class ProcessorExecutorTests
 
         await processor.ExecuteAsync(
             [candidate],
-            context);
+            context, TestContext.Current.CancellationToken);
 
         Assert.NotNull(
             capturedContext);
@@ -137,7 +137,7 @@ public sealed class ProcessorExecutorTests
 
         await processor.ExecuteAsync(
             [candidate],
-            context);
+            context, TestContext.Current.CancellationToken);
 
         invoker.Verify(
             x =>
@@ -179,7 +179,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context, TestContext.Current.CancellationToken);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -250,7 +250,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context, TestContext.Current.CancellationToken);
 
         var persisted =
             Assert.Single(savedContexts);
@@ -292,7 +292,7 @@ public sealed class ProcessorExecutorTests
         var saved = new List<ProcessorContext>();
 
         var result = await CreateSut(invoker, evaluator: evaluator, stateUpdater: stateUpdater, transition: CreateTransition(saved))
-            .ExecuteAsync([candidate], context);
+            .ExecuteAsync([candidate], context, TestContext.Current.CancellationToken);
 
         var outcome = Assert.Single(result.Outcomes);
         Assert.Equal(StepExecutionStatus.Rejected, outcome.Status);
@@ -336,7 +336,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context, TestContext.Current.CancellationToken);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -436,7 +436,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [firstCandidate, nextCandidate],
-                context);
+                context, TestContext.Current.CancellationToken);
 
         Assert.Collection(
             result.Outcomes,
@@ -494,7 +494,7 @@ public sealed class ProcessorExecutorTests
         var stepObservation = new Mock<IProcessorStepObservation>();
 
         var result = await CreateSut(invoker, stepObservation: stepObservation).ExecuteAsync(
-            [candidate], CreateContext("step-a"));
+            [candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
 
         var outcome = Assert.Single(result.Outcomes);
         Assert.Equal(StepExecutionStatus.ValidationFailed, outcome.Status);
@@ -541,7 +541,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context, TestContext.Current.CancellationToken);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -672,7 +672,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context, TestContext.Current.CancellationToken);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -724,7 +724,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context, TestContext.Current.CancellationToken);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -779,7 +779,7 @@ public sealed class ProcessorExecutorTests
         var result =
             await processor.ExecuteAsync(
                 [candidate],
-                context);
+                context, TestContext.Current.CancellationToken);
 
         var outcome =
             Assert.Single(result.Outcomes);
@@ -816,7 +816,7 @@ public sealed class ProcessorExecutorTests
 
         var result =
             await CreateSut(invoker, evaluator: evaluator, stepObservation: stepObservation)
-                .ExecuteAsync([candidate], CreateContext("step-a"));
+                .ExecuteAsync([candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
 
         return Assert.Single(result.Outcomes);
     }
@@ -883,7 +883,7 @@ public sealed class ProcessorExecutorTests
 
         await Assert.ThrowsAsync<KaleidoConcurrencyException>(() =>
             CreateSut(invoker, transition: CreateTransition(saved), stepObservation: stepObservation)
-                .ExecuteAsync([CreateCandidate<TestStepA>("step-a")], CreateContext("step-a")));
+                .ExecuteAsync([CreateCandidate<TestStepA>("step-a")], CreateContext("step-a"), TestContext.Current.CancellationToken));
 
         Assert.Empty(saved);
         stepObservation.Verify(x => x.StepFailed(It.IsAny<Exception>()), Times.Never);
@@ -1184,7 +1184,7 @@ public sealed class ProcessorExecutorTests
             .ThrowsAsync(new KaleidoConcurrencyException(context.ProcessId));
 
         await Assert.ThrowsAsync<KaleidoConcurrencyException>(() =>
-            CreateSut(invoker, transition: store).ExecuteAsync([candidate], context));
+            CreateSut(invoker, transition: store).ExecuteAsync([candidate], context, TestContext.Current.CancellationToken));
 
         store.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<KaleidoOutboxEvent?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -1208,7 +1208,7 @@ public sealed class ProcessorExecutorTests
         var saved = new List<ProcessorContext>();
 
         var result = await CreateSut(invoker, transition: CreateTransition(saved))
-            .ExecuteAsync([candidate], context);
+            .ExecuteAsync([candidate], context, TestContext.Current.CancellationToken);
 
         Assert.Equal(context.Version, Assert.Single(saved).Version);
         Assert.Equal(context.ProcessId, result.ProcessId);
@@ -1255,7 +1255,7 @@ public sealed class ProcessorExecutorTests
         var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
 
         await CreateSut(SucceedingInvoker(), transition: RecordingTransition(savedEvents), eventOutbox: outbox)
-            .ExecuteAsync([candidate], CreateContext("step-a"));
+            .ExecuteAsync([candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
 
         Assert.Equal(stepEvent, Assert.Single(Assert.Single(savedEvents)));
     }
@@ -1269,7 +1269,7 @@ public sealed class ProcessorExecutorTests
         var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
 
         await CreateSut(SucceedingInvoker(), transition: RecordingTransition(savedEvents), eventOutbox: outbox)
-            .ExecuteAsync([candidate], CreateContext("step-a"));
+            .ExecuteAsync([candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
 
         Assert.Empty(Assert.Single(savedEvents));
     }
@@ -1291,7 +1291,7 @@ public sealed class ProcessorExecutorTests
         var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
 
         await CreateSut(SucceedingInvoker(), evaluator: evaluator, transition: RecordingTransition(savedEvents), eventOutbox: outbox)
-            .ExecuteAsync([candidate], CreateContext("step-a"));
+            .ExecuteAsync([candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
 
         Assert.Empty(savedEvents);
         outbox.Verify(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>()), Times.Never);
@@ -1418,7 +1418,7 @@ public sealed class ProcessorExecutorTests
         var savedEvents = new List<IReadOnlyCollection<KaleidoOutboxEvent>>();
 
         await CreateSut(invoker, transition: RecordingTransition(savedEvents))
-            .ExecuteAsync([candidate], CreateContext("step-a"));
+            .ExecuteAsync([candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
 
         Assert.Empty(Assert.Single(savedEvents));
     }

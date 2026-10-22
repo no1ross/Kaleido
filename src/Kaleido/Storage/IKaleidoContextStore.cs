@@ -30,7 +30,7 @@ namespace Kaleido.Storage;
 public interface IKaleidoContextStore
 {
     /// <summary>The process state, or null when no process with that id exists (never throws for a missing one).</summary>
-    Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default);
+    Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Saves <paramref name="context"/> when the stored version still equals
@@ -46,5 +46,5 @@ public interface IKaleidoContextStore
     /// </exception>
     Task<ProcessorContext> SaveAsync(
         ProcessorContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }

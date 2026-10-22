@@ -21,7 +21,7 @@ public sealed class CaptureRequestedServiceHandler(
     public Task<ProcessStepHandlerResult<CaptureRequestedServiceResponse>> ExecuteAsync(
         CaptureRequestedServiceStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         HistoryRecording.InTransactionAsync<ProcessStepHandlerResult<CaptureRequestedServiceResponse>>(
             dbContext,
             () => RunAsync(processStep, context, cancellationToken),

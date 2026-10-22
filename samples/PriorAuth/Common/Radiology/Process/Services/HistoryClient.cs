@@ -22,7 +22,7 @@ public sealed class HistoryClient(
 {
     public async Task RecordAsync(
         Guid processId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var priorAuthorization =
             await dbContext.PriorAuthorizations

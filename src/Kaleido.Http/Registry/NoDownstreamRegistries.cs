@@ -7,12 +7,12 @@ namespace Kaleido.Http.Registry;
 internal sealed class NoDownstreamRegistries : IKaleidoDownstreamRegistries
 {
     public Task<DownstreamRegistries> GetAsync(
-        int? maxParallelism = null,
-        CancellationToken cancellationToken = default) =>
+        int? maxParallelism,
+        CancellationToken cancellationToken) =>
         Task.FromResult(DownstreamRegistries.None);
 
     // Nothing is cached when there are no downstream services.
     public Task InvalidateAsync(
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.CompletedTask;
 }

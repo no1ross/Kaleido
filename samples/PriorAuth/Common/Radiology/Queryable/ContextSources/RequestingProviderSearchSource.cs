@@ -23,7 +23,7 @@ internal sealed class RequestingProviderSearchSource(
 {
     public async Task<QueryResult<RequestingProviderSearchView>> ExecuteAsync(
         IQueryRequest<RequestingProviderSearchQueryParameters> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         // Kaleido validates the [Required] processId before the query runs; this guard keeps the
         // nullable contract explicit and answers 400 if it is ever reached.
@@ -36,6 +36,7 @@ internal sealed class RequestingProviderSearchSource(
         return await requestingProviderSearchClient.SearchAsync(
             processId,
             request.Query,
-            cancellationToken: cancellationToken);
+            ProviderType.RequestingProvider,
+            cancellationToken);
     }
 }

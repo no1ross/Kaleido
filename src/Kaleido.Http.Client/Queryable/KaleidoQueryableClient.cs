@@ -16,20 +16,20 @@ internal sealed partial class KaleidoQueryableClient(
     : IKaleidoQueryableClient
 {
     public async Task<IReadOnlyList<QueryableSourceResponse>> GetRegistryAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         return await EnsureRegistryAsync(cancellationToken);
     }
 
     public Task InvalidateRegistryAsync(
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         remoteRegistry.InvalidateAsync(clientName, cancellationToken);
 
     public Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
         string source,
         string view,
         QueryApiRequest<TParameters> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TParameters : class
         where TView : class =>
         SendQueryAsync<TView>(QueryableContractUrls.QueryViewQuery(callerServiceName, Segment(source), Segment(view)), request, cancellationToken, source, view);
@@ -37,14 +37,14 @@ internal sealed partial class KaleidoQueryableClient(
     public Task<QueryResult<TResult>> QuerySourceAsync<TResult>(
         string source,
         QueryApiRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TResult : class =>
         QuerySourceCoreAsync<TResult>(source, request, cancellationToken);
 
     public Task<QueryResult<TResult>> QuerySourceAsync<TParameters, TResult>(
         string source,
         QueryApiRequest<TParameters> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TParameters : class
         where TResult : class =>
         QuerySourceCoreAsync<TResult>(source, request, cancellationToken);

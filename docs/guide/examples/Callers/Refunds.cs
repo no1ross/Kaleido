@@ -23,6 +23,6 @@ public sealed class RefundOrderHandler : IProcessStepHandler<RefundOrderStep>
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         RefundOrderStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         Task.FromResult(ProcessStepHandlerResult.Success());
 }

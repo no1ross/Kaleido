@@ -17,8 +17,8 @@ internal interface IKaleidoDownstreamRegistries
     /// <param name="maxParallelism">At most this many fetches in flight; null = all at once.</param>
     /// <param name="cancellationToken">Cancels the fetch.</param>
     Task<DownstreamRegistries> GetAsync(
-        int? maxParallelism = null,
-        CancellationToken cancellationToken = default);
+        int? maxParallelism,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Drops each downstream client's cached registry, so the next fetch re-reads it. Best effort per
@@ -27,7 +27,7 @@ internal interface IKaleidoDownstreamRegistries
     /// <param name="cancellationToken">Cancels the removals from the snapshot store.</param>
     /// <returns>A task that completes once every downstream snapshot has been dropped.</returns>
     Task InvalidateAsync(
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 /// <summary>The downstream registries, and the clients that could not be read.</summary>

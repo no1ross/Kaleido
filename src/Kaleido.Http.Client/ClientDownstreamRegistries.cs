@@ -20,8 +20,8 @@ internal sealed partial class ClientDownstreamRegistries(
     : IKaleidoDownstreamRegistries
 {
     public async Task<DownstreamRegistries> GetAsync(
-        int? maxParallelism = null,
-        CancellationToken cancellationToken = default)
+        int? maxParallelism,
+        CancellationToken cancellationToken)
     {
         var processes = new ConcurrentBag<ProcessorRegistryResponse>();
         var queryables = new ConcurrentBag<QueryableSourceResponse>();
@@ -101,7 +101,7 @@ internal sealed partial class ClientDownstreamRegistries(
     }
 
     public async Task InvalidateAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         foreach (var name in ClientNames())
         {

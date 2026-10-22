@@ -18,12 +18,12 @@ internal interface IQueryContextEngine<TQueryContext, TView>
         IQueryRequest request,
         QuerySourceRegistration source,
         QueryViewRegistration viewRegistration,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     Task<QueryResult<TView>> ExecuteAsync(
         IQueryRequest request,
         QuerySourceRegistration source,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }
 
 internal sealed class QueryContextEngine<TQueryContext, TView>(
@@ -44,7 +44,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         IQueryRequest request,
         QuerySourceRegistration source,
         QueryViewRegistration viewRegistration,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var details =
             new QueryObservationDetails(
@@ -98,7 +98,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
     public async Task<QueryResult<TView>> ExecuteAsync(
         IQueryRequest request,
         QuerySourceRegistration source,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var details =
             new QueryObservationDetails(

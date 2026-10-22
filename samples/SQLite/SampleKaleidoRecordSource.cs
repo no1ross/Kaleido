@@ -65,7 +65,7 @@ public sealed class SampleKalediRecordView : IQueryViewSource<SampleKaleidoRecor
 
 //public static class DbInitializer
 //{
-//    public static async Task InitializeAsync(KaleidoTestDbContext db, CancellationToken cancellationToken = default)
+//    public static async Task InitializeAsync(KaleidoTestDbContext db, CancellationToken cancellationToken)
 //    {
 //        await db.Database.EnsureCreatedAsync(cancellationToken);
 

@@ -23,10 +23,10 @@ public interface IQueryContextExecutor<TView>
     where TView : class
 {
     /// <summary>Counts the elements of <paramref name="query"/> asynchronously.</summary>
-    Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken = default);
+    Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken);
 
     /// <summary>Materializes <paramref name="query"/> to a list asynchronously.</summary>
-    Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken);
 
     /// <summary>Applies <paramref name="offset"/>/<paramref name="size"/> paging to <paramref name="query"/>.</summary>
     IQueryable<TView> ApplyPage(IQueryable<TView> query, int size, int offset);
@@ -35,7 +35,7 @@ public interface IQueryContextExecutor<TView>
 internal sealed class QueryContextExecutor<TView> : IQueryContextExecutor<TView>
     where TView : class
 {
-    public async Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken = default)
+    public async Task<int> CountAsync(IQueryable<TView> query, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(query);
@@ -55,7 +55,7 @@ internal sealed class QueryContextExecutor<TView> : IQueryContextExecutor<TView>
         return query.Count();
     }
 
-    public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<TView>> ToListAsync(IQueryable<TView> query, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(query);

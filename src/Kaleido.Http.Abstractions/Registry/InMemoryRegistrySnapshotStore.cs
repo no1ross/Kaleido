@@ -14,13 +14,13 @@ internal sealed class InMemoryRegistrySnapshotStore
 
     public ValueTask<AggregatedRegistryResponse?> GetAsync(
         string key,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         new(_snapshots.TryGetValue(key, out var snapshot) ? snapshot : null);
 
     public ValueTask SetAsync(
         string key,
         AggregatedRegistryResponse snapshot,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         _snapshots[key] = snapshot;
         return default;
@@ -28,7 +28,7 @@ internal sealed class InMemoryRegistrySnapshotStore
 
     public ValueTask RemoveAsync(
         string key,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         _snapshots.TryRemove(key, out _);
         return default;

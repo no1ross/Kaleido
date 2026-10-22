@@ -19,7 +19,7 @@ public sealed class RemoveRequestedServiceHandler(
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         RemoveRequestedServiceStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         HistoryRecording.InTransactionAsync(
             dbContext,
             () => RunAsync(processStep, context, cancellationToken),

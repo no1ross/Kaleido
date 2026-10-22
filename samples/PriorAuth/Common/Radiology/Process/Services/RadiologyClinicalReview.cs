@@ -23,7 +23,7 @@ public sealed class RadiologyClinicalReview(
     /// <summary>The first round's questions, or null when no clinical review applies.</summary>
     public async Task<InformationRequest?> StartAsync(
         Guid processId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var context = await ContextAsync(processId, cancellationToken);
         var round = await provider.StartAsync(context, cancellationToken);
@@ -35,7 +35,7 @@ public sealed class RadiologyClinicalReview(
     public async Task<InformationRequest?> ContinueAsync(
         Guid processId,
         IInformationStep answers,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         var priorAuthorization = await dbContext.PriorAuthorizations.SingleAsync(x => x.ProcessId == processId, cancellationToken);
 

@@ -28,16 +28,16 @@ public interface IRegistrySnapshotStore
     /// <summary>Returns the snapshot for <paramref name="key"/>, or <see langword="null"/> when absent.</summary>
     ValueTask<AggregatedRegistryResponse?> GetAsync(
         string key,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>Stores (or replaces) the snapshot for <paramref name="key"/>.</summary>
     ValueTask SetAsync(
         string key,
         AggregatedRegistryResponse snapshot,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>Removes the snapshot for <paramref name="key"/> if present.</summary>
     ValueTask RemoveAsync(
         string key,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }

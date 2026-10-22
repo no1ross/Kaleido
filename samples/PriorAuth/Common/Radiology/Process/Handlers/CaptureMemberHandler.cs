@@ -18,7 +18,7 @@ public sealed class CaptureMemberHandler(
     public Task<ProcessStepHandlerResult> ExecuteAsync(
         CaptureMemberStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken) =>
         HistoryRecording.InTransactionAsync(
             dbContext,
             () => RunAsync(processStep, context, cancellationToken),
