@@ -1,11 +1,11 @@
 namespace Kaleido.Http.Registry;
 
 /// <summary>
-/// Storage seam for registry snapshots — the same pattern as
-/// <c>IKaleidoContextStore</c>. The framework ships an in-memory default;
-/// aggregating hosts (routers/gateways) can register a distributed
-/// implementation (e.g. Redis over <c>IDistributedCache</c>) so replicas share
-/// one merged snapshot and one fan-out per refresh window.
+/// Storage seam for registry snapshots, the same pattern as
+/// <c>IKaleidoContextStore</c>. The framework ships an in-memory default and a
+/// distributed one on the host's <c>IDistributedCache</c>
+/// (<see cref="KaleidoRegistrySnapshotServiceCollectionExtensions.AddDistributedRegistrySnapshots"/>),
+/// so the replicas of a router share one merged snapshot and one fan-out per refresh window.
 /// </summary>
 /// <remarks>
 /// The store is a dumb key/value holder: TTL, refresh cooldowns,

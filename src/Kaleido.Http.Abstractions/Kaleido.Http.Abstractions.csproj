@@ -9,6 +9,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- IDistributedCache only, for AddDistributedRegistrySnapshots(): the host picks the backend (#275). -->
+		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- The server and the clients share internal route and mapping infrastructure. -->
 		<InternalsVisibleTo Include="Kaleido.Http" />
 		<InternalsVisibleTo Include="Kaleido.Http.Client" />
