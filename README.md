@@ -222,7 +222,7 @@ app.Run();
 
 Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. Each `RoutePrefix` must match the downstream `ServiceName`; adjust addresses and ports for your environment.
 
-See the [HTTP client](src/Kaleido.Http.Client/README.md) and [MCP adapter](src/Kaleido.Http.Mcp/README.md) guides for configuration details.
+See the [HTTP client](src/Kaleido.Http.Client/README.md) and [MCP adapter](src/Kaleido.Http.Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
 
 ### Choose process storage
 
@@ -295,6 +295,7 @@ dotnet add package Kaleido.Provider.SQLite --prerelease              # reference
 
 ## Documentation
 
+- **[Consumer guide](docs/guide/README.md)**: how Kaleido works end to end and how to choose its options, with compiled, tested examples. Start here.
 - [Architecture](ARCHITECTURE.md)
 - [Patterns: steps, handlers, sources, views, lookups](docs/PATTERNS.md)
 - [Core runtime](src/Kaleido/README.md)

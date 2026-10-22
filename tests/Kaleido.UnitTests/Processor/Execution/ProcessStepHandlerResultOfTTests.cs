@@ -54,7 +54,7 @@ public sealed class ProcessStepHandlerResultOfTTests
     {
         var sut = CreateSut(succeeded, rejected, target);
 
-        Assert.Equal(ProcessorErrorCodes.InvalidRequiredStep, Assert.Throws<KaleidoFrameworkException>(() => sut.Next<NextStep>()).Code);
+        Assert.Equal(ProcessorErrorCodes.InvalidRequiredStep, Assert.Throws<KaleidoFrameworkException>(sut.Next<NextStep>).Code);
         Assert.Equal(ProcessorErrorCodes.InvalidRequiredStep, Assert.Throws<KaleidoFrameworkException>(() => sut.RequireInformation<AnswerStep>(Request)).Code);
     }
 

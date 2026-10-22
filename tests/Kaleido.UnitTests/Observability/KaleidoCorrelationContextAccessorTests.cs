@@ -1,5 +1,3 @@
-using Kaleido.Observability;
-
 using Kaleido.UnitTests;
 
 namespace Kaleido.Observability.UnitTests;

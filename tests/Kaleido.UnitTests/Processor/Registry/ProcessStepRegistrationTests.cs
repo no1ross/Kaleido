@@ -1,7 +1,7 @@
-using Kaleido.Registry;
-using Kaleido.UnitTests;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Kaleido.Registry;
+using Kaleido.UnitTests;
 
 namespace Kaleido.Processor.Registry.UnitTests;
 

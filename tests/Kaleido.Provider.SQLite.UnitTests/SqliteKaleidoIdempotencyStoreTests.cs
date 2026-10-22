@@ -1,14 +1,6 @@
-using System.Collections.Concurrent;
-using System.Data.Common;
-using System.Diagnostics;
-using Kaleido.Observability;
 using Kaleido.Processor.Context;
-using Kaleido.Storage;
-using Kaleido.Provider.SQLite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Provider.SQLite.UnitTests;
 

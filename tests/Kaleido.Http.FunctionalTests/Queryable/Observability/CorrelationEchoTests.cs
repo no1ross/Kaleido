@@ -15,13 +15,24 @@ public sealed class CorrelationEchoTests(
         var client = fixture.TestServer.CreateClient();
 
         if (requestId is not null)
+        {
             client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.RequestId, requestId);
+        }
+
         if (processId.HasValue)
+        {
             client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.ProcessId, processId.Value.ToString());
+        }
+
         if (callingProcessor is not null)
+        {
             client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.CallingProcessor, callingProcessor);
+        }
+
         if (callingStep is not null)
+        {
             client.DefaultRequestHeaders.Add(KaleidoCorrelationHeaders.CallingStep, callingStep);
+        }
 
         return client;
     }

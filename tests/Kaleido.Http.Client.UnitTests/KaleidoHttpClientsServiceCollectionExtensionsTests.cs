@@ -104,7 +104,7 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
     {
         var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:RoutePrefix"] = "member" });
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddHttpClients());
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.AddHttpClients);
 
         Assert.Equal(HttpClientErrorCodes.MissingBaseUrl, exception.Code);
         Assert.Contains("Kaleido:Clients:Member:BaseUrl", exception.Message, StringComparison.Ordinal);

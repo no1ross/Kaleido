@@ -1,4 +1,3 @@
-using Kaleido.Http;
 using Kaleido.Http.Client;
 using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 using Kaleido.Http.Queryable;

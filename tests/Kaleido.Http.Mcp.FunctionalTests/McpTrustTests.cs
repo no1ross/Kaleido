@@ -1,6 +1,5 @@
 using Kaleido.Http.Mcp.FunctionalTests.Infrastructure;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
 namespace Kaleido.Http.Mcp.FunctionalTests;

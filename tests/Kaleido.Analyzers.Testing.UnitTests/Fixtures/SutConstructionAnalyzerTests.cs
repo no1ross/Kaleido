@@ -1,6 +1,5 @@
 using Kaleido.Testing;
 using Microsoft.CodeAnalysis;
-using Xunit;
 using static Kaleido.Analyzers.Testing.UnitTests.AnalyzerTest<
     Kaleido.Analyzers.Testing.Fixtures.SutConstructionAnalyzer>;
 

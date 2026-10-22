@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using Kaleido.Exceptions;
-using Kaleido.Http.Processor;
 using Kaleido.Registry;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
@@ -38,7 +37,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = "test-processor" });
         var endpoints = builder.Build();
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => endpoints.MapProcessor());
+        var exception = Assert.Throws<KaleidoConfigurationException>(endpoints.MapProcessor);
 
         Assert.Equal(ProcessorErrorCodes.InvalidRegistration, exception.Code);
     }

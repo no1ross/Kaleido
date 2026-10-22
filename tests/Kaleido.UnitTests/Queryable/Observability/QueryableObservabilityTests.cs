@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Kaleido.Exceptions;
 using Kaleido.Observability;
-using Kaleido.Queryable.Observability;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
 

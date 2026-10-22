@@ -4,9 +4,11 @@
 		<PackageReference Include="Microsoft.Extensions.Compliance.Redaction" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
 		<PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />
 		<ProjectReference Include="..\..\src\Kaleido.Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
+    <ProjectReference Include="..\..\docs\guide\examples\Kaleido.Guide.Examples.csproj" />
 	</ItemGroup>
 </Project>

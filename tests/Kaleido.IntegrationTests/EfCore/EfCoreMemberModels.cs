@@ -103,3 +103,25 @@ public sealed record MemberCard
     public int Id { get; init; }
     public string Label { get; init; } = string.Empty;
 }
+
+// A source that is not EF Core, in the same host: an executor registered for every source must
+// serve it too (EF's async operators throw on a query that is not EF's).
+public sealed record RegionQueryContext : IQueryContext
+{
+    [Sortable]
+    public string Code { get; init; } = string.Empty;
+}
+
+[QuerySource(
+    Version = "1.0.0",
+    DisplayName = "Regions",
+    Description = "Regions from memory.",
+    DefaultSortField = nameof(RegionQueryContext.Code))]
+[Pageable(DefaultSize = 2, MaxSize = 10)]
+public sealed class RegionSource : IQuerySource<RegionQueryContext>
+{
+    private static readonly string[] Codes = ["north", "south", "east"];
+
+    public IQueryable<RegionQueryContext> CreateQuery(QueryExecutionContext executionContext) =>
+        Codes.Select(code => new RegionQueryContext { Code = code }).AsQueryable();
+}

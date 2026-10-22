@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- The guide's examples (docs/guide), compiled so the guide cannot drift from the API: every
+         csharp block the guide marks with a snippet comment equals its region here
+         (tools/docs/check-guide-snippets.py), and Kaleido.IntegrationTests runs the getting-started
+         service. Consumer code: Kaleido's consumer analyzers (KAL2xxx) apply, as in a real service. -->
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);1591</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+        <PackageReference Include="Microsoft.Extensions.Compliance.Redaction" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
+        <ProjectReference Include="..\..\..\src\Kaleido.Http.Mcp\Kaleido.Http.Mcp.csproj" />
+        <ProjectReference Include="..\..\..\src\Kaleido.Observability.OpenTelemetry\Kaleido.Observability.OpenTelemetry.csproj" />
+        <ProjectReference Include="..\..\..\tools\analyzers\Kaleido.Analyzers\Kaleido.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    </ItemGroup>
+
+</Project>

@@ -1,7 +1,5 @@
-using System.Net;
 using System.Text;
 using Kaleido.Http.Client;
-using Kaleido.Processor;
 using Kaleido.Queryable.Query;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

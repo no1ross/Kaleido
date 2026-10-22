@@ -1,5 +1,3 @@
-using Kaleido.Queryable.Runtime;
-
 namespace Kaleido.Queryable.Runtime.UnitTests;
 
 public sealed class QueryContextExecutorTests

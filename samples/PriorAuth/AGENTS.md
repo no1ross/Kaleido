@@ -56,6 +56,10 @@
 - Kaleido decides which questions apply (ADR 0024). The MCP adapter asks them round by round, and the UI (`information-conditions.ts`) shows a question once it applies and never sends the answers of the others.
 - A handler gets no answer for a question that did not apply. `CaptureMriInfoHandler` reads a missing Laterality (BodyPart Spine) as `Laterality.None`.
 
+## Counting query results
+- Every service whose query sources read an EF Core database (CodeSet, Configuration, History, Member, Provider, ReferenceData, Radiology) calls `AddPriorAuthEfCoreQueries()` (`Common/Queryable`): a full page is counted with one `SELECT COUNT(*)` instead of reading every matching row (visible in the EF command log in Aspire). Kaleido's default executor counts an async query by enumerating it (docs/PATTERNS.md, #352).
+- The executor serves every source of the service: a query that is not EF Core's (Radiology's delegated provider searches) uses LINQ.
+
 ## What a view returns
 - View output records describe every property (`[Description]`): KAL2024 is an error in the samples. The descriptions reach the agent with the data (`fieldDescriptions` in MCP results).
 

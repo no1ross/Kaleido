@@ -1,4 +1,3 @@
-using Kaleido.Http.Client.Queryable;
 using Kaleido.Http.Queryable;
 using Kaleido.Observability;
 using Microsoft.Extensions.Logging;

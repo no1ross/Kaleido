@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using Kaleido.Http.Client;
 using Kaleido.Http.FunctionalTests.Processor.Behavior;
 using Kaleido.Http.Registry;
