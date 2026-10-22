@@ -75,7 +75,7 @@ export class HistoryList implements OnInit {
                 query: {
                     sort: [
                         {
-                            field: 'LastUpdatedUtc',
+                            field: 'UpdatedUtc',
                             direction: SortDirection.Descending,
                             sequence: 0
                         }

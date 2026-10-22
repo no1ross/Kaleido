@@ -1,6 +1,8 @@
+using Kaleido.Samples.PriorAuth.Audit;
+
 namespace Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 
-public sealed class PriorAuthorization
+public sealed class PriorAuthorization : IAuditable
 {
     public Guid PriorAuthorizationId { get; set; }
 
@@ -10,8 +12,6 @@ public sealed class PriorAuthorization
 
     /// <summary>The date of service the member was captured for; null until a member is captured.</summary>
     public DateOnly? DateOfService { get; set; }
-
-    public DateTimeOffset CreatedUtc { get; set; }
 
     public DateTimeOffset? SubmittedUtc { get; set; }
 
@@ -34,4 +34,22 @@ public sealed class PriorAuthorization
     public PriorAuthorizationServicingProvider? ServicingProvider { get; set; }
 
     public ICollection<PriorAuthorizationRequestedService> RequestedServices { get; set; } = new List<PriorAuthorizationRequestedService>();
+
+    /// <inheritdoc />
+    public string CreatedBy { get; set; } = string.Empty;
+
+    /// <inheritdoc />
+    public string? CreatedVia { get; set; }
+
+    /// <inheritdoc />
+    public DateTimeOffset CreatedUtc { get; set; }
+
+    /// <inheritdoc />
+    public string UpdatedBy { get; set; } = string.Empty;
+
+    /// <inheritdoc />
+    public string? UpdatedVia { get; set; }
+
+    /// <inheritdoc />
+    public DateTimeOffset UpdatedUtc { get; set; }
 }

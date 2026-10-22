@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Audit;
 using Kaleido.Samples.PriorAuth.Intake.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,5 +20,7 @@ public sealed class IntakeDbContext(
 
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(IntakeDbContext).Assembly);
+
+        modelBuilder.ApplyAuditColumns();
     }
 }

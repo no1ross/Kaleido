@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Audit;
 using Kaleido.Samples.PriorAuth.Queryable;
 using Kaleido.Samples.PriorAuth.Compliance;
 using Kaleido;
@@ -17,8 +18,10 @@ var historyConnectionString =
         PriorAuthErrorCodes.MissingConnectionString,
         "ConnectionStrings:History is required.");
 
+// Who created and last changed each row, through which application, and when (Common/Audit).
+builder.Services.AddPriorAuthAuditing();
 builder.Services.AddDbContext<HistoryDbContext>(
-    options => options.UseSqlite(historyConnectionString));
+    (services, options) => options.UseSqlite(historyConnectionString).UseAuditing(services));
 
 
 // Dev-token auth (sample stand-in for a real IdP).

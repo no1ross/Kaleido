@@ -1,3 +1,4 @@
+using Kaleido.Samples.PriorAuth.Audit;
 using Kaleido.Samples.PriorAuth.Radiology.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,5 +26,7 @@ public sealed class RadiologyDbContext(
 
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(RadiologyDbContext).Assembly);
+
+        modelBuilder.ApplyAuditColumns();
     }
 }
