@@ -13,6 +13,11 @@ import { ExecuteStepRequest } from '../models/processor-process-request';
 
 import { ProcessRegistry } from './process-registry';
 import {
+    errorCode,
+    IDEMPOTENCY_OUTCOME_UNKNOWN,
+    IdempotentExecuteService
+} from './idempotent-execute-service';
+import {
     ProcessRequestValidationError,
     ProcessRequestValidator
 } from './process-request-validator';
@@ -43,6 +48,9 @@ export class ProcessService {
 
     private readonly registryCatalog =
         inject(RegistryCatalog);
+
+    private readonly idempotentExecute =
+        inject(IdempotentExecuteService);
 
     executeStep<TProcessStep, TResponse>(
         stepName: string,
@@ -81,7 +89,9 @@ export class ProcessService {
         console.log(entry.step);
         this.logRequest(stepName, url, request, entry.serviceName);
 
-        return this.http.post<ProcessExecutionResponse<TResponse>>(url, request)
+        const processId = this.processState.state().processId;
+
+        return this.idempotentExecute.post<ProcessExecutionResponse<TResponse>>(url, request, processId)
             .pipe(
                 switchMap(result => {
                     this.processState.setProcessId(result.processId);
@@ -129,6 +139,10 @@ export class ProcessService {
                     return [result];
                 }),
                 catchError(error => {
+                    if (errorCode(error) === IDEMPOTENCY_OUTCOME_UNKNOWN) {
+                        return this.reloadAfterUnknownOutcome(processorName, processId);
+                    }
+
                     if (ProcessErrorResponse.is(error)) {
                         this.processState.setProcessMessages(error.messages);
                     } else if (error instanceof HttpErrorResponse && error.error?.errors) {
@@ -183,6 +197,36 @@ export class ProcessService {
 
                     return state;
                 }));
+    }
+
+    /**
+     * The service could not tell whether an earlier attempt of this call ran (it stopped while the
+     * step ran): reload the process state, so the user sees what is true now, and say so.
+     */
+    private reloadAfterUnknownOutcome(
+        processorName: string,
+        processId: string | undefined
+    ): Observable<never> {
+        const failure: ProcessErrorResponse = {
+            outcome: 'unknown',
+            messages: [{
+                code: IDEMPOTENCY_OUTCOME_UNKNOWN,
+                type: 'warning',
+                message: 'We could not confirm whether this step was saved. '
+                    + 'The latest state of the request is shown: check it before trying again.'
+            }]
+        };
+
+        const reload = processId
+            ? this.fetchProcessorState(processorName, processId).pipe(
+                map(state => this.applyNextSteps(processorName, state.requiredStep, state.availableSteps)))
+            : of(undefined);
+
+        return reload.pipe(
+            switchMap(() => {
+                this.processState.setProcessMessages(failure.messages);
+                return throwError(() => failure);
+            }));
     }
 
     private fetchProcessorState(
