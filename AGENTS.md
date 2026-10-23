@@ -28,9 +28,9 @@ Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the top-level repository m
 ### Tooling
 - [`tools/analyzers/README.md`](./tools/analyzers/README.md) — analyzer project roles and test locations; rule catalog in `docs/ANALYZERS.md`
 
-### Tests and samples
+### Tests and examples
 - [`tests/AGENTS.md`](./tests/AGENTS.md)
-- [`samples/PriorAuth/AGENTS.md`](./samples/PriorAuth/AGENTS.md)
+- the consumer guide's compiled examples: [`docs/guide`](./docs/guide/README.md); the full samples live in their own repositories, consuming the Kaleido packages: [`Kaleido-Samples-PriorAuth`](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and [`Kaleido-Samples-ECommerce`](https://github.com/no1ross/Kaleido-Samples-ECommerce) (#95)
 
 ## Project boundaries
 
@@ -183,13 +183,13 @@ When something new surfaces while working an Issue:
 - Contributor guides should focus on invariants, boundaries, and what not to change casually.
 - Framework-shaping decisions (contracts, boundaries, principles) get a decision record in [`docs/decisions/`](./docs/decisions/README.md): numbered, never rewritten, superseded by a new record when they change, and linked to their issues/PRs.
 
-## Tests and samples
+## Tests and examples
 
-Tests and samples are important navigation aids:
+Tests and examples are important navigation aids:
 - [`tests/AGENTS.md`](./tests/AGENTS.md)
-- [`samples/PriorAuth/AGENTS.md`](./samples/PriorAuth/AGENTS.md)
+- the consumer guide's compiled examples: [`docs/guide`](./docs/guide/README.md); the full samples live in their own repositories, consuming the Kaleido packages: [`Kaleido-Samples-PriorAuth`](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and [`Kaleido-Samples-ECommerce`](https://github.com/no1ross/Kaleido-Samples-ECommerce) (#95)
 
-Use samples to understand intended consumer usage.
+Use the guide's examples and the sample repositories to understand intended consumer usage.
 Use tests to understand behavioral expectations and invariants.
 
 ## Build and test commands
@@ -221,8 +221,7 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 
 1. **Fresh build:** `dotnet build Kaleido.slnx --no-incremental` → **0 errors, 0 warnings**.
 2. **All tests pass:** `./tools/test/Run-Tests.ps1` → `Passed!`, 0 failed, with a non-zero test count.
-3. **If the commit touches a UI sample:** `npm run build` (0 errors) and `npm test` in that UI folder.
-4. **Record the result in the commit message body**, e.g. `Gate: build 0 errors / 0 warnings; tests 812 passed; priorauth-ui build + test OK`.
+3. **Record the result in the commit message body**, e.g. `Gate: build 0 errors / 0 warnings; tests 2981 passed`.
 
 **Warnings fail the build in every area (#406)**, so the "0 warnings" gate is enforced, not only observed:
 
@@ -231,13 +230,12 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 | `src/` | yes | yes |
 | `tools/` | yes | yes |
 | `tests/` | yes | yes |
-| `samples/` | yes | no: the samples keep their relaxed style (`[samples/**/*.cs]` in `.editorconfig`) until they move to their own repositories (#95) |
 
 IDE0005 (unused usings) needs `GenerateDocumentationFile`, so `tests/` and `tools/` generate XML docs with CS1591 off. `dotnet format <solution> style --diagnostics IDE0005 --include tests/` fixes unused usings in bulk; IDE0005 reports one per file at a time, so build again until clean.
 
 CI (`build.yml`) also checks that every Kaleido type or member named in the Markdown docs exists in the sources (`python3 tools/docs/check-doc-symbols.py`; ADRs and audit records are skipped as historical; a deliberate non-symbol in code style goes in the script's `ALLOWED` list with its reason). Run it before committing doc changes.
 
-CI (`build.yml`) also enforces a **coverage gate**: merged line coverage of the shipped `src/` assemblies (tests, analyzers and samples excluded) must be at least the `COVERAGE_FLOOR` (95%), or the build fails. Raise the floor, never lower it. To check locally, run `./tools/test/Run-Tests.ps1 -Coverage` (cobertura files in `TestResults/`) and merge the reports with `reportgenerator` using the workflow's `-assemblyfilters`.
+CI (`build.yml`) also enforces a **coverage gate**: merged line coverage of the shipped `src/` assemblies (tests and analyzers excluded) must be at least the `COVERAGE_FLOOR` (95%), or the build fails. Raise the floor, never lower it. To check locally, run `./tools/test/Run-Tests.ps1 -Coverage` (cobertura files in `TestResults/`) and merge the reports with `reportgenerator` using the workflow's `-assemblyfilters`.
 
 Never delete `bin`/`obj` folders inside `node_modules`; if a clean is needed, exclude `node_modules` (see below).
 
@@ -250,7 +248,7 @@ dotnet build Kaleido.slnx
 ./tools/test/Run-Tests.ps1
 ```
 
-**Intent of `full_clean.cmd`:** reset the whole repository to a clean, ready-to-build state. It removes all build output and restores **everything**: the .NET solution *and* every Angular/npm site (`samples/PriorAuth/priorauth-ui`, `samples/kaleido-sample-ecommerce-ui`). After it runs, `dotnet build`, `dotnet test`, `npm run build` and `npm test` should all work with no extra steps. Stop any running `ng serve` first, because `npm ci` replaces `node_modules`.
+**Intent of `full_clean.cmd`:** reset the whole repository to a clean, ready-to-build state. It removes all build output and restores **everything**: the .NET solution, and `npm ci` in any npm project the repository has (none since the sample UIs moved out with the samples, #95). After it runs, `dotnet build` and `./tools/test/Run-Tests.ps1` should work with no extra steps.
 
 ## Rule of thumb
 

@@ -1,9 +1,10 @@
 # Dependency updates. Every ecosystem waits 7 days after a release before proposing it (cooldown),
 # matching the repository rule of only taking versions published at least a week ago.
 #
-# At most one PR per ecosystem per run (#383). Major npm and NuGet versions are ignored: they are
-# migrations (Angular/TypeScript majors in the sample UIs; NuGet majors can change the net8.0
-# runtime line, a maintainer decision - docs/VERSIONING.md), done deliberately through an issue.
+# At most one PR per ecosystem per run (#383). Major NuGet versions are ignored: they are migrations
+# (they can change the net8.0 runtime line, a maintainer decision - docs/VERSIONING.md), done
+# deliberately through an issue. The sample UIs (npm) moved to their own repositories with the
+# samples (#95).
 version: 2
 updates:
   - package-ecosystem: nuget
@@ -34,21 +35,4 @@ updates:
       default-days: 7
     groups:
       actions:
-        patterns: ["*"]
-
-  # One group for both sample UIs, so the Angular packages (which pin each other exactly) always
-  # move together.
-  - package-ecosystem: npm
-    directories:
-      - "/samples/PriorAuth/priorauth-ui"
-      - "/samples/kaleido-sample-ecommerce-ui"
-    schedule:
-      interval: weekly
-    cooldown:
-      default-days: 7
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    groups:
-      npm:
         patterns: ["*"]

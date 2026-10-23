@@ -11,8 +11,6 @@ it links. Everyone taking part follows the [code of conduct](./CODE_OF_CONDUCT.m
 
 - Install the **.NET 9 SDK** (pinned in [`global.json`](./global.json); back to .NET 10 once it is available again, #424); the packages target
   `net8.0`, so the .NET 8 runtime is needed to run the tests.
-- For the sample UIs (`samples/PriorAuth/priorauth-ui`, `samples/kaleido-sample-ecommerce-ui`):
-  Node.js with npm.
 
 ```bash
 dotnet build Kaleido.slnx
@@ -33,8 +31,7 @@ Every commit passes the gate on its own (a later commit fixing an earlier one do
 
 1. `dotnet build Kaleido.slnx --no-incremental`: 0 errors, **0 warnings** (warnings are errors).
 2. `./tools/test/Run-Tests.ps1`: 0 failed, with a non-zero test count.
-3. A touched sample UI: `npm run build` and `npm test` in its folder.
-4. Changed docs: `python3 tools/docs/check-doc-symbols.py` (every Kaleido name in the docs exists).
+3. Changed docs: `python3 tools/docs/check-doc-symbols.py` (every Kaleido name in the docs exists).
 
 The commit message says why, names the issue (`Fixes #N`) and records the gate result, for example
 `Gate: build 0 errors / 0 warnings; tests 812 passed`.

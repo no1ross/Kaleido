@@ -390,36 +390,3 @@ dotnet_diagnostic.KAL1006.severity = none
 
 ; (root-level files covered by the section above)
 dotnet_diagnostic.KAL1006.severity = none
-
-; samples/ - kept as they are until they move to their own repositories (#250): the rules
-; enforced by #257 after samples were excluded from analysis stay suggestions here
-[samples/**/*.cs]
-dotnet_diagnostic.IDE0090.severity = suggestion
-dotnet_diagnostic.CA1848.severity = suggestion
-dotnet_diagnostic.CA1873.severity = suggestion
-dotnet_diagnostic.MA0051.severity = suggestion
-dotnet_diagnostic.RCS1247.severity = suggestion
-dotnet_diagnostic.CA1000.severity = suggestion
-dotnet_diagnostic.CA1859.severity = suggestion
-dotnet_diagnostic.CA1826.severity = suggestion
-dotnet_diagnostic.IDE0007.severity = suggestion
-dotnet_diagnostic.IDE0028.severity = suggestion
-dotnet_diagnostic.IDE0037.severity = suggestion
-dotnet_diagnostic.IDE0078.severity = suggestion
-dotnet_diagnostic.MA0001.severity = suggestion
-dotnet_diagnostic.MA0040.severity = suggestion
-dotnet_diagnostic.MA0003.severity = suggestion
-dotnet_diagnostic.MA0020.severity = suggestion
-dotnet_diagnostic.MA0031.severity = suggestion
-dotnet_diagnostic.MA0076.severity = suggestion
-dotnet_diagnostic.MA0089.severity = suggestion
-dotnet_diagnostic.MA0106.severity = suggestion
-dotnet_diagnostic.MA0133.severity = suggestion
-dotnet_diagnostic.MA0154.severity = suggestion
-dotnet_diagnostic.MA0179.severity = suggestion
-dotnet_diagnostic.MA0182.severity = suggestion
-dotnet_diagnostic.RCS1085.severity = suggestion
-dotnet_diagnostic.RCS1205.severity = suggestion
-dotnet_diagnostic.RCS1226.severity = suggestion
-; the samples are the reference for agent-facing metadata: what a step or view returns is described (#213)
-dotnet_diagnostic.KAL2021.severity = error

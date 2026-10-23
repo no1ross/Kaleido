@@ -74,7 +74,7 @@ Kaleido began as a working demonstration of a step concept that years of verbal 
 
 A step is a **business action, not a screen or a chat turn**. Its declaration describes the action and its inputs; a separate handler implements what the action does.
 
-This excerpt from the [PriorAuth sample](samples/PriorAuth) shows where the interaction information starts. Namespace imports and the enrollment and date inputs are omitted; this is not the complete class or a runnable service.
+This excerpt from the [PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) shows where the interaction information starts. Namespace imports and the enrollment and date inputs are omitted; this is not the complete class or a runnable service.
 
 ```csharp
 [ProcessStep(
@@ -326,9 +326,7 @@ dotnet add package Kaleido.Provider.SQLite --prerelease              # reference
 - [Decision records](docs/decisions/README.md), starting with [process engine, not decision maker](docs/decisions/0001-process-engine-not-decision-maker.md)
 - [SQLite reference provider](src/Kaleido.Provider.SQLite/README.md)
 - [OpenTelemetry provider](src/Kaleido.Observability.OpenTelemetry/README.md)
-- [Prior authorization sample](samples/PriorAuth)
-- [E-commerce sample](samples/ECommerce)
-- [Queryable sample over CSV records](samples/SQLite) (every field type, filter operator and match mode)
+- [Prior authorization sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and [e-commerce sample](https://github.com/no1ross/Kaleido-Samples-ECommerce), each in its own repository
 
 ## Project status
 

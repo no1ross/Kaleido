@@ -68,17 +68,8 @@ jobs:
         global-json-file: global.json
         dotnet-version: 8.0.x
 
-    # CI builds every project but the Docker Compose one (#322): Kaleido.CI.slnf. It must list every
-    # project of Kaleido.slnx except the .dcproj, so a project added to the solution is never left
-    # out of CI silently.
-    - name: Check the CI solution filter
-      run: |
-        expected=$(grep -oP '<Project Path="\K[^"]+' Kaleido.slnx | grep -v '\.dcproj$' | sort)
-        actual=$(python3 -c "import json; print('\n'.join(sorted(p.replace(chr(92), '/') for p in json.load(open('Kaleido.CI.slnf'))['solution']['projects'])))")
-        diff <(echo "$expected") <(echo "$actual") || { echo "::error::Kaleido.CI.slnf must list every project of Kaleido.slnx except the .dcproj."; exit 1; }
-
     - name: Restore
-      run: dotnet restore Kaleido.CI.slnf
+      run: dotnet restore Kaleido.slnx
 
     - name: Set up Java (Sonar scanner)
       if: ${{ env.SONAR_TOKEN != '' }}
@@ -87,9 +78,9 @@ jobs:
         distribution: temurin
         java-version: '17'
 
-    # Analysis scope: C# in src and tools (tests are test code, generated obj/ excluded). samples/ is
-    # excluded for now: the full sample implementations move to their own repositories before release
-    # (#250); the slim examples that replace them are analyzed again (remove samples/** below).
+    # Analysis scope: C# in src, tools and the consumer guide's examples (tests are test code, generated
+    # obj/ excluded). The samples live in their own repositories (#95); the guide's compiled examples
+    # (docs/guide/examples) are the task-focused examples here.
     # Coverage is measured on src only, like the coverage report below. The quality gate (zero new
     # issues, 90% coverage on new code) is evaluated by the end step, which fails the build.
     # The .NET analyzers' findings (Meziantou, Roslynator, CA, IDE) are imported into Sonar, including
@@ -105,12 +96,12 @@ jobs:
           /d:sonar.host.url="https://sonarcloud.io" \
           /d:sonar.token="$SONAR_TOKEN" \
           /d:sonar.coverageReportPaths="coverage/SonarQube.xml" \
-          /d:sonar.coverage.exclusions="samples/**,tools/**,tests/**" \
-          /d:sonar.exclusions="**/obj/**,**/bin/**,samples/**" \
+          /d:sonar.coverage.exclusions="tools/**,tests/**" \
+          /d:sonar.exclusions="**/obj/**,**/bin/**" \
           /d:sonar.qualitygate.wait=true
 
     - name: Build
-      run: dotnet build Kaleido.CI.slnf --configuration Release --no-restore
+      run: dotnet build Kaleido.slnx --configuration Release --no-restore
 
     # xunit.v3 runs under Microsoft.Testing.Platform (UseMicrosoftTestingPlatformRunner); coverage
     # uses the MTP extension (Microsoft.Testing.Extensions.CodeCoverage in tests/Directory.Build.props).
@@ -122,7 +113,7 @@ jobs:
 
     # Merge per-project cobertura into a union report. Summing hits across files
     # would double-count shared src assemblies; reportgenerator merges hits.
-    # Scope is shipped src/ assemblies only - tests, analyzers (tools/) and samples are excluded by
+    # Scope is shipped src/ assemblies only - tests and analyzers (tools/) are excluded by
     # assembly. Not by path: reportgenerator's file filters are case-insensitive, and '*/tools/*' also
     # matched src/Kaleido.Http.Mcp/Tools/ (#260).
     - name: Merge coverage
@@ -132,7 +123,7 @@ jobs:
           "-reports:TestResults/*.cobertura.xml" \
           "-targetdir:coverage" \
           "-reporttypes:lcov;HtmlSummary;SonarQube" \
-          "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*;-Kaleido.Analyzers*;-Kaleido.Samples*"
+          "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*;-Kaleido.Analyzers*"
 
     - name: Sonar end (upload, quality gate)
       if: ${{ env.SONAR_TOKEN != '' }}

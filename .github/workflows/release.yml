@@ -42,10 +42,10 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore
-      run: dotnet restore Kaleido.CI.slnf
+      run: dotnet restore Kaleido.slnx
 
     - name: Build
-      run: dotnet build Kaleido.CI.slnf --configuration Release --no-restore
+      run: dotnet build Kaleido.slnx --configuration Release --no-restore
 
     - name: Test
       shell: pwsh

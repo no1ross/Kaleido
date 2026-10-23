@@ -14,7 +14,7 @@ Where each family runs in this repository:
 
 | Family | Loaded by | Applies to |
 |---|---|---|
-| Consumer `KAL2xxx` | [`samples/Directory.Build.props`](../../samples/Directory.Build.props) | `samples/*` (and services that install `Kaleido`) |
+| Consumer `KAL2xxx` | [`docs/guide/examples/Kaleido.Guide.Examples.csproj`](../../docs/guide/examples/Kaleido.Guide.Examples.csproj) | `docs/guide/examples` (and services that install `Kaleido`) |
 | Source `KAL0xxx` | [`src/Directory.Build.props`](../../src/Directory.Build.props) | `src/*` |
 | Test `KAL1xxx` | [`tests/Directory.Build.props`](../../tests/Directory.Build.props) | `tests/*` |
 
