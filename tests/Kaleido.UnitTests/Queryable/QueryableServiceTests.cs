@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Queryable.Registry;
@@ -21,10 +22,14 @@ public sealed class QueryableServiceTests
     // What the query's own scope was initialized with.
     private readonly List<KaleidoCorrelationContext> _initialized = [];
 
+    // The inbound caller the query's own scope was given (principal, credential), one entry per Set.
+    private readonly List<(ClaimsPrincipal? Principal, string? Credential)> _inboundSet = [];
+
     private static QueryableService CreateSut(
         IServiceScopeFactory scopeFactory,
         IQueryViewRegistry viewRegistry,
-        IQuerySourceRegistry sourceRegistry)
+        IQuerySourceRegistry sourceRegistry,
+        IKaleidoInboundCallerAccessor? inboundCaller = null)
     {
         var accessor = new Mock<IKaleidoCorrelationContextAccessor>();
         accessor.SetupGet(x => x.Current).Returns(RequestCorrelation);
@@ -32,8 +37,18 @@ public sealed class QueryableServiceTests
         return new(
             scopeFactory,
             accessor.Object,
+            inboundCaller ?? InboundCaller(isInboundRequest: false, principal: null, credential: null),
             viewRegistry,
             sourceRegistry);
+    }
+
+    private static IKaleidoInboundCallerAccessor InboundCaller(bool isInboundRequest, ClaimsPrincipal? principal, string? credential)
+    {
+        var accessor = new Mock<IKaleidoInboundCallerAccessor>();
+        accessor.SetupGet(x => x.IsInboundRequest).Returns(isInboundRequest);
+        accessor.SetupGet(x => x.Principal).Returns(principal);
+        accessor.SetupGet(x => x.Credential).Returns(credential);
+        return accessor.Object;
     }
 
     [Fact]
@@ -204,9 +219,14 @@ public sealed class QueryableServiceTests
         var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
         initializer.Setup(x => x.Initialize(It.IsAny<KaleidoCorrelationContext>())).Callback<KaleidoCorrelationContext>(_initialized.Add);
 
+        var inbound = new Mock<IKaleidoInboundCallerAccessor>();
+        inbound.Setup(x => x.Set(It.IsAny<ClaimsPrincipal?>(), It.IsAny<string?>()))
+            .Callback<ClaimsPrincipal?, string?>((principal, credential) => _inboundSet.Add((principal, credential)));
+
         var provider = new Mock<IServiceProvider>();
         provider.Setup(x => x.GetService(serviceType)).Returns(service);
         provider.Setup(x => x.GetService(typeof(IKaleidoCorrelationContextInitializer))).Returns(initializer.Object);
+        provider.Setup(x => x.GetService(typeof(IKaleidoInboundCallerAccessor))).Returns(inbound.Object);
 
         var scope = new Mock<IServiceScope>();
         scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
@@ -257,6 +277,64 @@ public sealed class QueryableServiceTests
         await service.QueryAsync<TestDelegatedSource, TestViewRecord>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken);
 
         Assert.Same(RequestCorrelation, Assert.Single(_initialized));
+    }
+
+    // #428: a source's outbound calls are made for the request's caller (ADR 0022) only if the query's
+    // scope knows that caller, as it knows the request's correlation.
+    [Fact]
+    public async Task QueryAsync_CarriesTheRequestsInboundCallerIntoTheQueryScope()
+    {
+        var bob = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "bob")], "test"));
+        var source = CreateSourceRegistration(typeof(TestDelegatedSource), QuerySourceKind.Delegated, typeof(TestViewRecord));
+        var engine = new Mock<IDelegatedQuerySourceEngine<TestContext, TestViewRecord>>();
+        engine.Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest>(), source, It.IsAny<CancellationToken>())).ReturnsAsync(new QueryResult<TestViewRecord>(0, 0, 25, []));
+        var service = CreateSut(
+            ScopeFactoryReturning(typeof(IDelegatedQuerySourceEngine<TestContext, TestViewRecord>), engine.Object),
+            ViewRegistryWith(null),
+            SourceRegistryWith(typeof(TestDelegatedSource), source),
+            InboundCaller(isInboundRequest: true, bob, "Bearer bob"));
+
+        await service.QueryAsync<TestDelegatedSource, TestViewRecord>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken);
+
+        var (principal, credential) = Assert.Single(_inboundSet);
+        Assert.Same(bob, principal);
+        Assert.Equal("Bearer bob", credential);
+    }
+
+    [Fact]
+    public async Task QueryAsync_AnAnonymousInboundCaller_StaysAnonymousInTheQueryScope()
+    {
+        var source = CreateSourceRegistration(typeof(TestSource), QuerySourceKind.Local, typeof(TestContext));
+        var engine = new Mock<IQueryContextEngine<TestContext, TestContext>>();
+        engine.Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest>(), source, It.IsAny<CancellationToken>())).ReturnsAsync(new QueryResult<TestContext>(0, 0, 25, []));
+        var service = CreateSut(
+            ScopeFactoryReturning(typeof(IQueryContextEngine<TestContext, TestContext>), engine.Object),
+            ViewRegistryWith(null),
+            SourceRegistryWith(typeof(TestSource), source),
+            InboundCaller(isInboundRequest: true, principal: null, credential: null));
+
+        await service.QueryAsync<TestSource, TestContext>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken);
+
+        var (principal, credential) = Assert.Single(_inboundSet);
+        Assert.Null(principal);
+        Assert.Null(credential);
+    }
+
+    // Outside a request (no inbound caller), the query's calls stay the service's own.
+    [Fact]
+    public async Task QueryAsync_OutsideARequest_SetsNoInboundCallerInTheQueryScope()
+    {
+        var source = CreateSourceRegistration(typeof(TestSource), QuerySourceKind.Local, typeof(TestContext));
+        var engine = new Mock<IQueryContextEngine<TestContext, TestContext>>();
+        engine.Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest>(), source, It.IsAny<CancellationToken>())).ReturnsAsync(new QueryResult<TestContext>(0, 0, 25, []));
+        var service = CreateSut(
+            ScopeFactoryReturning(typeof(IQueryContextEngine<TestContext, TestContext>), engine.Object),
+            ViewRegistryWith(null),
+            SourceRegistryWith(typeof(TestSource), source));
+
+        await service.QueryAsync<TestSource, TestContext>(new QueryRequest(), Xunit.TestContext.Current.CancellationToken);
+
+        Assert.Empty(_inboundSet);
     }
 
     private static IQueryViewRegistry ViewRegistryWith(QueryViewRegistration? registration)

@@ -32,6 +32,7 @@ internal interface IQueryableService
 internal sealed class QueryableService(
     IServiceScopeFactory scopeFactory,
     IKaleidoCorrelationContextAccessor correlationAccessor,
+    IKaleidoInboundCallerAccessor inboundCaller,
     IQueryViewRegistry viewRegistry,
     IQuerySourceRegistry sourceRegistry)
     : IQueryableService
@@ -67,6 +68,15 @@ internal sealed class QueryableService(
         scope.ServiceProvider
             .GetRequiredService<IKaleidoCorrelationContextInitializer>()
             .Initialize(correlationAccessor.Current);
+
+        // And the request's caller, so a source's calls are made for that caller (ADR 0022, #428);
+        // outside a request there is none, and its calls stay the service's own.
+        if (inboundCaller.IsInboundRequest)
+        {
+            scope.ServiceProvider
+                .GetRequiredService<IKaleidoInboundCallerAccessor>()
+                .Set(inboundCaller.Principal, inboundCaller.Credential);
+        }
 
         // A type is exactly one capability (enforced at startup), so a view lookup and a
         // source lookup never both match.

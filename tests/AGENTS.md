@@ -16,7 +16,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Analyzers.UnitTests` | `tools/analyzers/Kaleido.Analyzers` (consumer `KAL2xxx` rules) |
 | `Kaleido.Analyzers.Source.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Source` (contributor `KAL0xxx` rules) |
 | `Kaleido.Analyzers.Testing.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Testing` (test `KAL1xxx` rules) |
-| `Kaleido.IntegrationTests` | cross-project DI and EF Core registration behavior; the consumer guide's examples (`Guide/`, over `docs/guide/examples`), run as each guide page states them |
+| `Kaleido.IntegrationTests` | cross-project DI and EF Core registration behavior; the calls a step handler or delegated source makes for the caller through a real host (`CallerCredentials/`); the consumer guide's examples (`Guide/`, over `docs/guide/examples`), run as each guide page states them |
 
 ## Warnings
 Test projects build like `src/`: a warning is an error, and IDE code-style rules (unused usings, naming,
