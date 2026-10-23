@@ -21,8 +21,9 @@ Out of scope: `docs/archive/` and `docs/published/` (historical artifacts, since
 - `tools/analyzers/README.md` and the three `AnalyzerReleases.Unshipped.md` files, against every
   `DiagnosticDescriptor`.
 - `tests/AGENTS.md`, `tests/FUNCTIONAL-TEST-AUDIT.md`, `.devin/skills/priorauth-login/SKILL.md`.
-- Samples as executable documentation: `samples/PriorAuth` (docs, every host, shared code),
-  `samples/ECommerce`, `samples/SQLite`, both UI READMEs.
+- Samples as executable documentation: the [PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) (docs, every host, shared code),
+  the [ECommerce sample](https://github.com/no1ross/Kaleido-Samples-ECommerce), the SQLite sample (since removed), both UI READMEs. The samples were in
+  this repository then; they now live in their own repositories (#95).
 - Every relative link and anchor in every Markdown file (scripted check: 231 links, all resolve).
 
 ## 2. Accurate as found
@@ -42,7 +43,7 @@ below).
 | Where | What the docs said | What the code does (evidence) |
 |---|---|---|
 | `src/Kaleido.Http/README.md` | `app.MapProcessor().RequireAuthorization(...)` / `MapQueryable()` for per-surface policies | Both are `internal` (`ProcessorEndpointRouteBuilderExtensions.cs:19`, `QueryableEndpointRouteBuilderExtensions.cs:26`); the example could not compile. Only `MapKaleidoHttp()` is public. Same claim removed from root `ARCHITECTURE.md`. |
-| `src/Kaleido.Provider.SQLite/README.md`, `UseSqliteKaleidoContextStore` XML docs | the store creates its schema with `EnsureCreated` | Nothing in the provider calls `EnsureCreated`; the host must (`samples/PriorAuth/Services/Intake/Program.cs`). Following the README gave "no such table" on the first save. The README now shows the host step; the root README states it. |
+| `src/Kaleido.Provider.SQLite/README.md`, `UseSqliteKaleidoContextStore` XML docs | the store creates its schema with `EnsureCreated` | Nothing in the provider calls `EnsureCreated`; the host must (the PriorAuth sample's Intake `Program.cs`). Following the README gave "no such table" on the first save. The README now shows the host step; the root README states it. |
 | `src/Kaleido.Http.Client/README.md`, `src/ARCHITECTURE.md` | `KaleidoQueryableClientException`, `KaleidoQueryableClientServiceCollectionExtensions` | Neither exists; both clients throw `KaleidoHttpClientException`; registration is in `KaleidoClientServiceCollectionExtensions.cs`. |
 | `src/Kaleido.Http.Client/README.md` | header `X-Kaleido-ProcessId` | `X-Kaleido-Process-Id` (`KaleidoCorrelationHeaders.cs`). |
 | `src/ARCHITECTURE.md` | `CountAsync` runs only when a page is explicitly requested; otherwise `TotalCount = items.Count` | A pageable capability always pages; a partial page totals `offset + count` (`QueryContextEngine.TotalCountAsync`). Contradicted `src/AGENTS.md`. |
@@ -58,7 +59,7 @@ below).
 | `docs/ANALYZERS.md` | KAL0009 also reports unused constructor parameters | The analyzer has only the readonly-field descriptor (`DependencyRetentionAnalyzer.cs`; unused parameters are IDE0060). KAL0002's allow-list also covers `FormatException` and MCP's `InputRequiredException`. |
 | `tools/analyzers/Kaleido.Analyzers.Testing/AnalyzerReleases.Unshipped.md` | KAL1011 missing; KAL1006 severity `Disabled` | KAL1011 exists (Error); KAL1006's descriptor severity is Error (the per-project disable lives in `.editorconfig`). |
 | `tests/AGENTS.md` | `ProcessAspNetCoreFixture` | The class is `ProcessorAspNetCoreFixture`. |
-| `samples/PriorAuth/AGENTS.md` | handoff calls `/processes/execute` with the original payload; `*.Artifacts/` projects; a "smaller compose file"; ports labelled `providersearch`, `memberservice` | The handler calls the entry step with a typed payload through the process client (`CaptureRequestedServiceHandler.cs`); no `*.Artifacts`; one compose file; the compose services are `provider` and `member`. |
+| the PriorAuth sample's `AGENTS.md` | handoff calls `/processes/execute` with the original payload; `*.Artifacts/` projects; a "smaller compose file"; ports labelled `providersearch`, `memberservice` | The handler calls the entry step with a typed payload through the process client (`CaptureRequestedServiceHandler.cs`); no `*.Artifacts`; one compose file; the compose services are `provider` and `member`. |
 | `src/Kaleido.Http.Abstractions/README.md`, `src/Kaleido.Http.Client/README.md` | "Where to look" paths `Process/Contracts/`, `Processor/IKaleidoProcessorClient.cs` (in the client) | Real paths: `Processor/ProcessContracts.cs`, `Queryable/QueryableContracts.cs`, client interfaces in `Kaleido.Http.Abstractions`. |
 | XML docs | `[KaleidoAuthorization]` applies to "query context"; `TypeFilter` filters "process steps"; `HttpClientErrorCodes` are `pro_`/`qry_` prefixed; `AggregatedRegistryResponse` refers to internal `AddProcessorClient()` | Sources (never contexts); steps and query sources/views; `httpclient_*` plus `missing_base_url`; `AddHttpClients()`. |
 | `KaleidoServiceOptions` error message, several READMEs | `o.ServiceName = "my-service"` | Valid: KAL2005 and the runtime share one rule, `[a-z0-9][a-z0-9_-]*` (#308); examples use `myservice`. |
@@ -107,7 +108,7 @@ distinct.
 - `src/Kaleido.Provider.SQLite/README.md`: the usage example creates the schema.
 - `docs/AUTHORIZATION.md`: `DefaultAuthorization` example uses named arguments for a role.
 - `src/Kaleido.Http.Client/README.md`: added the untyped step call.
-- `samples/SQLite`: set the missing `ServiceName`. The sample failed at startup
+- The SQLite sample (since removed): set the missing `ServiceName`. The sample failed at startup
   (`invalid_service_name`); it now starts and serves its registry. Its docs now say what it is: a
   queryable host over CSV records, not a SQLite-store sample.
 - PriorAuth hosts (9): a missing connection string threw Kaleido's `InvalidServiceName`; they now
@@ -115,7 +116,7 @@ distinct.
 - PriorAuth Radiology: removed a debug `Console.WriteLine` from a step handler.
 - ECommerce: a handler threw `InvalidOperationException` (now `KaleidoFrameworkException`); a
   catch-all that only rethrew was removed from the seeder.
-- `samples/PriorAuth/priorauth-ui/README.md`: a sample section above the Angular boilerplate.
+- The PriorAuth UI's `README.md`: a sample section above the Angular boilerplate.
 
 ## 7. Architecture documentation corrected
 
@@ -134,7 +135,7 @@ Project dependencies were checked against every `ProjectReference`.
 - MCP error codes are owned by the MCP README; `docs/ERROR_CODES.md` points to it instead of
   copying the table.
 - The SQLite schema step is explained once (provider README) and referenced from the root README.
-- `samples/PriorAuth/AGENTS.md` handoff text now agrees with `HANDOFF.md` and the code.
+- The PriorAuth sample's `AGENTS.md` handoff text now agrees with `HANDOFF.md` and the code.
 
 ## 9. Documentation added
 

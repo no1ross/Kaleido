@@ -76,12 +76,22 @@ sections.
 ### Added
 - Shared registry snapshots: `AddDistributedRegistrySnapshots()` stores registry snapshots in the host's `IDistributedCache` (e.g. Redis), so the replicas of a router share one snapshot and one round of downstream checks; an unreachable cache never fails a registry read. Client copies are keyed per consuming service (`kaleido-client:{ServiceName}:{clientName}`) (#275).
 - Consumer guide (`docs/guide`): concepts, events and the outbox, persistence, deployment and choosing options, around one orders service whose examples are compiled, checked against the pages in CI (`tools/docs/check-guide-snippets.py`) and run by tests (#409).
-- Warnings fail the build in `tests/` and `samples/`; IDE code-style rules run in `tests/` and `tools/` (#406).
+- Warnings fail the build in `tests/` and in the samples; IDE code-style rules run in `tests/` and `tools/` (#406).
 - The samples count full query pages with one `SELECT COUNT`; the documented EF Core executor also serves non-EF sources in the same host (#352).
 - Front-door provenance on events and spans: `Origin`/`OriginTool` end to end, `CallerActor` per hop (#403).
 - MCP trust-boundary, instructions-resource and integration documentation; functional trust tests (#403).
 - Help links on every consumer analyzer rule; a clean-consumer package test in CI (#401).
 - Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
+
+### Changed
+- **The full samples live in their own repositories** (#95):
+  [Kaleido-Samples-PriorAuth](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and
+  [Kaleido-Samples-ECommerce](https://github.com/no1ross/Kaleido-Samples-ECommerce), consuming the
+  preview packages. Here, the consumer guide's compiled examples ([`docs/guide`](docs/guide/README.md))
+  are the task-focused examples, and the repository has no `samples/` folder: the SQLite starter
+  sample was removed. Database files were removed from the repository's history.
+- **The repository builds with the .NET 9 SDK** until the .NET 10 SDK is available again (#424); the
+  tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
 - The PriorAuth UI sends an `Idempotency-Key` with every execute call, reuses it on its own retries and for a double submit, and reloads the state when an earlier attempt's outcome is unknown (#396).

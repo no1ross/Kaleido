@@ -19,7 +19,7 @@
 	<!-- EXT-05: this reference exists only so Kaleido.nupkg declares a package
 	     dependency on Kaleido.Analyzers, which flows the consumer rules to every
 	     service that installs Kaleido. It is not an Analyzer item, so the rules do
-	     not run on the framework (the samples load them in samples/Directory.Build.props).
+	     not run on the framework (the consumer guide's examples load them as an Analyzer item).
 	     Restore ignores ReferenceOutputAssembly=false references, so pack would drop the
 	     dependency; instead IncludeAssets="analyzers" keeps the analyzer DLL out of the
 	     compile and out of downstream projects, PrivateAssets="none" lets the analyzers

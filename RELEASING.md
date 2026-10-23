@@ -17,7 +17,7 @@ Consumers of the feed add it as a NuGet source with a token that can read packag
 ## What the workflow guarantees
 
 Every run, from a clean checkout of the tag (or master, for a dry run):
-1. restores, builds and tests the CI solution (`Kaleido.CI.slnf`) in Release;
+1. restores, builds and tests the solution (`Kaleido.slnx`) in Release;
 2. packs the eight packages and verifies them ([`tools/packaging/Test-PackageConsumer.ps1`](tools/packaging/Test-PackageConsumer.ps1)):
    contents (assembly, XML docs, README, symbols), a clean consumer build with the consumer analyzer and
    no repository-only rule, and deterministic source paths with Source Link in every symbols package;

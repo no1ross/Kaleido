@@ -12,40 +12,7 @@
   <Folder Name="/docs/guide/">
     <Project Path="docs/guide/examples/Kaleido.Guide.Examples.csproj" />
   </Folder>
-  <Folder Name="/samples/">
-    <File Path="samples/Directory.Build.props" />
-    <File Path="samples/Directory.Packages.props" />
-    <Project Path="samples/SQLite/Kaleido.Samples.SQLite.csproj" />
-  </Folder>
-  <Folder Name="/samples/ECommerce/">
-    <Project Path="samples/ECommerce/Data/Kaleido.Samples.ECommerce.Data.csproj" />
-    <Project Path="samples/ECommerce/NetCoreApp/Kaleido.Samples.ECommerce.NetCoreApp.csproj" />
-    <Project Path="samples/ECommerce/Process/Kaleido.Samples.ECommerce.Process.csproj" />
-    <Project Path="samples/ECommerce/Queryable/Kaleido.Samples.ECommerce.Queryable.csproj" />
-    <Project Path="samples/ECommerce/Shared/Kaleido.Samples.ECommerce.Shared.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/">
-    <File Path="samples/PriorAuth/AGENTS.md" />
-    <Project Path="samples/PriorAuth/Common/Kaleido.Samples.PriorAuth.Common.csproj" />
-    <Project Path="samples/PriorAuth/Compose/Kaleido.Samples.PriorAuth.Compose.dcproj" Id="dfa3ef7b-d8d9-8b28-30b1-e97146d284f8">
-      <Build />
-    </Project>
-    <Project Path="samples/PriorAuth/EventCollector/Kaleido.Samples.PriorAuth.EventCollector.csproj" />
-    <Project Path="samples/PriorAuth/Router/Kaleido.Samples.PriorAuth.Router.csproj" />
-    <Project Path="samples/PriorAuth/Seeder/Kaleido.Samples.PriorAuth.Seeder.csproj" />
-  </Folder>
-  <Folder Name="/samples/PriorAuth/Services/">
-    <Project Path="samples/PriorAuth/Services/CodeSet/Kaleido.Samples.PriorAuth.CodeSet.csproj" />
-    <Project Path="samples/PriorAuth/Services/Configuration/Kaleido.Samples.PriorAuth.Configuration.csproj" />
-    <Project Path="samples/PriorAuth/Services/History/Kaleido.Samples.PriorAuth.History.csproj" />
-    <Project Path="samples/PriorAuth/Services/Intake/Kaleido.Samples.PriorAuth.Intake.csproj" />
-    <Project Path="samples/PriorAuth/Services/Member/Kaleido.Samples.PriorAuth.Member.csproj" />
-    <Project Path="samples/PriorAuth/Services/Provider/Kaleido.Samples.PriorAuth.Provider.csproj" />
-    <Project Path="samples/PriorAuth/Services/Radiology/Kaleido.Samples.PriorAuth.Radiology.csproj" />
-    <Project Path="samples/PriorAuth/Services/ReferenceData/Kaleido.Samples.PriorAuth.ReferenceData.csproj" />
-  </Folder>
   <Folder Name="/Solution Items/">
-    <File Path=".dockerignore" />
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />

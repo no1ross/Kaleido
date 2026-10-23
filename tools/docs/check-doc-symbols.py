@@ -22,7 +22,6 @@ ALLOWED = {
     "KaleidoProcessStepREgistry": "the historical endpoint-name typo KAL0017 prevents",
     "QueryContextSource": "type-name suffix the MCP adapter strips from tool names",
     "QueryViewSource": "type-name suffix the MCP adapter strips from tool names",
-    "ProcessorMappings": "named in the PriorAuth handoff guide as a setting that does not exist",
     "IQueryable": ".NET type (System.Linq) that query sources return",
 }
 

@@ -96,10 +96,10 @@ Core runtime concerns live in `Kaleido`. HTTP transport (DI, middleware, routes)
 - `tests/Kaleido.IntegrationTests` — DI and EF Core integration tests
 - `tests/Kaleido.Analyzers.*.UnitTests` — analyzer tests
 
-### Samples
-- [`samples/PriorAuth`](./samples/PriorAuth) — the reference sample: several services, a router with the MCP adapter, and an Angular UI
-- [`samples/ECommerce`](./samples/ECommerce) and [`samples/kaleido-sample-ecommerce-ui`](./samples/kaleido-sample-ecommerce-ui) — a single-service sample with its UI
-- [`samples/SQLite`](./samples/SQLite) — a minimal queryable host over CSV records covering every field type, filter operator and match mode (despite the folder name, it uses the default in-memory store)
+### Examples and samples
+- [`docs/guide/examples`](./docs/guide/examples) — the consumer guide's examples: one orders service, compiled with the solution and run by `tests/Kaleido.IntegrationTests/Guide`
+- [`Kaleido-Samples-PriorAuth`](https://github.com/no1ross/Kaleido-Samples-PriorAuth) — the reference sample, in its own repository: several services, a router with the MCP adapter, and an Angular UI, consuming the Kaleido packages
+- [`Kaleido-Samples-ECommerce`](https://github.com/no1ross/Kaleido-Samples-ECommerce) — a single-service sample with its UI, in its own repository
 
 ---
 

@@ -41,7 +41,7 @@ In scope: the packages built from `src/` (`Kaleido`, `Kaleido.Http`, `Kaleido.Ht
 
 Out of scope:
 
-- the samples (`samples/`), which run with development sign-in and are not meant to be deployed;
+- the samples ([Kaleido-Samples-PriorAuth](https://github.com/no1ross/Kaleido-Samples-PriorAuth), [Kaleido-Samples-ECommerce](https://github.com/no1ross/Kaleido-Samples-ECommerce)), which run with development sign-in and are not meant to be deployed;
 - behavior Kaleido documents as the host's responsibility: authentication, case-level access
   ([process ids are bearer handles](./docs/AUTHORIZATION.md#threat-model-the-process-id-is-a-bearer-handle)),
   production storage ([`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) is a

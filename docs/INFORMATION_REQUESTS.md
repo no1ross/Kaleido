@@ -213,7 +213,7 @@ KAL2014/KAL2015 (describe step and query inputs). See [`ANALYZERS.md`](./ANALYZE
 
 ## Sample
 
-PriorAuth's `CaptureMriInfoStep` and `ConfirmCtInsteadOfMriStep` are information steps. The
+In the [PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) (its own repository), `CaptureMriInfoStep` and `ConfirmCtInsteadOfMriStep` are information steps. The
 PriorAuth UI renders any request with one generic form (`information-request-form`). The
 sample's question builder is interim: the MRI questions come from configuration and the CT
 confirmation is written in code. #209 replaces it with a generic, configuration-driven builder.

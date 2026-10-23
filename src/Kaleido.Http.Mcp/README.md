@@ -178,7 +178,7 @@ The ids never pass through the model. Clients without forms keep the instruction
 **Lookups guide; services check.** A lookup reduces mistakes; it does not enforce anything. The
 continuation state of a guided lookup is opaque but not trusted, and an agent can still pass ids
 itself. The service that owns the step checks what it receives and rejects a mismatch (the
-PriorAuth sample rejects an enrollment that is not the member's, and a provider location that is
+[PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) rejects an enrollment that is not the member's, and a provider location that is
 not the provider's or not offered for the request, and reads names and network status from the
 chosen result instead of taking them from the caller).
 
@@ -321,8 +321,8 @@ app.Run();
 ```
 
 An agent connecting to `/mcp` signs the user in, lists the tools that user may use across both
-services, and every call reaches the service with a token for that user and service. The PriorAuth
-sample's router is a complete, runnable version (with dev tokens and `ForwardCallerToken()`).
+services, and every call reaches the service with a token for that user and service. The
+[PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth)'s router is a complete, runnable version (with dev tokens and `ForwardCallerToken()`).
 
 ## Security
 

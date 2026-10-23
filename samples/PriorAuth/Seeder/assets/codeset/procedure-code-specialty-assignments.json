@@ -1,9 +1,0 @@
-[
-  { "CodeValue": "72141", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
-  { "CodeValue": "72142", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
-  { "CodeValue": "72156", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
-  { "CodeValue": "73721", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
-  { "CodeValue": "73722", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
-  { "CodeValue": "73723", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true },
-  { "CodeValue": "70450", "CodeSystem": "Cpt", "SpecialtyCode": "RAD", "IsPrimary": true }
-]

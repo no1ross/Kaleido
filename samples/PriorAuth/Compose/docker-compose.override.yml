@@ -1,6 +1,0 @@
-# Local overrides for docker-compose.yml (loaded automatically by `podman compose`).
-# The containers run as Production, so they read each service's appsettings.json (container
-# addresses, /app/data paths, the dashboard's OTLP endpoint). Do not set
-# ASPNETCORE_ENVIRONMENT=Development here: that loads appsettings.Development.json, the settings
-# for `dotnet run` on this machine.
-services: {}
