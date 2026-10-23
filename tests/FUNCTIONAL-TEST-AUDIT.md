@@ -56,7 +56,9 @@ endpoint (`IdempotentExecutionTests`, real SQLite), event outbox delivery/retry/
 redaction (`EventOutboxTests`), endpoint authorization in Authenticated mode
 (`AuthorizationEndpointTests`), correlation echo on success (`CorrelationEchoTests`,
 `CorrelationIdentityTrustTests`), registry ETag/304/strict-on-failure (`RegistryEndpointTests`),
-call credentials per purpose and destination (`CallCredentialTests`), delegated paging pass-through
+call credentials per purpose and destination (`CallCredentialTests`), and for calls a step handler or a
+delegated source makes during a caller's request (`Kaleido.IntegrationTests`' `HandlerAndSourceCallTests`,
+#428: until then each ran in a scope without the caller), delegated paging pass-through
 (`DelegatedQuerySourceTests`), MCP tool listing/hints/caller forwarding/front door
 (`McpEndpointTests`, `McpFrontDoorTests`).
 

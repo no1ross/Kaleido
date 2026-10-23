@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
@@ -406,9 +407,87 @@ public sealed class ProcessorStepInvokerTests
         Assert.Equal("route", seen.CallingStepName);
     }
 
+    // #428: the handler's outbound calls are made for the request's caller (ADR 0022) only if its
+    // scope knows that caller, as it knows the request's correlation.
+    [Fact]
+    public async Task ExecuteAsync_CarriesTheRequestsInboundCallerIntoTheHandlerScope()
+    {
+        var recorder = new InboundCallerRecorder();
+        var bob = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "bob")], "test"));
+        var invoker = CreateSut(
+            services =>
+            {
+                services.AddSingleton(recorder);
+                services.AddTransient<InboundCallerCapturingHandler>();
+            },
+            inboundCaller: InboundCaller(isInboundRequest: true, bob, "Bearer bob"));
+
+        await invoker.ExecuteAsync(
+            CreateRegistration<InboundCallerCapturingHandler>(),
+            new TestStep(),
+            CreateContext(), TestContext.Current.CancellationToken);
+
+        Assert.True(recorder.IsInboundRequest);
+        Assert.Same(bob, recorder.Principal);
+        Assert.Equal("Bearer bob", recorder.Credential);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_AnAnonymousInboundCaller_StaysAnonymousInTheHandlerScope()
+    {
+        var recorder = new InboundCallerRecorder();
+        var invoker = CreateSut(
+            services =>
+            {
+                services.AddSingleton(recorder);
+                services.AddTransient<InboundCallerCapturingHandler>();
+            },
+            inboundCaller: InboundCaller(isInboundRequest: true, principal: null, credential: null));
+
+        await invoker.ExecuteAsync(
+            CreateRegistration<InboundCallerCapturingHandler>(),
+            new TestStep(),
+            CreateContext(), TestContext.Current.CancellationToken);
+
+        Assert.True(recorder.IsInboundRequest);
+        Assert.Null(recorder.Principal);
+        Assert.Null(recorder.Credential);
+    }
+
+    // Outside a request (no inbound caller), the handler's calls stay the service's own.
+    [Fact]
+    public async Task ExecuteAsync_OutsideARequest_LeavesTheHandlerScopeWithoutAnInboundCaller()
+    {
+        var recorder = new InboundCallerRecorder();
+        var invoker = CreateSut(
+            services =>
+            {
+                services.AddSingleton(recorder);
+                services.AddTransient<InboundCallerCapturingHandler>();
+            });
+
+        await invoker.ExecuteAsync(
+            CreateRegistration<InboundCallerCapturingHandler>(),
+            new TestStep(),
+            CreateContext(), TestContext.Current.CancellationToken);
+
+        Assert.False(recorder.IsInboundRequest);
+        Assert.Null(recorder.Principal);
+    }
+
+    private static IKaleidoInboundCallerAccessor InboundCaller(bool isInboundRequest, ClaimsPrincipal? principal, string? credential)
+    {
+        var accessor = new Mock<IKaleidoInboundCallerAccessor>();
+        accessor.SetupGet(x => x.IsInboundRequest).Returns(isInboundRequest);
+        accessor.SetupGet(x => x.Principal).Returns(principal);
+        accessor.SetupGet(x => x.Credential).Returns(credential);
+        return accessor.Object;
+    }
+
     private static ProcessorStepInvoker CreateSut(
         Action<IServiceCollection>? configureServices = null,
-        KaleidoCorrelationContext? requestCorrelation = null)
+        KaleidoCorrelationContext? requestCorrelation = null,
+        IKaleidoInboundCallerAccessor? inboundCaller = null)
     {
         var services =
             new ServiceCollection();
@@ -418,6 +497,7 @@ public sealed class ProcessorStepInvokerTests
         services.AddScoped<KaleidoCorrelationContextAccessor>();
         services.AddScoped<IKaleidoCorrelationContextAccessor>(sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
         services.AddScoped<IKaleidoCorrelationContextInitializer>(sp => sp.GetRequiredService<KaleidoCorrelationContextAccessor>());
+        services.AddScoped<IKaleidoInboundCallerAccessor, KaleidoInboundCallerAccessor>();
 
         configureServices?.Invoke(services);
 
@@ -440,12 +520,45 @@ public sealed class ProcessorStepInvokerTests
         return new ProcessorStepInvoker(
             observability,
             scopeFactory,
-            requestAccessor.Object);
+            requestAccessor.Object,
+            inboundCaller ?? InboundCaller(isInboundRequest: false, principal: null, credential: null));
     }
 
     private sealed class CorrelationRecorder
     {
         public KaleidoCorrelationContext? Seen { get; set; }
+    }
+
+    private sealed class InboundCallerRecorder
+    {
+        public bool IsInboundRequest { get; set; }
+
+        public ClaimsPrincipal? Principal { get; set; }
+
+        public string? Credential { get; set; }
+    }
+
+    // What the handler's own scope knows about the inbound caller: what its clients would act on.
+    private sealed class InboundCallerCapturingHandler(
+        InboundCallerRecorder recorder,
+        IKaleidoInboundCallerAccessor inboundCaller) :
+        IProcessStepHandler<TestStep, TestStepResponse>
+    {
+        public Task<ProcessStepHandlerResult<TestStepResponse>> ExecuteAsync(
+            TestStep processStep,
+            ProcessStepContext context,
+            CancellationToken cancellationToken = default)
+        {
+            recorder.IsInboundRequest = inboundCaller.IsInboundRequest;
+            recorder.Principal = inboundCaller.Principal;
+            recorder.Credential = inboundCaller.Credential;
+
+            return Task.FromResult(
+                new ProcessStepHandlerResult<TestStepResponse>
+                {
+                    Succeeded = true
+                });
+        }
     }
 
     private sealed class CorrelationCapturingHandler(

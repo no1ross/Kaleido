@@ -35,7 +35,8 @@ internal sealed record StepInvocationResult
 internal sealed class ProcessorStepInvoker(
     IProcessorObservability observability,
     IServiceScopeFactory scopeFactory,
-    IKaleidoCorrelationContextAccessor correlationAccessor)
+    IKaleidoCorrelationContextAccessor correlationAccessor,
+    IKaleidoInboundCallerAccessor inboundCaller)
     : IProcessStepInvoker
 {
 
@@ -70,6 +71,15 @@ internal sealed class ProcessorStepInvoker(
                     ProcessId = context.ProcessId,
                     ExecutingStepName = registration.Metadata.Name,
                 });
+
+        // And the request's caller, so the handler's calls are made for that caller (ADR 0022, #428);
+        // outside a request there is none, and its calls stay the service's own.
+        if (inboundCaller.IsInboundRequest)
+        {
+            scope.ServiceProvider
+                .GetRequiredService<IKaleidoInboundCallerAccessor>()
+                .Set(inboundCaller.Principal, inboundCaller.Credential);
+        }
 
         var handler =
             scope.ServiceProvider.GetRequiredService(

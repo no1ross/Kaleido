@@ -236,6 +236,12 @@ These are framework invariants — code that violates them produces split traces
   own DI scope, initialized with the request's `KaleidoCorrelationContext` (the handler's with its
   process id and executing step). An empty scope would lose the caller, the request id and the
   process id: no record-level filtering by caller, no forwarding of the ids downstream (#413).
+  The scope also gets the request's **inbound caller** (`IKaleidoInboundCallerAccessor`: principal
+  and presented credential), so a call the handler or source makes is made for that caller
+  (`OnBehalfOfCaller`, ADR 0022). Without it every such call goes out as the service's own: an
+  anonymous caller would reach the downstream with the service's credential, and a step that
+  requires a user behind the call would refuse it (#428). Outside a request (the event relay, a
+  hosted service) there is no inbound caller, and the calls stay the service's own.
 - **Exactly one RequestId per HTTP request** — `KaleidoCorrelationEndpointFilter` echoes the inbound
   `X-Kaleido-Request-Id` if present, else generates one. Handlers and downstream calls must
   propagate the ambient `RequestId`, never mint a second one.

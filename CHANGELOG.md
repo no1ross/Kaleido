@@ -94,6 +94,11 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Calls made by step handlers and query sources go out for the caller** (#428): a handler's or a
+  source's call to another service was the service's own call (its credential, `ServiceOwn`), because
+  their DI scope did not get the request's inbound caller. Steps that need a user behind the call
+  (an on-behalf-of policy) refused every such call, and an anonymous caller reached the downstream with
+  the service's credential. Both scopes now carry the caller, as they carry the correlation (ADR 0022).
 - The PriorAuth UI sends an `Idempotency-Key` with every execute call, reuses it on its own retries and for a double submit, and reloads the state when an earlier attempt's outcome is unknown (#396).
 - Query sources and views see the request's correlation (the caller, request id and process id):
   their DI scope started empty, so a source could not filter by caller and a delegated source did not
