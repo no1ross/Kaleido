@@ -9,17 +9,17 @@ it links. Everyone taking part follows the [code of conduct](./CODE_OF_CONDUCT.m
 
 ## Set up
 
-- Install the **.NET 10 SDK** (pinned in [`global.json`](./global.json)); the packages target
+- Install the **.NET 9 SDK** (pinned in [`global.json`](./global.json); back to .NET 10 once it is available again, #424); the packages target
   `net8.0`, so the .NET 8 runtime is needed to run the tests.
 - For the sample UIs (`samples/PriorAuth/priorauth-ui`, `samples/kaleido-sample-ecommerce-ui`):
   Node.js with npm.
 
 ```bash
 dotnet build Kaleido.slnx
-dotnet test Kaleido.slnx --no-build --   # the -- routes dotnet test through Microsoft Testing Platform
+./tools/test/Run-Tests.ps1             # runs every test project (PowerShell; pwsh on Linux and macOS)
 ```
 
-If tests report "Zero tests ran", see [AGENTS.md](./AGENTS.md#when-tests-still-report-zero-tests-ran).
+If a test project fails to run or reports zero tests, see [AGENTS.md](./AGENTS.md#when-a-test-project-fails-to-run-or-reports-zero-tests).
 
 ## Work starts with an issue
 
@@ -32,7 +32,7 @@ silently widening the change ([how to classify it](./AGENTS.md#tracking-work-dis
 Every commit passes the gate on its own (a later commit fixing an earlier one does not count):
 
 1. `dotnet build Kaleido.slnx --no-incremental`: 0 errors, **0 warnings** (warnings are errors).
-2. `dotnet test Kaleido.slnx --no-build --`: 0 failed, with a non-zero test count.
+2. `./tools/test/Run-Tests.ps1`: 0 failed, with a non-zero test count.
 3. A touched sample UI: `npm run build` and `npm test` in its folder.
 4. Changed docs: `python3 tools/docs/check-doc-symbols.py` (every Kaleido name in the docs exists).
 

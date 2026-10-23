@@ -112,11 +112,13 @@ jobs:
     - name: Build
       run: dotnet build Kaleido.CI.slnf --configuration Release --no-restore
 
-    # xunit.v3 runs under Microsoft.Testing.Platform (global.json test.runner);
-    # VSTest collectors are ignored there, so coverage uses the MTP extension
-    # (Microsoft.Testing.Extensions.CodeCoverage in tests/Directory.Build.props).
+    # xunit.v3 runs under Microsoft.Testing.Platform (UseMicrosoftTestingPlatformRunner); coverage
+    # uses the MTP extension (Microsoft.Testing.Extensions.CodeCoverage in tests/Directory.Build.props).
+    # The .NET 9 SDK's dotnet test cannot run MTP v2, so the script runs each test project directly
+    # and writes the cobertura files to TestResults/ (#424).
     - name: Test
-      run: dotnet test --solution Kaleido.CI.slnf --configuration Release --no-build -- --coverage --coverage-output-format cobertura
+      shell: pwsh
+      run: ./tools/test/Run-Tests.ps1 -Configuration Release -Coverage
 
     # Merge per-project cobertura into a union report. Summing hits across files
     # would double-count shared src assemblies; reportgenerator merges hits.

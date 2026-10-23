@@ -184,9 +184,9 @@ Or build the solution:
 dotnet build Kaleido.slnx
 ```
 
-Run tests — the `--` is required to trigger MTP mode (without it dotnet uses VSTest and finds zero tests):
+Run tests (every test project, one summary; the .NET 9 SDK's `dotnet test` cannot run them, #424):
 ```
-dotnet test Kaleido.slnx --
+./tools/test/Run-Tests.ps1
 ```
 
 If tests report zero, run `full_clean.cmd` from the repo root to clear stale bin/obj, then rebuild. See root `AGENTS.md` for details.

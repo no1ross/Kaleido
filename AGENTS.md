@@ -195,7 +195,7 @@ Use tests to understand behavioral expectations and invariants.
 ## Build and test commands
 
 ### SDK and target framework
-- **Building Kaleido needs the .NET 10 SDK** (`global.json`, `rollForward: latestFeature`). That's a requirement for framework contributors only.
+- **Building Kaleido needs the .NET 9 SDK** (`global.json`: 9.0.300, `rollForward: latestFeature`), for now: the repository moves back to the .NET 10 SDK when it is available again; #424 lists what to revert. That's a requirement for framework contributors only.
 - **The published packages target `net8.0`** (`Directory.Build.props`), so any consumer on .NET 8 or later can use them. We can require a newer SDK of contributors, but we can't require consumers to move.
 - **These are separate settings on purpose.** Don't raise `TargetFramework` just because the SDK is newer; changing it is an explicit owner decision.
 
@@ -206,25 +206,21 @@ dotnet build Kaleido.slnx
 
 ### Run tests
 
-Test projects use xUnit v3 with **Microsoft Testing Platform (MTP)**. The `--` separator after `dotnet test` is required — it signals dotnet to route through MTP instead of VSTest:
+Test projects use xUnit v3 on **Microsoft Testing Platform (MTP) v2**: each test project is an executable. The .NET 9 SDK's `dotnet test` cannot run MTP v2, so a script runs every built test project and prints one summary (CI and the release workflow run the same script):
 
 ```
-dotnet test Kaleido.slnx --
+dotnet build Kaleido.slnx
+./tools/test/Run-Tests.ps1                              # Debug; -Configuration Release to match CI
 ```
 
-Without `--`, dotnet uses VSTest discovery which cannot see MTP projects and reports "Zero tests ran". The CI workflow (`build.yml`) already includes `--` (passing `--coverage` after it), which is why it works on GitHub but not when running `dotnet test` bare locally.
-
-Add `--no-build` when the solution is already built:
-```
-dotnet test Kaleido.slnx --no-build --
-```
+A project that fails prints its full output; one that runs no test fails too. To run a single project, run its assembly: `dotnet tests/<Project>/bin/Debug/net8.0/<Project>.dll` (MTP options such as `--filter-class` go after it).
 
 ### Per-commit quality gate
 
 Every commit must pass this gate on its own. A later commit fixing an earlier one doesn't count.
 
 1. **Fresh build:** `dotnet build Kaleido.slnx --no-incremental` → **0 errors, 0 warnings**.
-2. **All tests pass:** `dotnet test Kaleido.slnx --no-build --` → 0 failed, with a non-zero test count.
+2. **All tests pass:** `./tools/test/Run-Tests.ps1` → `Passed!`, 0 failed, with a non-zero test count.
 3. **If the commit touches a UI sample:** `npm run build` (0 errors) and `npm test` in that UI folder.
 4. **Record the result in the commit message body**, e.g. `Gate: build 0 errors / 0 warnings; tests 812 passed; priorauth-ui build + test OK`.
 
@@ -241,17 +237,17 @@ IDE0005 (unused usings) needs `GenerateDocumentationFile`, so `tests/` and `tool
 
 CI (`build.yml`) also checks that every Kaleido type or member named in the Markdown docs exists in the sources (`python3 tools/docs/check-doc-symbols.py`; ADRs and audit records are skipped as historical; a deliberate non-symbol in code style goes in the script's `ALLOWED` list with its reason). Run it before committing doc changes.
 
-CI (`build.yml`) also enforces a **coverage gate**: merged line coverage of the shipped `src/` assemblies (tests, analyzers and samples excluded) must be at least the `COVERAGE_FLOOR` (95%), or the build fails. Raise the floor, never lower it. To check locally, run the tests with `-- --coverage --coverage-output-format cobertura` and merge the reports with `reportgenerator` using the workflow's `-assemblyfilters`.
+CI (`build.yml`) also enforces a **coverage gate**: merged line coverage of the shipped `src/` assemblies (tests, analyzers and samples excluded) must be at least the `COVERAGE_FLOOR` (95%), or the build fails. Raise the floor, never lower it. To check locally, run `./tools/test/Run-Tests.ps1 -Coverage` (cobertura files in `TestResults/`) and merge the reports with `reportgenerator` using the workflow's `-assemblyfilters`.
 
 Never delete `bin`/`obj` folders inside `node_modules`; if a clean is needed, exclude `node_modules` (see below).
 
-### When tests still report "Zero tests ran"
+### When a test project fails to run or reports zero tests
 
 Stale bin/obj folders are the most common cause after a failed or partial build. Run `full_clean.cmd` from the repo root to nuke all bin/obj folders and restore, then rebuild:
 ```
 full_clean.cmd --no-pause   # deletes bin/, obj/, .vs/, TestResults/ (not inside node_modules), restores Kaleido.slnx, runs npm ci per UI
 dotnet build Kaleido.slnx
-dotnet test Kaleido.slnx --no-build --
+./tools/test/Run-Tests.ps1
 ```
 
 **Intent of `full_clean.cmd`:** reset the whole repository to a clean, ready-to-build state. It removes all build output and restores **everything**: the .NET solution *and* every Angular/npm site (`samples/PriorAuth/priorauth-ui`, `samples/kaleido-sample-ecommerce-ui`). After it runs, `dotnet build`, `dotnet test`, `npm run build` and `npm test` should all work with no extra steps. Stop any running `ng serve` first, because `npm ci` replaces `node_modules`.

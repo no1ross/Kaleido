@@ -415,6 +415,8 @@ public sealed class KaleidoToolInvokerTests
         Assert.Empty(queries);
     }
 
+    private static readonly string[] ProcessIdRequired = ["processId"];
+
     private static readonly KaleidoTool ScopedSearch = Search with
     {
         Definition = new Tool
@@ -424,7 +426,7 @@ public sealed class KaleidoToolInvokerTests
             {
                 type = "object",
                 properties = new { processId = new { type = "string", description = "The visit this search is for." } },
-                required = new[] { "processId" }
+                required = ProcessIdRequired
             })
         },
         ParametersTakeProcessId = true
@@ -1555,7 +1557,7 @@ public sealed class KaleidoToolInvokerTests
             client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
                 .Callback((string step, JsonElement body, Guid? processId, CancellationToken _) =>
                     posts.Add((service, step, JsonNode.Parse(body.GetRawText()) ?? new JsonObject(), processId)))
-                .ReturnsAsync(() => queue.Dequeue());
+                .ReturnsAsync(queue.Dequeue);
         }
     }
 
