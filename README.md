@@ -233,7 +233,7 @@ app.MapKaleidoMcp("/mcp");
 app.Run();
 ```
 
-Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. `AddMcp()` refuses to start without a call-credential registration: `ForwardCallerToken()` sends the user's token unchanged, `AddCallCredentials<TProvider>()` exchanges it per service ([ADR 0022](docs/decisions/0022-call-credentials.md)). Each `RoutePrefix` must match the downstream `ServiceName`; adjust addresses and ports for your environment.
+Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. `AddMcp()` refuses to start without a call-credential registration: `ForwardCallerToken()` sends the user's token unchanged, `AddCallCredentials<TProvider>()` exchanges it per service ([ADR 0022](docs/decisions/0022-call-credentials.md)). `ForwardCallerToken()` suits this local, single-audience example; an OAuth-protected MCP endpoint must not pass its token through to the services and registers `AddCallCredentials<TProvider>()` instead ([ADR 0027](docs/decisions/0027-forward-caller-token-kept-with-guards.md)). Use `https` base URLs outside local development. Each `RoutePrefix` must match the downstream `ServiceName` (refused at startup otherwise); adjust addresses and ports for your environment.
 
 See the [HTTP client](src/Kaleido.Http.Client/README.md) and [MCP adapter](src/Kaleido.Http.Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
 

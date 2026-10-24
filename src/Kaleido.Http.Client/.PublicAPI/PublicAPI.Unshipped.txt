@@ -2,6 +2,7 @@
 const Kaleido.Http.Client.HttpClientErrorCodes.ConfiguredCredentialForCaller = "httpclient_configured_credential_for_caller" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.Conflict = "httpclient_conflict" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.EmptyResponse = "httpclient_empty_response" -> string!
+const Kaleido.Http.Client.HttpClientErrorCodes.InvalidRoutePrefix = "httpclient_invalid_route_prefix" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.MissingBaseUrl = "missing_base_url" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.RequestFailed = "httpclient_request_failed" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.UnknownClient = "httpclient_unknown_client" -> string!

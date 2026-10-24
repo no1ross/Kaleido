@@ -126,6 +126,25 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
         Assert.Equal(ConfigurationErrorCodes.InvalidServiceName, exception.Code);
     }
 
+    // The same rule, shared with Kaleido.Http.Client for route prefixes (#434).
+    [Theory]
+    [MemberData(nameof(ServiceNameCases.Valid), MemberType = typeof(ServiceNameCases))]
+    public void IsValidServiceName_ValidName_IsTrue(string serviceName)
+    {
+        Assert.True(KaleidoServiceOptions.IsValidServiceName(serviceName));
+    }
+
+    [Theory]
+    [MemberData(nameof(ServiceNameCases.Invalid), MemberType = typeof(ServiceNameCases))]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("../member")]
+    [InlineData("member/x")]
+    public void IsValidServiceName_InvalidName_IsFalse(string? serviceName)
+    {
+        Assert.False(KaleidoServiceOptions.IsValidServiceName(serviceName));
+    }
+
     [Theory]
     [InlineData("MyService", "myservice")]
     [InlineData("My Svc.V2", "mysvcv2")]

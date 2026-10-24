@@ -172,7 +172,7 @@ public class KaleidoServiceOptions
                 "or via the Kaleido:ServiceName configuration key.");
         }
 
-        if (!IsLowercaseLetterOrDigit(serviceName[0]) || !serviceName.All(c => IsLowercaseLetterOrDigit(c) || c is '-' or '_'))
+        if (!IsValidServiceName(serviceName))
         {
             var suggestion = new string([.. serviceName.ToLowerInvariant().Where(c => IsLowercaseLetterOrDigit(c) || c is '-' or '_')]).TrimStart('-', '_');
             throw new KaleidoConfigurationException(
@@ -182,6 +182,13 @@ public class KaleidoServiceOptions
                 (suggestion.Length > 0 ? $" Use '{suggestion}' instead." : string.Empty));
         }
     }
+
+    // The service-name rule, shared with the transports: a client's route prefix must equal a service
+    // name, so Kaleido.Http.Client validates RoutePrefix with it (#434).
+    internal static bool IsValidServiceName(string? value) =>
+        !string.IsNullOrEmpty(value)
+        && IsLowercaseLetterOrDigit(value[0])
+        && value.All(c => IsLowercaseLetterOrDigit(c) || c is '-' or '_');
 
     private static bool IsLowercaseLetterOrDigit(char c) => c is (>= 'a' and <= 'z') or (>= '0' and <= '9');
 }

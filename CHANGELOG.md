@@ -21,6 +21,11 @@ sections.
   Before, generic execute and discovery matched roles case-insensitively and only from
   `ClaimTypes.Role`, so a caller could be admitted on one surface and refused on another
   ([Authorization](docs/AUTHORIZATION.md)).
+- **A client's route prefix must be a service name** (#434, [ADR 0027](docs/decisions/0027-forward-caller-token-kept-with-guards.md)):
+  `AddHttpClients()` refuses a `RoutePrefix` (or lowercased client name) outside `[a-z0-9][a-z0-9_-]*`
+  with `httpclient_invalid_route_prefix`. With call credentials registered, a client whose base URL is
+  neither `https` nor loopback is logged as a Warning at startup. `ForwardCallerToken()` is documented
+  as a single-audience choice; an OAuth-protected MCP endpoint exchanges the token per service.
 - **Authorization is enforced by default:** `AuthorizationMode` defaults to `Authenticated`; a host
   without authentication sets `None` explicitly ([ADR 0021](docs/decisions/0021-authenticated-by-default.md), #400).
 - **One credential model for outgoing calls:** `IKaleidoCallCredentialProvider`; an MCP host registers

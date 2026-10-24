@@ -379,6 +379,12 @@ app.MapKaleidoMcp("/mcp").RequireAuthorization();
   audience); with `AddCallCredentials<TProvider>()` a token the provider exchanges for each service
   (on-behalf-of), which the services validate against their own audience. Per-caller tool filtering
   and authorization work the same either way.
+- **For an OAuth-protected MCP endpoint, exchange the token.** The MCP authorization specification
+  forbids passing the access token issued for the MCP server through to downstream APIs ("token
+  passthrough"): such a host registers `AddCallCredentials<TProvider>()`. `ForwardCallerToken()` is
+  for deployments that deliberately share one audience, such as the samples' dev tokens
+  ([ADR 0027](../../docs/decisions/0027-forward-caller-token-kept-with-guards.md)). Configure the
+  clients with `https` base URLs; a non-HTTPS, non-loopback client is reported at startup.
 - **Client registration** (a pre-registered client id, or dynamic client registration) is the
   identity provider's concern; check which one your MCP clients use.
 - Without `RequireAuthorization()` anonymous callers stay allowed and see only anonymous tools; the
