@@ -116,6 +116,11 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **One error mapping for both Kaleido clients** (#444): the queryable client let a `JsonException`
+  escape for a 400 whose body was not JSON (a proxy's HTML page), and both clients read the service's
+  error codes only for 400 (and 409): a 403, 404 or 422 lost them. Every non-success answer is now a
+  `KaleidoHttpClientException` with the service's errors when it sent any (409 `httpclient_conflict`,
+  400 `httpclient_validation_failed`, otherwise `httpclient_request_failed`).
 - **Error bodies keep Kaleido's wire format** (#443): the exception handler serialized
   `{"errors":[{"code","message"}]}` with the host's `HttpJsonOptions`, so a host with another naming
   policy (e.g. PascalCase) changed the published error contract; it now uses `KaleidoJsonOptions`.

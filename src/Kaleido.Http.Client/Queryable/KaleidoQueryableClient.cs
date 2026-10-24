@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
@@ -97,26 +96,9 @@ internal sealed partial class KaleidoQueryableClient(
                        response.StatusCode);
         }
 
-        var errorResponse =
-            response.StatusCode == HttpStatusCode.BadRequest
-                ? await response.Content.ReadFromJsonAsync<KaleidoErrorResponse>(
-                    KaleidoJsonOptions.Options,
-                    cancellationToken)
-                : null;
-
-        if (errorResponse?.Errors.Count > 0)
-        {
-            throw new KaleidoHttpClientException(
-                HttpClientErrorCodes.ValidationFailed,
-                $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request failed: {string.Join(' ', errorResponse.Errors.Select(e => e.Message))}",
-                response.StatusCode,
-                errorResponse.Errors);
-        }
-
-        throw new KaleidoHttpClientException(
-            HttpClientErrorCodes.RequestFailed,
-            string.Create(CultureInfo.InvariantCulture, $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request failed with status code {(int)response.StatusCode} ({response.StatusCode})."),
-            response.StatusCode);
+        throw await response.ToClientFailureAsync(
+            $"{callerServiceName} tried to call {FormatTarget(source, view)}, but the request failed",
+            cancellationToken);
     }
 
     private static string FormatTarget(string? source, string? view)

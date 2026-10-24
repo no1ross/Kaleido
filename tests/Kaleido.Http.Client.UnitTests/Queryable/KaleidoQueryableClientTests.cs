@@ -429,6 +429,37 @@ public sealed class KaleidoQueryableClientTests
         Assert.Contains("Unknown field 'x'.", exception.Message, StringComparison.Ordinal);
     }
 
+    // #444: an error body that is not JSON (a proxy's HTML page) is a KaleidoHttpClientException, never a
+    // JsonException; and a conflict is reported as one, as on the processor client.
+    [Fact]
+    public async Task QuerySourceAsync_ABadRequestWithAnHtmlBody_ThrowsRequestFailed_NotAJsonException()
+    {
+        var (client, _, _) = CreateQueryClient(() => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("<html>Bad request</html>", System.Text.Encoding.UTF8, "text/html"),
+        });
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, exception.Code);
+    }
+
+    [Fact]
+    public async Task QuerySourceAsync_AForbiddenWithErrors_KeepsTheServicesCodes()
+    {
+        var (client, _, _) = CreateQueryClient(() => new HttpResponseMessage(HttpStatusCode.Forbidden)
+        {
+            Content = JsonContent.Create(new KaleidoErrorResponse([new KaleidoError("authorization_denied", "Not allowed.")]), options: KaleidoJsonOptions.Options),
+        });
+
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
+            () => client.QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpClientErrorCodes.RequestFailed, exception.Code);
+        Assert.Equal("authorization_denied", Assert.Single(exception.Errors).Code);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
