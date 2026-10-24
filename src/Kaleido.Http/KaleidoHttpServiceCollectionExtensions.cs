@@ -66,6 +66,10 @@ public static class KaleidoHttpServiceCollectionExtensions
         builder.Services.TryAddScoped<IKaleidoDownstreamRegistries, NoDownstreamRegistries>();
         builder.Services.TryAddScoped<IKaleidoRegistryService, KaleidoRegistryService>();
 
+        // The same registry unfiltered, for in-host consumers that must not depend on one caller's
+        // view (the MCP adapter's stable tool names, #435); never served to a caller.
+        builder.Services.TryAddScoped<IKaleidoUnfilteredRegistry, KaleidoRegistryService>();
+
         return builder;
     }
 }

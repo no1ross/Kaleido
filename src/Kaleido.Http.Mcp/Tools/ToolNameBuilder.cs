@@ -88,6 +88,8 @@ internal sealed partial class ToolNameBuilder : IToolNameBuilder
     [GeneratedRegex("[^a-z0-9_]+", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex InvalidCharacters();
 
-    private static string Hash(string value) =>
+    // Eight hex characters of SHA-256: stable across processes and versions, so a suffix derived from a
+    // capability's identity never changes (truncated names here; colliding names in the catalog, #435).
+    internal static string Hash(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)))[..8].ToLowerInvariant();
 }

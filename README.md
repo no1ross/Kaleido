@@ -233,7 +233,7 @@ app.MapKaleidoMcp("/mcp");
 app.Run();
 ```
 
-Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. `AddMcp()` refuses to start without a call-credential registration: `ForwardCallerToken()` sends the user's token unchanged, `AddCallCredentials<TProvider>()` exchanges it per service ([ADR 0022](docs/decisions/0022-call-credentials.md)). Each `RoutePrefix` must match the downstream `ServiceName`; adjust addresses and ports for your environment.
+Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. `AddMcp()` refuses to start without a call-credential registration: `ForwardCallerToken()` sends the user's token unchanged, `AddCallCredentials<TProvider>()` exchanges it per service ([ADR 0022](docs/decisions/0022-call-credentials.md)). `ForwardCallerToken()` suits this local, single-audience example; an OAuth-protected MCP endpoint must not pass its token through to the services and registers `AddCallCredentials<TProvider>()` instead ([ADR 0027](docs/decisions/0027-forward-caller-token-kept-with-guards.md)). Use `https` base URLs outside local development. Each `RoutePrefix` must match the downstream `ServiceName` (refused at startup otherwise); adjust addresses and ports for your environment.
 
 See the [HTTP client](src/Kaleido.Http.Client/README.md) and [MCP adapter](src/Kaleido.Http.Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
 
@@ -292,11 +292,9 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 
 ### Install
 
-The packages are previews and are not published to nuget.org yet. The release workflow publishes them to the repository's GitHub Packages feed, `https://nuget.pkg.github.com/no1ross/index.json` ([releasing](RELEASING.md)); add it as a source with a GitHub token that can read packages, then add what the service needs:
+The packages are previews. Tagged versions are published to **nuget.org**, so no extra source is needed ([releasing](RELEASING.md)); add what the service needs:
 
 ```bash
-dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name kaleido --username <github-user> --password <token-with-read:packages>
-
 dotnet add package Kaleido --prerelease                              # core runtimes (always)
 dotnet add package Kaleido.Http --prerelease                         # publish the service over HTTP
 dotnet add package Kaleido.Http.Client --prerelease                  # call other Kaleido services
@@ -306,7 +304,13 @@ dotnet add package Kaleido.Observability.OpenTelemetry --prerelease  # logs, tra
 dotnet add package Kaleido.Provider.SQLite --prerelease              # reference store (evaluation, not production)
 ```
 
-`Kaleido.Http` and `Kaleido.Http.Client` bring `Kaleido.Http.Abstractions` and `Kaleido` with them.
+`Kaleido.Http` and `Kaleido.Http.Client` bring `Kaleido.Http.Abstractions` and `Kaleido` with them. The packages move together: upgrade all the Kaleido packages a project references at once ([versioning](docs/VERSIONING.md#versions)).
+
+Preview builds between tags are published only to the repository's GitHub Packages feed, `https://nuget.pkg.github.com/no1ross/index.json`; to use one, add that feed as a source with a GitHub token that can read packages:
+
+```bash
+dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name kaleido --username <github-user> --password <token-with-read:packages>
+```
 
 ## Documentation
 

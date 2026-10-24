@@ -5,7 +5,9 @@
 
 .DESCRIPTION
     1. Package contents: every library package carries its assembly, XML docs and README and has a
-       symbols package (.snupkg); Kaleido.Analyzers carries only the analyzer; Kaleido depends on it.
+       symbols package (.snupkg); every package carries LICENSE and NOTICE; Kaleido.Analyzers carries
+       only the analyzer; Kaleido depends on it;
+       every dependency on a sibling Kaleido package is exactly the packed version ([x.y.z], #431).
     2. A clean consumer (a new project outside the repository, restoring from the local feed only for
        Kaleido packages, into its own package folder) builds a valid step and handler without any
        repository-only diagnostic (KAL0xxx, KAL1xxx, Meziantou MA, Roslynator RCS).
@@ -42,6 +44,11 @@ function Get-Entries([string] $package) {
     try { return @($zip.Entries | ForEach-Object FullName) } finally { $zip.Dispose() }
 }
 
+function Get-Nuspec([string] $package, [string] $id) {
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($package)
+    try { $reader = [System.IO.StreamReader]::new($zip.GetEntry("$id.nuspec").Open()); try { $reader.ReadToEnd() } finally { $reader.Dispose() } } finally { $zip.Dispose() }
+}
+
 # --- 1. Package contents ---------------------------------------------------------------------
 $nupkgs = Get-ChildItem $feed -Filter *.nupkg | Where-Object { $_.Name -notlike "*.symbols.nupkg" }
 $kaleido = $nupkgs | Where-Object { $_.Name -match '^Kaleido\.(\d[^\\/]*)\.nupkg$' } | Select-Object -First 1
@@ -51,6 +58,17 @@ $version = [regex]::Match($kaleido.Name, '^Kaleido\.(\d.*)\.nupkg$').Groups[1].V
 foreach ($package in $nupkgs) {
     $id = $package.Name.Substring(0, $package.Name.Length - ".$version.nupkg".Length)
     $entries = Get-Entries $package.FullName
+
+    foreach ($legal in "LICENSE", "NOTICE") {
+        if ($entries -notcontains $legal) { $failures.Add("$id has no $legal") }
+    }
+
+    # The packages move together (#431): every dependency on a sibling is exactly this version.
+    foreach ($dependency in [regex]::Matches((Get-Nuspec $package.FullName $id), '<dependency id="(Kaleido[^"]*)" version="([^"]*)"')) {
+        if ($dependency.Groups[2].Value -ne "[$version]") {
+            $failures.Add("$id depends on $($dependency.Groups[1].Value) $($dependency.Groups[2].Value); sibling packages must depend on exactly [$version]")
+        }
+    }
 
     if ($id -eq "Kaleido.Analyzers") {
         if ($entries -notcontains "analyzers/dotnet/cs/Kaleido.Analyzers.dll") { $failures.Add("$id has no analyzers/dotnet/cs/Kaleido.Analyzers.dll") }
@@ -65,10 +83,7 @@ foreach ($package in $nupkgs) {
     if (-not (Test-Path (Join-Path $feed "$id.$version.snupkg"))) { $failures.Add("$id has no symbols package ($id.$version.snupkg)") }
 }
 
-$nuspec = & {
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($kaleido.FullName)
-    try { $reader = [System.IO.StreamReader]::new($zip.GetEntry("Kaleido.nuspec").Open()); try { $reader.ReadToEnd() } finally { $reader.Dispose() } } finally { $zip.Dispose() }
-}
+$nuspec = Get-Nuspec $kaleido.FullName "Kaleido"
 if ($nuspec -notmatch '<dependency id="Kaleido.Analyzers"') { $failures.Add("Kaleido does not depend on Kaleido.Analyzers") }
 
 # --- 4. Deterministic paths and Source Link (CI builds) --------------------------------------------

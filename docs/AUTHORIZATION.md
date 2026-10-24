@@ -55,6 +55,16 @@ caller with its own mode, so a router left at `None` returns everything to every
 `AllowAnonymous` cannot be combined with `Roles`/`Policy` — on an attribute or on
 `DefaultAuthorization` — that fails at registration (`conflicting_authorization`).
 
+**Role matching.** A declared role matches exactly as ASP.NET Core's `RequireRole`
+(`ClaimsPrincipal.IsInRole`) matches it, on every surface: the typed step and query routes,
+generic execute (`POST /processes/execute`) and registry/MCP discovery (#433).
+- Role values compare **ordinally** (case-sensitive): `Radiology` does not satisfy `radiology`.
+- A caller's roles are read from each identity's own `RoleClaimType` (`ClaimTypes.Role` by default;
+  for example `roles` when the JWT handler keeps the token's claim names), not from a fixed claim type.
+
+A host that wants case-insensitive roles normalizes them in its own authentication (for example
+an `IClaimsTransformation`), so every surface sees the same values.
+
 ## Capability authorization
 
 ```csharp

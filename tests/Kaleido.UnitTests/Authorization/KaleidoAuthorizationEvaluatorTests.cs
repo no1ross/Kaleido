@@ -241,7 +241,24 @@ public sealed class KaleidoAuthorizationEvaluatorTests
     {
         var sut = CreateSut();
 
-        await sut.AuthorizeAsync(new AuthorizationMetadata(null, ["radiology"]), "cap", Caller("bob", "RADIOLOGY"), policyEvaluator: null, TestContext.Current.CancellationToken);
+        await sut.AuthorizeAsync(new AuthorizationMetadata(null, ["radiology"]), "cap", Caller("bob", "radiology"), policyEvaluator: null, TestContext.Current.CancellationToken);
+    }
+
+    // Roles compare ordinally, as ASP.NET's RequireRole does on the typed routes (#433): a role that
+    // differs only in case is a different role.
+    [Theory]
+    [InlineData("RADIOLOGY")]
+    [InlineData("Radiology")]
+    [InlineData("radiology ")]
+    public async Task CanAccessAsync_WhenTheRoleDiffersInCase_Denies(string callerRole)
+    {
+        var allowed = await CreateSut().CanAccessAsync(
+            new AuthorizationMetadata(null, ["radiology"]),
+            Caller("bob", callerRole),
+            policyEvaluator: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.False(allowed);
     }
 
     [Theory]

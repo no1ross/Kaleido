@@ -7,11 +7,29 @@ from 1.0 the versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased] - 1.0.0 previews
 
-The preview builds (`1.0.0-preview.{height}`) published to the repository's GitHub Packages feed.
+The preview builds (`1.0.0-preview.{height}`): published to the repository's GitHub Packages feed,
+and tagged previews also to nuget.org.
 The changes below are grouped by area; the pull requests carry the details and their breaking-change
 sections.
 
 ### Breaking changes
+- **The packages move together** (#431): every dependency on a sibling Kaleido package is an exact
+  version (`[x.y.z]`), so upgrading one package upgrades the family, and a mixed set fails at restore
+  instead of at run time (the packages share internal seams).
+- **One role semantics on every surface** (#433): roles compare ordinally (case-sensitive) and are
+  read from each identity's `RoleClaimType`, exactly as ASP.NET's `RequireRole` on the typed routes.
+  Before, generic execute and discovery matched roles case-insensitively and only from
+  `ClaimTypes.Role`, so a caller could be admitted on one surface and refused on another
+  ([Authorization](docs/AUTHORIZATION.md)).
+- **Stable MCP tool names** (#435): names are derived from the unfiltered registry, not from what
+  the caller may see; when two capabilities (or a capability and a built-in tool) derive the same
+  name, each gets `_` plus a hash of its own identity instead of `_step`/`_view`/`_2` numbering, so a
+  name can no longer move to another capability when a caller sees fewer of them.
+- **A client's route prefix must be a service name** (#434, [ADR 0027](docs/decisions/0027-forward-caller-token-kept-with-guards.md)):
+  `AddHttpClients()` refuses a `RoutePrefix` (or lowercased client name) outside `[a-z0-9][a-z0-9_-]*`
+  with `httpclient_invalid_route_prefix`. With call credentials registered, a client whose base URL is
+  neither `https` nor loopback is logged as a Warning at startup. `ForwardCallerToken()` is documented
+  as a single-audience choice; an OAuth-protected MCP endpoint exchanges the token per service.
 - **Authorization is enforced by default:** `AuthorizationMode` defaults to `Authenticated`; a host
   without authentication sets `None` explicitly ([ADR 0021](docs/decisions/0021-authenticated-by-default.md), #400).
 - **One credential model for outgoing calls:** `IKaleidoCallCredentialProvider`; an MCP host registers
@@ -74,6 +92,10 @@ sections.
   - test: KAL1012 and KAL1013 are now KAL1011 and KAL1012.
 
 ### Added
+- **Public distribution** (#432): tagged versions are published to nuget.org with trusted publishing
+  (no stored API key) as well as to GitHub Packages; every package has a signed build provenance
+  attestation (`gh attestation verify`) and carries the `LICENSE` text next to `NOTICE`
+  ([RELEASING.md](RELEASING.md)).
 - Shared registry snapshots: `AddDistributedRegistrySnapshots()` stores registry snapshots in the host's `IDistributedCache` (e.g. Redis), so the replicas of a router share one snapshot and one round of downstream checks; an unreachable cache never fails a registry read. Client copies are keyed per consuming service (`kaleido-client:{ServiceName}:{clientName}`) (#275).
 - Consumer guide (`docs/guide`): concepts, events and the outbox, persistence, deployment and choosing options, around one orders service whose examples are compiled, checked against the pages in CI (`tools/docs/check-guide-snippets.py`) and run by tests (#409).
 - Warnings fail the build in `tests/` and in the samples; IDE code-style rules run in `tests/` and `tools/` (#406).
@@ -114,5 +136,5 @@ major version. Before 1.0.0 is tagged:
 - the intentional public API and its compatibility baseline are recorded (#313);
 - the remaining pre-1.0 work items of [#284](https://github.com/no1ross/Kaleido/issues/284) are
   resolved or deferred by decision;
-- the publication target for stable packages (nuget.org, with symbols) is decided and set up;
+- the nuget.org publisher is set up (trusted publishing policy and `NUGET_USER`, [RELEASING.md](RELEASING.md#owner-setup-once-before-the-first-tag); the workflow is in place, #432);
 - this section is replaced by the release's entry, listing the changes since the last preview.

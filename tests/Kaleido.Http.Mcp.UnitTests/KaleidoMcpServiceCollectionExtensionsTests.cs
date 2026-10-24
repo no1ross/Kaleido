@@ -29,6 +29,8 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
         services.AddScoped(_ => Mock.Of<IKaleidoRegistryService>());
+        // AddHttp() registers the unfiltered registry the tool names come from (#435).
+        services.AddScoped(_ => Mock.Of<IKaleidoUnfilteredRegistry>());
         // What AddHttpClients() registers with a client configured, and AddKaleido() the inbound caller.
         services.AddSingleton(new KaleidoClientOptions { Clients = new Dictionary<string, KaleidoClientEntry> { ["Clinic"] = new() } });
         services.AddSingleton(Mock.Of<IKaleidoCallCredentialProvider>());

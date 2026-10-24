@@ -9,7 +9,8 @@ namespace Kaleido.Http.FunctionalTests.Authorization;
 /// <summary>
 /// Header-driven test authentication scheme. <c>X-Test-User</c> +
 /// comma-delimited <c>X-Test-Roles</c> (and an optional <c>X-Test-Subject</c>, the <c>sub</c> claim)
-/// produce an authenticated principal;
+/// produce an authenticated principal; an optional <c>X-Test-Role-Claim</c> makes the identity's
+/// <c>RoleClaimType</c> (and the roles' claim type) that value, as a JWT handler keeping "roles" does;
 /// no <c>X-Test-User</c> → anonymous.
 /// </summary>
 internal sealed class TestAuthHandler(
@@ -25,6 +26,7 @@ internal sealed class TestAuthHandler(
     internal const string UserHeader = "X-Test-User";
     internal const string RolesHeader = "X-Test-Roles";
     internal const string SubjectHeader = "X-Test-Subject";
+    internal const string RoleClaimHeader = "X-Test-Role-Claim";
     internal const string ChallengeHeaderValue = "Test realm=\"kaleido\"";
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
@@ -51,6 +53,11 @@ internal sealed class TestAuthHandler(
             claims.Add(new Claim("sub", subject.ToString()));
         }
 
+        var roleClaimType =
+            Request.Headers.TryGetValue(RoleClaimHeader, out var roleClaim) && !string.IsNullOrWhiteSpace(roleClaim)
+                ? roleClaim.ToString()
+                : ClaimTypes.Role;
+
         if (Request.Headers.TryGetValue(RolesHeader, out var roles))
         {
             claims.AddRange(
@@ -59,10 +66,10 @@ internal sealed class TestAuthHandler(
                         ',',
                         StringSplitOptions.RemoveEmptyEntries |
                         StringSplitOptions.TrimEntries)
-                    .Select(r => new Claim(ClaimTypes.Role, r)));
+                    .Select(r => new Claim(roleClaimType, r)));
         }
 
-        var identity = new ClaimsIdentity(claims, SchemeName);
+        var identity = new ClaimsIdentity(claims, SchemeName, ClaimTypes.Name, roleClaimType);
 
         return Task.FromResult(
             AuthenticateResult.Success(

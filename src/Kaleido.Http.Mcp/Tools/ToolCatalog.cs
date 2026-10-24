@@ -152,7 +152,7 @@ internal sealed record ToolCatalog
     /// <summary>Step inputs whose lookup names no query tool of this caller ("tool.argument -> service/source[/view]").</summary>
     public IReadOnlyList<string> UnresolvedLookups { get; init; } = [];
 
-    /// <summary>Capabilities whose derived tool names collided, and the names they got instead.</summary>
+    /// <summary>Capabilities whose derived tool names collided, and the identity-hashed names they got instead (#435).</summary>
     public IReadOnlyList<string> NameCollisions { get; init; } = [];
 
     /// <summary>The catalog lists only its front door (<see cref="McpToolListing.FrontDoor"/>): <c>next</c> describes the open steps in full.</summary>

@@ -74,6 +74,14 @@ public static class HttpClientErrorCodes
     public const string MissingBaseUrl = "missing_base_url";
 
     /// <summary>
+    /// A configured Kaleido client's <c>RoutePrefix</c> (or, without one, its lowercased client name) is
+    /// not a valid service name (<c>[a-z0-9][a-z0-9_-]*</c>): the prefix must equal the downstream
+    /// service's <c>ServiceName</c>, so any other value can only produce failed calls. Raised at startup
+    /// by <c>AddHttpClients()</c> as a configuration error.
+    /// </summary>
+    public const string InvalidRoutePrefix = "httpclient_invalid_route_prefix";
+
+    /// <summary>
     /// An <see cref="IKaleidoCallCredentialProvider"/> answered <see cref="KaleidoCallCredential.Configured"/>
     /// for a call made for a caller; a caller's call never goes out with the host's own credentials.
     /// Raised on the call as a configuration error.

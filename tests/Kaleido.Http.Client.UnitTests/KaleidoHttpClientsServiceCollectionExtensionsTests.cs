@@ -55,6 +55,7 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IKaleidoDownstreamRegistries));
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IHttpMessageHandlerBuilderFilter));
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IKaleidoProcessorClientFactory));
+        Assert.DoesNotContain(builder.Services, d => d.ImplementationType == typeof(KaleidoClientTransportCheck));
     }
 
     [Fact]
@@ -108,6 +109,35 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
 
         Assert.Equal(HttpClientErrorCodes.MissingBaseUrl, exception.Code);
         Assert.Contains("Kaleido:Clients:Member:BaseUrl", exception.Message, StringComparison.Ordinal);
+    }
+
+    // #434: the route prefix is the downstream ServiceName in every route; anything else fails at startup.
+    [Theory]
+    [InlineData("Kaleido:Clients:Member:RoutePrefix", "Member")]
+    [InlineData("Kaleido:Clients:Member:RoutePrefix", "../admin")]
+    [InlineData("Kaleido:Clients:Member:RoutePrefix", "member/x")]
+    [InlineData("Kaleido:Clients:my.member:BaseUrl", "http://member/")]
+    public void AddHttpClients_ARoutePrefixThatIsNotAServiceName_ThrowsAConfigurationError(string key, string value)
+    {
+        var builder = CreateBuilder(new() { ["Kaleido:BaseUrl"] = "http://router/", [key] = value });
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.AddHttpClients);
+
+        Assert.Equal(HttpClientErrorCodes.InvalidRoutePrefix, exception.Code);
+        Assert.Contains(":RoutePrefix", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddHttpClients_WithClients_RegistersTheTransportCheckOnce()
+    {
+        var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/" });
+
+        builder.AddHttpClients();
+        builder.AddHttpClients();
+
+        Assert.Single(
+            builder.Services,
+            d => d.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService) && d.ImplementationType == typeof(KaleidoClientTransportCheck));
     }
 
     [Fact]

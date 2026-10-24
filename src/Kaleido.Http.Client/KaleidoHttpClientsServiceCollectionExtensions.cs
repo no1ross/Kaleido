@@ -2,6 +2,7 @@ using Kaleido.Exceptions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
 
 namespace Kaleido.Http.Client;
@@ -41,6 +42,11 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
             // (innermost handler); without one the host's own client handlers do, as before.
             builder.Services.TryAddEnumerable(
                 ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoCallCredentialHandlerFilter>());
+
+            // At start (a provider may be registered after this call): warn about a client that would
+            // send a caller's credential over a non-HTTPS, non-loopback connection (#434).
+            builder.Services.TryAddEnumerable(
+                ServiceDescriptor.Singleton<IHostedService, KaleidoClientTransportCheck>());
         }
 
         return builder;
@@ -69,6 +75,14 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
     /// service accepts the caller's token (one audience). Where services have their own audiences,
     /// register a provider that exchanges the token instead (<see cref="AddCallCredentials{TProvider}"/>).
     /// </summary>
+    /// <remarks>
+    /// The token is passed through unchanged. For an OAuth-protected MCP endpoint, the MCP authorization
+    /// specification forbids passing the token issued for the MCP server through to downstream APIs:
+    /// there, use <see cref="AddCallCredentials{TProvider}"/> with a provider that obtains a token for
+    /// each service (for example OAuth on-behalf-of). Configure the clients with <c>https</c> base URLs:
+    /// a client with a non-HTTPS, non-loopback base URL is reported with a warning at startup, since the
+    /// caller's credential would cross the network in clear text (ADR 0027).
+    /// </remarks>
     /// <param name="builder">The Kaleido builder.</param>
     /// <returns>The same builder.</returns>
     public static IKaleidoBuilder ForwardCallerToken(this IKaleidoBuilder builder) =>
@@ -91,6 +105,17 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
         }
 
         var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
+
+        // The prefix is the downstream service's ServiceName in every route; anything else can only
+        // fail at call time (and a '..' or '/' would leave the prefix), so refuse it at startup.
+        if (!KaleidoServiceOptions.IsValidServiceName(prefix))
+        {
+            throw new KaleidoConfigurationException(
+                HttpClientErrorCodes.InvalidRoutePrefix,
+                $"Kaleido client '{name}' has route prefix '{prefix}', which is not a service name: it must equal the " +
+                "downstream service's ServiceName ([a-z0-9][a-z0-9_-]*). " +
+                $"Set 'Kaleido:Clients:{name}:RoutePrefix' to that service name.");
+        }
         var registryTtl = entry?.RegistryTtl ?? config.RegistryTtl;
         var strictProbe = entry?.StrictRegistryProbe ?? config.StrictRegistryProbe;
         var resilience = config.Resilience.ForClient(builder.Configuration, name);

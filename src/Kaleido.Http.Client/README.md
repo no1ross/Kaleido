@@ -290,7 +290,14 @@ public sealed class OnBehalfOfProvider(IConfidentialClientApplication app) : IKa
 
 - **`ForwardCallerToken()`** registers a built-in provider: a caller's call sends the caller's token
   unchanged, the service's own calls keep the host's configured credentials. Use it only where every
-  service accepts the caller's token (one audience), as in the PriorAuth router.
+  service accepts the caller's token (one audience), as in the PriorAuth router. **Not for an
+  OAuth-protected MCP endpoint**: the MCP authorization specification forbids passing the token issued
+  for the MCP server through to other APIs; there, register a provider that exchanges it per service
+  (`AddCallCredentials<T>()`, [ADR 0027](../../docs/decisions/0027-forward-caller-token-kept-with-guards.md)).
+- **Use `https` base URLs.** With a provider registered, a client whose `BaseUrl` is neither `https`
+  nor loopback is logged as a Warning at startup: it would send a caller's credential in clear text.
+- **`RoutePrefix` is a service name** (`[a-z0-9][a-z0-9_-]*`, the downstream `ServiceName`):
+  `AddHttpClients()` refuses any other value at startup (`httpclient_invalid_route_prefix`).
 - Register the provider as a singleton (`AddCallCredentials<T>()` does); it is called concurrently and
   on every request, so cache exchanged tokens yourself.
 - **Without a provider** the host's own client handlers decide, as before. A host with the MCP adapter

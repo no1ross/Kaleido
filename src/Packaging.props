@@ -21,5 +21,21 @@
         <None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="\" />
         <None Include="$(MSBuildThisFileDirectory)..\docs\assets\kaleido-nuget-icon-128.png" Pack="true" PackagePath="\" Visible="false" />
         <None Include="$(MSBuildThisFileDirectory)..\NOTICE" Pack="true" PackagePath="\" Visible="false" />
+        <!-- Apache-2.0 section 4(a): a redistributed package carries the license text, not only the expression. -->
+        <None Include="$(MSBuildThisFileDirectory)..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
     </ItemGroup>
+
+    <!-- #431: the packages share internal seams (InternalsVisibleTo), so they move together. Every
+         dependency on a sibling package is packed as an exact range [x.y.z] instead of NuGet's
+         default minimum (>=), so a mixed set fails at restore rather than at run time.
+         Test-PackageConsumer.ps1 asserts the result, so an SDK change to this NuGet target fails CI. -->
+    <Target Name="KaleidoExactSiblingVersions" AfterTargets="_GetProjectReferenceVersions">
+        <ItemGroup>
+            <_KaleidoExactProjectReferences Include="@(_ProjectReferencesWithVersions)">
+                <ProjectVersion>[%(_ProjectReferencesWithVersions.ProjectVersion)]</ProjectVersion>
+            </_KaleidoExactProjectReferences>
+            <_ProjectReferencesWithVersions Remove="@(_ProjectReferencesWithVersions)" />
+            <_ProjectReferencesWithVersions Include="@(_KaleidoExactProjectReferences)" />
+        </ItemGroup>
+    </Target>
 </Project>

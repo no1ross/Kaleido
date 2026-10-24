@@ -11,7 +11,9 @@ namespace Kaleido.Http.Mcp.Tools;
 /// </summary>
 /// <remarks>
 /// Nothing is cached per caller. The translation is reused per registry revision: the revision
-/// hashes the caller-filtered registry, so the same revision always yields the same tools.
+/// hashes the caller-filtered registry, so the same revision always yields the same tools. Tool
+/// names come from the unfiltered registry (<see cref="IKaleidoUnfilteredRegistry"/>), so what a
+/// caller may see never changes a name (#435); its revision is part of the key too.
 /// </remarks>
 internal interface IToolCatalogProvider
 {
@@ -20,6 +22,7 @@ internal interface IToolCatalogProvider
 
 internal sealed partial class ToolCatalogProvider(
     IKaleidoRegistryService registry,
+    IKaleidoUnfilteredRegistry unfilteredRegistry,
     IToolCatalogBuilder catalogBuilder,
     IMcpObservability observability,
     KaleidoMcpOptions options,
@@ -43,8 +46,9 @@ internal sealed partial class ToolCatalogProvider(
         }
 
         var response = await registry.GetForCallerAsync(refresh: false, cancellationToken: cancellationToken);
+        var nameScope = await unfilteredRegistry.GetUnfilteredAsync(cancellationToken);
         var revision = response.Revision ?? string.Empty;
-        var key = $"{options.ToolListing}|{string.Join(',', options.ListedTools)}|{revision}";
+        var key = $"{options.ToolListing}|{string.Join(',', options.ListedTools)}|{revision}|{nameScope.Revision}";
 
         if (Catalogs.TryGetValue(key, out var known))
         {
@@ -53,7 +57,7 @@ internal sealed partial class ToolCatalogProvider(
             return known;
         }
 
-        var catalog = catalogBuilder.Build(response);
+        var catalog = catalogBuilder.Build(response, nameScope);
 
         if (Catalogs.Count >= MaxRevisions)
         {
@@ -110,7 +114,7 @@ internal sealed partial class ToolCatalogProvider(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} tool name(s) exceeded MCP's 64-character limit and were shortened; rename the capability types (KAL2016): {Names}.")]
     private static partial void LogTruncatedNames(ILogger logger, int count, string names);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} capability name(s) collide, so their tools carry a kind suffix; rename the capability types so each name says what it is: {Collisions}.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} capability name(s) collide, so their tools carry a suffix derived from each capability; rename the capability types so each name says what it is: {Collisions}.")]
     private static partial void LogNameCollisions(ILogger logger, int count, string collisions);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: {Count} step input lookup(s) name a query that is not published or not visible to this caller, so agents must ask for the value: {Lookups}.")]

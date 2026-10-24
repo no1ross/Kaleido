@@ -204,6 +204,25 @@ public sealed class KaleidoRegistryServiceTests
         Assert.Equal("ChartCard", Assert.Single(source.Views).Name);
     }
 
+    // #435: the MCP adapter names tools from the unfiltered registry, so what one caller may see never
+    // changes a name; the authorizer is not consulted and nothing is removed.
+    [Fact]
+    public async Task GetUnfiltered_ReturnsTheWholeSnapshot_WithItsRevision_WhateverTheCallerMaySee()
+    {
+        authorizer.Setup(x => x.IsEnforced).Returns(true);
+        authorizer.Setup(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var (sut, _) = CreateSut();
+
+        var unfiltered = await sut.GetUnfilteredAsync(Cancel);
+        var again = await sut.GetUnfilteredAsync(Cancel);
+
+        Assert.Contains(unfiltered.Processes, p => p.Steps!.Any(s => s.Name == "CaptureScanStep"));
+        Assert.Contains(unfiltered.Queryables, q => q.Name == "MemberSource" && q.QueryUrl == "/member/q");
+        Assert.False(string.IsNullOrEmpty(unfiltered.Revision));
+        Assert.Equal(unfiltered.Revision, again.Revision);
+        authorizer.Verify(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task GetForCaller_MoreThanOneEntryProcessor_IsAConfigurationError()
     {
