@@ -165,6 +165,38 @@ public sealed class KaleidoCallerContextEndpointFilterTests
         Assert.Empty(context.CallerRoles);
     }
 
+    // #433: the roles are what ASP.NET's IsInRole (RequireRole on the typed routes) sees - each identity's
+    // own RoleClaimType - so a JWT handler that keeps "roles" claims is authorized the same everywhere.
+    [Fact]
+    public async Task InvokeAsync_ReadsRolesFromTheIdentitysRoleClaimType()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("name", "alice"), new Claim("roles", "radiology"), new Claim(ClaimTypes.Role, "not-a-role-here")],
+            authenticationType: "jwt",
+            nameType: "name",
+            roleType: "roles"));
+
+        var context = await InitializedWith(user);
+
+        Assert.Equal(["radiology"], context.CallerRoles);
+        Assert.True(user.IsInRole("radiology"));
+        Assert.False(user.IsInRole("not-a-role-here"));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CollectsTheRolesOfEveryIdentity_Once()
+    {
+        var user = new ClaimsPrincipal(
+        [
+            new ClaimsIdentity([new Claim(ClaimTypes.Name, "alice"), new Claim(ClaimTypes.Role, "clerk")], authenticationType: "cookie"),
+            new ClaimsIdentity([new Claim("roles", "radiology"), new Claim("roles", "clerk")], authenticationType: "jwt", nameType: "name", roleType: "roles"),
+        ]);
+
+        var context = await InitializedWith(user);
+
+        Assert.Equal(["clerk", "radiology"], context.CallerRoles.Order(StringComparer.Ordinal));
+    }
+
     // ADR 0022: the application acting for the caller comes from the principal's actor claim, never a header.
     [Theory]
     [InlineData("act", "{\"sub\":\"intake-service\"}", "intake-service")]

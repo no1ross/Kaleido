@@ -303,6 +303,49 @@ public sealed class AuthorizationEndpointTests(
         Assert.DoesNotContain(secured.Views, v => v.Name == "SecuredAdminView");
     }
 
+    // -- one role semantics on every surface (#433) ---------------------------
+
+    // The same principal gets the same answer from the typed step route (ASP.NET RequireRole), generic
+    // execute and discovery (Kaleido's evaluator): roles compare ordinally, and they are read from the
+    // identity's RoleClaimType, as ClaimsPrincipal.IsInRole reads them.
+    [Theory]
+    [InlineData("internal", null, true)]
+    [InlineData("INTERNAL", null, false)]
+    [InlineData("Internal", null, false)]
+    [InlineData("internal", "roles", true)]
+    [InlineData("INTERNAL", "roles", false)]
+    [InlineData("viewer", "roles", false)]
+    public async Task InternalStep_IsAuthorizedTheSame_OnTheTypedRoute_GenericExecute_AndTheRegistry(
+        string role,
+        string? roleClaimType,
+        bool allowed)
+    {
+        HttpRequestMessage As(HttpRequestMessage request)
+        {
+            if (roleClaimType is not null)
+            {
+                request.Headers.Add(TestAuthHandler.RoleClaimHeader, roleClaimType);
+            }
+
+            return request;
+        }
+
+        var typed = await fixture.Client.SendAsync(As(
+            AuthorizationAspNetCoreFixture.AuthenticatedJson(InternalStepExecuteUrl, StepBody, "alice", role)));
+        var generic = await fixture.Client.SendAsync(As(
+            AuthorizationAspNetCoreFixture.AuthenticatedJson(ExecuteUrl, ExecuteBody(AuthorizationStepNames.InternalStep), "alice", role)));
+        var registry = await (await fixture.Client.SendAsync(As(
+                AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, RegistryUrl, "alice", role))))
+            .Content.ReadAsync<AggregatedRegistryResponse>();
+
+        var expected = allowed ? HttpStatusCode.OK : HttpStatusCode.Forbidden;
+        Assert.Equal(expected, typed.StatusCode);
+        Assert.Equal(expected, generic.StatusCode);
+        Assert.Equal(
+            allowed,
+            registry!.Processes.SelectMany(p => p.Steps!).Any(s => s.Name == AuthorizationStepNames.InternalStep));
+    }
+
     // -- no case-level guardrails (ADR 0010): only the step's roles/policies --
 
     private async Task<Guid> CreateProcessAsync(

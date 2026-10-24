@@ -16,6 +16,11 @@ sections.
 - **The packages move together** (#431): every dependency on a sibling Kaleido package is an exact
   version (`[x.y.z]`), so upgrading one package upgrades the family, and a mixed set fails at restore
   instead of at run time (the packages share internal seams).
+- **One role semantics on every surface** (#433): roles compare ordinally (case-sensitive) and are
+  read from each identity's `RoleClaimType`, exactly as ASP.NET's `RequireRole` on the typed routes.
+  Before, generic execute and discovery matched roles case-insensitively and only from
+  `ClaimTypes.Role`, so a caller could be admitted on one surface and refused on another
+  ([Authorization](docs/AUTHORIZATION.md)).
 - **Authorization is enforced by default:** `AuthorizationMode` defaults to `Authenticated`; a host
   without authentication sets `None` explicitly ([ADR 0021](docs/decisions/0021-authenticated-by-default.md), #400).
 - **One credential model for outgoing calls:** `IKaleidoCallCredentialProvider`; an MCP host registers

@@ -96,9 +96,11 @@ internal sealed partial class KaleidoAuthorizationEvaluator(
             return serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust;
         }
 
+        // Ordinal, as ASP.NET's RequireRole (ClaimsPrincipal.IsInRole) compares role values: a role
+        // admits the same callers on a typed route, through generic execute and in discovery (#433).
         if (authorization.Roles.Count > 0
             && !authorization.Roles.Any(r =>
-                caller.CallerRoles.Contains(r, StringComparer.OrdinalIgnoreCase)))
+                caller.CallerRoles.Contains(r, StringComparer.Ordinal)))
         {
             return false;
         }

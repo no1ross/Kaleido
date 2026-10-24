@@ -82,18 +82,19 @@ internal static class KaleidoCallerContextHttpContextExtensions
                 CallerName = callerName,
                 CallerId = callerId,
                 CallerActor = callerActor,
-                CallerRoles =
-                    callerName is null
-                        ? []
-                        : user.Claims
-                            .Where(x => string.Equals(
-                                x.Type,
-                                ClaimTypes.Role,
-                                StringComparison.Ordinal))
-                            .Select(x => x.Value)
-                            .ToArray(),
+                CallerRoles = callerName is null ? [] : RolesOf(user),
             });
     }
+
+    // The roles exactly as ASP.NET's ClaimsPrincipal.IsInRole (RequireRole) sees them: each identity's
+    // own RoleClaimType (ClaimTypes.Role by default, e.g. "roles" for a JWT handler that keeps claim
+    // names), so the typed routes and Kaleido's own evaluation (generic execute, discovery) agree (#433).
+    private static string[] RolesOf(ClaimsPrincipal user) =>
+        user.Identities
+            .SelectMany(identity => identity.FindAll(identity.RoleClaimType))
+            .Select(claim => claim.Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
     // RFC 8693 "act" (a JSON object naming the actor's "sub", or a plain value), else the authorized
     // party ("azp", OpenID Connect) or Entra ID's "appid".
