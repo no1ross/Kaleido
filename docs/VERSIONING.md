@@ -9,6 +9,11 @@ decided at 1.0. Nothing here promises a support period or a date.
   ([Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning)): `1.0.0-preview.{height}`,
   where the height is the number of commits since the version was last changed. All eight
   packages (the seven `src/` packages and `Kaleido.Analyzers`) share one version.
+- **The packages move together.** Each package depends on its sibling Kaleido packages at exactly
+  its own version (`[x.y.z]`, #431): the transports, the client and the MCP adapter use core's
+  internal seams (`InternalsVisibleTo`), which the public API baseline does not cover, so a mixed set
+  (for example `Kaleido 1.0.1` with `Kaleido.Http 1.0.0`) would fail at run time. NuGet refuses that
+  combination at restore instead; upgrade all the Kaleido packages a project references together.
 - Previews and releases are published by the release workflow to the repository's GitHub Packages
   feed ([`RELEASING.md`](../RELEASING.md)); what changed is in [`CHANGELOG.md`](../CHANGELOG.md).
 - From 1.0 the packages follow [Semantic Versioning](https://semver.org): a breaking change to the

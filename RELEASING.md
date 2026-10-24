@@ -19,7 +19,8 @@ Consumers of the feed add it as a NuGet source with a token that can read packag
 Every run, from a clean checkout of the tag (or master, for a dry run):
 1. restores, builds and tests the solution (`Kaleido.slnx`) in Release;
 2. packs the eight packages and verifies them ([`tools/packaging/Test-PackageConsumer.ps1`](tools/packaging/Test-PackageConsumer.ps1)):
-   contents (assembly, XML docs, README, symbols), a clean consumer build with the consumer analyzer and
+   contents (assembly, XML docs, README, symbols), exact `[x.y.z]` dependencies between the Kaleido
+   packages ([they move together](docs/VERSIONING.md#versions)), a clean consumer build with the consumer analyzer and
    no repository-only rule, and deterministic source paths with Source Link in every symbols package;
 3. on a tag, refuses to publish unless the tag equals the packed version;
 4. publishes the `.nupkg` files (`--skip-duplicate`), keeps packages and symbols with the run, and on a

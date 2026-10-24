@@ -12,6 +12,9 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **The packages move together** (#431): every dependency on a sibling Kaleido package is an exact
+  version (`[x.y.z]`), so upgrading one package upgrades the family, and a mixed set fails at restore
+  instead of at run time (the packages share internal seams).
 - **Authorization is enforced by default:** `AuthorizationMode` defaults to `Authenticated`; a host
   without authentication sets `None` explicitly ([ADR 0021](docs/decisions/0021-authenticated-by-default.md), #400).
 - **One credential model for outgoing calls:** `IKaleidoCallCredentialProvider`; an MCP host registers
