@@ -5,7 +5,8 @@
 
 .DESCRIPTION
     1. Package contents: every library package carries its assembly, XML docs and README and has a
-       symbols package (.snupkg); Kaleido.Analyzers carries only the analyzer; Kaleido depends on it;
+       symbols package (.snupkg); every package carries LICENSE and NOTICE; Kaleido.Analyzers carries
+       only the analyzer; Kaleido depends on it;
        every dependency on a sibling Kaleido package is exactly the packed version ([x.y.z], #431).
     2. A clean consumer (a new project outside the repository, restoring from the local feed only for
        Kaleido packages, into its own package folder) builds a valid step and handler without any
@@ -57,6 +58,10 @@ $version = [regex]::Match($kaleido.Name, '^Kaleido\.(\d.*)\.nupkg$').Groups[1].V
 foreach ($package in $nupkgs) {
     $id = $package.Name.Substring(0, $package.Name.Length - ".$version.nupkg".Length)
     $entries = Get-Entries $package.FullName
+
+    foreach ($legal in "LICENSE", "NOTICE") {
+        if ($entries -notcontains $legal) { $failures.Add("$id has no $legal") }
+    }
 
     # The packages move together (#431): every dependency on a sibling is exactly this version.
     foreach ($dependency in [regex]::Matches((Get-Nuspec $package.FullName $id), '<dependency id="(Kaleido[^"]*)" version="([^"]*)"')) {

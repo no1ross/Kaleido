@@ -7,7 +7,8 @@ from 1.0 the versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased] - 1.0.0 previews
 
-The preview builds (`1.0.0-preview.{height}`) published to the repository's GitHub Packages feed.
+The preview builds (`1.0.0-preview.{height}`): published to the repository's GitHub Packages feed,
+and tagged previews also to nuget.org.
 The changes below are grouped by area; the pull requests carry the details and their breaking-change
 sections.
 
@@ -77,6 +78,10 @@ sections.
   - test: KAL1012 and KAL1013 are now KAL1011 and KAL1012.
 
 ### Added
+- **Public distribution** (#432): tagged versions are published to nuget.org with trusted publishing
+  (no stored API key) as well as to GitHub Packages; every package has a signed build provenance
+  attestation (`gh attestation verify`) and carries the `LICENSE` text next to `NOTICE`
+  ([RELEASING.md](RELEASING.md)).
 - Shared registry snapshots: `AddDistributedRegistrySnapshots()` stores registry snapshots in the host's `IDistributedCache` (e.g. Redis), so the replicas of a router share one snapshot and one round of downstream checks; an unreachable cache never fails a registry read. Client copies are keyed per consuming service (`kaleido-client:{ServiceName}:{clientName}`) (#275).
 - Consumer guide (`docs/guide`): concepts, events and the outbox, persistence, deployment and choosing options, around one orders service whose examples are compiled, checked against the pages in CI (`tools/docs/check-guide-snippets.py`) and run by tests (#409).
 - Warnings fail the build in `tests/` and in the samples; IDE code-style rules run in `tests/` and `tools/` (#406).
@@ -117,5 +122,5 @@ major version. Before 1.0.0 is tagged:
 - the intentional public API and its compatibility baseline are recorded (#313);
 - the remaining pre-1.0 work items of [#284](https://github.com/no1ross/Kaleido/issues/284) are
   resolved or deferred by decision;
-- the publication target for stable packages (nuget.org, with symbols) is decided and set up;
+- the nuget.org publisher is set up (trusted publishing policy and `NUGET_USER`, [RELEASING.md](RELEASING.md#owner-setup-once-before-the-first-tag); the workflow is in place, #432);
 - this section is replaced by the release's entry, listing the changes since the last preview.

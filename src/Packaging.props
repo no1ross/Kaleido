@@ -21,6 +21,8 @@
         <None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="\" />
         <None Include="$(MSBuildThisFileDirectory)..\docs\assets\kaleido-nuget-icon-128.png" Pack="true" PackagePath="\" Visible="false" />
         <None Include="$(MSBuildThisFileDirectory)..\NOTICE" Pack="true" PackagePath="\" Visible="false" />
+        <!-- Apache-2.0 section 4(a): a redistributed package carries the license text, not only the expression. -->
+        <None Include="$(MSBuildThisFileDirectory)..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
     </ItemGroup>
 
     <!-- #431: the packages share internal seams (InternalsVisibleTo), so they move together. Every

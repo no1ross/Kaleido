@@ -8,11 +8,24 @@ release workflow is [`.github/workflows/release.yml`](.github/workflows/release.
 
 | What | Where |
 |---|---|
-| `.nupkg` (all eight) | the repository's GitHub Packages feed: `https://nuget.pkg.github.com/no1ross/index.json` |
-| `.snupkg` (symbols) | attached to the GitHub Release (and to the workflow run); GitHub Packages does not host symbol packages |
-| stable packages on nuget.org | not yet: decided before 1.0.0 (see the [changelog](CHANGELOG.md)) |
+| `.nupkg` (all eight), every tagged version (preview or stable) | **nuget.org**, published with [trusted publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key) |
+| `.nupkg` (all eight), every run (tags and dry runs) | the repository's GitHub Packages feed: `https://nuget.pkg.github.com/no1ross/index.json` |
+| `.snupkg` (symbols) | nuget.org's symbol server (tags), attached to the GitHub Release (tags) and to the workflow run; GitHub Packages does not host symbol packages |
+| build provenance | a signed attestation per `.nupkg`, stored with the repository's attestations ([Provenance](#provenance)) |
 
-Consumers of the feed add it as a NuGet source with a token that can read packages.
+Consumers install tagged versions from nuget.org with no extra source. A preview built between tags is
+only on the GitHub Packages feed: add it as a NuGet source with a token that can read packages.
+
+## Owner setup (once, before the first tag)
+
+The repository cannot configure these; a tag run fails before publishing anything until they exist:
+1. **nuget.org account** (or organization) that will own the `Kaleido` and `Kaleido.*` package IDs.
+   Optionally reserve the `Kaleido.` ID prefix.
+2. **Trusted publishing policy** on nuget.org for repository `no1ross/Kaleido`, workflow file
+   `release.yml`, environment `release`.
+3. **Repository variable** `NUGET_USER` (Settings -> Secrets and variables -> Actions -> Variables): the
+   nuget.org user name or organization of that policy. It is not a secret; no API key is stored.
+4. **The `release` environment** with required reviewers and deployment tags `v*` (see below).
 
 ## What the workflow guarantees
 
@@ -22,13 +35,18 @@ Every run, from a clean checkout of the tag (or master, for a dry run):
    contents (assembly, XML docs, README, symbols), exact `[x.y.z]` dependencies between the Kaleido
    packages ([they move together](docs/VERSIONING.md#versions)), a clean consumer build with the consumer analyzer and
    no repository-only rule, and deterministic source paths with Source Link in every symbols package;
-3. on a tag, refuses to publish unless the tag equals the packed version;
-4. publishes the `.nupkg` files (`--skip-duplicate`), keeps packages and symbols with the run, and on a
-   tag creates the GitHub Release (a prerelease for a version with a suffix).
+3. on a tag, refuses to publish unless the tag equals the packed version and the nuget.org publisher
+   (`NUGET_USER`) is configured;
+4. attests the build provenance of every `.nupkg`;
+5. publishes the `.nupkg` files (`--skip-duplicate`) to GitHub Packages and, on a tag, to nuget.org;
+   keeps packages and symbols with the run, and on a tag creates the GitHub Release (a prerelease for
+   a version with a suffix).
 
 **Least privilege.** The workflow has `contents: read` by default; the release job adds only
-`contents: write` (the GitHub Release) and `packages: write` (the feed), and publishes with the run's
-`GITHUB_TOKEN` - no stored publication secret. The job runs in the **`release` environment**: configure
+`contents: write` (the GitHub Release), `packages: write` (the feed), and `id-token: write` with
+`attestations: write` (the OIDC token for nuget.org trusted publishing and the attestation). It
+publishes to GitHub Packages with the run's `GITHUB_TOKEN` and to nuget.org with a short-lived key
+exchanged from the run's OIDC token - no stored publication secret. The job runs in the **`release` environment**: configure
 it in the repository settings with **required reviewers** and **deployment tags `v*`** (plus master for
 the dry run), so nothing is published without an approval.
 
@@ -59,8 +77,8 @@ run, without a GitHub Release. Check:
    (`git push origin v1.0.0`). For a preview, tag the computed version (`nbgv get-version -v NuGetPackageVersion`).
 4. **Approve.** Approve the `release` environment deployment when the run's build, tests and package
    verification are green.
-5. **Check.** The packages are in the feed, the GitHub Release lists the packages and symbols, and the
-   changelog link in the release resolves.
+5. **Check.** The packages are on nuget.org and in the GitHub Packages feed, the GitHub Release lists
+   the packages and symbols, and the changelog link in the release resolves.
 
 A failed run publishes nothing that was not verified; fix the cause on master and tag again (a new
 version, since published versions are immutable).
@@ -68,5 +86,16 @@ version, since published versions are immutable).
 ## Provenance
 
 The packages are built only by this workflow, from a tagged commit, with deterministic builds and Source
-Link (each symbol file points at the exact commit). Signed build attestations and package signing are
-considered for the stable nuget.org release.
+Link (each symbol file points at the exact commit). Each `.nupkg` has a signed
+[build provenance attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations)
+naming the workflow run and commit that built it; verify a downloaded package with:
+
+```bash
+gh attestation verify Kaleido.<version>.nupkg --repo no1ross/Kaleido
+```
+
+nuget.org repository-signs every package it accepts. Author signing (a code-signing certificate) is
+deliberately not used for now: it needs a certificate and its custody, and the attestation already
+ties each package to its build (#432).
+
+Every package carries the `LICENSE` and `NOTICE` files.

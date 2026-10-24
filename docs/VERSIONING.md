@@ -14,8 +14,9 @@ decided at 1.0. Nothing here promises a support period or a date.
   internal seams (`InternalsVisibleTo`), which the public API baseline does not cover, so a mixed set
   (for example `Kaleido 1.0.1` with `Kaleido.Http 1.0.0`) would fail at run time. NuGet refuses that
   combination at restore instead; upgrade all the Kaleido packages a project references together.
-- Previews and releases are published by the release workflow to the repository's GitHub Packages
-  feed ([`RELEASING.md`](../RELEASING.md)); what changed is in [`CHANGELOG.md`](../CHANGELOG.md).
+- The release workflow publishes every run to the repository's GitHub Packages feed, and each tagged
+  version (preview or stable) also to nuget.org ([`RELEASING.md`](../RELEASING.md)); what changed is
+  in [`CHANGELOG.md`](../CHANGELOG.md).
 - From 1.0 the packages follow [Semantic Versioning](https://semver.org): a breaking change to the
   public API, the HTTP wire contracts, the error codes or the telemetry names needs a new major
   version.

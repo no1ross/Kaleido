@@ -292,11 +292,9 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 
 ### Install
 
-The packages are previews and are not published to nuget.org yet. The release workflow publishes them to the repository's GitHub Packages feed, `https://nuget.pkg.github.com/no1ross/index.json` ([releasing](RELEASING.md)); add it as a source with a GitHub token that can read packages, then add what the service needs:
+The packages are previews. Tagged versions are published to **nuget.org**, so no extra source is needed ([releasing](RELEASING.md)); add what the service needs:
 
 ```bash
-dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name kaleido --username <github-user> --password <token-with-read:packages>
-
 dotnet add package Kaleido --prerelease                              # core runtimes (always)
 dotnet add package Kaleido.Http --prerelease                         # publish the service over HTTP
 dotnet add package Kaleido.Http.Client --prerelease                  # call other Kaleido services
@@ -306,7 +304,13 @@ dotnet add package Kaleido.Observability.OpenTelemetry --prerelease  # logs, tra
 dotnet add package Kaleido.Provider.SQLite --prerelease              # reference store (evaluation, not production)
 ```
 
-`Kaleido.Http` and `Kaleido.Http.Client` bring `Kaleido.Http.Abstractions` and `Kaleido` with them.
+`Kaleido.Http` and `Kaleido.Http.Client` bring `Kaleido.Http.Abstractions` and `Kaleido` with them. The packages move together: upgrade all the Kaleido packages a project references at once ([versioning](docs/VERSIONING.md#versions)).
+
+Preview builds between tags are published only to the repository's GitHub Packages feed, `https://nuget.pkg.github.com/no1ross/index.json`; to use one, add that feed as a source with a GitHub token that can read packages:
+
+```bash
+dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name kaleido --username <github-user> --password <token-with-read:packages>
+```
 
 ## Documentation
 

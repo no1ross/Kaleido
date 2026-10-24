@@ -1,12 +1,13 @@
 name: Release
 
-# Builds, tests, packs and verifies the packages from a clean checkout, then publishes them to the
-# repository's GitHub Packages feed (RELEASING.md, #318).
-# - A tag v<version> on master publishes that version; the tag must equal the version Nerdbank
+# Builds, tests, packs and verifies the packages from a clean checkout, attests their provenance, then
+# publishes them (RELEASING.md, #318, #432).
+# - A tag v<version> on master publishes that version to the repository's GitHub Packages feed and to
+#   nuget.org (trusted publishing, no stored API key); the tag must equal the version Nerdbank
 #   computes from version.json (set the version in version.json first, then tag that commit), and
 #   a GitHub Release is created with the packages and symbols attached.
-# - workflow_dispatch is the dry run: the current master's preview version, published to the same
-#   test feed, without a GitHub Release.
+# - workflow_dispatch is the dry run: the current master's preview version, published to the GitHub
+#   Packages feed only, without a GitHub Release.
 on:
   push:
     tags:
@@ -26,8 +27,10 @@ jobs:
     environment: release
 
     permissions:
-      contents: write   # the GitHub Release on a tag
-      packages: write   # GitHub Packages
+      contents: write      # the GitHub Release on a tag
+      packages: write      # GitHub Packages
+      id-token: write      # OIDC: nuget.org trusted publishing and the build attestation
+      attestations: write  # the build provenance attestation
 
     steps:
 
@@ -73,6 +76,26 @@ jobs:
           exit 1
         }
 
+    # A tag also publishes to nuget.org, which needs the owner setup in RELEASING.md (a trusted
+    # publishing policy on nuget.org and the NUGET_USER repository variable): checked before anything
+    # is published, so a misconfigured tag publishes nowhere.
+    - name: Check the nuget.org publisher is configured
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        NUGET_USER: ${{ vars.NUGET_USER }}
+      run: |
+        test -n "$NUGET_USER" || {
+          echo "::error::The NUGET_USER repository variable is not set: a tag publishes to nuget.org. See RELEASING.md (Owner setup)."
+          exit 1
+        }
+
+    # A signed SLSA build provenance attestation for every package: verify a downloaded package with
+    # `gh attestation verify <file>.nupkg --repo no1ross/Kaleido` (RELEASING.md).
+    - name: Attest build provenance
+      uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
+      with:
+        subject-path: artifacts/*.nupkg
+
     # GitHub Packages hosts the .nupkg files; it does not host symbol packages, so the .snupkg files
     # travel with the workflow run (and with the GitHub Release on a tag).
     - name: Publish to GitHub Packages
@@ -80,6 +103,26 @@ jobs:
         dotnet nuget push "artifacts/*.nupkg" \
           --source "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json" \
           --api-key "${{ secrets.GITHUB_TOKEN }}" \
+          --skip-duplicate
+
+    # nuget.org, on a tag only, with trusted publishing: NuGet/login exchanges the run's OIDC token for
+    # a short-lived API key, so no publication secret is stored (the publisher check above runs first).
+    - name: Log in to nuget.org
+      id: nuget-login
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841  # v1.2.0
+      with:
+        user: ${{ vars.NUGET_USER }}
+
+    # nuget.org also takes the .snupkg next to each .nupkg (its symbol server).
+    - name: Publish to nuget.org
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+      run: |
+        dotnet nuget push "artifacts/*.nupkg" \
+          --source "https://api.nuget.org/v3/index.json" \
+          --api-key "$NUGET_API_KEY" \
           --skip-duplicate
 
     - name: Upload packages and symbols
