@@ -37,6 +37,8 @@ namespace Kaleido.Queryable
     public interface IQuerySource<TQueryContext> { }
     public interface IQueryViewSource<TSource, TQueryContext, TView, TViewParameters> { }
     public interface IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParameters> { }
+    public interface IDelegatedQuerySource<TQueryContext, TResult> { }
+    public interface IDelegatedQuerySource<TQueryContext, TResult, TParameters> { }
 }
 
 public sealed record CaptureStep : Kaleido.Processor.IProcessStep;
@@ -101,6 +103,55 @@ public sealed record CaptureResult
 
 public sealed class CaptureHandler : Kaleido.Processor.IProcessStepHandler<CaptureStep, CaptureResult> { }
 " + KaleidoStubs);
+    }
+
+    // #454: a delegated source may return a TResult unrelated to its query context; the registry
+    // publishes it, so it is described like a view's output (2- and 3-argument interfaces).
+    [Fact]
+    public async Task ADelegatedSourceResultPropertyWithoutDescription_Reports()
+    {
+        await RunAsync(@"
+public sealed record ShippingRate
+{
+    public decimal {|#0:Amount|} { get; init; }
+}
+
+public sealed record Eta
+{
+    public int {|#1:Days|} { get; init; }
+}
+
+public sealed class RateSource : Kaleido.Queryable.IDelegatedQuerySource<MemberContext, ShippingRate, NoParameters> { }
+public sealed class EtaSource : Kaleido.Queryable.IDelegatedQuerySource<MemberContext, Eta> { }
+" + KaleidoStubs,
+            OutputProperty.WithLocation(0).WithArguments("Amount", "ShippingRate"),
+            OutputProperty.WithLocation(1).WithArguments("Days", "Eta"));
+    }
+
+    // Its query context is KAL2015's; a described result, one from another assembly, and one shared
+    // with a view (reported once) follow the same rules as every other output.
+    [Fact]
+    public async Task DelegatedSourceResults_CoveredElsewhereDescribedOrShared_FollowTheSameRules()
+    {
+        await RunAsync(@"
+public sealed record Described
+{
+    [System.ComponentModel.Description(""The rate in EUR."")]
+    public decimal Amount { get; init; }
+}
+
+public sealed record Shared
+{
+    public string {|#0:Code|} { get; init; }
+}
+
+public sealed class ContextSource : Kaleido.Queryable.IDelegatedQuerySource<MemberContext, MemberContext> { }
+public sealed class DescribedSource : Kaleido.Queryable.IDelegatedQuerySource<MemberContext, Described, NoParameters> { }
+public sealed class TextSource : Kaleido.Queryable.IDelegatedQuerySource<MemberContext, string> { }
+public sealed class SharedSource : Kaleido.Queryable.IDelegatedQuerySource<MemberContext, Shared> { }
+public sealed class SharedView : Kaleido.Queryable.IQueryViewSource<MemberSource, MemberContext, Shared, NoParameters> { }
+" + KaleidoStubs,
+            OutputProperty.WithLocation(0).WithArguments("Code", "Shared"));
     }
 
     // An output used by two handlers is reported once.

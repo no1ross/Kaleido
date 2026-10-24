@@ -10,10 +10,12 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers;
 
 /// <summary>
-/// KAL2021: what a step returns (<c>TResult</c> of <c>IProcessStepHandler&lt;TStep, TResult&gt;</c>) and what
-/// a view returns (<c>TView</c> of <c>IQueryViewSource*</c>) is read by agents and UIs; the registry
-/// publishes each property's description, and the MCP adapter hands it to the agent with the data.
-/// A source's output is its query context, already covered by KAL2015.
+/// KAL2021: what a step returns (<c>TResult</c> of <c>IProcessStepHandler&lt;TStep, TResult&gt;</c>), what
+/// a view returns (<c>TView</c> of <c>IQueryViewSource*</c>) and what a delegated source returns
+/// (<c>TResult</c> of <c>IDelegatedQuerySource&lt;TQueryContext, TResult[, TParameters]&gt;</c>, which need
+/// not be its query context, #454) is read by agents and UIs; the registry publishes each property's
+/// description, and the MCP adapter hands it to the agent with the data. A source's query context is
+/// already covered by KAL2015.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class OutputDescriptionAnalyzer : DiagnosticAnalyzer
@@ -24,6 +26,12 @@ public sealed class OutputDescriptionAnalyzer : DiagnosticAnalyzer
     [
         "Kaleido.Queryable.IQueryViewSource<TSource, TQueryContext, TView, TViewParameters>",
         "Kaleido.Queryable.IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParameters>"
+    ];
+
+    private static readonly string[] DelegatedSourceInterfaceDefinitions =
+    [
+        "Kaleido.Queryable.IDelegatedQuerySource<TQueryContext, TResult>",
+        "Kaleido.Queryable.IDelegatedQuerySource<TQueryContext, TResult, TParameters>"
     ];
 
     private static readonly DiagnosticDescriptor Rule =
@@ -90,6 +98,10 @@ public sealed class OutputDescriptionAnalyzer : DiagnosticAnalyzer
             else if (ViewInterfaceDefinitions.Contains(definition))
             {
                 yield return iface.TypeArguments[2];
+            }
+            else if (DelegatedSourceInterfaceDefinitions.Contains(definition))
+            {
+                yield return iface.TypeArguments[1];
             }
         }
     }

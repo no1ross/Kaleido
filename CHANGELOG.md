@@ -116,6 +116,9 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **KAL2021 covers delegated sources' results** (#454): a delegated source's `TResult` (published in
+  the registry, often not its query context) was never checked for descriptions; undescribed
+  properties are now reported like those of step results and view outputs.
 - **Bounded processor metric dimensions** (#453): `kaleido.processor.executions` and the
   submitted-step-count histogram were tagged with `kaleido.calling.processor`, a value from the
   `X-Kaleido-Calling-Processor` request header, so each distinct value created a new time series.
