@@ -1467,6 +1467,23 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(posts[0].Body.ToJsonString(), posts[1].Body.ToJsonString());
     }
 
+    private static readonly int[] ThreeFour = [3, 4];
+
+    // Arrays keep their order (it is meaningful), the objects in them are canonical too, and nulls
+    // stay nulls.
+    [Fact]
+    public async Task AStepBody_IsCanonical_InsideArrays_AndKeepsNulls()
+    {
+        var sut = CreateSut();
+
+        await sut.InvokeAsync(Close, Call(new { processId = ProcessId, lines = new object?[] { new { b = 2, a = 1 }, null, ThreeFour }, note = (string?)null }), Catalog, Cancel);
+        await sut.InvokeAsync(Close, Call(new { note = (string?)null, lines = new object?[] { new { a = 1, b = 2 }, null, ThreeFour }, processId = ProcessId }), Catalog, Cancel);
+
+        Assert.Equal("""{"lines":[{"a":1,"b":2},null,[3,4]],"note":null}""", posts[0].Body.ToJsonString());
+        Assert.Equal(posts[0].Body.ToJsonString(), posts[1].Body.ToJsonString());
+        Assert.Equal(posts[0].IdempotencyKey, posts[1].IdempotencyKey);
+    }
+
     [Theory]
     [InlineData("other reason", "86a1ed5b-0b4a-4f6e-9f3c-4cb2f5b1a001")]
     [InlineData("done", "1b4f1c11-3a0e-4c55-8f0f-9a3c2d6e7b02")]
