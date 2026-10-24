@@ -296,18 +296,31 @@ public sealed class ProcessorObservabilityTests
         Assert.DoesNotContain(executions.Tags, x => x.Key == KaleidoTelemetryTags.CallingProcessor);
     }
 
+    // #453: the calling processor is a caller-supplied header, so many distinct values must not create
+    // many metric series; the span keeps the per-hop detail.
     [Fact]
-    public void BeginExecution_WithCallingProcessor_TagsMetrics()
+    public void BeginExecution_ManyCallingProcessors_KeepTheMetricDimensionsBounded_AndTagTheSpan()
     {
         var serviceName = $"test-processor-{Guid.NewGuid():N}";
-        var observability = CreateSut(serviceName);
+        var activities = new List<Activity>();
+        using var listener = CreateActivityListener(activities);
         var measurements = new List<(string Name, KeyValuePair<string, object?>[] Tags)>();
         using var meterListener = CreateMeterListener(serviceName, measurements);
 
-        observability.BeginExecution(new ProcessorExecutionObservationDetails(1)).Dispose();
+        for (var i = 0; i < 50; i++)
+        {
+            CreateSut(serviceName, correlation: new KaleidoCorrelationContext { RequestId = $"REQ-{i}", CallingProcessorName = $"caller-{i}" })
+                .BeginExecution(new ProcessorExecutionObservationDetails(1))
+                .Dispose();
+        }
 
-        var executions = Assert.Single(measurements, x => x.Name == ProcessorTelemetry.ExecutionsCounterName);
-        Assert.Contains(executions.Tags, x => x.Key == KaleidoTelemetryTags.CallingProcessor && (string?)x.Value == "calling-processor");
+        var executions = measurements.Where(x => x.Name is ProcessorTelemetry.ExecutionsCounterName or ProcessorTelemetry.SubmittedStepCountHistogramName).ToArray();
+        Assert.Equal(100, executions.Length);
+        Assert.All(executions, x => Assert.Equal([KaleidoTelemetryTags.ProcessorName], x.Tags.Select(t => t.Key)));
+        Assert.Equal(
+            Enumerable.Range(0, 50).Select(i => $"caller-{i}"),
+            activities.Where(x => x.GetTagItem(KaleidoTelemetryTags.ProcessorName) as string == serviceName)
+                .Select(x => x.GetTagItem(KaleidoTelemetryTags.CallingProcessor) as string));
     }
 
     [Fact]

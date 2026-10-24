@@ -116,6 +116,10 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Bounded processor metric dimensions** (#453): `kaleido.processor.executions` and the
+  submitted-step-count histogram were tagged with `kaleido.calling.processor`, a value from the
+  `X-Kaleido-Calling-Processor` request header, so each distinct value created a new time series.
+  **Telemetry change:** the tag is removed from metrics; it stays on spans, logs and events.
 - **Direct publication never publishes a rolled-back transition's event** (#451): with
   `AddDirectPublication()`, an event added to a transition whose commit failed stayed pending and
   was published by the next commit in the same request (e.g. after the failure save). A transition

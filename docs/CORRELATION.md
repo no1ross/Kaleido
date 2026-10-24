@@ -174,6 +174,9 @@ step handler / consumer code
   `kaleido.calling.processor`, `kaleido.calling.step`, `kaleido.origin` and `kaleido.origin.tool`,
   and the caller filter adds `kaleido.caller.actor`, so distributed traces line up with the
   correlation headers.
+- Metrics carry none of these: their values come from request headers (unbounded), and each distinct
+  value would be a new time series. `kaleido.processor.executions` and the submitted-step histogram
+  are tagged with the processor name only (#453); filter traces or events by the calling processor.
 - Emitted events carry the correlation (`RequestId`, `ProcessId`, `CallingProcessorName`,
   `CallingStepName`, `Origin`, `OriginTool`), the caller (`Caller`, `CallerActor`) and the
   emitting service's own `ProcessorInstanceId`.
