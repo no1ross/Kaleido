@@ -54,6 +54,21 @@ public sealed class KaleidoClientTransportCheckTests
         Assert.Empty(logger.Entries);
     }
 
+    // A client configured without settings (Kaleido:Clients:Member with no value) uses the shared BaseUrl.
+    [Fact]
+    public async Task StartAsync_AClientWithoutAnEntry_IsCheckedWithTheSharedBaseUrl()
+    {
+        var options = new KaleidoClientOptions
+        {
+            BaseUrl = "http://shared.internal/",
+            Clients = new Dictionary<string, KaleidoClientEntry> { ["Member"] = null! },
+        };
+
+        await CreateSut(options).StartAsync(TestContext.Current.CancellationToken);
+
+        Assert.Contains("http://shared.internal", Assert.Single(logger.Entries).Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task StartAsync_WithoutACallCredentialProvider_DoesNotWarn()
     {

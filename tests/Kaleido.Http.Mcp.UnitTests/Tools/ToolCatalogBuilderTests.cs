@@ -474,6 +474,74 @@ public sealed class ToolCatalogBuilderTests
         Assert.Contains(catalog.Tools, x => x.Definition.Name == Hashed(ToolCatalogBuilder.GetProcessStateTool, "clinic|step|CloseVisitStep"));
     }
 
+    // A capability missing from the unfiltered registry (the snapshot changed between the two reads) is
+    // named by the same rule within the catalog: plain when unique, hashed when its base is taken or a
+    // built-in tool's, and lengthened when even its hashed name is already used.
+    [Fact]
+    public void Build_ACapabilityMissingFromTheNameScope_IsNamedByTheSameRule_WithinTheCatalog()
+    {
+        var taken = Hashed("x", "clinic|step|CStep");
+        var sut = CreateSut((_, type) => new ToolName(
+            type switch
+            {
+                "AStep" => taken,
+                "DStep" => ToolCatalogBuilder.GetProcessStateTool,
+                "EStep" => "clinic_e",
+                _ => "x",
+            },
+            false));
+        var processor = Visits() with
+        {
+            Steps =
+            [
+                new ProcessStepResponse { Name = "AStep", Description = "A.", ExecuteUrl = "/a" },
+                new ProcessStepResponse { Name = "BStep", Description = "B.", ExecuteUrl = "/b" },
+                new ProcessStepResponse { Name = "CStep", Description = "C.", ExecuteUrl = "/c" },
+                new ProcessStepResponse { Name = "DStep", Description = "D.", ExecuteUrl = "/d" },
+                new ProcessStepResponse { Name = "EStep", Description = "E.", ExecuteUrl = "/e" }
+            ]
+        };
+        var scope = new AggregatedRegistryResponse { Processes = [processor with { Steps = processor.Steps!.Take(2).ToArray() }] };
+
+        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [processor] }, scope);
+
+        var names = catalog.Tools.Where(x => x.Kind == KaleidoToolKind.Step).Select(x => x.Definition.Name).ToArray();
+        Assert.Equal(
+            [
+                taken,
+                "x",
+                Hashed("x", "clinic|step|CStep#1"),
+                Hashed(ToolCatalogBuilder.GetProcessStateTool, "clinic|step|DStep"),
+                "clinic_e"
+            ],
+            names);
+        Assert.Equal(catalog.Tools.Count, catalog.Tools.Select(x => x.Definition.Name).Distinct(StringComparer.Ordinal).Count());
+    }
+
+    // A derived name that repeats one already given (a capability whose plain name equals another's
+    // hashed name) gets a longer, still stable derivation.
+    [Fact]
+    public void Build_AHashedNameThatIsAlsoAPlainName_IsLengthened_StablyAndUniquely()
+    {
+        var hashedP = Hashed("y", "clinic|step|PStep");
+        var sut = CreateSut((_, type) => new ToolName(type == "RStep" ? hashedP : "y", false));
+        var processor = Visits() with
+        {
+            Steps =
+            [
+                new ProcessStepResponse { Name = "PStep", Description = "P.", ExecuteUrl = "/p" },
+                new ProcessStepResponse { Name = "QStep", Description = "Q.", ExecuteUrl = "/q" },
+                new ProcessStepResponse { Name = "RStep", Description = "R.", ExecuteUrl = "/r" }
+            ]
+        };
+
+        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [processor] });
+
+        Assert.Equal(
+            [hashedP, Hashed("y", "clinic|step|QStep"), Hashed(hashedP, "clinic|step|RStep#1")],
+            catalog.Tools.Where(x => x.Kind == KaleidoToolKind.Step).Select(x => x.Definition.Name));
+    }
+
     // An information step is never a tool, so it never makes a step's name collide.
     [Fact]
     public void Build_AnInformationStep_DoesNotCountAsACollision()
