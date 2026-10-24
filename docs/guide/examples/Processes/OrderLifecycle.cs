@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Guide.Examples.Events;
 using Kaleido.Guide.Examples.GettingStarted;
+using Kaleido.Http.Processor;
 using Kaleido.Processor;
 using Kaleido.Processor.Execution;
 
@@ -99,14 +100,23 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 [AvailableAfter<ShipOrderStep>]
 public sealed record ReturnOrderStep : IProcessStep;
 
-public sealed class ReturnOrderHandler : IProcessStepHandler<ReturnOrderStep>
+// HandOff only tells the caller where the process continues; the handler starts it there. Called
+// from this step, the returns service starts its process under this process's id (a handoff).
+public sealed class ReturnOrderHandler(IKaleidoProcessorClientFactory processors) : IProcessStepHandler<ReturnOrderStep>
 {
-    public Task<ProcessStepHandlerResult> ExecuteAsync(
+    public async Task<ProcessStepHandlerResult> ExecuteAsync(
         ReturnOrderStep processStep,
         ProcessStepContext context,
-        CancellationToken cancellationToken) =>
-        Task.FromResult(ProcessStepHandlerResult.HandOff("returns"));
+        CancellationToken cancellationToken)
+    {
+        await processors.GetClient("returns").ExecuteStepAsync(new OpenReturnStep(), cancellationToken);
+
+        return ProcessStepHandlerResult.HandOff("returns");
+    }
 }
+
+// The returns service's step, mirrored by its name: not an IProcessStep here, it is not this service's.
+public sealed record OpenReturnStep;
 // end snippet
 
 public sealed class AddNoteHandler : IProcessStepHandler<AddNoteStep>

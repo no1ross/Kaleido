@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -53,14 +52,14 @@ internal sealed partial class KaleidoProcessorClient(
                        response.StatusCode);
         }
 
-        throw await CreateFailureAsync(
-            response,
+        throw await response.ToClientFailureAsync(
             $"Process state request for '{processId}' failed",
             cancellationToken);
     }
 
     public async Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
+        string? idempotencyKey,
         CancellationToken cancellationToken)
     {
         var url = ProcessContractUrls.Execute(serviceName);
@@ -71,6 +70,7 @@ internal sealed partial class KaleidoProcessorClient(
         };
 
         headerStamper.Stamp(httpRequest);
+        UseIdempotencyKey(httpRequest, idempotencyKey);
 
         using var response = await SendAsync(httpRequest, cancellationToken);
 
@@ -84,8 +84,7 @@ internal sealed partial class KaleidoProcessorClient(
                        response.StatusCode);
         }
 
-        throw await CreateFailureAsync(
-            response,
+        throw await response.ToClientFailureAsync(
             "Process execute request failed",
             cancellationToken);
     }
@@ -121,8 +120,7 @@ internal sealed partial class KaleidoProcessorClient(
                        response.StatusCode);
         }
 
-        throw await CreateFailureAsync(
-            response,
+        throw await response.ToClientFailureAsync(
             "Process step request failed",
             cancellationToken);
     }
@@ -158,8 +156,7 @@ internal sealed partial class KaleidoProcessorClient(
                        response.StatusCode);
         }
 
-        throw await CreateFailureAsync(
-            response,
+        throw await response.ToClientFailureAsync(
             "Process step request failed",
             cancellationToken);
     }
@@ -168,6 +165,7 @@ internal sealed partial class KaleidoProcessorClient(
         string stepName,
         JsonElement processStep,
         Guid? processId,
+        string? idempotencyKey,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
@@ -193,6 +191,8 @@ internal sealed partial class KaleidoProcessorClient(
             httpRequest.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, id.ToString());
         }
 
+        UseIdempotencyKey(httpRequest, idempotencyKey);
+
         using var response = await SendAsync(httpRequest, cancellationToken);
 
         if (response.IsSuccessStatusCode)
@@ -205,45 +205,19 @@ internal sealed partial class KaleidoProcessorClient(
                        response.StatusCode);
         }
 
-        throw await CreateFailureAsync(
-            response,
+        throw await response.ToClientFailureAsync(
             $"Process step request for '{stepName}' failed",
             cancellationToken);
     }
 
-    private static async Task<KaleidoHttpClientException> CreateFailureAsync(
-        HttpResponseMessage response,
-        string description,
-        CancellationToken cancellationToken)
+    // The caller's key for this logical call (#440); without one SendAsync gives the request its own.
+    // Not validated here: the service answers an over-long key with 400 pro_invalid_idempotency_key.
+    private static void UseIdempotencyKey(HttpRequestMessage request, string? idempotencyKey)
     {
-        KaleidoErrorResponse? errorResponse = null;
-
-        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
+        if (!string.IsNullOrWhiteSpace(idempotencyKey))
         {
-            try
-            {
-                errorResponse = await response.Content
-                    .ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, cancellationToken);
-            }
-            catch (System.Text.Json.JsonException)
-            {
-                // Non-Kaleido or non-JSON error body — fall through to RequestFailed.
-            }
+            request.Headers.TryAddWithoutValidation(KaleidoIdempotencyHeaders.IdempotencyKey, idempotencyKey);
         }
-
-        if (errorResponse?.Errors.Count > 0)
-        {
-            return new KaleidoHttpClientException(
-                response.StatusCode == HttpStatusCode.Conflict ? HttpClientErrorCodes.Conflict : HttpClientErrorCodes.ValidationFailed,
-                $"{description}: {string.Join(' ', errorResponse.Errors.Select(e => e.Message))}",
-                response.StatusCode,
-                errorResponse.Errors);
-        }
-
-        return new KaleidoHttpClientException(
-            HttpClientErrorCodes.RequestFailed,
-            string.Create(CultureInfo.InvariantCulture, $"{description} with status code {(int)response.StatusCode} ({response.StatusCode})."),
-            response.StatusCode);
     }
 
     // Step URLs come from the route prefix, never from the registry: the registry is filtered per
@@ -256,9 +230,9 @@ internal sealed partial class KaleidoProcessorClient(
         CancellationToken cancellationToken,
         bool capabilityCall = true)
     {
-        // Every execute call is idempotent: one key per call, so a retry of this request (the
-        // resilience pipeline re-sends the same message) gets the stored answer instead of running the
-        // step a second time.
+        // Every execute call is idempotent: the caller's key, else one key per call, so a retry of this
+        // request (the resilience pipeline re-sends the same message) gets the stored answer instead of
+        // running the step a second time.
         if (request.Method == HttpMethod.Post && !request.Headers.Contains(KaleidoIdempotencyHeaders.IdempotencyKey))
         {
             request.Headers.Add(KaleidoIdempotencyHeaders.IdempotencyKey, Guid.NewGuid().ToString("N"));

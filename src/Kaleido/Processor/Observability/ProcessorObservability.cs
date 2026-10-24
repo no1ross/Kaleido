@@ -194,10 +194,9 @@ internal sealed partial class ProcessorObservability(
 
         activity?.SetTag(ProcessorTelemetry.TagSubmittedStepCount, details.SubmittedStepCount);
 
-        var executionTags =
-            CreateExecutionTags(
-                _processorName,
-                correlation.CallingProcessorName);
+        // Metric dimensions stay bounded (#453): the calling processor is a caller-supplied header value,
+        // so it is on the span and in the events, never a metric tag.
+        TagList executionTags = [new(KaleidoTelemetryTags.ProcessorName, _processorName)];
 
         ProcessExecutionsCounter.Add(1, executionTags);
         ProcessSubmittedStepCountHistogram.Record(details.SubmittedStepCount, executionTags);
@@ -261,23 +260,6 @@ internal sealed partial class ProcessorObservability(
             _processorName,
             logger,
             details);
-    }
-
-    private static TagList CreateExecutionTags(
-        string processorName,
-        string? callingProcessorName)
-    {
-        TagList tags =
-        [
-            new(KaleidoTelemetryTags.ProcessorName, processorName),
-        ];
-
-        if (!string.IsNullOrWhiteSpace(callingProcessorName))
-        {
-            tags.Add(KaleidoTelemetryTags.CallingProcessor, callingProcessorName);
-        }
-
-        return tags;
     }
 
     private static TagList CreateStepTags(

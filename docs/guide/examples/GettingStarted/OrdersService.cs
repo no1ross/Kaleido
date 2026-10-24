@@ -48,6 +48,7 @@ public static class OrdersService
             })
             .AddHttp()
             .AddHttpClients()
+            .ForwardCallerToken()   // the agent's user's token on tool calls; AddMcp() requires a choice
             .AddMcp();
         // end snippet
     }

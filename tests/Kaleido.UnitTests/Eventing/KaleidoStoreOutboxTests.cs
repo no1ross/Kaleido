@@ -34,4 +34,17 @@ public sealed class KaleidoStoreOutboxTests
         signal.Verify(x => x.Notify(), Times.Once);
         store.VerifyNoOtherCalls();
     }
+
+    // The events were written in the transaction its rollback undid: nothing to forget, nobody woken.
+    [Fact]
+    public void Discard_TouchesNeitherTheStoreNorTheRelay()
+    {
+        var store = new Mock<IKaleidoOutboxStore>();
+        var signal = new Mock<IKaleidoEventSignal>();
+
+        CreateSut(store.Object, signal.Object).Discard();
+
+        store.VerifyNoOtherCalls();
+        signal.VerifyNoOtherCalls();
+    }
 }

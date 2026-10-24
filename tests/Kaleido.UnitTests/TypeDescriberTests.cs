@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Kaleido.Exceptions;
 
 namespace Kaleido.UnitTests;
 
@@ -243,6 +244,78 @@ public sealed class TypeDescriberTests
         Assert.True(descriptor.Nullable);
         Assert.Equal("enum", descriptor.Format);
         Assert.Equal(2, descriptor.EnumValues!.Count);
+    }
+
+    // #446: the item type is the T of the IEnumerable<T> a type implements, not its first generic argument.
+    [Theory]
+    [InlineData(typeof(List<int>))]
+    [InlineData(typeof(IReadOnlyList<int>))]
+    [InlineData(typeof(IEnumerable<int>))]
+    [InlineData(typeof(int[]))]
+    [InlineData(typeof(Numbers))]
+    [InlineData(typeof(NumberBag))]
+    [InlineData(typeof(Pairing<string, int>))]
+    public void GetDescriptor_AnEnumerable_IsAnArrayOfItsElementType(Type type)
+    {
+        var descriptor = _sut.GetDescriptor(type);
+
+        Assert.Equal("array", descriptor.Type);
+        Assert.Equal("integer", descriptor.ItemType!.Type);
+    }
+
+    // #446: a dictionary with string keys is an object whose values have the item type.
+    [Theory]
+    [InlineData(typeof(Dictionary<string, int>))]
+    [InlineData(typeof(IDictionary<string, int>))]
+    [InlineData(typeof(IReadOnlyDictionary<string, int>))]
+    [InlineData(typeof(System.Collections.Concurrent.ConcurrentDictionary<string, int>))]
+    [InlineData(typeof(Scores))]
+    public void GetDescriptor_ADictionaryWithStringKeys_IsAnObjectOfItsValueType(Type type)
+    {
+        var descriptor = _sut.GetDescriptor(type);
+
+        Assert.Equal("object", descriptor.Type);
+        Assert.Equal("integer", descriptor.ItemType!.Type);
+    }
+
+    [Fact]
+    public void GetDescriptor_ANonGenericDictionary_IsAPlainObject()
+    {
+        var descriptor = _sut.GetDescriptor(typeof(System.Collections.Hashtable));
+
+        Assert.Equal("object", descriptor.Type);
+        Assert.Null(descriptor.ItemType);
+    }
+
+    [Theory]
+    [InlineData(typeof(Dictionary<int, string>))]
+    [InlineData(typeof(IReadOnlyDictionary<Guid, int>))]
+    [InlineData(typeof(List<Dictionary<TestStatus, int>>))]
+    public void GetDescriptor_ADictionaryWithAnotherKeyType_IsAConfigurationError(Type type)
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => _sut.GetDescriptor(type));
+
+        Assert.Equal(FrameworkErrorCodes.UnsupportedDataType, exception.Code);
+        Assert.Contains("string keys", exception.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class Numbers : List<int>;
+
+    private sealed class Scores : Dictionary<string, int>;
+
+    // Its first generic argument is not its element type.
+    private sealed class Pairing<TKey, TValue> : IEnumerable<TValue>
+    {
+        public IEnumerator<TValue> GetEnumerator() => Enumerable.Empty<TValue>().GetEnumerator();
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    private sealed class NumberBag : IEnumerable<int>
+    {
+        public IEnumerator<int> GetEnumerator() => Enumerable.Empty<int>().GetEnumerator();
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     private sealed class ScalarModel<T>

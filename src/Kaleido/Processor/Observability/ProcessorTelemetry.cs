@@ -172,8 +172,9 @@ public static class ProcessorTelemetry
     // ── Metric names ──────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Counter: execution requests started. Tagged with the processor name and, when the request
-    /// came from another processor, <see cref="KaleidoTelemetryTags.CallingProcessor"/>.
+    /// Counter: execution requests started. Tagged with the processor name only: the calling processor
+    /// (<see cref="KaleidoTelemetryTags.CallingProcessor"/>) comes from a request header, so it is a span
+    /// tag and an event field, never a metric dimension (#453).
     /// </summary>
     public const string ExecutionsCounterName =
         "kaleido.processor.executions";

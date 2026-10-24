@@ -324,6 +324,32 @@ public sealed class KaleidoExceptionHandlerTests
             },
         };
 
+    // #443: the error body is Kaleido's wire contract, so a host's own JSON settings (here PascalCase,
+    // which WriteAsJsonAsync would otherwise use) never change it.
+    [Theory]
+    [InlineData(nameof(KaleidoValidationException))]
+    [InlineData(nameof(BadHttpRequestException))]
+    [InlineData(nameof(KaleidoConcurrencyException))]
+    [InlineData(nameof(KaleidoFrameworkException))]
+    [InlineData(nameof(Exception))]
+    public async Task HandleAsync_WritesTheErrorBodyWithKaleidosJson_WhateverTheHostConfigures(string exceptionName)
+    {
+        var services = new ServiceCollection();
+        services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o => o.SerializerOptions.PropertyNamingPolicy = null);
+        var context = new DefaultHttpContext
+        {
+            RequestServices = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }),
+            Response = { Body = new MemoryStream() },
+        };
+
+        await CreateSut().HandleAsync(context, Create(exceptionName), CancellationToken.None);
+
+        using var body = JsonDocument.Parse(ReadBody(context));
+        var error = Assert.Single(body.RootElement.GetProperty("errors").EnumerateArray());
+        Assert.False(string.IsNullOrEmpty(error.GetProperty("code").GetString()));
+        Assert.False(string.IsNullOrEmpty(error.GetProperty("message").GetString()));
+    }
+
     private static DefaultHttpContext CreateContext(IAuthenticationService authentication)
     {
         var services = new ServiceCollection();

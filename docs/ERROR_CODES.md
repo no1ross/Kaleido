@@ -138,7 +138,7 @@ These indicate a framework bug or broken DI wiring, not a user error.
 | `TypeMismatch` | `type_mismatch` | Resolved type does not match the expected type |
 | `MissingRegistration` | `missing_registration` | Required entry not found in an internal registry |
 | `InvalidHandlerResult` | `invalid_handler_result` | Handler returned an unexpected or null result |
-| `UnsupportedDataType` | `unsupported_data_type` | Reserved: defined but not raised by the current code (unsupported CLR types are described as generic objects) |
+| `UnsupportedDataType` | `unsupported_data_type` | A published input or result is a dictionary whose key type is not `string` (keys become JSON property names); raised at registration as a `KaleidoConfigurationException` (#446). Other unknown CLR types are described as generic objects |
 | `DataConversionError` | `data_conversion_error` | Reserved: defined but not raised by the current code (value conversion failures surface as `argument_error` or `qry_invalid_filter_value`) |
 
 ---
@@ -161,8 +161,8 @@ Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup
 | Constant | Code | Meaning |
 |---|---|---|
 | `EmptyResponse` | `httpclient_empty_response` | Remote request succeeded but returned no payload |
-| `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status (including a step, source or view the service does not have, 404, or the caller may not use, 403) |
-| `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors |
+| `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status (including a step, source or view the service does not have, 404, or the caller may not use, 403); the service's own errors are in `Errors` when its body carried any, whatever the status |
+| `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors (400 with a Kaleido error body) |
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
 | `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
 | `InvalidRoutePrefix` | `httpclient_invalid_route_prefix` | A configured client's `RoutePrefix` (or, without one, its lowercased name) is not a service name (`[a-z0-9][a-z0-9_-]*`); it must equal the downstream `ServiceName` (startup, `AddHttpClients()`, `KaleidoConfigurationException`; ADR 0027) |

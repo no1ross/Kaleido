@@ -462,11 +462,13 @@ internal sealed partial class ToolCatalogBuilder(
                     Title = step.DisplayName ?? step.Name,
                     ReadOnlyHint = false,
 
-                    // Declared by the implementer; idempotent because a non-repeatable step runs once
-                    // per process (a second call is refused).
+                    // Declared by the implementer. Idempotent only when calling again with the same
+                    // arguments has no additional effect (#440): a non-repeatable step continuing a
+                    // process is not run again once completed. An initial step may start a new process
+                    // with each call, and a [Repeatable] step runs again, so neither is.
                     DestructiveHint = step.Destructive,
                     OpenWorldHint = step.External,
-                    IdempotentHint = !step.Repeatable,
+                    IdempotentHint = !step.Repeatable && !step.IsInitial,
                 },
             },
             Kind = KaleidoToolKind.Step,
@@ -474,6 +476,7 @@ internal sealed partial class ToolCatalogBuilder(
             CapabilityName = step.Name,
             Url = step.ExecuteUrl,
             IsInitial = step.IsInitial,
+            Repeatable = step.Repeatable,
             Lookups = lookups,
             ClosedBy = step.AvailableUntil.Select(x => x.Name).ToArray(),
             OutputDescriptions = OutputDescriptions(step.Result?.OutputFields),

@@ -99,6 +99,14 @@ internal sealed class ToolSchemaBuilder : IToolSchemaBuilder
             case "string":
                 return StringSchema(dataType.Format);
 
+            // A dictionary: its keys are the property names, each value of the item type (#446).
+            case "object" when dataType.ItemType is { } value:
+                return new JsonObject
+                {
+                    ["type"] = "object",
+                    ["additionalProperties"] = TypeSchema(value),
+                };
+
             default:
                 // object or anything unknown: accept any JSON value of that shape.
                 return string.IsNullOrWhiteSpace(dataType.Type)

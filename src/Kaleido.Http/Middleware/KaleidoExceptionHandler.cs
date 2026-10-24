@@ -150,8 +150,11 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
 
         context.Response.StatusCode = statusCode;
 
+        // Kaleido's own serializer, never the host's HttpJsonOptions: the error body is a published wire
+        // contract ({"errors":[{"code","message"}]}) whatever naming policy the host configures (#443).
         await context.Response.WriteAsJsonAsync(
             new KaleidoErrorResponse([new KaleidoError(code, message)]),
+            KaleidoJsonOptions.Options,
             CancellationToken.None);
     }
 

@@ -64,6 +64,28 @@ public sealed class KaleidoEventWriterTests
         outbox.Verify(x => x.AddAsync(It.Is<IReadOnlyCollection<KaleidoOutboxEvent>>(events => events.Single() == written), CancellationToken.None));
     }
 
+    // #451: a rolled-back transition's event is forgotten by Kaleido's own outbox integrations.
+    [Fact]
+    public void RolledBack_WithKaleidosOutbox_DiscardsItsPendingEvents()
+    {
+        var outbox = BuiltInOutbox();
+
+        CreateSut(outbox.Object, Mock.Of<IEventPublisher>()).RolledBack();
+
+        outbox.Verify(x => x.Discard(), Times.Once);
+    }
+
+    // The host's own outbox wrote inside the transaction: the rollback is its own.
+    [Fact]
+    public void RolledBack_WithTheHostsOwnOutbox_DoesNothing()
+    {
+        var outbox = Outbox<IKaleidoOutbox>();
+
+        CreateSut(outbox.Object, Mock.Of<IEventPublisher>()).RolledBack();
+
+        outbox.VerifyNoOtherCalls();
+    }
+
     [Fact]
     public void Prepare_WithAPublisher_ReturnsTheOutboxEntry()
     {

@@ -30,7 +30,7 @@ public sealed class KaleidoToolInvokerTests
     private readonly Mock<IKaleidoProcessForwarding> processForwarding = new();
     private readonly List<Guid?> forwardedProcessIds = [];
     private readonly Mock<McpServer> server = new();
-    private readonly List<(string Service, string Step, JsonNode Body, Guid? ProcessId)> posts = [];
+    private readonly List<(string Service, string Step, JsonNode Body, Guid? ProcessId, string? IdempotencyKey)> posts = [];
     private readonly List<(string Source, string? View, QueryApiRequest<JsonObject> Request)> queries = [];
 
     private static readonly InformationRequest Questions = new()
@@ -209,9 +209,9 @@ public sealed class KaleidoToolInvokerTests
     {
         foreach (var (service, client) in services)
         {
-            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
-                .Callback((string step, JsonElement body, Guid? processId, CancellationToken _) =>
-                    posts.Add((service, step, JsonNode.Parse(body.GetRawText()) ?? new JsonObject(), processId)))
+            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .Callback((string step, JsonElement body, Guid? processId, string? idempotencyKey, CancellationToken _) =>
+                    posts.Add((service, step, JsonNode.Parse(body.GetRawText()) ?? new JsonObject(), processId, idempotencyKey)))
                 .ReturnsAsync(response);
         }
     }
@@ -220,7 +220,7 @@ public sealed class KaleidoToolInvokerTests
     {
         foreach (var client in services.Values)
         {
-            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(exception);
         }
     }
@@ -538,7 +538,7 @@ public sealed class KaleidoToolInvokerTests
     {
         await CreateSut().InvokeAsync(Close, Call(new { processId = ProcessId, note = "done" }), Catalog, Cancel);
 
-        var (service, step, body, processId) = Assert.Single(posts);
+        var (service, step, body, processId, _) = Assert.Single(posts);
         Assert.Equal("clinic", service);
         Assert.Equal("CloseVisitStep", step);
         Assert.Equal(ProcessId, processId);
@@ -988,7 +988,7 @@ public sealed class KaleidoToolInvokerTests
 
         await CreateSut().InvokeAsync(PickPatient, Call(requestState: pickState, inputResponses: LookupAnswered()), LookupCatalog, Cancel);
 
-        var (_, step, body, processId) = Assert.Single(posts);
+        var (_, step, body, processId, _) = Assert.Single(posts);
         Assert.Equal("PickPatientStep", step);
         Assert.Equal(ProcessId, processId);
         Assert.Equal("P-1", body["patientId"]?.GetValue<string>());
@@ -1052,7 +1052,7 @@ public sealed class KaleidoToolInvokerTests
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel));
 
-        var (service, step, submitted, processId) = Assert.Single(posts);
+        var (service, step, submitted, processId, _) = Assert.Single(posts);
         Assert.Equal("clinic", service);
         Assert.Equal(QuestionsRequired.Name, step);
         Assert.Equal(ProcessId, processId);
@@ -1108,7 +1108,7 @@ public sealed class KaleidoToolInvokerTests
             Catalog,
             Cancel);
 
-        var (service, step, body, processId) = Assert.Single(posts);
+        var (service, step, body, processId, _) = Assert.Single(posts);
         Assert.Equal("clinic", service);
         Assert.Equal(QuestionsRequired.Name, step);
         Assert.Equal(ProcessId, processId);
@@ -1448,6 +1448,68 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(ProcessId, Assert.Single(posts).ProcessId);
     }
 
+    // ── Steps: one idempotency key per logical call (#440) ─────────────────
+
+    // The agent calling the same step again with the same inputs for the same process (after a timeout,
+    // a lost answer) is the same call: same key, same body, so the service replays its stored answer.
+    [Fact]
+    public async Task AStepContinuingAProcess_CalledAgainWithTheSameInputs_SendsTheSameKeyAndBody()
+    {
+        var sut = CreateSut();
+
+        await sut.InvokeAsync(Close, Call(new { processId = ProcessId, reason = "done", details = new { code = 7, note = "x" } }), Catalog, Cancel);
+        await sut.InvokeAsync(Close, Call(new { details = new { note = "x", code = 7 }, reason = "done", processId = ProcessId }), Catalog, Cancel);
+
+        Assert.Equal(2, posts.Count);
+        Assert.StartsWith("mcp-", posts[0].IdempotencyKey, StringComparison.Ordinal);
+        Assert.Equal(44, posts[0].IdempotencyKey!.Length);
+        Assert.Equal(posts[0].IdempotencyKey, posts[1].IdempotencyKey);
+        Assert.Equal(posts[0].Body.ToJsonString(), posts[1].Body.ToJsonString());
+    }
+
+    private static readonly int[] ThreeFour = [3, 4];
+
+    // Arrays keep their order (it is meaningful), the objects in them are canonical too, and nulls
+    // stay nulls.
+    [Fact]
+    public async Task AStepBody_IsCanonical_InsideArrays_AndKeepsNulls()
+    {
+        var sut = CreateSut();
+
+        await sut.InvokeAsync(Close, Call(new { processId = ProcessId, lines = new object?[] { new { b = 2, a = 1 }, null, ThreeFour }, note = (string?)null }), Catalog, Cancel);
+        await sut.InvokeAsync(Close, Call(new { note = (string?)null, lines = new object?[] { new { a = 1, b = 2 }, null, ThreeFour }, processId = ProcessId }), Catalog, Cancel);
+
+        Assert.Equal("""{"lines":[{"a":1,"b":2},null,[3,4]],"note":null}""", posts[0].Body.ToJsonString());
+        Assert.Equal(posts[0].Body.ToJsonString(), posts[1].Body.ToJsonString());
+        Assert.Equal(posts[0].IdempotencyKey, posts[1].IdempotencyKey);
+    }
+
+    [Theory]
+    [InlineData("other reason", "86a1ed5b-0b4a-4f6e-9f3c-4cb2f5b1a001")]
+    [InlineData("done", "1b4f1c11-3a0e-4c55-8f0f-9a3c2d6e7b02")]
+    public async Task AStepWithOtherInputsOrAnotherProcess_GetsAnotherKey(string reason, string otherProcess)
+    {
+        var sut = CreateSut();
+
+        await sut.InvokeAsync(Close, Call(new { processId = ProcessId, reason = "done" }), Catalog, Cancel);
+        await sut.InvokeAsync(Close, Call(new { processId = reason == "done" ? Guid.Parse(otherProcess) : ProcessId, reason }), Catalog, Cancel);
+
+        Assert.NotEqual(posts[0].IdempotencyKey, posts[1].IdempotencyKey);
+    }
+
+    // A repeatable step called twice is two operations; two starts without a process id are two
+    // processes: neither is deduplicated (the client gives every request its own key).
+    [Fact]
+    public async Task ARepeatableStep_OrANewProcess_SendsNoKeyOfItsOwn()
+    {
+        var sut = CreateSut();
+
+        await sut.InvokeAsync(Close with { Repeatable = true }, Call(new { processId = ProcessId, reason = "done" }), Catalog, Cancel);
+        await sut.InvokeAsync(Start, Call(new { reason = "new" }), Catalog, Cancel);
+
+        Assert.All(posts, x => Assert.Null(x.IdempotencyKey));
+    }
+
     [Fact]
     public async Task AStepResult_WithoutAResult_OrMessages_HasNeither()
     {
@@ -1554,9 +1616,9 @@ public sealed class KaleidoToolInvokerTests
 
         foreach (var (service, client) in services)
         {
-            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
-                .Callback((string step, JsonElement body, Guid? processId, CancellationToken _) =>
-                    posts.Add((service, step, JsonNode.Parse(body.GetRawText()) ?? new JsonObject(), processId)))
+            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .Callback((string step, JsonElement body, Guid? processId, string? idempotencyKey, CancellationToken _) =>
+                    posts.Add((service, step, JsonNode.Parse(body.GetRawText()) ?? new JsonObject(), processId, idempotencyKey)))
                 .ReturnsAsync(queue.Dequeue);
         }
     }
@@ -1583,6 +1645,10 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(["visit-intake"], body["answered"]?.AsArray().Select(x => x?.GetValue<string>()));
         Assert.Equal("clinic_close_visit", body["next"]?["required"]?["tool"]?.GetValue<string>());
         Assert.Null(body["note"]);
+
+        // #440: the start of a new process has no key of its own; the answers to one request do.
+        Assert.Null(posts[0].IdempotencyKey);
+        Assert.StartsWith("mcp-", posts[1].IdempotencyKey, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -2453,8 +2519,9 @@ public sealed class KaleidoToolInvokerTests
 
         await CreateSut().InvokeAsync(PickPatient, Call(requestState: pickState, inputResponses: LookupAnswered()), LookupCatalog, Cancel);
 
+        // Only the filled inputs, in the canonical (ordinal) order every step body is sent in (#440).
         var body = Assert.Single(posts).Body.AsObject();
-        Assert.Equal(["patientId", "enrollmentId"], body.Select(x => x.Key));
+        Assert.Equal(["enrollmentId", "patientId"], body.Select(x => x.Key));
     }
 
     private static readonly KaleidoTool ScopedRooms = new()
@@ -2551,7 +2618,7 @@ public sealed class KaleidoToolInvokerTests
         var body = Body(await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId, note = "x" }), LookupCatalog, Cancel));
 
         Assert.Equal(["lookup-search|patient", "lookup-pick|patient"], sessionForms.Select(x => x.Message));
-        var (_, step, submitted, processId) = Assert.Single(posts);
+        var (_, step, submitted, processId, _) = Assert.Single(posts);
         Assert.Equal("PickPatientStep", step);
         Assert.Equal(ProcessId, processId);
         Assert.Equal("P-1", submitted["patientId"]?.GetValue<string>());

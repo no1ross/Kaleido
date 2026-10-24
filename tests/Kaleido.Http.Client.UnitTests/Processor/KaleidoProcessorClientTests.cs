@@ -232,7 +232,7 @@ public sealed class KaleidoProcessorClientTests
         var (client, sent) = CreateStepClient();
         var step = System.Text.Json.JsonSerializer.SerializeToElement(new { memberId = "M1" });
 
-        var response = await client.ExecuteStepAsync("mystep", step, null, TestContext.Current.CancellationToken);
+        var response = await client.ExecuteStepAsync("mystep", step, null, null, TestContext.Current.CancellationToken);
 
         var (request, body) = Assert.Single(sent);
         Assert.Equal("/processes/steps/mystep", request.RequestUri!.AbsolutePath);
@@ -250,7 +250,7 @@ public sealed class KaleidoProcessorClientTests
             .Callback((HttpRequestMessage r) => r.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, Guid.NewGuid().ToString()));
         var (client, sent) = CreateStepClient(stamper);
 
-        await client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), explicitId, TestContext.Current.CancellationToken);
+        await client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), explicitId, null, TestContext.Current.CancellationToken);
 
         Assert.Equal(explicitId.ToString(), Assert.Single(Assert.Single(sent).Request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
     }
@@ -264,7 +264,7 @@ public sealed class KaleidoProcessorClientTests
             .Callback((HttpRequestMessage r) => r.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, ambient));
         var (client, sent) = CreateStepClient(stamper);
 
-        await client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, TestContext.Current.CancellationToken);
+        await client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal(ambient, Assert.Single(Assert.Single(sent).Request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
     }
@@ -278,7 +278,7 @@ public sealed class KaleidoProcessorClientTests
         var (client, sent) = CreateStepClient(stepStatus: status);
 
         var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync("NoSuchStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, TestContext.Current.CancellationToken));
+            () => client.ExecuteStepAsync("NoSuchStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, null, TestContext.Current.CancellationToken));
 
         Assert.Equal(HttpClientErrorCodes.RequestFailed, exception.Code);
         Assert.Equal(status, exception.StatusCode);
@@ -290,7 +290,7 @@ public sealed class KaleidoProcessorClientTests
     {
         var (client, sent) = CreateStepClient();
 
-        await client.ExecuteStepAsync("../registry", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, TestContext.Current.CancellationToken);
+        await client.ExecuteStepAsync("../registry", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal("/processes/steps/..%2Fregistry", Assert.Single(sent).Request.RequestUri!.AbsolutePath);
     }
@@ -301,7 +301,7 @@ public sealed class KaleidoProcessorClientTests
         var (client, _) = CreateStepClient(stepStatus: HttpStatusCode.Conflict);
 
         var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, TestContext.Current.CancellationToken));
+            () => client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, null, TestContext.Current.CancellationToken));
 
         Assert.Equal(HttpClientErrorCodes.RequestFailed, exception.Code);
         Assert.Equal(HttpStatusCode.Conflict, exception.StatusCode);
@@ -539,7 +539,7 @@ public sealed class KaleidoProcessorClientTests
         });
 
         await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest(), TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken));
         await client.GetRegistryAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(2, registryReads);
@@ -581,7 +581,7 @@ public sealed class KaleidoProcessorClientTests
                         options: KaleidoJsonOptions.Options),
                 });
 
-        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest(), TestContext.Current.CancellationToken));
+        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken));
 
         Assert.Equal(HttpClientErrorCodes.Conflict, exception.Code);
         Assert.Equal(HttpStatusCode.Conflict, exception.StatusCode);
@@ -599,12 +599,44 @@ public sealed class KaleidoProcessorClientTests
             return JsonOk(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() });
         });
 
-        await client.ExecuteAsync(new ExecuteProcessRequest(), TestContext.Current.CancellationToken);
-        await client.ExecuteAsync(new ExecuteProcessRequest(), TestContext.Current.CancellationToken);
+        await client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken);
+        await client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, keys.Count);
         Assert.All(keys, key => Assert.False(string.IsNullOrWhiteSpace(key)));
         Assert.NotEqual(keys[0], keys[1]);
+    }
+
+    // #440: a caller's own key for a logical call is sent as is, on both the multi-step and the by-name
+    // call, so repeating the call repeats the key; a blank key is no key (one is generated).
+    [Theory]
+    [InlineData("order-42-confirm", "order-42-confirm")]
+    [InlineData("  ", null)]
+    public async Task ExecuteAsync_AndExecuteStepAsyncByName_SendTheCallersIdempotencyKey(string given, string? expected)
+    {
+        var keys = new List<string>();
+        var (client, _) = CreateClient(respond: req =>
+        {
+            keys.Add(req.Headers.GetValues(KaleidoIdempotencyHeaders.IdempotencyKey).Single());
+            return req.RequestUri!.AbsolutePath.EndsWith("/execute", StringComparison.Ordinal)
+                ? JsonOk(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() })
+                : JsonOk(new StepExecutionResponse<JsonElement> { ProcessId = Guid.NewGuid(), StepName = "MyStep", Result = JsonSerializer.SerializeToElement(new { }) });
+        });
+
+        await client.ExecuteAsync(new ExecuteProcessRequest(), given, TestContext.Current.CancellationToken);
+        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), null, given, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, keys.Count);
+        Assert.All(keys, key => Assert.False(string.IsNullOrWhiteSpace(key)));
+
+        if (expected is not null)
+        {
+            Assert.All(keys, key => Assert.Equal(expected, key));
+        }
+        else
+        {
+            Assert.NotEqual(keys[0], keys[1]);
+        }
     }
 
     [Fact]
@@ -640,7 +672,7 @@ public sealed class KaleidoProcessorClientTests
             return JsonOk(new StepExecutionResponse<object> { ProcessId = Guid.NewGuid(), StepName = "MyStep" });
         });
 
-        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), processId: null, cancellationToken: TestContext.Current.CancellationToken);
+        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), processId: null, idempotencyKey: null, cancellationToken: TestContext.Current.CancellationToken);
         await client.ExecuteStepAsync<FakeStepRequest>(new FakeStepRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(["/radiology/processes/steps/mystep", "/radiology/processes/steps/fakesteprequest"], paths);
@@ -664,7 +696,7 @@ public sealed class KaleidoProcessorClientTests
         });
 
         Assert.Empty(await client.GetRegistryAsync(TestContext.Current.CancellationToken));
-        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), processId: null, cancellationToken: TestContext.Current.CancellationToken);
+        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), processId: null, idempotencyKey: null, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("/processes/steps/mystep", postedPath);
     }
@@ -688,7 +720,7 @@ public sealed class KaleidoProcessorClientTests
     {
         var (client, logger) = CreateLoggedClient(_ => JsonOk(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() }));
 
-        await client.ExecuteAsync(new ExecuteProcessRequest(), TestContext.Current.CancellationToken);
+        await client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken);
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(LogLevel.Debug, entry.Level);

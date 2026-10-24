@@ -9,7 +9,8 @@ namespace Kaleido.Http.Registry;
 /// Scalars are <c>"string"</c>, <c>"boolean"</c>, <c>"integer"</c> or <c>"number"</c>, with a
 /// <paramref name="Format"/> where the base type alone is ambiguous; enums are <c>"string"</c>
 /// with format <c>"enum"</c> and their members in <paramref name="EnumValues"/>; arrays are
-/// <c>"array"</c> with an <paramref name="ItemType"/>; every other type is <c>"object"</c>.
+/// <c>"array"</c> with an <paramref name="ItemType"/>; a dictionary (string keys) is <c>"object"</c> with
+/// its value type as <paramref name="ItemType"/>; every other type is <c>"object"</c>.
 /// </remarks>
 /// <param name="Type">
 /// The base type: <c>"string"</c>, <c>"boolean"</c>, <c>"integer"</c>, <c>"number"</c>, <c>"array"</c> or
@@ -22,7 +23,7 @@ namespace Kaleido.Http.Registry;
 /// </param>
 /// <param name="Nullable"><see langword="true"/> when the value may be <see langword="null"/>.</param>
 /// <param name="EnumValues">The members of an enum type (format <c>"enum"</c>); <see langword="null"/> for every other type.</param>
-/// <param name="ItemType">The type of the elements of an <c>"array"</c>; <see langword="null"/> for every other type.</param>
+/// <param name="ItemType">The type of the elements of an <c>"array"</c>, or of the values of an <c>"object"</c> that is a dictionary (its keys are the JSON property names); <see langword="null"/> for every other type.</param>
 [ExcludeFromCodeCoverage]
 public sealed record DataTypeMetadata(
     string Type,

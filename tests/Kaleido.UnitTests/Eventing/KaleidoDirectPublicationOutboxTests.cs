@@ -52,6 +52,25 @@ public sealed class KaleidoDirectPublicationOutboxTests
         VerifyPublished(publisher, second.EventId, Times.Once());
     }
 
+    // #451: a rolled-back transition's event is never published, also when a later save in the same
+    // scope (the failure save) commits; that save's own event still is.
+    [Fact]
+    public async Task Discard_ThenAnotherCommit_PublishesOnlyTheEventsAddedAfterIt()
+    {
+        var publisher = new Mock<IEventPublisher>();
+        var sut = CreateSut(publisher.Object);
+        var rolledBack = Created();
+        var failure = Created();
+
+        await sut.AddAsync([rolledBack], TestContext.Current.CancellationToken);
+        sut.Discard();
+        await sut.AddAsync([failure], TestContext.Current.CancellationToken);
+        await sut.CommittedAsync(TestContext.Current.CancellationToken);
+
+        VerifyPublished(publisher, rolledBack.EventId, Times.Never());
+        VerifyPublished(publisher, failure.EventId, Times.Once());
+    }
+
     // Weaker by choice: a failed publish loses that event (logged), not the request or the others.
     [Fact]
     public async Task CommittedAsync_WhenPublishingFails_LogsTheLostEvent_AndPublishesTheRest()

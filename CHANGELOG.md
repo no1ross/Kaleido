@@ -116,6 +116,45 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **The guide's MCP and handoff examples work as written** (#450): the getting-started MCP recipe
+  had no call-credential registration, so `AddMcp()` refused to start; it now calls
+  `ForwardCallerToken()` and is hosted end to end by a Guide test (tools listed, a tool called). The
+  handoff example only returned `HandOff("returns")`, which starts nothing in the target service; its
+  handler now opens the return there through a Kaleido client, and a two-service test reads the
+  target process under the same id and runs its next step. The MCP README's opening recipe is
+  complete (assemblies, authentication).
+- **MCP retries and step tool hints** (#440): every non-repeatable step tool advertised
+  `idempotentHint: true`, also an initial step, which called again without a `processId` starts
+  another process; and an agent's own re-call got a new `Idempotency-Key`. Only a non-repeatable step
+  continuing a process is now idempotent, and the adapter derives one key per logical call (same
+  non-repeatable step, inputs and process; same answers to one information request), so the repeat
+  gets the stored answer. **Breaking:** `IKaleidoProcessorClient.ExecuteAsync` and
+  the by-name `ExecuteStepAsync` take an `idempotencyKey` (`null` for a new key per call), so a caller
+  can make its own retries safe.
+- **KAL2021 covers delegated sources' results** (#454): a delegated source's `TResult` (published in
+  the registry, often not its query context) was never checked for descriptions; undescribed
+  properties are now reported like those of step results and view outputs.
+- **Bounded processor metric dimensions** (#453): `kaleido.processor.executions` and the
+  submitted-step-count histogram were tagged with `kaleido.calling.processor`, a value from the
+  `X-Kaleido-Calling-Processor` request header, so each distinct value created a new time series.
+  **Telemetry change:** the tag is removed from metrics; it stays on spans, logs and events.
+- **Direct publication never publishes a rolled-back transition's event** (#451): with
+  `AddDirectPublication()`, an event added to a transition whose commit failed stayed pending and
+  was published by the next commit in the same request (e.g. after the failure save). A transition
+  that does not commit now discards its event.
+- **Collection and dictionary metadata** (#446): an enumerable's item type is the `T` of the
+  `IEnumerable<T>` it implements (it was the first generic argument: `Dictionary<string,int>` was
+  published as an array of strings, a subclass of `List<T>` as an array of objects). A dictionary
+  with string keys is now `"object"` with its value type as `ItemType` (MCP: `additionalProperties`);
+  **breaking:** a dictionary with any other key type fails registration (`unsupported_data_type`).
+- **One error mapping for both Kaleido clients** (#444): the queryable client let a `JsonException`
+  escape for a 400 whose body was not JSON (a proxy's HTML page), and both clients read the service's
+  error codes only for 400 (and 409): a 403, 404 or 422 lost them. Every non-success answer is now a
+  `KaleidoHttpClientException` with the service's errors when it sent any (409 `httpclient_conflict`,
+  400 `httpclient_validation_failed`, otherwise `httpclient_request_failed`).
+- **Error bodies keep Kaleido's wire format** (#443): the exception handler serialized
+  `{"errors":[{"code","message"}]}` with the host's `HttpJsonOptions`, so a host with another naming
+  policy (e.g. PascalCase) changed the published error contract; it now uses `KaleidoJsonOptions`.
 - **Calls made by step handlers and query sources go out for the caller** (#428): a handler's or a
   source's call to another service was the service's own call (its credential, `ServiceOwn`), because
   their DI scope did not get the request's inbound caller. Steps that need a user behind the call
