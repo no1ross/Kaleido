@@ -116,6 +116,11 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Collection and dictionary metadata** (#446): an enumerable's item type is the `T` of the
+  `IEnumerable<T>` it implements (it was the first generic argument: `Dictionary<string,int>` was
+  published as an array of strings, a subclass of `List<T>` as an array of objects). A dictionary
+  with string keys is now `"object"` with its value type as `ItemType` (MCP: `additionalProperties`);
+  **breaking:** a dictionary with any other key type fails registration (`unsupported_data_type`).
 - **One error mapping for both Kaleido clients** (#444): the queryable client let a `JsonException`
   escape for a 400 whose body was not JSON (a proxy's HTML page), and both clients read the service's
   error codes only for 400 (and 409): a 403, 404 or 422 lost them. Every non-success answer is now a

@@ -141,6 +141,16 @@ public sealed class ToolSchemaBuilderTests
         Assert.Empty(Assert.IsType<JsonObject>(schema["items"]));
     }
 
+    // #446: a dictionary is an object whose properties all have the value type.
+    [Fact]
+    public void ForValue_AnObjectWithAValueType_DescribesItsAdditionalProperties()
+    {
+        var schema = CreateSut().ForValue(new DataTypeMetadata("object", ItemType: new DataTypeMetadata("string", "uuid")));
+
+        Assert.Equal("object", schema["type"]?.GetValue<string>());
+        Assert.Equal("uuid", schema["additionalProperties"]?["format"]?.GetValue<string>());
+    }
+
     [Fact]
     public void ForValue_AnObject_KeepsItsType()
     {

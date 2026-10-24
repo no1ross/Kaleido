@@ -63,7 +63,11 @@ public static class FrameworkErrorCodes
     /// <summary>A handler returned an unexpected or null result.</summary>
     public const string InvalidHandlerResult = "invalid_handler_result";
 
-    /// <summary>A CLR type was passed to TypeDescriber that it does not support.</summary>
+    /// <summary>
+    /// A published input or result has a type the metadata cannot describe: a dictionary whose key type
+    /// is not <see langword="string"/> (JSON property names are strings). Raised when the capability is
+    /// registered, as a <see cref="KaleidoConfigurationException"/>.
+    /// </summary>
     public const string UnsupportedDataType = "unsupported_data_type";
 
     /// <summary>TypeDescriber failed to convert a value to the target type.</summary>

@@ -16,7 +16,9 @@ namespace Kaleido;
 /// <c>"boolean"</c>, <c>"integer"</c> or <c>"number"</c>, with a <paramref name="Format"/> where the base type
 /// alone is ambiguous; enums map to <c>"string"</c> with format <c>"enum"</c> and their members in
 /// <paramref name="EnumValues"/>; arrays and other enumerables (except <see langword="string"/>) map to
-/// <c>"array"</c> with an <paramref name="ItemType"/>; every other type maps to <c>"object"</c>.
+/// <c>"array"</c> with an <paramref name="ItemType"/> (the <c>T</c> of the <c>IEnumerable&lt;T&gt;</c> they
+/// implement); dictionaries with string keys map to <c>"object"</c> with their value type as
+/// <paramref name="ItemType"/>; every other type maps to <c>"object"</c>.
 /// </remarks>
 /// <param name="Type">
 /// The base type: <c>"string"</c>, <c>"boolean"</c>, <c>"integer"</c>, <c>"number"</c>, <c>"array"</c> or
@@ -37,7 +39,8 @@ namespace Kaleido;
 /// The members of an enum type (format <c>"enum"</c>); <see langword="null"/> for every other type.
 /// </param>
 /// <param name="ItemType">
-/// The descriptor of the element type of an <c>"array"</c>; <see langword="null"/> for every other type.
+/// The descriptor of the element type of an <c>"array"</c>, or of the value type of an <c>"object"</c> that is
+/// a dictionary; <see langword="null"/> for every other type.
 /// </param>
 [ExcludeFromCodeCoverage]
 internal sealed record DataTypeDescriptor(
@@ -203,18 +206,39 @@ internal sealed class TypeDescriber : ITypeDescriber
                 ItemType: GetDescriptor(elementType));
         }
 
+        // A dictionary is a JSON object whose properties are its keys: "object" with the value type as
+        // ItemType (JSON Schema's additionalProperties). Keys travel as property names, so only string
+        // keys are supported; any other key type is refused when the capability is registered (#446).
+        if ((GenericInterface(type, typeof(IDictionary<,>)) ?? GenericInterface(type, typeof(IReadOnlyDictionary<,>))) is { } dictionary)
+        {
+            var arguments = dictionary.GetGenericArguments();
+
+            if (arguments[0] != typeof(string))
+            {
+                throw new KaleidoConfigurationException(
+                    FrameworkErrorCodes.UnsupportedDataType,
+                    $"'{type}' has key type '{arguments[0]}': a dictionary in a published input or result must have string keys (they become JSON property names). Use a dictionary with string keys, or a list of records.");
+            }
+
+            return new DataTypeDescriptor(
+                "object",
+                ItemType: GetDescriptor(arguments[1]));
+        }
+
+        if (typeof(System.Collections.IDictionary).IsAssignableFrom(type))
+        {
+            return new DataTypeDescriptor("object");
+        }
+
+        // Any other enumerable is an array of the T of the IEnumerable<T> it implements (not its first
+        // generic argument, which is wrong for e.g. a subclass of List<T> or a type with several).
         if (typeof(System.Collections.IEnumerable)
                 .IsAssignableFrom(type)
             && type != typeof(string))
         {
             var elementType =
-                type.IsGenericType
-                    ? type.GetGenericArguments().Length > 0
-                        ? type.GetGenericArguments()[0]
-                        : throw new KaleidoFrameworkException(
-                            FrameworkErrorCodes.ReflectionError,
-                            $"Generic type '{type.FullName}' has no generic arguments.")
-                    : typeof(object);
+                GenericInterface(type, typeof(IEnumerable<>))?.GetGenericArguments()[0]
+                ?? typeof(object);
 
             return new DataTypeDescriptor(
                 "array",
@@ -224,6 +248,12 @@ internal sealed class TypeDescriber : ITypeDescriber
         return new DataTypeDescriptor(
             "object");
     }
+
+    // The closed form of a generic interface definition that the type is or implements, or null.
+    private static Type? GenericInterface(Type type, Type definition) =>
+        type.IsGenericType && type.GetGenericTypeDefinition() == definition
+            ? type
+            : type.GetInterfaces().FirstOrDefault(x => x.IsGenericType && x.GetGenericTypeDefinition() == definition);
 
     // An enum is a string with its members as values, each with its [Description].
     private static DataTypeDescriptor EnumDescriptor(Type type)
