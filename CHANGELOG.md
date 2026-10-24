@@ -116,6 +116,9 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Error bodies keep Kaleido's wire format** (#443): the exception handler serialized
+  `{"errors":[{"code","message"}]}` with the host's `HttpJsonOptions`, so a host with another naming
+  policy (e.g. PascalCase) changed the published error contract; it now uses `KaleidoJsonOptions`.
 - **Calls made by step handlers and query sources go out for the caller** (#428): a handler's or a
   source's call to another service was the service's own call (its credential, `ServiceOwn`), because
   their DI scope did not get the request's inbound caller. Steps that need a user behind the call
