@@ -30,6 +30,9 @@ public sealed class PersistenceExampleTests : IDisposable
     {
         var services = new ServiceCollection();
         services.AddSingleton<OrderBook>();   // the guide assembly's getting-started handlers need it
+        // ...and its handoff handler a client factory (the returns service is never called here).
+        services.AddSingleton<Kaleido.Http.Processor.IKaleidoProcessorClientFactory>(
+            _ => throw new NotSupportedException("The persistence tests make no remote calls."));
         OrdersPersistence.AddOrdersPersistence(services, new ConfigurationBuilder().Build(), $"Data Source={_databasePath}");
 
         var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });

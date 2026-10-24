@@ -8,16 +8,30 @@ the Kaleido HTTP clients with the caller's token forwarded.
 > How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
 
 ```csharp
+builder.Services.AddAuthentication().AddJwtBearer();   // the host's own scheme: callers are authenticated by default
+builder.Services.AddAuthorization();
+
 builder.Services
-    .AddKaleido(builder.Configuration, o => o.ServiceName = "router")
+    .AddKaleido(builder.Configuration, o =>
+    {
+        o.ServiceName = "router";
+        o.Assemblies = [typeof(Program).Assembly];   // required, even when the router has no capabilities of its own
+    })
     .AddHttp()
     .AddHttpClients()
     .ForwardCallerToken()          // how tool calls are authorized for the agent's user (see Security)
     .AddMcp(o => o.ServerName = "priorauth");
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapKaleidoHttp(o => o.AggregateRegistry = true);
-app.MapKaleidoMcp("/mcp");
+app.MapKaleidoMcp("/mcp").RequireAuthorization();
 ```
+
+A complete, tested single-service host is the guide's
+[Publish it to AI agents](../../docs/guide/getting-started.md#6-publish-it-to-ai-agents-mcp); for an
+OAuth-protected endpoint, register a per-service exchange instead of `ForwardCallerToken()` (see
+Security, [ADR 0027](../../docs/decisions/0027-forward-caller-token-kept-with-guards.md)).
 
 Configuration (`Kaleido:Mcp`): `ServerName`, `ServerVersion`, `Instructions` or
 `InstructionsFile` (replace the default instructions), `AdditionalInstructions` (appended: the

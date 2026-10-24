@@ -209,8 +209,16 @@ services.AddKaleido(configuration, o =>
     })
     .AddHttp()
     .AddHttpClients()
+    .ForwardCallerToken()   // the agent's user's token on tool calls; AddMcp() requires a choice
     .AddMcp();
 ```
+
+`AddMcp()` refuses to start without a call-credential registration
+(`mcp_call_credentials_not_configured`): every tool call is made for the agent's user, and the host
+decides with which credential. `ForwardCallerToken()` sends the user's token unchanged, which suits
+this single-service example; an OAuth-protected MCP endpoint exchanges the token per service with
+`AddCallCredentials<TProvider>()` instead
+([ADR 0027](../decisions/0027-forward-caller-token-kept-with-guards.md)).
 
 <!-- snippet: getting-started-mcp-map -->
 ```csharp

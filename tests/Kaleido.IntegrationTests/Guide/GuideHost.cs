@@ -34,7 +34,8 @@ public sealed class GuideHost : IAsyncDisposable
     public static async Task<GuideHost> StartAsync(
         KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.None,
         Action<IKaleidoBuilder>? configure = null,
-        Action<IServiceCollection>? services = null)
+        Action<IServiceCollection>? services = null,
+        IReadOnlyDictionary<string, string?>? settings = null)
     {
         var host = await new HostBuilder()
             .ConfigureWebHost(web =>
@@ -49,7 +50,7 @@ public sealed class GuideHost : IAsyncDisposable
                     s.AddSingleton<OrderBook>();
                     services?.Invoke(s);
 
-                    var kaleido = s.AddKaleido(new ConfigurationBuilder().Build(), o =>
+                    var kaleido = s.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings ?? new Dictionary<string, string?>()).Build(), o =>
                         {
                             o.ServiceName = "orders";
                             o.Assemblies = [typeof(OrderSource).Assembly];

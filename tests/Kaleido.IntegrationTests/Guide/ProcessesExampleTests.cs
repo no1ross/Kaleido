@@ -1,4 +1,7 @@
 using System.Text.Json;
+using Kaleido.Http.Client;
+using Kaleido.IntegrationTests.Guide.Returns;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.IntegrationTests.Guide;
 
@@ -91,10 +94,21 @@ public sealed class ProcessesExampleTests
         Assert.DoesNotContain("ShipOrderStep", Available(cancelled));
     }
 
+    // #450: the handoff as the page states it - the answer names the processor that continues, and the
+    // handler has started the process there under the same id, so the caller can read it and run its
+    // next step in the returns service.
     [Fact]
-    public async Task AHandOff_NamesTheProcessorThatContinues()
+    public async Task AHandOff_NamesTheProcessorThatContinues_WhichHasTheProcessUnderTheSameId()
     {
-        await using var host = await GuideHost.StartAsync();
+        await using var returns = await ReturnsHost.StartAsync();
+        await using var host = await GuideHost.StartAsync(
+            configure: kaleido => kaleido.AddHttpClients(),
+            services: s => s.AddHttpClient("returns").ConfigurePrimaryHttpMessageHandler(returns.CreateHandler),
+            settings: new Dictionary<string, string?>
+            {
+                ["Kaleido:Clients:returns:BaseUrl"] = "http://returns.test/",
+                ["Kaleido:Clients:returns:RoutePrefix"] = "returns",
+            });
         var processId = await ConfirmedOrderAsync(host);
         await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "1 Main St" }, processId);
 
@@ -102,5 +116,17 @@ public sealed class ProcessesExampleTests
 
         Assert.Equal("completed", returned.GetProperty("outcome").GetString());
         Assert.Equal("returns", returned.GetProperty("targetProcessorName").GetString());
+
+        var (stateStatus, state) = await returns.SendAsync(HttpMethod.Get, $"/returns/processes/{processId}", processId);
+        Assert.Equal(System.Net.HttpStatusCode.OK, stateStatus);
+        Assert.Contains(
+            state.GetProperty("steps").EnumerateArray(),
+            x => x.GetProperty("stepName").GetString() == nameof(Returns.OpenReturnStep) && x.GetProperty("status").GetString() == "completed");
+
+        var (receivedStatus, received) = await returns.SendAsync(
+            HttpMethod.Post, $"/returns/processes/steps/{nameof(Returns.ReceiveReturnStep)}", processId, new { processStep = new { } });
+        Assert.Equal(System.Net.HttpStatusCode.OK, receivedStatus);
+        Assert.Equal("completed", received.GetProperty("outcome").GetString());
+        Assert.Equal(processId, received.GetProperty("processId").GetGuid());
     }
 }

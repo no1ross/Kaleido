@@ -116,6 +116,13 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **The guide's MCP and handoff examples work as written** (#450): the getting-started MCP recipe
+  had no call-credential registration, so `AddMcp()` refused to start; it now calls
+  `ForwardCallerToken()` and is hosted end to end by a Guide test (tools listed, a tool called). The
+  handoff example only returned `HandOff("returns")`, which starts nothing in the target service; its
+  handler now opens the return there through a Kaleido client, and a two-service test reads the
+  target process under the same id and runs its next step. The MCP README's opening recipe is
+  complete (assemblies, authentication).
 - **MCP retries and step tool hints** (#440): every non-repeatable step tool advertised
   `idempotentHint: true`, also an initial step, which called again without a `processId` starts
   another process; and an agent's own re-call got a new `Idempotency-Key`. Only a non-repeatable step

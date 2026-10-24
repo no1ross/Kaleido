@@ -5,6 +5,8 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" />
 		<PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <!-- The MCP client, to host the guide's MCP recipe end to end (#450). -->
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />
