@@ -8,9 +8,14 @@ namespace Kaleido.Http.Processor;
 /// per caller and serves discovery only. Obtain one from <see cref="IKaleidoProcessorClientFactory"/>.
 /// </summary>
 /// <remarks>
-/// Calls carry the ambient correlation headers. Every execute call is sent with its own
-/// idempotency key, so a retry of the same call does not run the step twice. The HTTP client
-/// implementation throws <c>KaleidoHttpClientException</c> when a remote call fails.
+/// Calls carry the ambient correlation headers. Every execute call is sent with an
+/// <c>Idempotency-Key</c>: the resilience pipeline re-sends the same request with the same key, so
+/// its retries never run the step twice. A <em>new</em> call is a new request: to make a caller's own
+/// retry of a logical operation (after a timeout, a restart) safe, pass the same
+/// <c>idempotencyKey</c> to <see cref="ExecuteAsync"/> or the by-name
+/// <see cref="ExecuteStepAsync(string, JsonElement, Guid?, string?, CancellationToken)"/> each time
+/// (ADR 0019). The HTTP client implementation throws <c>KaleidoHttpClientException</c> when a remote
+/// call fails.
 /// </remarks>
 public interface IKaleidoProcessorClient
 {
@@ -66,16 +71,23 @@ public interface IKaleidoProcessorClient
     /// (<c>POST /{service}/processes/execute</c>).
     /// </summary>
     /// <param name="request">The steps to submit, each with its JSON input.</param>
+    /// <param name="idempotencyKey">
+    /// The <c>Idempotency-Key</c> of this logical call, or <see langword="null"/> for a new key per
+    /// call. Sending the same key with the same request again returns the stored answer instead of
+    /// running the steps again (scoped per service and caller, up to 200 characters); the same key
+    /// with a different request is refused (<c>pro_idempotency_key_reused</c>).
+    /// </param>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The process id, the next required or available steps, and the results of the steps that ran.</returns>
     /// <remarks>
     /// The process to continue is the ambient process id, if any (sent as
     /// <c>X-Kaleido-Process-Id</c>); without one the remote service starts a new process. The HTTP
-    /// client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails;
-    /// a 400 or 409 carrying Kaleido errors is surfaced with those errors.
+    /// client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails,
+    /// with the service's errors when its answer carried any.
     /// </remarks>
     Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
+        string? idempotencyKey,
         CancellationToken cancellationToken);
 
     /// <summary>
@@ -134,6 +146,13 @@ public interface IKaleidoProcessorClient
     /// ambient correlation process id. Null keeps today's behavior (the ambient id, if any, or a
     /// new process for an initial step).
     /// </param>
+    /// <param name="idempotencyKey">
+    /// The <c>Idempotency-Key</c> of this logical call, or <see langword="null"/> for a new key per
+    /// call. Sending the same key with the same step, input and process again returns the stored
+    /// answer instead of running the step again (scoped per service and caller, up to 200
+    /// characters); the same key with a different request is refused
+    /// (<c>pro_idempotency_key_reused</c>). The MCP adapter derives one per logical tool call.
+    /// </param>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The step execution response, with the step's result as JSON.</returns>
     /// <remarks>
@@ -143,5 +162,6 @@ public interface IKaleidoProcessorClient
         string stepName,
         JsonElement processStep,
         Guid? processId,
+        string? idempotencyKey,
         CancellationToken cancellationToken);
 }

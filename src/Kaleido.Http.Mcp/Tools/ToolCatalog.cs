@@ -58,6 +58,12 @@ internal sealed record KaleidoTool
     /// <summary>For a step: it may start a new process (no processId needed).</summary>
     public bool IsInitial { get; init; }
 
+    /// <summary>
+    /// For a step: it may run more than once per process (<c>[Repeatable]</c>), so two calls with the
+    /// same arguments are two operations and never share an idempotency key (#440).
+    /// </summary>
+    public bool Repeatable { get; init; }
+
     /// <summary>For a step: its inputs that take their values from one result of a query.</summary>
     public IReadOnlyList<ToolLookup> Lookups { get; init; } = [];
 

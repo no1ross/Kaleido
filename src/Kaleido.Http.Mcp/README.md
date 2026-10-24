@@ -87,7 +87,7 @@ description, once per property (`service.Source.Field`), not once per tool.
 | `readOnlyHint` | `true` | `false` |
 | `destructiveHint` | `false` | `Destructive` (default `false`); description: "Cannot be undone." |
 | `openWorldHint` | `false` | `External` (default `false`); description: "Reaches outside systems." |
-| `idempotentHint` | `true` | `true` unless `[Repeatable]` (a non-repeatable step runs once per process) |
+| `idempotentHint` | `true` | `true` only for a non-`[Repeatable]` step that continues a process (once completed, it is not run again); `false` for an initial step (called again without a `processId`, it starts another process) and a `[Repeatable]` one (#440) |
 | description | | `RequiresConfirmation`: "Ask the user to confirm before calling." (a hint, not enforced) |
 
 Classified fields (`DataClassificationAttribute`, e.g. `[PHI]`) are marked in input descriptions
@@ -234,7 +234,12 @@ A tool call never fails at the protocol level: a problem comes back as a tool re
 | `mcp_no_pending_information_request` | `answer_information_request` for a process that is not waiting for answers (already answered, or it needs a step instead). | Read the process with `get_process_state` and do what it needs now. |
 | `mcp_internal_error` | An unexpected error in the adapter. | Same as above. |
 
-**Retries are safe.** Tool calls go through the Kaleido clients: transient failures are retried by their resilience pipeline, and every step call carries an `Idempotency-Key`, so a retry the service has already answered gets the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#resilience)).
+**Retries.** Tool calls go through the Kaleido clients: their resilience pipeline retries transient failures of one call with the same `Idempotency-Key`, so the service answers a retry it has already completed with the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#resilience)). When the *agent* calls a tool again (after a timeout, a lost answer, a restart), that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
+- a non-`[Repeatable]` step continuing a process, with the same inputs for the same process: same key, so the stored answer comes back (within the service's idempotency retention);
+- answers to one information request: same key for the same answers;
+- a `[Repeatable]` step, or an initial step starting a new process (no `processId`): a new key each time, because two such calls are two operations. Here a repeated call runs again; read the process (`get_process_state`) before repeating one whose outcome is unknown.
+
+Keys are scoped per service and caller, so two users never share an answer.
 
 ## Trust boundary
 

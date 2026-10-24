@@ -391,6 +391,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
             BehaviorSteps.Close,
             JsonSerializer.SerializeToElement(new { }),
             started.ProcessId,
+            idempotencyKey: null,
             TestContext.Current.CancellationToken);
         Assert.Equal(StepExecutionOutcome.Completed, closed.Outcome);
         Assert.Equal(started.ProcessId, closed.ProcessId);
@@ -399,6 +400,40 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.NotNull(state);
         Assert.Contains(state.Steps, x => x.StepName == BehaviorSteps.Close && x.Status == StepExecutionStatus.Completed);
         Assert.Contains(state.AvailableSteps, x => x.Name == BehaviorSteps.Archive);
+    }
+
+    // #440: a caller repeating a logical call with its own key gets the stored answer, through the real
+    // client and server. Quick is repeatable, so every run is recorded: the keyed repeat leaves the
+    // step's last execution unchanged (it did not run), and a call under another key runs it again.
+    [Fact]
+    public async Task TheTypedClient_RepeatingACallWithTheSameIdempotencyKey_GetsTheStoredAnswer_WithoutRunningTheStep()
+    {
+        var started = await fixture.ProcessClient.ExecuteStepAsync(new BehaviorStartStep(), TestContext.Current.CancellationToken);
+        var key = $"quick-{started.ProcessId:N}";
+
+        Task<Kaleido.Http.Processor.StepExecutionResponse<JsonElement>> QuickAsync(string idempotencyKey) =>
+            fixture.ProcessClient.ExecuteStepAsync(
+                BehaviorSteps.Quick,
+                JsonSerializer.SerializeToElement(new { }),
+                started.ProcessId,
+                idempotencyKey,
+                TestContext.Current.CancellationToken);
+
+        async Task<DateTimeOffset?> LastRunAsync() =>
+            (await fixture.ProcessClient.GetProcessStateAsync(started.ProcessId, TestContext.Current.CancellationToken))!
+                .Steps.Single(x => x.StepName == BehaviorSteps.Quick).LastExecuted;
+
+        var first = await QuickAsync(key);
+        var ranAt = await LastRunAsync();
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        var repeated = await QuickAsync(key);
+
+        Assert.Equal(StepExecutionOutcome.Completed, first.Outcome);
+        Assert.Equal(first.Outcome, repeated.Outcome);
+        Assert.Equal(ranAt, await LastRunAsync());
+
+        await QuickAsync($"other-{started.ProcessId:N}");
+        Assert.NotEqual(ranAt, await LastRunAsync());
     }
 
     [Fact]
@@ -410,6 +445,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
                     BehaviorSteps.Close,
                     JsonSerializer.SerializeToElement(new { }),
                     Guid.NewGuid(),
+                    idempotencyKey: null,
                     TestContext.Current.CancellationToken));
 
         Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);

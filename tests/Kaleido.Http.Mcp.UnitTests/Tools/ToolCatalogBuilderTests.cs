@@ -251,15 +251,28 @@ public sealed class ToolCatalogBuilderTests
     }
 
     [Fact]
-    public void StepTool_ByDefault_IsNeitherDestructiveNorOpenWorld_AndIdempotentUnlessRepeatable()
+    public void StepTool_ByDefault_IsNeitherDestructiveNorOpenWorld_AndAnInitialStepIsNotIdempotent()
     {
         var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits()] }), "clinic_startvisitstep");
 
         Assert.False(tool.Definition.Annotations?.DestructiveHint);
         Assert.False(tool.Definition.Annotations?.OpenWorldHint);
-        Assert.True(tool.Definition.Annotations?.IdempotentHint);
+
+        // #440: an initial step called again without a processId starts another process.
+        Assert.False(tool.Definition.Annotations?.IdempotentHint);
+        Assert.False(tool.Repeatable);
         Assert.DoesNotContain("Cannot be undone.", tool.Definition.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("confirm", tool.Definition.Description, StringComparison.Ordinal);
+    }
+
+    // #440: a non-repeatable step continuing a process is not run again once completed: calling it
+    // again has no additional effect.
+    [Fact]
+    public void StepTool_ANonRepeatableStepContinuingAProcess_IsIdempotent()
+    {
+        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits()] }), "clinic_closevisitstep");
+
+        Assert.True(tool.Definition.Annotations?.IdempotentHint);
     }
 
     [Fact]
@@ -290,6 +303,7 @@ public sealed class ToolCatalogBuilderTests
         Assert.True(tool.Definition.Annotations?.DestructiveHint);
         Assert.True(tool.Definition.Annotations?.OpenWorldHint);
         Assert.False(tool.Definition.Annotations?.IdempotentHint);
+        Assert.True(tool.Repeatable);
         Assert.Contains("Cannot be undone.", tool.Definition.Description, StringComparison.Ordinal);
         Assert.Contains("Reaches outside systems.", tool.Definition.Description, StringComparison.Ordinal);
         Assert.Contains("Ask the user to confirm before calling.", tool.Definition.Description, StringComparison.Ordinal);

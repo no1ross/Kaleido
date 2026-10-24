@@ -50,8 +50,8 @@ Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.ExecuteStepRequest() -> 
 Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.ProcessStep.get -> TProcessStep
 Kaleido.Http.Processor.ExecuteStepRequest<TProcessStep>.ProcessStep.init -> void
 Kaleido.Http.Processor.IKaleidoProcessorClient
-Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteAsync(Kaleido.Http.Processor.ExecuteProcessRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.ProcessExecutionResponse!>!
-Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteStepAsync(string! stepName, System.Text.Json.JsonElement processStep, System.Guid? processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.StepExecutionResponse<System.Text.Json.JsonElement>!>!
+Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteAsync(Kaleido.Http.Processor.ExecuteProcessRequest! request, string? idempotencyKey, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.ProcessExecutionResponse!>!
+Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteStepAsync(string! stepName, System.Text.Json.JsonElement processStep, System.Guid? processId, string? idempotencyKey, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.StepExecutionResponse<System.Text.Json.JsonElement>!>!
 Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteStepAsync<TStep, TResponse>(TStep! processStep, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.StepExecutionResponse<TResponse>!>!
 Kaleido.Http.Processor.IKaleidoProcessorClient.ExecuteStepAsync<TStep>(TStep! processStep, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.StepExecutionResponse!>!
 Kaleido.Http.Processor.IKaleidoProcessorClient.GetProcessStateAsync(System.Guid processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Processor.ProcessStateResponse?>!

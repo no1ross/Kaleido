@@ -116,6 +116,14 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **MCP retries and step tool hints** (#440): every non-repeatable step tool advertised
+  `idempotentHint: true`, also an initial step, which called again without a `processId` starts
+  another process; and an agent's own re-call got a new `Idempotency-Key`. Only a non-repeatable step
+  continuing a process is now idempotent, and the adapter derives one key per logical call (same
+  non-repeatable step, inputs and process; same answers to one information request), so the repeat
+  gets the stored answer. **Breaking:** `IKaleidoProcessorClient.ExecuteAsync` and
+  the by-name `ExecuteStepAsync` take an `idempotencyKey` (`null` for a new key per call), so a caller
+  can make its own retries safe.
 - **KAL2021 covers delegated sources' results** (#454): a delegated source's `TResult` (published in
   the registry, often not its query context) was never checked for descriptions; undescribed
   properties are now reported like those of step results and view outputs.

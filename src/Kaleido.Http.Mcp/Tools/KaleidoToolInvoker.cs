@@ -429,18 +429,35 @@ internal sealed partial class KaleidoToolInvoker(
         ToolCatalog catalog,
         CancellationToken cancellationToken)
     {
+        // Arguments in a canonical order: the same logical call always sends the same body, so the
+        // service's request fingerprint matches when the key repeats.
         var step = new JsonObject();
 
-        foreach (var (name, value) in arguments.Where(x => !string.Equals(x.Key, "processId", StringComparison.OrdinalIgnoreCase)))
+        foreach (var (name, value) in arguments
+                     .Where(x => !string.Equals(x.Key, "processId", StringComparison.OrdinalIgnoreCase))
+                     .OrderBy(x => x.Key, StringComparer.Ordinal))
         {
-            step[name] = JsonNode.Parse(value.GetRawText());
+            step[name] = Canonical(JsonNode.Parse(value.GetRawText()));
         }
+
+        var body = JsonSerializer.SerializeToElement(step, KaleidoJsonOptions.Options);
+
+        // One key per logical tool call (#440): an agent that calls the same step again with the same
+        // inputs for the same process - typically after a timeout or a lost answer - gets the stored
+        // answer instead of running the step twice. Only for a non-repeatable step continuing a known
+        // process: a repeatable step called twice is two operations, and two starts of new processes
+        // (no process id) are two processes. The service scopes keys per caller.
+        var idempotencyKey =
+            processId is { } id && !tool.Repeatable
+                ? IdempotencyKey(tool.Service, tool.CapabilityName, id, body.GetRawText())
+                : null;
 
         var response =
             await Processor(tool.Service).ExecuteStepAsync(
                 tool.CapabilityName,
-                JsonSerializer.SerializeToElement(step, KaleidoJsonOptions.Options),
+                body,
                 processId,
+                idempotencyKey,
                 cancellationToken);
 
         return await FollowUpAsync(tool.Service, response, catalog, call, [], round: 0, cancellationToken);
@@ -822,18 +839,44 @@ internal sealed partial class KaleidoToolInvoker(
         InformationRequest request,
         IReadOnlyList<InformationResponseItem> items,
         Guid processId,
-        CancellationToken cancellationToken) =>
-        Processor(service).ExecuteStepAsync(
+        CancellationToken cancellationToken)
+    {
+        var body = JsonSerializer.SerializeToElement(
+            new JsonObject
+            {
+                ["informationRequestId"] = request.InformationRequestId,
+                ["items"] = Serialize(items),
+            },
+            KaleidoJsonOptions.Options);
+
+        // An information request is answered once: the same answers to the same request are one call,
+        // however often the agent sends them (#440).
+        return Processor(service).ExecuteStepAsync(
             step.Name,
-            JsonSerializer.SerializeToElement(
-                new JsonObject
-                {
-                    ["informationRequestId"] = request.InformationRequestId,
-                    ["items"] = Serialize(items),
-                },
-                KaleidoJsonOptions.Options),
+            body,
             processId,
+            IdempotencyKey(service, step.Name, processId, body.GetRawText()),
             cancellationToken);
+    }
+
+    // "mcp-" and 40 hex characters of SHA-256 over what makes the call this call: well within the
+    // service's 200-character limit, and never a value an agent chose.
+    private static string IdempotencyKey(string service, string step, Guid processId, string body) =>
+        "mcp-" + Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                Encoding.UTF8.GetBytes($"{service}\n{step}\n{processId:D}\n{body}")))[..40].ToLowerInvariant();
+
+    // A JSON value with its object properties in ordinal order, recursively, so equal arguments always
+    // serialize to the same text.
+    private static JsonNode? Canonical(JsonNode? node) =>
+        node switch
+        {
+            JsonObject obj => new JsonObject(
+                obj.OrderBy(x => x.Key, StringComparer.Ordinal)
+                    .Select(x => KeyValuePair.Create(x.Key, Canonical(x.Value?.DeepClone())))),
+            JsonArray array => new JsonArray([.. array.Select(x => Canonical(x?.DeepClone()))]),
+            _ => node,
+        };
 
     // The questions a process is waiting for, read fresh from Kaleido (never from the client).
     private async Task<PendingQuestions> PendingAsync(

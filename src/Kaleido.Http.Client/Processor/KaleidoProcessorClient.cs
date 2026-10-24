@@ -59,6 +59,7 @@ internal sealed partial class KaleidoProcessorClient(
 
     public async Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
+        string? idempotencyKey,
         CancellationToken cancellationToken)
     {
         var url = ProcessContractUrls.Execute(serviceName);
@@ -69,6 +70,7 @@ internal sealed partial class KaleidoProcessorClient(
         };
 
         headerStamper.Stamp(httpRequest);
+        UseIdempotencyKey(httpRequest, idempotencyKey);
 
         using var response = await SendAsync(httpRequest, cancellationToken);
 
@@ -163,6 +165,7 @@ internal sealed partial class KaleidoProcessorClient(
         string stepName,
         JsonElement processStep,
         Guid? processId,
+        string? idempotencyKey,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
@@ -188,6 +191,8 @@ internal sealed partial class KaleidoProcessorClient(
             httpRequest.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, id.ToString());
         }
 
+        UseIdempotencyKey(httpRequest, idempotencyKey);
+
         using var response = await SendAsync(httpRequest, cancellationToken);
 
         if (response.IsSuccessStatusCode)
@@ -205,6 +210,16 @@ internal sealed partial class KaleidoProcessorClient(
             cancellationToken);
     }
 
+    // The caller's key for this logical call (#440); without one SendAsync gives the request its own.
+    // Not validated here: the service answers an over-long key with 400 pro_invalid_idempotency_key.
+    private static void UseIdempotencyKey(HttpRequestMessage request, string? idempotencyKey)
+    {
+        if (!string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            request.Headers.TryAddWithoutValidation(KaleidoIdempotencyHeaders.IdempotencyKey, idempotencyKey);
+        }
+    }
+
     // Step URLs come from the route prefix, never from the registry: the registry is filtered per
     // caller, so a cached copy would answer for whoever fetched it first (#381). A capability call
     // answered 404 means the service does not have that step (perhaps deployed without it): the
@@ -215,9 +230,9 @@ internal sealed partial class KaleidoProcessorClient(
         CancellationToken cancellationToken,
         bool capabilityCall = true)
     {
-        // Every execute call is idempotent: one key per call, so a retry of this request (the
-        // resilience pipeline re-sends the same message) gets the stored answer instead of running the
-        // step a second time.
+        // Every execute call is idempotent: the caller's key, else one key per call, so a retry of this
+        // request (the resilience pipeline re-sends the same message) gets the stored answer instead of
+        // running the step a second time.
         if (request.Method == HttpMethod.Post && !request.Headers.Contains(KaleidoIdempotencyHeaders.IdempotencyKey))
         {
             request.Headers.Add(KaleidoIdempotencyHeaders.IdempotencyKey, Guid.NewGuid().ToString("N"));
