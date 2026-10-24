@@ -22,9 +22,12 @@ internal sealed class ProcessorTransition(
     public async Task<ProcessorContext> SaveAsync(ProcessorContext context, KaleidoOutboxEvent? transitionEvent, CancellationToken cancellationToken)
     {
         ProcessorContext saved;
+        var committed = false;
 
-        await using (var transaction = await transactions.BeginAsync(cancellationToken))
+        try
         {
+            await using var transaction = await transactions.BeginAsync(cancellationToken);
+
             saved = await contextStore.SaveAsync(context, cancellationToken);   // the state, in the transaction
 
             if (transitionEvent is not null)
@@ -33,6 +36,16 @@ internal sealed class ProcessorTransition(
             }
 
             await transaction.CommitAsync(cancellationToken);                   // both, or neither
+            committed = true;
+        }
+        finally
+        {
+            // Not committed (a conflict, a failed write or commit): the event must never be delivered,
+            // also when a later save in this scope commits (e.g. the failure save, #451).
+            if (!committed && transitionEvent is not null)
+            {
+                eventWriter.RolledBack();
+            }
         }
 
         if (transitionEvent is not null)

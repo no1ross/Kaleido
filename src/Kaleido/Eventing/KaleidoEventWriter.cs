@@ -16,6 +16,9 @@ internal interface IKaleidoEventWriter
     // After a transition committed: lets the outbox deliver. Never fails (the state is committed).
     Task CommittedAsync(CancellationToken cancellationToken);
 
+    // A transition with an event did not commit: the outbox forgets the event (#451).
+    void RolledBack();
+
     // Writes an event that is not part of a transition. Never fails the request: an outbox error is
     // logged and counted. Callers pass CancellationToken.None: the work the event describes is already
     // done, so a cancelled request must not drop its event.
@@ -52,6 +55,16 @@ internal sealed partial class KaleidoEventWriter(
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             LogCommittedFailed(logger, exception);
+        }
+    }
+
+    // The host's own outbox writes inside its transaction, so the rollback is its own; only Kaleido's
+    // publisher-backed integrations are told.
+    public void RolledBack()
+    {
+        if (outbox is IKaleidoPublisherOutbox publisherOutbox)
+        {
+            publisherOutbox.Discard();
         }
     }
 

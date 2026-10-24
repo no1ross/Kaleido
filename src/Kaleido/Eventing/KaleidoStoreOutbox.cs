@@ -13,4 +13,10 @@ internal sealed class KaleidoStoreOutbox(IKaleidoOutboxStore store, IKaleidoEven
         signal.Notify();
         return Task.CompletedTask;
     }
+
+    // The events were written inside the transaction, so its rollback already removed them; one the
+    // store wrote outside a transaction (no persistence transaction) stays, as the store documents.
+    public void Discard()
+    {
+    }
 }

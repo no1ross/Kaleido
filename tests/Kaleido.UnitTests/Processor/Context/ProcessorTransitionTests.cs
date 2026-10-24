@@ -38,6 +38,7 @@ public sealed class ProcessorTransitionTests
                 .ReturnsAsync((ProcessorContext context, CancellationToken _) => context with { Version = context.Version + 1 });
             Outbox.Setup(x => x.AddAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>())).Callback(() => Calls.Add("add")).Returns(Task.CompletedTask);
             Writer.Setup(x => x.CommittedAsync(It.IsAny<CancellationToken>())).Callback(() => Calls.Add("committed")).Returns(Task.CompletedTask);
+            Writer.Setup(x => x.RolledBack()).Callback(() => Calls.Add("rolled back"));
         }
     }
 
@@ -75,7 +76,34 @@ public sealed class ProcessorTransitionTests
 
         await Assert.ThrowsAsync<KaleidoConcurrencyException>(() => CreateSut(recorder).SaveAsync(Context, StepCompleted, CancellationToken.None));
 
-        Assert.Equal(["begin", "dispose"], recorder.Calls);
+        Assert.Equal(["begin", "dispose", "rolled back"], recorder.Calls);
+    }
+
+    // #451: the commit itself fails - the outbox must forget the event it was given, so a later save in
+    // this scope that does commit (the failure save) never delivers it.
+    [Fact]
+    public async Task SaveAsync_WhenTheCommitFails_TellsTheOutboxTheEventRolledBack()
+    {
+        var recorder = new Recorder();
+        var failure = new IOException("database is locked");
+        recorder.Transaction.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).Callback(() => recorder.Calls.Add("commit")).ThrowsAsync(failure);
+
+        var thrown = await Assert.ThrowsAsync<IOException>(() => CreateSut(recorder).SaveAsync(Context, StepCompleted, CancellationToken.None));
+
+        Assert.Same(failure, thrown);
+        Assert.Equal(["begin", "save", "add", "commit", "dispose", "rolled back"], recorder.Calls);
+    }
+
+    // Without an event there is nothing to forget.
+    [Fact]
+    public async Task SaveAsync_WithoutAnEvent_WhenTheCommitFails_SignalsNothing()
+    {
+        var recorder = new Recorder();
+        recorder.Transaction.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new IOException("database is locked"));
+
+        await Assert.ThrowsAsync<IOException>(() => CreateSut(recorder).SaveAsync(Context, transitionEvent: null, CancellationToken.None));
+
+        recorder.Writer.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -88,7 +116,7 @@ public sealed class ProcessorTransitionTests
         var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut(recorder).SaveAsync(Context, StepCompleted, CancellationToken.None));
 
         Assert.Same(failure, thrown);
-        Assert.Equal(["begin", "save", "dispose"], recorder.Calls);
+        Assert.Equal(["begin", "save", "dispose", "rolled back"], recorder.Calls);
     }
 
     // The request's token covers the transaction; signalling after the commit is not cancellable.

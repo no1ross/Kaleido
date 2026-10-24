@@ -26,6 +26,9 @@ internal sealed partial class KaleidoDirectPublicationOutbox(
         return Task.CompletedTask;
     }
 
+    // The transition rolled back: its events describe a state that was never saved (#451).
+    public void Discard() => _pending.Clear();
+
     public async Task CommittedAsync(CancellationToken cancellationToken)
     {
         KaleidoOutboxEvent[] committed = [.. _pending];

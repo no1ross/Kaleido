@@ -116,6 +116,10 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Direct publication never publishes a rolled-back transition's event** (#451): with
+  `AddDirectPublication()`, an event added to a transition whose commit failed stayed pending and
+  was published by the next commit in the same request (e.g. after the failure save). A transition
+  that does not commit now discards its event.
 - **Collection and dictionary metadata** (#446): an enumerable's item type is the `T` of the
   `IEnumerable<T>` it implements (it was the first generic argument: `Dictionary<string,int>` was
   published as an array of strings, a subclass of `List<T>` as an array of objects). A dictionary
