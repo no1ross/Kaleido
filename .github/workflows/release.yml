@@ -98,11 +98,14 @@ jobs:
 
     # GitHub Packages hosts the .nupkg files; it does not host symbol packages, so the .snupkg files
     # travel with the workflow run (and with the GitHub Release on a tag).
+    # The token reaches the script as an environment variable, never expanded into it (Sonar S7636).
     - name: Publish to GitHub Packages
+      env:
+        GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         dotnet nuget push "artifacts/*.nupkg" \
           --source "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json" \
-          --api-key "${{ secrets.GITHUB_TOKEN }}" \
+          --api-key "$GITHUB_PACKAGES_TOKEN" \
           --skip-duplicate
 
     # nuget.org, on a tag only, with trusted publishing: NuGet/login exchanges the run's OIDC token for
