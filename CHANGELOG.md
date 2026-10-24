@@ -21,6 +21,10 @@ sections.
   Before, generic execute and discovery matched roles case-insensitively and only from
   `ClaimTypes.Role`, so a caller could be admitted on one surface and refused on another
   ([Authorization](docs/AUTHORIZATION.md)).
+- **Stable MCP tool names** (#435): names are derived from the unfiltered registry, not from what
+  the caller may see; when two capabilities (or a capability and a built-in tool) derive the same
+  name, each gets `_` plus a hash of its own identity instead of `_step`/`_view`/`_2` numbering, so a
+  name can no longer move to another capability when a caller sees fewer of them.
 - **A client's route prefix must be a service name** (#434, [ADR 0027](docs/decisions/0027-forward-caller-token-kept-with-guards.md)):
   `AddHttpClients()` refuses a `RoutePrefix` (or lowercased client name) outside `[a-z0-9][a-z0-9_-]*`
   with `httpclient_invalid_route_prefix`. With call credentials registered, a client whose base URL is

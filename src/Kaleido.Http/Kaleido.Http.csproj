@@ -14,9 +14,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- The MCP adapter is a front door built into the solution: it sets up the request's correlation for its own endpoint (not a Kaleido route group) with the transport's internal helper. -->
+		<!-- The MCP adapter is a front door built into the solution: it sets up the request's correlation for its own endpoint (not a Kaleido route group) with the transport's internal helper, and names its tools from the unfiltered registry (IKaleidoUnfilteredRegistry, #435). -->
 		<InternalsVisibleTo Include="Kaleido.Http.Mcp" />
-		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). The MCP adapter's unit tests mock IKaleidoUnfilteredRegistry (#435). -->
 		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Mcp.UnitTests" />
 	</ItemGroup>
 </Project>

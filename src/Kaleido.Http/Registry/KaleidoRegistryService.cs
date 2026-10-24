@@ -35,6 +35,17 @@ public interface IKaleidoRegistryService
 }
 
 /// <summary>
+/// The unified registry with nothing filtered out, for in-host consumers whose results must not depend
+/// on what one caller may see: the MCP adapter derives stable tool names from it, so a name never moves
+/// to another capability when a caller sees fewer of them (#435). Internal: never served to a caller.
+/// </summary>
+internal interface IKaleidoUnfilteredRegistry
+{
+    /// <summary>The shared snapshot, unfiltered, with its <c>Revision</c> (a hash of its content).</summary>
+    Task<AggregatedRegistryResponse> GetUnfilteredAsync(CancellationToken cancellationToken);
+}
+
+/// <summary>
 /// Builds the registry (local + downstream when aggregating), serves it from the shared snapshot,
 /// and filters it for the caller.
 /// </summary>
@@ -45,9 +56,19 @@ internal sealed partial class KaleidoRegistryService(
     IKaleidoAuthorizer authorizer,
     IHttpContextAccessor httpContextAccessor,
     ILogger<KaleidoRegistryService> logger)
-    : IKaleidoRegistryService
+    : IKaleidoRegistryService, IKaleidoUnfilteredRegistry
 {
     public bool IsMapped => snapshot.IsMapped;
+
+    public async Task<AggregatedRegistryResponse> GetUnfilteredAsync(CancellationToken cancellationToken)
+    {
+        var response = await snapshot.GetOrBuildAsync(
+            refresh: false,
+            ct => BuildAsync(refresh: false, ct),
+            cancellationToken);
+
+        return response with { Revision = ComputeRevision(response) };
+    }
 
     public async Task<AggregatedRegistryResponse> GetForCallerAsync(
         bool refresh,

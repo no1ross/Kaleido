@@ -395,6 +395,14 @@ public sealed class ToolCatalogBuilderTests
         Assert.Contains("Born (The date of birth)", sort, StringComparison.Ordinal);
     }
 
+    // A colliding name: the shared base plus the hash of the capability's own identity (#435).
+    private static string Hashed(string baseName, string identity)
+    {
+        var tail = "_" + ToolNameBuilder.Hash(identity);
+
+        return (baseName.Length + tail.Length > ToolNameBuilder.MaxLength ? baseName[..(ToolNameBuilder.MaxLength - tail.Length)] : baseName) + tail;
+    }
+
     [Fact]
     public void Build_KeepsToolNamesUnique_AndRecordsTruncation()
     {
@@ -404,21 +412,78 @@ public sealed class ToolCatalogBuilderTests
         var names = catalog.Tools.Select(x => x.Definition.Name).ToArray();
 
         Assert.Equal(names.Length, names.Distinct(StringComparer.Ordinal).Count());
-        Assert.Contains("same", names);
-        Assert.Contains("same_step", names);
+        Assert.DoesNotContain("same", names);
+        Assert.Contains(Hashed("same", "clinic|step|StartVisitStep"), names);
+        Assert.Contains(Hashed("same", "clinic|step|CloseVisitStep"), names);
         Assert.Contains(catalog.TruncatedNames, x => x.Contains("CloseVisitStep", StringComparison.Ordinal));
-        Assert.Single(catalog.NameCollisions);
+        Assert.Equal(2, catalog.NameCollisions.Count);
     }
 
+    // #435: neither side of a collision keeps the plain name, so it can never move from one to the other.
     [Fact]
-    public void Build_ASourceAndItsViewWithTheSameName_TheViewSaysItIsAView()
+    public void Build_ASourceAndItsViewWithTheSameName_BothCarryTheirIdentityHash()
     {
         var sut = CreateSut((service, type) => new ToolName("clinic_patient", false));
 
         var catalog = sut.Build(new AggregatedRegistryResponse { Queryables = [Patients()] });
 
-        Assert.Equal(["clinic_patient", "clinic_patient_view"], catalog.Tools.Select(x => x.Definition.Name));
-        Assert.Contains(catalog.NameCollisions, x => x.Contains("PatientCardViewSource -> clinic_patient_view", StringComparison.Ordinal));
+        var source = Hashed("clinic_patient", "clinic|source|PatientSource");
+        var view = Hashed("clinic_patient", "clinic|view|PatientSource|PatientCardViewSource");
+        Assert.Equal([source, view], catalog.Tools.Select(x => x.Definition.Name));
+        Assert.Contains(catalog.NameCollisions, x => x.Contains($"PatientCardViewSource -> {view}", StringComparison.Ordinal));
+    }
+
+    // #435: the regression - a caller who sees only one side of a collision gets the same name as a
+    // caller who sees both, never the plain name (which another caller's catalog never gives anyone).
+    [Fact]
+    public void Build_TheNameDependsOnTheUnfilteredRegistry_NotOnWhatTheCallerSees()
+    {
+        var sut = CreateSut((service, type) => new ToolName("clinic_patient", false));
+        var everything = new AggregatedRegistryResponse { Queryables = [Patients()] };
+        var viewOnly = new AggregatedRegistryResponse { Queryables = [Patients(queryUrl: null)] };
+
+        var full = sut.Build(everything, everything);
+        var limited = sut.Build(viewOnly, everything);
+
+        var view = Hashed("clinic_patient", "clinic|view|PatientSource|PatientCardViewSource");
+        Assert.Equal(view, Assert.Single(limited.Tools).Definition.Name);
+        Assert.Contains(full.Tools, x => x.Definition.Name == view);
+        Assert.DoesNotContain(full.Tools.Concat(limited.Tools), x => x.Definition.Name == "clinic_patient");
+    }
+
+    [Fact]
+    public void Build_AUniqueName_StaysPlain_WhateverElseTheRegistryHolds()
+    {
+        var sut = CreateSut();
+        var registry = new AggregatedRegistryResponse { Processes = [Visits()], Queryables = [Patients()] };
+
+        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [Visits()] }, registry);
+
+        Assert.Contains(catalog.Tools, x => x.Definition.Name == "clinic_startvisitstep");
+        Assert.Empty(catalog.NameCollisions);
+    }
+
+    [Fact]
+    public void Build_ACapabilityDerivingABuiltInToolName_CarriesItsIdentityHash()
+    {
+        var sut = CreateSut((service, type) => new ToolName(type == "CloseVisitStep" ? ToolCatalogBuilder.GetProcessStateTool : $"{service}_{type}".ToLowerInvariant(), false));
+
+        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [Visits()] });
+
+        Assert.Equal(KaleidoToolKind.GetProcessState, Assert.Single(catalog.Tools, x => x.Definition.Name == ToolCatalogBuilder.GetProcessStateTool).Kind);
+        Assert.Contains(catalog.Tools, x => x.Definition.Name == Hashed(ToolCatalogBuilder.GetProcessStateTool, "clinic|step|CloseVisitStep"));
+    }
+
+    // An information step is never a tool, so it never makes a step's name collide.
+    [Fact]
+    public void Build_AnInformationStep_DoesNotCountAsACollision()
+    {
+        var sut = CreateSut((service, type) => new ToolName(type is "StartVisitStep" or "VisitQuestionsStep" ? "clinic_start" : $"{service}_{type}".ToLowerInvariant(), false));
+
+        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [Visits()] });
+
+        Assert.Contains(catalog.Tools, x => x.Definition.Name == "clinic_start");
+        Assert.Empty(catalog.NameCollisions);
     }
 
     [Fact]
@@ -737,7 +802,7 @@ public sealed class ToolCatalogBuilderTests
     }
 
     [Fact]
-    public void Build_ManyCapabilitiesDerivingOneName_AreNumbered_AndEachIsReported()
+    public void Build_ManyCapabilitiesDerivingOneName_EachCarriesItsIdentityHash_AndIsReported()
     {
         var processor = Visits() with
         {
@@ -752,13 +817,12 @@ public sealed class ToolCatalogBuilderTests
 
         var catalog = CreateSut((_, _) => new ToolName("same", false)).Build(new AggregatedRegistryResponse { Processes = [processor] });
 
-        Assert.Equal(["same", "same_step", "same_step_2", "same_step_3"], catalog.Tools.Where(x => x.Kind == KaleidoToolKind.Step).Select(x => x.Definition.Name));
+        string[] steps = ["AStep", "BStep", "CStep", "DStep"];
         Assert.Equal(
-            [
-                "clinic/BStep -> same_step (derives same, already used)",
-                "clinic/CStep -> same_step_2 (derives same, already used)",
-                "clinic/DStep -> same_step_3 (derives same, already used)"
-            ],
+            steps.Select(x => Hashed("same", $"clinic|step|{x}")),
+            catalog.Tools.Where(x => x.Kind == KaleidoToolKind.Step).Select(x => x.Definition.Name));
+        Assert.Equal(
+            steps.Select(x => $"clinic/{x} -> {Hashed("same", $"clinic|step|{x}")} (derives same, shared with another capability)"),
             catalog.NameCollisions);
     }
 
@@ -770,7 +834,10 @@ public sealed class ToolCatalogBuilderTests
         var catalog = CreateSut((_, _) => new ToolName(longName, false)).Build(new AggregatedRegistryResponse { Queryables = [Patients()] });
 
         var names = catalog.Tools.Select(x => x.Definition.Name).ToArray();
-        Assert.Equal([longName, new string('x', ToolNameBuilder.MaxLength - 5) + "_view"], names);
+        Assert.Equal(
+            [Hashed(longName, "clinic|source|PatientSource"), Hashed(longName, "clinic|view|PatientSource|PatientCardViewSource")],
+            names);
+        Assert.StartsWith(new string('x', ToolNameBuilder.MaxLength - 9) + "_", names[0], StringComparison.Ordinal);
         Assert.All(names, x => Assert.True(x.Length <= ToolNameBuilder.MaxLength));
     }
 

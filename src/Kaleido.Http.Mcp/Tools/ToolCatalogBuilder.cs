@@ -17,7 +17,12 @@ namespace Kaleido.Http.Mcp.Tools;
 /// </summary>
 internal interface IToolCatalogBuilder
 {
-    ToolCatalog Build(AggregatedRegistryResponse registry);
+    /// <summary>
+    /// The tools of <paramref name="registry"/> (what the caller may see), named from
+    /// <paramref name="nameScope"/> (the unfiltered registry): a capability's tool name depends only on
+    /// the capabilities that exist, never on which of them this caller sees (#435).
+    /// </summary>
+    ToolCatalog Build(AggregatedRegistryResponse registry, AggregatedRegistryResponse nameScope);
 }
 
 internal sealed partial class ToolCatalogBuilder(
@@ -46,9 +51,14 @@ internal sealed partial class ToolCatalogBuilder(
 
     private const int MaxListedOutputFields = 15;
 
-    public ToolCatalog Build(AggregatedRegistryResponse registry)
+    // The tools of a registry named within that registry alone (nothing hidden from the caller).
+    public ToolCatalog Build(AggregatedRegistryResponse registry) =>
+        Build(registry, registry);
+
+    public ToolCatalog Build(AggregatedRegistryResponse registry, AggregatedRegistryResponse nameScope)
     {
         ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(nameScope);
 
         var processors = registry.Processes.OrderBy(x => x.ServiceName, StringComparer.Ordinal).ToArray();
 
@@ -58,7 +68,7 @@ internal sealed partial class ToolCatalogBuilder(
             .ToList();
 
         // Queries take a processId only where processes exist: it records the query with the process.
-        var context = new BuildContext { HasProcesses = processServices.Count > 0 };
+        var context = new BuildContext { HasProcesses = processServices.Count > 0, AllocatedNames = AllocateNames(nameScope) };
 
         foreach (var source in registry.Queryables.OrderBy(x => x.ServiceName, StringComparer.Ordinal).ThenBy(x => x.Name, StringComparer.Ordinal))
         {
@@ -143,7 +153,7 @@ internal sealed partial class ToolCatalogBuilder(
         QueryableSourceResponse source,
         QueryableViewResponse view)
     {
-        var name = Name(context, source.ServiceName, view.Name, "view");
+        var name = Name(context, source.ServiceName, view.Name, "view", owner: source.Name);
         var query = QuerySchema(context, name, FieldOwner(source), source.Fields, view.Parameters, view.Pageable);
 
         var description =
@@ -719,7 +729,8 @@ internal sealed partial class ToolCatalogBuilder(
         BuildContext context,
         string service,
         string capabilityTypeName,
-        string kind)
+        string kind,
+        string? owner = null)
     {
         var built = nameBuilder.Build(service, capabilityTypeName);
 
@@ -728,24 +739,100 @@ internal sealed partial class ToolCatalogBuilder(
             context.TruncatedNames.Add($"{service}/{capabilityTypeName} -> {built.Value}");
         }
 
-        if (!context.Names.Contains(built.Value))
+        var identity = Identity(service, kind, capabilityTypeName, owner);
+
+        // Named from the unfiltered registry (AllocateNames). A capability missing there (the snapshot
+        // changed between the two reads) is named by the same rule within this catalog.
+        if (!context.AllocatedNames.TryGetValue(identity, out var name))
         {
-            return built.Value;
+            name = context.Names.Contains(built.Value) || BuiltInToolNames.Contains(built.Value)
+                ? Suffixed(built.Value, identity)
+                : built.Value;
+
+            for (var attempt = 1; context.Names.Contains(name); attempt++)
+            {
+                name = Suffixed(built.Value, string.Create(CultureInfo.InvariantCulture, $"{identity}#{attempt}"));
+            }
         }
 
-        // Two capabilities derive the same name (e.g. a source and its view): the name says what
-        // differs - its kind - and a number is the last resort. Owners are told to rename.
-        var name = WithTail(built.Value, $"_{kind}");
-
-        for (var suffix = 2; context.Names.Contains(name); suffix++)
+        if (!string.Equals(name, built.Value, StringComparison.Ordinal))
         {
-            name = WithTail(built.Value, string.Create(CultureInfo.InvariantCulture, $"_{kind}_{suffix}"));
+            context.NameCollisions.Add($"{service}/{capabilityTypeName} -> {name} (derives {built.Value}, shared with another capability)");
         }
-
-        context.NameCollisions.Add($"{service}/{capabilityTypeName} -> {name} (derives {built.Value}, already used)");
 
         return name;
     }
+
+    // Stable tool names (#435): every capability of the unfiltered registry derives its base name
+    // ({service}_{capability}); a base shared by two capabilities (e.g. a source and its view, or two
+    // views of different sources) or by a built-in tool is used by none of them - each gets base_ plus a
+    // hash of its own identity. A name therefore depends only on the capabilities that exist, never on
+    // which ones a caller sees or their order, and a shared base never resolves to one of them.
+    private Dictionary<string, string> AllocateNames(AggregatedRegistryResponse scope)
+    {
+        var capabilities = new List<(string Identity, string Base)>();
+
+        foreach (var source in scope.Queryables)
+        {
+            capabilities.Add((Identity(source.ServiceName, "source", source.Name, owner: null), nameBuilder.Build(source.ServiceName, source.Name).Value));
+
+            foreach (var view in source.Views)
+            {
+                capabilities.Add((Identity(source.ServiceName, "view", view.Name, source.Name), nameBuilder.Build(source.ServiceName, view.Name).Value));
+            }
+        }
+
+        foreach (var processor in scope.Processes)
+        {
+            foreach (var step in (processor.Steps ?? []).Where(x => !x.IsInformationStep))
+            {
+                capabilities.Add((Identity(processor.ServiceName, "step", step.Name, owner: null), nameBuilder.Build(processor.ServiceName, step.Name).Value));
+            }
+        }
+
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
+        var used = new HashSet<string>(BuiltInToolNames, StringComparer.Ordinal);
+
+        foreach (var group in capabilities
+                     .DistinctBy(x => x.Identity, StringComparer.Ordinal)
+                     .GroupBy(x => x.Base, StringComparer.Ordinal)
+                     .OrderBy(x => x.Key, StringComparer.Ordinal))
+        {
+            var shared = group.Skip(1).Any() || BuiltInToolNames.Contains(group.Key);
+
+            foreach (var (identity, baseName) in group.OrderBy(x => x.Identity, StringComparer.Ordinal))
+            {
+                var name = shared ? Suffixed(baseName, identity) : baseName;
+
+                // A hash that happens to repeat a name already given: a longer derivation, still stable.
+                for (var attempt = 1; !used.Add(name); attempt++)
+                {
+                    name = Suffixed(baseName, string.Create(CultureInfo.InvariantCulture, $"{identity}#{attempt}"));
+                }
+
+                names[identity] = name;
+            }
+        }
+
+        return names;
+    }
+
+    private static readonly HashSet<string> BuiltInToolNames = new(StringComparer.Ordinal)
+    {
+        AnswerInformationRequestTool,
+        GetProcessStateTool,
+        SearchToolsTool,
+        DescribeToolTool,
+        CallToolTool,
+    };
+
+    private static string Identity(string service, string kind, string capabilityTypeName, string? owner) =>
+        owner is null
+            ? $"{service}|{kind}|{capabilityTypeName}"
+            : $"{service}|{kind}|{owner}|{capabilityTypeName}";
+
+    private static string Suffixed(string baseName, string identity) =>
+        WithTail(baseName, "_" + ToolNameBuilder.Hash(identity));
 
     private static string WithTail(string name, string tail) =>
         (name.Length + tail.Length > ToolNameBuilder.MaxLength
@@ -858,6 +945,9 @@ internal sealed partial class ToolCatalogBuilder(
     private sealed class BuildContext
     {
         public bool HasProcesses { get; init; }
+
+        // Tool names by capability identity, from the unfiltered registry (#435).
+        public required Dictionary<string, string> AllocatedNames { get; init; }
 
         public List<KaleidoTool> Tools { get; } = [];
 

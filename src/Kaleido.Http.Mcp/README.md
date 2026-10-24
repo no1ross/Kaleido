@@ -61,8 +61,17 @@ Names are `{service}_{capability}` in snake case, where the capability part is t
 without a `QueryContextSource`, `QueryViewSource`, `ViewSource`, `Source` or `Step` suffix
 (`MemberSearchSource` in service `member` becomes `member_member_search`). A name longer than MCP's
 64 characters is shortened with a hash suffix and logged at Warning; KAL2017 and KAL2016 keep the
-service name (15) and the capability part (40) inside the budget. When two capabilities produce the
-same name, the later one says what it is (`_view`, `_source`, `_step`), and the collision is logged.
+service name (15) and the capability part (40) inside the budget.
+
+**Names are stable** (#435). They are derived from every capability the host publishes (the
+unfiltered registry), not from what one caller may see, and not from the order of the list. When two
+capabilities produce the same name (for example a source and its view, or two views of different
+sources), or a capability produces a built-in tool's name, none of them gets the plain name: each gets
+`_` plus eight characters of a hash of its own identity (service, kind, source, type name), and the
+collision is logged at Warning so the owner can rename. A name therefore always means the same
+capability; removing one side of a collision in a later deployment gives the other its plain name
+back. A hashed name shows that some capability shares the stem, even one the caller cannot see; it
+names nothing the caller can call.
 
 Step and input descriptions are the published metadata (`[ProcessStep]`, `[Description]`,
 `[Display]`): they are the interface the agent reads (ADR 0007). A query field's description is
