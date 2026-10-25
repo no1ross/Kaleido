@@ -43,6 +43,10 @@ $failing = @('  total: 5', '  failed: 2')
 Assert ((Get-RunFailure 0 (Get-RunSummary $failing)) -eq '2 test(s) failed') 'failed tests fail the run, even with exit code 0'
 Assert ((Get-RunFailure 3 (Get-RunSummary $valid)) -eq 'exit code 3') 'a non-zero exit code fails the run'
 
+$esc = [char]27
+$colored = @("Test run summary: $esc[32mPassed!$esc[m", "  total: 12$esc[m", "$esc[0m  failed: 0`r")
+Assert ((Get-RunSummary $colored).Total -eq 12) 'a summary with ANSI colors and line endings is parsed'
+
 $repeated = @('  total: 1', '  failed: 0', '  total: 7', '  failed: 1')
 Assert ((Get-RunSummary $repeated).Total -eq 7) 'the last summary wins'
 
@@ -106,6 +110,7 @@ try {
     Assert ($firstMatch.FullName -ne $expectedPath) "the first recursive match is a decoy ($($firstMatch.FullName))"
 
     $resolved = Resolve-TestAssembly (Join-Path $probe 'Probe.Tests.csproj') 'Release'
+    Assert ($resolved -notmatch "`n") 'the TargetPath is one path'
     Assert ([IO.Path]::GetFullPath($resolved) -eq $expectedPath) "the TargetPath is resolved, not a stale or reference assembly ($resolved)"
 }
 finally {

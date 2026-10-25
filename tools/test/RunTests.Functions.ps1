@@ -36,10 +36,14 @@ function Compare-TestProjects([string[]] $expected, [string[]] $onDisk) {
 # The assembly the project builds for the configuration, as MSBuild evaluates it (TargetPath): never a
 # stale output of another target framework, nor a reference assembly.
 function Resolve-TestAssembly([string] $project, [string] $configuration) {
-    $path = (& dotnet msbuild $project -nologo "-getProperty:TargetPath" "-p:Configuration=$configuration" 2>&1 | Out-String).Trim()
+    $output = @(& dotnet msbuild $project -nologo "-getProperty:TargetPath" "-p:Configuration=$configuration" 2>&1 | ForEach-Object { "$_".Trim() })
+
+    # The value is the output's last rooted .dll path: anything an MSBuild extension prints around it
+    # (a CI build's instrumentation, a first-run notice) is not the path.
+    $path = $output | Where-Object { $_ -like '*.dll' -and [IO.Path]::IsPathRooted($_) } | Select-Object -Last 1
 
     if ($LASTEXITCODE -ne 0 -or -not $path) {
-        throw "Could not evaluate the TargetPath of $project ($configuration): $path"
+        throw "Could not evaluate the TargetPath of $project ($configuration): $($output -join ' | ')"
     }
 
     $path
@@ -48,9 +52,10 @@ function Resolve-TestAssembly([string] $project, [string] $configuration) {
 # The summary a Microsoft.Testing.Platform run prints ('total: N', 'failed: N'), or $null when it
 # printed none (a crash, a host that never started). The last occurrence wins.
 function Get-RunSummary([object[]] $output) {
-    $text = @($output | ForEach-Object { "$_" })
-    $total = $text | Select-String '^\s*total:\s*(\d+)\s*$' | Select-Object -Last 1
-    $failed = $text | Select-String '^\s*failed:\s*(\d+)\s*$' | Select-Object -Last 1
+    # Without ANSI colors (a CI terminal may get them) and line endings.
+    $text = @($output | ForEach-Object { ("$_" -replace "\x1B\[[0-9;?]*[A-Za-z]", '').TrimEnd() })
+    $total = $text | Select-String '^\s*total:\s*(\d+)$' | Select-Object -Last 1
+    $failed = $text | Select-String '^\s*failed:\s*(\d+)$' | Select-Object -Last 1
 
     if (-not $total -or -not $failed) {
         return $null

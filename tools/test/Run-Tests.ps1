@@ -42,7 +42,7 @@ $expected = Get-ExpectedTestProjects (Join-Path $repo 'Kaleido.slnx')
 $problems = @(Compare-TestProjects $expected (Get-TestProjectsOnDisk $repo))
 
 if ($problems.Count -gt 0) {
-    $problems | ForEach-Object { Write-Host "Test project set: $_" }
+    $problems | ForEach-Object { Write-Host "::error::Test project set: $_" }
     Write-Error 'The test project set is not the one Kaleido.slnx lists; nothing was run.'
 }
 
@@ -53,9 +53,16 @@ $failedProjects = @()
 foreach ($relative in $expected) {
     $project = Join-Path $repo $relative
     $name = [IO.Path]::GetFileNameWithoutExtension($relative)
-    $assembly = Resolve-TestAssembly $project $Configuration
+    try {
+        $assembly = Resolve-TestAssembly $project $Configuration
+    }
+    catch {
+        Write-Host "::error::$name`: $($_.Exception.Message)"
+        throw
+    }
 
     if (-not (Test-Path $assembly)) {
+        Write-Host "::error::$name was not built in $Configuration ($assembly): build the solution first."
         Write-Error "$name was not built in $Configuration ($assembly): build the solution first."
     }
 
@@ -91,6 +98,7 @@ Write-Host "  total: $total"
 Write-Host "  failed: $failed"
 
 if ($failedProjects) {
-    $failedProjects | ForEach-Object { Write-Host "  failed project: $_" }
+    # GitHub annotations (::error::): a failed run names its projects and reasons on the run page.
+    $failedProjects | ForEach-Object { Write-Host "  failed project: $_"; Write-Host "::error::Run-Tests: $_" }
     exit 1
 }
