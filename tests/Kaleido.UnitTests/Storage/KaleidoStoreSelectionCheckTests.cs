@@ -3,6 +3,7 @@ using Kaleido.Exceptions;
 using Kaleido.Processor.Registry;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Storage.UnitTests;
 
@@ -83,6 +84,15 @@ public sealed class KaleidoStoreSelectionCheckTests
     public void AQueryOnlyService_UsesNoContextOrIdempotencyStore()
     {
         Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(Defaults(withProcesses: false)));
+    }
+
+    [Fact]
+    public void WithoutAnyPublisherRegistration_NoOutboxStoreIsInUse()
+    {
+        var services = Defaults(withProcesses: false);
+        services.RemoveAll<IEventPublisher>();
+
+        Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(services));
     }
 
     // The built-in outbox writes events only when a publisher is registered.

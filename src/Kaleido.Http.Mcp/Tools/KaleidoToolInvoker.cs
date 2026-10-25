@@ -387,7 +387,7 @@ internal sealed partial class KaleidoToolInvoker(
         CancellationToken cancellationToken) =>
         call.RequestState switch
         {
-            { } state when state.StartsWith(ConfirmStatePrefix, StringComparison.Ordinal) => await ContinueConfirmationAsync(call, catalog, cancellationToken),
+            { } state when state.StartsWith(ConfirmStatePrefix, StringComparison.Ordinal) => await ContinueConfirmationAsync(state, call, catalog, cancellationToken),
             { } state when state.StartsWith(LookupStatePrefix, StringComparison.Ordinal) => await ContinueLookupAsync(call, catalog, cancellationToken),
             { } state when state.StartsWith(StatePrefix, StringComparison.Ordinal) => await ContinueAsync(call, catalog, cancellationToken),
             _ => null,

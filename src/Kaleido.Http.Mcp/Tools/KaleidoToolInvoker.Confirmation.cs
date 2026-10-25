@@ -65,11 +65,12 @@ internal sealed partial class KaleidoToolInvoker
 
     // The MRTR retry: run the step with the confirmed call's arguments only when the user accepted.
     private async Task<ToolOutcome> ContinueConfirmationAsync(
+        string requestState,
         KaleidoToolCall call,
         ToolCatalog catalog,
         CancellationToken cancellationToken)
     {
-        if (DecodeConfirmationState(call.RequestState) is not { } state ||
+        if (DecodeConfirmationState(requestState) is not { } state ||
             catalog.Find(state.Tool) is not { Kind: KaleidoToolKind.Step } tool)
         {
             return Error(McpErrorCodes.InvalidArguments, "The confirmation state is not readable; call the tool again.");
@@ -107,15 +108,19 @@ internal sealed partial class KaleidoToolInvoker
         {
             ["step"] = tool.CapabilityName,
             ["outcome"] = "notRun",
-            ["note"] = $"The user did not confirm {tool.Definition.Title ?? tool.Definition.Name} ({action}). Nothing was run.",
+            ["note"] = $"The user did not confirm {Title(tool)} ({action}). Nothing was run.",
         });
+
+    // What the user knows the step as: its display name, or the tool name when it has none.
+    private static string Title(KaleidoTool tool) => tool.Definition.Title ?? tool.Definition.Name;
 
     // One checkbox, unchecked: the message names the step, what the implementer declared about it,
     // and the inputs it will run with.
     private static ElicitRequestParams ConfirmationForm(KaleidoTool tool, IReadOnlyDictionary<string, JsonElement> arguments)
     {
+        var title = Title(tool);
         var message = new StringBuilder()
-            .Append("Confirm: ").Append(tool.Definition.Title ?? tool.Definition.Name).Append('.');
+            .Append("Confirm: ").Append(title).Append('.');
 
         if (tool.Definition.Annotations?.DestructiveHint == true)
         {
@@ -142,7 +147,7 @@ internal sealed partial class KaleidoToolInvoker
                 {
                     [ConfirmItemId] = new ElicitRequestParams.BooleanSchema
                     {
-                        Title = $"Run {tool.Definition.Title ?? tool.Definition.Name} now",
+                        Title = $"Run {title} now",
                         Default = false,
                     },
                 },
@@ -151,13 +156,9 @@ internal sealed partial class KaleidoToolInvoker
         };
     }
 
-    private static ConfirmationState? DecodeConfirmationState(string? value)
+    // The state the retry dispatch matched by its prefix; null when it is not readable.
+    private static ConfirmationState? DecodeConfirmationState(string value)
     {
-        if (value?.StartsWith(ConfirmStatePrefix, StringComparison.Ordinal) != true)
-        {
-            return null;
-        }
-
         try
         {
             return JsonSerializer.Deserialize<ConfirmationState>(

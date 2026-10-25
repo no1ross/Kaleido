@@ -1763,6 +1763,41 @@ public sealed class KaleidoToolInvokerTests
         Assert.Empty(posts);
     }
 
+    // A step with no display name, no declared effects and no inputs: the form names the tool.
+    [Fact]
+    public async Task Confirmation_ForAnUntitledStepWithoutInputs_NamesTheTool()
+    {
+        var untitled = Discharge with { Definition = new Tool { Name = "clinic_discharge" } };
+        UserAnswersInASession(Confirmation("decline", confirm: null));
+
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(untitled, Call(new { processId = ProcessId }), ConfirmCatalog, Cancel));
+
+        var form = Assert.Single(sessionForms);
+        Assert.Equal("Confirm: clinic_discharge.", form.Message);
+        Assert.Contains("clinic_discharge", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    // A state without arguments (crafted by a client) runs the step with none: the service decides.
+    [Fact]
+    public async Task Confirmation_WithMrtr_AStateWithoutArguments_RunsWithNone()
+    {
+        var state = "kaleido-mcp-confirm:" + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("""{"tool":"clinic_discharge","arguments":"null"}"""));
+
+        await CreateSut(requireConfirmation: true).InvokeAsync(
+            Discharge, Call(requestState: state, inputResponses: Confirmed(Confirmation("accept", confirm: true))), ConfirmCatalog, Cancel);
+
+        Assert.Empty(Assert.Single(posts).Body.AsObject());
+    }
+
+    // A request state that is none of the adapter's is an ordinary call.
+    [Fact]
+    public async Task AnUnknownRequestState_IsAnOrdinaryCall()
+    {
+        await CreateSut().InvokeAsync(Close, Call(new { processId = ProcessId }, requestState: "someone-elses-state"), ConfirmCatalog, Cancel);
+
+        Assert.Single(posts);
+    }
+
     // ── Questions: session elicitation ───────────────────────────────────────
 
     private readonly Queue<ElicitResult> sessionAnswers = new();
