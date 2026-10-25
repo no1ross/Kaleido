@@ -32,9 +32,14 @@ The repository cannot configure these; a tag run fails before publishing anythin
 Every run, from a clean checkout of the tag (or master, for a dry run):
 1. restores, builds and tests the solution (`Kaleido.slnx`) in Release;
 2. packs the eight packages and verifies them ([`tools/packaging/Test-PackageConsumer.ps1`](tools/packaging/Test-PackageConsumer.ps1)):
-   contents (assembly, XML docs, README, symbols), exact `[x.y.z]` dependencies between the Kaleido
-   packages ([they move together](docs/VERSIONING.md#versions)), a clean consumer build with the consumer analyzer and
-   no repository-only rule, and deterministic source paths with Source Link in every symbols package;
+   exactly the release set (the script's manifest of ids, one version, one symbols package per
+   library: a missing, duplicate, unexpected or mixed-version package fails), contents and metadata
+   (assembly, XML docs, README, icon, LICENSE, NOTICE, license, repository and commit), exact
+   `[x.y.z]` dependencies between the Kaleido packages ([they move together](docs/VERSIONING.md#versions)),
+   analyzer isolation read from a consumer's restored assets, a clean consumer build with the consumer
+   analyzer and no repository-only rule, a clean host of every runtime package that starts and
+   answers, and deterministic source paths with Source Link in every symbols package (#436). CI also
+   runs its self-test (`Test-PackageConsumer.Tests.ps1`), which breaks the set each of those ways;
 3. on a tag, refuses to publish unless the tag equals the packed version and the nuget.org publisher
    (`NUGET_USER`) is configured;
 4. attests the build provenance of every `.nupkg`;

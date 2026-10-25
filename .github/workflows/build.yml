@@ -173,15 +173,20 @@ jobs:
         for project in src/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do
           dotnet pack "$project" --configuration Release --no-build -o artifacts
         done
-        packages=(artifacts/*.nupkg)
-        test "${#packages[@]}" -eq 8
 
-    # The packages as a consumer gets them (#319): contents (assembly, XML docs, README, symbols;
-    # the analyzer-only package), then a clean project outside the repository restored from the
-    # local feed builds without repository-only rules and fails a deliberate violation with KAL2001.
+    # The packages as a consumer gets them (#319, #436): exactly the release set (manifest of ids,
+    # one version, a symbols package per library), contents and metadata, analyzer isolation read from
+    # the restored assets, a clean core consumer (no repository-only rule; KAL2001 on a violation)
+    # and a clean host consumer of every runtime package that starts and answers.
     - name: Test packages in a clean consumer
       shell: pwsh
       run: ./tools/packaging/Test-PackageConsumer.ps1 -Packages artifacts -RequireDeterministic
+
+    # The package gate's own self-test: each package removed, a duplicate, mixed versions, an
+    # unexpected id, a symbols package without its PDB and a leaked analyzer each fail it.
+    - name: Self-test the package gate
+      shell: pwsh
+      run: ./tools/packaging/Test-PackageConsumer.Tests.ps1 -Packages artifacts
 
     - name: Upload packages
       if: github.event_name == 'push'

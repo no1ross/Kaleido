@@ -59,9 +59,9 @@ jobs:
         for project in src/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do
           dotnet pack "$project" --configuration Release --no-build -o artifacts
         done
-        packages=(artifacts/*.nupkg)
-        test "${#packages[@]}" -eq 8
 
+    # The complete release set (its manifest: ids, one version, symbols), contents and metadata, and
+    # clean consumers of every package (#436).
     - name: Verify the packages
       shell: pwsh
       run: ./tools/packaging/Test-PackageConsumer.ps1 -Packages artifacts -RequireDeterministic
