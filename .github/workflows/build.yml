@@ -71,6 +71,12 @@ jobs:
     - name: Restore
       run: dotnet restore Kaleido.slnx
 
+    # The test gate's own decisions (#437): a missing summary, zero tests, an incomplete project set
+    # and a stale build output each fail Run-Tests.ps1. Before Sonar begins: it builds a probe project.
+    - name: Self-test the test gate
+      shell: pwsh
+      run: ./tools/test/Test-RunTests.ps1
+
     - name: Set up Java (Sonar scanner)
       if: ${{ env.SONAR_TOKEN != '' }}
       uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad  # v6.1.0
