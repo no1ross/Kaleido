@@ -135,7 +135,7 @@ internal sealed partial class KaleidoToolInvoker
 
         if (inputs.Length > 0)
         {
-            message.AppendLine().Append("Inputs: ").Append(string.Join(", ", inputs));
+            message.AppendLine().Append("Inputs: ").AppendJoin(", ", inputs);
         }
 
         return new ElicitRequestParams
