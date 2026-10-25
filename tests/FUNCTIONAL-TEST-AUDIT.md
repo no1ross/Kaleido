@@ -32,6 +32,7 @@ production code one at a time, the suites run, and the file restored:
 | MCP: several query filters or-ed instead of and-ed | `McpContractTests.AQueryTool_*` |
 | MCP: user-facing text marked for the assistant | `McpContractTests.ABusinessMessage_*`, `ARejectedStep_*` |
 | MCP: MRTR request state not round-tripped | `McpContractTests.WithMrtr_*`, `WhenTheUserDeclines_*`, `McpEndpointTests.WithElicitation_*` |
+| MCP: a `RequiresConfirmation` step run without the user's confirmation (#439) | `ConfirmationTests` |
 
 Before this work, every row except "Repeatable ignored" (partially) left the suite green.
 
@@ -116,6 +117,7 @@ delegated source makes during a caller's request (`Kaleido.IntegrationTests`' `H
 | `Processor/Behavior/ProcessBehaviorTests` (new) | DependsOn, AvailableUntil, AvailableAfter, Repeatable, non-repeatable rerun, Reject leaves state, DataAnnotations, unexpected failure hidden + retryable, handoff out/in, self-handoff refused, 409 conflict saves nothing, multi-step ordering, `/execute` resume and idempotency, error-path RequestId echo, 500 shape, malformed process id, typed process client |
 | `Registry/RegistryAggregationTests` (new) | aggregated registry missing downstream capabilities; strict read of a healthy aggregate |
 | `Registry/DistributedRegistrySnapshotTests` (new, #275) | router replicas each fanning out despite a shared cache; client copies not shared or keyed per consuming service; a cache outage failing registry reads or the replica not sharing again after it |
+| `Mcp.FunctionalTests/ConfirmationTests` (new, #439) | with `RequireConfirmation`, a `RequiresConfirmation` step running without an accepted MRTR form, on a decline/cancel/unchecked answer, from a client without forms or an older revision, or because the agent passed its own `confirm`; the form not naming the step and its inputs |
 | `Mcp.FunctionalTests/McpContractTests` (new) | query arguments reshaped wrongly; service errors mapped to internal errors; business messages lost or not marked for the user; rejection changing state; MRTR round trip; decline submitting answers; questions lost for older clients |
 | `QueryableDiscoveryTests` (strengthened) | registry dropping descriptions, classifications, operators, capabilities, view paging; removed a duplicated assertion |
 | `QueryableClientTests` (strengthened) | client/server JSON drift for any value type; error mapping |

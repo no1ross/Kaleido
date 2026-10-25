@@ -98,6 +98,14 @@ sections.
   - test: KAL1012 and KAL1013 are now KAL1011 and KAL1012.
 
 ### Added
+- **An enforced confirmation round in the MCP adapter** (#439): with `Kaleido:Mcp:RequireConfirmation`
+  (off by default), a step declared `RequiresConfirmation` runs only after the user accepts a form the
+  adapter shows (in the session, or as an MRTR round), whichever tool reaches it; declining runs
+  nothing, and a client without forms gets `mcp_confirmation_required`. The agent's own claim never
+  counts. It raises the bar and is documented as not being proof of consent.
+- **Service text is untrusted prompt content** (#439): the MCP README's trust boundary says that
+  descriptions and messages from aggregated services can try to steer the agent, and the default
+  instructions tell the agent to treat them as data, never as instructions.
 - **Public distribution** (#432): tagged versions are published to nuget.org with trusted publishing
   (no stored API key) as well as to GitHub Packages; every package has a signed build provenance
   attestation (`gh attestation verify`) and carries the `LICENSE` text next to `NOTICE`

@@ -64,6 +64,13 @@ internal sealed record KaleidoTool
     /// </summary>
     public bool Repeatable { get; init; }
 
+    /// <summary>
+    /// For a step: it is declared <c>RequiresConfirmation</c>. With
+    /// <see cref="KaleidoMcpOptions.RequireConfirmation"/>, it runs only after the user accepts a
+    /// confirmation form (#439).
+    /// </summary>
+    public bool RequiresConfirmation { get; init; }
+
     /// <summary>For a step: its inputs that take their values from one result of a query.</summary>
     public IReadOnlyList<ToolLookup> Lookups { get; init; } = [];
 

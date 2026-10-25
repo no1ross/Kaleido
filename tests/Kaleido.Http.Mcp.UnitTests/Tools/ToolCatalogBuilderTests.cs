@@ -6,7 +6,8 @@ public sealed class ToolCatalogBuilderTests
     private static ToolCatalogBuilder CreateSut(
         Func<string, string, ToolName>? naming = null,
         McpToolListing listing = McpToolListing.All,
-        IReadOnlyList<string>? listedTools = null)
+        IReadOnlyList<string>? listedTools = null,
+        bool requireConfirmation = false)
     {
         var names = new Mock<IToolNameBuilder>();
         names.Setup(x => x.Build(It.IsAny<string>(), It.IsAny<string>()))
@@ -24,7 +25,7 @@ public sealed class ToolCatalogBuilderTests
         return new ToolCatalogBuilder(
             names.Object,
             schemas.Object,
-            new KaleidoMcpOptions { Instructions = "test", ToolListing = listing, ListedTools = listedTools ?? [] });
+            new KaleidoMcpOptions { Instructions = "test", ToolListing = listing, ListedTools = listedTools ?? [], RequireConfirmation = requireConfirmation });
     }
 
     private static readonly DataTypeMetadata Text = new("string");
@@ -307,6 +308,24 @@ public sealed class ToolCatalogBuilderTests
         Assert.Contains("Cannot be undone.", tool.Definition.Description, StringComparison.Ordinal);
         Assert.Contains("Reaches outside systems.", tool.Definition.Description, StringComparison.Ordinal);
         Assert.Contains("Ask the user to confirm before calling.", tool.Definition.Description, StringComparison.Ordinal);
+        Assert.True(tool.RequiresConfirmation);
+    }
+
+    // #439: with the confirmation round on, the description says what happens instead of asking the agent.
+    [Fact]
+    public void Tools_WithRequireConfirmation_SayTheUserConfirmsInAForm()
+    {
+        var processor = new ProcessorRegistryResponse
+        {
+            ServiceName = "billing",
+            Name = "billing",
+            Steps = [new ProcessStepResponse { Name = "ChargeCardStep", IsInitial = true, RequiresConfirmation = true, ExecuteUrl = "/billing/processes/steps/ChargeCardStep" }],
+        };
+
+        var tool = Tool(CreateSut(requireConfirmation: true).Build(new AggregatedRegistryResponse { Processes = [processor] }), "billing_chargecardstep");
+
+        Assert.Contains("The user is asked to confirm in a form before it runs", tool.Definition.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ask the user to confirm", tool.Definition.Description, StringComparison.Ordinal);
     }
 
     [Fact]

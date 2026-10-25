@@ -8,6 +8,7 @@ const Kaleido.Http.Mcp.McpErrorCodes.MissingClients = "mcp_missing_clients" -> s
 const Kaleido.Http.Mcp.McpErrorCodes.MissingHttp = "mcp_missing_http" -> string!
 const Kaleido.Http.Mcp.McpErrorCodes.MissingInstructionsFile = "mcp_missing_instructions_file" -> string!
 const Kaleido.Http.Mcp.McpErrorCodes.NoPendingInformationRequest = "mcp_no_pending_information_request" -> string!
+const Kaleido.Http.Mcp.McpErrorCodes.ConfirmationRequired = "mcp_confirmation_required" -> string!
 const Kaleido.Http.Mcp.McpErrorCodes.ProcessConflict = "mcp_process_conflict" -> string!
 const Kaleido.Http.Mcp.McpErrorCodes.ServiceError = "mcp_service_error" -> string!
 const Kaleido.Http.Mcp.McpErrorCodes.ServiceUnavailable = "mcp_service_unavailable" -> string!
@@ -21,6 +22,8 @@ Kaleido.Http.Mcp.KaleidoMcpOptions.Instructions.init -> void
 Kaleido.Http.Mcp.KaleidoMcpOptions.KaleidoMcpOptions() -> void
 Kaleido.Http.Mcp.KaleidoMcpOptions.ListedTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Kaleido.Http.Mcp.KaleidoMcpOptions.ListedTools.init -> void
+Kaleido.Http.Mcp.KaleidoMcpOptions.RequireConfirmation.get -> bool
+Kaleido.Http.Mcp.KaleidoMcpOptions.RequireConfirmation.init -> void
 Kaleido.Http.Mcp.KaleidoMcpOptions.MaxElicitationRounds.get -> int
 Kaleido.Http.Mcp.KaleidoMcpOptions.MaxElicitationRounds.init -> void
 Kaleido.Http.Mcp.KaleidoMcpOptions.ServerName.get -> string!
@@ -39,6 +42,8 @@ Kaleido.Http.Mcp.KaleidoMcpOptionsBuilder.InstructionsFile.set -> void
 Kaleido.Http.Mcp.KaleidoMcpOptionsBuilder.KaleidoMcpOptionsBuilder() -> void
 Kaleido.Http.Mcp.KaleidoMcpOptionsBuilder.ListedTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Kaleido.Http.Mcp.KaleidoMcpOptionsBuilder.ListedTools.set -> void
+Kaleido.Http.Mcp.KaleidoMcpOptionsBuilder.RequireConfirmation.get -> bool
+Kaleido.Http.Mcp.KaleidoMcpOptionsBuilder.RequireConfirmation.set -> void
 Kaleido.Http.Mcp.KaleidoMcpOptionsBuilder.MaxElicitationRounds.get -> int
 Kaleido.Http.Mcp.KaleidoMcpOptionsBuilder.MaxElicitationRounds.set -> void
 Kaleido.Http.Mcp.KaleidoMcpOptionsBuilder.ServerName.get -> string!

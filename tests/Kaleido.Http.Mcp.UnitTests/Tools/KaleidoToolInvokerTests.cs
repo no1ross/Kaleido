@@ -148,7 +148,7 @@ public sealed class KaleidoToolInvokerTests
             .Returns(Mock.Of<IDisposable>());
     }
 
-    private KaleidoToolInvoker CreateSut(int maxElicitationRounds = 5, ILogger<KaleidoToolInvoker>? logger = null) =>
+    private KaleidoToolInvoker CreateSut(int maxElicitationRounds = 5, ILogger<KaleidoToolInvoker>? logger = null, bool requireConfirmation = false) =>
         new(
             processors.Object,
             queryables.Object,
@@ -157,7 +157,8 @@ public sealed class KaleidoToolInvokerTests
             new KaleidoMcpOptions
             {
                 Instructions = "test",
-                MaxElicitationRounds = maxElicitationRounds
+                MaxElicitationRounds = maxElicitationRounds,
+                RequireConfirmation = requireConfirmation
             },
             logger ?? NullLogger<KaleidoToolInvoker>.Instance);
 
@@ -1578,6 +1579,188 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal("radiology", body["handoff"]?.GetValue<string>());
         Assert.Null(body["next"]?["required"]);
         Assert.Contains("complete", body["next"]?["note"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    // ── Confirmation (#439) ──────────────────────────────────────────────────
+
+    private static readonly KaleidoTool Discharge = new()
+    {
+        Definition = new Tool
+        {
+            Name = "clinic_discharge",
+            Title = "Discharge patient",
+            Annotations = new ToolAnnotations { DestructiveHint = true }
+        },
+        Kind = KaleidoToolKind.Step,
+        Service = "clinic",
+        CapabilityName = "DischargeStep",
+        Url = "/clinic/processes/steps/DischargeStep",
+        RequiresConfirmation = true
+    };
+
+    private static readonly ToolCatalog ConfirmCatalog = new() { Tools = [Start, Close, Discharge, State] };
+
+    private static readonly object DischargeArguments = new { processId = ProcessId, reason = "recovered" };
+
+    private static ElicitResult Confirmation(string action, bool? confirm) =>
+        new()
+        {
+            Action = action,
+            Content = confirm is { } value ? new Dictionary<string, JsonElement> { ["confirm"] = JsonSerializer.SerializeToElement(value) } : null
+        };
+
+    private static Dictionary<string, InputResponse> Confirmed(ElicitResult answer) =>
+        new(StringComparer.Ordinal)
+        {
+            ["kaleido-confirm"] = new() { RawValue = JsonSerializer.SerializeToElement(answer, McpJsonUtilities.DefaultOptions) }
+        };
+
+    private async Task<string> ConfirmationStateAsync()
+    {
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+
+        var outcome = await CreateSut(requireConfirmation: true).InvokeAsync(Discharge, Call(DischargeArguments), ConfirmCatalog, Cancel);
+
+        return outcome.InputRequired?.RequestState ?? throw new Xunit.Sdk.XunitException("No confirmation state.");
+    }
+
+    [Fact]
+    public async Task Confirmation_IsOff_ByDefault_TheStepRuns()
+    {
+        await CreateSut().InvokeAsync(Discharge, Call(DischargeArguments), ConfirmCatalog, Cancel);
+
+        Assert.Single(posts);
+    }
+
+    [Fact]
+    public async Task Confirmation_OnlyForStepsThatRequireIt()
+    {
+        await CreateSut(requireConfirmation: true).InvokeAsync(Close, Call(new { processId = ProcessId }), ConfirmCatalog, Cancel);
+
+        Assert.Single(posts);
+    }
+
+    [Fact]
+    public async Task Confirmation_WithoutForms_IsRefused_AndNothingRuns()
+    {
+        var outcome = await CreateSut(requireConfirmation: true).InvokeAsync(Discharge, Call(DischargeArguments), ConfirmCatalog, Cancel);
+
+        Assert.True(outcome.Result?.IsError);
+        Assert.Equal(McpErrorCodes.ConfirmationRequired, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(posts);
+    }
+
+    // The agent saying the user agreed, or adding a confirmation argument, is not a confirmation.
+    [Fact]
+    public async Task Confirmation_AnAgentsClaim_IsNotAConfirmation()
+    {
+        var outcome = await CreateSut(requireConfirmation: true).InvokeAsync(
+            Discharge, Call(new { processId = ProcessId, reason = "recovered", confirm = true, userConfirmed = true }), ConfirmCatalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.ConfirmationRequired, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(posts);
+    }
+
+    [Fact]
+    public async Task Confirmation_InASession_Accepted_RunsTheStep_AfterAFormNamingItAndItsInputs()
+    {
+        UserAnswersInASession(Confirmation("accept", confirm: true));
+
+        await CreateSut(requireConfirmation: true).InvokeAsync(Discharge, Call(DischargeArguments), ConfirmCatalog, Cancel);
+
+        var form = Assert.Single(sessionForms);
+        Assert.Contains("Discharge patient", form.Message, StringComparison.Ordinal);
+        Assert.Contains("cannot be undone", form.Message, StringComparison.Ordinal);
+        Assert.Contains("reason: \"recovered\"", form.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("processId", form.Message, StringComparison.Ordinal);
+        Assert.Equal(["confirm"], form.RequestedSchema?.Required);
+        var posted = Assert.Single(posts);
+        Assert.Equal("recovered", posted.Body["reason"]?.GetValue<string>());
+        Assert.Equal(ProcessId, posted.ProcessId);
+    }
+
+    [Theory]
+    [InlineData("decline", null)]
+    [InlineData("cancel", null)]
+    [InlineData("accept", false)]
+    [InlineData("accept", null)]
+    public async Task Confirmation_InASession_NotAccepted_RunsNothing(string action, bool? confirm)
+    {
+        UserAnswersInASession(Confirmation(action, confirm));
+
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Discharge, Call(DischargeArguments), ConfirmCatalog, Cancel));
+
+        Assert.Equal("notRun", body["outcome"]?.GetValue<string>());
+        Assert.Contains($"({action})", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Empty(posts);
+    }
+
+    [Fact]
+    public async Task Confirmation_WithMrtr_ReturnsTheForm_AndRunsNothingYet()
+    {
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+
+        var outcome = await CreateSut(requireConfirmation: true).InvokeAsync(Discharge, Call(DischargeArguments), ConfirmCatalog, Cancel);
+
+        var request = Assert.Single(outcome.InputRequired?.InputRequests ?? new Dictionary<string, InputRequest>());
+        Assert.Equal("kaleido-confirm", request.Key);
+        Assert.StartsWith("kaleido-mcp-confirm:", outcome.InputRequired?.RequestState, StringComparison.Ordinal);
+        Assert.Empty(posts);
+    }
+
+    [Fact]
+    public async Task Confirmation_WithMrtr_Accepted_RunsTheConfirmedCall()
+    {
+        var state = await ConfirmationStateAsync();
+
+        await CreateSut(requireConfirmation: true).InvokeAsync(
+            Discharge, Call(requestState: state, inputResponses: Confirmed(Confirmation("accept", confirm: true))), ConfirmCatalog, Cancel);
+
+        var posted = Assert.Single(posts);
+        Assert.Equal("DischargeStep", posted.Step);
+        Assert.Equal("recovered", posted.Body["reason"]?.GetValue<string>());
+        Assert.Equal(ProcessId, posted.ProcessId);
+    }
+
+    [Theory]
+    [InlineData("decline", null)]
+    [InlineData("accept", false)]
+    public async Task Confirmation_WithMrtr_NotAccepted_RunsNothing(string action, bool? confirm)
+    {
+        var state = await ConfirmationStateAsync();
+
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(
+            Discharge, Call(requestState: state, inputResponses: Confirmed(Confirmation(action, confirm))), ConfirmCatalog, Cancel));
+
+        Assert.Equal("notRun", body["outcome"]?.GetValue<string>());
+        Assert.Empty(posts);
+    }
+
+    // A retry with the state but no answer (an agent replaying the round) runs nothing.
+    [Fact]
+    public async Task Confirmation_WithMrtr_ARetryWithoutAnAnswer_RunsNothing()
+    {
+        var state = await ConfirmationStateAsync();
+
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Discharge, Call(requestState: state), ConfirmCatalog, Cancel));
+
+        Assert.Equal("notRun", body["outcome"]?.GetValue<string>());
+        Assert.Contains("no answer", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Empty(posts);
+    }
+
+    [Theory]
+    [InlineData("kaleido-mcp-confirm:not base64!")]
+    [InlineData("kaleido-mcp-confirm:eyJ0b29sIjoiY2xpbmljX3Vua25vd24ifQ==")]
+    public async Task Confirmation_WithMrtr_AnUnreadableState_IsRefused(string state)
+    {
+        var outcome = await CreateSut(requireConfirmation: true).InvokeAsync(
+            Discharge, Call(requestState: state, inputResponses: Confirmed(Confirmation("accept", confirm: true))), ConfirmCatalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(posts);
     }
 
     // ── Questions: session elicitation ───────────────────────────────────────

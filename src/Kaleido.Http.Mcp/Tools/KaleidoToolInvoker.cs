@@ -128,16 +128,9 @@ internal sealed partial class KaleidoToolInvoker(
 
         try
         {
-            // An MRTR retry of a guided lookup: the user searched, or picked a result.
-            if (call.RequestState?.StartsWith(LookupStatePrefix, StringComparison.Ordinal) == true)
+            if (await RetryAsync(call, catalog, cancellationToken) is { } retried)
             {
-                return await ContinueLookupAsync(call, catalog, cancellationToken);
-            }
-
-            // An MRTR retry: the user answered the form returned with the previous round.
-            if (call.RequestState?.StartsWith(StatePrefix, StringComparison.Ordinal) == true)
-            {
-                return await ContinueAsync(call, catalog, cancellationToken);
+                return retried;
             }
 
             return tool.Kind switch
@@ -385,6 +378,21 @@ internal sealed partial class KaleidoToolInvoker(
             ? description.GetString()
             : null;
 
+    // An MRTR retry, by the state the previous round returned: a confirmation (#439), a guided lookup
+    // (the user searched or picked), or answers to an information request's form. Null when the call
+    // carries none of the adapter's states: it is an ordinary call.
+    private async Task<ToolOutcome?> RetryAsync(
+        KaleidoToolCall call,
+        ToolCatalog catalog,
+        CancellationToken cancellationToken) =>
+        call.RequestState switch
+        {
+            { } state when state.StartsWith(ConfirmStatePrefix, StringComparison.Ordinal) => await ContinueConfirmationAsync(call, catalog, cancellationToken),
+            { } state when state.StartsWith(LookupStatePrefix, StringComparison.Ordinal) => await ContinueLookupAsync(call, catalog, cancellationToken),
+            { } state when state.StartsWith(StatePrefix, StringComparison.Ordinal) => await ContinueAsync(call, catalog, cancellationToken),
+            _ => null,
+        };
+
     // ── Steps ────────────────────────────────────────────────────────────────
 
     private async Task<ToolOutcome> StepAsync(
@@ -418,17 +426,25 @@ internal sealed partial class KaleidoToolInvoker(
             return await GuideLookupAsync(tool, lookup, call, catalog, processId, cancellationToken);
         }
 
-        return await RunStepAsync(tool, call.Arguments, processId, call, catalog, cancellationToken);
+        return await RunStepAsync(tool, call.Arguments, processId, call, catalog, confirmed: false, cancellationToken);
     }
 
+    // Every step a tool runs goes through here (direct calls, call_tool, guided lookups), so the
+    // confirmation round has one place to happen (#439).
     private async Task<ToolOutcome> RunStepAsync(
         KaleidoTool tool,
         IReadOnlyDictionary<string, JsonElement> arguments,
         Guid? processId,
         KaleidoToolCall call,
         ToolCatalog catalog,
+        bool confirmed,
         CancellationToken cancellationToken)
     {
+        if (!confirmed && await ConfirmAsync(tool, arguments, processId, call, cancellationToken) is { } unconfirmed)
+        {
+            return unconfirmed;
+        }
+
         // Arguments in a canonical order: the same logical call always sends the same body, so the
         // service's request fingerprint matches when the key repeats.
         var step = new JsonObject();

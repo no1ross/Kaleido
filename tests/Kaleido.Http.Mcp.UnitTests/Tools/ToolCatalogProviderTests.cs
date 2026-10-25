@@ -26,13 +26,13 @@ public sealed class ToolCatalogProviderTests
             .Returns((AggregatedRegistryResponse response, AggregatedRegistryResponse _) => new ToolCatalog { Revision = response.Revision });
     }
 
-    private ToolCatalogProvider CreateSut(McpToolListing listing = McpToolListing.All, ILogger<ToolCatalogProvider>? logger = null) =>
+    private ToolCatalogProvider CreateSut(McpToolListing listing = McpToolListing.All, ILogger<ToolCatalogProvider>? logger = null, bool requireConfirmation = false) =>
         new(
             registry.Object,
             unfiltered.Object,
             builder.Object,
             observability.Object,
-            new KaleidoMcpOptions { Instructions = "test", ToolListing = listing },
+            new KaleidoMcpOptions { Instructions = "test", ToolListing = listing, RequireConfirmation = requireConfirmation },
             logger ?? NullLogger<ToolCatalogProvider>.Instance);
 
     private sealed class RecordingLogger : ILogger<ToolCatalogProvider>
@@ -180,6 +180,18 @@ public sealed class ToolCatalogProviderTests
         var frontDoor = await CreateSut(McpToolListing.FrontDoor).GetAsync(Cancel);
 
         Assert.NotSame(all, frontDoor);
+        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
+    }
+
+    // #439: the confirmation round changes the step descriptions, so a host with it on never gets a
+    // catalog translated for a host without it (the cache is shared by every host in the process).
+    [Fact]
+    public async Task GetAsync_ADifferentConfirmationSetting_IsTranslatedAgain_ForTheSameRevision()
+    {
+        var hint = await CreateSut().GetAsync(Cancel);
+        var enforced = await CreateSut(requireConfirmation: true).GetAsync(Cancel);
+
+        Assert.NotSame(hint, enforced);
         builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
     }
 

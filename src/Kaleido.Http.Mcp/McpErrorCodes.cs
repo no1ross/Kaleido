@@ -52,4 +52,11 @@ public static class McpErrorCodes
 
     /// <summary>An answer was submitted but the process has no pending information request.</summary>
     public const string NoPendingInformationRequest = "mcp_no_pending_information_request";
+
+    /// <summary>
+    /// The step needs the user's confirmation (<see cref="KaleidoMcpOptions.RequireConfirmation"/> and
+    /// <c>RequiresConfirmation</c> on the step), and the client cannot show the user a form. Nothing was
+    /// run; the user runs the step in a client that shows forms.
+    /// </summary>
+    public const string ConfirmationRequired = "mcp_confirmation_required";
 }

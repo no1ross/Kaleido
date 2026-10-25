@@ -97,6 +97,17 @@ public sealed class KaleidoMcpOptionsBuilderTests
     }
 
     [Fact]
+    public void Build_RequireConfirmation_IsOffByDefault_AndKeptWhenSet()
+    {
+        var builder = Sut;
+        Assert.False(builder.Build().RequireConfirmation);
+
+        builder.RequireConfirmation = true;
+
+        Assert.True(builder.Build().RequireConfirmation);
+    }
+
+    [Fact]
     public void Build_ListsEverything_ByDefault()
     {
         var options = Sut.Build();
