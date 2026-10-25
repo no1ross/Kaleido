@@ -42,6 +42,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0024](./0024-conditional-questions.md) | Conditional questions (`enableWhen`): Kaleido decides which questions apply - in validation, the MCP adapter's rounds and UIs - never the agent | Accepted | #235 |
 | [0025](./0025-event-redaction-policy.md) | Events have their own redaction policy (`AddEventRedaction`), separate from the host's log redaction (`AddRedaction`) | Accepted | #278 |
 | [0026](./0026-versioning-concept.md) | Versions are labels; one live version per capability (a breaking change takes a new name); in-flight processes continue on the deployed definition, and steps keep the version they ran with | Accepted | #197 |
+| [0028](./0028-stores-are-chosen-explicitly.md) | Every store a service uses is chosen explicitly: a store left at its in-memory default stops the host at startup (`stores_not_chosen`); memory is chosen with `AddInMemoryStores()`; only the stores in use are checked | Accepted | #438 |
 | [0027](./0027-forward-caller-token-kept-with-guards.md) | `ForwardCallerToken()` stays as a stated single-audience choice (OAuth-protected MCP uses a per-service exchange); credentials sent over plain HTTP are reported at startup; a client's route prefix must be a service name | Accepted | #434 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code

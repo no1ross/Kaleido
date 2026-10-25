@@ -22,6 +22,7 @@ public static class OrdersService
                 o.Assemblies = [typeof(OrderSource).Assembly];
                 o.AuthorizationMode = KaleidoAuthorizationMode.None;   // local evaluation only
             })
+            .AddInMemoryStores()   // local evaluation only: nothing survives a restart
             .AddHttp();
         // end snippet
     }
@@ -46,6 +47,7 @@ public static class OrdersService
                 o.Assemblies = [typeof(OrderSource).Assembly];
                 o.AuthorizationMode = KaleidoAuthorizationMode.None;   // local evaluation only
             })
+            .AddInMemoryStores()   // local evaluation only: nothing survives a restart
             .AddHttp()
             .AddHttpClients()
             .ForwardCallerToken()   // the agent's user's token on tool calls; AddMcp() requires a choice

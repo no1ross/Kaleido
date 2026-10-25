@@ -41,6 +41,7 @@ public sealed class QueryableAspNetCoreFixture
                                 o.AuthorizationMode = KaleidoAuthorizationMode.None;
                                 o.Assemblies = new[] { typeof(FunctionalRecordContext).Assembly };
                             })
+                            .AddInMemoryStores()
                             .AddHttp();
                     });
 

@@ -41,7 +41,7 @@ public sealed class EventAndLogRedactionTests
             o.AuthorizationMode = KaleidoAuthorizationMode.None;
             o.Assemblies = [typeof(EventAndLogRedactionTests).Assembly];
             o.TypeFilter = type => type.Namespace == typeof(EventAndLogRedactionTests).Namespace;
-        });
+        }).AddInMemoryStores();
         events?.Invoke(kaleido);
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
@@ -100,7 +100,7 @@ public sealed class EventAndLogRedactionTests
             o.AuthorizationMode = KaleidoAuthorizationMode.None;
             o.Assemblies = [typeof(EventAndLogRedactionTests).Assembly];
             o.TypeFilter = type => type.Namespace == typeof(EventAndLogRedactionTests).Namespace;
-        });
+        }).AddInMemoryStores();
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
         var patient = WrittenPatient(provider);

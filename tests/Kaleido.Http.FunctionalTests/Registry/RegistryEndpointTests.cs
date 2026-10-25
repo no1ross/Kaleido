@@ -148,6 +148,7 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
                             o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(ProcessorAspNetCoreFixture).Assembly];
                         })
+                        .AddInMemoryStores()
                         .AddHttp()
                         .AddHttpClients();
                     services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(downstream));

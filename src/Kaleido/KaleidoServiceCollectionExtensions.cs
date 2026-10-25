@@ -99,15 +99,7 @@ public static class KaleidoServiceCollectionExtensions
         services.TryAddScoped<IKaleidoInboundCallerAccessor, KaleidoInboundCallerAccessor>(); // ADR 0022
         services.TryAddSingleton<IEventPublisher, EventPublisher>();
 
-        // The stores, the transactions and the outbox integration (ADR 0023), each replaced on the
-        // builder: in memory, no transaction, and Kaleido's built-in outbox - its store and the relay
-        // that hands the entries to the publisher.
-        services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
-        services.TryAddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
-        services.TryAddSingleton<IKaleidoTransactions, NoKaleidoTransactions>();
-        services.TryAddScoped<IKaleidoOutbox, KaleidoStoreOutbox>();
-        services.TryAddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
-        services.AddHostedService<KaleidoEventRelay>();
+        AddStores(services);
         AddEventWriting(services);
         services.TryAddSingleton<IKaleidoAuthorizationEvaluator, KaleidoAuthorizationEvaluator>();
         services.TryAddSingleton<ITypeDescriber, TypeDescriber>();
@@ -120,6 +112,23 @@ public static class KaleidoServiceCollectionExtensions
         builder.AddQueryable();
 
         return builder;
+    }
+
+    // The stores, the transactions and the outbox integration (ADR 0023), each replaced on the
+    // builder: in memory, no transaction, and Kaleido's built-in outbox - its store and the relay that
+    // hands the entries to the publisher.
+    private static void AddStores(IServiceCollection services)
+    {
+        services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
+        services.TryAddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
+        services.TryAddSingleton<IKaleidoTransactions, NoKaleidoTransactions>();
+        services.TryAddScoped<IKaleidoOutbox, KaleidoStoreOutbox>();
+        services.TryAddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
+
+        // At start, before the relay: every store in use is chosen - durable, or AddInMemoryStores()
+        // (ADR 0028). It reads this collection as the host left it, so the Add* order does not matter.
+        services.AddHostedService(_ => new KaleidoStoreSelectionCheck(services));
+        services.AddHostedService<KaleidoEventRelay>();
     }
 
     // How events are written: the relay's wake-up signal, the event redaction policy (empty until
@@ -260,6 +269,39 @@ public static class KaleidoServiceCollectionExtensions
     public static IKaleidoBuilder AddIdempotencyStore<TStore>(this IKaleidoBuilder builder)
         where TStore : class, IKaleidoIdempotencyStore =>
         Replace<IKaleidoIdempotencyStore, TStore, InMemoryKaleidoIdempotencyStore>(builder, "idempotency store");
+
+    /// <summary>
+    /// Chooses Kaleido's in-memory stores, explicitly, for every store the service uses and has not
+    /// registered otherwise: process state, idempotency records and the event outbox are kept in this
+    /// process only - lost on restart, and not shared between instances. For development, tests and
+    /// demos.
+    /// </summary>
+    /// <remarks>
+    /// Without a choice, the host does not start when a store the service uses is still the in-memory
+    /// default (<see cref="ConfigurationErrorCodes.StoresNotChosen"/>, ADR 0028): the context and
+    /// idempotency stores when the service has process steps, and the outbox store when events are
+    /// published through Kaleido's built-in outbox. A query-only service, the host's own outbox
+    /// (<see cref="AddOutbox{TOutbox}"/>) and direct publication (<see cref="AddDirectPublication"/>)
+    /// need no outbox store. Durable stores registered alongside (e.g. <c>AddSqliteContextStore</c>)
+    /// are kept; the in-memory stores still log a Warning when created.
+    /// </remarks>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddKaleido(builder.Configuration, o => { /* ... */ })
+    ///     .AddHttp()
+    ///     .AddInMemoryStores();   // local development: nothing survives a restart
+    /// </code>
+    /// </example>
+    public static IKaleidoBuilder AddInMemoryStores(this IKaleidoBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.Services.TryAddSingleton<KaleidoInMemoryStoresChoice>();
+
+        return builder;
+    }
 
     /// <summary>
     /// Registers how process-state transitions become atomic for your persistence (e.g. a transaction on

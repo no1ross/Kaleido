@@ -34,6 +34,7 @@ public sealed class MixedHostTests : IAsyncLifetime
                             o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(FunctionalRecordContext).Assembly];
                         })
+                        .AddInMemoryStores()
                         .AddHttp();
                 });
                 webBuilder.Configure(app =>

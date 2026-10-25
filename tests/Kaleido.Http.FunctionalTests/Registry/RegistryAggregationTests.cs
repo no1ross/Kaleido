@@ -32,6 +32,7 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
                     o.Assemblies = [typeof(BehaviorFixture).Assembly];
                     o.TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace;
                 })
+                .AddInMemoryStores()
                 .AddHttp(),
             aggregate: false);
 
@@ -52,6 +53,7 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
                             o.Assemblies = [typeof(BehaviorFixture).Assembly];
                             o.TypeFilter = _ => false;
                         })
+                    .AddInMemoryStores()
                     .AddHttp()
                     .AddHttpClients();
                 services.AddHttpClient(BehaviorFixture.ServiceName).ConfigurePrimaryHttpMessageHandler(() => downstreamHandler);

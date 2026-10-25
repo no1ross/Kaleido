@@ -64,6 +64,7 @@ public sealed class HostExceptionHandlerTests
                             o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(FunctionalRecordContext).Assembly];
                         })
+                        .AddInMemoryStores()
                         .AddHttp();
                 });
                 webBuilder.Configure(app =>
@@ -90,6 +91,7 @@ public sealed class HostExceptionHandlerTests
                             o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(FunctionalRecordContext).Assembly];
                         })
+                        .AddInMemoryStores()
                         .AddHttp();
                 });
                 webBuilder.Configure(app =>

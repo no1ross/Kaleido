@@ -13,6 +13,12 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Stores are chosen explicitly** (#438, [ADR 0028](docs/decisions/0028-stores-are-chosen-explicitly.md)):
+  a host that leaves a store it uses at the in-memory default no longer starts
+  (`stores_not_chosen`): the context and idempotency stores when the service has process steps, the
+  outbox store when it publishes through Kaleido's outbox. Register durable stores, or call the new
+  `AddInMemoryStores()` for development and tests. Query-only services, the host's own outbox and
+  direct publication are not affected.
 - **The packages move together** (#431): every dependency on a sibling Kaleido package is an exact
   version (`[x.y.z]`), so upgrading one package upgrades the family, and a mixed set fails at restore
   instead of at run time (the packages share internal seams).

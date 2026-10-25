@@ -87,7 +87,7 @@ public sealed class EfCoreQueryContextExecutorTests : IAsyncLifetime
             o.AuthorizationMode = KaleidoAuthorizationMode.None;
             o.Assemblies = [typeof(EfCoreQueryContextExecutorTests).Assembly];
             o.TypeFilter = type => type.Namespace == typeof(EfCoreQueryContextExecutorTests).Namespace;
-        });
+        }).AddInMemoryStores();
 
         // After AddKaleido on purpose: the framework registers its default with TryAdd, so a host's
         // own executor wins whichever order it is registered in.

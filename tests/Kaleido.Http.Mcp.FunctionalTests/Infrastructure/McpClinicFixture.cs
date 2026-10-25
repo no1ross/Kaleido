@@ -162,6 +162,7 @@ public class McpClinicFixture : IAsyncLifetime
                                 o.Assemblies = [typeof(McpClinicFixture).Assembly];
                                 o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
                             })
+                            .AddInMemoryStores()
                             .AddHttp()
                             .AddHttpClients()
                             // Tool calls send the agent's user's token unchanged (ADR 0022); the

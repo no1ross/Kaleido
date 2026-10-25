@@ -31,6 +31,7 @@ public sealed class RouterShapedHostTests
                 o.TypeFilter = _ => false;
                 o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
             })
+            .AddInMemoryStores()
             .AddHttp()
             .AddHttpClients()
             .ForwardCallerToken()

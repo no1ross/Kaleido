@@ -147,6 +147,7 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
                     o.AuthorizationMode = KaleidoAuthorizationMode.None;
                     o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
                 })
+                .AddInMemoryStores()
                 .AddHttpClients();
         return services;
     }

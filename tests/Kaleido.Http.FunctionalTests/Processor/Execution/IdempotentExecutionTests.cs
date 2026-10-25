@@ -163,6 +163,7 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
                             o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(RuntimeRootStep).Assembly];
                         })
+                        .AddInMemoryStores()
                         .AddHttp()
                         .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
                 });

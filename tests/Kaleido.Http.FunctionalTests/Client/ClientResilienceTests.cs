@@ -32,6 +32,7 @@ public sealed class ClientResilienceTests
                 o.AuthorizationMode = KaleidoAuthorizationMode.None;
                 o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
             })
+            .AddInMemoryStores()
             .AddHttpClients();
         services.AddHttpClient("member").ConfigurePrimaryHttpMessageHandler(() => handler);
         services.AddHttpClient("legacy").ConfigurePrimaryHttpMessageHandler(() => handler);

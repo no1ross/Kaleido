@@ -99,6 +99,7 @@ public sealed class CallCredentialTests
                 o.Assemblies = [typeof(CallCredentialTests).Assembly];
                 o.TypeFilter = _ => false;
             })
+            .AddInMemoryStores()
             .AddHttpClients();
         credentials(kaleido);
 

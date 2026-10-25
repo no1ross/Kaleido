@@ -91,6 +91,7 @@ public sealed class AuthorizationAspNetCoreFixture
                                 o.Assemblies = new[] { typeof(AuthorizationAspNetCoreFixture).Assembly };
                                 o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
                             })
+                            .AddInMemoryStores()
                             .AddHttp();
                     });
 

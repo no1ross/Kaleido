@@ -25,6 +25,7 @@ const Kaleido.Exceptions.ConfigurationErrorCodes.AuthenticationNotConfigured = "
 const Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingAuthorization = "conflicting_authorization" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingOutbox = "conflicting_outbox" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingStore = "conflicting_store" -> string!
+const Kaleido.Exceptions.ConfigurationErrorCodes.StoresNotChosen = "stores_not_chosen" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.DuplicateRegistration = "duplicate_registration" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidAuthorizationMode = "invalid_authorization_mode" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidEventOptions = "invalid_event_options" -> string!
@@ -1259,6 +1260,7 @@ static Kaleido.KaleidoServiceCollectionExtensions.AddEventRedaction(this Kaleido
 static Kaleido.KaleidoServiceCollectionExtensions.AddEventPublisher<TPublisher>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddEventRedactor<TRedactor>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddIdempotencyStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.KaleidoServiceCollectionExtensions.AddInMemoryStores(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddKaleido(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, System.Action<Kaleido.KaleidoServiceOptionsBuilder!>? configure = null) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddOutbox<TOutbox>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddOutboxStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

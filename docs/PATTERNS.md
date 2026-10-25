@@ -180,6 +180,8 @@ services.AddKaleido(builder.Configuration, o =>
     // AuthorizationMode: Authenticated unless set - add host authentication, or set None explicitly (ADR 0021)
     o.Assemblies = [typeof(Program).Assembly];      // explicit — never omit (KAL2006)
 })
+    .AddContextStore<IntakeContextStore>()          // every store in use is chosen (ADR 0028):
+    .AddIdempotencyStore<IntakeIdempotencyStore>()  // durable, or AddInMemoryStores() for development
     .AddHttp();
 ```
 

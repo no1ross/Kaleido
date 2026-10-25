@@ -196,8 +196,17 @@ return services.AddKaleido(configuration, o =>
     })
     .AddContextStore<OrdersContextStore>()
     .AddOutbox<OrdersOutbox>()
-    .AddTransactions<OrdersTransactions>();
+    .AddTransactions<OrdersTransactions>()
+    // This example keeps its idempotency records in memory; a production host registers a
+    // durable IKaleidoIdempotencyStore (AddIdempotencyStore<T>(), AddSqliteIdempotencyStore).
+    .AddInMemoryStores();
 ```
+
+Every store a service uses is chosen at registration: a durable one, or memory explicitly with
+`AddInMemoryStores()`. A service with process steps uses the context and idempotency stores; one that
+publishes events through Kaleido's built-in outbox also uses an outbox store (your own outbox and
+direct publication need none). A store left at its in-memory default stops the host at startup with
+`stores_not_chosen`, naming the store ([ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md)).
 
 With your own outbox, Kaleido's outbox store and relay are not used: your dispatcher delivers the
 events (it needs no `IEventPublisher`). To use **Kaleido's** outbox on your database instead,

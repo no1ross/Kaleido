@@ -37,6 +37,7 @@ public sealed class EventPublisherFailureTests
                             o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             o.Assemblies = [typeof(FunctionalRecordContext).Assembly];
                         })
+                        .AddInMemoryStores()
                         .AddEventPublisher<TPublisher>()
                         .AddHttp();
                 });

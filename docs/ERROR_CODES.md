@@ -125,6 +125,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `DuplicateRegistration` | `duplicate_registration` | `AddKaleido()` or `AddHttp()` was called a second time on the same service collection; a host runs one Kaleido service, configured in one call of each |
 | `ConflictingOutbox` | `conflicting_outbox` | Two outbox choices were registered: a service has one - Kaleido's built-in outbox (with one `AddOutboxStore` storage), the host's own (`AddOutbox`) or `AddDirectPublication` ([ADR 0023](decisions/0023-outbox-integration.md)) |
 | `ConflictingStore` | `conflicting_store` | Two different implementations of one store or of the transactions were registered (e.g. `AddSqliteContextStore` and `AddContextStore<T>()`) |
+| `StoresNotChosen` | `stores_not_chosen` | When the host starts: a store the service uses is still the in-memory default (process state or idempotency records with process steps; the outbox store with a publisher on Kaleido's outbox). Register durable stores, or call `AddInMemoryStores()` ([ADR 0028](decisions/0028-stores-are-chosen-explicitly.md)) |
 
 ---
 
