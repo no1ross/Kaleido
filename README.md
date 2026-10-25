@@ -178,6 +178,7 @@ var kaleido = builder.Services
         options.Assemblies = new[] { typeof(Program).Assembly };
         options.AuthorizationMode = KaleidoAuthorizationMode.None; // Local evaluation only.
     })
+    .AddInMemoryStores() // Local evaluation only: process state is lost on restart.
     .AddHttp();
 
 var app = builder.Build();
@@ -239,7 +240,7 @@ See the [HTTP client](src/Kaleido.Http.Client/README.md) and [MCP adapter](src/K
 
 ### Choose process storage
 
-The default store is in memory. For local persistence, add the SQLite reference provider to the existing business-service registration **before `builder.Build()`**:
+Every store a service uses is chosen explicitly: a service with process steps keeps process state and idempotency records, and one that publishes events through Kaleido's outbox keeps an outbox. A store left at its in-memory default stops the host at startup with `stores_not_chosen` ([ADR 0028](docs/decisions/0028-stores-are-chosen-explicitly.md)); `AddInMemoryStores()` above is that choice for local evaluation (nothing survives a restart, nothing is shared between instances). For local persistence, use the SQLite reference provider instead, in the business-service registration **before `builder.Build()`**:
 
 ```csharp
 kaleido

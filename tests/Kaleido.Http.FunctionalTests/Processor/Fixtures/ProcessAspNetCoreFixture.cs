@@ -48,6 +48,7 @@ public sealed class ProcessorAspNetCoreFixture
                                 o.Description = "Test processor.";
                                 o.Assemblies = new[] { typeof(ProcessorAspNetCoreFixture).Assembly };
                             })
+                            .AddInMemoryStores()
                             .AddHttp()
                             .AddHttpClients();
                     });

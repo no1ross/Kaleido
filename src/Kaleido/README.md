@@ -97,6 +97,7 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 - validates the `IServiceCollection`
 - registers the scoped correlation accessor (using `TryAddScoped` so a pre-existing registration wins)
 - registers the default no-op event publisher, the in-memory stores (`IKaleidoContextStore`, `IKaleidoIdempotencyStore`), Kaleido's built-in outbox (`IKaleidoOutbox`) on an in-memory `IKaleidoOutboxStore` with its relay (a hosted background service that hands outbox entries to the publisher - see `KaleidoEventOptions`, `Kaleido:Events`), and no transactions; the builder replaces them (`AddContextStore`, `AddIdempotencyStore`, `AddOutboxStore`, `AddOutbox`, `AddDirectPublication`, `AddTransactions`; one outbox choice per service)
+- refuses to start a host that leaves a store it uses at the in-memory default (`stores_not_chosen`, ADR 0028): the context and idempotency stores when the service has process steps, the outbox store when it publishes through Kaleido's outbox. `AddInMemoryStores()` chooses memory explicitly (development, tests)
 - automatically invokes `AddQueryable()` and `AddProcessor()` to register both runtimes
 - returns an `IKaleidoBuilder`
 

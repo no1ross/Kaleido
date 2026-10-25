@@ -53,6 +53,26 @@ public sealed record KaleidoMcpOptions
     /// <see cref="McpToolListing.All"/>.
     /// </summary>
     public IReadOnlyList<string> ListedTools { get; init; } = [];
+
+    /// <summary>
+    /// Asks the user, in a form the MCP client shows, before running a step declared
+    /// <c>[ProcessStep(RequiresConfirmation = true)]</c>, and runs it only when the user accepts
+    /// (#439). Off by default: the declaration is then a hint in the tool description.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The form names the step and its inputs. Nothing runs when the user declines, cancels, or
+    /// leaves the confirmation unchecked; the agent's own statement that the user agreed, or a
+    /// confirmation argument it adds, is never accepted. A client that cannot show forms gets
+    /// <see cref="McpErrorCodes.ConfirmationRequired"/> and the step is not run.
+    /// </para>
+    /// <para>
+    /// This raises the bar; it is not proof of consent. The MCP client relays the form and its answer,
+    /// and Kaleido cannot tell a person's answer from a client that answers forms itself. A step whose
+    /// consent must be proven checks it in the service (for example a signed approval in its input).
+    /// </para>
+    /// </remarks>
+    public bool RequireConfirmation { get; init; }
 }
 
 /// <summary>Which of the caller's tools the MCP adapter lists in <c>tools/list</c>.</summary>

@@ -26,7 +26,7 @@ public sealed class EfCoreQueryableTests : IAsyncLifetime
             o.AuthorizationMode = KaleidoAuthorizationMode.None;
             o.Assemblies = [typeof(EfCoreQueryableTests).Assembly];
             o.TypeFilter = type => type.Namespace == typeof(EfCoreQueryableTests).Namespace;
-        });
+        }).AddInMemoryStores();
 
         _provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 

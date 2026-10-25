@@ -34,6 +34,7 @@ public class McpClinicFixture : IAsyncLifetime
     private readonly bool withDownstreamThatIsDown;
     private readonly bool withSignIn;
     private readonly bool withFrontDoor;
+    private readonly bool withConfirmation;
 
     private IHost? host;
 
@@ -68,11 +69,12 @@ public class McpClinicFixture : IAsyncLifetime
     {
     }
 
-    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false, bool withFrontDoor = false)
+    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false, bool withFrontDoor = false, bool withConfirmation = false)
     {
         this.withDownstreamThatIsDown = withDownstreamThatIsDown;
         this.withSignIn = withSignIn;
         this.withFrontDoor = withFrontDoor;
+        this.withConfirmation = withConfirmation;
     }
 
     /// <summary>A raw HTTP client on the TestServer, for protocol-level assertions.</summary>
@@ -141,6 +143,11 @@ public class McpClinicFixture : IAsyncLifetime
                             ["Kaleido:Resilience:TotalTimeout"] = ClientTimeout.ToString("c", System.Globalization.CultureInfo.InvariantCulture),
                         };
 
+                        if (withConfirmation)
+                        {
+                            settings["Kaleido:Mcp:RequireConfirmation"] = "true";
+                        }
+
                         if (withFrontDoor)
                         {
                             settings["Kaleido:Mcp:ToolListing"] = "FrontDoor";
@@ -162,6 +169,7 @@ public class McpClinicFixture : IAsyncLifetime
                                 o.Assemblies = [typeof(McpClinicFixture).Assembly];
                                 o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
                             })
+                            .AddInMemoryStores()
                             .AddHttp()
                             .AddHttpClients()
                             // Tool calls send the agent's user's token unchanged (ADR 0022); the

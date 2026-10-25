@@ -265,6 +265,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
                             o.Assemblies = [typeof(RuntimeRootStep).Assembly];
                             o.Events.Resilience.RetryDelay = retryDelay ?? TimeSpan.FromMilliseconds(50);
                         })
+                        .AddInMemoryStores()
                         .AddHttp()
                         .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
                     services.RemoveAll<IEventPublisher>();

@@ -56,6 +56,7 @@ public sealed class GuideHost : IAsyncDisposable
                             o.Assemblies = [typeof(OrderSource).Assembly];
                             o.AuthorizationMode = mode;
                         })
+                        .AddInMemoryStores()
                         .AddHttp();
                     configure?.Invoke(kaleido);
                 });

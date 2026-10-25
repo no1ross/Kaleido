@@ -77,6 +77,7 @@ public sealed class DefaultAuthorizationModeTests
                             o.Assemblies = [typeof(DefaultAuthorizationModeTests).Assembly];
                             o.TypeFilter = type => type.Namespace == "Kaleido.Http.FunctionalTests.Processor.Behavior";
                         })
+                        .AddInMemoryStores()
                         .AddHttp();
                 });
                 web.Configure(app =>

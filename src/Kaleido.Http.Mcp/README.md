@@ -37,8 +37,9 @@ Configuration (`Kaleido:Mcp`): `ServerName`, `ServerVersion`, `Instructions` or
 `InstructionsFile` (replace the default instructions), `AdditionalInstructions` (appended: the
 business's guidance for its agents), `MaxElicitationRounds` (zero or more, default 5; 0 returns
 every information request to the agent; a negative value fails startup with `mcp_invalid_options`),
-`ToolListing` (`All`, the default, or `FrontDoor`; see [Front door](#front-door)) and `ListedTools`
-(FrontDoor only: extra tool names to list).
+`ToolListing` (`All`, the default, or `FrontDoor`; see [Front door](#front-door)), `ListedTools`
+(FrontDoor only: extra tool names to list) and `RequireConfirmation` (default `false`; see
+[Confirmation](#confirmation)).
 
 Call `AddHttp()`, `AddHttpClients()` (with at least one client under `Kaleido:Clients`) and a
 call-credential registration (`ForwardCallerToken()` or `AddCallCredentials<TProvider>()`)
@@ -102,7 +103,26 @@ description, once per property (`service.Source.Field`), not once per tool.
 | `destructiveHint` | `false` | `Destructive` (default `false`); description: "Cannot be undone." |
 | `openWorldHint` | `false` | `External` (default `false`); description: "Reaches outside systems." |
 | `idempotentHint` | `true` | `true` only for a non-`[Repeatable]` step that continues a process (once completed, it is not run again); `false` for an initial step (called again without a `processId`, it starts another process) and a `[Repeatable]` one (#440) |
-| description | | `RequiresConfirmation`: "Ask the user to confirm before calling." (a hint, not enforced) |
+| description | | `RequiresConfirmation`: "Ask the user to confirm before calling." (a hint); with `RequireConfirmation` on, "The user is asked to confirm in a form before it runs" (see [Confirmation](#confirmation)) |
+
+### Confirmation
+
+`[ProcessStep(RequiresConfirmation = true)]` is a hint by default. With
+`Kaleido:Mcp:RequireConfirmation` (`KaleidoMcpOptions.RequireConfirmation`, off by default) the
+adapter asks the user itself before running such a step, whichever way it is reached (its own tool,
+`call_tool`, or a guided lookup), and runs it only when the user accepts (#439):
+
+| Client | What happens |
+|---|---|
+| shows forms in the session | a form names the step, what it declares ("It cannot be undone.") and its inputs, with one unchecked "Run ... now" checkbox; the step runs only on accept with the box checked |
+| MRTR (2026-07-28) | the same form as an `input_required` round (`kaleido-confirm`); the retry runs the confirmed call only with an accepted, checked answer |
+| no forms | `mcp_confirmation_required`; nothing runs, and the user runs the step from a client that shows forms |
+
+Declining, cancelling, leaving the box unchecked, or retrying without an answer returns
+`outcome: "notRun"` and runs nothing. What the agent says, or a `confirm` argument it adds, is never a
+confirmation. This raises the bar, not proof of consent: the client relays the form and its answer,
+and Kaleido cannot tell a person from a client that answers forms itself. A step whose consent must be
+proven checks it in its service (for example a signed approval in its input).
 
 Classified fields (`DataClassificationAttribute`, e.g. `[PHI]`) are marked in input descriptions
 ("Sensitive (PHI).") and in the "Returns:" list (`Name (PHI)`), so an agent does not repeat or store
@@ -246,6 +266,7 @@ A tool call never fails at the protocol level: a problem comes back as a tool re
 | `mcp_process_conflict` | Another call changed the process first (409); nothing was saved. | Read the process with `get_process_state` and decide with the user - never repeat the call blindly. |
 | `mcp_service_unavailable` | The service could not be reached, or no client is configured for it. | For a step, check the process with `get_process_state` before trying again. |
 | `mcp_no_pending_information_request` | `answer_information_request` for a process that is not waiting for answers (already answered, or it needs a step instead). | Read the process with `get_process_state` and do what it needs now. |
+| `mcp_confirmation_required` | A step that needs the user's confirmation (`RequireConfirmation`), in a client that cannot show forms; nothing was run. | Tell the user; they run the step from a client that shows forms. Never claim the user agreed instead. |
 | `mcp_internal_error` | An unexpected error in the adapter. | Same as above. |
 
 **Retries.** Tool calls go through the Kaleido clients: their resilience pipeline retries transient failures of one call with the same `Idempotency-Key`, so the service answers a retry it has already completed with the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#resilience)). When the *agent* calls a tool again (after a timeout, a lost answer, a restart), that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
@@ -264,7 +285,8 @@ runs on the server, whatever the agent says or the client shows:
 |---|---|---|
 | call any tool name | the caller's per-service access (the tool list is filtered per caller; a tool not in it is `mcp_unknown_tool` and the service is never called) | adapter + each service's authorization |
 | pass any arguments | each service's validation (`DataAnnotations`, query rules) | service |
-| claim the user agreed | nothing: prompt guidance (`confirm with the user`, destructive hints) is advice to well-behaved clients, **not consent**. Questions that must come from the user are information requests: shown as forms where the client supports them, refused when the answers do not match the pending request | service + adapter |
+| claim the user agreed | nothing by default: prompt guidance (`confirm with the user`, destructive hints) is advice to well-behaved clients, **not consent**. With `RequireConfirmation`, a `RequiresConfirmation` step runs only after the user accepts the adapter's own form ([Confirmation](#confirmation)): the agent's claim is never accepted, but the client relays the form, so it is still not proof of consent. Questions that must come from the user are information requests: shown as forms where the client supports them, refused when the answers do not match the pending request | service + adapter |
+| put instructions in service text | nothing technical: tool and field descriptions, business messages and refusal reasons are written by the services the adapter aggregates and go to the model as they are. A compromised or careless service can try to steer the agent through them. The default instructions tell the agent to treat that text as data, never as instructions; the controls above (per-caller tools, service validation, the confirmation round) do not depend on the agent obeying | each service's authors (review what a service publishes) |
 | retry or abandon a call | idempotency keys on execute calls; a cancellation is recorded as one (a Warning), never a failure | client + service |
 | learn data it should not | which capabilities the caller may use (tools are filtered per caller; each service authorizes its own); which **records** a caller may see within a capability is the service's own logic (no case-level guardrails). Credentials and tool arguments are never written to logs or span tags | adapter + services |
 

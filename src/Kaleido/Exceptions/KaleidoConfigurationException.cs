@@ -96,4 +96,12 @@ public static class ConfigurationErrorCodes
     /// per service.
     /// </summary>
     public const string ConflictingStore = "conflicting_store";
+
+    /// <summary>
+    /// The service would keep its process state, idempotency records or outbox in memory without having
+    /// chosen to: a store the service uses was left at its in-memory default. Raised when the host
+    /// starts. Register a durable store (e.g. <c>AddSqliteContextStore</c>, <c>AddContextStore&lt;T&gt;()</c>),
+    /// or choose memory explicitly with <c>AddInMemoryStores()</c> (development, tests) (ADR 0028).
+    /// </summary>
+    public const string StoresNotChosen = "stores_not_chosen";
 }

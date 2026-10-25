@@ -31,8 +31,9 @@ internal sealed partial class ToolCatalogProvider(
 {
     private const int MaxRevisions = 256;
 
-    // Translated catalogs by listing and registry revision (one per distinct caller-visible registry;
-    // the listing is part of the key, so hosts with different settings never share a catalog).
+    // Translated catalogs by the settings that shape the tools and the registry revision (one per
+    // distinct caller-visible registry; the settings are part of the key - the listing and whether the
+    // confirmation round is on (#439) - so hosts with different settings never share a catalog).
     private static readonly ConcurrentDictionary<string, ToolCatalog> Catalogs = new(StringComparer.Ordinal);
 
     public async Task<ToolCatalog> GetAsync(CancellationToken cancellationToken)
@@ -48,7 +49,7 @@ internal sealed partial class ToolCatalogProvider(
         var response = await registry.GetForCallerAsync(refresh: false, cancellationToken: cancellationToken);
         var nameScope = await unfilteredRegistry.GetUnfilteredAsync(cancellationToken);
         var revision = response.Revision ?? string.Empty;
-        var key = $"{options.ToolListing}|{string.Join(',', options.ListedTools)}|{revision}|{nameScope.Revision}";
+        var key = $"{options.ToolListing}|{string.Join(',', options.ListedTools)}|{options.RequireConfirmation}|{revision}|{nameScope.Revision}";
 
         if (Catalogs.TryGetValue(key, out var known))
         {

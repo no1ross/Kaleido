@@ -43,6 +43,7 @@ public sealed class BehaviorFixture : IAsyncLifetime
                                 o.Assemblies = [typeof(BehaviorFixture).Assembly];
                                 o.TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace;
                             })
+                            .AddInMemoryStores()
                             .AddHttp(o => o.IncludeFrameworkMessages = true);
                     });
                     web.Configure(app =>

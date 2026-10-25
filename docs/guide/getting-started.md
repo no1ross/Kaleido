@@ -142,8 +142,14 @@ services.AddKaleido(configuration, o =>
         o.Assemblies = [typeof(OrderSource).Assembly];
         o.AuthorizationMode = KaleidoAuthorizationMode.None;   // local evaluation only
     })
+    .AddInMemoryStores()   // local evaluation only: nothing survives a restart
     .AddHttp();
 ```
+
+`AddInMemoryStores()` is a choice: the process state and idempotency records live in this process
+and are lost on restart. Without a choice the host does not start (`stores_not_chosen`): a service
+never keeps them in memory by accident. A deployed service registers durable stores instead
+([Persistence](persistence.md), [ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md)).
 
 <!-- snippet: getting-started-map -->
 ```csharp
@@ -207,6 +213,7 @@ services.AddKaleido(configuration, o =>
         o.Assemblies = [typeof(OrderSource).Assembly];
         o.AuthorizationMode = KaleidoAuthorizationMode.None;   // local evaluation only
     })
+    .AddInMemoryStores()   // local evaluation only: nothing survives a restart
     .AddHttp()
     .AddHttpClients()
     .ForwardCallerToken()   // the agent's user's token on tool calls; AddMcp() requires a choice

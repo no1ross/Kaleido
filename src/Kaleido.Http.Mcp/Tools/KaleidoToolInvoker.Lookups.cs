@@ -85,7 +85,7 @@ internal sealed partial class KaleidoToolInvoker
                 int.TryParse(choice, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var index) &&
                 index >= 0 && index < candidates.Rows.Count)
             {
-                return await RunStepAsync(tool, Filled(call.Arguments, lookup, candidates.Rows[index]), processId, call, catalog, cancellationToken);
+                return await RunStepAsync(tool, Filled(call.Arguments, lookup, candidates.Rows[index]), processId, call, catalog, confirmed: false, cancellationToken);
             }
 
             note = null;
@@ -120,6 +120,7 @@ internal sealed partial class KaleidoToolInvoker
                 state.ProcessId,
                 call with { InputResponses = null, RequestState = null },
                 catalog,
+                confirmed: false,
                 cancellationToken);
         }
 

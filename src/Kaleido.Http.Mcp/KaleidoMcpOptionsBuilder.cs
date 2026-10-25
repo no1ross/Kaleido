@@ -46,6 +46,9 @@ public sealed class KaleidoMcpOptionsBuilder
     /// <inheritdoc cref="KaleidoMcpOptions.ListedTools"/>
     public IReadOnlyList<string> ListedTools { get; set; } = [];
 
+    /// <inheritdoc cref="KaleidoMcpOptions.RequireConfirmation"/>
+    public bool RequireConfirmation { get; set; }
+
     internal KaleidoMcpOptions Build()
     {
         if (MaxElicitationRounds < 0)
@@ -76,6 +79,7 @@ public sealed class KaleidoMcpOptionsBuilder
                 .Select(x => x.Trim())
                 .Distinct(StringComparer.Ordinal)
                 .ToArray(),
+            RequireConfirmation = RequireConfirmation,
         };
     }
 

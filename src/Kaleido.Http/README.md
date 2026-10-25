@@ -72,6 +72,7 @@ builder.Services.AddKaleido(builder.Configuration, o =>
     o.Assemblies = [typeof(Program).Assembly];
     // AuthorizationMode is Authenticated unless set: add host authentication, or set None explicitly (ADR 0021)
 })
+    .AddInMemoryStores()   // development; a deployed service registers durable stores (ADR 0028)
     .AddHttp();
 
 var app = builder.Build();

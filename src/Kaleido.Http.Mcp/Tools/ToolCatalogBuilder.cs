@@ -477,6 +477,7 @@ internal sealed partial class ToolCatalogBuilder(
             Url = step.ExecuteUrl,
             IsInitial = step.IsInitial,
             Repeatable = step.Repeatable,
+            RequiresConfirmation = step.RequiresConfirmation,
             Lookups = lookups,
             ClosedBy = step.AvailableUntil.Select(x => x.Name).ToArray(),
             OutputDescriptions = OutputDescriptions(step.Result?.OutputFields),
@@ -906,10 +907,15 @@ internal sealed partial class ToolCatalogBuilder(
     }
 
     // What the implementer declared about the step's effects, for the agent deciding whether to call it.
-    private static string Behavior(ProcessStepResponse step) =>
+    // A confirmation is the adapter's own form when RequireConfirmation is on (#439), a hint otherwise.
+    private string Behavior(ProcessStepResponse step) =>
         (step.Destructive ? " Cannot be undone." : string.Empty) +
         (step.External ? " Reaches outside systems." : string.Empty) +
-        (step.RequiresConfirmation ? " Ask the user to confirm before calling." : string.Empty);
+        (step.RequiresConfirmation
+            ? options.RequireConfirmation
+                ? " The user is asked to confirm in a form before it runs; it runs only when they accept."
+                : " Ask the user to confirm before calling."
+            : string.Empty);
 
     // "Sensitive (PHI, PII)." for classified values (e.g. "PriorAuth:PHI"), so an agent does not repeat
     // or store them carelessly; null when the value is not classified.

@@ -116,6 +116,7 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
                             o.TypeFilter = type => type.Namespace == typeof(CancellationFinalizationTests).Namespace;
                             o.Events.Resilience.RetryDelay = TimeSpan.FromMilliseconds(50);
                         })
+                        .AddInMemoryStores()
                         .AddHttp(o => o.IncludeFrameworkMessages = true);
 
                     if (store == "sqlite")

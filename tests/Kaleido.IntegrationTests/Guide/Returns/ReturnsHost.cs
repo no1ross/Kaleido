@@ -41,6 +41,7 @@ public sealed class ReturnsHost : IAsyncDisposable
                             o.TypeFilter = type => type.Namespace == typeof(ReturnsHost).Namespace;
                             o.AuthorizationMode = KaleidoAuthorizationMode.None;
                         })
+                        .AddInMemoryStores()
                         .AddHttp();
                 });
                 web.Configure(app =>

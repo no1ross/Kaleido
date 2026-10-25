@@ -133,6 +133,7 @@ public sealed class HandlerAndSourceCallTests
                                 o.TypeFilter = type => type.Namespace == typeof(HandlerAndSourceCallTests).Namespace;
                                 o.AuthorizationMode = KaleidoAuthorizationMode.None;
                             })
+                            .AddInMemoryStores()
                             .AddHttp()
                             .AddHttpClients();
 

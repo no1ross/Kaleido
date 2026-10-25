@@ -134,7 +134,10 @@ public static class OrdersPersistence
             })
             .AddContextStore<OrdersContextStore>()
             .AddOutbox<OrdersOutbox>()
-            .AddTransactions<OrdersTransactions>();
+            .AddTransactions<OrdersTransactions>()
+            // This example keeps its idempotency records in memory; a production host registers a
+            // durable IKaleidoIdempotencyStore (AddIdempotencyStore<T>(), AddSqliteIdempotencyStore).
+            .AddInMemoryStores();
         // end snippet
     }
 }

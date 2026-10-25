@@ -26,7 +26,7 @@ public sealed class DbContextDependencyTests
             o.AuthorizationMode = KaleidoAuthorizationMode.None;
             o.Assemblies = new[] { typeof(DbContextDependencyTests).Assembly };
             o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.IntegrationTests.TestArtifacts", StringComparison.Ordinal) ?? false;
-        });
+        }).AddInMemoryStores();
 
         // This should NOT throw - the service provider should be able to construct
         // the query source with its DbContext dependency
