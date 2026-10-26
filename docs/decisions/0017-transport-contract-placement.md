@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-19
-- **Related:** #298, #293, #275, #356, #313
+- **Related:** #298, #293, #275, #356, #313, #448 (amendment: shared core shapes and the behavior Abstractions holds)
 
 ## Context
 The pre-1.0 review (CLN-014, CLN-009) found three placement questions on the HTTP contract boundary:
@@ -55,3 +55,36 @@ The pre-1.0 review (CLN-014, CLN-009) found three placement questions on the HTT
 - The public API baseline (#313) records `IRegistrySnapshotStore` and the moved error types in
   `Kaleido.Http.Abstractions`.
 - #275 implements a distributed store on the existing interface without changing it.
+
+## Amendment (2026-10-26, #448): shared core shapes, and the behavior Abstractions holds
+**Shared core shapes are supported wire contracts.** The wire contracts carry some core types as
+they are, rather than separately owned DTOs. Each is serialized with `KaleidoJsonOptions` (camelCase
+names, enums as camelCase strings), so its JSON is part of the HTTP contract: after 1.0 it changes
+additively only (a new optional member, a new enum member at the end), and a rename or removal is a
+breaking change of both the core type and the wire. A separate DTO would let the two evolve apart, but
+none of these needs to: each is already the shape a client reads. Snapshot tests
+(`KaleidoJsonOptionsTests`) fix the JSON of each shape and the names of each enum's members.
+
+| Core type (owner: `Kaleido`) | Carried by | Serialization use |
+|---|---|---|
+| `InformationRequest` and its items (`InformationItem`, `InformationOption`, `InformationCondition`, `InformationAnswer`, `InformationItemType`, `InformationConditionOperator`, `InformationEnableBehavior`) | `ProcessRequiredStep.InformationRequest` | response body (the pending question set) |
+| `ProcessMessage`, `MessageType` | `StepExecutionResponse` / `ProcessExecutionStepResponse` `BusinessMessages`, `FrameworkMessages` | response body |
+| `KaleidoCaller` | `ProcessStateResponse.CreatedBy`/`UpdatedBy`, `ProcessStepHistory.StartedBy`/`LastUpdatedBy` | response body |
+| `ProcessExecutionState`, `StepExecutionStatus`, `StepExecutionOutcome` | `ProcessStateResponse.State`, `ProcessStepHistory.Status`, `StepExecutionResponse.Outcome` | response body (enum strings) |
+| `AuthorizationMetadata` | `ProcessStepContract`, `QueryableSourceResponse`, `QueryableViewResponse` `Authorization` | registry body |
+| `FilterOperator`, `MatchMode` | `QueryableFieldMetadata.FilterOperators`, `.MatchMode` | registry body (enum strings) |
+| `QueryResult<T>` | `IKaleidoQueryableClient` results; the query endpoints' response | response body |
+| `QueryBody` | `QueryApiBodyExtensions.ToApiBody()` input | not serialized: converted to the wire `QueryApiBody` (a query *request* is always read as `QueryApiBody`, never as a core type) |
+| `IKaleidoBuilder` | `AddDistributedRegistrySnapshots()` | not serialized: the DI entry point |
+
+**Abstractions also holds a little behavior, deliberately,** because both the server and the client
+need it and neither may reference the other:
+- **The registry snapshot stores** (`IRegistrySnapshotStore`, the in-memory default, the distributed
+  store and `AddDistributedRegistrySnapshots()`): the server's registry cache and the client's
+  registry copies share one store (decision 3 above).
+- **Header sanitizing** (the internal `HttpHeaderSanitizerExtensions`): the server sanitizes the
+  correlation headers it reads, the client the ones it sends.
+- **`QueryBody.ToApiBody()`:** a delegated source forwards a query over HTTP with only
+  `Kaleido.Http.Abstractions` referenced, without the ASP.NET Core server package.
+
+Anything else with behavior belongs to `Kaleido.Http` or `Kaleido.Http.Client`.
