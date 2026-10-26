@@ -452,7 +452,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
             {
                 Enabled = false
             },
-            new ProcessStepMetadata { Name = name, Description = name, Version = "1.0.0", DisplayName = name.Replace('-', ' '), Authorization = authorization });
+            new ProcessStepMetadata { Name = name, Description = name, DisplayName = name.Replace('-', ' '), Authorization = authorization });
 
     private static IProcessorStepRegistry CreateRegistry(
         IReadOnlyCollection<ProcessStepRegistration> registrations)
@@ -488,7 +488,6 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
                         {
                             Name = "Test-Step",
                             Description = "Test step",
-                            Version = "1.0.0",
                             DisplayName = "Test Step",
                             Repeatable = false
                         }
@@ -499,7 +498,6 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
                         {
                             Name = "Test-Step",
                             Description = "Test step",
-                            Version = "1.0.0",
                             DisplayName = "Test Step",
                             Repeatable = false
                         }

@@ -360,7 +360,6 @@ internal sealed partial class ProcessorStepRegistry : IProcessorStepRegistry
         {
             Name = stepType.Name,
             Description = attribute.Description,
-            Version = attribute.Version,
             DisplayName = attribute.DisplayName,
             Authorization = AuthorizationMetadata.ForType(stepType, defaultAuthorization),
             Destructive = attribute.Destructive,

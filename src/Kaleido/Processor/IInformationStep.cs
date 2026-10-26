@@ -17,7 +17,7 @@ namespace Kaleido.Processor;
 /// </para>
 /// <example>
 /// <code>
-/// [ProcessStep(Version = "1.0.0", DisplayName = "Out-of-network responses", Description = "…")]
+/// [ProcessStep(DisplayName = "Out-of-network responses", Description = "…")]
 /// public sealed record CaptureOutOfNetworkResponseStep : IInformationStep
 /// {
 ///     public required string InformationRequestId { get; init; }

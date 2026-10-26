@@ -33,7 +33,7 @@ For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteSte
 - `QueryApiBody` / `QueryApiFilterNode` / `QueryApiFilterCondition` / `QueryApiFilterGroup` / `QueryApiSort` / `QueryApiPage` — transport-level query body (string enums, raw `JsonElement` values)
 - `QueryableSourceResponse` — a query source in the registry response. It carries:
   - `Name` (what a client passes to address it), `ServiceName`, `RegistryUrl` and `QueryUrl`;
-  - `DisplayName`, `Description`, `Version`, `Pageable` and `Authorization`;
+  - `DisplayName`, `Description`, `Pageable` and `Authorization`;
   - `Fields` (query rules), `Parameters`, `OutputFields` and `Views`.
 
   Every source is presented the same way; how the service fulfils it is not part of the contract. `QueryUrl` is null only in a caller-filtered registry, when the caller may use some of the source's views but not the source itself.

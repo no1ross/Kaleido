@@ -29,7 +29,7 @@ One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup 
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `MissingAttribute` | `qry_missing_attribute` | Query source or view missing `[QuerySource]`/`[QueryView]`, or with an empty `Version`/`DisplayName`/`Description` (startup) |
+| `MissingAttribute` | `qry_missing_attribute` | Query source or view missing `[QuerySource]`/`[QueryView]`, or with an empty `DisplayName`/`Description` (startup) |
 | `MissingSource` | `qry_missing_source` | Query view references a type that is not a registered local query source (startup) |
 | `DuplicateRegistration` | `qry_duplicate_registration` | Two sources share a type name, or two views of one source share a type name (startup) |
 | `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration, for example `[QuerySource]`/`[QueryView]` on a type that implements no source or view interface (also KAL2009), both sync and async shapes, more than one source/view interface, a type that is both a source and a view, a pageable view or local source without a valid sortable `DefaultSortField`, or a `[Filterable]` operator that does not apply to the field's type (also KAL2020) (startup) |
@@ -66,7 +66,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `MissingAttribute` | `pro_missing_attribute` | `IProcessStep` type missing `[ProcessStep]`, or `[ProcessStep]` with an empty `Version`/`DisplayName`/`Description`, at startup |
+| `MissingAttribute` | `pro_missing_attribute` | `IProcessStep` type missing `[ProcessStep]`, or `[ProcessStep]` with an empty `DisplayName`/`Description`, at startup |
 | `MissingHandler` | `pro_missing_handler` | Step has no registered handler |
 | `InvalidHandler` | `pro_invalid_handler` | Handler signature is invalid |
 | `DuplicateStep` | `pro_duplicate_step` | Two step types share a type name (step names are type names) |

@@ -48,7 +48,6 @@ internal sealed record QuerySourceRegistration(
 /// <param name="Name">The public name (the source's type name).</param>
 /// <param name="Description">What the source provides.</param>
 /// <param name="DisplayName">The human-readable name.</param>
-/// <param name="Version">The source's version.</param>
 /// <param name="Source">Optional description of where the data comes from.</param>
 /// <param name="Kind">Local or delegated (derived).</param>
 /// <param name="Pageable">Paging for direct queries of this source; <see langword="null"/> when not pageable.</param>
@@ -61,7 +60,6 @@ internal sealed record QuerySourceMetadata(
     string Name,
     string Description,
     string DisplayName,
-    string Version,
     string? Source,
     QuerySourceKind Kind,
     PageableMetadata? Pageable,
@@ -130,7 +128,6 @@ internal sealed record QueryViewRegistration
 internal sealed record QueryViewMetadata
 (
     string Name,
-    string Version,
     string DisplayName,
     string Description,
     PageableMetadata? Pageable,
@@ -226,9 +223,6 @@ internal sealed record QueryableSourceRegistryItem
     /// <summary>The human-readable name.</summary>
     public string? DisplayName { get; init; }
 
-    /// <summary>The source's version.</summary>
-    public string? Version { get; init; }
-
     /// <summary>Optional description of where the data comes from.</summary>
     public string? Source { get; init; }
 
@@ -288,9 +282,6 @@ internal sealed record QueryableViewRegistryItem
 
     /// <summary>The human-readable name.</summary>
     public string? DisplayName { get; init; }
-
-    /// <summary>The view's version.</summary>
-    public string? Version { get; init; }
 
     /// <summary>Paging for this view.</summary>
     public PageableMetadata? Pageable { get; init; }

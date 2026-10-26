@@ -28,7 +28,6 @@ namespace Kaleido.Queryable
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class QuerySourceAttribute : System.Attribute
     {
-        public string Version { get; set; }
         public string DisplayName { get; set; }
         public string Description { get; set; }
     }
@@ -36,7 +35,6 @@ namespace Kaleido.Queryable
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class QueryViewAttribute : System.Attribute
     {
-        public string Version { get; set; }
         public string DisplayName { get; set; }
         public string Description { get; set; }
     }
@@ -72,7 +70,7 @@ public class MemberView { }";
     public async Task SourceAttributeWithoutInterface_Reports()
     {
         await RunAsync(@"
-[Kaleido.Queryable.QuerySource(Version = ""1"", DisplayName = ""Members"", Description = ""Members."")]
+[Kaleido.Queryable.QuerySource(DisplayName = ""Members"", Description = ""Members."")]
 public class {|#0:MemberQuerySource|} { }
 " + KaleidoStubs,
             AttributeWithoutInterface.WithLocation(0)
@@ -83,7 +81,7 @@ public class {|#0:MemberQuerySource|} { }
     public async Task ViewAttributeWithoutInterface_Reports()
     {
         await RunAsync(@"
-[Kaleido.Queryable.QueryView(Version = ""1"", DisplayName = ""Member search"", Description = ""Search."")]
+[Kaleido.Queryable.QueryView(DisplayName = ""Member search"", Description = ""Search."")]
 public class {|#0:MemberSearch|} { }
 " + KaleidoStubs,
             AttributeWithoutInterface.WithLocation(0)
@@ -128,10 +126,10 @@ public class {|#0:MemberSearch|} : Kaleido.Queryable.IQueryViewSource<MemberQuer
     public async Task SourceAndViewWithAttributes_NoDiagnostic()
     {
         await RunAsync(@"
-[Kaleido.Queryable.QuerySource(Version = ""1"", DisplayName = ""Members"", Description = ""Members."")]
+[Kaleido.Queryable.QuerySource(DisplayName = ""Members"", Description = ""Members."")]
 public class MemberQuerySource : Kaleido.Queryable.IQuerySource<MemberQueryContext> { }
 
-[Kaleido.Queryable.QueryView(Version = ""1"", DisplayName = ""Member search"", Description = ""Search."")]
+[Kaleido.Queryable.QueryView(DisplayName = ""Member search"", Description = ""Search."")]
 public class MemberSearch : Kaleido.Queryable.IQueryViewSource<MemberQuerySource, MemberQueryContext, MemberView> { }
 " + KaleidoStubs);
     }

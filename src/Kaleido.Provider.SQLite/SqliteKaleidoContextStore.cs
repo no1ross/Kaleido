@@ -199,7 +199,6 @@ internal sealed partial class SqliteKaleidoContextStore(
                 continue;
             }
 
-            row.Version = step.Version;
             row.Status = step.Status;
             row.LatestRequestId = step.LatestRequestId;
             row.FirstExecuted = step.FirstExecuted;
@@ -226,7 +225,6 @@ internal sealed partial class SqliteKaleidoContextStore(
                 {
                     ProcessId = context.ProcessId,
                     StepName = step.StepName,
-                    Version = step.Version,
                     Status = step.Status,
                     LatestRequestId = step.LatestRequestId,
                     FirstExecuted = step.FirstExecuted,
@@ -369,7 +367,6 @@ internal sealed partial class SqliteKaleidoContextStore(
                         new StepContext
                         {
                             StepName = step.StepName,
-                            Version = step.Version,
                             Status = step.Status,
                             LatestRequestId = step.LatestRequestId,
                             FirstExecuted = step.FirstExecuted,

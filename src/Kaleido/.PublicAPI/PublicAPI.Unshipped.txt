@@ -84,7 +84,6 @@ const Kaleido.Processor.Observability.ProcessorTelemetry.TagPlanExecutableCount 
 const Kaleido.Processor.Observability.ProcessorTelemetry.TagRejectionCode = "kaleido.processor.rejection_code" -> string!
 const Kaleido.Processor.Observability.ProcessorTelemetry.TagStepKind = "kaleido.processor.step_kind" -> string!
 const Kaleido.Processor.Observability.ProcessorTelemetry.TagStepName = "kaleido.processor.step_name" -> string!
-const Kaleido.Processor.Observability.ProcessorTelemetry.TagStepVersion = "kaleido.processor.step_version" -> string!
 const Kaleido.Processor.Observability.ProcessorTelemetry.TagSubmittedStepCount = "kaleido.processor.submitted_step_count" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.AlreadyProcessed = "pro_already_processed" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.ConsistencyViolation = "pro_consistency_violation" -> string!
@@ -477,8 +476,6 @@ Kaleido.Processor.Context.StepContext.Status.init -> void
 Kaleido.Processor.Context.StepContext.StepContext() -> void
 Kaleido.Processor.Context.StepContext.StepName.get -> string!
 Kaleido.Processor.Context.StepContext.StepName.init -> void
-Kaleido.Processor.Context.StepContext.Version.get -> string!
-Kaleido.Processor.Context.StepContext.Version.init -> void
 Kaleido.Processor.DependsOnAttribute<TStep>
 Kaleido.Processor.DependsOnAttribute<TStep>.DependsOnAttribute() -> void
 Kaleido.Processor.DependsOnAttribute<TStep>.StepType.get -> System.Type!
@@ -533,8 +530,6 @@ Kaleido.Processor.Eventing.PlanBuiltCandidate.Messages.init -> void
 Kaleido.Processor.Eventing.PlanBuiltCandidate.PlanBuiltCandidate() -> void
 Kaleido.Processor.Eventing.PlanBuiltCandidate.StepName.get -> string!
 Kaleido.Processor.Eventing.PlanBuiltCandidate.StepName.init -> void
-Kaleido.Processor.Eventing.PlanBuiltCandidate.StepVersion.get -> string!
-Kaleido.Processor.Eventing.PlanBuiltCandidate.StepVersion.init -> void
 Kaleido.Processor.Eventing.PlanBuiltCandidateMessage
 Kaleido.Processor.Eventing.PlanBuiltCandidateMessage.<Clone>$() -> Kaleido.Processor.Eventing.PlanBuiltCandidateMessage!
 Kaleido.Processor.Eventing.PlanBuiltCandidateMessage.Code.get -> string!
@@ -596,8 +591,6 @@ Kaleido.Processor.Eventing.StepCompleted.StepLatestRequestId.get -> string?
 Kaleido.Processor.Eventing.StepCompleted.StepLatestRequestId.init -> void
 Kaleido.Processor.Eventing.StepCompleted.StepName.get -> string!
 Kaleido.Processor.Eventing.StepCompleted.StepName.init -> void
-Kaleido.Processor.Eventing.StepCompleted.StepVersion.get -> string!
-Kaleido.Processor.Eventing.StepCompleted.StepVersion.init -> void
 Kaleido.Processor.Eventing.StepCompleted.TargetProcessorName.get -> string?
 Kaleido.Processor.Eventing.StepCompleted.TargetProcessorName.init -> void
 Kaleido.Processor.Execution.IProcessStepHandler<TProcessStep, TProcessStepResult>
@@ -802,8 +795,6 @@ Kaleido.Processor.ProcessStepAttribute.External.init -> void
 Kaleido.Processor.ProcessStepAttribute.ProcessStepAttribute() -> void
 Kaleido.Processor.ProcessStepAttribute.RequiresConfirmation.get -> bool
 Kaleido.Processor.ProcessStepAttribute.RequiresConfirmation.init -> void
-Kaleido.Processor.ProcessStepAttribute.Version.get -> string!
-Kaleido.Processor.ProcessStepAttribute.Version.init -> void
 Kaleido.Processor.RepeatableAttribute
 Kaleido.Processor.RepeatableAttribute.RepeatableAttribute() -> void
 Kaleido.Processor.StepCandidateStatus
@@ -1040,8 +1031,6 @@ Kaleido.Queryable.QuerySourceAttribute.DisplayName.init -> void
 Kaleido.Queryable.QuerySourceAttribute.QuerySourceAttribute() -> void
 Kaleido.Queryable.QuerySourceAttribute.Source.get -> string?
 Kaleido.Queryable.QuerySourceAttribute.Source.init -> void
-Kaleido.Queryable.QuerySourceAttribute.Version.get -> string!
-Kaleido.Queryable.QuerySourceAttribute.Version.init -> void
 Kaleido.Queryable.QueryViewAttribute
 Kaleido.Queryable.QueryViewAttribute.DefaultSortField.get -> string?
 Kaleido.Queryable.QueryViewAttribute.DefaultSortField.init -> void
@@ -1050,8 +1039,6 @@ Kaleido.Queryable.QueryViewAttribute.Description.init -> void
 Kaleido.Queryable.QueryViewAttribute.DisplayName.get -> string!
 Kaleido.Queryable.QueryViewAttribute.DisplayName.init -> void
 Kaleido.Queryable.QueryViewAttribute.QueryViewAttribute() -> void
-Kaleido.Queryable.QueryViewAttribute.Version.get -> string!
-Kaleido.Queryable.QueryViewAttribute.Version.init -> void
 Kaleido.Queryable.Runtime.IQueryContextExecutor<TView>
 Kaleido.Queryable.Runtime.IQueryContextExecutor<TView>.ApplyPage(System.Linq.IQueryable<TView!>! query, int size, int offset) -> System.Linq.IQueryable<TView!>!
 Kaleido.Queryable.Runtime.IQueryContextExecutor<TView>.CountAsync(System.Linq.IQueryable<TView!>! query, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!

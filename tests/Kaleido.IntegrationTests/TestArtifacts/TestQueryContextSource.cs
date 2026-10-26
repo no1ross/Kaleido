@@ -1,7 +1,6 @@
 namespace Kaleido.IntegrationTests.TestArtifacts;
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Test Query",
     Description = "Test query context")]
 public sealed class TestQueryContextSource(TestDbContext dbContext) : IQuerySource<TestQueryContext>

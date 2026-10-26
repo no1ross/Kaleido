@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Queryable;
 
 /// <summary>
-/// KAL2003 — [QueryView] must declare a non-empty Version, DisplayName, and Description.
+/// KAL2003 — [QueryView] must declare a non-empty DisplayName and Description.
 /// A query view with any of them empty fails startup registration; DisplayName and
 /// Description are published through the registry for UIs, documentation, and AI agents.
 /// </summary>
@@ -17,13 +17,13 @@ public sealed class QueryViewAttributeAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule =
         new(
             DiagnosticIds.QueryViewAttributeValidity,
-            "[QueryView] Version, DisplayName, and Description must be non-empty",
-            "[QueryView] '{0}' must have a non-empty Version, DisplayName, and Description",
+            "[QueryView] DisplayName and Description must be non-empty",
+            "[QueryView] '{0}' must have a non-empty DisplayName and Description",
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             helpLinkUri: HelpLinks.For(DiagnosticIds.QueryViewAttributeValidity),
-            description: "A [QueryView] with an empty Version, DisplayName, or Description cannot be registered by the Kaleido runtime.");
+            description: "A [QueryView] with an empty DisplayName or Description cannot be registered by the Kaleido runtime.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(Rule);
@@ -52,8 +52,7 @@ public sealed class QueryViewAttributeAnalyzer : DiagnosticAnalyzer
 
         var args = attributeSyntax.ArgumentList?.Arguments ?? default;
 
-        if (!AttributeHelper.HasNonEmptyNamedArgument(args, "Version", context.SemanticModel) ||
-            !AttributeHelper.HasNonEmptyNamedArgument(args, "DisplayName", context.SemanticModel) ||
+        if (!AttributeHelper.HasNonEmptyNamedArgument(args, "DisplayName", context.SemanticModel) ||
             !AttributeHelper.HasNonEmptyNamedArgument(args, "Description", context.SemanticModel))
         {
             context.ReportDiagnostic(

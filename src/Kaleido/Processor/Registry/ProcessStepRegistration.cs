@@ -76,9 +76,6 @@ internal sealed record ProcessStepMetadata
     /// <inheritdoc cref="ProcessStepAttribute.Description"/>
     public required string Description { get; init; }
 
-    /// <inheritdoc cref="ProcessStepAttribute.Version"/>
-    public required string Version { get; init; }
-
     /// <inheritdoc cref="ProcessStepAttribute.DisplayName"/>
     public required string DisplayName { get; init; }
 

@@ -171,7 +171,6 @@ internal static class QueryableServiceCollectionExtensions
                     QueryableErrorCodes.MissingAttribute,
                     $"Query source '{type.FullName}' must be decorated with [QuerySource].");
 
-            RequireNonEmpty(type, "Query source", attribute.Version, nameof(QuerySourceAttribute.Version));
             RequireNonEmpty(type, "Query source", attribute.DisplayName, nameof(QuerySourceAttribute.DisplayName));
             RequireNonEmpty(type, "Query source", attribute.Description, nameof(QuerySourceAttribute.Description));
         }
@@ -270,7 +269,6 @@ internal static class QueryableServiceCollectionExtensions
                     QueryableErrorCodes.MissingAttribute,
                     $"Query view '{type.FullName}' must be decorated with [QueryView].");
 
-            RequireNonEmpty(type, "Query view", attribute.Version, nameof(QueryViewAttribute.Version));
             RequireNonEmpty(type, "Query view", attribute.DisplayName, nameof(QueryViewAttribute.DisplayName));
             RequireNonEmpty(type, "Query view", attribute.Description, nameof(QueryViewAttribute.Description));
 

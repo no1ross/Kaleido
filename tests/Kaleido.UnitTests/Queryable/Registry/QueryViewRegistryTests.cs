@@ -154,7 +154,6 @@ public sealed class QueryViewRegistryTests
     [QueryView(
         DisplayName = "Test View",
         Description = "Test view description",
-        Version = "1.0.0",
         DefaultSortField = nameof(TestContext.Id))]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
     private sealed class TestView : IQueryViewSource<TestSource, TestContext, TestContract, TestParameters>
@@ -178,14 +177,14 @@ public sealed class QueryViewRegistryTests
             Array.Empty<TestContract>().AsQueryable();
     }
 
-    [QueryView(DisplayName = "Simple", Description = "Simple view.", Version = "1.0.0")]
+    [QueryView(DisplayName = "Simple", Description = "Simple view.")]
     private sealed class SimpleView : IQueryViewSource<TestSource, TestContext, TestContract>
     {
         public IQueryable<TestContract> CreateView(IQueryable<TestContext> query, QueryExecutionContext executionContext) =>
             Array.Empty<TestContract>().AsQueryable();
     }
 
-    [QueryView(DisplayName = "Async", Description = "Async view.", Version = "1.0.0")]
+    [QueryView(DisplayName = "Async", Description = "Async view.")]
     private sealed class AsyncView : IQueryViewSourceAsync<TestSource, TestContext, TestContract>
     {
         public Task<IQueryable<TestContract>> CreateViewAsync(
@@ -195,7 +194,7 @@ public sealed class QueryViewRegistryTests
             Task.FromResult(Array.Empty<TestContract>().AsQueryable());
     }
 
-    [QueryView(DisplayName = "Missing sort", Description = "Missing sort view.", Version = "1.0.0")]
+    [QueryView(DisplayName = "Missing sort", Description = "Missing sort view.")]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
     private sealed class MissingSortView : IQueryViewSource<TestSource, TestContext, TestContract>
     {
@@ -203,7 +202,7 @@ public sealed class QueryViewRegistryTests
             Array.Empty<TestContract>().AsQueryable();
     }
 
-    [QueryView(DisplayName = "Not sortable", Description = "Not sortable view.", Version = "1.0.0", DefaultSortField = nameof(TestContext.Name))]
+    [QueryView(DisplayName = "Not sortable", Description = "Not sortable view.", DefaultSortField = nameof(TestContext.Name))]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
     private sealed class NotSortableView : IQueryViewSource<TestSource, TestContext, TestContract>
     {
@@ -211,7 +210,7 @@ public sealed class QueryViewRegistryTests
             Array.Empty<TestContract>().AsQueryable();
     }
 
-    [QueryView(DisplayName = "Secured", Description = "Secured view.", Version = "1.0.0")]
+    [QueryView(DisplayName = "Secured", Description = "Secured view.")]
     [KaleidoAuthorization(Policy = "clinician-policy", Roles = "clinician")]
     private sealed class SecuredView : IQueryViewSource<TestSource, TestContext, TestContract>
     {

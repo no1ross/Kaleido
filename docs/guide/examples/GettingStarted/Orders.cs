@@ -45,7 +45,6 @@ public sealed record OrderQueryContext : IQueryContext
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Orders",
     Description = "The orders placed in the shop.",
     DefaultSortField = nameof(OrderQueryContext.Number))]
@@ -60,7 +59,6 @@ public sealed class OrderSource(OrderBook orders) : IQuerySource<OrderQueryConte
 // snippet: getting-started-steps
 // What can be done: placing an order starts a process; confirming it is the next step.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Place order",
     Description = "Places an order for an item.")]
 public sealed record PlaceOrderStep : IProcessStep
@@ -93,7 +91,6 @@ public sealed class PlaceOrderHandler(OrderBook orders) : IProcessStepHandler<Pl
 }
 
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Confirm order",
     Description = "Confirms the order placed in this process.",
     RequiresConfirmation = true)]

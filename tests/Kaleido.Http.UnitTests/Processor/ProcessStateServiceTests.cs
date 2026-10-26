@@ -211,13 +211,11 @@ public sealed class ProcessStateServiceTests
                     new StepContext
                     {
                         StepName = "Step-B",
-                        Version = "1.0.0",
                         Status = StepExecutionStatus.Pending
                     },
                     new StepContext
                     {
                         StepName = "Step-A",
-                        Version = "1.0.0",
                         Status = StepExecutionStatus.Completed,
                         FirstExecuted = FirstRun,
                         StartedBy = Alice,
@@ -325,7 +323,7 @@ public sealed class ProcessStateServiceTests
                 [],
                 [],
                 new RepeatableOptions { Enabled = false },
-                new ProcessStepMetadata { Name = name, Description = name, Version = "1.0.0", DisplayName = name });
+                new ProcessStepMetadata { Name = name, Description = name, DisplayName = name });
 
             mock.Setup(x => x.Find(name))
                 .Returns(registration);

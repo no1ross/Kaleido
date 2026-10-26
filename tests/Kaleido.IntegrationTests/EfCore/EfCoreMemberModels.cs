@@ -65,7 +65,6 @@ public sealed record MemberQueryContext : IQueryContext
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Members",
     Description = "Members from an EF Core database.",
     DefaultSortField = nameof(MemberQueryContext.Id))]
@@ -89,7 +88,6 @@ public sealed class MemberSource(MemberDbContext db) : IQuerySource<MemberQueryC
 [QueryView(
     DisplayName = "Member Cards",
     Description = "Member names with their city.",
-    Version = "1.0.0",
     DefaultSortField = nameof(MemberQueryContext.Name))]
 [Pageable(DefaultSize = 3, MaxSize = 10)]
 public sealed class MemberCardView : IQueryViewSource<MemberSource, MemberQueryContext, MemberCard>
@@ -113,7 +111,6 @@ public sealed record RegionQueryContext : IQueryContext
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Regions",
     Description = "Regions from memory.",
     DefaultSortField = nameof(RegionQueryContext.Code))]

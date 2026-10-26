@@ -117,7 +117,7 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 | **Local view** | `IQueryViewSource<TSource, TQueryContext, TView[, TParams]>` / async | `[QueryView]` | `Type.Name` (unique per source), `/{source}/{view}/query` | Kaleido (on the source's queryable), then the view's projection |
 | **Delegated source** | `IDelegatedQuerySource<TQueryContext, TResult[, TParams]>` | `[QuerySource]` | `Type.Name`, `/{source}/query` | the downstream system; Kaleido passes the `QueryResult` through untouched |
 
-- **Discovery is interface-only:** a source or view must carry its attribute, with a non-empty `Version`, `DisplayName` and `Description`.
+- **Discovery is interface-only:** a source or view must carry its attribute, with a non-empty `DisplayName` and `Description`.
 - **A type is exactly one capability,** so `QueryableService.QueryAsync<TQuery, TResult>` dispatches by the queried type. A view type runs the view over its source; a local source type runs a direct query; a delegated source type runs the delegated engine. There are no competing lanes and no fallback.
 - **Every local source can be queried directly.** Exposure is controlled by what its query context publishes and by authorization.
 - **A query context may back several sources.** Sources are registered and resolved by their concrete type.
@@ -138,7 +138,7 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 ## Process execution model
 
 Process is step-centric:
-1. declare a step type that implements `IProcessStep` (its identity) and carries `[ProcessStep]` (its required metadata: `Version`, `DisplayName`, `Description`) and, where it applies, what it does in the world: `Destructive`, `External`, `RequiresConfirmation` (ADR 0015)
+1. declare a step type that implements `IProcessStep` (its identity) and carries `[ProcessStep]` (its required metadata: `DisplayName`, `Description`) and, where it applies, what it does in the world: `Destructive`, `External`, `RequiresConfirmation` (ADR 0015)
 2. implement exactly one `IProcessStepHandler<TStep>` (or `<TStep, TResult>`)
 3. register the assemblies containing steps via `KaleidoServiceOptions.Assemblies`
 4. let the runtime build a registry and manage state

@@ -70,7 +70,6 @@ public sealed class FunctionalRecordContext : IQueryContext
 /// runtime must await it and run the request against the queryable it produces.
 /// </summary>
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Functional Async Records",
     Description = "Functional records from an asynchronous source.",
     DefaultSortField = nameof(FunctionalRecordContext.Id))]
@@ -93,7 +92,6 @@ public sealed class FunctionalAsyncRecordSource(FunctionalRecordData data) : IQu
 [QueryView(
     DisplayName = "Functional Code List",
     Description = "Codes of functional records, ordered by code.",
-    Version = "1.0.0",
     DefaultSortField = nameof(FunctionalRecordContext.Code))]
 [Pageable(DefaultSize = 2, MaxSize = 4)]
 public sealed class FunctionalCodeListView : IQueryViewSourceAsync<FunctionalAsyncRecordSource, FunctionalRecordContext, FunctionalCodeListItem>
@@ -117,7 +115,6 @@ public sealed class FunctionalCodeListItem
 [QueryView(
     DisplayName = "Grid View",
     Description = "Grid view for functional records.",
-    Version = "1.0.0",
     DefaultSortField = nameof(FunctionalRecordContext.Id))]
 [Pageable(DefaultSize = 3, MaxSize = 10)]
 public sealed class FunctionalRecordGridView : IQueryViewSource<FunctionalRecordContextSource, FunctionalRecordContext, FunctionalRecordView, FunctionalRecordViewParameters>
@@ -164,7 +161,6 @@ public sealed class FunctionalRecordViewParameters : IQueryParameters
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Functional Records",
     Description = "Functional records for Queryable HTTP tests.",
     Source = "AspNetCore Functional Test Data",
@@ -181,7 +177,6 @@ public sealed class FunctionalRecordContextSource(FunctionalRecordData data) : I
 
 /// <summary>The same records without [Pageable]: an explicit page is a request error (#210).</summary>
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Functional Unpaged Records",
     Description = "Functional records from a source that does not page.")]
 public sealed class FunctionalUnpagedRecordSource(FunctionalRecordData data) : IQuerySource<FunctionalRecordContext>
@@ -197,7 +192,6 @@ public sealed class FunctionalUnpagedRecordSource(FunctionalRecordData data) : I
 /// (a fixed total of 42) — Kaleido must pass that through untouched.
 /// </summary>
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Functional Record Summaries",
     Description = "Delegated summaries of functional records in one category.")]
 [Pageable(DefaultSize = 2, MaxSize = 5)]

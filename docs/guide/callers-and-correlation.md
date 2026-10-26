@@ -21,7 +21,6 @@ what a capability without a rule means:
 // Only managers may refund. The other capabilities have no rule: under the default mode
 // (Authenticated) any signed-in caller may use them.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Refund order",
     Description = "Refunds the shipped order.",
     Destructive = true,

@@ -2,9 +2,9 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-----------------------------
-KAL2001 | Kaleido.Usage | Error | [ProcessStep] Version, DisplayName, and Description must be non-empty
-KAL2002 | Kaleido.Usage | Error | [QuerySource] Version, DisplayName, and Description must be non-empty
-KAL2003 | Kaleido.Usage | Error | [QueryView] Version, DisplayName, and Description must be non-empty
+KAL2001 | Kaleido.Usage | Error | [ProcessStep] DisplayName and Description must be non-empty
+KAL2002 | Kaleido.Usage | Error | [QuerySource] DisplayName and Description must be non-empty
+KAL2003 | Kaleido.Usage | Error | [QueryView] DisplayName and Description must be non-empty
 KAL2004 | Kaleido.Usage | Warning | Step handler catch (Exception) must filter OperationCanceledException
 KAL2005 | Kaleido.Usage | Warning | ServiceName must be lowercase letters, digits, '-' and '_'
 KAL2006 | Kaleido.Usage | Warning | AddKaleido() options lambda does not set Assemblies

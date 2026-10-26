@@ -1101,7 +1101,7 @@ public sealed class ProcessorExecutorTests
             [],
             [],
             new RepeatableOptions(),
-            new ProcessStepMetadata { Name = name, Description = $"{name} description", Version = "1.0.0", DisplayName = $"{name} displayname" });
+            new ProcessStepMetadata { Name = name, Description = $"{name} description", DisplayName = $"{name} displayname" });
     }
 
     private static ProcessorContext CreateContext(
@@ -1133,9 +1133,6 @@ public sealed class ProcessorExecutorTests
                         {
                             StepName =
                                 x,
-
-                            Version =
-                                "1.0.0",
 
                             Status =
                                 StepExecutionStatus.Pending

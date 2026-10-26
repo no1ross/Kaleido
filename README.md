@@ -79,8 +79,7 @@ This excerpt from the [PriorAuth sample](https://github.com/no1ross/Kaleido-Samp
 ```csharp
 [ProcessStep(
     DisplayName = "Intake - Capture Member",
-    Description = "Records member information against the intake session for auditing and correlation.",
-    Version = "1.0.0")]
+    Description = "Records member information against the intake session for auditing and correlation.")]
 [AvailableAfter<ValidateMemberStep>]
 public sealed record CaptureMemberStep : IProcessStep
 {
@@ -104,7 +103,7 @@ public sealed record CaptureMemberStep : IProcessStep
 
 | Declaration | Meaning |
 |---|---|
-| `ProcessStep` | Names the action and describes its purpose and version. |
+| `ProcessStep` | Describes the action and its purpose; the type's name is its identity. |
 | `AvailableAfter<ValidateMemberStep>` | Makes completion of validation an availability condition; it does not automatically execute this step or make it the required next step. |
 | `Required` and the property type | Declare required input and its shape. |
 | `Display` / `Description` | Supply the input's label, prompt, and explanation. |

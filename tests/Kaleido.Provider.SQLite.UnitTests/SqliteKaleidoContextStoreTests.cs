@@ -103,7 +103,6 @@ public sealed class SqliteKaleidoContextStoreTests
                 new StepContext
                 {
                     StepName = "StepA",
-                    Version = "1.0.0",
                     Status = StepExecutionStatus.Completed,
                     LatestRequestId = "req-0",
                     FirstExecuted = new DateTimeOffset(2026, 1, 1, 11, 0, 0, TimeSpan.Zero),
@@ -114,7 +113,6 @@ public sealed class SqliteKaleidoContextStoreTests
                 new StepContext
                 {
                     StepName = "StepB",
-                    Version = "1.0.0",
                     Status = StepExecutionStatus.Pending
                 }
             ],
@@ -184,7 +182,6 @@ public sealed class SqliteKaleidoContextStoreTests
 
         var stepA = loaded.FindStep("StepA");
         Assert.NotNull(stepA);
-        Assert.Equal("1.0.0", stepA.Version);
         Assert.Equal(StepExecutionStatus.Completed, stepA.Status);
         Assert.Equal("req-0", stepA.LatestRequestId);
         Assert.Equal(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero), stepA.LastExecuted);

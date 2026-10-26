@@ -325,7 +325,6 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                 Name = "Test-Context",
                 Description = "Test Context",
                 DisplayName = sourceDisplayName,
-                Version = "1.0.0",
                 Source = "Unit Test",
                 Fields = Fields,
                 Authorization = sourceAuthorization ?? AuthorizationMetadata.Unspecified,
@@ -338,7 +337,6 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
                         Name = "Test-View",
                         Description = "Test View",
                         DisplayName = "Test View",
-                        Version = "1.0.0",
                         Authorization = viewAuthorization ?? AuthorizationMetadata.Unspecified
                     }
                 ]

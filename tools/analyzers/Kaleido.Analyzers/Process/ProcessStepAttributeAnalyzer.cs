@@ -7,8 +7,8 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Process;
 
 /// <summary>
-/// KAL2001 — [ProcessStep] must declare a non-empty Version, DisplayName, and Description.
-/// A step with any of them empty fails startup registration; DisplayName and Description
+/// KAL2001 — [ProcessStep] must declare a non-empty DisplayName and Description.
+/// A step with either of them empty fails startup registration; DisplayName and Description
 /// are published through the registry for UIs, documentation, and AI agents.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -19,13 +19,13 @@ public sealed class ProcessStepAttributeAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule =
         new(
             DiagnosticIds.ProcessStepAttributeValidity,
-            "[ProcessStep] Version, DisplayName, and Description must be non-empty",
-            "[ProcessStep] '{0}' must have a non-empty Version, DisplayName, and Description",
+            "[ProcessStep] DisplayName and Description must be non-empty",
+            "[ProcessStep] '{0}' must have a non-empty DisplayName and Description",
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             helpLinkUri: HelpLinks.For(DiagnosticIds.ProcessStepAttributeValidity),
-            description: "A [ProcessStep] with an empty Version, DisplayName, or Description cannot be registered by the Kaleido runtime.");
+            description: "A [ProcessStep] with an empty DisplayName or Description cannot be registered by the Kaleido runtime.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(Rule);
@@ -54,8 +54,7 @@ public sealed class ProcessStepAttributeAnalyzer : DiagnosticAnalyzer
 
         var args = attributeSyntax.ArgumentList?.Arguments ?? default;
 
-        if (!AttributeHelper.HasNonEmptyNamedArgument(args, "Version", context.SemanticModel) ||
-            !AttributeHelper.HasNonEmptyNamedArgument(args, "DisplayName", context.SemanticModel) ||
+        if (!AttributeHelper.HasNonEmptyNamedArgument(args, "DisplayName", context.SemanticModel) ||
             !AttributeHelper.HasNonEmptyNamedArgument(args, "Description", context.SemanticModel))
         {
             context.ReportDiagnostic(

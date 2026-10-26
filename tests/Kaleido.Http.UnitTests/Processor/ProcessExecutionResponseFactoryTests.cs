@@ -174,7 +174,7 @@ public sealed class ProcessExecutionResponseFactoryTests
                     [],
                     [],
                     new RepeatableOptions { Enabled = false },
-                    new ProcessStepMetadata { Name = name, Description = name, Version = "1.0.0", DisplayName = name }));
+                    new ProcessStepMetadata { Name = name, Description = name, DisplayName = name }));
         }
 
         return registry.Object;

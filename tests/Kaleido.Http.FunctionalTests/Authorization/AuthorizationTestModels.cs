@@ -8,7 +8,7 @@ internal static class AuthorizationStepNames
     public const string AnonymousStep = nameof(AuthorizedAnonymousStep);
 }
 
-[ProcessStep(DisplayName = AuthorizationStepNames.AnonymousStep, Description = "Anonymous step", Version = "1.0")]
+[ProcessStep(DisplayName = AuthorizationStepNames.AnonymousStep, Description = "Anonymous step")]
 [KaleidoAuthorization(AllowAnonymous = true)]
 public sealed record AuthorizedAnonymousStep : IProcessStep;
 
@@ -24,15 +24,15 @@ public sealed class AuthorizedAnonymousStepHandler
                 new AuthorizedStepResponse()));
 }
 
-[ProcessStep(DisplayName = AuthorizationStepNames.InternalStep, Description = "Role-secured step", Version = "1.0")]
+[ProcessStep(DisplayName = AuthorizationStepNames.InternalStep, Description = "Role-secured step")]
 [KaleidoAuthorization(Roles = "internal")]
 public sealed record AuthorizedInternalStep : IProcessStep;
 
-[ProcessStep(DisplayName = AuthorizationStepNames.PolicyStep, Description = "Policy-secured step", Version = "1.0")]
+[ProcessStep(DisplayName = AuthorizationStepNames.PolicyStep, Description = "Policy-secured step")]
 [KaleidoAuthorization(Policy = "clinician-only")]
 public sealed record AuthorizedPolicyStep : IProcessStep;
 
-[ProcessStep(DisplayName = AuthorizationStepNames.OpenStep, Description = "Undeclared step", Version = "1.0")]
+[ProcessStep(DisplayName = AuthorizationStepNames.OpenStep, Description = "Undeclared step")]
 public sealed record AuthorizedOpenStep : IProcessStep;
 
 public sealed record AuthorizedStepResponse;
@@ -81,7 +81,6 @@ public sealed class SecuredRecordContext : IQueryContext
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Secured Records",
     Description = "Role-secured records for authorization tests.")]
 [KaleidoAuthorization(Roles = "internal")]
@@ -104,7 +103,6 @@ public sealed record SecuredRecordView
 [QueryView(
     DisplayName = "Admin View",
     Description = "Admin-only view over secured records.",
-    Version = "1.0.0",
     DefaultSortField = nameof(SecuredRecordContext.Id))]
 [KaleidoAuthorization(Roles = "admin")]
 public sealed class SecuredAdminView
@@ -119,7 +117,6 @@ public sealed class SecuredAdminView
 [QueryView(
     DisplayName = "Internal View",
     Description = "Internal view over secured records.",
-    Version = "1.0.0",
     DefaultSortField = nameof(SecuredRecordContext.Id))]
 [KaleidoAuthorization(Roles = "internal,admin")]
 public sealed class SecuredInternalView

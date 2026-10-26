@@ -9,7 +9,7 @@ each behavior described here.
 ## Steps and handlers
 
 - A step is an `IProcessStep` record: its type name is its name everywhere (registry, wire, state,
-  events). `[ProcessStep]` describes it (`Version`, `DisplayName`, `Description`, required).
+  events). `[ProcessStep]` describes it (`DisplayName`, `Description`, required).
 - Its inputs are the record's properties, validated with data annotations; required value types use
   the C# `required` keyword (KAL2018).
 - Exactly one handler per step: `IProcessStepHandler<TStep>`, or `IProcessStepHandler<TStep, TResult>`
@@ -54,7 +54,6 @@ Relationships are declared on the step, typed, and checked at startup:
 ```csharp
 // A note can be added any time after the order is placed, as often as needed.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Add note",
     Description = "Adds a note to the order.")]
 [AvailableAfter<PlaceOrderStep>]
@@ -68,7 +67,6 @@ public sealed record AddNoteStep : IProcessStep
 
 // The order can be cancelled once it is placed, until it ships.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Cancel order",
     Description = "Cancels the order before it ships.",
     Destructive = true,
@@ -79,7 +77,6 @@ public sealed record CancelOrderStep : IProcessStep;
 
 // Shipping needs the confirmation first, and is no longer possible once the order is cancelled.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Ship order",
     Description = "Hands the confirmed order to a carrier.",
     External = true)]
@@ -179,7 +176,6 @@ stateDiagram-v2
 ```csharp
 // Returns are another service's business: the process continues there.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Return order",
     Description = "Starts a return of the shipped order; the returns service continues the process.")]
 [AvailableAfter<ShipOrderStep>]
@@ -224,8 +220,8 @@ then continues there with that `processId`. Each processor keeps its own state
 
 ## Changing a step later
 
-A `Version` is a label for audit and clients; one version of a step is live at a time, and running
-processes continue on the deployed definition (completed steps keep the version they ran with). A
-breaking change takes a new step name. See
+A step has no version: its name is its identity, one definition per name is live, and running
+processes continue on the deployed definition (completed steps stay in their history). A breaking
+change takes a new step name. See
 [PATTERNS - Changing a step, source or view](../PATTERNS.md#changing-a-step-source-or-view) and
-[ADR 0026](../decisions/0026-versioning-concept.md).
+[ADR 0029](../decisions/0029-capabilities-have-no-version.md).

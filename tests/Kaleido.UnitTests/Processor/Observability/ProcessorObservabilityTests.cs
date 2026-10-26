@@ -68,8 +68,7 @@ public sealed class ProcessorObservabilityTests
         using var stepObservation =
             observability.BeginStep(
                 new ProcessorStepObservationDetails(
-                    "Step-A",
-                    "1.0.0"));
+                    "Step-A"));
 
         stepObservation.Canceled();
         stepObservation.StepFailed(new InvalidOperationException("boom"));
@@ -77,8 +76,7 @@ public sealed class ProcessorObservabilityTests
         using var handlerObservation =
             observability.BeginHandler(
                 new ProcessorHandlerObservationDetails(
-                    "Step-A",
-                    "1.0.0"));
+                    "Step-A"));
 
         handlerObservation.HandlerFailed(new InvalidOperationException("boom"));
 
@@ -195,8 +193,7 @@ public sealed class ProcessorObservabilityTests
         using var observation =
             observability.BeginStep(
                 new ProcessorStepObservationDetails(
-                    "Step-A",
-                    null));
+                    "Step-A"));
 
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
@@ -215,8 +212,7 @@ public sealed class ProcessorObservabilityTests
         using var observation =
             observability.BeginHandler(
                 new ProcessorHandlerObservationDetails(
-                    "Step-A",
-                    null));
+                    "Step-A"));
 
         var exception =
             Assert.Throws<ArgumentNullException>(() =>
@@ -355,7 +351,7 @@ public sealed class ProcessorObservabilityTests
         var measurements = new List<(string Name, KeyValuePair<string, object?>[] Tags)>();
         using var meterListener = CreateMeterListener(serviceName, measurements);
 
-        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails(stepName, "2.0.0", IsInformationStep: true)))
+        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails(stepName, IsInformationStep: true)))
         {
             observation.DecisionRecorded("Success", "Completed");
             observation.InformationRequested("REQ-INFO");
@@ -365,7 +361,6 @@ public sealed class ProcessorObservabilityTests
 
         var activity = Assert.Single(activities, x => x.GetTagItem(ProcessorTelemetry.TagStepName) as string == stepName);
         Assert.Equal(ProcessorTelemetry.StepActivityName, activity.OperationName);
-        Assert.Equal("2.0.0", activity.GetTagItem(ProcessorTelemetry.TagStepVersion));
         Assert.Equal("information", activity.GetTagItem(ProcessorTelemetry.TagStepKind));
         Assert.Equal("Success", activity.GetTagItem(ProcessorTelemetry.TagDecisionType));
         Assert.Equal("Completed", activity.GetTagItem(ProcessorTelemetry.TagExecutionStatus));
@@ -376,7 +371,7 @@ public sealed class ProcessorObservabilityTests
         Assert.Contains(ProcessorTelemetry.StepCanceledEventName, events);
 
         var requested = Assert.Single(measurements, x => x.Name == ProcessorTelemetry.InformationRequestsCounterName);
-        Assert.Contains(requested.Tags, x => x.Key == ProcessorTelemetry.TagStepVersion && (string?)x.Value == "2.0.0");
+        Assert.Contains(requested.Tags, x => x.Key == ProcessorTelemetry.TagStepName && (string?)x.Value == stepName);
         Assert.Contains(measurements, x => x.Name == ProcessorTelemetry.StepDurationHistogramName);
 
         AssertLogged(logger, LogLevel.Debug, "Process step execution started");
@@ -398,7 +393,7 @@ public sealed class ProcessorObservabilityTests
         var measurements = new List<(string Name, KeyValuePair<string, object?>[] Tags)>();
         using var meterListener = CreateMeterListener(serviceName, measurements);
 
-        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails(stepName, "1.0.0")))
+        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails(stepName)))
         {
             observation.StepValidationFailed("pro_custom_validation");
         }
@@ -412,10 +407,8 @@ public sealed class ProcessorObservabilityTests
         logger.Verify(x => x.Log(LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Never);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData(" ")]
-    public void StepObservation_WithoutVersion_OmitsTheVersionMetricTag(string? version)
+    [Fact]
+    public void StepObservation_OfAPropertiesStep_IsTaggedAsSuch_AndCountsTheCancellation()
     {
         var serviceName = $"test-processor-{Guid.NewGuid():N}";
         var stepName = $"Step-{Guid.NewGuid():N}";
@@ -425,7 +418,7 @@ public sealed class ProcessorObservabilityTests
         var measurements = new List<(string Name, KeyValuePair<string, object?>[] Tags)>();
         using var meterListener = CreateMeterListener(serviceName, measurements);
 
-        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails(stepName, version)))
+        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails(stepName)))
         {
             observation.Canceled();
         }
@@ -433,7 +426,7 @@ public sealed class ProcessorObservabilityTests
         var activity = Assert.Single(activities, x => x.GetTagItem(ProcessorTelemetry.TagStepName) as string == stepName);
         Assert.Equal("properties", activity.GetTagItem(ProcessorTelemetry.TagStepKind));
         var canceled = Assert.Single(measurements, x => x.Name == ProcessorTelemetry.StepCancellationsCounterName);
-        Assert.DoesNotContain(canceled.Tags, x => x.Key == ProcessorTelemetry.TagStepVersion);
+        Assert.Contains(canceled.Tags, x => x.Key == ProcessorTelemetry.TagStepName && (string?)x.Value == stepName);
         Assert.DoesNotContain(measurements, x => x.Name == ProcessorTelemetry.StepFailuresCounterName);
     }
 
@@ -445,7 +438,7 @@ public sealed class ProcessorObservabilityTests
         var measurements = new List<(string Name, KeyValuePair<string, object?>[] Tags)>();
         using var meterListener = CreateMeterListener(serviceName, measurements);
 
-        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails("Step-B", "1.0.0")))
+        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails("Step-B")))
         {
             observation.DecisionRecorded("Failure", "Failed");
             observation.InformationRequested("REQ-B");
@@ -466,14 +459,13 @@ public sealed class ProcessorObservabilityTests
         var activities = new List<Activity>();
         using var listener = CreateActivityListener(activities);
 
-        using (var observation = observability.BeginHandler(new ProcessorHandlerObservationDetails(stepName, "3.0.0")))
+        using (var observation = observability.BeginHandler(new ProcessorHandlerObservationDetails(stepName)))
         {
             observation.HandlerFailed(new InvalidOperationException("handler boom"));
         }
 
         var activity = Assert.Single(activities, x => x.GetTagItem(ProcessorTelemetry.TagStepName) as string == stepName);
         Assert.Equal(ProcessorTelemetry.StepHandlerActivityName, activity.OperationName);
-        Assert.Equal("3.0.0", activity.GetTagItem(ProcessorTelemetry.TagStepVersion));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
         Assert.Equal(nameof(InvalidOperationException), activity.StatusDescription);
         AssertLogged(logger, LogLevel.Trace, "Process handler execution started");

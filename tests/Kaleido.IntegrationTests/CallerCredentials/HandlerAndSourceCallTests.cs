@@ -268,7 +268,6 @@ public sealed class HandlerAndSourceCallTests
 }
 
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Relay to downstream",
     Description = "Calls the downstream service while handling the step.")]
 public sealed record RelayToDownstreamStep : IProcessStep;
@@ -293,7 +292,6 @@ public sealed record DownstreamRecordContext : IQueryContext
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Downstream records",
     Description = "Records the downstream service holds, fetched per query.")]
 public sealed class DownstreamRecordSource(IKaleidoProcessorClientFactory clients)

@@ -16,7 +16,6 @@ public sealed record OrderLine
 }
 
 [QueryView(
-    Version = "1.0.0",
     DisplayName = "Order lines",
     Description = "One line per order, for lists.",
     DefaultSortField = nameof(OrderQueryContext.Number))]
@@ -38,7 +37,6 @@ public sealed record LargeOrdersParameters : IQueryParameters
 }
 
 [QueryView(
-    Version = "1.0.0",
     DisplayName = "Large orders",
     Description = "Orders of at least the given quantity.",
     DefaultSortField = nameof(OrderQueryContext.Number))]
@@ -81,7 +79,6 @@ public sealed record ShippingRateParameters : IQueryParameters
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Shipping rates",
     Description = "Today's rates from the carriers' price service.")]
 public sealed class ShippingRateSource
@@ -117,7 +114,6 @@ public sealed record InvoiceQueryContext : IQueryContext
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "My invoices",
     Description = "The calling customer's invoices.",
     DefaultSortField = nameof(InvoiceQueryContext.Number))]

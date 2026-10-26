@@ -623,7 +623,7 @@ public sealed class ProcessorStepInvokerTests
             [],
             [],
             new RepeatableOptions(),
-            new ProcessStepMetadata { Name = "test-step", Description = "Test step.", Version = "1.0", DisplayName = "displayname" },
+            new ProcessStepMetadata { Name = "test-step", Description = "Test step.", DisplayName = "displayname" },
             getResultFromTask,
             invokeHandlerAsync);
     }

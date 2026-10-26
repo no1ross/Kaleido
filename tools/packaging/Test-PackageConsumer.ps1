@@ -23,7 +23,7 @@
        (Kaleido.Analyzers.Source/.Testing, Meziantou, Roslynator) reaches the consumer.
     5. A clean core consumer (Kaleido only) builds a valid step and handler without any
        repository-only diagnostic (KAL0xxx, KAL1xxx, MA, RCS), and a deliberate violation (a
-       [ProcessStep] with an empty Version) fails with KAL2001: the consumer analyzer flows through the
+       [ProcessStep] with an empty Description) fails with KAL2001: the consumer analyzer flows through the
        package dependency.
     6. A clean host consumer of every runtime package (Kaleido.Http, .Http.Client, .Http.Mcp,
        .Provider.SQLite, .Observability.OpenTelemetry) builds, starts, answers its registry and MCP
@@ -335,7 +335,7 @@ finally
     File.Delete(database);
 }
 
-[ProcessStep(DisplayName = "Start", Description = "Starts the case.", Version = "1.0")]
+[ProcessStep(DisplayName = "Start", Description = "Starts the case.")]
 public sealed record StartStep : IProcessStep;
 
 public sealed class StartHandler : IProcessStepHandler<StartStep>
@@ -387,7 +387,7 @@ using Kaleido.Processor.Execution;
 
 namespace Consumer;
 
-[ProcessStep(DisplayName = "Start", Description = "Starts the case.", Version = "1.0")]
+[ProcessStep(DisplayName = "Start", Description = "Starts the case.")]
 public sealed record StartStep : IProcessStep;
 
 public sealed class StartHandler : IProcessStepHandler<StartStep>
@@ -408,12 +408,12 @@ using Kaleido.Processor;
 
 namespace Consumer;
 
-[ProcessStep(DisplayName = "Broken", Description = "Has an empty version.", Version = "")]
+[ProcessStep(DisplayName = "Broken", Description = "")]
 public sealed record BrokenStep : IProcessStep;
 "@ | Set-Content (Join-Path $coreDir "Violation.cs")
 
     $broken = & dotnet build $coreDir -nologo 2>&1 | Out-String
-    if ($LASTEXITCODE -eq 0 -or $broken -notmatch '\bKAL2001\b') { $failures.Add("A [ProcessStep] with an empty Version did not fail with KAL2001:`n$broken") }
+    if ($LASTEXITCODE -eq 0 -or $broken -notmatch '\bKAL2001\b') { $failures.Add("A [ProcessStep] with an empty Description did not fail with KAL2001:`n$broken") }
 
     # --- 6. The host consumer: build, start, answer, stop ---------------------------------------------
     $built = & dotnet build $hostDir -nologo --no-restore 2>&1 | Out-String

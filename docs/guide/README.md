@@ -39,7 +39,7 @@ flowchart LR
 | Page | What you learn |
 |---|---|
 | [Getting started](getting-started.md) | A service from zero: a query source, two steps, HTTP, then MCP |
-| [Processes](processes.md) | Steps, handlers, relationships, outcomes, versions |
+| [Processes](processes.md) | Steps, handlers, relationships, outcomes, changing a step |
 | [Queries](queries.md) | Sources, views, query contexts, paging and counting, delegated sources |
 | [Information requests](information-requests.md) | Questions decided at runtime, conditional questions |
 | [Callers and correlation](callers-and-correlation.md) | Authorization, call credentials, request and process ids across services |

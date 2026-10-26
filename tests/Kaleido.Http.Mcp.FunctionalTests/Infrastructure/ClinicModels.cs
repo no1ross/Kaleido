@@ -31,7 +31,6 @@ public sealed class PatientQueryContext : IQueryContext
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Patients",
     Description = "Patients registered at the clinic.",
     DefaultSortField = nameof(PatientQueryContext.Id))]
@@ -59,7 +58,6 @@ public sealed class ChartQueryContext : IQueryContext
 }
 
 [QuerySource(
-    Version = "1.0.0",
     DisplayName = "Charts",
     Description = "Clinical charts; doctors only.")]
 [KaleidoAuthorization(Roles = ClinicRoles.Doctor)]
@@ -127,7 +125,7 @@ public static class VisitQuestions
     };
 }
 
-[ProcessStep(Version = "1.0", DisplayName = "Start visit", Description = "Opens a visit for a patient.")]
+[ProcessStep(DisplayName = "Start visit", Description = "Opens a visit for a patient.")]
 public sealed record StartVisitStep : IProcessStep
 {
     [Required]
@@ -146,7 +144,7 @@ public sealed class StartVisitHandler : IProcessStepHandler<StartVisitStep>
                 processStep.PatientId == VisitQuestions.ConditionalPatientId ? VisitQuestions.Conditional : VisitQuestions.Request));
 }
 
-[ProcessStep(Version = "1.0", DisplayName = "Visit questions", Description = "Answers the visit intake questions.")]
+[ProcessStep(DisplayName = "Visit questions", Description = "Answers the visit intake questions.")]
 public sealed record VisitQuestionsStep : IInformationStep
 {
     public string InformationRequestId { get; init; } = string.Empty;
@@ -163,7 +161,7 @@ public sealed class VisitQuestionsHandler : IProcessStepHandler<VisitQuestionsSt
         Task.FromResult(ProcessStepHandlerResult.Success<CloseVisitStep>());
 }
 
-[ProcessStep(Version = "1.0", DisplayName = "Close visit", Description = "Closes the visit.", Destructive = true, RequiresConfirmation = true)]
+[ProcessStep(DisplayName = "Close visit", Description = "Closes the visit.", Destructive = true, RequiresConfirmation = true)]
 [AvailableAfter<VisitQuestionsStep>]
 public sealed record CloseVisitStep : IProcessStep
 {

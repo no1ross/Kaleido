@@ -66,7 +66,6 @@ public sealed class KaleidoEventPayloadWriterTests
             {
                 OccurredOn = DateTimeOffset.UtcNow,
                 StepName = "CaptureMember",
-                StepVersion = "1.0",
                 Request = request,
                 Response = response,
                 DecisionType = ExecutionDecisionType.Continue,

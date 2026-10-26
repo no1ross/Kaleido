@@ -57,7 +57,6 @@ internal sealed partial class QueryableRegistry : IQueryableRegistry
             Name = metadata.Name,
             Description = metadata.Description,
             DisplayName = metadata.DisplayName,
-            Version = metadata.Version,
             Source = metadata.Source,
             Pageable = metadata.Pageable,
             Authorization = metadata.Authorization,
@@ -114,7 +113,6 @@ internal sealed partial class QueryableRegistry : IQueryableRegistry
                 ?? sourceAuthorization,
             Description = registration.Metadata.Description,
             DisplayName = registration.Metadata.DisplayName,
-            Version = registration.Metadata.Version,
             Pageable = registration.Metadata.Pageable,
             Parameters = registration.Metadata.Parameters?
                 .Select(Project)

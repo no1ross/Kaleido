@@ -6,7 +6,7 @@ public sealed class ProcessRequestTests
     : SutFixture
 {
 
-    [ProcessStep(DisplayName = "My step", Description = "My step description.", Version = "1.0")]
+    [ProcessStep(DisplayName = "My step", Description = "My step description.")]
     private sealed class MyStep : IProcessStep
     {
         public int Value { get; init; }

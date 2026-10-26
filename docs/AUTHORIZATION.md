@@ -68,14 +68,14 @@ an `IClaimsTransformation`), so every surface sees the same values.
 ## Capability authorization
 
 ```csharp
-[ProcessStep(Version = "1.0.0", DisplayName = "...", Description = "...")]
+[ProcessStep(DisplayName = "...", Description = "...")]
 public sealed record CaptureMemberStep : IProcessStep;           // service default; Authenticated: any logged-in user
 
-[ProcessStep(Version = "1.0.0", DisplayName = "...", Description = "...")]
+[ProcessStep(DisplayName = "...", Description = "...")]
 [KaleidoAuthorization(Roles = "radiology")]
 public sealed record ApproveStep : IProcessStep;                 // logged in + role
 
-[ProcessStep(Version = "1.0.0", DisplayName = "...", Description = "...")]
+[ProcessStep(DisplayName = "...", Description = "...")]
 [KaleidoAuthorization(AllowAnonymous = true)]
 public sealed record AddItemToCartStep : IProcessStep;           // no login needed
 ```

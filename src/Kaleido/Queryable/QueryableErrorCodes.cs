@@ -11,7 +11,7 @@ public static class QueryableErrorCodes
 
     /// <summary>
     /// A query source or view is missing its required attribute ([QuerySource] or [QueryView]),
-    /// or the attribute has an empty Version, DisplayName or Description.
+    /// or the attribute has an empty DisplayName or Description.
     /// </summary>
     public const string MissingAttribute = "qry_missing_attribute";
 

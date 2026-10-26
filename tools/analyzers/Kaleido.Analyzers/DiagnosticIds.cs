@@ -8,13 +8,13 @@ internal static class DiagnosticIds
 {
     // Attribute validity rules (KAL2001–KAL2003)
 
-    /// <summary>[ProcessStep] Version, DisplayName, and Description must be non-empty strings.</summary>
+    /// <summary>[ProcessStep] DisplayName and Description must be non-empty strings.</summary>
     public const string ProcessStepAttributeValidity = "KAL2001";
 
-    /// <summary>[QuerySource] Version, DisplayName, and Description must be non-empty strings.</summary>
+    /// <summary>[QuerySource] DisplayName and Description must be non-empty strings.</summary>
     public const string QuerySourceAttributeValidity = "KAL2002";
 
-    /// <summary>[QueryView] Version, DisplayName, and Description must be non-empty strings.</summary>
+    /// <summary>[QueryView] DisplayName and Description must be non-empty strings.</summary>
     public const string QueryViewAttributeValidity = "KAL2003";
 
     /// <summary>Step handler catch (Exception) must filter OperationCanceledException.</summary>
