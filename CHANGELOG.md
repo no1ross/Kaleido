@@ -105,6 +105,9 @@ sections.
   - test: KAL1012 and KAL1013 are now KAL1011 and KAL1012.
 
 ### Added
+- **Deployment modes are stated** (#449): framework-dependent and self-contained publishing are
+  supported; trimmed and NativeAOT publishing are not, since discovery and dispatch use reflection
+  ([VERSIONING.md](docs/VERSIONING.md#deployment-modes)).
 - **An enforced confirmation round in the MCP adapter** (#439): with `Kaleido:Mcp:RequireConfirmation`
   (off by default), a step declared `RequiresConfirmation` runs only after the user accepts a form the
   adapter shows (in the session, or as an MRTR round), whichever tool reaches it; declining runs
