@@ -91,6 +91,13 @@ When a contract must change, also update:
 - the matching client method in `Kaleido.Http.Client`
 - the matching tests in `Kaleido.Http.FunctionalTests`
 
+Some contracts carry core types as they are: `InformationRequest`, `ProcessMessage`, `KaleidoCaller`,
+the Process state enums, `AuthorizationMetadata`, `FilterOperator`/`MatchMode` (field metadata) and
+`QueryResult<T>`. They are part of this contract surface too: a change to one of them is a wire
+change, and `KaleidoJsonOptionsTests` fixes their JSON. The inventory, and the small amount of
+behavior this project holds on purpose (the registry snapshot stores, header sanitizing,
+`ToApiBody()`), are in the [ADR 0017 amendment](../../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds).
+
 ---
 
 ## Where to look

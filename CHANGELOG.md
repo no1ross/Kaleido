@@ -130,6 +130,12 @@ sections.
 - Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
 
 ### Changed
+- **The core shapes on the wire are named as wire contracts** (#448, ADR 0017 amendment):
+  `InformationRequest`, `ProcessMessage`, `KaleidoCaller`, the Process state enums,
+  `AuthorizationMetadata`, `FilterOperator`/`MatchMode` and `QueryResult<T>` travel as they are and
+  change additively only after 1.0; snapshot tests fix their JSON. The behavior
+  `Kaleido.Http.Abstractions` holds on purpose (registry snapshot stores, header sanitizing,
+  `ToApiBody()`) is recorded, and the contributor guides match the code.
 - **The full samples live in their own repositories** (#95):
   [Kaleido-Samples-PriorAuth](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and
   [Kaleido-Samples-ECommerce](https://github.com/no1ross/Kaleido-Samples-ECommerce), consuming the
