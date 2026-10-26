@@ -62,6 +62,24 @@ Each package records its public API in two files in its project's `.PublicAPI` f
   runtime the tests run on.
 - Changing the target framework, or adding one, is a maintainer decision recorded in an issue.
 
+### Deployment modes
+
+| Publish mode | 1.0 |
+|---|---|
+| Framework-dependent or self-contained (JIT) | Supported |
+| Trimmed (`PublishTrimmed`) | **Not supported** |
+| NativeAOT (`PublishAot`) | **Not supported** |
+
+Kaleido discovers steps, handlers, sources and views by scanning the configured assemblies, and it
+dispatches to them, maps their endpoints, serializes their types and validates their inputs by
+reflection (generic methods closed at run time, reflection-based JSON and DataAnnotations, expression
+trees for queries). Trimming removes types that are only reached that way, and NativeAOT cannot
+create those generic instantiations at run time. The packages are not marked `IsTrimmable` or
+`IsAotCompatible`, carry no trimming annotations, and no publish test covers either mode (#449).
+Supporting them would take compile-time generation of the registration, dispatch, endpoints and JSON
+contracts: a new feature, which a later version could add as an opt-in without breaking the
+reflection path.
+
 ## Decided at 1.0
 
 The 1.0 contract freeze ([#241](https://github.com/no1ross/Kaleido/issues/241)) decides:
