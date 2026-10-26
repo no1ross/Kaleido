@@ -13,6 +13,13 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Capabilities have no version** (#474, [ADR 0029](docs/decisions/0029-capabilities-have-no-version.md)):
+  remove `Version = ...` from every `[ProcessStep]`, `[QuerySource]` and `[QueryView]` (KAL2001-KAL2003
+  now require only `DisplayName` and `Description`). The name is the identity; a breaking change
+  takes a new name, as before. The version is gone from the registry and wire contracts (step
+  contract, step history, source and view responses), the process state (`StepContext`; recreate
+  SQLite development databases), the events (`StepCompleted` and the `PlanBuilt` candidates no
+  longer carry a step version) and the telemetry (`kaleido.processor.step_version`).
 - **Stores are chosen explicitly** (#438, [ADR 0028](docs/decisions/0028-stores-are-chosen-explicitly.md)):
   a host that leaves a store it uses at the in-memory default no longer starts
   (`stores_not_chosen`): the context and idempotency stores when the service has process steps, the

@@ -9,7 +9,7 @@ public sealed class ProcessorContextTests
         new() { ProcessId = Guid.NewGuid(), ProcessorName = "intake", Steps = steps };
 
     private static StepContext Step(string name, StepExecutionStatus status) =>
-        new() { StepName = name, Version = "1.0.0", Status = status };
+        new() { StepName = name, Status = status };
 
     [Theory]
     [InlineData("CaptureMember")]

@@ -75,10 +75,10 @@ public sealed class ReturnsHost : IAsyncDisposable
     }
 }
 
-[ProcessStep(Version = "1.0.0", DisplayName = "Open return", Description = "Opens the return of an order handed over by the orders service.")]
+[ProcessStep(DisplayName = "Open return", Description = "Opens the return of an order handed over by the orders service.")]
 public sealed record OpenReturnStep : IProcessStep;
 
-[ProcessStep(Version = "1.0.0", DisplayName = "Receive return", Description = "Records that the returned goods arrived.")]
+[ProcessStep(DisplayName = "Receive return", Description = "Records that the returned goods arrived.")]
 [DependsOn<OpenReturnStep>]
 public sealed record ReceiveReturnStep : IProcessStep;
 

@@ -53,8 +53,7 @@ internal sealed class ProcessorStepInvoker(
         using var handlerObservation =
             observability.BeginHandler(
                 new ProcessorHandlerObservationDetails(
-                    registration.Metadata.Name,
-                    registration.Metadata.Version));
+                    registration.Metadata.Name));
 
         using var scope =
             scopeFactory.CreateScope();

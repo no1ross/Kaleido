@@ -30,7 +30,7 @@ public sealed class QueryableIdentityAnalyzer : DiagnosticAnalyzer
         new(
             DiagnosticIds.QueryableMissingAttribute,
             "Queryable capability must have its attribute",
-            "{0} '{1}' is missing the required [{2}] attribute (Version, DisplayName, Description)",
+            "{0} '{1}' is missing the required [{2}] attribute (DisplayName, Description)",
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,

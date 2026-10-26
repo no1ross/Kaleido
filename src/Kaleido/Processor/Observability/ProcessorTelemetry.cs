@@ -37,8 +37,8 @@ public static class ProcessorTelemetry
         "kaleido.processor.execute";
 
     /// <summary>
-    /// The activity for one step run within an execution, tagged with <see cref="TagStepName"/>,
-    /// <see cref="TagStepVersion"/> and <see cref="TagStepKind"/>, and with
+    /// The activity for one step run within an execution, tagged with <see cref="TagStepName"/>
+    /// and <see cref="TagStepKind"/>, and with
     /// <see cref="TagDecisionType"/> and <see cref="TagExecutionStatus"/> once the step's outcome is
     /// recorded. Marked as an error when the step fails.
     /// </summary>
@@ -47,7 +47,7 @@ public static class ProcessorTelemetry
 
     /// <summary>
     /// The activity for one invocation of a step's handler, inside the step's activity, tagged with
-    /// <see cref="TagStepName"/> and <see cref="TagStepVersion"/>. Marked as an error when the handler
+    /// <see cref="TagStepName"/>. Marked as an error when the handler
     /// throws (other than a cancellation).
     /// </summary>
     public const string StepHandlerActivityName =
@@ -110,13 +110,6 @@ public static class ProcessorTelemetry
     /// </summary>
     public const string TagStepName =
         "kaleido.processor.step_name";
-
-    /// <summary>
-    /// The step's declared version. Set on the step and handler activities, and a tag of the
-    /// step-level metrics when the version is not empty.
-    /// </summary>
-    public const string TagStepVersion =
-        "kaleido.processor.step_version";
 
     /// <summary>The number of steps submitted in the execution request, on the execute activity.</summary>
     public const string TagSubmittedStepCount =
@@ -215,8 +208,7 @@ public static class ProcessorTelemetry
 
     /// <summary>
     /// Counter: step runs started, whatever their outcome. Tagged with the processor name,
-    /// <see cref="TagStepName"/> and, when not empty, <see cref="TagStepVersion"/> (as are all
-    /// step-level metrics).
+    /// <see cref="TagStepName"/> (as are all step-level metrics).
     /// </summary>
     public const string StepExecutionsCounterName =
         "kaleido.processor.step_executions";

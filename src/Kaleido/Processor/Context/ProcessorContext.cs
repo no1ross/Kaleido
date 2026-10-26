@@ -231,18 +231,6 @@ public sealed record StepContext
         = string.Empty;
 
     /// <summary>
-    /// The version of the step's definition (its <c>[ProcessStep]</c> <c>Version</c>) that last ran;
-    /// for a step that has not run yet, the deployed one. A step that ran keeps it across deployments
-    /// (ADR 0026).
-    /// </summary>
-    public string Version
-    {
-        get;
-        init;
-    }
-        = string.Empty;
-
-    /// <summary>
     /// Last known execution status for this step.
     /// </summary>
     public StepExecutionStatus Status

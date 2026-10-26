@@ -299,7 +299,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata { Name = "Test-Step", Description = "Test step", Version = "1.0.0", DisplayName = "Test Step", Authorization = authorization ?? AuthorizationMetadata.Unspecified });
+            new ProcessStepMetadata { Name = "Test-Step", Description = "Test step", DisplayName = "Test Step", Authorization = authorization ?? AuthorizationMetadata.Unspecified });
 
         var registry = new Mock<IProcessorStepRegistry>();
         registry.Setup(x => x.Registrations).Returns([registration]);
@@ -320,7 +320,6 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                     {
                         Name = "Test-Step",
                         Description = "Test step",
-                        Version = "1.0.0",
                         DisplayName = "Test Step",
                         Repeatable = false
                     }
@@ -331,7 +330,6 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                     {
                         Name = "Test-Step",
                         Description = "Test step",
-                        Version = "1.0.0",
                         DisplayName = "Test Step",
                         Repeatable = false
                     }
@@ -358,7 +356,6 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                 Name = "Test-Context",
                 Description = "Test Context",
                 DisplayName = "Test Context",
-                Version = "1.0.0",
                 Source = "Unit Test",
                 Views =
                 [
@@ -370,7 +367,6 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
                         Name = "Test-View",
                         Description = "Test View",
                         DisplayName = "Test View",
-                        Version = "1.0.0",
                         Authorization = viewAuthorization ?? AuthorizationMetadata.Unspecified
                     }
                 ]

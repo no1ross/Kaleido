@@ -18,7 +18,7 @@ public sealed class QueryViewRegistrationTests
         var parameter = new QueryParameterMetadata { Name = "Category", Type = typeof(string), DataType = TestDataType, Constraints = [], Description = "Category description" };
         var outputField = new QueryOutputFieldMetadata { Name = "Code", Description = "Code description", Type = typeof(string), DataType = TestDataType };
         var pageable = new PageableMetadata(10, 20);
-        var metadata = new QueryViewMetadata("grid", "1.0.0", "Grid", "Grid description", pageable, [parameter], [outputField]);
+        var metadata = new QueryViewMetadata("grid", "Grid", "Grid description", pageable, [parameter], [outputField]);
         var registration = CreateSut(metadata);
 
         Assert.Equal(typeof(TestView), registration.QueryViewType);

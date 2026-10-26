@@ -87,7 +87,6 @@ public interface ILocalQuerySource<TQueryContext>
 /// <example>
 /// <code>
 /// [QuerySource(
-///     Version = "1.0.0",
 ///     DisplayName = "Members",
 ///     Description = "Member enrollments, searchable by member number and name.")]
 /// internal sealed class MemberQuerySource(MemberDbContext db)

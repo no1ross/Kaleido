@@ -29,7 +29,7 @@ public sealed class ProcessorStateUpdaterTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata { Name = "test-step", Description = "desc", Version = "1.0", DisplayName = "display" });
+            new ProcessStepMetadata { Name = "test-step", Description = "desc", DisplayName = "display" });
 
         _registry.Setup(r => r.Registrations).Returns([registration]);
 
@@ -40,7 +40,6 @@ public sealed class ProcessorStateUpdaterTests
         Assert.Equal(ProcessExecutionState.Active, result.State);
         Assert.Single(result.Steps);
         Assert.Equal("test-step", result.Steps.First().StepName);
-        Assert.Equal("1.0", result.Steps.First().Version);
         Assert.Equal(StepExecutionStatus.Pending, result.Steps.First().Status);
     }
 
@@ -83,7 +82,7 @@ public sealed class ProcessorStateUpdaterTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata { Name = "new-step", Description = "desc", Version = "1.0", DisplayName = "display" });
+            new ProcessStepMetadata { Name = "new-step", Description = "desc", DisplayName = "display" });
 
         _registry.Setup(r => r.Registrations).Returns([newRegistration]);
 
@@ -95,10 +94,9 @@ public sealed class ProcessorStateUpdaterTests
     }
 
     // ---------------------------------------------------------------------------
-    // Versions across a deployment (ADR 0026): a step keeps the version it ran with; a step that has
-    // not run follows the deployed definition.
+    // A deployment (ADR 0026, ADR 0029): a process continues on the deployed definition.
 
-    private static ProcessStepRegistration Registered(string name, string version, bool repeatable = false) =>
+    private static ProcessStepRegistration Registered(string name) =>
         new(
             typeof(object),
             typeof(object),
@@ -106,72 +104,41 @@ public sealed class ProcessorStateUpdaterTests
             [],
             [],
             [],
-            new RepeatableOptions { Enabled = repeatable },
-            new ProcessStepMetadata { Name = name, Description = "desc", Version = version, DisplayName = name });
+            new RepeatableOptions { Enabled = false },
+            new ProcessStepMetadata { Name = name, Description = "desc", DisplayName = name });
 
-    [Fact]
-    public void Reconcile_AStepThatHasNotRun_FollowsTheDeployedVersion()
-    {
-        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step", Version = "1.0" }] };
-        _registry.Setup(r => r.Registrations).Returns([Registered("test-step", "2.0")]);
-
-        Assert.Equal("2.0", Sut.Reconcile(context).Steps.Single().Version);
-    }
-
-    [Fact]
-    public void Reconcile_AStepThatRan_KeepsTheVersionItRanWith()
-    {
-        var ran = new StepContext { StepName = "test-step", Version = "1.0", Status = StepExecutionStatus.Completed, FirstExecuted = DateTimeOffset.UtcNow, LastExecuted = DateTimeOffset.UtcNow };
-        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [ran] };
-        _registry.Setup(r => r.Registrations).Returns([Registered("test-step", "2.0")]);
-
-        Assert.Equal("1.0", Sut.Reconcile(context).Steps.Single().Version);
-    }
-
-    // Each attempt records the version that ran: a repeatable step run again after the deployment.
-    [Theory]
-    [InlineData(ExecutionDecisionType.Continue)]
-    [InlineData(ExecutionDecisionType.BusinessFailure)]
-    public void ApplyExecution_RecordsTheVersionThatRan(ExecutionDecisionType decision)
-    {
-        var ran = new StepContext { StepName = "test-step", Version = "1.0", Status = StepExecutionStatus.Completed, LastExecuted = DateTimeOffset.UtcNow };
-        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [ran] };
-        var candidate = new StepCandidate { StepName = "test-step", Registration = Registered("test-step", "2.0", repeatable: true) };
-
-        Assert.Equal("2.0", Sut.ApplyExecution(context, candidate, new ExecutionDecision { Type = decision }).Steps.Single().Version);
-    }
-
-    [Fact]
-    public void ApplyException_And_ApplyCancellation_RecordTheVersionThatRan()
-    {
-        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step", Version = "1.0" }] };
-        var candidate = new StepCandidate { StepName = "test-step", Registration = Registered("test-step", "2.0") };
-
-        Assert.Equal("2.0", Sut.ApplyException(context, candidate).Steps.Single().Version);
-        Assert.Equal("2.0", Sut.ApplyCancellation(context, candidate).Steps.Single().Version);
-    }
-
-    // A process started on 1.0 continues on the deployed 2.0 definition: history keeps what ran,
-    // the next steps run (and are recorded) at 2.0, a new step appears, a removed one stays in history.
+    // History keeps what ran, the next step runs on the deployed definition, a new step appears and
+    // a removed one stays in history.
     [Fact]
     public void AProcessSpanningADeployment_KeepsItsHistory_AndContinuesOnTheDeployedDefinition()
     {
-        _registry.Setup(r => r.Registrations).Returns([Registered("capture", "1.0"), Registered("review", "1.0"), Registered("legacy", "1.0")]);
+        _registry.Setup(r => r.Registrations).Returns([Registered("capture"), Registered("review"), Registered("legacy")]);
         var started = Sut.ApplyExecution(
             Sut.Initialize(Guid.NewGuid()),
-            new StepCandidate { StepName = "capture", Registration = Registered("capture", "1.0") },
+            new StepCandidate { StepName = "capture", Registration = Registered("capture") },
             new ExecutionDecision { Type = ExecutionDecisionType.Continue });
 
-        // Deployment: capture and review move to 2.0, legacy is removed, submit is new.
-        _registry.Setup(r => r.Registrations).Returns([Registered("capture", "2.0"), Registered("review", "2.0"), Registered("submit", "2.0")]);
+        // Deployment: legacy is removed, submit is new.
+        _registry.Setup(r => r.Registrations).Returns([Registered("capture"), Registered("review"), Registered("submit")]);
         var resumed = Sut.Reconcile(started);
-        var reviewed = Sut.ApplyExecution(resumed, new StepCandidate { StepName = "review", Registration = Registered("review", "2.0") }, new ExecutionDecision { Type = ExecutionDecisionType.Continue });
+        var reviewed = Sut.ApplyExecution(resumed, new StepCandidate { StepName = "review", Registration = Registered("review") }, new ExecutionDecision { Type = ExecutionDecisionType.Continue });
 
-        var versions = reviewed.Steps.ToDictionary(x => x.StepName, x => (x.Version, x.Status), StringComparer.Ordinal);
-        Assert.Equal(("1.0", StepExecutionStatus.Completed), versions["capture"]);
-        Assert.Equal(("2.0", StepExecutionStatus.Completed), versions["review"]);
-        Assert.Equal(("2.0", StepExecutionStatus.Pending), versions["submit"]);
-        Assert.Equal(("1.0", StepExecutionStatus.Pending), versions["legacy"]);
+        var statuses = reviewed.Steps.ToDictionary(x => x.StepName, x => x.Status, StringComparer.Ordinal);
+        Assert.Equal(StepExecutionStatus.Completed, statuses["capture"]);
+        Assert.Equal(StepExecutionStatus.Completed, statuses["review"]);
+        Assert.Equal(StepExecutionStatus.Pending, statuses["submit"]);
+        Assert.Equal(StepExecutionStatus.Pending, statuses["legacy"]);
+    }
+
+    // A step already in the process is not added again.
+    [Fact]
+    public void Reconcile_KeepsAKnownStepAsItIs()
+    {
+        var ran = new StepContext { StepName = "test-step", Status = StepExecutionStatus.Completed, LastExecuted = DateTimeOffset.UtcNow };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [ran] };
+        _registry.Setup(r => r.Registrations).Returns([Registered("TEST-STEP")]);
+
+        Assert.Equal(ran, Assert.Single(Sut.Reconcile(context).Steps));
     }
 
     [Fact]
@@ -249,7 +216,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ]
         };
         var candidate = new StepCandidate { StepName = "test-step" };
@@ -268,7 +235,7 @@ public sealed class ProcessorStateUpdaterTests
         ProcessId = Guid.NewGuid(),
         ProcessorName = "test",
         UpdatedBy = caller,
-        Steps = [step ?? new StepContext { StepName = "test-step", Version = "1.0" }],
+        Steps = [step ?? new StepContext { StepName = "test-step" }],
     };
 
     [Fact]
@@ -287,7 +254,7 @@ public sealed class ProcessorStateUpdaterTests
     public void ApplyExecution_ALaterAttempt_KeepsWhoStartedTheStepAndWhen()
     {
         var firstExecuted = DateTimeOffset.UtcNow.AddHours(-1);
-        var started = new StepContext { StepName = "test-step", Version = "1.0", FirstExecuted = firstExecuted, StartedBy = Alice, LastExecuted = firstExecuted, LastUpdatedBy = Alice };
+        var started = new StepContext { StepName = "test-step", FirstExecuted = firstExecuted, StartedBy = Alice, LastExecuted = firstExecuted, LastUpdatedBy = Alice };
 
         var result = Sut.ApplyExecution(RanBy(Bob, started), new StepCandidate { StepName = "test-step" }, new ExecutionDecision { Type = ExecutionDecisionType.Continue });
 
@@ -331,7 +298,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ]
         };
         var candidate = new StepCandidate { StepName = "test-step" };
@@ -351,7 +318,7 @@ public sealed class ProcessorStateUpdaterTests
     [InlineData(ExecutionDecisionType.HandOff, ProcessExecutionState.HandOff)]
     public void ApplyExecution_MapsEachDecisionToItsState(ExecutionDecisionType decisionType, ProcessExecutionState expected)
     {
-        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step", Version = "1.0" }] };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step" }] };
 
         var result = Sut.ApplyExecution(context, new StepCandidate { StepName = "test-step" }, new ExecutionDecision { Type = decisionType });
 
@@ -361,7 +328,7 @@ public sealed class ProcessorStateUpdaterTests
     [Fact]
     public void ApplyExecution_ForADecisionWithoutAProcessState_ThrowsAFrameworkException()
     {
-        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step", Version = "1.0" }] };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step" }] };
 
         var exception =
             Assert.Throws<Kaleido.Exceptions.KaleidoFrameworkException>(() =>
@@ -380,7 +347,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ]
         };
         var candidate = new StepCandidate { StepName = "test-step" };
@@ -407,7 +374,7 @@ public sealed class ProcessorStateUpdaterTests
         {
             ProcessId = Guid.NewGuid(),
             ProcessorName = "test",
-            Steps = [new StepContext { StepName = "test-step", Version = "1.0" }]
+            Steps = [new StepContext { StepName = "test-step" }]
         };
         var decision = ExecutionDecision.AwaitingInformation("info-step", request);
 
@@ -427,7 +394,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             RequiredStep = "info-step",
             RequiredInformationRequest = new InformationRequest { InformationRequestId = "out-of-network" },
-            Steps = [new StepContext { StepName = "info-step", Version = "1.0" }]
+            Steps = [new StepContext { StepName = "info-step" }]
         };
 
         var result =
@@ -449,7 +416,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             RequiredStep = "info-step",
             RequiredInformationRequest = new InformationRequest { InformationRequestId = "out-of-network" },
-            Steps = [new StepContext { StepName = "info-step", Version = "1.0" }]
+            Steps = [new StepContext { StepName = "info-step" }]
         };
 
         var result = Sut.ApplyException(context, new StepCandidate { StepName = "info-step" });
@@ -466,7 +433,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ],
             UpdatedUtc = DateTime.UtcNow.AddDays(-1)
         };
@@ -522,7 +489,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ]
         };
         var candidate = new StepCandidate { StepName = "test-step" };
@@ -542,7 +509,7 @@ public sealed class ProcessorStateUpdaterTests
             State = ProcessExecutionState.AwaitingStepSelection,
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ]
         };
         var candidate = new StepCandidate { StepName = "test-step" };
@@ -561,7 +528,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ],
             RequiredStep = "required",
             TargetProcessorName = "target",
@@ -583,7 +550,7 @@ public sealed class ProcessorStateUpdaterTests
         {
             ProcessId = Guid.NewGuid(),
             ProcessorName = "test",
-            Steps = [new StepContext { StepName = "test-step", Version = "1.0" }]
+            Steps = [new StepContext { StepName = "test-step" }]
         };
 
         var result = Sut.ApplyExecution(context, new StepCandidate { StepName = "test-step" }, ExecutionDecision.BusinessFailure());
@@ -634,7 +601,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ]
         };
         var candidate = new StepCandidate { StepName = "test-step" };
@@ -653,7 +620,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ]
         };
         var candidate = new StepCandidate { StepName = "test-step" };
@@ -672,7 +639,7 @@ public sealed class ProcessorStateUpdaterTests
             ProcessorName = "test",
             Steps =
             [
-                new StepContext { StepName = "test-step", Version = "1.0" }
+                new StepContext { StepName = "test-step" }
             ],
             RequiredStep = "required",
             TargetProcessorName = "target",

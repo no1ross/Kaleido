@@ -55,7 +55,7 @@ Registration invariants:
   - sources: `IQuerySource<T>`, `IQuerySourceAsync<T>`, `IDelegatedQuerySource<…>`;
   - views: `IQueryViewSource<TSource, …>`, `IQueryViewSourceAsync<TSource, …>`.
 
-  Every source needs `[QuerySource]` and every view `[QueryView]`, each with a non-empty `Version`, `DisplayName` and `Description`.
+  Every source needs `[QuerySource]` and every view `[QueryView]`, each with a non-empty `DisplayName` and `Description`.
 - **Names are type names:** source names are unique per service; view names are unique per source.
 - **A type is exactly one capability:** one source shape (sync xor async, one query context; local xor delegated) or one view shape. A view must reference a registered local source.
 - **A query context may back several sources.** Sources are registered and resolved by their concrete type, never as `IQuerySource<T>`.
@@ -71,7 +71,7 @@ Process is step-centric, not query-centric. Do not import Queryable terminology 
 
 Registration invariants:
 - `AddKaleido()` must be called before `AddProcessor(...)`
-- A step is identified by `IProcessStep`; `[ProcessStep]` only describes it. Every `IProcessStep` type needs `[ProcessStep]` with a non-empty `Version`, `DisplayName`, and `Description`, and `[ProcessStep]` is only valid on `IProcessStep` types
+- A step is identified by `IProcessStep`; `[ProcessStep]` only describes it. Every `IProcessStep` type needs `[ProcessStep]` with a non-empty `DisplayName` and `Description`, and `[ProcessStep]` is only valid on `IProcessStep` types
 - A step's name is its type name (`Type.Name`, unmodified); step type names must be unique across the assembly scan
 - Inside the runtime the next step is typed (`Success<TNext>()`, `Type` through invoker → evaluator); step names are produced only at the boundary (state, events, responses)
 - Every discovered step must have exactly one handler

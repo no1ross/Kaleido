@@ -55,7 +55,6 @@ internal sealed partial class ProcessStateService(
                         new ProcessStepHistory
                         {
                             StepName = x.StepName,
-                            Version = x.Version,
                             Status = x.Status,
                             FirstExecuted = x.FirstExecuted,
                             StartedBy = x.StartedBy,

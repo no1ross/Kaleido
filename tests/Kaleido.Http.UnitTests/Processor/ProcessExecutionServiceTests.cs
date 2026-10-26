@@ -551,7 +551,7 @@ public sealed class ProcessExecutionServiceTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata { Name = nameof(TypedInputStep), Description = "Typed input", Version = "1.0.0", DisplayName = "Typed input" });
+            new ProcessStepMetadata { Name = nameof(TypedInputStep), Description = "Typed input", DisplayName = "Typed input" });
         var registry = new Mock<IProcessorStepRegistry>();
         registry.Setup(x => x.Find(It.Is<string>(n => string.Equals(n, nameof(TypedInputStep), StringComparison.OrdinalIgnoreCase)))).Returns(registration);
         return registry.Object;
@@ -633,7 +633,7 @@ public sealed class ProcessExecutionServiceTests
             [],
             [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata { Name = "Test-Step", Description = "Test step", Version = "1.0.0", DisplayName = "Test Step" });
+            new ProcessStepMetadata { Name = "Test-Step", Description = "Test step", DisplayName = "Test Step" });
 
     public sealed record TestStep : IProcessStep;
     public sealed record TestResponse;

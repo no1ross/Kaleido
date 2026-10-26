@@ -81,13 +81,11 @@ internal sealed record ProcessorExecutionObservationDetails(
 [ExcludeFromCodeCoverage]
 internal sealed record ProcessorStepObservationDetails(
     string StepName,
-    string? StepVersion,
     bool IsInformationStep = false);
 
 [ExcludeFromCodeCoverage]
 internal sealed record ProcessorHandlerObservationDetails(
-    string StepName,
-    string? StepVersion);
+    string StepName);
 
 internal sealed partial class ProcessorObservability(
     IKaleidoCorrelationContextAccessor correlationAccessor,
@@ -220,14 +218,13 @@ internal sealed partial class ProcessorObservability(
                 ActivityKind.Internal);
 
         activity?.SetTag(ProcessorTelemetry.TagStepName, details.StepName);
-        activity?.SetTag(ProcessorTelemetry.TagStepVersion, details.StepVersion);
         activity?.SetTag(ProcessorTelemetry.TagStepKind, details.IsInformationStep ? "information" : "properties");
 
         ProcessStepExecutionsCounter.Add(
             1,
-            CreateStepTags(_processorName, details.StepName, details.StepVersion));
+            CreateStepTags(_processorName, details.StepName));
 
-        LogStepStarted(logger, _processorName, details.StepName, details.StepVersion);
+        LogStepStarted(logger, _processorName, details.StepName);
 
         return new ProcessStepObservation(
             activity,
@@ -247,13 +244,12 @@ internal sealed partial class ProcessorObservability(
                 ActivityKind.Internal);
 
         activity?.SetTag(ProcessorTelemetry.TagStepName, details.StepName);
-        activity?.SetTag(ProcessorTelemetry.TagStepVersion, details.StepVersion);
 
         ProcessHandlerExecutionsCounter.Add(
             1,
-            CreateStepTags(_processorName, details.StepName, details.StepVersion));
+            CreateStepTags(_processorName, details.StepName));
 
-        LogHandlerStarted(logger, _processorName, details.StepName, details.StepVersion);
+        LogHandlerStarted(logger, _processorName, details.StepName);
 
         return new ProcessHandlerObservation(
             activity,
@@ -264,19 +260,13 @@ internal sealed partial class ProcessorObservability(
 
     private static TagList CreateStepTags(
         string processorName,
-        string stepName,
-        string? stepVersion)
+        string stepName)
     {
         TagList tags =
         [
             new(KaleidoTelemetryTags.ProcessorName, processorName),
             new(ProcessorTelemetry.TagStepName, stepName),
         ];
-
-        if (!string.IsNullOrWhiteSpace(stepVersion))
-        {
-            tags.Add(ProcessorTelemetry.TagStepVersion, stepVersion);
-        }
 
         return tags;
     }
@@ -420,11 +410,11 @@ internal sealed partial class ProcessorObservability(
             activity?.SetTag(ProcessorTelemetry.TagDecisionType, decisionType);
             activity?.SetTag(ProcessorTelemetry.TagExecutionStatus, executionStatus);
 
-            var tags = CreateStepTags(processorName, details.StepName, details.StepVersion);
+            var tags = CreateStepTags(processorName, details.StepName);
             tags.Add(ProcessorTelemetry.TagDecisionType, decisionType);
             tags.Add(ProcessorTelemetry.TagExecutionStatus, executionStatus);
 
-            LogDecisionRecorded(logger, processorName, details.StepName, details.StepVersion, decisionType, executionStatus);
+            LogDecisionRecorded(logger, processorName, details.StepName, decisionType, executionStatus);
         }
 
         public void InformationRequested(
@@ -435,7 +425,7 @@ internal sealed partial class ProcessorObservability(
 
             InformationRequestsCounter.Add(
                 1,
-                CreateStepTags(processorName, details.StepName, details.StepVersion));
+                CreateStepTags(processorName, details.StepName));
 
             LogInformationRequested(logger, informationRequestId, processorName, details.StepName);
         }
@@ -446,9 +436,9 @@ internal sealed partial class ProcessorObservability(
 
             ProcessStepCancellationsCounter.Add(
                 1,
-                CreateStepTags(processorName, details.StepName, details.StepVersion));
+                CreateStepTags(processorName, details.StepName));
 
-            LogStepCanceled(logger, processorName, details.StepName, details.StepVersion);
+            LogStepCanceled(logger, processorName, details.StepName);
         }
 
         public void StepFailed(Exception exception)
@@ -460,9 +450,9 @@ internal sealed partial class ProcessorObservability(
 
             ProcessStepFailuresCounter.Add(
                 1,
-                CreateStepTags(processorName, details.StepName, details.StepVersion));
+                CreateStepTags(processorName, details.StepName));
 
-            LogStepFailed(logger, exception, processorName, details.StepName, details.StepVersion);
+            LogStepFailed(logger, exception, processorName, details.StepName);
         }
 
         public void StepValidationFailed(string code)
@@ -471,34 +461,34 @@ internal sealed partial class ProcessorObservability(
                 ProcessorTelemetry.StepValidationFailedEventName,
                 tags: new ActivityTagsCollection { [ProcessorTelemetry.TagRejectionCode] = code }));
 
-            LogStepValidationFailed(logger, processorName, details.StepName, details.StepVersion, code);
+            LogStepValidationFailed(logger, processorName, details.StepName, code);
         }
 
         public void Dispose()
         {
             ProcessStepDurationHistogram.Record(
                 Stopwatch.GetElapsedTime(_startTimestamp).TotalSeconds,
-                CreateStepTags(processorName, details.StepName, details.StepVersion));
+                CreateStepTags(processorName, details.StepName));
 
             activity?.Dispose();
         }
 
         private readonly long _startTimestamp = Stopwatch.GetTimestamp();
 
-        [LoggerMessage(Level = LogLevel.Debug, Message = "Process step decision recorded for processor {ProcessorName} step {StepName} version {StepVersion} decision {DecisionType} status {ExecutionStatus}.")]
-        private static partial void LogDecisionRecorded(ILogger logger, string processorName, string stepName, string? stepVersion, string decisionType, string executionStatus);
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Process step decision recorded for processor {ProcessorName} step {StepName} decision {DecisionType} status {ExecutionStatus}.")]
+        private static partial void LogDecisionRecorded(ILogger logger, string processorName, string stepName, string decisionType, string executionStatus);
 
         [LoggerMessage(Level = LogLevel.Debug, Message = "Information request {InformationRequestId} presented by processor {ProcessorName} step {StepName}.")]
         private static partial void LogInformationRequested(ILogger logger, string informationRequestId, string processorName, string stepName);
 
-        [LoggerMessage(Level = LogLevel.Warning, Message = "Process step execution was canceled for processor {ProcessorName} step {StepName} version {StepVersion}.")]
-        private static partial void LogStepCanceled(ILogger logger, string processorName, string stepName, string? stepVersion);
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Process step execution was canceled for processor {ProcessorName} step {StepName}.")]
+        private static partial void LogStepCanceled(ILogger logger, string processorName, string stepName);
 
-        [LoggerMessage(Level = LogLevel.Error, Message = "Process step execution failed for processor {ProcessorName} step {StepName} version {StepVersion}.")]
-        private static partial void LogStepFailed(ILogger logger, Exception exception, string processorName, string stepName, string? stepVersion);
+        [LoggerMessage(Level = LogLevel.Error, Message = "Process step execution failed for processor {ProcessorName} step {StepName}.")]
+        private static partial void LogStepFailed(ILogger logger, Exception exception, string processorName, string stepName);
 
-        [LoggerMessage(Level = LogLevel.Debug, Message = "Process step for processor {ProcessorName} step {StepName} version {StepVersion} failed validation [{Code}].")]
-        private static partial void LogStepValidationFailed(ILogger logger, string processorName, string stepName, string? stepVersion, string code);
+        [LoggerMessage(Level = LogLevel.Debug, Message = "Process step for processor {ProcessorName} step {StepName} failed validation [{Code}].")]
+        private static partial void LogStepValidationFailed(ILogger logger, string processorName, string stepName, string code);
     }
 
     private sealed partial class ProcessHandlerObservation(
@@ -517,23 +507,23 @@ internal sealed partial class ProcessorObservability(
 
             ProcessHandlerFailuresCounter.Add(
                 1,
-                CreateStepTags(processorName, details.StepName, details.StepVersion));
+                CreateStepTags(processorName, details.StepName));
 
-            LogHandlerFailed(logger, exception, processorName, details.StepName, details.StepVersion);
+            LogHandlerFailed(logger, exception, processorName, details.StepName);
         }
 
         public void Dispose() => activity?.Dispose();
 
-        [LoggerMessage(Level = LogLevel.Error, Message = "Process handler execution failed for processor {ProcessorName} step {StepName} version {StepVersion}.")]
-        private static partial void LogHandlerFailed(ILogger logger, Exception exception, string processorName, string stepName, string? stepVersion);
+        [LoggerMessage(Level = LogLevel.Error, Message = "Process handler execution failed for processor {ProcessorName} step {StepName}.")]
+        private static partial void LogHandlerFailed(ILogger logger, Exception exception, string processorName, string stepName);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Process execution started for processor {ProcessorName} with submitted step count {SubmittedStepCount}.")]
     private static partial void LogExecutionStarted(ILogger logger, string processorName, int submittedStepCount);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Process step execution started for processor {ProcessorName} step {StepName} version {StepVersion}.")]
-    private static partial void LogStepStarted(ILogger logger, string processorName, string stepName, string? stepVersion);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Process step execution started for processor {ProcessorName} step {StepName}.")]
+    private static partial void LogStepStarted(ILogger logger, string processorName, string stepName);
 
-    [LoggerMessage(Level = LogLevel.Trace, Message = "Process handler execution started for processor {ProcessorName} step {StepName} version {StepVersion}.")]
-    private static partial void LogHandlerStarted(ILogger logger, string processorName, string stepName, string? stepVersion);
+    [LoggerMessage(Level = LogLevel.Trace, Message = "Process handler execution started for processor {ProcessorName} step {StepName}.")]
+    private static partial void LogHandlerStarted(ILogger logger, string processorName, string stepName);
 }

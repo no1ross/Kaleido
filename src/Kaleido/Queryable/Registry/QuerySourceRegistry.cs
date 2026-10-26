@@ -159,7 +159,6 @@ internal sealed class QuerySourceRegistry : IQuerySourceRegistry
             sourceType.Name,
             attribute.Description,
             attribute.DisplayName,
-            attribute.Version,
             attribute.Source,
             kind,
             pageable,

@@ -46,9 +46,6 @@ internal abstract record ProcessorStepDescriptor
     /// <inheritdoc cref="ProcessStepAttribute.DisplayName"/>
     public string? DisplayName { get; init; }
 
-    /// <inheritdoc cref="ProcessStepAttribute.Version"/>
-    public string? Version { get; init; }
-
     /// <summary><see langword="true"/> when the step may run again after it completed (<see cref="RepeatableAttribute"/>).</summary>
     public bool Repeatable { get; init; }
 

@@ -14,7 +14,7 @@ public sealed class ProcessStepDefinitionTests
         {
             StepType = typeof(StepA),
             HandlerType = typeof(object),
-            Metadata = new ProcessStepMetadata { Name = name, Description = "d", Version = "1.0.0", DisplayName = name },
+            Metadata = new ProcessStepMetadata { Name = name, Description = "d", DisplayName = name },
         };
 
     // Relationships are collected as types while steps are discovered, resolved to definitions later.

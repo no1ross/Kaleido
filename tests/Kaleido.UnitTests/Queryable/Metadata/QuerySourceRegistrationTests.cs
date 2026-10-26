@@ -18,7 +18,7 @@ public sealed class QuerySourceRegistrationTests
     {
         var field = new FieldMetadata { Name = "Code", Description = "Code description", FieldType = typeof(string), DataType = TestDataType, IsFilterable = true, FilterOperators = [FilterOperator.Equals], IsSearchable = true, SearchPriority = 1, MatchMode = MatchMode.Contains, IsSortable = true };
         var pageable = new PageableMetadata(25, 100);
-        var metadata = new QuerySourceMetadata("TestSource", "Source description", "Source", "1.0.0", "Unit Test", QuerySourceKind.Local, pageable, [field], [], [], AuthorizationMetadata.Unspecified);
+        var metadata = new QuerySourceMetadata("TestSource", "Source description", "Source", "Unit Test", QuerySourceKind.Local, pageable, [field], [], [], AuthorizationMetadata.Unspecified);
         var registration = CreateSut(metadata);
 
         Assert.Equal(typeof(TestSource), registration.SourceType);

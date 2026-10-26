@@ -65,7 +65,6 @@ public sealed class InMemoryKaleidoContextStoreTests
                 new StepContext
                 {
                     StepName = "test-step",
-                    Version = "1.0",
                     Status = StepExecutionStatus.Completed,
                 },
             ],

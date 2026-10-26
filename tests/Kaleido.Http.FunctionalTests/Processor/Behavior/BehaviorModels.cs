@@ -29,10 +29,10 @@ internal static class BehaviorSteps
     public const string HandOffTarget = "radiology";
 }
 
-[ProcessStep(DisplayName = "Start", Description = "Starts the case.", Version = "1.0")]
+[ProcessStep(DisplayName = "Start", Description = "Starts the case.")]
 public sealed record BehaviorStartStep : IProcessStep;
 
-[ProcessStep(DisplayName = "Note", Description = "Adds a note while the case is open.", Version = "1.0")]
+[ProcessStep(DisplayName = "Note", Description = "Adds a note while the case is open.")]
 [AvailableUntil<BehaviorCloseStep>]
 [Repeatable]
 public sealed record BehaviorNoteStep : IProcessStep
@@ -42,29 +42,29 @@ public sealed record BehaviorNoteStep : IProcessStep
     public string Text { get; init; } = string.Empty;
 }
 
-[ProcessStep(DisplayName = "Close", Description = "Closes the case.", Version = "1.0")]
+[ProcessStep(DisplayName = "Close", Description = "Closes the case.")]
 [DependsOn<BehaviorStartStep>]
 public sealed record BehaviorCloseStep : IProcessStep;
 
-[ProcessStep(DisplayName = "Archive", Description = "Archives a closed case.", Version = "1.0")]
+[ProcessStep(DisplayName = "Archive", Description = "Archives a closed case.")]
 [AvailableAfter<BehaviorCloseStep>]
 public sealed record BehaviorArchiveStep : IProcessStep;
 
-[ProcessStep(DisplayName = "Explode", Description = "Fails unexpectedly while switched on.", Version = "1.0")]
+[ProcessStep(DisplayName = "Explode", Description = "Fails unexpectedly while switched on.")]
 [DependsOn<BehaviorStartStep>]
 [Repeatable]
 public sealed record BehaviorExplodeStep : IProcessStep;
 
-[ProcessStep(DisplayName = "Hand off", Description = "Hands the case to radiology.", Version = "1.0")]
+[ProcessStep(DisplayName = "Hand off", Description = "Hands the case to radiology.")]
 [DependsOn<BehaviorStartStep>]
 public sealed record BehaviorHandOffStep : IProcessStep;
 
-[ProcessStep(DisplayName = "Slow", Description = "Waits for the gate.", Version = "1.0")]
+[ProcessStep(DisplayName = "Slow", Description = "Waits for the gate.")]
 [DependsOn<BehaviorStartStep>]
 [Repeatable]
 public sealed record BehaviorSlowStep : IProcessStep;
 
-[ProcessStep(DisplayName = "Quick", Description = "Completes at once.", Version = "1.0")]
+[ProcessStep(DisplayName = "Quick", Description = "Completes at once.")]
 [DependsOn<BehaviorStartStep>]
 [Repeatable]
 public sealed record BehaviorQuickStep : IProcessStep;
@@ -108,7 +108,7 @@ public sealed class BehaviorRecord : IQueryContext
 }
 
 // A query source with a defect: the failure must reach the caller as a bare 500, never its detail.
-[QuerySource(Version = "1.0", DisplayName = "Broken records", Description = "A source that fails unexpectedly.")]
+[QuerySource(DisplayName = "Broken records", Description = "A source that fails unexpectedly.")]
 public sealed class BehaviorBrokenSource : IQuerySource<BehaviorRecord>
 {
     public IQueryable<BehaviorRecord> CreateQuery(QueryExecutionContext executionContext) =>

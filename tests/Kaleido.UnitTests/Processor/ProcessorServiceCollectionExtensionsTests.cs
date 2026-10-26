@@ -121,11 +121,9 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     }
 
     [Theory]
-    [InlineData("", "Display", "Description", nameof(ProcessStepAttribute.Version))]
-    [InlineData("1.0", " ", "Description", nameof(ProcessStepAttribute.DisplayName))]
-    [InlineData("1.0", "Display", "", nameof(ProcessStepAttribute.Description))]
+    [InlineData(" ", "Description", nameof(ProcessStepAttribute.DisplayName))]
+    [InlineData("Display", "", nameof(ProcessStepAttribute.Description))]
     public void AddProcessor_WhenRequiredMetadataEmpty_Throws(
-        string version,
         string displayName,
         string description,
         string expectedProperty)
@@ -137,7 +135,6 @@ public sealed class ProcessorServiceCollectionExtensionsTests
                     "Steps.EmptyMetadataStep",
                     implementsStep: true,
                     withAttribute: true,
-                    version,
                     displayName,
                     description));
 
@@ -365,7 +362,6 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         string fullName,
         bool implementsStep,
         bool withAttribute,
-        string version = "1.0",
         string displayName = "Dynamic step",
         string description = "Dynamically defined step.")
     {
@@ -391,11 +387,10 @@ public sealed class ProcessorServiceCollectionExtensionsTests
                         ?? throw new InvalidOperationException("ProcessStepAttribute constructor not found."),
                     [],
                     [
-                        attributeType.GetProperty(nameof(ProcessStepAttribute.Version))!,
                         attributeType.GetProperty(nameof(ProcessStepAttribute.DisplayName))!,
                         attributeType.GetProperty(nameof(ProcessStepAttribute.Description))!
                     ],
-                    [version, displayName, description]));
+                    [displayName, description]));
         }
 
         return typeBuilder.CreateType();
@@ -429,11 +424,10 @@ public sealed class ProcessorServiceCollectionExtensionsTests
                     ?? throw new InvalidOperationException("ProcessStepAttribute constructor not found."),
                 [],
                 [
-                    attributeType.GetProperty(nameof(ProcessStepAttribute.Version))!,
                     attributeType.GetProperty(nameof(ProcessStepAttribute.DisplayName))!,
                     attributeType.GetProperty(nameof(ProcessStepAttribute.Description))!
                 ],
-                ["1.0", "Dynamic information step", "Dynamically defined information step."]));
+                ["Dynamic information step", "Dynamically defined information step."]));
 
         typeBuilder.CreateType();
     }
@@ -491,7 +485,6 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
     [ProcessStep(
         Description = "Test step",
-        Version = "1.0.0",
         DisplayName = "Test Step")]
     public sealed record TestStep : IProcessStep;
 

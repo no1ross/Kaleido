@@ -12,14 +12,14 @@ internal static class CancellationSteps
     public const string After = nameof(CancelAfterStep);
 }
 
-[ProcessStep(DisplayName = "Start", Description = "Starts the case.", Version = "1.0")]
+[ProcessStep(DisplayName = "Start", Description = "Starts the case.")]
 public sealed record CancellationStartStep : IProcessStep;
 
-[ProcessStep(DisplayName = "Cancel during", Description = "Cancels the request and observes it.", Version = "1.0")]
+[ProcessStep(DisplayName = "Cancel during", Description = "Cancels the request and observes it.")]
 [DependsOn<CancellationStartStep>]
 public sealed record CancelDuringStep : IProcessStep;
 
-[ProcessStep(DisplayName = "Cancel after", Description = "Cancels the request and returns success.", Version = "1.0")]
+[ProcessStep(DisplayName = "Cancel after", Description = "Cancels the request and returns success.")]
 [DependsOn<CancellationStartStep>]
 public sealed record CancelAfterStep : IProcessStep;
 

@@ -58,7 +58,6 @@ public sealed class ProcessStepRegistrationTests
         {
             Name = name,
             Description = name + " description",
-            Version = "1.0",
             DisplayName = name + " display",
             Authorization = Secured,
             Destructive = true,
@@ -101,7 +100,6 @@ public sealed class ProcessStepRegistrationTests
         Assert.Equal(nameof(ChargeStep), summary.Name);
         Assert.Equal("ChargeStep description", summary.Description);
         Assert.Equal("ChargeStep display", summary.DisplayName);
-        Assert.Equal("1.0", summary.Version);
         Assert.True(summary.Repeatable);
         Assert.False(summary.IsInformationStep);
         Assert.True(summary.Destructive && summary.External && summary.RequiresConfirmation);

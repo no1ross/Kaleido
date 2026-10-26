@@ -434,14 +434,6 @@ public sealed record ProcessStepHistory
         init;
     }
 
-    /// <summary>The step's version as recorded in the process state; empty when none was recorded.</summary>
-    public string Version
-    {
-        get;
-        init;
-    }
-        = string.Empty;
-
     /// <summary>
     /// The step's last recorded execution status; <see cref="StepExecutionStatus.Pending"/> while
     /// it has not been processed.
@@ -551,9 +543,6 @@ public abstract record ProcessStepContract
 
     /// <summary>A short, human-readable name for the step.</summary>
     public string? DisplayName { get; init; }
-
-    /// <summary>The step's version.</summary>
-    public string? Version { get; init; }
 
     /// <summary>True when the step may run again after it completed.</summary>
     public bool Repeatable { get; init; }

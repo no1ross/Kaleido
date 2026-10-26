@@ -17,7 +17,6 @@ namespace Kaleido.Processor
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class ProcessStepAttribute : System.Attribute
     {
-        public required string Version { get; init; }
         public required string DisplayName { get; init; }
         public required string Description { get; init; }
     }
@@ -27,22 +26,11 @@ namespace Kaleido.Processor
         new("KAL2001", DiagnosticSeverity.Error);
 
     [Fact]
-    public async Task Version_Empty_Reports()
-    {
-        await RunAsync(@"
-using Kaleido.Processor;
-[{|#0:ProcessStep(Version = """", DisplayName = ""Foo"", Description = ""Does foo."")|}]
-public class MyStep { }
-" + ProcessStepStub,
-            Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));
-    }
-
-    [Fact]
     public async Task DisplayName_Empty_Reports()
     {
         await RunAsync(@"
 using Kaleido.Processor;
-[{|#0:ProcessStep(Version = ""1.0.0"", DisplayName = """", Description = ""Does foo."")|}]
+[{|#0:ProcessStep(DisplayName = """", Description = ""Does foo."")|}]
 public class MyStep { }
 " + ProcessStepStub,
             Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));
@@ -53,7 +41,7 @@ public class MyStep { }
     {
         await RunAsync(@"
 using Kaleido.Processor;
-[{|#0:ProcessStep(Version = ""1.0.0"", DisplayName = ""Foo"", Description = ""   "")|}]
+[{|#0:ProcessStep(DisplayName = ""Foo"", Description = ""   "")|}]
 public class MyStep { }
 " + ProcessStepStub,
             Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));
@@ -64,7 +52,7 @@ public class MyStep { }
     {
         await RunAsync(@"
 using Kaleido.Processor;
-[ProcessStep(Version = ""1.0.0"", DisplayName = ""Foo"", Description = ""Does foo."")]
+[ProcessStep(DisplayName = ""Foo"", Description = ""Does foo."")]
 public class MyStep { }
 " + ProcessStepStub);
     }
@@ -75,8 +63,8 @@ public class MyStep { }
     {
         await RunAsync(@"
 using Kaleido.Processor;
-public static class Texts { public const string Version = ""1.0.0""; }
-[ProcessStep(Version = Texts.Version, DisplayName = nameof(MyStep), Description = ""Does foo. "" + ""Then bar."")]
+public static class Texts { public const string Name = ""Foo""; }
+[ProcessStep(DisplayName = Texts.Name, Description = ""Does foo. "" + nameof(MyStep))]
 public class MyStep { }
 " + ProcessStepStub);
     }
@@ -87,7 +75,7 @@ public class MyStep { }
         await RunAsync(@"
 using Kaleido.Processor;
 public static class Texts { public const string Empty = """"; }
-[{|#0:ProcessStep(Version = ""1.0.0"", DisplayName = ""Foo"", Description = Texts.Empty + """")|}]
+[{|#0:ProcessStep(DisplayName = ""Foo"", Description = Texts.Empty + """")|}]
 public class MyStep { }
 " + ProcessStepStub,
             Expected.WithLocation(0).WithArguments("ProcessStepAttribute"));

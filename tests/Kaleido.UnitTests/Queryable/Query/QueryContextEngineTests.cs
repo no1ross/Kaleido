@@ -23,7 +23,7 @@ public sealed class QueryContextEngineTests
 
     // Public (Moq proxies generic interfaces over these types) and therefore discoverable by
     // fixtures that scan this assembly, so they carry valid metadata.
-    [QuerySource(Version = "1.0.0", DisplayName = "Fake", Description = "Engine test source.")]
+    [QuerySource(DisplayName = "Fake", Description = "Engine test source.")]
     public sealed class FakeSource : IQuerySource<FakeContext>
     {
         public QueryExecutionContext? ReceivedContext { get; private set; }
@@ -35,7 +35,7 @@ public sealed class QueryContextEngineTests
         }
     }
 
-    [QuerySource(Version = "1.0.0", DisplayName = "Fake async", Description = "Engine test async source.")]
+    [QuerySource(DisplayName = "Fake async", Description = "Engine test async source.")]
     public sealed class FakeAsyncSource : IQuerySourceAsync<FakeContext>
     {
         public Task<IQueryable<FakeContext>> CreateQueryAsync(
@@ -44,7 +44,7 @@ public sealed class QueryContextEngineTests
             Task.FromResult(new[] { new FakeContext { Code = "Z" } }.AsQueryable());
     }
 
-    [QueryView(Version = "1.0.0", DisplayName = "Labels", Description = "Engine test view.")]
+    [QueryView(DisplayName = "Labels", Description = "Engine test view.")]
     public sealed class FakeLabelView : IQueryViewSource<FakeSource, FakeContext, FakeView>
     {
         public IQueryable<FakeView> CreateView(IQueryable<FakeContext> query, QueryExecutionContext executionContext) =>
@@ -145,7 +145,7 @@ public sealed class QueryContextEngineTests
                 typeof(EmptyQueryViewParameters),
                 typeof(FakeSource),
                 typeof(FakeContext),
-                new QueryViewMetadata(nameof(FakeLabelView), "1.0.0", "Labels", "Labels.", viewPageable, [], []));
+                new QueryViewMetadata(nameof(FakeLabelView), "Labels", "Labels.", viewPageable, [], []));
 
         var validator = new Mock<IQueryContextValidator>();
         var serviceProvider = new Mock<IServiceProvider>();
@@ -427,7 +427,7 @@ public sealed class QueryContextEngineTests
             typeof(EmptyQueryViewParameters),
             typeof(FakeSource),
             typeof(FakeContext),
-            new QueryViewMetadata(nameof(FakeLabelView), "1.0.0", "Labels", "Labels.", pageable, [], []));
+            new QueryViewMetadata(nameof(FakeLabelView), "Labels", "Labels.", pageable, [], []));
 
     private static QuerySourceRegistration CreateSourceRegistration(
         Type sourceType,
@@ -441,7 +441,6 @@ public sealed class QueryContextEngineTests
                 sourceType.Name,
                 "Fake source.",
                 "Fake",
-                "1.0.0",
                 null,
                 QuerySourceKind.Local,
                 pageable,

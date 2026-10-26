@@ -11,7 +11,6 @@ namespace Kaleido.Guide.Examples.Processes;
 // snippet: processes-relationships
 // A note can be added any time after the order is placed, as often as needed.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Add note",
     Description = "Adds a note to the order.")]
 [AvailableAfter<PlaceOrderStep>]
@@ -25,7 +24,6 @@ public sealed record AddNoteStep : IProcessStep
 
 // The order can be cancelled once it is placed, until it ships.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Cancel order",
     Description = "Cancels the order before it ships.",
     Destructive = true,
@@ -36,7 +34,6 @@ public sealed record CancelOrderStep : IProcessStep;
 
 // Shipping needs the confirmation first, and is no longer possible once the order is cancelled.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Ship order",
     Description = "Hands the confirmed order to a carrier.",
     External = true)]
@@ -94,7 +91,6 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 // snippet: processes-handoff
 // Returns are another service's business: the process continues there.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Return order",
     Description = "Starts a return of the shipped order; the returns service continues the process.")]
 [AvailableAfter<ShipOrderStep>]

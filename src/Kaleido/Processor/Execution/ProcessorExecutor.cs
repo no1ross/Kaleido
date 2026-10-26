@@ -149,7 +149,6 @@ internal sealed class ProcessorExecutor(
         observability.BeginStep(
             new ProcessorStepObservationDetails(
                 candidate.StepName,
-                candidate.Registration?.Metadata.Version,
                 candidate.Registration?.IsInformationStep == true));
 
     // Invokes the step's handler and evaluates its result against the process rules.

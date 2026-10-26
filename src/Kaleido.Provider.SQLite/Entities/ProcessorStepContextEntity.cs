@@ -14,12 +14,6 @@ internal sealed class ProcessorStepContextEntity
         set;
     } = string.Empty;
 
-    public string Version
-    {
-        get;
-        set;
-    } = string.Empty;
-
     public StepExecutionStatus Status
     {
         get;

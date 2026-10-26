@@ -21,7 +21,7 @@ public sealed class DelegatedQuerySourceEngineTests
 
     // Public (Moq proxies generic interfaces over these types) and therefore discoverable by
     // fixtures that scan this assembly, so it carries valid metadata.
-    [QuerySource(Version = "1.0.0", DisplayName = "Fake delegated", Description = "Engine test delegated source.")]
+    [QuerySource(DisplayName = "Fake delegated", Description = "Engine test delegated source.")]
     public sealed class FakeDelegatedSource : IDelegatedQuerySource<FakeContext, FakeResult, FakeParameters>
     {
         public IQueryRequest<FakeParameters>? ReceivedRequest { get; private set; }
@@ -234,7 +234,6 @@ public sealed class DelegatedQuerySourceEngineTests
                 nameof(FakeDelegatedSource),
                 "Delegated source.",
                 "Delegated",
-                "1.0.0",
                 null,
                 QuerySourceKind.Delegated,
                 new PageableMetadata(25, 250),

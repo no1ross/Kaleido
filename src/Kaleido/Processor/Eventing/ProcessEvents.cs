@@ -80,9 +80,6 @@ public sealed record PlanBuiltCandidate
     /// <summary>The step name as submitted.</summary>
     public required string StepName { get; init; }
 
-    /// <summary>The registered step's version; empty when the submitted name is not a registered step.</summary>
-    public required string StepVersion { get; init; }
-
     /// <summary>
     /// The candidate's planning result: <see cref="StepCandidateStatus.Built"/> when valid,
     /// <see cref="StepCandidateStatus.Invalid"/> when it was rejected (see <see cref="Messages"/>), or
@@ -160,9 +157,6 @@ public sealed record StepCompleted : ProcessEventBase
 {
     /// <summary>The step name as submitted.</summary>
     public required string StepName { get; init; }
-
-    /// <summary>The step's version: the registered step version recorded in the process state.</summary>
-    public required string StepVersion { get; init; }
 
     /// <summary>The step's input: the step instance built from the submitted value.</summary>
     public object? Request { get; init; }

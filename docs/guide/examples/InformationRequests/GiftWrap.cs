@@ -9,7 +9,6 @@ namespace Kaleido.Guide.Examples.InformationRequests;
 // The questions are decided at runtime (here fixed, in a real service from your rules or
 // configuration): the handler returns them instead of a result.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Gift wrap",
     Description = "Asks whether and how the order should be gift wrapped.")]
 [AvailableAfter<PlaceOrderStep>]
@@ -54,7 +53,6 @@ public sealed class GiftWrapHandler : IProcessStepHandler<GiftWrapStep>
 // snippet: information-answer
 // The information step: its payload is the answers, nothing else.
 [ProcessStep(
-    Version = "1.0.0",
     DisplayName = "Gift wrap answers",
     Description = "The answers to the gift-wrapping questions.")]
 public sealed record GiftWrapAnswersStep : IInformationStep

@@ -129,7 +129,7 @@ public sealed class QueryableRegistryTests
                         typeof(long),
                         typeof(LocalSource),
                         typeof(object),
-                        new QueryViewMetadata("view1", "1.0", "View", "desc", null, null, null))
+                        new QueryViewMetadata("view1", "View", "desc", null, null, null))
                 ]);
 
         var view = registry.Registrations.Single().Views.Single();
@@ -172,7 +172,7 @@ public sealed class QueryableRegistryTests
         string[] phi = ["Test:PHI"];
         var dataType = new DataTypeDescriptor("string");
         var metadata = new QuerySourceMetadata(
-            "LocalSource", "desc", "display", "1.0", null, QuerySourceKind.Local, null,
+            "LocalSource", "desc", "display", null, QuerySourceKind.Local, null,
             [new FieldMetadata { Name = "Name", FieldType = typeof(string), DataType = dataType, Classifications = phi }],
             [new QueryParameterMetadata { Name = "Ssn", Type = typeof(string), DataType = dataType, Classifications = phi }],
             [new QueryOutputFieldMetadata { Name = "Name", Type = typeof(string), DataType = dataType, Classifications = phi }],
@@ -180,7 +180,7 @@ public sealed class QueryableRegistryTests
         var view = new QueryViewRegistration(
             typeof(string), typeof(object), typeof(EmptyQueryViewParameters), typeof(LocalSource), typeof(object),
             new QueryViewMetadata(
-                "view1", "1.0", "View", "desc", null,
+                "view1", "View", "desc", null,
                 [new QueryParameterMetadata { Name = "Ssn", Type = typeof(string), DataType = dataType, Classifications = phi }],
                 [new QueryOutputFieldMetadata { Name = "Name", Type = typeof(string), DataType = dataType, Classifications = phi }]));
 
@@ -208,7 +208,7 @@ public sealed class QueryableRegistryTests
             typeof(object),
             resultType ?? typeof(object),
             parametersType ?? typeof(EmptyQueryViewParameters),
-            new QuerySourceMetadata(name, "desc", "display", "1.0", null, kind, null, [], [], [], authorization ?? AuthorizationMetadata.Unspecified));
+            new QuerySourceMetadata(name, "desc", "display", null, kind, null, [], [], [], authorization ?? AuthorizationMetadata.Unspecified));
 
     private static QueryViewRegistration View(
         Type viewType,
@@ -221,7 +221,7 @@ public sealed class QueryableRegistryTests
             typeof(EmptyQueryViewParameters),
             sourceType,
             typeof(object),
-            new QueryViewMetadata(name, "1.0", name, "desc", null, null, null, authorization));
+            new QueryViewMetadata(name, name, "desc", null, null, null, authorization));
 
     private sealed class LocalSource;
 

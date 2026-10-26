@@ -110,7 +110,6 @@ internal sealed class ProcessorEventFactory(
                         candidate => new PlanBuiltCandidate
                         {
                             StepName = candidate.StepName,
-                            StepVersion = candidate.Registration?.Metadata.Version ?? string.Empty,
                             CandidateStatus = candidate.Status,
                             IncludedInExecutionPlan = candidate.IncludedInExecutionPlan,
                             Messages =
@@ -154,7 +153,6 @@ internal sealed class ProcessorEventFactory(
         {
             OccurredOn = DateTimeOffset.UtcNow,
             StepName = candidate.StepName,
-            StepVersion = stepContext?.Version ?? candidate.Registration?.Metadata.Version ?? string.Empty,
             Request = candidate.Step,
             Response = outcome.Response,
             DecisionType = outcome.Decision,

@@ -10,7 +10,7 @@ public sealed class RegistrationSlotTests
     private sealed record StepResult(string Value);
 
     private static readonly ProcessStepMetadata Metadata =
-        new() { Name = "StepA", Description = "d", Version = "1.0.0", DisplayName = "Step A" };
+        new() { Name = "StepA", Description = "d", DisplayName = "Step A" };
 
     private static ProcessStepDefinition Definition() =>
         new() { StepType = typeof(StepA), StepResultType = typeof(StepResult), HandlerType = typeof(object), Metadata = Metadata };

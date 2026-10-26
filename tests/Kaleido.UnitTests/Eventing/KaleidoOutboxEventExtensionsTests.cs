@@ -22,7 +22,6 @@ public sealed class KaleidoOutboxEventExtensionsTests
             {
                 OccurredOn = DateTimeOffset.UtcNow.AddSeconds(-5),
                 StepName = "step-a",
-                StepVersion = "1.0",
                 Request = new { MemberId = "M-1" },
                 DecisionType = ExecutionDecisionType.Continue,
                 ExecutionStatus = StepExecutionStatus.Completed,

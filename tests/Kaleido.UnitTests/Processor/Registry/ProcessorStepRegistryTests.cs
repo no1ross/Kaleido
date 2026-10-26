@@ -116,10 +116,6 @@ public sealed class ProcessorStepRegistryTests
         Assert.Equal(
             "step-a description",
             registration.Metadata.Description);
-
-        Assert.Equal(
-            "1.0",
-            registration.Metadata.Version);
     }
 
     [Fact]
@@ -416,19 +412,19 @@ public sealed class ProcessorStepRegistryTests
         Assert.Equal(FrameworkErrorCodes.InvalidHandlerResult, exception.Code);
     }
 
-    [ProcessStep(DisplayName = nameof(SelfAvailableAfterStep), Description = "self available-after description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(SelfAvailableAfterStep), Description = "self available-after description")]
     [AvailableAfter<SelfAvailableAfterStep>]
     private sealed class SelfAvailableAfterStep : IProcessStep;
 
     private sealed class SelfAvailableAfterStepHandler : BaseHandler<SelfAvailableAfterStep, TestResponse>;
 
-    [ProcessStep(DisplayName = nameof(SelfAvailableUntilStep), Description = "self available-until description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(SelfAvailableUntilStep), Description = "self available-until description")]
     [AvailableUntil<SelfAvailableUntilStep>]
     private sealed class SelfAvailableUntilStep : IProcessStep;
 
     private sealed class SelfAvailableUntilStepHandler : BaseHandler<SelfAvailableUntilStep, TestResponse>;
 
-    [ProcessStep(DisplayName = nameof(DiamondStep), Description = "diamond description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(DiamondStep), Description = "diamond description")]
     [DependsOn<StepA>]
     [DependsOn<StepB>]
     private sealed class DiamondStep : IProcessStep;
@@ -475,47 +471,47 @@ public sealed class ProcessorStepRegistryTests
             defaultAuthorization);
     }
 
-    [ProcessStep(DisplayName = nameof(StepA), Description = "step-a description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(StepA), Description = "step-a description")]
     private sealed class StepA : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(StepB), Description = "step-b description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(StepB), Description = "step-b description")]
     [DependsOn<StepA>]
     private sealed class StepB : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(StepC), Description = "step-c description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(StepC), Description = "step-c description")]
     private sealed class StepC : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(StepD), Description = "step-d description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(StepD), Description = "step-d description")]
     private sealed class StepD : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(StepAfter), Description = "step-after description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(StepAfter), Description = "step-after description")]
     [AvailableAfter<StepA>]
     private sealed class StepAfter : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(StepUntil), Description = "step-until description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(StepUntil), Description = "step-until description")]
     [AvailableUntil<StepA>]
     private sealed class StepUntil : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(RepeatableStep), Description = "repeatable-step description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(RepeatableStep), Description = "repeatable-step description")]
     [Repeatable]
     private sealed class RepeatableStep : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(StepMultiAvailability), Description = "step-multi description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(StepMultiAvailability), Description = "step-multi description")]
     [AvailableAfter<StepA>]
     [AvailableAfter<StepB>]
     [AvailableUntil<StepC>]
     [AvailableUntil<StepD>]
     private sealed class StepMultiAvailability : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(SelfDependentStep), Description = "self-dependent description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(SelfDependentStep), Description = "self-dependent description")]
     [DependsOn<SelfDependentStep>]
     private sealed class SelfDependentStep : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(CycleStepA), Description = "cycle-a description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(CycleStepA), Description = "cycle-a description")]
     [DependsOn<CycleStepB>]
     private sealed class CycleStepA : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(CycleStepB), Description = "cycle-b description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(CycleStepB), Description = "cycle-b description")]
     [DependsOn<CycleStepA>]
     private sealed class CycleStepB : IProcessStep;
 
@@ -525,11 +521,11 @@ public sealed class ProcessorStepRegistryTests
 
     private sealed class CycleStepBHandler : BaseHandler<CycleStepB, TestResponse>;
 
-    [ProcessStep(DisplayName = nameof(SecuredStep), Description = "secured-step description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(SecuredStep), Description = "secured-step description")]
     [KaleidoAuthorization(Policy = "step-policy", Roles = "internal")]
     private sealed class SecuredStep : IProcessStep;
 
-    [ProcessStep(DisplayName = nameof(InformationStep), Description = "information-step description", Version = "1.0")]
+    [ProcessStep(DisplayName = nameof(InformationStep), Description = "information-step description")]
     private sealed class InformationStep : IInformationStep
     {
         public required string InformationRequestId { get; init; }
@@ -586,8 +582,7 @@ public sealed class ProcessorStepRegistryTests
 
     private sealed class TestPhiAttribute() : Microsoft.Extensions.Compliance.Classification.DataClassificationAttribute(new("Test", "PHI"));
 
-    [ProcessStep(DisplayName = nameof(DeclaredStep), Description = "charges the member's card", Version = "1.0",
-        Destructive = true, External = true, RequiresConfirmation = true)]
+    [ProcessStep(DisplayName = nameof(DeclaredStep), Description = "charges the member's card", Destructive = true, External = true, RequiresConfirmation = true)]
     private sealed class DeclaredStep : IProcessStep
     {
         [TestPhi]

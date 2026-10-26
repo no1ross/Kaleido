@@ -366,7 +366,7 @@ public sealed class QueryableServiceTests
             typeof(TestContext),
             resultType,
             typeof(EmptyQueryViewParameters),
-            new QuerySourceMetadata(sourceType.Name, "Test", "Test", "1.0.0", "Unit Test", kind, null, [], [], [], AuthorizationMetadata.Unspecified));
+            new QuerySourceMetadata(sourceType.Name, "Test", "Test", "Unit Test", kind, null, [], [], [], AuthorizationMetadata.Unspecified));
 
     private static QueryViewRegistration CreateViewRegistration() =>
         new(
@@ -375,7 +375,7 @@ public sealed class QueryableServiceTests
             typeof(EmptyQueryViewParameters),
             typeof(TestSource),
             typeof(TestContext),
-            new QueryViewMetadata(nameof(TestView), "1.0.0", "Test View", "Test View", null, [], []));
+            new QueryViewMetadata(nameof(TestView), "Test View", "Test View", null, [], []));
 
     public sealed class TestContext : IQueryContext
     {

@@ -866,7 +866,7 @@ public sealed class ProcessorRuntimeTests
                 [],
                 [],
                 new RepeatableOptions(),
-                new ProcessStepMetadata { Name = nameof(InfoStep), Description = "Info step.", Version = "1.0", DisplayName = "Info step" })
+                new ProcessStepMetadata { Name = nameof(InfoStep), Description = "Info step.", DisplayName = "Info step" })
         };
         informationCandidate.AddError(ProcessorErrorCodes.InformationResponseUnanswered, "Question 'q1' has no answer.");
         informationCandidate.AddError(ProcessorErrorCodes.Required, "The Items field is required.");

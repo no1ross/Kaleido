@@ -636,7 +636,7 @@ public sealed class StepExecutionEvaluatorTests
             [],
             [],
             new RepeatableOptions(),
-            new ProcessStepMetadata { Name = name, Description = $"{name} description.", Version = "1.0", DisplayName = $"{name} displayname" });
+            new ProcessStepMetadata { Name = name, Description = $"{name} description.", DisplayName = $"{name} displayname" });
     }
 
     private sealed class StepA : IProcessStep;

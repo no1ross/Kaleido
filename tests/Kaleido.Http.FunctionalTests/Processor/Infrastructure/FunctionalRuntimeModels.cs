@@ -30,42 +30,42 @@ internal static class RuntimeStepNames
     public const string Answer = nameof(RuntimeAnswerStep);
 }
 
-[ProcessStep(DisplayName = RuntimeStepNames.Root, Description = "Runtime root step", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.Root, Description = "Runtime root step")]
 public sealed record RuntimeRootStep : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.StepA, Description = "Runtime step A", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.StepA, Description = "Runtime step A")]
 [DependsOn<RuntimeRootStep>]
 public sealed record RuntimeStepA : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.StepB, Description = "Runtime step B", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.StepB, Description = "Runtime step B")]
 [DependsOn<RuntimeRootStep>]
 public sealed record RuntimeStepB : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.Merge, Description = "Runtime merge step", Version = "1.0", Destructive = true, External = true, RequiresConfirmation = true)]
+[ProcessStep(DisplayName = RuntimeStepNames.Merge, Description = "Runtime merge step", Destructive = true, External = true, RequiresConfirmation = true)]
 [DependsOn<RuntimeStepA>]
 [DependsOn<RuntimeStepB>]
 public sealed record RuntimeMergeStep : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.RequiredRoot, Description = "Runtime required root step", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.RequiredRoot, Description = "Runtime required root step")]
 public sealed record RuntimeRequiredRootStep : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.RequiredStep, Description = "Runtime required step", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.RequiredStep, Description = "Runtime required step")]
 [DependsOn<RuntimeRequiredRootStep>]
 public sealed record RuntimeRequiredStep : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.InvalidRequiredRoot, Description = "Runtime invalid required root step", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.InvalidRequiredRoot, Description = "Runtime invalid required root step")]
 public sealed record RuntimeInvalidRequiredRootStep : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.AllowedStep, Description = "Runtime allowed step", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.AllowedStep, Description = "Runtime allowed step")]
 [DependsOn<RuntimeInvalidRequiredRootStep>]
 public sealed record RuntimeAllowedStep : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.Failing, Description = "Runtime step that always fails", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.Failing, Description = "Runtime step that always fails")]
 public sealed record RuntimeFailingStep : IProcessStep;
 
 // Typed inputs: a required value-type input the caller must supply (the required keyword), and a
 // date a malformed value cannot be bound to.
-[ProcessStep(DisplayName = RuntimeStepNames.Input, Description = "Runtime step with typed inputs", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.Input, Description = "Runtime step with typed inputs")]
 [Repeatable]
 public sealed record RuntimeInputStep : IProcessStep
 {
@@ -252,10 +252,10 @@ public sealed class RuntimeFailingStepHandler :
     }
 }
 
-[ProcessStep(DisplayName = RuntimeStepNames.Ask, Description = "Runtime step that asks for information", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.Ask, Description = "Runtime step that asks for information")]
 public sealed record RuntimeAskStep : IProcessStep;
 
-[ProcessStep(DisplayName = RuntimeStepNames.Answer, Description = "Runtime information step", Version = "1.0")]
+[ProcessStep(DisplayName = RuntimeStepNames.Answer, Description = "Runtime information step")]
 [AvailableAfter<RuntimeAskStep>]
 [Repeatable]
 public sealed record RuntimeAnswerStep : IInformationStep

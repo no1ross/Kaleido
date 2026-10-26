@@ -19,7 +19,6 @@ namespace Kaleido.Processor
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class ProcessStepAttribute : System.Attribute
     {
-        public string Version { get; set; }
         public string DisplayName { get; set; }
         public string Description { get; set; }
     }
@@ -35,7 +34,7 @@ namespace Kaleido.Processor
     public async Task AttributeWithoutInterface_Reports()
     {
         await RunAsync(@"
-[Kaleido.Processor.ProcessStep(Version = ""1"", DisplayName = ""Upsert"", Description = ""Upserts."")]
+[Kaleido.Processor.ProcessStep(DisplayName = ""Upsert"", Description = ""Upserts."")]
 public class {|#0:UpsertStep|} { }
 " + KaleidoStubs,
             AttributeWithoutInterface.WithLocation(0).WithArguments("UpsertStep"));
@@ -54,7 +53,7 @@ public class {|#0:UpsertStep|} : Kaleido.Processor.IProcessStep { }
     public async Task InterfaceAndAttribute_NoDiagnostic()
     {
         await RunAsync(@"
-[Kaleido.Processor.ProcessStep(Version = ""1"", DisplayName = ""Upsert"", Description = ""Upserts."")]
+[Kaleido.Processor.ProcessStep(DisplayName = ""Upsert"", Description = ""Upserts."")]
 public class UpsertStep : Kaleido.Processor.IProcessStep { }
 " + KaleidoStubs);
     }

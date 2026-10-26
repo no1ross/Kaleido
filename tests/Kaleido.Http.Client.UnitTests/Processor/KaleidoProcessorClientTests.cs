@@ -69,7 +69,6 @@ public sealed class KaleidoProcessorClientTests
     {
         Name = "MyStep",
         Description = "Test step.",
-        Version = "1.0",
         ExecuteUrl = "/processes/steps/mystep",
         Fields = [],
         Dependencies = [],

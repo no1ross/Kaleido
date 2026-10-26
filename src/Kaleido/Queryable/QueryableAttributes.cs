@@ -36,9 +36,6 @@ public sealed class FilterableAttribute(
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public sealed class QuerySourceAttribute : Attribute
 {
-    /// <summary>The source's version, published in the registry. Must be non-empty.</summary>
-    public required string Version { get; init; }
-
     /// <summary>A short, human-readable name for the source (for example <c>"Members"</c>). Must be non-empty.</summary>
     public required string DisplayName { get; init; }
 
@@ -71,9 +68,6 @@ public sealed class QuerySourceAttribute : Attribute
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public sealed class QueryViewAttribute : Attribute
 {
-    /// <summary>The view's version, published in the registry. Must be non-empty.</summary>
-    public required string Version { get; init; }
-
     /// <summary>A short, human-readable name for the view (for example <c>"Member search"</c>). Must be non-empty.</summary>
     public required string DisplayName { get; init; }
 

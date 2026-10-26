@@ -48,7 +48,6 @@ public sealed class QuerySourceRegistryTests
         Assert.Equal(nameof(TestSource), registration.Metadata.Name);
         Assert.Equal("Test Source", registration.Metadata.DisplayName);
         Assert.Equal("Test source description", registration.Metadata.Description);
-        Assert.Equal("1.0.0", registration.Metadata.Version);
         Assert.Equal("Unit Test", registration.Metadata.Source);
         Assert.Equal(QuerySourceKind.Local, registration.Metadata.Kind);
         Assert.Equal(25, registration.Metadata.Pageable?.DefaultSize);
@@ -230,7 +229,6 @@ public sealed class QuerySourceRegistryTests
     [QuerySource(
         DisplayName = "Test Source",
         Description = "Test source description",
-        Version = "1.0.0",
         Source = "Unit Test",
         DefaultSortField = nameof(TestContext.Code))]
     [Pageable(DefaultSize = 25, MaxSize = 100)]
@@ -240,14 +238,14 @@ public sealed class QuerySourceRegistryTests
             Array.Empty<TestContext>().AsQueryable();
     }
 
-    [QuerySource(DisplayName = "Archived", Description = "Archived test records.", Version = "1.0.0")]
+    [QuerySource(DisplayName = "Archived", Description = "Archived test records.")]
     private sealed class ArchivedTestSource : IQuerySource<TestContext>
     {
         public IQueryable<TestContext> CreateQuery(QueryExecutionContext executionContext) =>
             Array.Empty<TestContext>().AsQueryable();
     }
 
-    [QuerySource(DisplayName = "Secured", Description = "Secured source.", Version = "1.0.0")]
+    [QuerySource(DisplayName = "Secured", Description = "Secured source.")]
     [KaleidoAuthorization(Policy = "internal", Roles = "svc")]
     private sealed class SecuredSource : IQuerySource<TestContext>
     {
@@ -262,7 +260,7 @@ public sealed class QuerySourceRegistryTests
         public string ProviderName { get; init; } = string.Empty;
     }
 
-    [QuerySource(DisplayName = "Delegated", Description = "Delegated test source.", Version = "1.0.0")]
+    [QuerySource(DisplayName = "Delegated", Description = "Delegated test source.")]
     private sealed class TestDelegatedSource : IDelegatedQuerySource<TestContext, TestResult, TestParameters>
     {
         public Task<QueryResult<TestResult>> ExecuteAsync(
@@ -271,7 +269,7 @@ public sealed class QuerySourceRegistryTests
             Task.FromResult(new QueryResult<TestResult>(0, 0, 0, []));
     }
 
-    [QuerySource(DisplayName = "Pageable delegated", Description = "Pages in its downstream.", Version = "1.0.0")]
+    [QuerySource(DisplayName = "Pageable delegated", Description = "Pages in its downstream.")]
     [Pageable(DefaultSize = 5, MaxSize = 10)]
     private sealed class PageableDelegatedSource : IDelegatedQuerySource<TestContext, TestResult, TestParameters>
     {
@@ -281,7 +279,7 @@ public sealed class QuerySourceRegistryTests
             Task.FromResult(new QueryResult<TestResult>(0, 0, 0, []));
     }
 
-    [QuerySource(DisplayName = "Unsorted", Description = "Pageable without a default sort.", Version = "1.0.0")]
+    [QuerySource(DisplayName = "Unsorted", Description = "Pageable without a default sort.")]
     [Pageable(DefaultSize = 5, MaxSize = 10)]
     private sealed class UnsortedPageableSource : IQuerySource<TestContext>
     {
@@ -289,7 +287,7 @@ public sealed class QuerySourceRegistryTests
             Array.Empty<TestContext>().AsQueryable();
     }
 
-    [QuerySource(DisplayName = "Missing", Description = "Default sort on a missing field.", Version = "1.0.0", DefaultSortField = "Nope")]
+    [QuerySource(DisplayName = "Missing", Description = "Default sort on a missing field.", DefaultSortField = "Nope")]
     [Pageable(DefaultSize = 5, MaxSize = 10)]
     private sealed class MissingSortFieldSource : IQuerySource<TestContext>
     {
@@ -297,7 +295,7 @@ public sealed class QuerySourceRegistryTests
             Array.Empty<TestContext>().AsQueryable();
     }
 
-    [QuerySource(DisplayName = "Not sortable", Description = "Default sort on a field that is not sortable.", Version = "1.0.0", DefaultSortField = nameof(TestContext.Region))]
+    [QuerySource(DisplayName = "Not sortable", Description = "Default sort on a field that is not sortable.", DefaultSortField = nameof(TestContext.Region))]
     [Pageable(DefaultSize = 5, MaxSize = 10)]
     private sealed class NotSortableSortFieldSource : IQuerySource<TestContext>
     {

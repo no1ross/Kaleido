@@ -5,7 +5,7 @@ namespace Kaleido.IntegrationTests.Transitions;
 
 // The one step of the SqliteTransitionTests service: a service with process steps is what registers
 // the Process runtime (and its transitions).
-[ProcessStep(DisplayName = "Transition step", Description = "Lets the test service register the Process runtime.", Version = "1.0.0")]
+[ProcessStep(DisplayName = "Transition step", Description = "Lets the test service register the Process runtime.")]
 public sealed class TransitionStep : IProcessStep;
 
 public sealed record TransitionResult;

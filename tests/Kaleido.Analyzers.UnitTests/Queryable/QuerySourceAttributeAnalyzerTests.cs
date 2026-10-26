@@ -17,7 +17,6 @@ namespace Kaleido.Queryable
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class QuerySourceAttribute : System.Attribute
     {
-        public required string Version { get; init; }
         public required string DisplayName { get; init; }
         public required string Description { get; init; }
     }
@@ -27,9 +26,8 @@ namespace Kaleido.Queryable
         new("KAL2002", DiagnosticSeverity.Error);
 
     [Theory]
-    [InlineData(@"Version = """", DisplayName = ""Members"", Description = ""Member enrollments.""")]
-    [InlineData(@"Version = ""1.0.0"", DisplayName = """", Description = ""Member enrollments.""")]
-    [InlineData(@"Version = ""1.0.0"", DisplayName = ""Members"", Description = """"")]
+    [InlineData(@"DisplayName = """", Description = ""Member enrollments.""")]
+    [InlineData(@"DisplayName = ""Members"", Description = """"")]
     public async Task EmptyRequiredMetadata_Reports(string arguments)
     {
         await RunAsync(@"
@@ -45,7 +43,7 @@ public class MemberQuerySource { }
     {
         await RunAsync(@"
 using Kaleido.Queryable;
-[QuerySource(Version = ""1.0.0"", DisplayName = ""Members"", Description = ""Member enrollments."")]
+[QuerySource(DisplayName = ""Members"", Description = ""Member enrollments."")]
 public class MemberQuerySource { }
 " + QuerySourceStub);
     }

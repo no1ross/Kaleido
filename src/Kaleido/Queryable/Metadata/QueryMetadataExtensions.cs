@@ -110,7 +110,6 @@ internal static class QueryMetadataExtensions
         IConstraintMapper constraintMapper) =>
         new(
             queryViewType.Name,
-            attribute.Version,
             attribute.DisplayName,
             attribute.Description,
             queryViewType.ToViewPageable(contextType, attribute),

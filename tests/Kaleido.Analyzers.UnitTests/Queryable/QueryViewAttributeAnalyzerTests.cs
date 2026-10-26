@@ -17,7 +17,6 @@ namespace Kaleido.Queryable
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class QueryViewAttribute : System.Attribute
     {
-        public required string Version { get; init; }
         public required string DisplayName { get; init; }
         public required string Description { get; init; }
         public string DefaultSortField { get; init; }
@@ -28,9 +27,8 @@ namespace Kaleido.Queryable
         new("KAL2003", DiagnosticSeverity.Error);
 
     [Theory]
-    [InlineData(@"Version = """", DisplayName = ""Member search"", Description = ""Searchable members.""")]
-    [InlineData(@"Version = ""1.0.0"", DisplayName = """", Description = ""Searchable members.""")]
-    [InlineData(@"Version = ""1.0.0"", DisplayName = ""Member search"", Description = """"")]
+    [InlineData(@"DisplayName = """", Description = ""Searchable members.""")]
+    [InlineData(@"DisplayName = ""Member search"", Description = """"")]
     public async Task EmptyRequiredMetadata_Reports(string arguments)
     {
         await RunAsync(@"
@@ -46,7 +44,7 @@ public class MemberSearchView { }
     {
         await RunAsync(@"
 using Kaleido.Queryable;
-[QueryView(Version = ""1.0.0"", DisplayName = ""Member search"", Description = ""Searchable members."", DefaultSortField = ""LastName"")]
+[QueryView(DisplayName = ""Member search"", Description = ""Searchable members."", DefaultSortField = ""LastName"")]
 public class MemberSearchView { }
 " + QueryViewStub);
     }

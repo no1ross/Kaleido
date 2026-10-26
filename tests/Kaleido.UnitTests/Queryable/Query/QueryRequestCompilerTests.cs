@@ -268,7 +268,6 @@ public sealed class QueryRequestCompilerTests
             "TestSource",
             "Test Record",
             "Test Record",
-            "1.0.0",
             "Unit Test",
             QuerySourceKind.Local,
             new PageableMetadata(25, 100),
@@ -287,7 +286,6 @@ public sealed class QueryRequestCompilerTests
     private static QueryViewMetadata CreateViewMetadata() =>
         new(
             "test-view",
-            "1.0.0",
             "Test View",
             "Test View",
             new PageableMetadata(10, 20),

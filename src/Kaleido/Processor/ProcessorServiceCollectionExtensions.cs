@@ -91,7 +91,6 @@ internal static class ProcessorServiceCollectionExtensions
             var metadata =
                 GetProcessStepMetadata(stepType);
 
-            RequireNonEmpty(stepType, metadata.Version, nameof(ProcessStepAttribute.Version));
             RequireNonEmpty(stepType, metadata.DisplayName, nameof(ProcessStepAttribute.DisplayName));
             RequireNonEmpty(stepType, metadata.Description, nameof(ProcessStepAttribute.Description));
             RequireInformationStepShape(stepType);

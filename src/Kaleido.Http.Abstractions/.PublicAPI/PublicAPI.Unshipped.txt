@@ -206,8 +206,6 @@ Kaleido.Http.Processor.ProcessStepContract.Repeatable.get -> bool
 Kaleido.Http.Processor.ProcessStepContract.Repeatable.init -> void
 Kaleido.Http.Processor.ProcessStepContract.RequiresConfirmation.get -> bool
 Kaleido.Http.Processor.ProcessStepContract.RequiresConfirmation.init -> void
-Kaleido.Http.Processor.ProcessStepContract.Version.get -> string?
-Kaleido.Http.Processor.ProcessStepContract.Version.init -> void
 Kaleido.Http.Processor.ProcessStepHistory
 Kaleido.Http.Processor.ProcessStepHistory.<Clone>$() -> Kaleido.Http.Processor.ProcessStepHistory!
 Kaleido.Http.Processor.ProcessStepHistory.Equals(Kaleido.Http.Processor.ProcessStepHistory? other) -> bool
@@ -224,8 +222,6 @@ Kaleido.Http.Processor.ProcessStepHistory.Status.get -> Kaleido.Processor.StepEx
 Kaleido.Http.Processor.ProcessStepHistory.Status.init -> void
 Kaleido.Http.Processor.ProcessStepHistory.StepName.get -> string!
 Kaleido.Http.Processor.ProcessStepHistory.StepName.init -> void
-Kaleido.Http.Processor.ProcessStepHistory.Version.get -> string!
-Kaleido.Http.Processor.ProcessStepHistory.Version.init -> void
 Kaleido.Http.Processor.ProcessStepRequest
 Kaleido.Http.Processor.ProcessStepRequest.<Clone>$() -> Kaleido.Http.Processor.ProcessStepRequest!
 Kaleido.Http.Processor.ProcessStepRequest.Equals(Kaleido.Http.Processor.ProcessStepRequest? other) -> bool
@@ -380,8 +376,6 @@ Kaleido.Http.Queryable.QueryableSourceResponse.ServiceName.get -> string!
 Kaleido.Http.Queryable.QueryableSourceResponse.ServiceName.init -> void
 Kaleido.Http.Queryable.QueryableSourceResponse.Source.get -> string?
 Kaleido.Http.Queryable.QueryableSourceResponse.Source.init -> void
-Kaleido.Http.Queryable.QueryableSourceResponse.Version.get -> string?
-Kaleido.Http.Queryable.QueryableSourceResponse.Version.init -> void
 Kaleido.Http.Queryable.QueryableSourceResponse.Views.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableViewResponse!>!
 Kaleido.Http.Queryable.QueryableSourceResponse.Views.init -> void
 Kaleido.Http.Queryable.QueryableViewResponse
@@ -404,8 +398,6 @@ Kaleido.Http.Queryable.QueryableViewResponse.Parameters.init -> void
 Kaleido.Http.Queryable.QueryableViewResponse.QueryableViewResponse() -> void
 Kaleido.Http.Queryable.QueryableViewResponse.QueryUrl.get -> string!
 Kaleido.Http.Queryable.QueryableViewResponse.QueryUrl.init -> void
-Kaleido.Http.Queryable.QueryableViewResponse.Version.get -> string?
-Kaleido.Http.Queryable.QueryableViewResponse.Version.init -> void
 Kaleido.Http.Queryable.QueryApiBody
 Kaleido.Http.Queryable.QueryApiBody.Filter.get -> Kaleido.Http.Queryable.QueryApiFilterNode?
 Kaleido.Http.Queryable.QueryApiBody.Filter.init -> void

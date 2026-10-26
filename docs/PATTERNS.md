@@ -14,7 +14,6 @@ follow. Each pattern links the enforcing analyzer where one exists — see
 
 ```csharp
 [ProcessStep(
-    Version = "1.0",
     DisplayName = "Capture service",
     Description = "Captures the requested service for the authorization.")]
 [AvailableAfter<CaptureMemberStep>]
@@ -38,7 +37,7 @@ Rules:
   valid on `IProcessStep` types (KAL2007).
 - **The step name is the type name** (`Type.Name`, unmodified) — in the registry, on
   the wire, in persisted state, and in events. Renaming the type renames the step.
-- `[ProcessStep]` declares non-empty `Version`, `DisplayName`, and `Description`
+- `[ProcessStep]` declares non-empty `DisplayName` and `Description`
   (KAL2001). `DisplayName`/`Description` are what UIs and AI agents read — write
   them for that audience.
 - **Required inputs are `required` members.** Inputs are validated with DataAnnotations, and
@@ -151,7 +150,7 @@ return ProcessStepHandlerResult.RequireInformation<CaptureOutOfNetworkResponseSt
     });
 
 // The information step: its payload is the answers; nothing else (KAL2012).
-[ProcessStep(Version = "1.0", DisplayName = "Out-of-network responses", Description = "Answers the out-of-network attestation.")]
+[ProcessStep(DisplayName = "Out-of-network responses", Description = "Answers the out-of-network attestation.")]
 public sealed record CaptureOutOfNetworkResponseStep : IInformationStep
 {
     public required string InformationRequestId { get; init; }
@@ -212,16 +211,16 @@ generates one. All filters are internal; hosts never register them (#295).
 
 ### Changing a step, source or view
 
-`Version` is a label for audit and clients: Kaleido publishes and records it but never routes on it
-([ADR 0026](decisions/0026-versioning-concept.md)). A capability has one live version, addressed by
-its name.
+A capability has no version: its name is its identity, and one definition per name is live
+([ADR 0029](decisions/0029-capabilities-have-no-version.md), [ADR 0026](decisions/0026-versioning-concept.md)).
+A changed registry has a new ETag, which is how clients notice a deployment.
 
-- **Compatible** (keep the name, bump the version): wording, a new optional input, a new output field.
+- **Compatible** (keep the name): wording, a new optional input, a new output field.
 - **Breaking** (publish a new capability, e.g. `CaptureMemberStepV2`): removing, renaming or
   requiring an input; changing a type or a value's meaning; relationships that would strand stored
   processes.
-- **In-flight processes continue on the deployed definition.** Completed steps keep the version they
-  ran with. To retire a step, close it first (`AvailableUntil`), and remove it in a later deployment,
+- **In-flight processes continue on the deployed definition.** Completed steps stay in their
+  history. To retire a step, close it first (`AvailableUntil`), and remove it in a later deployment,
   once no stored process can require it.
 
 ## Transport-neutral response semantics
@@ -263,7 +262,7 @@ public sealed record MemberQueryContext : IQueryContext
 }
 
 // The source: the published capability. Queryable directly at /{service}/queryable/{source}/query.
-[QuerySource(Version = "1.0.0", DisplayName = "Members", Description = "Member enrollments, searchable by member number and name.",
+[QuerySource(DisplayName = "Members", Description = "Member enrollments, searchable by member number and name.",
              DefaultSortField = nameof(MemberQueryContext.MemberNumber))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class MemberQuerySource(MemberDbContext db) : IQuerySource<MemberQueryContext>
@@ -273,7 +272,7 @@ internal sealed class MemberQuerySource(MemberDbContext db) : IQuerySource<Membe
 }
 
 // A view: a projection over one source, at /{service}/queryable/{source}/{view}/query.
-[QueryView(Version = "1.0.0", DisplayName = "Member search", Description = "Searchable member results.",
+[QueryView(DisplayName = "Member search", Description = "Searchable member results.",
            DefaultSortField = nameof(MemberQueryContext.MemberNumber))]
 [Pageable(DefaultSize = 25, MaxSize = 250)]
 internal sealed class MemberSearchView : IQueryViewSource<MemberQuerySource, MemberQueryContext, MemberSearchResult>
@@ -288,7 +287,7 @@ Rules:
   interface-only:
   - every source needs `[QuerySource]`, every view needs `[QueryView]` (KAL2010);
   - an attribute without its interface is never discovered (KAL2009);
-  - both attributes require a non-empty `Version`, `DisplayName` and `Description`
+  - both attributes require a non-empty `DisplayName` and `Description`
     (KAL2002, KAL2003).
 - **Public names are type names:** a source's name is its `Type.Name`, unique per
   service; a view's name is its `Type.Name`, unique per source.

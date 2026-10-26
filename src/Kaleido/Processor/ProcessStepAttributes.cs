@@ -15,7 +15,8 @@ namespace Kaleido.Processor;
 /// <para>
 /// Every <see cref="IProcessStep"/> type must also carry a
 /// <see cref="ProcessStepAttribute"/>, which <i>describes</i> the step
-/// (version, display name, description) but does not identify it. Startup fails
+/// (display name, description) but does not identify it. A step has no version: a breaking
+/// change takes a new type name (ADR 0029). Startup fails
 /// if the attribute is missing, or if the attribute is applied to a type that
 /// does not implement this interface.
 /// </para>
@@ -23,7 +24,6 @@ namespace Kaleido.Processor;
 /// <example>
 /// <code>
 /// [ProcessStep(
-///     Version = "1.0.0",
 ///     DisplayName = "Capture member",
 ///     Description = "Captures the member for this prior authorization request.")]
 /// public sealed record CaptureMemberStep : IProcessStep
@@ -47,12 +47,6 @@ public interface IProcessStep;
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public sealed class ProcessStepAttribute : Attribute
 {
-    /// <summary>
-    /// The step's version, published in the registry and recorded with step
-    /// history and events. Must be non-empty.
-    /// </summary>
-    public required string Version { get; init; }
-
     /// <summary>
     /// A short, human-readable name for the step (for example
     /// <c>"Capture member"</c>). Must be non-empty.

@@ -27,11 +27,6 @@ internal sealed class ProcessorStepContextEntityConfiguration
             .IsRequired();
 
         builder.Property(
-                x => x.Version)
-            .HasMaxLength(50)
-            .IsRequired();
-
-        builder.Property(
                 x => x.Status)
             .HasConversion<string>()
             .IsRequired();

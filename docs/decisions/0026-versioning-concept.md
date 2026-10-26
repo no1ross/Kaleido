@@ -1,6 +1,9 @@
 # 0026. Versions are labels; one live version per capability; processes continue on the deployed definition
 
-- **Status:** Accepted
+- **Status:** Superseded in part by [ADR 0029](0029-capabilities-have-no-version.md): capabilities no
+  longer have a version (the label, its publication and its recording are removed); decisions 2-4
+  (one live definition per name, breaking changes take a new name, in-flight processes continue on
+  the deployed definition) stand.
 - **Date:** 2026-10-21
 - **Related:** #197, #195, #220, ADR 0004, ADR 0005
 

@@ -384,7 +384,6 @@ public sealed class QueryRequestValidatorTests
             "TestSource",
             "Test source",
             "Test Source",
-            "1.0.0",
             "Unit Test",
             QuerySourceKind.Local,
             new PageableMetadata(25, 100),

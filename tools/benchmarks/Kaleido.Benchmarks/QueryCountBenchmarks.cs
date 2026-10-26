@@ -123,7 +123,7 @@ public sealed class MemberRow : IQueryContext
 }
 
 /// <summary>The source that makes AddKaleido() register the query pipeline for <see cref="MemberRow"/>.</summary>
-[QuerySource(Version = "1.0.0", DisplayName = "Members", Description = "Benchmark members.")]
+[QuerySource(DisplayName = "Members", Description = "Benchmark members.")]
 public sealed class MemberSource : IQuerySource<MemberRow>
 {
     /// <inheritdoc />
