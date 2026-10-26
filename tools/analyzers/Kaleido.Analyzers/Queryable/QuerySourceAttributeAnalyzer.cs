@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Kaleido.Analyzers.Queryable;
@@ -35,28 +34,6 @@ public sealed class QuerySourceAttributeAnalyzer : DiagnosticAnalyzer
         context.RegisterSyntaxNodeAction(Analyze, SyntaxKind.Attribute);
     }
 
-    private static void Analyze(SyntaxNodeAnalysisContext context)
-    {
-        var attributeSyntax = (AttributeSyntax)context.Node;
-
-        if (context.SemanticModel.GetSymbolInfo(attributeSyntax, context.CancellationToken)
-                .Symbol is not IMethodSymbol ctorSymbol)
-        {
-            return;
-        }
-
-        if (ctorSymbol.ContainingType.ToDisplayString() != QueryableSymbols.SourceAttributeFullName)
-        {
-            return;
-        }
-
-        var args = attributeSyntax.ArgumentList?.Arguments ?? default;
-
-        if (!AttributeHelper.HasNonEmptyNamedArgument(args, "DisplayName", context.SemanticModel) ||
-            !AttributeHelper.HasNonEmptyNamedArgument(args, "Description", context.SemanticModel))
-        {
-            context.ReportDiagnostic(
-                Diagnostic.Create(Rule, attributeSyntax.GetLocation(), ctorSymbol.ContainingType.Name));
-        }
-    }
+    private static void Analyze(SyntaxNodeAnalysisContext context) =>
+        AttributeHelper.ReportMissingDescriptiveMetadata(context, QueryableSymbols.SourceAttributeFullName, Rule);
 }
