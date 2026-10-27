@@ -10,12 +10,13 @@ namespace Kaleido.Http.Mcp.Tools;
 // Guided lookups: a step input that takes its value from one query result is filled by the user,
 // not the model. When the client shows forms and the agent calls the step without the lookup's
 // inputs, the user searches, the query runs as the caller, the user picks one result, and the
-// adapter fills the inputs from that row - the ids never pass through the model. The services
-// still check what they receive (ADR 0008): continuation state is opaque but untrusted.
+// adapter fills the inputs from that row - the ids never pass through the model. Between form rounds
+// the state (the rows, the process, the arguments) is encrypted and signed for this caller, with an
+// expiry (#452), so the client can neither read nor change it; the services still check what they
+// receive (ADR 0008).
 internal sealed partial class KaleidoToolInvoker
 {
     private const string LookupInputKey = "kaleido-lookup";
-    private const string LookupStatePrefix = "kaleido-mcp-lookup:";
     private const string SearchItemId = "search";
     private const string PickItemId = "result";
     private const string SearchAgainValue = "search-again";
@@ -40,7 +41,7 @@ internal sealed partial class KaleidoToolInvoker
         Guid? processId,
         CancellationToken cancellationToken)
     {
-        var state = new LookupState(
+        var state = new McpLookupState(
             tool.Definition.Name,
             lookup.Group,
             processId,
@@ -101,7 +102,7 @@ internal sealed partial class KaleidoToolInvoker
         ToolCatalog catalog,
         KaleidoTool tool,
         ToolLookup lookup,
-        LookupState state,
+        McpLookupState state,
         Dictionary<string, JsonElement> arguments,
         IDictionary<string, JsonElement> content,
         CancellationToken cancellationToken)
@@ -132,11 +133,11 @@ internal sealed partial class KaleidoToolInvoker
         ToolCatalog catalog,
         CancellationToken cancellationToken)
     {
-        if (DecodeLookupState(call.RequestState) is not { } state ||
+        if (lookupState.Unprotect(call.RequestState) is not { } state ||
             catalog.Find(state.Tool) is not { Kind: KaleidoToolKind.Step } tool ||
             tool.Lookups.FirstOrDefault(x => string.Equals(x.Group, state.Group, StringComparison.Ordinal)) is not { } lookup)
         {
-            return Error(McpErrorCodes.InvalidArguments, "The lookup state is not readable; call the tool again.");
+            return Error(McpErrorCodes.InvalidArguments, "The lookup state is not valid (changed, expired, or issued to another caller); nothing was run. Call the tool again.");
         }
 
         var arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(state.Arguments, KaleidoJsonOptions.Options) ?? [];
@@ -178,7 +179,7 @@ internal sealed partial class KaleidoToolInvoker
             state with
             {
                 SearchText = searchText,
-                Candidates = candidates.Labels.Select((label, i) => new LookupCandidate(label, candidates.Rows[i])).ToArray(),
+                Candidates = candidates.Labels.Select((label, i) => new McpLookupCandidate(label, candidates.Rows[i])).ToArray(),
             });
     }
 
@@ -341,7 +342,7 @@ internal sealed partial class KaleidoToolInvoker
                 ? value
                 : null;
 
-    private ToolOutcome AskLookup(InformationRequest request, LookupState state) =>
+    private ToolOutcome AskLookup(InformationRequest request, McpLookupState state) =>
         new()
         {
             InputRequired = new InputRequiredResult
@@ -350,28 +351,9 @@ internal sealed partial class KaleidoToolInvoker
                 {
                     [LookupInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(request)),
                 },
-                RequestState = LookupStatePrefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options)),
+                RequestState = lookupState.Protect(state),
             },
         };
-
-    private static LookupState? DecodeLookupState(string? value)
-    {
-        if (value?.StartsWith(LookupStatePrefix, StringComparison.Ordinal) != true)
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<LookupState>(
-                Encoding.UTF8.GetString(Convert.FromBase64String(value[LookupStatePrefix.Length..])),
-                KaleidoJsonOptions.Options);
-        }
-        catch (Exception exception) when (exception is FormatException or JsonException)
-        {
-            return null;
-        }
-    }
 
     private static CallToolResult LookupNotDone(KaleidoTool tool, ToolLookup lookup, string note) =>
         Success(new JsonObject
@@ -380,19 +362,6 @@ internal sealed partial class KaleidoToolInvoker
             ["outcome"] = "notRun",
             ["note"] = $"{note} {tool.Definition.Name} needs {string.Join(" and ", lookup.Inputs.Select(x => x.Argument))} from one {lookup.QueryTitle ?? lookup.Source} result.",
         });
-
-    // Opaque to the client but not trusted: the step's service checks the values it receives.
-    private sealed record LookupState(
-        string Tool,
-        string Group,
-        Guid? ProcessId,
-        string Arguments,
-        string? SearchText,
-        LookupCandidate[] Candidates);
-
-    private sealed record LookupCandidate(
-        string Label,
-        IReadOnlyDictionary<string, JsonElement> Values);
 
     private sealed record LookupCandidates(
         IReadOnlyList<string> Labels,

@@ -33,6 +33,7 @@ production code one at a time, the suites run, and the file restored:
 | MCP: user-facing text marked for the assistant | `McpContractTests.ABusinessMessage_*`, `ARejectedStep_*` |
 | MCP: MRTR request state not round-tripped | `McpContractTests.WithMrtr_*`, `WhenTheUserDeclines_*`, `McpEndpointTests.WithElicitation_*` |
 | MCP: a `RequiresConfirmation` step run without the user's confirmation (#439) | `ConfirmationTests` |
+| MCP: a guided lookup (MRTR) not filling the step from the picked row, or running with a changed, forged, oversized or another caller's state (#452) | `McpLookupTests` |
 
 Before this work, every row except "Repeatable ignored" (partially) left the suite green.
 
@@ -118,6 +119,7 @@ delegated source makes during a caller's request (`Kaleido.IntegrationTests`' `H
 | `Registry/RegistryAggregationTests` (new) | aggregated registry missing downstream capabilities; strict read of a healthy aggregate |
 | `Registry/DistributedRegistrySnapshotTests` (new, #275) | router replicas each fanning out despite a shared cache; client copies not shared or keyed per consuming service; a cache outage failing registry reads or the replica not sharing again after it |
 | `Mcp.FunctionalTests/ConfirmationTests` (new, #439) | with `RequireConfirmation`, a `RequiresConfirmation` step running without an accepted MRTR form, on a decline/cancel/unchecked answer, from a client without forms or an older revision, or because the agent passed its own `confirm`; the form not naming the step and its inputs |
+| `Mcp.FunctionalTests/McpLookupTests` (new, #452) | a guided lookup over MRTR not filling the step's input from the row the user picked; the lookup state the client carries being readable, or a changed, self-made, oversized or another caller's state running the step (on `LookupFixture`, the clinic with its `AssignBedStep`) |
 | `Mcp.FunctionalTests/McpContractTests` (new) | query arguments reshaped wrongly; service errors mapped to internal errors; business messages lost or not marked for the user; rejection changing state; MRTR round trip; decline submitting answers; questions lost for older clients |
 | `QueryableDiscoveryTests` (strengthened) | registry dropping descriptions, classifications, operators, capabilities, view paging; removed a duplicated assertion |
 | `QueryableClientTests` (strengthened) | client/server JSON drift for any value type; error mapping |
@@ -173,5 +175,5 @@ register them.
 7. **Still open (identified, not yet covered end to end):** ZeroTrust authorization mode on a real
    host; idempotency keys scoped per caller (two users, one key); `?refresh` on an aggregated
    registry; a transiently failing execute POST retried by the client's resilience pipeline with its
-   `Idempotency-Key` (runs once); MCP guided lookups, handoff follow-up and `describe_tool`; the
+   `Idempotency-Key` (runs once); MCP guided lookups in a session (MRTR lookups are covered by `McpLookupTests`), handoff follow-up and `describe_tool`; the
    registry URL host guard (SSRF) with a real registry payload. Each is unit-tested in isolation.

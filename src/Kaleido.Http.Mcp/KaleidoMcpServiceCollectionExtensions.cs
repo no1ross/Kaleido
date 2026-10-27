@@ -75,6 +75,10 @@ public static class KaleidoMcpServiceCollectionExtensions
         services.AddScoped<IMcpObservability, McpObservability>();
         services.AddScoped<IToolCatalogProvider, ToolCatalogProvider>();
         services.AddScoped<IKaleidoToolInvoker, KaleidoToolInvoker>();
+
+        // The guided-lookup state the client carries between form rounds is encrypted and signed (#452).
+        services.AddDataProtection();
+        services.AddScoped<IMcpLookupStateProtector, McpLookupStateProtector>();
         services.AddScoped<IKaleidoMcpToolHandler, KaleidoMcpToolHandler>();
 
         services

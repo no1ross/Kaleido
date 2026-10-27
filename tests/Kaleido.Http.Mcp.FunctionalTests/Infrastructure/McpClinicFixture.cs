@@ -35,6 +35,7 @@ public class McpClinicFixture : IAsyncLifetime
     private readonly bool withSignIn;
     private readonly bool withFrontDoor;
     private readonly bool withConfirmation;
+    private readonly bool withLookupStep;
 
     private IHost? host;
 
@@ -69,12 +70,13 @@ public class McpClinicFixture : IAsyncLifetime
     {
     }
 
-    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false, bool withFrontDoor = false, bool withConfirmation = false)
+    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false, bool withFrontDoor = false, bool withConfirmation = false, bool withLookupStep = false)
     {
         this.withDownstreamThatIsDown = withDownstreamThatIsDown;
         this.withSignIn = withSignIn;
         this.withFrontDoor = withFrontDoor;
         this.withConfirmation = withConfirmation;
+        this.withLookupStep = withLookupStep;
     }
 
     /// <summary>A raw HTTP client on the TestServer, for protocol-level assertions.</summary>
@@ -167,6 +169,10 @@ public class McpClinicFixture : IAsyncLifetime
                             ServiceName = "clinic",
                             DisplayName = "Clinic",
                             Assemblies = [typeof(McpClinicFixture).Assembly],
+
+                            // The guided-lookup step only where its tests run: elsewhere it would change the
+                            // tool list and what is next after a visit closes.
+                            TypeFilter = withLookupStep ? null : type => type != typeof(AssignBedStep) && type != typeof(AssignBedHandler),
                             AuthorizationMode = KaleidoAuthorizationMode.Authenticated,
                         })
                             .AddInMemoryStores()
@@ -238,13 +244,15 @@ public class McpClinicFixture : IAsyncLifetime
 
     /// <summary>
     /// An MCP client connected as <paramref name="authorization"/> (null = anonymous). Pass an
-    /// <paramref name="elicitation"/> handler to act as a client whose user answers forms.
+    /// <paramref name="elicitation"/> handler to act as a client whose user answers forms, and an
+    /// <paramref name="outgoing"/> handler to see or change what the client sends.
     /// </summary>
     public async Task<McpClient> ConnectAsync(
         string? authorization,
         Func<ElicitRequestParams?, CancellationToken, ValueTask<ElicitResult>>? elicitation = null,
         string? requestId = null,
-        string? protocolVersion = null)
+        string? protocolVersion = null,
+        DelegatingHandler? outgoing = null)
     {
         var headers = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -265,7 +273,9 @@ public class McpClinicFixture : IAsyncLifetime
                 TransportMode = HttpTransportMode.StreamableHttp,
                 AdditionalHeaders = headers
             },
-            Server.CreateClient());
+            outgoing is null
+                ? Server.CreateClient()
+                : new HttpClient(Wrap(outgoing)) { BaseAddress = Server.BaseAddress });
 
         // A pinned revision decides how forms travel: 2026-07-28 returns input_required results
         // (MRTR) that the SDK client answers and retries; 2025-11-25 elicits within the session.
@@ -279,6 +289,12 @@ public class McpClinicFixture : IAsyncLifetime
         }
 
         return await McpClient.CreateAsync(transport, options, cancellationToken: TestContext.Current.CancellationToken);
+    }
+
+    private DelegatingHandler Wrap(DelegatingHandler outgoing)
+    {
+        outgoing.InnerHandler = Server.CreateHandler();
+        return outgoing;
     }
 
     private sealed class CapturingLoggerProvider(System.Collections.Concurrent.ConcurrentQueue<(LogLevel Level, string Text)> logs) : ILoggerProvider

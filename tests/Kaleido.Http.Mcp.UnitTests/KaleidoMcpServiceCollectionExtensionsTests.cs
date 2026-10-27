@@ -157,6 +157,8 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
         Assert.Equal(ServiceLifetime.Scoped, Lifetime<IToolCatalogProvider>(services));
         Assert.Equal(ServiceLifetime.Scoped, Lifetime<IKaleidoToolInvoker>(services));
         Assert.Equal(ServiceLifetime.Scoped, Lifetime<IKaleidoMcpToolHandler>(services));
+        Assert.Equal(ServiceLifetime.Scoped, Lifetime<IMcpLookupStateProtector>(services));
+        Assert.Contains(services, x => x.ServiceType == typeof(Microsoft.AspNetCore.DataProtection.IDataProtectionProvider));
     }
 
     private static ServiceLifetime Lifetime<TService>(ServiceCollection services) =>

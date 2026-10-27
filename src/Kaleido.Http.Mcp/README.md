@@ -225,11 +225,19 @@ lookup's inputs, the adapter runs the lookup itself:
    searches again);
 4. the adapter fills the grouped inputs from the chosen row and runs the step.
 
-The ids never pass through the model. Clients without forms keep the instruction path.
+The ids never pass through the model. In a session (the client elicits within the call) they never
+leave the adapter. With MRTR (the client answers each form and calls again) the search results, the
+process and the original arguments travel in the `requestState` the client sends back, so that
+state is **encrypted and signed** with ASP.NET Data Protection, bound to the caller, and valid for 30
+minutes (#452): the client cannot read the ids, and a changed, forged, oversized, expired or
+another caller's state is refused with `mcp_invalid_arguments` and nothing runs. A host with several
+instances behind a load balancer shares one Data Protection key ring between them (for example
+`services.AddDataProtection().PersistKeysTo...()`), as for any protected payload; otherwise a form
+answered on another instance is refused and the user starts the lookup again. Clients without forms
+keep the instruction path.
 
-**Lookups guide; services check.** A lookup reduces mistakes; it does not enforce anything. The
-continuation state of a guided lookup is opaque but not trusted, and an agent can still pass ids
-itself. The service that owns the step checks what it receives and rejects a mismatch (the
+**Lookups guide; services check.** A lookup reduces mistakes; it does not enforce anything. An agent
+can still pass ids itself (calling the step with its inputs skips the guided lookup). The service that owns the step checks what it receives and rejects a mismatch (the
 [PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) rejects an enrollment that is not the member's, and a provider location that is
 not the provider's or not offered for the request, and reads names and network status from the
 chosen result instead of taking them from the caller).
