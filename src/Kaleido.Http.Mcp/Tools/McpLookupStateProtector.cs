@@ -1,6 +1,10 @@
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Kaleido.Http.Mcp.Observability;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Kaleido.Http.Mcp.Tools;
 
@@ -15,17 +19,20 @@ internal interface IMcpLookupStateProtector
     string Protect(McpLookupState state);
 
     /// <summary>
-    /// The state, when <paramref name="value"/> was protected here for the current caller and has not
-    /// expired; null when it is missing, oversized, changed, expired or another caller's.
+    /// The state, when <paramref name="value"/> was protected for the current caller with a key this
+    /// instance has, and has not expired; null otherwise. Every refusal is observed with its reason.
     /// </summary>
     McpLookupState? Unprotect(string? value);
 }
 
-// ASP.NET Data Protection (encrypted and signed, time-limited) keeps the adapter stateless: a host with
-// several instances shares its key ring (PersistKeysTo...), as for any protected payload.
+// ASP.NET Data Protection (encrypted and signed) keeps the adapter stateless: instances behind a load
+// balancer share one key ring (docs/guide/deployment.md). A state protected with a key this instance
+// does not have is the one refusal that is a deployment problem, so it is told apart from the client's.
 internal sealed class McpLookupStateProtector(
     IDataProtectionProvider provider,
-    IKaleidoCorrelationContextAccessor correlation)
+    IKeyManager keys,
+    IKaleidoCorrelationContextAccessor correlation,
+    IMcpObservability observability)
     : IMcpLookupStateProtector
 {
     internal const string Prefix = "kaleido-mcp-lookup:";
@@ -33,21 +40,24 @@ internal sealed class McpLookupStateProtector(
     // Far more than the rows of one pick list; a larger value is refused before it is decoded.
     internal const int MaxLength = 64 * 1024;
 
+    internal const string Purpose = "Kaleido.Http.Mcp.LookupState.v1";
+
     // A lookup is a few form rounds with the user; an older state is refused.
     internal static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(30);
 
-    internal const string Purpose = "Kaleido.Http.Mcp.LookupState.v1";
+    // A Data Protection payload starts with this magic number and the id of the key that protected it.
+    private const uint PayloadMagic = 0x09F0C9F0;
 
-    private readonly ITimeLimitedDataProtector _protector =
-        provider.CreateProtector(Purpose).ToTimeLimitedDataProtector();
+    private readonly IDataProtector _protector = provider.CreateProtector(Purpose);
 
     public string Protect(McpLookupState state)
     {
         ArgumentNullException.ThrowIfNull(state);
 
         return Prefix + _protector.Protect(
-            JsonSerializer.Serialize(state with { Caller = Caller() }, KaleidoJsonOptions.Options),
-            Lifetime);
+            JsonSerializer.Serialize(
+                state with { Caller = Caller(), ExpiresUtc = DateTimeOffset.UtcNow + Lifetime },
+                KaleidoJsonOptions.Options));
     }
 
     public McpLookupState? Unprotect(string? value)
@@ -56,20 +66,56 @@ internal sealed class McpLookupStateProtector(
             value.Length > MaxLength ||
             !value.StartsWith(Prefix, StringComparison.Ordinal))
         {
-            return null;
+            return Refused(McpTelemetry.LookupStateInvalid);
         }
+
+        var payload = value[Prefix.Length..];
+        McpLookupState? state;
 
         try
         {
-            var state = JsonSerializer.Deserialize<McpLookupState>(
-                _protector.Unprotect(value[Prefix.Length..]),
-                KaleidoJsonOptions.Options);
+            state = JsonSerializer.Deserialize<McpLookupState>(_protector.Unprotect(payload), KaleidoJsonOptions.Options);
+        }
+        catch (CryptographicException)
+        {
+            return KeyId(payload) is { } keyId && keys.GetAllKeys().All(x => x.KeyId != keyId)
+                ? Refused(McpTelemetry.LookupStateUnknownKey, keyId)
+                : Refused(McpTelemetry.LookupStateInvalid);
+        }
+        catch (Exception exception) when (exception is FormatException or JsonException)
+        {
+            return Refused(McpTelemetry.LookupStateInvalid);
+        }
 
-            return state is not null && string.Equals(state.Caller, Caller(), StringComparison.Ordinal)
-                ? state
+        return state switch
+        {
+            null => Refused(McpTelemetry.LookupStateInvalid),
+            { ExpiresUtc: var expires } when expires <= DateTimeOffset.UtcNow => Refused(McpTelemetry.LookupStateExpired),
+            _ when !string.Equals(state.Caller, Caller(), StringComparison.Ordinal) => Refused(McpTelemetry.LookupStateAnotherCaller),
+            _ => state,
+        };
+    }
+
+    private McpLookupState? Refused(string reason, Guid? keyId = null)
+    {
+        observability.LookupStateRefused(reason, keyId);
+
+        return null;
+    }
+
+    // The id of the key that protected the payload, read from its header; null when it is not a Data
+    // Protection payload at all.
+    private static Guid? KeyId(string payload)
+    {
+        try
+        {
+            var bytes = WebEncoders.Base64UrlDecode(payload);
+
+            return bytes.Length >= 20 && BinaryPrimitives.ReadUInt32BigEndian(bytes) == PayloadMagic
+                ? new Guid(bytes.AsSpan(4, 16))
                 : null;
         }
-        catch (Exception exception) when (exception is CryptographicException or FormatException or JsonException)
+        catch (FormatException)
         {
             return null;
         }
@@ -102,6 +148,9 @@ internal sealed record McpLookupState(
 {
     /// <summary>The caller the state was issued to; set by the protector.</summary>
     public string Caller { get; init; } = string.Empty;
+
+    /// <summary>Until when the state is accepted; set by the protector.</summary>
+    public DateTimeOffset ExpiresUtc { get; init; }
 }
 
 /// <summary>One row of a lookup's pick list: its label and the values that fill the step's inputs.</summary>

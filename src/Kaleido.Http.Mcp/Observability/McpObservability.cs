@@ -19,6 +19,14 @@ internal interface IMcpObservability
     IMcpToolsListObservation BeginToolsList();
 
     void RegistryRead(string result, string? revision);
+
+    /// <summary>
+    /// A guided-lookup state was refused on a form retry (#452), with the reason
+    /// (<see cref="McpTelemetry.LookupStateUnknownKey"/> and the others). An unknown key is a deployment
+    /// problem - the instances do not share a Data Protection key ring - and is logged at Warning with
+    /// the fix; the other reasons are the client's, at Debug.
+    /// </summary>
+    void LookupStateRefused(string reason, Guid? keyId);
 }
 
 internal interface IMcpToolCallObservation : IDisposable
@@ -71,6 +79,11 @@ internal sealed partial class McpObservability(
             McpTelemetry.RegistryReadsCounterName,
             description: "Registry reads by result (hit: the caller's tools were already translated for this registry revision; fetched: translated now).");
 
+    private static readonly Counter<long> LookupStatesRefusedCounter =
+        Meter.CreateCounter<long>(
+            McpTelemetry.LookupStatesRefusedCounterName,
+            description: "Guided-lookup states refused on a form retry, by reason (unknown_key: the instances do not share a Data Protection key ring).");
+
     public IMcpToolCallObservation BeginToolCall(string toolName)
     {
         var requestId = correlation.Current.RequestId;
@@ -102,6 +115,28 @@ internal sealed partial class McpObservability(
 
         LogRegistryRead(logger, result, revision);
     }
+
+    public void LookupStateRefused(string reason, Guid? keyId)
+    {
+        LookupStatesRefusedCounter.Add(1, new KeyValuePair<string, object?>(McpTelemetry.TagLookupStateRefusal, reason));
+
+        Activity.Current?.SetTag(McpTelemetry.TagLookupStateRefusal, reason);
+
+        if (string.Equals(reason, McpTelemetry.LookupStateUnknownKey, StringComparison.Ordinal))
+        {
+            LogLookupStateKeyNotInRing(logger, keyId);
+        }
+        else
+        {
+            LogLookupStateRefused(logger, reason);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: a guided-lookup form was answered with state protected by Data Protection key {KeyId}, which this instance's key ring does not have, so the lookup was refused and the user must start it again. The MCP instances behind the load balancer do not share one key ring: configure AddDataProtection().SetApplicationName(...).PersistKeysTo...() the same on every instance (docs/guide/deployment.md).")]
+    private static partial void LogLookupStateKeyNotInRing(ILogger logger, Guid? keyId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Kaleido MCP: a guided-lookup state was refused ({Reason}); nothing was run.")]
+    private static partial void LogLookupStateRefused(ILogger logger, string reason);
 
     private sealed partial class ToolCallObservation(
         Activity? activity,

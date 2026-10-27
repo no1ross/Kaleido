@@ -35,6 +35,9 @@ internal static class McpTelemetry
     /// <summary>Registry reads, by result: <c>hit</c> (the caller's registry revision was already translated into tools) or <c>fetched</c> (translated now).</summary>
     public const string RegistryReadsCounterName = "kaleido.mcp.registry_reads";
 
+    /// <summary>Guided-lookup states refused on a form retry, by reason (#452): <c>unknown_key</c> (the instances do not share a Data Protection key ring), <c>expired</c>, <c>another_caller</c> or <c>invalid</c>.</summary>
+    public const string LookupStatesRefusedCounterName = "kaleido.mcp.lookup_states_refused";
+
     // ── Tag names ────────────────────────────────────────────────────────────
 
     public const string TagTool = "kaleido.mcp.tool";
@@ -60,6 +63,9 @@ internal static class McpTelemetry
 
     public const string TagRegistryPartial = "kaleido.mcp.registry.partial";
 
+    /// <summary>Why a guided-lookup state was refused; see <see cref="LookupStatesRefusedCounterName"/>.</summary>
+    public const string TagLookupStateRefusal = "kaleido.mcp.lookup_state.refusal";
+
     // ── Tag values ───────────────────────────────────────────────────────────
 
     public const string OutcomeCompleted = "completed";
@@ -73,4 +79,12 @@ internal static class McpTelemetry
     public const string RegistryHit = "hit";
 
     public const string RegistryFetched = "fetched";
+
+    public const string LookupStateUnknownKey = "unknown_key";
+
+    public const string LookupStateExpired = "expired";
+
+    public const string LookupStateAnotherCaller = "another_caller";
+
+    public const string LookupStateInvalid = "invalid";
 }

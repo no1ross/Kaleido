@@ -230,11 +230,17 @@ leave the adapter. With MRTR (the client answers each form and calls again) the 
 process and the original arguments travel in the `requestState` the client sends back, so that
 state is **encrypted and signed** with ASP.NET Data Protection, bound to the caller, and valid for 30
 minutes (#452): the client cannot read the ids, and a changed, forged, oversized, expired or
-another caller's state is refused with `mcp_invalid_arguments` and nothing runs. A host with several
-instances behind a load balancer shares one Data Protection key ring between them (for example
-`services.AddDataProtection().PersistKeysTo...()`), as for any protected payload; otherwise a form
-answered on another instance is refused and the user starts the lookup again. Clients without forms
+another caller's state is refused with `mcp_invalid_arguments` and nothing runs. Clients without forms
 keep the instruction path.
+
+**Several instances share one key ring.** A form shown by one instance can be answered on another, so
+every instance behind a load balancer uses the same Data Protection application name and key storage
+- configured by the host, with its own `AddDataProtection()` call; Kaleido adds none of its own
+settings. The [deployment guide](../../docs/guide/deployment.md#mcp-on-several-instances-one-key-ring)
+has the setup. A misconfiguration is reported, never silent: outside Development a host with no key
+storage configured logs a Warning at startup, and an instance that receives a form protected with a
+key it does not have logs a Warning naming the cause, counts it in
+`kaleido.mcp.lookup_states_refused` (reason `unknown_key`), and tells the user to search again.
 
 **Lookups guide; services check.** A lookup reduces mistakes; it does not enforce anything. An agent
 can still pass ids itself (calling the step with its inputs skips the guided lookup). The service that owns the step checks what it receives and rejects a mismatch (the

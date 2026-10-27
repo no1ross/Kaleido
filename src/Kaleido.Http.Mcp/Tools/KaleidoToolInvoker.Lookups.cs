@@ -137,7 +137,7 @@ internal sealed partial class KaleidoToolInvoker
             catalog.Find(state.Tool) is not { Kind: KaleidoToolKind.Step } tool ||
             tool.Lookups.FirstOrDefault(x => string.Equals(x.Group, state.Group, StringComparison.Ordinal)) is not { } lookup)
         {
-            return Error(McpErrorCodes.InvalidArguments, "The lookup state is not valid (changed, expired, or issued to another caller); nothing was run. Call the tool again.");
+            return Error(McpErrorCodes.InvalidArguments, "The record search could not be continued - the form expired, was changed, or was answered on another server - so nothing was run. Tell the user to start the search again by calling the tool again.");
         }
 
         var arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(state.Arguments, KaleidoJsonOptions.Options) ?? [];

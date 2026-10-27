@@ -196,7 +196,10 @@ sections.
   trusted to fill the step's inputs. They are now encrypted and signed with ASP.NET Data Protection,
   bound to the caller and valid for 30 minutes; a changed, forged, oversized, expired or another
   caller's state is refused with `mcp_invalid_arguments` and nothing runs. Hosts with several
-  instances share a Data Protection key ring.
+  instances share a Data Protection key ring: the deployment guide shows the setup, a host without key
+  storage is warned at startup (outside Development), and a form answered on an instance without its
+  key is logged at Warning with the fix and counted in `kaleido.mcp.lookup_states_refused`
+  (reason `unknown_key`); the user is told to search again.
 - **The guide's MCP and handoff examples work as written** (#450): the getting-started MCP recipe
   had no call-credential registration, so `AddMcp()` refused to start; it now calls
   `ForwardCallerToken()` and is hosted end to end by a Guide test (tools listed, a tool called). The

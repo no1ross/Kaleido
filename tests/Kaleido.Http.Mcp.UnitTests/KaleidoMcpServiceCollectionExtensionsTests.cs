@@ -314,6 +314,7 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     {
         services.AddLogging();
         services.AddSingleton(Mock.Of<IHostApplicationLifetime>());
+        services.AddSingleton(Mock.Of<IHostEnvironment>());
         services.AddSingleton(Mock.Of<IHttpContextAccessor>());
         services.AddSingleton(Mock.Of<IKaleidoCorrelationContextAccessor>());
         services.AddSingleton(Mock.Of<IKaleidoProcessorClientFactory>());

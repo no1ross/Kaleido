@@ -218,6 +218,42 @@ public sealed class McpObservabilityTests
         Assert.Equal(McpTelemetry.RegistryHit, Span(McpTelemetry.ToolsListActivityName).GetTagItem(McpTelemetry.TagRegistryResult));
     }
 
+    // #452: a lookup state signed with a key this instance lacks is a deployment problem: a Warning that
+    // names the key and the fix, and a count by reason.
+    [Fact]
+    public void ALookupStateRefusedForAnUnknownKey_WarnsWithTheFix_AndIsCounted()
+    {
+        var logger = new RecordingLogger();
+        var keyId = Guid.NewGuid();
+
+        CreateSut(logger).LookupStateRefused(McpTelemetry.LookupStateUnknownKey, keyId);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Contains(keyId.ToString(), entry.Message, StringComparison.Ordinal);
+        Assert.Contains("do not share one key ring", entry.Message, StringComparison.Ordinal);
+        Assert.Contains(measurements, x =>
+            x.Instrument == McpTelemetry.LookupStatesRefusedCounterName &&
+            Equals(x.Tags[McpTelemetry.TagLookupStateRefusal], McpTelemetry.LookupStateUnknownKey));
+    }
+
+    // The other reasons are the client's (a changed, expired or foreign state): Debug, and counted.
+    [Theory]
+    [InlineData(McpTelemetry.LookupStateExpired)]
+    [InlineData(McpTelemetry.LookupStateAnotherCaller)]
+    [InlineData(McpTelemetry.LookupStateInvalid)]
+    public void ALookupStateRefusedForAnotherReason_IsLoggedAtDebug_AndCounted(string reason)
+    {
+        var logger = new RecordingLogger();
+
+        CreateSut(logger).LookupStateRefused(reason, keyId: null);
+
+        Assert.Equal((LogLevel.Debug, $"Kaleido MCP: a guided-lookup state was refused ({reason}); nothing was run."), Assert.Single(logger.Entries));
+        Assert.Contains(measurements, x =>
+            x.Instrument == McpTelemetry.LookupStatesRefusedCounterName &&
+            Equals(x.Tags[McpTelemetry.TagLookupStateRefusal], reason));
+    }
+
     [Theory]
     [InlineData(KaleidoToolKind.Query, "query")]
     [InlineData(KaleidoToolKind.Step, "step")]

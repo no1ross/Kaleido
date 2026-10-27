@@ -2808,7 +2808,7 @@ public sealed class KaleidoToolInvokerTests
         var body = Body(await CreateSut().InvokeAsync(PickPatient, Call(requestState: state), LookupCatalog, Cancel));
 
         Assert.Equal(McpErrorCodes.InvalidArguments, body["code"]?.GetValue<string>());
-        Assert.Equal("The lookup state is not valid (changed, expired, or issued to another caller); nothing was run. Call the tool again.", body["message"]?.GetValue<string>());
+        Assert.Equal("The record search could not be continued - the form expired, was changed, or was answered on another server - so nothing was run. Tell the user to start the search again by calling the tool again.", body["message"]?.GetValue<string>());
     }
 
     [Theory]

@@ -79,6 +79,7 @@ public static class KaleidoMcpServiceCollectionExtensions
         // The guided-lookup state the client carries between form rounds is encrypted and signed (#452).
         services.AddDataProtection();
         services.AddScoped<IMcpLookupStateProtector, McpLookupStateProtector>();
+        services.AddHostedService<McpKeyRingCheck>();
         services.AddScoped<IKaleidoMcpToolHandler, KaleidoMcpToolHandler>();
 
         services
