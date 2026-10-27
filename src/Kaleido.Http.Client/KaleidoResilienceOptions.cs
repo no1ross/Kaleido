@@ -1,4 +1,3 @@
-using System.Globalization;
 using Kaleido.Exceptions;
 using Microsoft.Extensions.Configuration;
 
@@ -57,13 +56,13 @@ public sealed record KaleidoResilienceOptions : KaleidoResilienceSettings
     // The shared rules, then the client-only timeouts; nothing is adjusted, an invalid value stops startup.
     internal static void Validate(KaleidoResilienceOptions resilience, string section)
     {
-        Validate((KaleidoResilienceSettings)resilience, section, HttpClientErrorCodes.InvalidClientOptions);
+        Validate(resilience, section, HttpClientErrorCodes.InvalidClientOptions);
 
         if (resilience.TotalTimeout <= TimeSpan.Zero || resilience.HealthCheckTimeout <= TimeSpan.Zero)
         {
             throw new KaleidoConfigurationException(
                 HttpClientErrorCodes.InvalidClientOptions,
-                string.Create(CultureInfo.InvariantCulture, $"{section}:TotalTimeout ({resilience.TotalTimeout}) and {section}:HealthCheckTimeout ({resilience.HealthCheckTimeout}) must be positive."));
+                $"{section}:TotalTimeout ({resilience.TotalTimeout}) and {section}:HealthCheckTimeout ({resilience.HealthCheckTimeout}) must be positive.");
         }
     }
 }
