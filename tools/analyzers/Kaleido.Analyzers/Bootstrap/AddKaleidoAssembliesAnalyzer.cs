@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -7,8 +8,10 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Bootstrap;
 
 /// <summary>
-/// KAL2006 — AddKaleido() options lambdas should set Assemblies explicitly.
-/// Missing or empty assemblies now fail during AddKaleido() registration.
+/// KAL2006 - the options passed to AddKaleido() should set Assemblies: they can only be set in code,
+/// and missing or empty assemblies fail AddKaleido() at registration. Reported when the options are
+/// left out, <c>null</c>, or an object creation (<c>new() { ... }</c>) whose initializer does not set
+/// <c>Assemblies</c>; options passed as a variable or built elsewhere are not judged.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class AddKaleidoAssembliesAnalyzer : DiagnosticAnalyzer
@@ -16,13 +19,13 @@ public sealed class AddKaleidoAssembliesAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule =
         new(
             DiagnosticIds.AddKaleidoMissingAssemblies,
-            "AddKaleido() options lambda does not set Assemblies",
-            "AddKaleido() requires a non-empty Assemblies collection — set o.Assemblies explicitly in the options lambda",
+            "AddKaleido() options do not set Assemblies",
+            "AddKaleido() requires a non-empty Assemblies collection - set Assemblies in the options passed to AddKaleido (new() { Assemblies = [typeof(Program).Assembly] })",
             "Kaleido.Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             helpLinkUri: HelpLinks.For(DiagnosticIds.AddKaleidoMissingAssemblies),
-            description: "Missing or empty Assemblies causes AddKaleido() to fail at registration; explicit assemblies make discovery deterministic.");
+            description: "Assemblies can only be set in code; missing or empty Assemblies causes AddKaleido() to fail at registration, and explicit assemblies make discovery deterministic.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(Rule);
@@ -38,64 +41,34 @@ public sealed class AddKaleidoAssembliesAnalyzer : DiagnosticAnalyzer
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
 
-        if (GetMethodName(invocation) != "AddKaleido")
+        if (invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "AddKaleido" })
         {
             return;
         }
 
-        var arguments = invocation.ArgumentList.Arguments;
-        if (arguments.Count < 2)
+        if (OptionsArgument(invocation.ArgumentList) is { } options && !LeavesOutAssemblies(options))
         {
             return;
         }
 
-        var secondArg = arguments[1].Expression;
-        var lambdaBody = secondArg switch
-        {
-            SimpleLambdaExpressionSyntax simple => simple.Body,
-            ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized.Body,
-            _ => null
-        };
-
-        if (lambdaBody is null)
-        {
-            return;
-        }
-
-        if (LambdaBodyReferencesAssemblies(lambdaBody))
-        {
-            return;
-        }
-
-        context.ReportDiagnostic(
-            Diagnostic.Create(Rule, invocation.GetLocation()));
+        context.ReportDiagnostic(Diagnostic.Create(Rule, invocation.GetLocation()));
     }
 
-    private static bool LambdaBodyReferencesAssemblies(CSharpSyntaxNode body)
-    {
-        foreach (var node in body.DescendantNodesAndSelf())
+    // services.AddKaleido(configuration, options): the named "options" argument, else the second one.
+    private static ExpressionSyntax? OptionsArgument(ArgumentListSyntax arguments) =>
+        arguments.Arguments.FirstOrDefault(x => x.NameColon?.Name.Identifier.ValueText == "options")?.Expression
+        ?? (arguments.Arguments.Count >= 2 && arguments.Arguments[1].NameColon is null ? arguments.Arguments[1].Expression : null);
+
+    private static bool LeavesOutAssemblies(ExpressionSyntax options) =>
+        options switch
         {
-            if (node is IdentifierNameSyntax identifier &&
-                identifier.Identifier.ValueText == "Assemblies")
-            {
-                return true;
-            }
-
-            if (node is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name.Identifier.ValueText == "Assemblies")
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static string? GetMethodName(InvocationExpressionSyntax invocation) =>
-        invocation.Expression switch
-        {
-            MemberAccessExpressionSyntax m => m.Name.Identifier.ValueText,
-            IdentifierNameSyntax id => id.Identifier.ValueText,
-            _ => null
+            LiteralExpressionSyntax literal => literal.IsKind(SyntaxKind.NullLiteralExpression),
+            BaseObjectCreationExpressionSyntax creation => !SetsAssemblies(creation.Initializer),
+            _ => false,
         };
+
+    private static bool SetsAssemblies(InitializerExpressionSyntax? initializer) =>
+        initializer is not null
+        && initializer.Expressions.Any(x =>
+            x is AssignmentExpressionSyntax { Left: IdentifierNameSyntax { Identifier.ValueText: "Assemblies" } });
 }

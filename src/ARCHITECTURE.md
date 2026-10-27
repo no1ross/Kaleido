@@ -130,7 +130,7 @@ Public seams consumers are expected to implement or replace:
 
 **Registry endpoint** (`RegistryEndpointRouteBuilderExtensions` — internal; mapped by `MapKaleidoHttp`)
 - `GET /{prefix}/registry` — unified discovery envelope (`AggregatedRegistryResponse`: `Processes`, `Queryables`, `ClientErrors`)
-- Leaf mode returns this service's local registrations; `MapKaleidoHttp(o => o.AggregateRegistry = true)` also fans out to every `AddHttpClients()` client — one `GET /{svc}/registry` fetch per client, shared via `KaleidoRemoteRegistry`
+- Leaf mode returns this service's local registrations; `MapKaleidoHttp(new() { AggregateRegistry = true })` also fans out to every `AddHttpClients()` client — one `GET /{svc}/registry` fetch per client, shared via `KaleidoRemoteRegistry`
 - Freshness: `GeneratedAt`, `Revision` (SHA-256 of the filtered payload), `IsPartial`; `ETag`/`Cache-Control` headers, `If-None-Match` → 304; `?strict` → 502 when partial (body still included); `?refresh` forces rebuild, throttled by `KaleidoHttpMapOptions.RegistryRefreshCooldown`
 - Snapshots live in `IRegistrySnapshotStore` (in-memory default; `AddDistributedRegistrySnapshots()` puts them in the host's `IDistributedCache`, mirrored in memory so an unreachable cache never fails a read) under canonical key `kaleido:{ServiceName}` (the unfiltered union, filtered per caller on every request); consumers' client copies use their own `kaleido-client:{ServiceName}:{clientName}` keys, so a shared store never mixes them; only clean snapshots are committed, so degraded states are re-probed per request
 - Always returns HTTP 200 unless `?strict` is requested; unreachable downstream clients populate `ClientErrors`
@@ -141,7 +141,7 @@ Public seams consumers are expected to implement or replace:
 
 ### Key design invariants
 - Endpoints adapt contracts and publish routes. They do not reimplement runtime planning or business execution.
-- The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
+- The route prefix is derived from `KaleidoServiceOptions.ServiceName` (set in the options passed to `AddKaleido`; `Kaleido:ServiceName` in configuration overrides it).
 - Registry endpoint returns 200 by default. Partial responses are signalled through `ClientErrors`/`IsPartial`; `?strict` opts into a 502 when partial.
 - `ConfigureHttpJsonOptions` is never called — Kaleido JSON options are scoped to Kaleido endpoints via `KaleidoJsonEndpointFilter`. Consumer endpoints retain their own serialization behavior.
 

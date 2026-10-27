@@ -108,14 +108,14 @@ Core runtime concerns live in `Kaleido`. HTTP transport (DI, middleware, routes)
 The repository follows a layered registration model.
 
 ### Step 1: Core bootstrap
-Applications start with `AddKaleido(IConfiguration, Action<KaleidoServiceOptionsBuilder>)`, which:
+Applications start with `AddKaleido(IConfiguration, KaleidoServiceOptions?)`, which:
 - establishes shared DI baseline services
-- validates service identity and options
+- lays the `Kaleido` configuration section over the options from code (configuration overrides code, ADR 0030) and validates them
 - returns an `IKaleidoBuilder` with assemblies configured via `KaleidoServiceOptions.Assemblies`
 - automatically calls `AddProcessor()` and `AddQueryable()` to register runtimes
 
 ### Step 2: Assembly registration
-Assemblies are passed via `KaleidoServiceOptions.Assemblies` in the `AddKaleido()` configure callback. Those assemblies become shared registration input for the Queryable and Process runtimes.
+Assemblies are passed via `KaleidoServiceOptions.Assemblies` in the options given to `AddKaleido()` (only code can set them). Those assemblies become shared registration input for the Queryable and Process runtimes.
 
 ### Step 3: Capability registration
 - `AddProcessor()` (internal, called automatically) scans registered assemblies for steps (`IProcessStep`, described by `[ProcessStep]`) and their handlers. It builds the step registry and registers runtime services.

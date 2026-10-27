@@ -14,13 +14,13 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-            {
-                o.ServiceName = "test-processor";
-                o.DisplayName = "Test Processor";
-                o.Description = "Test processor.";
-                o.Assemblies = new[] { typeof(TestStep).Assembly };
-            });
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
+        {
+            ServiceName = "test-processor",
+            DisplayName = "Test Processor",
+            Description = "Test processor.",
+            Assemblies = new[] { typeof(TestStep).Assembly },
+        });
 
         using var provider = services.BuildServiceProvider();
 
@@ -50,11 +50,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-            {
-                o.ServiceName = "test-processor";
-                o.Assemblies = new[] { typeof(TestStep).Assembly };
-            });
+        services.AddKaleido(new ConfigurationBuilder().Build(), new() { ServiceName = "test-processor", Assemblies = new[] { typeof(TestStep).Assembly } });
 
         var descriptor =
             Assert.Single(services, x => x.ServiceType == typeof(IProcessorStepRegistry));
@@ -72,12 +68,12 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-            {
-                o.ServiceName = "test-processor";
-                o.Assemblies = new[] { typeof(TestStep).Assembly };
-                o.IsEntryProcessor = true;
-            });
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
+        {
+            ServiceName = "test-processor",
+            Assemblies = new[] { typeof(TestStep).Assembly },
+            IsEntryProcessor = true,
+        });
 
         using var provider = services.BuildServiceProvider();
 
@@ -173,11 +169,11 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var services = new ServiceCollection();
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
-            o.ServiceName = "test-processor";
-            o.Assemblies = [assembly];
-            o.TypeFilter = type => type.Namespace != "Excluded";
+            ServiceName = "test-processor",
+            Assemblies = [assembly],
+            TypeFilter = type => type.Namespace != "Excluded",
         });
     }
 
@@ -307,11 +303,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var services = new ServiceCollection();
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-        {
-            o.ServiceName = "test-processor";
-            o.Assemblies = [assembly];
-        });
+        services.AddKaleido(new ConfigurationBuilder().Build(), new() { ServiceName = "test-processor", Assemblies = [assembly] });
 
         Assert.DoesNotContain(services, x => x.ServiceType == typeof(IProcessorStepRegistry));
     }
@@ -337,11 +329,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-        {
-            o.ServiceName = "test-processor";
-            o.Assemblies = [assembly];
-        });
+        services.AddKaleido(new ConfigurationBuilder().Build(), new() { ServiceName = "test-processor", Assemblies = [assembly] });
     }
 
     private static System.Reflection.Emit.AssemblyBuilder BuildAssembly(

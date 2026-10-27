@@ -158,11 +158,11 @@ public sealed class QueryableServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddKaleido(
             new ConfigurationBuilder().Build(),
-            o =>
+            new()
             {
-                o.ServiceName = "test-service";
-                o.Assemblies = [typeof(QueryableServiceCollectionExtensionsTests).Assembly];
-                o.TypeFilter = type => type == sourceType || type == viewType;
+                ServiceName = "test-service",
+                Assemblies = [typeof(QueryableServiceCollectionExtensionsTests).Assembly],
+                TypeFilter = type => type == sourceType || type == viewType,
             });
 
         using var provider = services.BuildServiceProvider(

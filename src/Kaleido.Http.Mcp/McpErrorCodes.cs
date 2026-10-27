@@ -24,8 +24,10 @@ public static class McpErrorCodes
     public const string MissingInstructionsFile = "mcp_missing_instructions_file";
 
     /// <summary>
-    /// A <c>Kaleido:Mcp</c> setting (bound or set in the <c>AddMcp</c> configure delegate) is out of
-    /// range, e.g. a negative <c>MaxElicitationRounds</c>. Reported at startup, never clamped.
+    /// A <c>Kaleido:Mcp</c> setting (from configuration or the options passed to <c>AddMcp</c>) is blank,
+    /// repeated, conflicting, out of range or cannot be read, e.g. a negative <c>MaxElicitationRounds</c>,
+    /// a blank <c>ServerName</c>, or both <c>Instructions</c> and <c>InstructionsFile</c>. Reported at
+    /// startup; nothing is clamped, trimmed or replaced.
     /// </summary>
     public const string InvalidOptions = "mcp_invalid_options";
 

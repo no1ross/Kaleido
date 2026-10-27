@@ -51,7 +51,7 @@ namespace Kaleido.Storage;
 ///     }
 /// }
 ///
-/// builder.Services.AddKaleido(builder.Configuration, o => { /* ... */ })
+/// builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
 ///     .AddContextStore&lt;OrdersContextStore&gt;()
 ///     .AddOutbox&lt;OrdersOutbox&gt;()
 ///     .AddTransactions&lt;OrdersTransactions&gt;();

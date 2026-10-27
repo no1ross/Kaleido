@@ -35,12 +35,12 @@ public sealed class QueryableAspNetCoreFixture
 
                         services.AddSingleton<FunctionalRecordData>();
 
-                        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                            {
-                                o.ServiceName = "kaleido";
-                                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                                o.Assemblies = new[] { typeof(FunctionalRecordContext).Assembly };
-                            })
+                        services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                        {
+                            ServiceName = "kaleido",
+                            AuthorizationMode = KaleidoAuthorizationMode.None,
+                            Assemblies = new[] { typeof(FunctionalRecordContext).Assembly },
+                        })
                             .AddInMemoryStores()
                             .AddHttp();
                     });
@@ -77,12 +77,12 @@ public sealed class QueryableAspNetCoreFixture
         // Client container needs no type scanning; under xUnit v3 the entry assembly
         // is this test project (it was testhost under v2), so the fallback would
         // register functional test sources without their dependencies.
-        clientServices.AddKaleido(clientConfig, o =>
-            {
-                o.ServiceName = "test-queryable-client";
-                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
-            })
+        clientServices.AddKaleido(clientConfig, new()
+        {
+            ServiceName = "test-queryable-client",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(KaleidoServiceOptions).Assembly],
+        })
             .AddHttpClients();
 
         // Override the named HttpClient to use the TestServer handler instead of a real socket

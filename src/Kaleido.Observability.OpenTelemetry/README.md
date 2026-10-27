@@ -8,7 +8,7 @@ Optional OpenTelemetry provider for Kaleido. Wires full observability (structure
 
 ```csharp
 builder.Services
-    .AddKaleido(builder.Configuration, o => { o.ServiceName = "myservice"; ... })
+    .AddKaleido(builder.Configuration, new() { ServiceName = "myservice", /* ... */ })
     .AddHttp()
     .AddOpenTelemetry();   // ← this package
 ```
@@ -59,10 +59,10 @@ Kaleido histogram instruments are registered with tuned explicit bucket boundari
 
 ### Adding instrumentation
 
-`AddOpenTelemetry(configure, configureTracing, configureMetrics)` also takes hooks for extra sources (EF Core, SQL Client, gRPC ...). They run after the built-in instrumentations and before the OTLP exporter, and are not called when traces (or metrics) are switched off:
+`AddOpenTelemetry(options, configureTracing, configureMetrics)` also takes hooks for extra sources (EF Core, SQL Client, gRPC ...). They run after the built-in instrumentations and before the OTLP exporter, and are not called when traces (or metrics) are switched off:
 
 ```csharp
-builder.Services.AddKaleido(builder.Configuration, o => { ... })
+builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
     .AddOpenTelemetry(
         configureTracing: tracing => tracing.AddEntityFrameworkCoreInstrumentation(),
         configureMetrics: metrics => metrics.AddMeter("MyCompany.Billing"));
@@ -81,7 +81,7 @@ Everything is on by default. `KaleidoOpenTelemetryOptions` switches each part of
 
 ```csharp
 builder.Services.AddKaleido(builder.Configuration)
-    .AddOpenTelemetry(o => o.Logs = false);   // traces + metrics over OTLP, logs go elsewhere
+    .AddOpenTelemetry(new() { Logs = false });   // traces + metrics over OTLP, logs go elsewhere
 ```
 
 ```json

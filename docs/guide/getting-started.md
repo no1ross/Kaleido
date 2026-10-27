@@ -133,12 +133,12 @@ missing metadata all fail before the first request).
 ```csharp
 services.AddSingleton<OrderBook>();
 
-services.AddKaleido(configuration, o =>
-    {
-        o.ServiceName = "orders";
-        o.Assemblies = [typeof(OrderSource).Assembly];
-        o.AuthorizationMode = KaleidoAuthorizationMode.None;   // local evaluation only
-    })
+services.AddKaleido(configuration, new()
+{
+    ServiceName = "orders",
+    Assemblies = [typeof(OrderSource).Assembly],
+    AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
+})
     .AddInMemoryStores()   // local evaluation only: nothing survives a restart
     .AddHttp();
 ```
@@ -204,12 +204,12 @@ the caller. Here the service publishes its own tools; a router can also publish 
 ```csharp
 services.AddSingleton<OrderBook>();
 
-services.AddKaleido(configuration, o =>
-    {
-        o.ServiceName = "orders";
-        o.Assemblies = [typeof(OrderSource).Assembly];
-        o.AuthorizationMode = KaleidoAuthorizationMode.None;   // local evaluation only
-    })
+services.AddKaleido(configuration, new()
+{
+    ServiceName = "orders",
+    Assemblies = [typeof(OrderSource).Assembly],
+    AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
+})
     .AddInMemoryStores()   // local evaluation only: nothing survives a restart
     .AddHttp()
     .AddHttpClients()

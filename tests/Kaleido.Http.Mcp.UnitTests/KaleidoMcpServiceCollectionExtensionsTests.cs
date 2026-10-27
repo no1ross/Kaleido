@@ -85,7 +85,7 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     {
         var builder = Builder(HostServices());
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.Object.AddMcp(o => o.MaxElicitationRounds = -1));
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.Object.AddMcp(new() { MaxElicitationRounds = -1 }));
 
         Assert.Equal(McpErrorCodes.InvalidOptions, exception.Code);
     }
@@ -116,7 +116,7 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     {
         var services = HostServices();
 
-        Builder(services).Object.AddMcp(o => o.ServerName = "priorauth");
+        Builder(services).Object.AddMcp(new() { ServerName = "priorauth" });
 
         var options = Assert.Single(services, x => x.ServiceType == typeof(KaleidoMcpOptions)).ImplementationInstance;
         Assert.Equal("priorauth", Assert.IsType<KaleidoMcpOptions>(options).ServerName);
@@ -167,19 +167,47 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     {
         var services = HostServices();
 
-        Builder(services).Object.AddMcp(o =>
+        Builder(services).Object.AddMcp(new()
         {
-            o.ServerName = "priorauth";
-            o.ServerVersion = "2.1.0";
-            o.Instructions = "Be careful.";
+            ServerName = "priorauth",
+            ServerVersion = "2.1.0",
+            Instructions = "Be careful.",
         });
 
         var server = ServerOptions(services);
 
         Assert.Equal("priorauth", server.ServerInfo?.Name);
         Assert.Equal("2.1.0", server.ServerInfo?.Version);
-        Assert.Equal(RegisteredOptions(services).Instructions, server.ServerInstructions);
-        Assert.Contains("Be careful.", server.ServerInstructions, StringComparison.Ordinal);
+        Assert.Equal("Be careful.", server.ServerInstructions);
+        var resolved = Assert.Single(services, x => x.ServiceType == typeof(KaleidoMcpServerInstructions)).ImplementationInstance;
+        Assert.Equal("Be careful.", Assert.IsType<KaleidoMcpServerInstructions>(resolved).Text);
+        Assert.Equal("Be careful.", RegisteredOptions(services).Instructions);
+    }
+
+    // ADR 0030: the Kaleido:Mcp section overrides the options from code, setting by setting; a blank
+    // value is an error, never replaced.
+    [Fact]
+    public void AddMcp_LaysTheKaleidoMcpSectionOverTheOptionsFromCode()
+    {
+        var services = HostServices();
+        var code = new KaleidoMcpOptions { ServerName = "priorauth", MaxElicitationRounds = 2 };
+
+        Builder(services, new Dictionary<string, string?> { ["Kaleido:Mcp:MaxElicitationRounds"] = "4" }).Object.AddMcp(code);
+
+        Assert.Equal(4, RegisteredOptions(services).MaxElicitationRounds);
+        Assert.Equal("priorauth", RegisteredOptions(services).ServerName);
+        Assert.Equal(2, code.MaxElicitationRounds);
+    }
+
+    [Fact]
+    public void AddMcp_ABlankServerNameInConfiguration_FailsWithItsCode()
+    {
+        var builder = Builder(HostServices(), new Dictionary<string, string?> { ["Kaleido:Mcp:ServerName"] = " " });
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.Object.AddMcp());
+
+        Assert.Equal(McpErrorCodes.InvalidOptions, exception.Code);
+        Assert.StartsWith("Kaleido:Mcp:ServerName ", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

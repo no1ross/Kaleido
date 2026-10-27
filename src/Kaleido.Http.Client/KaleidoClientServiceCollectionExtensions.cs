@@ -9,7 +9,7 @@ internal static class KaleidoClientServiceCollectionExtensions
 {
     internal static IServiceCollection AddKaleidoClient<TClient, TMap, TFactory, TFactoryInterface>(
         this IServiceCollection services,
-        Action<KaleidoHttpClientOptions> configure,
+        KaleidoHttpClientOptions options,
         Func<string, string> registryUrlFactory,
         Action<IHttpClientBuilder>? configureClient = null)
         where TClient : class
@@ -18,13 +18,10 @@ internal static class KaleidoClientServiceCollectionExtensions
         where TFactoryInterface : class
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configure);
+        ArgumentNullException.ThrowIfNull(options);
 
-        var options = new KaleidoHttpClientOptions();
-        configure(options);
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(options.Name, nameof(configure));
-        ArgumentException.ThrowIfNullOrWhiteSpace(options.BaseUrl, nameof(configure));
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.Name, nameof(options));
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.BaseUrl, nameof(options));
 
         var httpClientBuilder = services.AddHttpClient(options.Name, client => client.BaseAddress = new Uri(options.BaseUrl));
 
@@ -96,14 +93,14 @@ internal static class KaleidoClientServiceCollectionExtensions
 
     internal static IKaleidoBuilder AddProcessorClient(
         this IKaleidoBuilder builder,
-        Action<KaleidoHttpClientOptions> configure,
+        KaleidoHttpClientOptions options,
         Action<IHttpClientBuilder>? configureClient = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(configure);
+        ArgumentNullException.ThrowIfNull(options);
 
         builder.Services.AddKaleidoClient<IKaleidoProcessorClient, KaleidoProcessorClientRouteOptionsMap, KaleidoProcessorClientFactory, IKaleidoProcessorClientFactory>(
-            configure,
+            options,
             Registry.RegistryContractUrls.Registry,
             configureClient);
 
@@ -112,14 +109,14 @@ internal static class KaleidoClientServiceCollectionExtensions
 
     internal static IKaleidoBuilder AddQueryableClient(
         this IKaleidoBuilder builder,
-        Action<KaleidoHttpClientOptions> configure,
+        KaleidoHttpClientOptions options,
         Action<IHttpClientBuilder>? configureClient = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(configure);
+        ArgumentNullException.ThrowIfNull(options);
 
         builder.Services.AddKaleidoClient<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap, KaleidoQueryableClientFactory, IKaleidoQueryableClientFactory>(
-            configure,
+            options,
             Registry.RegistryContractUrls.Registry,
             configureClient);
 

@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Microsoft.Extensions.Configuration;
 
 namespace Kaleido.Http.Client.UnitTests;
@@ -32,8 +33,7 @@ public sealed class KaleidoResilienceOptionsTests
             ["Kaleido:Resilience:AttemptTimeout"] = "00:00:05",
             ["Kaleido:Clients:radiology:Resilience:AttemptTimeout"] = "00:00:20",
         });
-        var shared = new KaleidoClientOptions();
-        configuration.GetSection("Kaleido").Bind(shared);
+        var shared = configuration.GetSection("Kaleido").BindOver(new KaleidoClientOptions(), HttpClientErrorCodes.InvalidClientOptions);
 
         var radiology = shared.Resilience.ForClient(configuration, "radiology");
         var member = shared.Resilience.ForClient(configuration, "member");
@@ -54,5 +54,38 @@ public sealed class KaleidoResilienceOptionsTests
         Assert.False(shared.ForClient(configuration, "legacy").Enabled);
         Assert.True(shared.ForClient(configuration, "member").Enabled);
         Assert.True(shared.Enabled);
+    }
+
+    [Fact]
+    public void ForClient_AnInvalidClientSetting_IsAConfigurationError()
+    {
+        var configuration = Configuration(new() { ["Kaleido:Clients:legacy:Resilience:TotalTimeout"] = "00:00:00" });
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => Sut.ForClient(configuration, "legacy"));
+
+        Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
+        Assert.StartsWith("Kaleido:Clients:legacy:Resilience:TotalTimeout", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("TotalTimeout")]
+    [InlineData("HealthCheckTimeout")]
+    public void Validate_ANonPositiveClientTimeout_IsAConfigurationError(string setting)
+    {
+        var options = setting == "TotalTimeout" ? Sut with { TotalTimeout = TimeSpan.Zero } : Sut with { HealthCheckTimeout = TimeSpan.Zero };
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => KaleidoResilienceOptions.Validate(options, "Kaleido:Resilience"));
+
+        Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
+    }
+
+    [Fact]
+    public void Validate_TheSharedRules_ApplyWithTheClientsCode()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(
+            () => KaleidoResilienceOptions.Validate(Sut with { MaxRetryAttempts = -1 }, "Kaleido:Resilience"));
+
+        Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
+        Assert.Equal("Kaleido:Resilience:MaxRetryAttempts must not be negative.", exception.Message);
     }
 }

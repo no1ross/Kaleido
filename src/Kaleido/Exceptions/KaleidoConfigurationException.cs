@@ -77,6 +77,19 @@ public static class ConfigurationErrorCodes
     public const string InvalidEventOptions = "invalid_event_options";
 
     /// <summary>
+    /// A configured value in the <c>Kaleido</c> section cannot be read as its setting's type (e.g. text
+    /// where a number or a <see cref="TimeSpan"/> is expected, or an unknown enum name).
+    /// </summary>
+    public const string InvalidOptions = "invalid_options";
+
+    /// <summary>
+    /// An HTTP transport setting (<c>Kaleido:Http</c>, <c>Kaleido:Http:Map</c>, or the options passed to
+    /// <c>AddHttp</c>/<c>MapKaleidoHttp</c>) is out of range or cannot be read, e.g. a non-positive
+    /// idempotency lease.
+    /// </summary>
+    public const string InvalidHttpOptions = "invalid_http_options";
+
+    /// <summary>
     /// <c>AddKaleido</c> or <c>AddHttp</c> was called a second time on the same service collection. A host
     /// runs one Kaleido service: configure it in one call (a second call would otherwise silently replace
     /// the first one's options).

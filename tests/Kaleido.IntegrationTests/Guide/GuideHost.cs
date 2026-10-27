@@ -50,12 +50,12 @@ public sealed class GuideHost : IAsyncDisposable
                     s.AddSingleton<OrderBook>();
                     services?.Invoke(s);
 
-                    var kaleido = s.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings ?? new Dictionary<string, string?>()).Build(), o =>
-                        {
-                            o.ServiceName = "orders";
-                            o.Assemblies = [typeof(OrderSource).Assembly];
-                            o.AuthorizationMode = mode;
-                        })
+                    var kaleido = s.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings ?? new Dictionary<string, string?>()).Build(), new()
+                    {
+                        ServiceName = "orders",
+                        Assemblies = [typeof(OrderSource).Assembly],
+                        AuthorizationMode = mode,
+                    })
                         .AddInMemoryStores()
                         .AddHttp();
                     configure?.Invoke(kaleido);

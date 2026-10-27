@@ -1,3 +1,4 @@
+using Kaleido.Exceptions;
 using Microsoft.Extensions.Configuration;
 
 namespace Kaleido.Http.Client;
@@ -27,25 +28,41 @@ namespace Kaleido.Http.Client;
 /// errors - from 500 ms with jitter, circuit breaker 0.5 / 10 / 30 s / 15 s).
 /// </para>
 /// </remarks>
-public sealed class KaleidoResilienceOptions : KaleidoResilienceSettings
+public sealed record KaleidoResilienceOptions : KaleidoResilienceSettings
 {
     /// <summary>False turns resilience off (for the client, or shared for all clients). Default true.</summary>
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; init; } = true;
 
     /// <summary>The time for a whole call, all attempts and delays included. Default 30 seconds.</summary>
-    public TimeSpan TotalTimeout { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan TotalTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>The timeout of the client health check (which is never retried). Default 5 seconds.</summary>
-    public TimeSpan HealthCheckTimeout { get; set; } = TimeSpan.FromSeconds(5);
+    public TimeSpan HealthCheckTimeout { get; init; } = TimeSpan.FromSeconds(5);
 
     // A request with this option set is never retried (the client health check).
     internal static readonly HttpRequestOptionsKey<bool> NoRetry = new("Kaleido.NoRetry");
 
-    // These (shared) settings, overridden by the ones the client's own Resilience section names.
+    // These (shared) settings with the ones the client's own Resilience section names laid over a copy
+    // (ADR 0030), validated.
     internal KaleidoResilienceOptions ForClient(IConfiguration configuration, string clientName)
     {
-        var resilience = (KaleidoResilienceOptions)MemberwiseClone();
-        configuration.GetSection($"{KaleidoServiceOptions.SectionName}:Clients:{clientName}:Resilience").Bind(resilience);
+        var section = $"{KaleidoServiceOptions.SectionName}:Clients:{clientName}:Resilience";
+        var resilience = configuration.GetSection(section).BindOver(this, HttpClientErrorCodes.InvalidClientOptions);
+        Validate(resilience, section);
+
         return resilience;
+    }
+
+    // The shared rules, then the client-only timeouts; nothing is adjusted, an invalid value stops startup.
+    internal static void Validate(KaleidoResilienceOptions resilience, string section)
+    {
+        Validate(resilience, section, HttpClientErrorCodes.InvalidClientOptions);
+
+        if (resilience.TotalTimeout <= TimeSpan.Zero || resilience.HealthCheckTimeout <= TimeSpan.Zero)
+        {
+            throw new KaleidoConfigurationException(
+                HttpClientErrorCodes.InvalidClientOptions,
+                $"{section}:TotalTimeout ({resilience.TotalTimeout}) and {section}:HealthCheckTimeout ({resilience.HealthCheckTimeout}) must be positive.");
+        }
     }
 }

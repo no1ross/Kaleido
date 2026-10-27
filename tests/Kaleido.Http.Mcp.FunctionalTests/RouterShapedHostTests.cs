@@ -25,12 +25,12 @@ public sealed class RouterShapedHostTests
         builder.Configuration["Kaleido:ServiceName"] = "router";
         builder.Configuration["Kaleido:Clients:intake:BaseUrl"] = "http://intake.test/";
 
-        builder.Services.AddKaleido(builder.Configuration, o =>
-            {
-                o.Assemblies = [typeof(RouterShapedHostTests).Assembly];
-                o.TypeFilter = _ => false;
-                o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
-            })
+        builder.Services.AddKaleido(builder.Configuration, new()
+        {
+            Assemblies = [typeof(RouterShapedHostTests).Assembly],
+            TypeFilter = _ => false,
+            AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
+        })
             .AddInMemoryStores()
             .AddHttp()
             .AddHttpClients()

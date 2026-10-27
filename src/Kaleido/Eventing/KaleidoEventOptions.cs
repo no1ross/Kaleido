@@ -31,22 +31,22 @@ namespace Kaleido.Eventing;
 /// }
 /// </code>
 /// </remarks>
-public sealed class KaleidoEventOptions
+public sealed record KaleidoEventOptions
 {
     /// <summary>The configuration section, below <c>Kaleido</c>.</summary>
     public const string SectionName = "Events";
 
     /// <summary>The most entries one claim takes. Default 20.</summary>
-    public int BatchSize { get; set; } = 20;
+    public int BatchSize { get; init; } = 20;
 
     /// <summary>The most publishes running at once on this instance. Default 1 (one after another).</summary>
-    public int MaxConcurrentPublishes { get; set; } = 1;
+    public int MaxConcurrentPublishes { get; init; } = 1;
 
     /// <summary>
     /// Timeout, retries and circuit breaker for publishing. Defaults: 30 s per attempt, 9 retries
     /// (10 attempts) from 1 s, circuit breaker 0.5 / 5 / 30 s / 30 s.
     /// </summary>
-    public KaleidoResilienceSettings Resilience { get; set; } = new()
+    public KaleidoResilienceSettings Resilience { get; init; } = new()
     {
         AttemptTimeout = TimeSpan.FromSeconds(30),
         MaxRetryAttempts = 9,
@@ -55,50 +55,23 @@ public sealed class KaleidoEventOptions
         CircuitBreakerBreakDuration = TimeSpan.FromSeconds(30),
     };
 
-    // A copy, so the registered options cannot be changed after AddKaleido.
-    internal KaleidoEventOptions Copy() =>
-        new()
-        {
-            BatchSize = BatchSize,
-            MaxConcurrentPublishes = MaxConcurrentPublishes,
-            Resilience = new KaleidoResilienceSettings
-            {
-                AttemptTimeout = Resilience.AttemptTimeout,
-                MaxRetryAttempts = Resilience.MaxRetryAttempts,
-                RetryDelay = Resilience.RetryDelay,
-                CircuitBreakerFailureRatio = Resilience.CircuitBreakerFailureRatio,
-                CircuitBreakerMinimumThroughput = Resilience.CircuitBreakerMinimumThroughput,
-                CircuitBreakerSamplingDuration = Resilience.CircuitBreakerSamplingDuration,
-                CircuitBreakerBreakDuration = Resilience.CircuitBreakerBreakDuration,
-            },
-        };
-
-    internal static void Validate(KaleidoEventOptions options)
+    internal static void Validate(KaleidoEventOptions? options)
     {
-        ArgumentNullException.ThrowIfNull(options);
-
-        var resilience = options.Resilience
-            ?? throw Invalid(nameof(Resilience), "must not be null");
+        if (options is null)
+        {
+            throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidEventOptions, "Kaleido:Events must not be null.");
+        }
 
         Require(options.BatchSize > 0, nameof(BatchSize), "must be positive");
         Require(options.MaxConcurrentPublishes > 0, nameof(MaxConcurrentPublishes), "must be positive");
-        Require(resilience.AttemptTimeout > TimeSpan.Zero, "Resilience:AttemptTimeout", "must be positive");
-        Require(resilience.MaxRetryAttempts >= 0, "Resilience:MaxRetryAttempts", "must not be negative");
-        Require(resilience.RetryDelay > TimeSpan.Zero, "Resilience:RetryDelay", "must be positive");
-        Require(resilience.CircuitBreakerFailureRatio is > 0 and <= 1, "Resilience:CircuitBreakerFailureRatio", "must be greater than 0 and at most 1");
-        Require(resilience.CircuitBreakerMinimumThroughput >= 2, "Resilience:CircuitBreakerMinimumThroughput", "must be at least 2");
-        Require(resilience.CircuitBreakerSamplingDuration >= TimeSpan.FromMilliseconds(500), "Resilience:CircuitBreakerSamplingDuration", "must be at least 500 ms");
-        Require(resilience.CircuitBreakerBreakDuration >= TimeSpan.FromMilliseconds(500), "Resilience:CircuitBreakerBreakDuration", "must be at least 500 ms");
+        KaleidoResilienceSettings.Validate(options.Resilience, "Kaleido:Events:Resilience", ConfigurationErrorCodes.InvalidEventOptions);
     }
 
     private static void Require(bool condition, string name, string rule)
     {
         if (!condition)
         {
-            throw Invalid(name, rule);
+            throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidEventOptions, $"Kaleido:Events:{name} {rule}.");
         }
     }
-
-    private static KaleidoConfigurationException Invalid(string name, string rule) =>
-        new(ConfigurationErrorCodes.InvalidEventOptions, $"Kaleido:Events:{name} {rule}.");
 }

@@ -40,14 +40,14 @@ public sealed class ProcessorAspNetCoreFixture
                             })
                             .Build();
 
-                        services.AddKaleido(serverConfig, o =>
-                            {
-                                o.ServiceName = "kaleido";
-                                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                                o.DisplayName = "Test Processor";
-                                o.Description = "Test processor.";
-                                o.Assemblies = new[] { typeof(ProcessorAspNetCoreFixture).Assembly };
-                            })
+                        services.AddKaleido(serverConfig, new()
+                        {
+                            ServiceName = "kaleido",
+                            AuthorizationMode = KaleidoAuthorizationMode.None,
+                            DisplayName = "Test Processor",
+                            Description = "Test processor.",
+                            Assemblies = new[] { typeof(ProcessorAspNetCoreFixture).Assembly },
+                        })
                             .AddInMemoryStores()
                             .AddHttp()
                             .AddHttpClients();
@@ -58,7 +58,7 @@ public sealed class ProcessorAspNetCoreFixture
                         app.UseRouting();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleidoHttp(o => o.AggregateRegistry = true);
+                            endpoints.MapKaleidoHttp(new() { AggregateRegistry = true });
                         });
                     });
                 })
@@ -83,12 +83,12 @@ public sealed class ProcessorAspNetCoreFixture
         // Client container needs no type scanning; under xUnit v3 the entry assembly
         // is this test project (it was testhost under v2), so the fallback would
         // register functional test sources without their dependencies.
-        clientServices.AddKaleido(clientConfig, o =>
-            {
-                o.ServiceName = "test-client";
-                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
-            })
+        clientServices.AddKaleido(clientConfig, new()
+        {
+            ServiceName = "test-client",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(KaleidoServiceOptions).Assembly],
+        })
             .AddHttpClients();
 
         // Override the named HttpClient to use the TestServer handler instead of a real socket

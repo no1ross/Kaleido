@@ -33,7 +33,7 @@ namespace Kaleido.Provider.SQLite;
 /// <code>
 /// var connectionString = builder.Configuration.GetConnectionString("kaleido");
 ///
-/// builder.Services.AddKaleido(builder.Configuration, o => { /* ... */ })
+/// builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
 ///     .AddSqliteContextStore(connectionString)
 ///     .AddSqliteOutboxStore(connectionString)
 ///     .AddSqliteIdempotencyStore(connectionString)

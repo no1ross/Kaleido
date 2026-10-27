@@ -88,7 +88,31 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         var endpoints = CreateEmptyEndpoints();
 
         Assert.Throws<KaleidoConfigurationException>(() =>
-            endpoints.MapKaleidoHttp(o => o.AggregateRegistry = true));
+            endpoints.MapKaleidoHttp(new() { AggregateRegistry = true }));
+    }
+
+    // ADR 0030: the host's Kaleido:Http:Map section overrides the options from code (here it turns off
+    // the aggregation that would otherwise fail without clients).
+    [Fact]
+    public void MapKaleidoHttp_TheKaleidoHttpMapSection_OverridesTheOptionsFromCode()
+    {
+        var endpoints = CreateEmptyEndpoints();
+        endpoints.Configuration["Kaleido:Http:Map:AggregateRegistry"] = "false";
+
+        var result = endpoints.MapKaleidoHttp(new() { AggregateRegistry = true });
+
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public void MapKaleidoHttp_AnInvalidSetting_IsAConfigurationError()
+    {
+        var endpoints = CreateEmptyEndpoints();
+        endpoints.Configuration["Kaleido:Http:Map:RegistryDownstreamMaxParallelism"] = "0";
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => endpoints.MapKaleidoHttp());
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidHttpOptions, exception.Code);
     }
 
     [Fact]

@@ -25,12 +25,14 @@ const Kaleido.Exceptions.ConfigurationErrorCodes.AuthenticationNotConfigured = "
 const Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingAuthorization = "conflicting_authorization" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingOutbox = "conflicting_outbox" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingStore = "conflicting_store" -> string!
-const Kaleido.Exceptions.ConfigurationErrorCodes.StoresNotChosen = "stores_not_chosen" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.DuplicateRegistration = "duplicate_registration" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidAuthorizationMode = "invalid_authorization_mode" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidEventOptions = "invalid_event_options" -> string!
+const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidHttpOptions = "invalid_http_options" -> string!
+const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidOptions = "invalid_options" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName = "invalid_service_name" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.MissingAssembly = "missing_assembly" -> string!
+const Kaleido.Exceptions.ConfigurationErrorCodes.StoresNotChosen = "stores_not_chosen" -> string!
 const Kaleido.Exceptions.FrameworkErrorCodes.DataConversionError = "data_conversion_error" -> string!
 const Kaleido.Exceptions.FrameworkErrorCodes.InvalidHandlerResult = "invalid_handler_result" -> string!
 const Kaleido.Exceptions.FrameworkErrorCodes.MissingRegistration = "missing_registration" -> string!
@@ -194,13 +196,15 @@ Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>.EventType.get -> string!
 Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>.EventType.init -> void
 Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>.KaleidoEventEnvelope() -> void
 Kaleido.Eventing.KaleidoEventOptions
+Kaleido.Eventing.KaleidoEventOptions.<Clone>$() -> Kaleido.Eventing.KaleidoEventOptions!
 Kaleido.Eventing.KaleidoEventOptions.BatchSize.get -> int
-Kaleido.Eventing.KaleidoEventOptions.BatchSize.set -> void
+Kaleido.Eventing.KaleidoEventOptions.BatchSize.init -> void
+Kaleido.Eventing.KaleidoEventOptions.Equals(Kaleido.Eventing.KaleidoEventOptions? other) -> bool
 Kaleido.Eventing.KaleidoEventOptions.KaleidoEventOptions() -> void
 Kaleido.Eventing.KaleidoEventOptions.MaxConcurrentPublishes.get -> int
-Kaleido.Eventing.KaleidoEventOptions.MaxConcurrentPublishes.set -> void
+Kaleido.Eventing.KaleidoEventOptions.MaxConcurrentPublishes.init -> void
 Kaleido.Eventing.KaleidoEventOptions.Resilience.get -> Kaleido.KaleidoResilienceSettings!
-Kaleido.Eventing.KaleidoEventOptions.Resilience.set -> void
+Kaleido.Eventing.KaleidoEventOptions.Resilience.init -> void
 Kaleido.Eventing.KaleidoEventTelemetry
 Kaleido.Eventing.KaleidoEventTypes
 Kaleido.Eventing.ProcessEventContext
@@ -299,22 +303,24 @@ Kaleido.KaleidoAuthorizationMode.None = 0 -> Kaleido.KaleidoAuthorizationMode
 Kaleido.KaleidoAuthorizationMode.ZeroTrust = 2 -> Kaleido.KaleidoAuthorizationMode
 Kaleido.KaleidoResilienceSettings
 Kaleido.KaleidoResilienceSettings.AttemptTimeout.get -> System.TimeSpan
-Kaleido.KaleidoResilienceSettings.AttemptTimeout.set -> void
+Kaleido.KaleidoResilienceSettings.AttemptTimeout.init -> void
 Kaleido.KaleidoResilienceSettings.CircuitBreakerBreakDuration.get -> System.TimeSpan
-Kaleido.KaleidoResilienceSettings.CircuitBreakerBreakDuration.set -> void
+Kaleido.KaleidoResilienceSettings.CircuitBreakerBreakDuration.init -> void
 Kaleido.KaleidoResilienceSettings.CircuitBreakerFailureRatio.get -> double
-Kaleido.KaleidoResilienceSettings.CircuitBreakerFailureRatio.set -> void
+Kaleido.KaleidoResilienceSettings.CircuitBreakerFailureRatio.init -> void
 Kaleido.KaleidoResilienceSettings.CircuitBreakerMinimumThroughput.get -> int
-Kaleido.KaleidoResilienceSettings.CircuitBreakerMinimumThroughput.set -> void
+Kaleido.KaleidoResilienceSettings.CircuitBreakerMinimumThroughput.init -> void
 Kaleido.KaleidoResilienceSettings.CircuitBreakerSamplingDuration.get -> System.TimeSpan
-Kaleido.KaleidoResilienceSettings.CircuitBreakerSamplingDuration.set -> void
+Kaleido.KaleidoResilienceSettings.CircuitBreakerSamplingDuration.init -> void
 Kaleido.KaleidoResilienceSettings.KaleidoResilienceSettings() -> void
+Kaleido.KaleidoResilienceSettings.KaleidoResilienceSettings(Kaleido.KaleidoResilienceSettings! original) -> void
 Kaleido.KaleidoResilienceSettings.MaxRetryAttempts.get -> int
-Kaleido.KaleidoResilienceSettings.MaxRetryAttempts.set -> void
+Kaleido.KaleidoResilienceSettings.MaxRetryAttempts.init -> void
 Kaleido.KaleidoResilienceSettings.RetryDelay.get -> System.TimeSpan
-Kaleido.KaleidoResilienceSettings.RetryDelay.set -> void
+Kaleido.KaleidoResilienceSettings.RetryDelay.init -> void
 Kaleido.KaleidoServiceCollectionExtensions
 Kaleido.KaleidoServiceOptions
+Kaleido.KaleidoServiceOptions.<Clone>$() -> Kaleido.KaleidoServiceOptions!
 Kaleido.KaleidoServiceOptions.Assemblies.get -> System.Collections.Generic.IReadOnlyList<System.Reflection.Assembly!>?
 Kaleido.KaleidoServiceOptions.Assemblies.init -> void
 Kaleido.KaleidoServiceOptions.AuthorizationMode.get -> Kaleido.KaleidoAuthorizationMode
@@ -325,6 +331,7 @@ Kaleido.KaleidoServiceOptions.Description.get -> string?
 Kaleido.KaleidoServiceOptions.Description.init -> void
 Kaleido.KaleidoServiceOptions.DisplayName.get -> string?
 Kaleido.KaleidoServiceOptions.DisplayName.init -> void
+Kaleido.KaleidoServiceOptions.Equals(Kaleido.KaleidoServiceOptions? other) -> bool
 Kaleido.KaleidoServiceOptions.Events.get -> Kaleido.Eventing.KaleidoEventOptions!
 Kaleido.KaleidoServiceOptions.Events.init -> void
 Kaleido.KaleidoServiceOptions.InstanceId.get -> System.Guid
@@ -336,28 +343,6 @@ Kaleido.KaleidoServiceOptions.ServiceName.get -> string!
 Kaleido.KaleidoServiceOptions.ServiceName.init -> void
 Kaleido.KaleidoServiceOptions.TypeFilter.get -> System.Func<System.Type!, bool>?
 Kaleido.KaleidoServiceOptions.TypeFilter.init -> void
-Kaleido.KaleidoServiceOptionsBuilder
-Kaleido.KaleidoServiceOptionsBuilder.Assemblies.get -> System.Reflection.Assembly![]?
-Kaleido.KaleidoServiceOptionsBuilder.Assemblies.set -> void
-Kaleido.KaleidoServiceOptionsBuilder.AuthorizationMode.get -> Kaleido.KaleidoAuthorizationMode
-Kaleido.KaleidoServiceOptionsBuilder.AuthorizationMode.set -> void
-Kaleido.KaleidoServiceOptionsBuilder.DefaultAuthorization.get -> Kaleido.Registry.AuthorizationMetadata!
-Kaleido.KaleidoServiceOptionsBuilder.DefaultAuthorization.set -> void
-Kaleido.KaleidoServiceOptionsBuilder.Description.get -> string?
-Kaleido.KaleidoServiceOptionsBuilder.Description.set -> void
-Kaleido.KaleidoServiceOptionsBuilder.DisplayName.get -> string?
-Kaleido.KaleidoServiceOptionsBuilder.DisplayName.set -> void
-Kaleido.KaleidoServiceOptionsBuilder.Events.get -> Kaleido.Eventing.KaleidoEventOptions!
-Kaleido.KaleidoServiceOptionsBuilder.Events.set -> void
-Kaleido.KaleidoServiceOptionsBuilder.InstanceId.get -> System.Guid
-Kaleido.KaleidoServiceOptionsBuilder.InstanceId.set -> void
-Kaleido.KaleidoServiceOptionsBuilder.IsEntryProcessor.get -> bool
-Kaleido.KaleidoServiceOptionsBuilder.IsEntryProcessor.set -> void
-Kaleido.KaleidoServiceOptionsBuilder.KaleidoServiceOptionsBuilder() -> void
-Kaleido.KaleidoServiceOptionsBuilder.ServiceName.get -> string!
-Kaleido.KaleidoServiceOptionsBuilder.ServiceName.set -> void
-Kaleido.KaleidoServiceOptionsBuilder.TypeFilter.get -> System.Func<System.Type!, bool>?
-Kaleido.KaleidoServiceOptionsBuilder.TypeFilter.set -> void
 Kaleido.Observability.IKaleidoCorrelationContextAccessor
 Kaleido.Observability.IKaleidoCorrelationContextAccessor.Current.get -> Kaleido.Observability.KaleidoCorrelationContext!
 Kaleido.Observability.KaleidoCaller
@@ -1108,12 +1093,21 @@ Kaleido.Storage.KaleidoOutboxEvent.Payload.init -> void
 override Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>.Equals(object? obj) -> bool
 override Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>.GetHashCode() -> int
 override Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>.ToString() -> string!
+override Kaleido.Eventing.KaleidoEventOptions.Equals(object? obj) -> bool
+override Kaleido.Eventing.KaleidoEventOptions.GetHashCode() -> int
+override Kaleido.Eventing.KaleidoEventOptions.ToString() -> string!
 override Kaleido.Eventing.ProcessEventContext.Equals(object? obj) -> bool
 override Kaleido.Eventing.ProcessEventContext.GetHashCode() -> int
 override Kaleido.Eventing.ProcessEventContext.ToString() -> string!
 override Kaleido.Eventing.QueryableEventContext.Equals(object? obj) -> bool
 override Kaleido.Eventing.QueryableEventContext.GetHashCode() -> int
 override Kaleido.Eventing.QueryableEventContext.ToString() -> string!
+override Kaleido.KaleidoResilienceSettings.Equals(object? obj) -> bool
+override Kaleido.KaleidoResilienceSettings.GetHashCode() -> int
+override Kaleido.KaleidoResilienceSettings.ToString() -> string!
+override Kaleido.KaleidoServiceOptions.Equals(object? obj) -> bool
+override Kaleido.KaleidoServiceOptions.GetHashCode() -> int
+override Kaleido.KaleidoServiceOptions.ToString() -> string!
 override Kaleido.Observability.KaleidoCaller.Equals(object? obj) -> bool
 override Kaleido.Observability.KaleidoCaller.GetHashCode() -> int
 override Kaleido.Observability.KaleidoCaller.ToString() -> string!
@@ -1237,21 +1231,27 @@ override sealed Kaleido.Processor.Eventing.StepCompleted.Equals(Kaleido.Processo
 override sealed Kaleido.Queryable.Query.QueryRequest.Equals(Kaleido.Queryable.Query.QueryRequest<Kaleido.Queryable.EmptyQueryViewParameters!>? other) -> bool
 static Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>.operator !=(Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>? left, Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>? right) -> bool
 static Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>.operator ==(Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>? left, Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext>? right) -> bool
+static Kaleido.Eventing.KaleidoEventOptions.operator !=(Kaleido.Eventing.KaleidoEventOptions? left, Kaleido.Eventing.KaleidoEventOptions? right) -> bool
+static Kaleido.Eventing.KaleidoEventOptions.operator ==(Kaleido.Eventing.KaleidoEventOptions? left, Kaleido.Eventing.KaleidoEventOptions? right) -> bool
 static Kaleido.Eventing.ProcessEventContext.operator !=(Kaleido.Eventing.ProcessEventContext? left, Kaleido.Eventing.ProcessEventContext? right) -> bool
 static Kaleido.Eventing.ProcessEventContext.operator ==(Kaleido.Eventing.ProcessEventContext? left, Kaleido.Eventing.ProcessEventContext? right) -> bool
 static Kaleido.Eventing.QueryableEventContext.operator !=(Kaleido.Eventing.QueryableEventContext? left, Kaleido.Eventing.QueryableEventContext? right) -> bool
 static Kaleido.Eventing.QueryableEventContext.operator ==(Kaleido.Eventing.QueryableEventContext? left, Kaleido.Eventing.QueryableEventContext? right) -> bool
+static Kaleido.KaleidoResilienceSettings.operator !=(Kaleido.KaleidoResilienceSettings? left, Kaleido.KaleidoResilienceSettings? right) -> bool
+static Kaleido.KaleidoResilienceSettings.operator ==(Kaleido.KaleidoResilienceSettings? left, Kaleido.KaleidoResilienceSettings? right) -> bool
 static Kaleido.KaleidoServiceCollectionExtensions.AddContextStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddDirectPublication(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
-static Kaleido.KaleidoServiceCollectionExtensions.AddEventRedaction(this Kaleido.IKaleidoBuilder! builder, System.Action<Microsoft.Extensions.Compliance.Redaction.IRedactionBuilder!>! configure) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddEventPublisher<TPublisher>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.KaleidoServiceCollectionExtensions.AddEventRedaction(this Kaleido.IKaleidoBuilder! builder, System.Action<Microsoft.Extensions.Compliance.Redaction.IRedactionBuilder!>! configure) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddEventRedactor<TRedactor>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddIdempotencyStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddInMemoryStores(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
-static Kaleido.KaleidoServiceCollectionExtensions.AddKaleido(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, System.Action<Kaleido.KaleidoServiceOptionsBuilder!>? configure = null) -> Kaleido.IKaleidoBuilder!
+static Kaleido.KaleidoServiceCollectionExtensions.AddKaleido(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, Kaleido.KaleidoServiceOptions? options = null) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddOutbox<TOutbox>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddOutboxStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddTransactions<TTransactions>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.KaleidoServiceOptions.operator !=(Kaleido.KaleidoServiceOptions? left, Kaleido.KaleidoServiceOptions? right) -> bool
+static Kaleido.KaleidoServiceOptions.operator ==(Kaleido.KaleidoServiceOptions? left, Kaleido.KaleidoServiceOptions? right) -> bool
 static Kaleido.Observability.KaleidoCaller.operator !=(Kaleido.Observability.KaleidoCaller? left, Kaleido.Observability.KaleidoCaller? right) -> bool
 static Kaleido.Observability.KaleidoCaller.operator ==(Kaleido.Observability.KaleidoCaller? left, Kaleido.Observability.KaleidoCaller? right) -> bool
 static Kaleido.Observability.KaleidoCorrelationContext.operator !=(Kaleido.Observability.KaleidoCorrelationContext? left, Kaleido.Observability.KaleidoCorrelationContext? right) -> bool
@@ -1337,6 +1337,10 @@ static Kaleido.Registry.AuthorizationMetadata.operator ==(Kaleido.Registry.Autho
 static Kaleido.Registry.AuthorizationMetadata.Unspecified.get -> Kaleido.Registry.AuthorizationMetadata!
 static Kaleido.Storage.KaleidoOutboxEvent.operator !=(Kaleido.Storage.KaleidoOutboxEvent? left, Kaleido.Storage.KaleidoOutboxEvent? right) -> bool
 static Kaleido.Storage.KaleidoOutboxEvent.operator ==(Kaleido.Storage.KaleidoOutboxEvent? left, Kaleido.Storage.KaleidoOutboxEvent? right) -> bool
+virtual Kaleido.KaleidoResilienceSettings.<Clone>$() -> Kaleido.KaleidoResilienceSettings!
+virtual Kaleido.KaleidoResilienceSettings.EqualityContract.get -> System.Type!
+virtual Kaleido.KaleidoResilienceSettings.Equals(Kaleido.KaleidoResilienceSettings? other) -> bool
+virtual Kaleido.KaleidoResilienceSettings.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Kaleido.Processor.Eventing.ProcessEventBase.EqualityContract.get -> System.Type!
 virtual Kaleido.Processor.Eventing.ProcessEventBase.Equals(Kaleido.Processor.Eventing.ProcessEventBase? other) -> bool
 virtual Kaleido.Processor.Eventing.ProcessEventBase.PrintMembers(System.Text.StringBuilder! builder) -> bool

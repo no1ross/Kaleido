@@ -129,13 +129,13 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
     public void WhenResolved_TheStoresAndTransactionsShareTheRequestsDbContext_WithoutAHealthCheck()
     {
         var services = new ServiceCollection();
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-            {
-                o.ServiceName = "test-svc";
-                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                o.Assemblies = [typeof(SqliteKaleidoServiceCollectionExtensionsTests).Assembly];
-                o.TypeFilter = _ => false;
-            })
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
+        {
+            ServiceName = "test-svc",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(SqliteKaleidoServiceCollectionExtensionsTests).Assembly],
+            TypeFilter = _ => false,
+        })
             .AddSqliteContextStore(Database)
             .AddSqliteOutboxStore(Database)
             .AddSqliteIdempotencyStore(Database);

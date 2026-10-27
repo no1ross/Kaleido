@@ -42,7 +42,7 @@ Queryable requests use an optional `query.page` object. An omitted page on a pag
 
 ### Registry endpoint mapping
 - `RegistryEndpointRouteBuilderExtensions` — `MapRegistry()` extension (internal; mapped by `MapKaleidoHttp`)
-  - `GET /{prefix}/registry` — unified discovery: local process + queryable registrations; when `MapKaleidoHttp(o => o.AggregateRegistry = true)` is used, also merges every downstream client registered via `AddHttpClients()`
+  - `GET /{prefix}/registry` — unified discovery: local process + queryable registrations; when `MapKaleidoHttp(new() { AggregateRegistry = true })` is used, also merges every downstream client registered via `AddHttpClients()`
 
 ### URL and route helpers (internal)
 - `ProcessContractUrls` / `ProcessRoutePaths` and `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) build the execute, state and query URLs for both the server and the clients. They are internal, as are the endpoint-name constants (`ProcessEndpointNames`, `QueryableEndpointNames`, `RegistryEndpointNames`): consumers take URLs from the registry (`executeUrl`, `queryUrl`).
@@ -66,11 +66,10 @@ This project does not contain:
 ## Usage
 
 ```csharp
-builder.Services.AddKaleido(builder.Configuration, o =>
+builder.Services.AddKaleido(builder.Configuration, new()
 {
-    o.ServiceName = "myservice"; // lowercase letters, digits, '-' and '_' (KAL2005)
-    o.Assemblies = [typeof(Program).Assembly];
-    // AuthorizationMode is Authenticated unless set: add host authentication, or set None explicitly (ADR 0021)
+    ServiceName = "myservice", // lowercase letters, digits, '-' and '_' (KAL2005)
+    Assemblies = [typeof(Program).Assembly],
 })
     .AddInMemoryStores()   // development; a deployed service registers durable stores (ADR 0028)
     .AddHttp();
@@ -79,7 +78,7 @@ var app = builder.Build();
 app.MapKaleidoHttp(); // maps Process + Queryable + /{service}/registry
 
 // On a router/gateway that fans out to downstream services:
-app.MapKaleidoHttp(o => o.AggregateRegistry = true); // requires AddHttpClients()
+app.MapKaleidoHttp(new() { AggregateRegistry = true }); // requires AddHttpClients()
 ```
 
 Kaleido's HTTP behavior lives on Kaleido's own endpoints: `AddHttp()` adds nothing to the host's middleware pipeline. Every Kaleido route group runs the exception filter first, then the correlation filter, so a failure during correlation setup (e.g. a malformed `X-Kaleido-Process-Id`) is answered with Kaleido's 400. The correlation filter runs inside the endpoint, after the host's authentication, so identity headers are trusted against the authenticated caller. The host's own endpoints are untouched: no `X-Kaleido-*` headers, no Kaleido error bodies. The MCP endpoint (`MapKaleidoMcp`), mapped by the MCP SDK, sets up the same correlation itself (#295).
@@ -115,7 +114,7 @@ A step whose handler returns a typed result has this response shape (values are 
 
 `requiredStep` is an object with the same fields as an `availableSteps` entry (`name`, `displayName`, `description`, `version`, `repeatable`, `isInformationStep`, `destructive`, `external`, `requiresConfirmation`, `authorization`, `executeUrl`), plus `informationRequest` when the process is `AwaitingInformation`. The questions arrive there; submit the answers as that step's payload. See [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md). The state endpoint (`GET /{service}/processes/{processId}`) returns the same `requiredStep` with the pending request. A step that isn't a next step of the process is rejected (`pro_step_not_available`).
 
-Steps without a typed handler result return the same fields without `result`. Handler-authored `businessMessages` remain available; `frameworkMessages` is an empty collection unless `AddHttp(o => o.IncludeFrameworkMessages = true)` enables diagnostics. Inspect `outcome` rather than interpreting HTTP 200 alone as step completion. Kaleido's HTTP JSON options use camelCase property names and string enum values; see the [JSON enum contract](../Kaleido.Http.Abstractions/README.md#json-enum-values) for canonical names and numeric-input rules.
+Steps without a typed handler result return the same fields without `result`. Handler-authored `businessMessages` remain available; `frameworkMessages` is an empty collection unless `AddHttp(new() { IncludeFrameworkMessages = true })` enables diagnostics. Inspect `outcome` rather than interpreting HTTP 200 alone as step completion. Kaleido's HTTP JSON options use camelCase property names and string enum values; see the [JSON enum contract](../Kaleido.Http.Abstractions/README.md#json-enum-values) for canonical names and numeric-input rules.
 
 ---
 
@@ -141,7 +140,7 @@ What this guarantees, and what it does not:
 
 Details:
 - Keys are **scoped per service and caller**: two callers cannot see each other's answers, and the same key at two services is two keys. The caller is its stable subject id (`sub`, else `NameIdentifier`) when the principal has one - a renamed user keeps their keys and two users with the same name stay apart - else its name; anonymous callers share one scope.
-- Answers are kept for `KaleidoHttpOptions.IdempotencyRetention` (default **24 hours**: `AddHttp(o => o.IdempotencyRetention = TimeSpan.FromHours(4))`) by the idempotency store (`IKaleidoIdempotencyStore.AdmitAsync`/`CompleteAsync`/`ReleaseAsync`) - the SQLite reference store keeps them in its own `IdempotentResults` table in the same database, so there is nothing extra to set up.
+- Answers are kept for `KaleidoHttpOptions.IdempotencyRetention` (default **24 hours**: `AddHttp(new() { IdempotencyRetention = TimeSpan.FromHours(4) })`) by the idempotency store (`IKaleidoIdempotencyStore.AdmitAsync`/`CompleteAsync`/`ReleaseAsync`) - the SQLite reference store keeps them in its own `IdempotentResults` table in the same database, so there is nothing extra to set up.
 - Only successful answers are stored: a request that failed releases its key, so it may be retried with the same key.
 - **Any HTTP client** gets this, not only Kaleido's: send `Idempotency-Key: <a new unique value>` with each logical call, re-send the **same key and the same request** on a retry, wait `Retry-After` seconds on `pro_idempotency_in_progress`, and read the process state on `pro_idempotency_outcome_unknown`. The Kaleido clients do all of it automatically ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#idempotent-execute-calls)).
 
@@ -169,7 +168,7 @@ Any `IEndpointConventionBuilder` extension (`RequireAuthorization`, `WithMetadat
 
 ### Per-capability authorization
 
-Capability authorization is set in core with `AddKaleido(…, o => o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust)` (see [`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md)). With `Authenticated` (the default, ADR 0021), every capability requires an authenticated caller and undeclared capabilities are open to any of them; a host without an authentication scheme does not start. With `None`, which a host chooses explicitly, Kaleido attaches no auth metadata and enforces nothing, so hosts without authentication work. With `ZeroTrust`, a capability needs an explicit rule (its own `[KaleidoAuthorization]` or the service `DefaultAuthorization`) or it is not mapped or discovered at all. `[KaleidoAuthorization]` narrows or opens access:
+Capability authorization is set in core with `AddKaleido(…, new() { AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust, … })` (see [`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md)). With `Authenticated` (the default, ADR 0021), every capability requires an authenticated caller and undeclared capabilities are open to any of them; a host without an authentication scheme does not start. With `None`, which a host chooses explicitly, Kaleido attaches no auth metadata and enforces nothing, so hosts without authentication work. With `ZeroTrust`, a capability needs an explicit rule (its own `[KaleidoAuthorization]` or the service `DefaultAuthorization`) or it is not mapped or discovered at all. `[KaleidoAuthorization]` narrows or opens access:
 
 ```csharp
 [ProcessStep(DisplayName = "Approve", Description = "...")]
@@ -212,9 +211,11 @@ A client whose `RoutePrefix` equals this service's `ServiceName` is skipped (sel
 - `RegistryRefreshCooldown` — minimum interval between honored `?refresh` requests (default 30s). Refreshes inside the window serve the cache instead of re-fanning-out; an honored refresh first invalidates each downstream client snapshot so the rebuild re-fetches.
 - `RegistryDownstreamMaxParallelism` — maximum number of downstream registry fetches in flight at once during an aggregate build (default: unbounded). Set it on a router that aggregates many services.
 
+Each of these can also be set per environment in the `Kaleido:Http:Map` configuration section, which overrides the options passed to `MapKaleidoHttp` setting by setting (ADR 0030); the transport options of `AddHttp` (`KaleidoHttpOptions`) likewise in `Kaleido:Http`. A negative duration, a zero parallelism, or a non-positive idempotency lease or retention stops startup with `invalid_http_options`.
+
 In-host consumers (such as the MCP adapter) read the same caller-filtered payload without HTTP through `IKaleidoRegistryService`: `GetForCallerAsync()` returns it with its revision, and `IsMapped` reports whether `MapKaleidoHttp()` has run.
 
-The route prefix is derived from `KaleidoServiceOptions.ServiceName` (bound from `Kaleido:ServiceName` configuration).
+The route prefix is derived from `KaleidoServiceOptions.ServiceName` (set in the options passed to `AddKaleido`; `Kaleido:ServiceName` in configuration overrides it).
 
 **Route-prefix contract:** every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. Downstream consumers address a service through a named client whose `RoutePrefix` must equal that service's `ServiceName`. `RoutePrefix` defaults to the client key lowercased — so a client named `"Member"` expects the Member service to have `Kaleido:ServiceName = "member"`. A mismatch produces silent 404s at call time, not startup errors. `ServiceName` must match `[a-z0-9][a-z0-9_-]*` (lowercase ASCII letters, digits, `-` and `_`, starting with a letter or digit); `AddKaleido` rejects any other value at startup (`invalid_service_name`) and KAL2005 reports constant values at build time.
 

@@ -36,15 +36,15 @@ public sealed class BehaviorFixture : IAsyncLifetime
                         services.AddRouting();
                         services.AddSingleton(Switches);
                         services.AddSingleton(Gate);
-                        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                            {
-                                o.ServiceName = ServiceName;
-                                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                                o.Assemblies = [typeof(BehaviorFixture).Assembly];
-                                o.TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace;
-                            })
+                        services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                        {
+                            ServiceName = ServiceName,
+                            AuthorizationMode = KaleidoAuthorizationMode.None,
+                            Assemblies = [typeof(BehaviorFixture).Assembly],
+                            TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace,
+                        })
                             .AddInMemoryStores()
-                            .AddHttp(o => o.IncludeFrameworkMessages = true);
+                            .AddHttp(new() { IncludeFrameworkMessages = true });
                     });
                     web.Configure(app =>
                     {
@@ -63,11 +63,11 @@ public sealed class BehaviorFixture : IAsyncLifetime
                 new ConfigurationBuilder()
                     .AddInMemoryCollection(new Dictionary<string, string?> { [$"Kaleido:Clients:{ServiceName}:BaseUrl"] = "http://localhost/" })
                     .Build(),
-                o =>
+                new()
                 {
-                    o.ServiceName = "behavior-caller";
-                    o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                    o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
+                    ServiceName = "behavior-caller",
+                    AuthorizationMode = KaleidoAuthorizationMode.None,
+                    Assemblies = [typeof(KaleidoServiceOptions).Assembly],
                 })
             .AddHttpClients();
         clientServices.AddHttpClient(ServiceName).ConfigurePrimaryHttpMessageHandler(() => handler);

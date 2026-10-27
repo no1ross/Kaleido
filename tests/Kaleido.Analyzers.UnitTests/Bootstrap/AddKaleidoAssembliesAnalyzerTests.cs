@@ -14,10 +14,10 @@ public sealed class AddKaleidoAssembliesAnalyzerTests
     private const string KaleidoStub = @"
 namespace Kaleido
 {
-    public class KaleidoServiceOptions
+    public sealed record KaleidoServiceOptions
     {
-        public System.Reflection.Assembly[] Assemblies { get; set; } =
-            System.Array.Empty<System.Reflection.Assembly>();
+        public System.Collections.Generic.IReadOnlyList<System.Reflection.Assembly> Assemblies { get; init; }
+        public string ServiceName { get; init; }
     }
     public class KaleidoServices { }
     public static class KaleidoExtensions
@@ -25,55 +25,42 @@ namespace Kaleido
         public static KaleidoServices AddKaleido(
             this KaleidoServices services,
             object config,
-            System.Action<KaleidoServiceOptions> configure) => services;
+            KaleidoServiceOptions options = null) => services;
     }
 }";
 
     private static readonly DiagnosticResult Expected =
         new("KAL2006", DiagnosticSeverity.Warning);
 
-    [Fact]
-    public async Task Lambda_NoAssemblies_Reports()
+    [Theory]
+    [InlineData("services.AddKaleido(config)")]
+    [InlineData("services.AddKaleido(config, null)")]
+    [InlineData("services.AddKaleido(config, new())")]
+    [InlineData("services.AddKaleido(config, new() { ServiceName = \"orders\" })")]
+    [InlineData("services.AddKaleido(config, new KaleidoServiceOptions { ServiceName = \"orders\" })")]
+    [InlineData("services.AddKaleido(config, options: new() { ServiceName = \"orders\" })")]
+    public async Task Options_WithoutAssemblies_Report(string call)
     {
-        await RunAsync(@"
-using Kaleido;
-public class Program
-{
-    public static void Main()
-    {
-        var services = new KaleidoServices();
-        object config = new object();
-        {|#0:services.AddKaleido(config, o => { })|};
-    }
-}
-" + KaleidoStub,
-            Expected.WithLocation(0));
+        await RunAsync(Program("{|#0:" + call + "|};"), Expected.WithLocation(0));
     }
 
-    [Fact]
-    public async Task Lambda_SetsAssembliesArray_NoDiagnostic()
+    [Theory]
+    [InlineData("services.AddKaleido(config, new() { Assemblies = new[] { typeof(Program).Assembly } });")]
+    [InlineData("services.AddKaleido(config, new KaleidoServiceOptions { ServiceName = \"orders\", Assemblies = assemblies });")]
+    [InlineData("services.AddKaleido(options: new() { Assemblies = assemblies }, config: config);")]
+    public async Task Options_SettingAssemblies_NoDiagnostic(string call)
     {
-        await RunAsync(@"
-using Kaleido;
-public class Program
-{
-    public static void Main()
-    {
-        var services = new KaleidoServices();
-        object config = new object();
-        services.AddKaleido(config, o =>
-        {
-            o.Assemblies = new[] { typeof(Program).Assembly };
-        });
-    }
-}
-" + KaleidoStub);
+        await RunAsync(Program(call));
     }
 
+    // Options built elsewhere are not judged: the analyzer cannot see what they hold.
     [Fact]
-    public async Task Lambda_AssignsAssembliesFromVariable_NoDiagnostic()
+    public async Task Options_FromAVariable_NoDiagnostic()
     {
-        await RunAsync(@"
+        await RunAsync(Program("var options = new KaleidoServiceOptions(); services.AddKaleido(config, options);"));
+    }
+
+    private static string Program(string statement) => @"
 using Kaleido;
 public class Program
 {
@@ -82,27 +69,8 @@ public class Program
         var services = new KaleidoServices();
         object config = new object();
         var assemblies = new[] { typeof(Program).Assembly };
-        services.AddKaleido(config, o => { o.Assemblies = assemblies; });
+        " + statement + @"
     }
 }
-" + KaleidoStub);
-    }
-
-    [Fact]
-    public async Task Lambda_EmptyBody_Reports()
-    {
-        await RunAsync(@"
-using Kaleido;
-public class Program
-{
-    public static void Main()
-    {
-        var services = new KaleidoServices();
-        object config = new object();
-        {|#0:services.AddKaleido(config, o => { })|};
-    }
-}
-" + KaleidoStub,
-            Expected.WithLocation(0));
-    }
+" + KaleidoStub;
 }

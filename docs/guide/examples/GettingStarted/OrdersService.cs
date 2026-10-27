@@ -16,12 +16,12 @@ public static class OrdersService
         // snippet: getting-started-host
         services.AddSingleton<OrderBook>();
 
-        services.AddKaleido(configuration, o =>
-            {
-                o.ServiceName = "orders";
-                o.Assemblies = [typeof(OrderSource).Assembly];
-                o.AuthorizationMode = KaleidoAuthorizationMode.None;   // local evaluation only
-            })
+        services.AddKaleido(configuration, new()
+        {
+            ServiceName = "orders",
+            Assemblies = [typeof(OrderSource).Assembly],
+            AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
+        })
             .AddInMemoryStores()   // local evaluation only: nothing survives a restart
             .AddHttp();
         // end snippet
@@ -41,12 +41,12 @@ public static class OrdersService
         // snippet: getting-started-mcp
         services.AddSingleton<OrderBook>();
 
-        services.AddKaleido(configuration, o =>
-            {
-                o.ServiceName = "orders";
-                o.Assemblies = [typeof(OrderSource).Assembly];
-                o.AuthorizationMode = KaleidoAuthorizationMode.None;   // local evaluation only
-            })
+        services.AddKaleido(configuration, new()
+        {
+            ServiceName = "orders",
+            Assemblies = [typeof(OrderSource).Assembly],
+            AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
+        })
             .AddInMemoryStores()   // local evaluation only: nothing survives a restart
             .AddHttp()
             .AddHttpClients()

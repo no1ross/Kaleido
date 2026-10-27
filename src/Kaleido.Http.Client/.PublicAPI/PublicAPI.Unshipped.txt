@@ -2,6 +2,7 @@
 const Kaleido.Http.Client.HttpClientErrorCodes.ConfiguredCredentialForCaller = "httpclient_configured_credential_for_caller" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.Conflict = "httpclient_conflict" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.EmptyResponse = "httpclient_empty_response" -> string!
+const Kaleido.Http.Client.HttpClientErrorCodes.InvalidClientOptions = "httpclient_invalid_options" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.InvalidRoutePrefix = "httpclient_invalid_route_prefix" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.MissingBaseUrl = "missing_base_url" -> string!
 const Kaleido.Http.Client.HttpClientErrorCodes.RequestFailed = "httpclient_request_failed" -> string!
@@ -37,27 +38,31 @@ Kaleido.Http.Client.KaleidoCallPurpose
 Kaleido.Http.Client.KaleidoCallPurpose.OnBehalfOfCaller = 0 -> Kaleido.Http.Client.KaleidoCallPurpose
 Kaleido.Http.Client.KaleidoCallPurpose.ServiceOwn = 1 -> Kaleido.Http.Client.KaleidoCallPurpose
 Kaleido.Http.Client.KaleidoClientEntry
+Kaleido.Http.Client.KaleidoClientEntry.<Clone>$() -> Kaleido.Http.Client.KaleidoClientEntry!
 Kaleido.Http.Client.KaleidoClientEntry.BaseUrl.get -> string?
-Kaleido.Http.Client.KaleidoClientEntry.BaseUrl.set -> void
+Kaleido.Http.Client.KaleidoClientEntry.BaseUrl.init -> void
+Kaleido.Http.Client.KaleidoClientEntry.Equals(Kaleido.Http.Client.KaleidoClientEntry? other) -> bool
 Kaleido.Http.Client.KaleidoClientEntry.KaleidoClientEntry() -> void
 Kaleido.Http.Client.KaleidoClientEntry.RegistryTtl.get -> System.TimeSpan?
-Kaleido.Http.Client.KaleidoClientEntry.RegistryTtl.set -> void
+Kaleido.Http.Client.KaleidoClientEntry.RegistryTtl.init -> void
 Kaleido.Http.Client.KaleidoClientEntry.RoutePrefix.get -> string?
-Kaleido.Http.Client.KaleidoClientEntry.RoutePrefix.set -> void
+Kaleido.Http.Client.KaleidoClientEntry.RoutePrefix.init -> void
 Kaleido.Http.Client.KaleidoClientEntry.StrictRegistryProbe.get -> bool?
-Kaleido.Http.Client.KaleidoClientEntry.StrictRegistryProbe.set -> void
+Kaleido.Http.Client.KaleidoClientEntry.StrictRegistryProbe.init -> void
 Kaleido.Http.Client.KaleidoClientOptions
+Kaleido.Http.Client.KaleidoClientOptions.<Clone>$() -> Kaleido.Http.Client.KaleidoClientOptions!
 Kaleido.Http.Client.KaleidoClientOptions.BaseUrl.get -> string?
-Kaleido.Http.Client.KaleidoClientOptions.BaseUrl.set -> void
+Kaleido.Http.Client.KaleidoClientOptions.BaseUrl.init -> void
 Kaleido.Http.Client.KaleidoClientOptions.Clients.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Kaleido.Http.Client.KaleidoClientEntry!>!
-Kaleido.Http.Client.KaleidoClientOptions.Clients.set -> void
+Kaleido.Http.Client.KaleidoClientOptions.Clients.init -> void
+Kaleido.Http.Client.KaleidoClientOptions.Equals(Kaleido.Http.Client.KaleidoClientOptions? other) -> bool
 Kaleido.Http.Client.KaleidoClientOptions.KaleidoClientOptions() -> void
 Kaleido.Http.Client.KaleidoClientOptions.RegistryTtl.get -> System.TimeSpan?
-Kaleido.Http.Client.KaleidoClientOptions.RegistryTtl.set -> void
+Kaleido.Http.Client.KaleidoClientOptions.RegistryTtl.init -> void
 Kaleido.Http.Client.KaleidoClientOptions.Resilience.get -> Kaleido.Http.Client.KaleidoResilienceOptions!
-Kaleido.Http.Client.KaleidoClientOptions.Resilience.set -> void
+Kaleido.Http.Client.KaleidoClientOptions.Resilience.init -> void
 Kaleido.Http.Client.KaleidoClientOptions.StrictRegistryProbe.get -> bool
-Kaleido.Http.Client.KaleidoClientOptions.StrictRegistryProbe.set -> void
+Kaleido.Http.Client.KaleidoClientOptions.StrictRegistryProbe.init -> void
 Kaleido.Http.Client.KaleidoHttpClientException
 Kaleido.Http.Client.KaleidoHttpClientException.Code.get -> string!
 Kaleido.Http.Client.KaleidoHttpClientException.Errors.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Http.KaleidoError!>!
@@ -66,18 +71,30 @@ Kaleido.Http.Client.KaleidoHttpClientException.StatusCode.get -> System.Net.Http
 Kaleido.Http.Client.KaleidoHttpClientsServiceCollectionExtensions
 Kaleido.Http.Client.KaleidoResilienceOptions
 Kaleido.Http.Client.KaleidoResilienceOptions.Enabled.get -> bool
-Kaleido.Http.Client.KaleidoResilienceOptions.Enabled.set -> void
+Kaleido.Http.Client.KaleidoResilienceOptions.Enabled.init -> void
+Kaleido.Http.Client.KaleidoResilienceOptions.Equals(Kaleido.Http.Client.KaleidoResilienceOptions? other) -> bool
 Kaleido.Http.Client.KaleidoResilienceOptions.HealthCheckTimeout.get -> System.TimeSpan
-Kaleido.Http.Client.KaleidoResilienceOptions.HealthCheckTimeout.set -> void
+Kaleido.Http.Client.KaleidoResilienceOptions.HealthCheckTimeout.init -> void
 Kaleido.Http.Client.KaleidoResilienceOptions.KaleidoResilienceOptions() -> void
 Kaleido.Http.Client.KaleidoResilienceOptions.TotalTimeout.get -> System.TimeSpan
-Kaleido.Http.Client.KaleidoResilienceOptions.TotalTimeout.set -> void
+Kaleido.Http.Client.KaleidoResilienceOptions.TotalTimeout.init -> void
 override Kaleido.Http.Client.KaleidoCallCredential.Equals(object? obj) -> bool
 override Kaleido.Http.Client.KaleidoCallCredential.GetHashCode() -> int
 override Kaleido.Http.Client.KaleidoCallCredential.ToString() -> string!
 override Kaleido.Http.Client.KaleidoCallCredentialRequest.Equals(object? obj) -> bool
 override Kaleido.Http.Client.KaleidoCallCredentialRequest.GetHashCode() -> int
 override Kaleido.Http.Client.KaleidoCallCredentialRequest.ToString() -> string!
+override Kaleido.Http.Client.KaleidoClientEntry.Equals(object? obj) -> bool
+override Kaleido.Http.Client.KaleidoClientEntry.GetHashCode() -> int
+override Kaleido.Http.Client.KaleidoClientEntry.ToString() -> string!
+override Kaleido.Http.Client.KaleidoClientOptions.Equals(object? obj) -> bool
+override Kaleido.Http.Client.KaleidoClientOptions.GetHashCode() -> int
+override Kaleido.Http.Client.KaleidoClientOptions.ToString() -> string!
+override Kaleido.Http.Client.KaleidoResilienceOptions.<Clone>$() -> Kaleido.Http.Client.KaleidoResilienceOptions!
+override Kaleido.Http.Client.KaleidoResilienceOptions.Equals(object? obj) -> bool
+override Kaleido.Http.Client.KaleidoResilienceOptions.GetHashCode() -> int
+override Kaleido.Http.Client.KaleidoResilienceOptions.ToString() -> string!
+override sealed Kaleido.Http.Client.KaleidoResilienceOptions.Equals(Kaleido.KaleidoResilienceSettings? other) -> bool
 static Kaleido.Http.Client.KaleidoCallCredential.Configured.get -> Kaleido.Http.Client.KaleidoCallCredential!
 static Kaleido.Http.Client.KaleidoCallCredential.Header(string! authorization) -> Kaleido.Http.Client.KaleidoCallCredential!
 static Kaleido.Http.Client.KaleidoCallCredential.None.get -> Kaleido.Http.Client.KaleidoCallCredential!
@@ -85,6 +102,12 @@ static Kaleido.Http.Client.KaleidoCallCredential.operator !=(Kaleido.Http.Client
 static Kaleido.Http.Client.KaleidoCallCredential.operator ==(Kaleido.Http.Client.KaleidoCallCredential? left, Kaleido.Http.Client.KaleidoCallCredential? right) -> bool
 static Kaleido.Http.Client.KaleidoCallCredentialRequest.operator !=(Kaleido.Http.Client.KaleidoCallCredentialRequest? left, Kaleido.Http.Client.KaleidoCallCredentialRequest? right) -> bool
 static Kaleido.Http.Client.KaleidoCallCredentialRequest.operator ==(Kaleido.Http.Client.KaleidoCallCredentialRequest? left, Kaleido.Http.Client.KaleidoCallCredentialRequest? right) -> bool
+static Kaleido.Http.Client.KaleidoClientEntry.operator !=(Kaleido.Http.Client.KaleidoClientEntry? left, Kaleido.Http.Client.KaleidoClientEntry? right) -> bool
+static Kaleido.Http.Client.KaleidoClientEntry.operator ==(Kaleido.Http.Client.KaleidoClientEntry? left, Kaleido.Http.Client.KaleidoClientEntry? right) -> bool
+static Kaleido.Http.Client.KaleidoClientOptions.operator !=(Kaleido.Http.Client.KaleidoClientOptions? left, Kaleido.Http.Client.KaleidoClientOptions? right) -> bool
+static Kaleido.Http.Client.KaleidoClientOptions.operator ==(Kaleido.Http.Client.KaleidoClientOptions? left, Kaleido.Http.Client.KaleidoClientOptions? right) -> bool
 static Kaleido.Http.Client.KaleidoHttpClientsServiceCollectionExtensions.AddCallCredentials<TProvider>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Http.Client.KaleidoHttpClientsServiceCollectionExtensions.AddHttpClients(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Http.Client.KaleidoHttpClientsServiceCollectionExtensions.ForwardCallerToken(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Http.Client.KaleidoResilienceOptions.operator !=(Kaleido.Http.Client.KaleidoResilienceOptions? left, Kaleido.Http.Client.KaleidoResilienceOptions? right) -> bool
+static Kaleido.Http.Client.KaleidoResilienceOptions.operator ==(Kaleido.Http.Client.KaleidoResilienceOptions? left, Kaleido.Http.Client.KaleidoResilienceOptions? right) -> bool

@@ -28,12 +28,12 @@ public sealed class MixedHostTests : IAsyncLifetime
                 webBuilder.ConfigureServices(services =>
                 {
                     services.AddSingleton<FunctionalRecordData>();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                        {
-                            o.ServiceName = "kaleido";
-                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                            o.Assemblies = [typeof(FunctionalRecordContext).Assembly];
-                        })
+                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    {
+                        ServiceName = "kaleido",
+                        AuthorizationMode = KaleidoAuthorizationMode.None,
+                        Assemblies = [typeof(FunctionalRecordContext).Assembly],
+                    })
                         .AddInMemoryStores()
                         .AddHttp();
                 });

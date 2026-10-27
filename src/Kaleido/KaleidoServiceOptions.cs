@@ -5,11 +5,13 @@ namespace Kaleido;
 
 /// <summary>
 /// Service-level identity and configuration for a Kaleido-enabled application.
-/// Registered as a singleton by <c>AddKaleido</c>.
+/// Immutable: <c>AddKaleido</c> takes the host's instance, lays the <c>Kaleido</c> configuration section
+/// over a copy of it (configuration overrides code, setting by setting), validates it and registers it
+/// as a singleton (ADR 0030).
 /// Consumed by Process, Queryable, and Registry subsystems to derive route prefixes,
 /// populate registry responses, and propagate instance identity via correlation headers.
 /// </summary>
-public class KaleidoServiceOptions
+public sealed record KaleidoServiceOptions
 {
     /// <summary>
     /// The configuration section name shared by all Kaleido subsystem options.
@@ -54,8 +56,8 @@ public class KaleidoServiceOptions
     /// A non-empty explicit list is required when calling AddKaleido().
     /// </summary>
     /// <remarks>
-    /// A read-only copy taken when the options are built: changing the array assigned to
-    /// <see cref="KaleidoServiceOptionsBuilder.Assemblies"/> afterwards does not change it.
+    /// Set in code only (assemblies cannot come from configuration). <c>AddKaleido</c> registers a
+    /// read-only copy, so changing the array passed in afterwards does not change it.
     /// </remarks>
     public IReadOnlyList<Assembly>? Assemblies { get; init; }
 
@@ -127,7 +129,7 @@ public class KaleidoServiceOptions
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.MissingAssembly,
                 "KaleidoServiceOptions.Assemblies must contain at least one assembly. " +
-                "Set o.Assemblies in the AddKaleido configure callback.");
+                "Set Assemblies in the options passed to AddKaleido: new() { Assemblies = [typeof(Program).Assembly] }.");
         }
     }
 
@@ -168,8 +170,8 @@ public class KaleidoServiceOptions
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceName,
                 "KaleidoServiceOptions.ServiceName must be a non-empty string. " +
-                "Set it via AddKaleido(config, o => o.ServiceName = \"myservice\") " +
-                "or via the Kaleido:ServiceName configuration key.");
+                "Set it in the options passed to AddKaleido (new() { ServiceName = \"myservice\" }) " +
+                "or with the Kaleido:ServiceName configuration key.");
         }
 
         if (!IsValidServiceName(serviceName))

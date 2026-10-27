@@ -148,5 +148,5 @@ is compatible with both root-scope and per-scope resolution:
 
 ```csharp
 services.AddSingleton<IKaleidoCorrelationContextAccessor>(_ => myAccessor);
-services.AddKaleido(config, o => ...).AddHttpClients();
+services.AddKaleido(config, new() { /* ... */ }).AddHttpClients();
 ```

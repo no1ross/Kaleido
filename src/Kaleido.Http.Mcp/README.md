@@ -12,19 +12,19 @@ builder.Services.AddAuthentication().AddJwtBearer();   // the host's own scheme:
 builder.Services.AddAuthorization();
 
 builder.Services
-    .AddKaleido(builder.Configuration, o =>
+    .AddKaleido(builder.Configuration, new()
     {
-        o.ServiceName = "router";
-        o.Assemblies = [typeof(Program).Assembly];   // required, even when the router has no capabilities of its own
+        ServiceName = "router",
+        Assemblies = [typeof(Program).Assembly], // required, even when the router has no capabilities of its own
     })
     .AddHttp()
     .AddHttpClients()
     .ForwardCallerToken()          // how tool calls are authorized for the agent's user (see Security)
-    .AddMcp(o => o.ServerName = "priorauth");
+    .AddMcp(new() { ServerName = "priorauth" });
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapKaleidoHttp(o => o.AggregateRegistry = true);
+app.MapKaleidoHttp(new() { AggregateRegistry = true });
 app.MapKaleidoMcp("/mcp").RequireAuthorization();
 ```
 
@@ -33,13 +33,16 @@ A complete, tested single-service host is the guide's
 OAuth-protected endpoint, register a per-service exchange instead of `ForwardCallerToken()` (see
 Security, [ADR 0027](../../docs/decisions/0027-forward-caller-token-kept-with-guards.md)).
 
-Configuration (`Kaleido:Mcp`): `ServerName`, `ServerVersion`, `Instructions` or
-`InstructionsFile` (replace the default instructions), `AdditionalInstructions` (appended: the
-business's guidance for its agents), `MaxElicitationRounds` (zero or more, default 5; 0 returns
-every information request to the agent; a negative value fails startup with `mcp_invalid_options`),
-`ToolListing` (`All`, the default, or `FrontDoor`; see [Front door](#front-door)), `ListedTools`
-(FrontDoor only: extra tool names to list) and `RequireConfirmation` (default `false`; see
-[Confirmation](#confirmation)).
+Options (`KaleidoMcpOptions`, passed to `AddMcp(new() { ... })`; the `Kaleido:Mcp` configuration
+section overrides them setting by setting, ADR 0030): `ServerName`, `ServerVersion`, `Instructions`
+or `InstructionsFile` (replace the default instructions; set one, not both),
+`AdditionalInstructions` (appended: the business's guidance for its agents), `MaxElicitationRounds`
+(zero or more, default 5; 0 returns every information request to the agent), `ToolListing` (`All`,
+the default, or `FrontDoor`; see [Front door](#front-door)), `ListedTools` (FrontDoor only: extra
+tool names to list) and `RequireConfirmation` (default `false`; see [Confirmation](#confirmation)).
+Nothing is trimmed or replaced: a blank name, version or instructions setting, a blank or repeated
+listed tool, a negative round count or both instruction settings at once fail startup with
+`mcp_invalid_options`.
 
 Call `AddHttp()`, `AddHttpClients()` (with at least one client under `Kaleido:Clients`) and a
 call-credential registration (`ForwardCallerToken()` or `AddCallCredentials<TProvider>()`)
@@ -142,7 +145,7 @@ message streams of the step response, kept apart:
 - **`messages`**: the handler's business messages, for the user, delivered verbatim (ADR 0007).
 - **`diagnostics`**: Kaleido's framework messages (`pro_*`) that are warnings or errors, for the agent
   to explain; informational notes are left out. They are present only when the service returns
-  framework messages (`AddHttp(o => o.IncludeFrameworkMessages = true)`).
+  framework messages (`AddHttp(new() { IncludeFrameworkMessages = true })`).
 
 The JSON summary is one text block marked for the assistant (MCP `annotations.audience`). Each
 business message is also sent as its own text block marked for the user (`audience: ["user"]`,
@@ -331,29 +334,29 @@ builder.Services
         o.DefaultChallengeScheme = McpAuthenticationDefaults.AuthenticationScheme;
     })
     .AddJwtBearer(o => { o.Authority = "https://login.example.com"; o.Audience = "api://kaleido-mcp"; })
-    .AddMcp(o => o.ResourceMetadata = new ProtectedResourceMetadata
+    .AddMcp(new() { ResourceMetadata = new ProtectedResourceMetadata
     {
         AuthorizationServers = ["https://login.example.com"],
         ScopesSupported = ["api://kaleido-mcp/mcp.access"],
-    });
+    } });
 builder.Services.AddAuthorization();
 
 builder.Services
-    .AddKaleido(builder.Configuration, o =>
+    .AddKaleido(builder.Configuration, new()
     {
-        o.ServiceName = "router";
-        o.Assemblies = [typeof(Program).Assembly];
-        o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
+        ServiceName = "router",
+        Assemblies = [typeof(Program).Assembly],
+        AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
     })
     .AddHttp()
     .AddHttpClients()                                   // Kaleido:Clients:intake, Kaleido:Clients:radiology
     .AddCallCredentials<OnBehalfOfProvider>()           // a token for the user, per service (Kaleido.Http.Client README)
-    .AddMcp(o => o.ServerName = "priorauth");
+    .AddMcp(new() { ServerName = "priorauth" });
 
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapKaleidoHttp(o => o.AggregateRegistry = true);
+app.MapKaleidoHttp(new() { AggregateRegistry = true });
 app.MapKaleidoMcp("/mcp").RequireAuthorization();
 app.Run();
 ```
@@ -415,11 +418,11 @@ builder.Services
         o.Authority = "https://login.microsoftonline.com/{tenant}/v2.0";          // any OIDC provider
         o.Audience = "api://kaleido-mcp";
     })
-    .AddMcp(o => o.ResourceMetadata = new ProtectedResourceMetadata
+    .AddMcp(new() { ResourceMetadata = new ProtectedResourceMetadata
     {
         AuthorizationServers = ["https://login.microsoftonline.com/{tenant}/v2.0"],
         ScopesSupported = ["api://kaleido-mcp/mcp.access"],
-    });
+    } });
 
 app.MapKaleidoMcp("/mcp").RequireAuthorization();
 ```

@@ -37,6 +37,8 @@
 		<InternalsVisibleTo Include="Kaleido.Http" />
 		<InternalsVisibleTo Include="Kaleido.Http.Client" />
 		<InternalsVisibleTo Include="Kaleido.Http.Mcp" />
+		<!-- The OpenTelemetry provider lays its configuration section over the options from code with core's overlay (ADR 0030). -->
+		<InternalsVisibleTo Include="Kaleido.Observability.OpenTelemetry" />
 		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
 		<InternalsVisibleTo Include="Kaleido.Http.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />

@@ -13,6 +13,20 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Options are immutable; configuration overrides code** (#445,
+  [ADR 0030](docs/decisions/0030-options-are-immutable-configuration-overrides-code.md)): every options
+  type is a record with `init` properties, and the registrations take an optional options object
+  instead of a configure lambda: `AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [...] })`,
+  `AddHttp(new() { ... })`, `MapKaleidoHttp(new() { ... })`, `AddOpenTelemetry(new() { ... })`,
+  `AddMcp(new() { ... })`. The service and MCP options builders are removed.
+  Each registration lays its configuration section over a copy of the object from code, so
+  **configuration now wins over code** setting by setting (it was the other way round); `Kaleido:Http`
+  and `Kaleido:Http:Map` are new sections. Kaleido no longer adjusts what it is given: a blank MCP
+  `ServerName`/`ServerVersion`, a blank or repeated `ListedTools` name and `Instructions` together
+  with `InstructionsFile` now fail startup (`mcp_invalid_options`) instead of being replaced, trimmed
+  or ignored; HTTP and client settings are validated at startup (`invalid_http_options`,
+  `httpclient_invalid_options`), and a configured value that cannot be read is an error naming it
+  (`invalid_options`). KAL2006 now reads the options object passed to `AddKaleido`.
 - **Capabilities have no version** (#474, [ADR 0029](docs/decisions/0029-capabilities-have-no-version.md)):
   remove `Version = ...` from every `[ProcessStep]`, `[QuerySource]` and `[QueryView]` (KAL2001-KAL2003
   now require only `DisplayName` and `Description`). The name is the identity; a breaking change

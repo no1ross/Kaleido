@@ -23,7 +23,7 @@ public sealed class ServiceNameAnalyzer : DiagnosticAnalyzer
     public const int MaxLength = 15;
 
     private static readonly ImmutableHashSet<string> OptionTypes =
-        ImmutableHashSet.Create("Kaleido.KaleidoServiceOptions", "Kaleido.KaleidoServiceOptionsBuilder");
+        ImmutableHashSet.Create("Kaleido.KaleidoServiceOptions");
 
     private static readonly DiagnosticDescriptor LengthRule =
         new(

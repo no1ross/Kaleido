@@ -141,12 +141,12 @@ public sealed class ProcessClientHeaderTests(ProcessorAspNetCoreFixture fixture)
         // Client container needs no type scanning; under xUnit v3 the entry assembly
         // is this test project (it was testhost under v2), so the fallback would
         // register functional test sources without their dependencies.
-        services.AddKaleido(config, o =>
-                {
-                    o.ServiceName = "test-client";
-                    o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                    o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
-                })
+        services.AddKaleido(config, new()
+        {
+            ServiceName = "test-client",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(KaleidoServiceOptions).Assembly],
+        })
                 .AddInMemoryStores()
                 .AddHttpClients();
         return services;

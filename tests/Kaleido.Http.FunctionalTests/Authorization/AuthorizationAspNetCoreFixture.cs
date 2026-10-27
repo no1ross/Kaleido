@@ -84,13 +84,13 @@ public sealed class AuthorizationAspNetCoreFixture
                             })
                             .Build();
 
-                        services.AddKaleido(serverConfig, o =>
-                            {
-                                o.ServiceName = "kaleido";
-                                o.DisplayName = "Auth Test Processor";
-                                o.Assemblies = new[] { typeof(AuthorizationAspNetCoreFixture).Assembly };
-                                o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
-                            })
+                        services.AddKaleido(serverConfig, new()
+                        {
+                            ServiceName = "kaleido",
+                            DisplayName = "Auth Test Processor",
+                            Assemblies = new[] { typeof(AuthorizationAspNetCoreFixture).Assembly },
+                            AuthorizationMode = KaleidoAuthorizationMode.Authenticated,
+                        })
                             .AddInMemoryStores()
                             .AddHttp();
                     });

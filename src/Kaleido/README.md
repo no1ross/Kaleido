@@ -54,7 +54,7 @@ For the full repository model, see:
 
 Reference this project when you need to:
 - bootstrap Kaleido with `AddKaleido()` (which auto-registers the Queryable and Process runtimes)
-- register assemblies via `KaleidoServiceOptions.Assemblies` in the `AddKaleido()` configure callback
+- register assemblies via `KaleidoServiceOptions.Assemblies` in the options passed to `AddKaleido()`
 - work with shared metadata primitives (`TypeDescriber`, `ConstraintMapper`)
 - implement a query source, query view, delegated query source, or step handler
 - work with correlation context or event publishing
@@ -74,14 +74,13 @@ This project does not contain:
 A service starts by calling `AddKaleido()`:
 
 ```csharp
-builder.Services.AddKaleido(builder.Configuration, o =>
+builder.Services.AddKaleido(builder.Configuration, new()
 {
-    o.ServiceName = "myservice"; // [a-z0-9][a-z0-9_-]*: it is the route prefix and the MCP tool prefix (KAL2005)
-    o.Assemblies =
-    [
+    ServiceName = "myservice", // [a-z0-9][a-z0-9_-]*: it is the route prefix and the MCP tool prefix (KAL2005)
+    Assemblies = [
         typeof(Program).Assembly,
         typeof(MyDbContext).Assembly
-    ];
+    ],
 });
 ```
 

@@ -61,12 +61,12 @@ public class QueryCountBenchmarks : IDisposable
         // (and no executor of the host's own).
         _services = new ServiceCollection()
             .AddLogging()
-            .AddKaleido(new ConfigurationBuilder().Build(), o =>
+            .AddKaleido(new ConfigurationBuilder().Build(), new()
             {
-                o.ServiceName = "benchmarks";
-                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                o.Assemblies = [typeof(QueryCountBenchmarks).Assembly];
-                o.TypeFilter = type => type == typeof(MemberSource);
+                ServiceName = "benchmarks",
+                AuthorizationMode = KaleidoAuthorizationMode.None,
+                Assemblies = [typeof(QueryCountBenchmarks).Assembly],
+                TypeFilter = type => type == typeof(MemberSource),
             })
             .Services
             .BuildServiceProvider();
