@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Kaleido.Http.Client;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.TestHost;
@@ -36,6 +37,8 @@ public class McpClinicFixture : IAsyncLifetime
     private readonly bool withFrontDoor;
     private readonly bool withConfirmation;
     private readonly bool withLookupStep;
+    private readonly string? keyRing;
+    private readonly string applicationName;
 
     private IHost? host;
 
@@ -70,13 +73,15 @@ public class McpClinicFixture : IAsyncLifetime
     {
     }
 
-    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false, bool withFrontDoor = false, bool withConfirmation = false, bool withLookupStep = false)
+    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false, bool withFrontDoor = false, bool withConfirmation = false, bool withLookupStep = false, string? keyRing = null, string applicationName = "clinic")
     {
         this.withDownstreamThatIsDown = withDownstreamThatIsDown;
         this.withSignIn = withSignIn;
         this.withFrontDoor = withFrontDoor;
         this.withConfirmation = withConfirmation;
         this.withLookupStep = withLookupStep;
+        this.keyRing = keyRing;
+        this.applicationName = applicationName;
     }
 
     /// <summary>A raw HTTP client on the TestServer, for protocol-level assertions.</summary>
@@ -163,6 +168,15 @@ public class McpClinicFixture : IAsyncLifetime
                         }
 
                         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+
+                        // An instance of a multi-instance deployment: its Data Protection keys in a folder
+                        // it may share with other instances (docs/guide/deployment.md, #452).
+                        if (keyRing is not null)
+                        {
+                            services.AddDataProtection()
+                                .SetApplicationName(applicationName)
+                                .PersistKeysToFileSystem(new DirectoryInfo(keyRing));
+                        }
 
                         services.AddKaleido(configuration, new()
                         {
