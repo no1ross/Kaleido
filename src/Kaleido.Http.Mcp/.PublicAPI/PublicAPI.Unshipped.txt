@@ -32,7 +32,7 @@ Kaleido.Http.Mcp.KaleidoMcpOptions.RequireConfirmation.get -> bool
 Kaleido.Http.Mcp.KaleidoMcpOptions.RequireConfirmation.init -> void
 Kaleido.Http.Mcp.KaleidoMcpOptions.ServerName.get -> string!
 Kaleido.Http.Mcp.KaleidoMcpOptions.ServerName.init -> void
-Kaleido.Http.Mcp.KaleidoMcpOptions.ServerVersion.get -> string!
+Kaleido.Http.Mcp.KaleidoMcpOptions.ServerVersion.get -> string?
 Kaleido.Http.Mcp.KaleidoMcpOptions.ServerVersion.init -> void
 Kaleido.Http.Mcp.KaleidoMcpOptions.ToolListing.get -> Kaleido.Http.Mcp.McpToolListing
 Kaleido.Http.Mcp.KaleidoMcpOptions.ToolListing.init -> void

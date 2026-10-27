@@ -20,6 +20,7 @@ public sealed class KaleidoMcpOptionsTests
         Assert.Empty(options.ListedTools);
         Assert.False(options.RequireConfirmation);
         Assert.Null(options.Instructions);
+        Assert.Null(options.ServerVersion);
     }
 
     [Theory]

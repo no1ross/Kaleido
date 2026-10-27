@@ -62,9 +62,11 @@ public static class KaleidoMcpServiceCollectionExtensions
             .BindOver(options ?? new KaleidoMcpOptions(), McpErrorCodes.InvalidOptions);
         KaleidoMcpOptions.Validate(options);
         var instructions = KaleidoMcpServerInstructions.Resolve(options);
+        var version = KaleidoMcpServerVersion.Resolve(options, System.Reflection.Assembly.GetEntryAssembly());
 
         services.AddSingleton(options);
         services.AddSingleton(instructions);
+        services.AddSingleton(version);
 
         services.AddSingleton<IToolNameBuilder, ToolNameBuilder>();
         services.AddSingleton<IToolSchemaBuilder, ToolSchemaBuilder>();
@@ -81,7 +83,7 @@ public static class KaleidoMcpServiceCollectionExtensions
                 server.ServerInfo = new Implementation
                 {
                     Name = options.ServerName,
-                    Version = options.ServerVersion,
+                    Version = version.Value,
                 };
                 server.ServerInstructions = instructions.Text;
             })

@@ -313,8 +313,12 @@ agents' behavior depends on them.
   Kaleido's mechanics stay current with upgrades).
 - `Instructions` / `InstructionsFile` **replace** them entirely; a host doing so owns keeping them
   in step with the adapter's tools after each upgrade.
-- `ServerVersion` (default `1.0.0`) is the host's own version of what it publishes, reported to
-  clients; raise it when the tools or instructions a client sees change meaningfully.
+- `ServerVersion` is the host's own version of what it publishes, reported to clients in the
+  initialize response; raise it when the tools or instructions a client sees change meaningfully
+  (a capability added or removed, changed inputs, replaced instructions). Left unset, it is the host
+  application's version: the entry assembly's informational version without its `+commit` suffix
+  (e.g. `2.3.0` from `2.3.0+4f1c2ab`), else its assembly version - never the Kaleido package
+  version, which says nothing about what this host publishes (#463).
 
 The instructions are guidance for well-behaved agents; nothing in them is a security control (see
 [Trust boundary](#trust-boundary)).
