@@ -33,6 +33,20 @@ public sealed record InformationRequest
     /// </summary>
     public required string InformationRequestId { get; init; }
 
+    /// <summary>
+    /// Identifies this exchange - one time these questions are put - as distinct from the questionnaire
+    /// (<see cref="InformationRequestId"/>), which can be asked again (#442). Issued by Kaleido when a
+    /// handler requires the information: a value the handler sets is replaced. The answers must echo it
+    /// (<see cref="IInformationStep.ExchangeId"/>); answers carrying another exchange's id - a delayed
+    /// answer, a stale form, a replayed continuation from an earlier time the same questionnaire was
+    /// asked - are rejected with <c>pro_information_response_stale</c> before any handler runs.
+    /// </summary>
+    /// <remarks>
+    /// Persisted with the pending request, so it survives a restart. It stays the same for every round
+    /// of the one request (conditional questions, ADR 0024): those are rounds of one exchange.
+    /// </remarks>
+    public string ExchangeId { get; init; } = string.Empty;
+
     /// <summary>A short title for the whole request, shown to the person answering.</summary>
     public string? Title { get; init; }
 

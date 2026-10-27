@@ -87,7 +87,7 @@ The planning pipeline is layered — keep those responsibilities separated:
 
 `ProcessorContext` is current resumable state only. Keep it small. Historical evidence belongs in emitted process events. The pending information request (`RequiredInformationRequest`) is part of that state; past questions and answers are not.
 
-Information requests: Kaleido owns the schema, never the content. Validation is structural only; an `IInformationStep` declares only `InformationRequestId` and `Items`; a request travels only with the required step. See [`docs/INFORMATION_REQUESTS.md`](../docs/INFORMATION_REQUESTS.md) and ADRs 0002–0006.
+Information requests: Kaleido owns the schema, never the content. Validation is structural only; an `IInformationStep` declares only `InformationRequestId`, `ExchangeId` and `Items`; a request travels only with the required step. See [`docs/INFORMATION_REQUESTS.md`](../docs/INFORMATION_REQUESTS.md) and ADRs 0002–0006.
 
 ---
 

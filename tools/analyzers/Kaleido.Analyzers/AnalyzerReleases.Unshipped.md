@@ -13,7 +13,7 @@ KAL2008 | Kaleido.Usage | Error | IProcessStep type must have [ProcessStep]
 KAL2009 | Kaleido.Usage | Error | [QuerySource]/[QueryView] type must implement the matching interface
 KAL2010 | Kaleido.Usage | Error | Query source/view must have [QuerySource]/[QueryView]
 KAL2011 | Kaleido.Usage | Warning | [Filterable]/[Searchable]/[Sortable] only apply to IQueryContext records
-KAL2012 | Kaleido.Usage | Error | An information step declares only InformationRequestId and Items
+KAL2012 | Kaleido.Usage | Error | An information step declares only InformationRequestId, ExchangeId and Items
 KAL2013 | Kaleido.Usage | Error | Information steps are required with RequireInformation, not Success
 KAL2014 | Kaleido.Usage | Warning | Process step input property has no description
 KAL2015 | Kaleido.Usage | Warning | Query context or parameters property has no description

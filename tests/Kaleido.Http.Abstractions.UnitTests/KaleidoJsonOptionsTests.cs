@@ -52,6 +52,7 @@ public sealed class KaleidoJsonOptionsTests
         var request = new InformationRequest
         {
             InformationRequestId = "attestation",
+            ExchangeId = "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
             Title = "Attestation",
             Items =
             [
@@ -79,7 +80,7 @@ public sealed class KaleidoJsonOptionsTests
         };
 
         Assert.Equal(
-            """{"informationRequestId":"attestation","title":"Attestation","items":[{"id":"Group","text":"About the member","type":"group","repeats":false,"options":[],"items":[{"id":"Side","text":"Which side?","type":"choice","repeats":true,"options":[{"value":"Left","display":"Left side"}],"items":[],"proposedAnswers":[{"value":"Left"}],"enableWhen":[{"question":"Other","operator":"notEquals","answer":"Spine"}],"enableBehavior":"any"}],"proposedAnswers":[],"enableWhen":[],"enableBehavior":"all"}]}""",
+            """{"informationRequestId":"attestation","exchangeId":"0f1e2d3c4b5a69788796a5b4c3d2e1f0","title":"Attestation","items":[{"id":"Group","text":"About the member","type":"group","repeats":false,"options":[],"items":[{"id":"Side","text":"Which side?","type":"choice","repeats":true,"options":[{"value":"Left","display":"Left side"}],"items":[],"proposedAnswers":[{"value":"Left"}],"enableWhen":[{"question":"Other","operator":"notEquals","answer":"Spine"}],"enableBehavior":"any"}],"proposedAnswers":[],"enableWhen":[],"enableBehavior":"all"}]}""",
             JsonSerializer.Serialize(request, KaleidoJsonOptions.Options));
     }
 

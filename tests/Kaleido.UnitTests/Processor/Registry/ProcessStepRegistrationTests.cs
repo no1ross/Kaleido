@@ -47,6 +47,7 @@ public sealed class ProcessStepRegistrationTests
     private sealed class AnswerStep : IInformationStep
     {
         public required string InformationRequestId { get; init; }
+        public string ExchangeId { get; init; } = string.Empty;
 
         public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
     }

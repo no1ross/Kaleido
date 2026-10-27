@@ -25,6 +25,7 @@ namespace Kaleido.Processor
     public interface IInformationStep : IProcessStep
     {
         string InformationRequestId { get; init; }
+        string ExchangeId { get; init; }
         System.Collections.Generic.IReadOnlyList<InformationResponseItem> Items { get; init; }
     }
 }
@@ -53,6 +54,7 @@ namespace Kaleido.Processor.Execution
 public sealed record AnswerStep : Kaleido.Processor.IInformationStep
 {
     public string InformationRequestId { get; init; } = """";
+    public string ExchangeId { get; init; } = """";
     public System.Collections.Generic.IReadOnlyList<Kaleido.Processor.InformationResponseItem> Items { get; init; } = new Kaleido.Processor.InformationResponseItem[0];
 }
 
@@ -78,6 +80,7 @@ public sealed record CaptureStep : Kaleido.Processor.IProcessStep;
 public sealed record MixedStep : Kaleido.Processor.IInformationStep
 {
     public string InformationRequestId { get; init; } = """";
+    public string ExchangeId { get; init; } = """";
     public System.Collections.Generic.IReadOnlyList<Kaleido.Processor.InformationResponseItem> Items { get; init; } = new Kaleido.Processor.InformationResponseItem[0];
     public string {|#0:MemberId|} { get; init; } = """";
 }

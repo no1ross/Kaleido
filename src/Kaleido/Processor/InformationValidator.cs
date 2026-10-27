@@ -104,6 +104,18 @@ internal sealed class InformationValidator : IInformationValidator
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(response);
 
+        // First: answers to an earlier exchange (perhaps of the same questionnaire, with the same item
+        // ids) must not count as answers to this one (#442).
+        if (!string.Equals(response.ExchangeId, request.ExchangeId, StringComparison.Ordinal))
+        {
+            return
+            [
+                StepProcessingMessage.Error(
+                    ProcessorErrorCodes.InformationResponseStale,
+                    $"The answers are for an earlier exchange of information request '{response.InformationRequestId}' (exchange '{response.ExchangeId}'), not the pending one; the questions were asked again. Answer the current questions."),
+            ];
+        }
+
         if (!string.Equals(
                 response.InformationRequestId,
                 request.InformationRequestId,

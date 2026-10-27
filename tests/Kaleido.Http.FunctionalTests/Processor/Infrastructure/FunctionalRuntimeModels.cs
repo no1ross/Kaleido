@@ -261,6 +261,7 @@ public sealed record RuntimeAskStep : IProcessStep;
 public sealed record RuntimeAnswerStep : IInformationStep
 {
     public string InformationRequestId { get; init; } = string.Empty;
+    public string ExchangeId { get; init; } = string.Empty;
 
     public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
 }
@@ -284,7 +285,7 @@ public static class RuntimeInformationRequests
                     Id = $"{informationRequestId}-reason",
                     Text = "Why?",
                     Type = InformationItemType.Choice,
-                    Options = [new InformationOption { Value = "a", Display = "Reason A" }, new InformationOption { Value = "b", Display = "Reason B" }]
+                    Options = [new InformationOption { Value = "a", Display = "Reason A" }, new InformationOption { Value = "b", Display = "Reason B" }, new InformationOption { Value = "again", Display = "Ask these questions again" }]
                 },
                 // Applies only to reason B (EnableWhen, ADR 0024).
                 new InformationItem
@@ -310,7 +311,8 @@ public sealed class RuntimeAskStepHandler :
                 RuntimeInformationRequests.Round(RuntimeInformationRequests.FirstRound)));
 }
 
-// Loops while the "more" answer is true: a [Repeatable] information step requiring itself.
+// Loops while the "more" answer is true: a [Repeatable] information step requiring itself - with the
+// second round, or (reason "again") with the same questionnaire and item ids again (#442).
 public sealed class RuntimeAnswerStepHandler :
     IProcessStepHandler<RuntimeAnswerStep>
 {
@@ -326,10 +328,12 @@ public sealed class RuntimeAnswerStepHandler :
                 .Single()
                 .Value;
 
+        var again = step.Items.Any(x => x.ItemId == $"{step.InformationRequestId}-reason" && x.Answers.Any(a => a.Value == "again"));
+
         return Task.FromResult(
             bool.Parse(more)
                 ? ProcessStepHandlerResult.RequireInformation<RuntimeAnswerStep>(
-                    RuntimeInformationRequests.Round(RuntimeInformationRequests.SecondRound))
+                    RuntimeInformationRequests.Round(again ? step.InformationRequestId : RuntimeInformationRequests.SecondRound))
                 : ProcessStepHandlerResult.Success());
     }
 }

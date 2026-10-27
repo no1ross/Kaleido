@@ -414,7 +414,25 @@ public sealed class StepExecutionEvaluatorTests
 
         Assert.Equal(ExecutionDecisionType.AwaitingInformation, decision.Type);
         Assert.Equal("info-step", decision.RequiredStep);
-        Assert.Same(Request, decision.InformationRequest);
+        // #442: the request as the handler returned it, with an exchange id Kaleido issued.
+        var issued = Assert.IsType<InformationRequest>(decision.InformationRequest);
+        Assert.Equal(Request with { ExchangeId = issued.ExchangeId }, issued);
+        Assert.Matches("^[0-9a-f]{32}$", issued.ExchangeId);
+    }
+
+    // #442: each time a handler requires the information is a new exchange, even with the same request;
+    // an exchange id the handler set is replaced.
+    [Fact]
+    public void Evaluate_IssuesANewExchangeIdEveryTime_ReplacingTheHandlers()
+    {
+        var evaluator = CreateSut(["info-step"]);
+        var handlers = Request with { ExchangeId = "chosen-by-the-handler" };
+
+        var first = evaluator.Evaluate(CreateCandidate<StepA>("step-a"), new StepInvocationResult { Succeeded = true, RequiredStep = typeof(InfoStep), InformationRequest = handlers }, [], CreateContext());
+        var second = evaluator.Evaluate(CreateCandidate<StepA>("step-a"), new StepInvocationResult { Succeeded = true, RequiredStep = typeof(InfoStep), InformationRequest = handlers }, [], CreateContext());
+
+        Assert.NotEqual("chosen-by-the-handler", first.InformationRequest?.ExchangeId);
+        Assert.NotEqual(first.InformationRequest?.ExchangeId, second.InformationRequest?.ExchangeId);
     }
 
     [Fact]
@@ -650,6 +668,7 @@ public sealed class StepExecutionEvaluatorTests
     private sealed class InfoStep : IInformationStep
     {
         public string InformationRequestId { get; init; } = string.Empty;
+        public string ExchangeId { get; init; } = string.Empty;
 
         public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
     }

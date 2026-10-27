@@ -401,6 +401,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         typeBuilder.DefineDefaultConstructor(System.Reflection.MethodAttributes.Public);
 
         DefineProperty(typeBuilder, nameof(IInformationStep.InformationRequestId), typeof(string), implementsInterface: true);
+        DefineProperty(typeBuilder, nameof(IInformationStep.ExchangeId), typeof(string), implementsInterface: true);
         DefineProperty(typeBuilder, nameof(IInformationStep.Items), typeof(IReadOnlyList<InformationResponseItem>), implementsInterface: true);
         DefineProperty(typeBuilder, extraProperty, typeof(string), implementsInterface: false);
 

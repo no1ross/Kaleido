@@ -154,6 +154,7 @@ return ProcessStepHandlerResult.RequireInformation<CaptureOutOfNetworkResponseSt
 public sealed record CaptureOutOfNetworkResponseStep : IInformationStep
 {
     public required string InformationRequestId { get; init; }
+    public required string ExchangeId { get; init; }   // echoes the pending request's exchange (#442)
     public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
 }
 ```
