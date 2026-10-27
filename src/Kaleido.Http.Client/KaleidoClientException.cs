@@ -48,7 +48,7 @@ public sealed class KaleidoHttpClientException(
 
 /// <summary>
 /// Stable machine-readable diagnostic codes for Kaleido HTTP client errors. Runtime codes are
-/// prefixed <c>httpclient_</c>; <c>missing_base_url</c> is a startup configuration code. The
+/// prefixed <c>httpclient_</c>, including the startup configuration codes. The
 /// called service's own codes (<c>pro_*</c>, <c>qry_*</c>) arrive in
 /// <see cref="KaleidoHttpClientException.Errors"/>.
 /// </summary>
@@ -71,7 +71,7 @@ public static class HttpClientErrorCodes
     public const string Conflict = "httpclient_conflict";
 
     /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl). Raised at startup as a configuration error.</summary>
-    public const string MissingBaseUrl = "missing_base_url";
+    public const string MissingBaseUrl = "httpclient_missing_base_url";
 
     /// <summary>
     /// A configured Kaleido client's <c>RoutePrefix</c> (or, without one, its lowercased client name) is

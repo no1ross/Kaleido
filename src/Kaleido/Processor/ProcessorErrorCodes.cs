@@ -121,7 +121,7 @@ public static class ProcessorErrorCodes
     public const string RepeatableStep = "pro_repeatable_step";
 
     /// <summary>A process execution result contained no entry for the step that was executed.</summary>
-    public const string MissingStepResult = "missing_step_result";
+    public const string MissingStepResult = "pro_missing_step_result";
 
     /// <summary>
     /// The submitted step is not a next step of the process: not the pending required step,

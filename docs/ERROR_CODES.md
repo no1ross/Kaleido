@@ -98,7 +98,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `FrameworkException` | `pro_framework_exception` | Unexpected framework error interrupted a step |
 | `ProcessMessage` | `pro_process_message` | Process diagnostic message was produced |
 | `RepeatableStep` | `pro_repeatable_step` | Repeatable step remains eligible after prior execution |
-| `MissingStepResult` | `missing_step_result` | A process execution result had no entry for the executed step (raised as `KaleidoFrameworkException`) |
+| `MissingStepResult` | `pro_missing_step_result` | A process execution result had no entry for the executed step (raised as `KaleidoFrameworkException`) |
 | `StepNotAvailable` | `pro_step_not_available` | The submitted step is not a next step: not the pending required step, or not available under the process rules (the initial steps for a new process) |
 | `InformationRequestInvalid` | `pro_information_request_invalid` | A handler returned an information request that is not well-formed (no id or items, duplicate item ids, an item without text, a choice without options, a group without items, nesting outside a group, an `enableWhen` condition that does not test an earlier question or whose operator or value does not fit it) |
 | `InformationRequestMissing` | `pro_information_request_missing` | An information step was required without an information request (use `RequireInformation<TNext>`) |
@@ -160,7 +160,7 @@ Declared in `Kaleido.Http.Abstractions` (`Kaleido.Http` namespace), next to the 
 
 ## `HttpClientErrorCodes` — client-side (never an HTTP response)
 
-Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup configuration code owned by the client.
+Every client code is prefixed `httpclient_`, including its startup configuration codes (`httpclient_missing_base_url`, `httpclient_invalid_route_prefix`, `httpclient_invalid_options`).
 
 | Constant | Code | Meaning |
 |---|---|---|
@@ -168,7 +168,7 @@ Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup
 | `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status (including a step, source or view the service does not have, 404, or the caller may not use, 403); the service's own errors are in `Errors` when its body carried any, whatever the status |
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors (400 with a Kaleido error body) |
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
-| `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
+| `MissingBaseUrl` | `httpclient_missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
 | `InvalidRoutePrefix` | `httpclient_invalid_route_prefix` | A configured client's `RoutePrefix` (or, without one, its lowercased name) is not a service name (`[a-z0-9][a-z0-9_-]*`); it must equal the downstream `ServiceName` (startup, `AddHttpClients()`, `KaleidoConfigurationException`; ADR 0027) |
 | `InvalidClientOptions` | `httpclient_invalid_options` | A client setting in configuration (`Kaleido:RegistryTtl`, `Kaleido:Resilience`, `Kaleido:Clients:{name}`...) is out of range or cannot be read, e.g. a negative registry TTL or a non-positive timeout (startup, `KaleidoConfigurationException`) |
 | `ConfiguredCredentialForCaller` | `httpclient_configured_credential_for_caller` | An `IKaleidoCallCredentialProvider` answered `Configured` for a call made for a caller: a caller's call never goes out with the host's own credentials (`KaleidoConfigurationException`, at the call; ADR 0022) |

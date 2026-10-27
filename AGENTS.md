@@ -65,7 +65,7 @@ One place owns each fact: a project's README lists its types and entry points, [
 - Every public type and public member in `src/` must carry strong XML documentation (`<summary>`, plus `<remarks>`, `<typeparam>`, `<param>`, `<returns>`, `<exception>`, `<example>` where they add meaning). Public APIs are consumed by people, generated docs, and AI agents — the docs are part of the contract.
 - Document behavior and intent, not restated signatures: what it is for, invariants, failure modes, and how it relates to neighbouring types.
 - Keep docs truthful to the code — verify semantics before writing them, and update them in the same change when behavior changes.
-- Every public API change is recorded in the package's `PublicAPI.Unshipped.txt` (RS0016/RS0017 fail the build otherwise; #313). No public async method defaults its `CancellationToken` (KAL0016), and no two overloads both take optional parameters (RS0026/RS0027). See [the public API baseline](./docs/VERSIONING.md#the-public-api-baseline).
+- Every public API change is recorded in the package's `PublicAPI.Unshipped.txt` (RS0016/RS0017 fail the build otherwise; #313), and placed in the per-package checklist of [ADR 0032](./docs/decisions/0032-public-api-at-1-0.md) (role and decision) until 1.0. No public async method defaults its `CancellationToken` (KAL0016), and no two overloads both take optional parameters (RS0026/RS0027). See [the public API baseline](./docs/VERSIONING.md#the-public-api-baseline).
 
 ### Primary constructors
 - Use primary constructor syntax for simple dependency injection: `class MyClass(IService service)`
@@ -102,7 +102,7 @@ Information logs must stay minimal — treat them as the "normal operations" vie
   - `QueryableErrorCodes` (`Queryable/QueryableErrorCodes.cs`) — `qry_*` codes for Queryable startup registration and request validation
   - `ConfigurationErrorCodes` (`KaleidoConfigurationException.cs`) — core service-setup and authorization-settings codes only
   - `FrameworkErrorCodes` (`KaleidoFrameworkException.cs`) — cross-cutting integrity violation codes
-  - `HttpClientErrorCodes` (`Kaleido.Http.Client/KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures, plus the client's startup `missing_base_url`
+  - `HttpClientErrorCodes` (`Kaleido.Http.Client/KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures and the client's startup checks (`httpclient_missing_base_url`)
   - `SqliteErrorCodes` (`Kaleido.Provider.SQLite`) — the provider's own codes; providers never add codes to core
   - `McpErrorCodes` (`Kaleido.Http.Mcp/McpErrorCodes.cs`) — `mcp_*` codes for the MCP adapter's startup and tool-call failures
   - `OpenTelemetryErrorCodes` (`Kaleido.Observability.OpenTelemetry`) — `otel_*` codes for the provider's startup failures

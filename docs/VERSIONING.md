@@ -91,5 +91,6 @@ The 1.0 contract freeze ([#241](https://github.com/no1ross/Kaleido/issues/241)) 
 At 1.0 the public API baselines (`PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`) and the consumer
 analyzer rules (`KAL2xxx`, to `AnalyzerReleases.Shipped.md`) are moved, so later changes to them are
 recorded per release ([`tools/analyzers/README.md`](../tools/analyzers/README.md#rule-inventory-and-release-tracking)).
+What those baselines hold is reviewed type by type in [ADR 0032](decisions/0032-public-api-at-1-0.md), kept current by every change to the public API until the release.
 
 Until then, this page is the policy.
