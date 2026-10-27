@@ -237,6 +237,34 @@ public sealed class McpObservabilityTests
             Equals(x.Tags[McpTelemetry.TagLookupStateRefusal], McpTelemetry.LookupStateUnknownKey));
     }
 
+    // A refusal inside a tool call tags the call's span with the reason.
+    [Fact]
+    public void ALookupStateRefusedDuringAToolCall_TagsTheSpanWithTheReason()
+    {
+        using (var call = CreateSut().BeginToolCall("clinic_assign_bed"))
+        {
+            CreateSut().LookupStateRefused(McpTelemetry.LookupStateExpired, keyId: null);
+            call.Completed(Result("""{"code":"mcp_invalid_arguments"}""", isError: true));
+        }
+
+        Assert.Equal(McpTelemetry.LookupStateExpired, Span(McpTelemetry.ToolCallActivityName).GetTagItem(McpTelemetry.TagLookupStateRefusal));
+    }
+
+    // Outside any span (no Activity.Current) the refusal is still counted and logged.
+    [Fact]
+    public void ALookupStateRefusedOutsideASpan_IsStillCountedAndLogged()
+    {
+        var logger = new RecordingLogger();
+        Activity.Current = null;
+
+        CreateSut(logger).LookupStateRefused(McpTelemetry.LookupStateInvalid, keyId: null);
+
+        Assert.Single(logger.Entries);
+        Assert.Contains(measurements, x =>
+            x.Instrument == McpTelemetry.LookupStatesRefusedCounterName &&
+            Equals(x.Tags[McpTelemetry.TagLookupStateRefusal], McpTelemetry.LookupStateInvalid));
+    }
+
     // The other reasons are the client's (a changed, expired or foreign state): Debug, and counted.
     [Theory]
     [InlineData(McpTelemetry.LookupStateExpired)]
