@@ -19,8 +19,14 @@ public sealed record KaleidoMcpOptions
     /// <summary>The MCP server name reported to clients. Default <c>kaleido</c>; must not be blank.</summary>
     public string ServerName { get; init; } = "kaleido";
 
-    /// <summary>The MCP server version reported to clients. Must not be blank.</summary>
-    public string ServerVersion { get; init; } = "1.0.0";
+    /// <summary>
+    /// The version of what this host publishes, reported to MCP clients in the initialize response.
+    /// Raise it when the tools or instructions a client sees change meaningfully. <see langword="null"/>
+    /// (the default) reports the host application's own version: the entry assembly's informational
+    /// version without its <c>+commit</c> suffix, else its assembly version - never Kaleido's package
+    /// version. Must not be blank when set.
+    /// </summary>
+    public string? ServerVersion { get; init; }
 
     /// <summary>
     /// Replaces the packaged default instructions - what the agent is told when it connects (how
@@ -93,7 +99,7 @@ public sealed record KaleidoMcpOptions
     internal static void Validate(KaleidoMcpOptions options)
     {
         Require(!string.IsNullOrWhiteSpace(options.ServerName), nameof(ServerName), "must not be blank");
-        Require(!string.IsNullOrWhiteSpace(options.ServerVersion), nameof(ServerVersion), "must not be blank");
+        Require(options.ServerVersion is null || !string.IsNullOrWhiteSpace(options.ServerVersion), nameof(ServerVersion), "must not be blank when set");
         Require(options.Instructions is null || !string.IsNullOrWhiteSpace(options.Instructions), nameof(Instructions), "must not be blank when set");
         Require(options.InstructionsFile is null || !string.IsNullOrWhiteSpace(options.InstructionsFile), nameof(InstructionsFile), "must not be blank when set");
         Require(options.AdditionalInstructions is null || !string.IsNullOrWhiteSpace(options.AdditionalInstructions), nameof(AdditionalInstructions), "must not be blank when set");

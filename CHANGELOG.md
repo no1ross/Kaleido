@@ -144,6 +144,11 @@ sections.
 - Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
 
 ### Changed
+- **The MCP server reports the host's version** (#463): `KaleidoMcpOptions.ServerVersion` is optional;
+  left unset, the initialize response carries the host application's version (the entry assembly's
+  informational version without its `+commit` suffix, else its assembly version) instead of a fixed
+  `1.0.0`. A version the host sets is reported as given; raise it when the tools or instructions a
+  client sees change meaningfully.
 - **The core shapes on the wire are named as wire contracts** (#448, ADR 0017 amendment):
   `InformationRequest`, `ProcessMessage`, `KaleidoCaller`, the Process state enums,
   `AuthorizationMetadata`, `FilterOperator`/`MatchMode` and `QueryResult<T>` travel as they are and

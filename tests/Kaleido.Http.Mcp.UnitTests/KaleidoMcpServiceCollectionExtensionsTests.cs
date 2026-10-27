@@ -184,6 +184,21 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
         Assert.Equal("Be careful.", RegisteredOptions(services).Instructions);
     }
 
+    // #463: without a ServerVersion the server reports the host application's version, resolved once.
+    [Fact]
+    public void AddMcp_WithoutAServerVersion_ReportsTheHostApplicationsVersion()
+    {
+        var services = HostServices();
+
+        Builder(services).Object.AddMcp();
+
+        var expected = KaleidoMcpServerVersion.Resolve(new KaleidoMcpOptions(), System.Reflection.Assembly.GetEntryAssembly()).Value;
+        Assert.Equal(expected, ServerOptions(services).ServerInfo?.Version);
+        var registered = Assert.Single(services, x => x.ServiceType == typeof(KaleidoMcpServerVersion)).ImplementationInstance;
+        Assert.Equal(expected, Assert.IsType<KaleidoMcpServerVersion>(registered).Value);
+        Assert.Null(RegisteredOptions(services).ServerVersion);
+    }
+
     // ADR 0030: the Kaleido:Mcp section overrides the options from code, setting by setting; a blank
     // value is an error, never replaced.
     [Fact]

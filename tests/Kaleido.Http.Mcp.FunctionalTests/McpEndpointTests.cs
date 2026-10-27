@@ -83,6 +83,23 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         Assert.Contains("Ask the user to confirm before calling.", close.Description, StringComparison.Ordinal);
     }
 
+    // #463: with no ServerVersion set, initialize reports the host application's own version (here the
+    // test host's entry assembly), without its +commit suffix.
+    [Fact]
+    public async Task Initialize_WithoutAServerVersion_ReportsTheHostApplicationsVersion()
+    {
+        var entry = System.Reflection.Assembly.GetEntryAssembly() ?? throw new InvalidOperationException("No entry assembly.");
+        var informational = System.Reflection.CustomAttributeExtensions
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(entry)?.InformationalVersion;
+        var expected = informational?.Split('+')[0] ?? entry.GetName().Version?.ToString();
+
+        await using var client = await fixture.ConnectAsync(Nurse);
+
+        Assert.Equal("kaleido", client.ServerInfo.Name);
+        Assert.Equal(expected, client.ServerInfo.Version);
+        Assert.DoesNotContain('+', client.ServerInfo.Version);
+    }
+
     [Fact]
     public async Task TheServerInstructions_IncludeTheDefaultsAndTheAdditionalGuidance()
     {
