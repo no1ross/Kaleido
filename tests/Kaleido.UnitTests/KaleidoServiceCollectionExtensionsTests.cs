@@ -13,11 +13,11 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         new ConfigurationBuilder().Build();
 
     // Provides valid bootstrap options so unrelated DI tests pass startup validation.
-    private static Action<KaleidoServiceOptionsBuilder> DefaultServiceOptions() =>
-        o =>
+    private static KaleidoServiceOptions DefaultServiceOptions() =>
+        new()
         {
-            o.ServiceName = "test-service";
-            o.Assemblies = [typeof(KaleidoServiceCollectionExtensionsTests).Assembly];
+            ServiceName = "test-service",
+            Assemblies = [typeof(KaleidoServiceCollectionExtensionsTests).Assembly],
         };
 
     // Three store contracts, one per concern, each with an in-memory default the host can replace.
@@ -37,6 +37,81 @@ public sealed class KaleidoServiceCollectionExtensionsTests
 
     private static ServiceDescriptor Single<TService>(IServiceCollection services) =>
         Assert.Single(services, x => x.ServiceType == typeof(TService));
+
+    // ADR 0030: configuration overrides code setting by setting; what configuration does not name keeps
+    // the code value, and the host's own instance is never changed.
+    [Fact]
+    public void AddKaleido_LaysConfigurationOverTheOptionsFromCode_WithoutChangingThem()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Kaleido:DisplayName"] = "From configuration",
+                ["Kaleido:Events:BatchSize"] = "7",
+                ["Kaleido:DefaultAuthorization:Roles:0"] = "radiology",
+            })
+            .Build();
+        var code = DefaultServiceOptions() with
+        {
+            DisplayName = "From code",
+            Description = "Kept",
+            Events = new() { BatchSize = 3, MaxConcurrentPublishes = 2 },
+            DefaultAuthorization = new AuthorizationMetadata("staff", ["admin"]),
+        };
+
+        var registered = new ServiceCollection().AddKaleido(config, code).ServiceOptions;
+
+        Assert.Equal("From configuration", registered.DisplayName);
+        Assert.Equal("Kept", registered.Description);
+        Assert.Equal(7, registered.Events.BatchSize);
+        Assert.Equal(2, registered.Events.MaxConcurrentPublishes);
+        Assert.Equal("staff", registered.DefaultAuthorization.Policy);
+        Assert.Equal(["radiology"], registered.DefaultAuthorization.Roles); // replaced, not appended
+        Assert.Equal("From code", code.DisplayName);
+        Assert.Equal(3, code.Events.BatchSize);
+        Assert.Equal(["admin"], code.DefaultAuthorization.Roles);
+    }
+
+    [Fact]
+    public void AddKaleido_AConfiguredValueThatCannotBeRead_IsAConfigurationError()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:Events:BatchSize"] = "many" })
+            .Build();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => new ServiceCollection().AddKaleido(config, DefaultServiceOptions()));
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidOptions, exception.Code);
+        Assert.Contains("Kaleido:Events:BatchSize", exception.Message, StringComparison.Ordinal);
+    }
+
+    // The registered options hold their own copies: changing the caller's array or list afterwards
+    // changes nothing.
+    [Fact]
+    public void AddKaleido_RegistersCopiesOfTheAssembliesAndRoles()
+    {
+        var assemblies = new[] { typeof(KaleidoServiceOptions).Assembly };
+        var roles = new List<string> { "admin" };
+
+        var registered = new ServiceCollection()
+            .AddKaleido(EmptyConfig(), DefaultServiceOptions() with { Assemblies = assemblies, DefaultAuthorization = new AuthorizationMetadata(null, roles) })
+            .ServiceOptions;
+        assemblies[0] = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
+        roles.Add("other");
+
+        Assert.Equal([typeof(KaleidoServiceOptions).Assembly], registered.Assemblies);
+        Assert.Equal(["admin"], registered.DefaultAuthorization.Roles);
+        Assert.Throws<NotSupportedException>(() => ((IList<System.Reflection.Assembly>)registered.Assemblies!)[0] = assemblies[0]);
+    }
+
+    [Fact]
+    public void AddKaleido_WithoutEventOptions_IsAConfigurationError()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
+            new ServiceCollection().AddKaleido(EmptyConfig(), DefaultServiceOptions() with { Events = null! }));
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidEventOptions, exception.Code);
+    }
 
     // #301: one Kaleido service per host; a second call would silently replace the first one's options.
     [Fact]
@@ -118,11 +193,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var assembly = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
 
-        var builder = services.AddKaleido(EmptyConfig(), o =>
-        {
-            o.ServiceName = "test-service";
-            o.Assemblies = new[] { assembly };
-        });
+        var builder = services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", Assemblies = new[] { assembly } });
 
         var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
         Assert.Same(assembly, Assert.Single(concreteBuilder.Assemblies));
@@ -135,11 +206,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var assembly1 = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
         var assembly2 = typeof(IServiceCollection).Assembly;
 
-        var builder = services.AddKaleido(EmptyConfig(), o =>
-        {
-            o.ServiceName = "test-service";
-            o.Assemblies = new[] { assembly1, assembly2 };
-        });
+        var builder = services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", Assemblies = new[] { assembly1, assembly2 } });
 
         var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
         Assert.Contains(assembly1, concreteBuilder.Assemblies);
@@ -152,11 +219,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var assembly = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
 
-        var builder = services.AddKaleido(EmptyConfig(), o =>
-        {
-            o.ServiceName = "test-service";
-            o.Assemblies = new[] { assembly, assembly };
-        });
+        var builder = services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", Assemblies = new[] { assembly, assembly } });
 
         var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
         Assert.Equal(1, concreteBuilder.Assemblies.Count(a => a == assembly));
@@ -170,14 +233,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            services.AddKaleido(EmptyConfig(), o =>
-            {
-                o.ServiceName = "test-service";
-                if (empty)
-                {
-                    o.Assemblies = [];
-                }
-            }));
+            services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", Assemblies = empty ? [] : null }));
 
         Assert.Equal(ConfigurationErrorCodes.MissingAssembly, exception.Code);
         Assert.Empty(services);
@@ -219,10 +275,10 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            services.AddKaleido(EmptyConfig(), o =>
+            services.AddKaleido(EmptyConfig(), new()
             {
-                o.ServiceName = "test-service";
-                o.DefaultAuthorization = new AuthorizationMetadata("staff", []) { AllowAnonymous = true };
+                ServiceName = "test-service",
+                DefaultAuthorization = new AuthorizationMetadata("staff", []) { AllowAnonymous = true },
             }));
 
         Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization, exception.Code);
@@ -234,11 +290,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            services.AddKaleido(EmptyConfig(), o =>
-            {
-                o.ServiceName = "test-service";
-                o.AuthorizationMode = (KaleidoAuthorizationMode)123;
-            }));
+            services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", AuthorizationMode = (KaleidoAuthorizationMode)123 }));
 
         Assert.Equal(ConfigurationErrorCodes.InvalidAuthorizationMode, exception.Code);
     }

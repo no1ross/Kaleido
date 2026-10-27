@@ -108,16 +108,16 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
                 {
                     services.AddRouting();
                     services.AddSingleton(_cancellation);
-                    var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                        {
-                            o.ServiceName = ServiceName;
-                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                            o.Assemblies = [typeof(CancellationFinalizationTests).Assembly];
-                            o.TypeFilter = type => type.Namespace == typeof(CancellationFinalizationTests).Namespace;
-                            o.Events.Resilience.RetryDelay = TimeSpan.FromMilliseconds(50);
-                        })
+                    var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    {
+                        ServiceName = ServiceName,
+                        AuthorizationMode = KaleidoAuthorizationMode.None,
+                        Assemblies = [typeof(CancellationFinalizationTests).Assembly],
+                        TypeFilter = type => type.Namespace == typeof(CancellationFinalizationTests).Namespace,
+                        Events = new() { Resilience = new() { RetryDelay = TimeSpan.FromMilliseconds(50) } },
+                    })
                         .AddInMemoryStores()
-                        .AddHttp(o => o.IncludeFrameworkMessages = true);
+                        .AddHttp(new() { IncludeFrameworkMessages = true });
 
                     if (store == "sqlite")
                     {

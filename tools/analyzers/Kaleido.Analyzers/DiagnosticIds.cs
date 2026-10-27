@@ -23,7 +23,7 @@ internal static class DiagnosticIds
     /// <summary>A constant ServiceName must match [a-z0-9][a-z0-9_-]* (the runtime rule).</summary>
     public const string ServiceNameFormat = "KAL2005";
 
-    /// <summary>AddKaleido() lambda never sets o.Assemblies.</summary>
+    /// <summary>The options passed to AddKaleido() do not set Assemblies.</summary>
     public const string AddKaleidoMissingAssemblies = "KAL2006";
 
     /// <summary>[ProcessStep] applied to a type that does not implement IProcessStep.</summary>
@@ -56,7 +56,7 @@ internal static class DiagnosticIds
     /// <summary>A step, source or view type name makes an MCP tool name part longer than 40 characters.</summary>
     public const string ToolNameLength = "KAL2016";
 
-    /// <summary>o.ServiceName is longer than 15 characters (the MCP tool-name prefix budget).</summary>
+    /// <summary>A constant ServiceName is longer than 15 characters (the MCP tool-name prefix budget).</summary>
     public const string ServiceNameLength = "KAL2017";
 
     /// <summary>A [Required] process step input has a non-nullable value type, so it can never be missing.</summary>

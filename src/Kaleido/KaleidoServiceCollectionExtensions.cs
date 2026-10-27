@@ -22,8 +22,10 @@ public static class KaleidoServiceCollectionExtensions
     /// and views found in <see cref="KaleidoServiceOptions.Assemblies"/>.
     /// </summary>
     /// <remarks>
-    /// Options are bound from the <c>Kaleido</c> configuration section, then <paramref name="configure"/>
-    /// runs, then the result is validated and registered as an immutable
+    /// The <c>Kaleido</c> configuration section is laid over a copy of <paramref name="options"/>:
+    /// a setting configuration names replaces the value from code, every other setting keeps it, and
+    /// <paramref name="options"/> itself is not changed (ADR 0030). The result is validated - nothing is
+    /// trimmed or substituted, an invalid value stops startup - and registered as the
     /// <see cref="KaleidoServiceOptions"/> singleton. Besides the runtimes it registers logging, the
     /// scoped correlation context accessor, and defaults the builder methods replace: a no-op
     /// <see cref="IEventPublisher"/> (<see cref="AddEventPublisher{TPublisher}"/>), in-memory stores
@@ -34,12 +36,12 @@ public static class KaleidoServiceCollectionExtensions
     /// </remarks>
     /// <param name="services">The service collection to register into.</param>
     /// <param name="configuration">
-    /// The application configuration; the <c>Kaleido</c> section is bound to the options and the
-    /// configuration flows to every subsystem through <see cref="IKaleidoBuilder.Configuration"/>.
+    /// The application configuration; the <c>Kaleido</c> section overrides <paramref name="options"/>, and
+    /// the configuration flows to every subsystem through <see cref="IKaleidoBuilder.Configuration"/>.
     /// </param>
-    /// <param name="configure">
-    /// Optionally sets options in code after configuration binding, e.g. <c>ServiceName</c> and
-    /// <c>Assemblies</c>.
+    /// <param name="options">
+    /// The options set in code, e.g. <c>ServiceName</c> and <c>Assemblies</c> (which only code can set);
+    /// settings left out keep their defaults. <see langword="null"/> uses the defaults.
     /// </param>
     /// <returns>The builder for chaining further Kaleido registrations.</returns>
     /// <exception cref="ArgumentNullException">
@@ -51,17 +53,17 @@ public static class KaleidoServiceCollectionExtensions
     /// </exception>
     /// <example>
     /// <code>
-    /// builder.Services.AddKaleido(builder.Configuration, o =>
+    /// builder.Services.AddKaleido(builder.Configuration, new()
     /// {
-    ///     o.ServiceName = "intake";
-    ///     o.Assemblies = [typeof(Program).Assembly];
+    ///     ServiceName = "intake",
+    ///     Assemblies = [typeof(Program).Assembly],
     /// });
     /// </code>
     /// </example>
     public static IKaleidoBuilder AddKaleido(
         this IServiceCollection services,
         IConfiguration configuration,
-        Action<KaleidoServiceOptionsBuilder>? configure = null)
+        KaleidoServiceOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -75,16 +77,17 @@ public static class KaleidoServiceCollectionExtensions
                 "AddKaleido() was called more than once on this service collection. A host runs one Kaleido service: configure it in a single AddKaleido() call.");
         }
 
-        // Bind + configure run on the mutable builder; the immutable
-        // KaleidoServiceOptions snapshot is what DI sees (EXT-16). Eager
-        // validation here is strictly stronger than ValidateOnStart — it
-        // fails at composition, not first resolution.
-        var optionsBuilder = new KaleidoServiceOptionsBuilder();
-        configuration.GetSection(KaleidoServiceOptions.SectionName).Bind(optionsBuilder);
-
-        configure?.Invoke(optionsBuilder);
-        var serviceOptions = optionsBuilder.Build();
+        // Configuration over code, on a copy (ADR 0030); validated here, at composition, rather than at
+        // first resolution. The registered options hold their own copies of the assemblies and roles.
+        var serviceOptions = configuration
+            .GetSection(KaleidoServiceOptions.SectionName)
+            .BindOver(options ?? new KaleidoServiceOptions(), ConfigurationErrorCodes.InvalidOptions);
         KaleidoServiceOptions.Validate(serviceOptions);
+        serviceOptions = serviceOptions with
+        {
+            Assemblies = Array.AsReadOnly([.. serviceOptions.Assemblies ?? []]),
+            DefaultAuthorization = serviceOptions.DefaultAuthorization with { Roles = [.. serviceOptions.DefaultAuthorization.Roles] },
+        };
         services.AddSingleton(serviceOptions);
 
         // TryAdd-based: registers ILoggerFactory/ILogger<T> when the host hasn't —
@@ -289,7 +292,7 @@ public static class KaleidoServiceCollectionExtensions
     /// <returns>The same builder, for chaining.</returns>
     /// <example>
     /// <code>
-    /// builder.Services.AddKaleido(builder.Configuration, o => { /* ... */ })
+    /// builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
     ///     .AddHttp()
     ///     .AddInMemoryStores();   // local development: nothing survives a restart
     /// </code>

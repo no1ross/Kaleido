@@ -173,30 +173,30 @@ Full model: [`INFORMATION_REQUESTS.md`](./INFORMATION_REQUESTS.md).
 ## Process authoring
 
 ```csharp
-services.AddKaleido(builder.Configuration, o =>
+services.AddKaleido(builder.Configuration, new()
 {
-    o.ServiceName = "intake";                       // lowercase letters, digits, '-' and '_' (KAL2005)
-    // AuthorizationMode: Authenticated unless set - add host authentication, or set None explicitly (ADR 0021)
-    o.Assemblies = [typeof(Program).Assembly];      // explicit — never omit (KAL2006)
+    ServiceName = "intake", // lowercase letters, digits, '-' and '_' (KAL2005)
+    Assemblies = [typeof(Program).Assembly], // explicit — never omit (KAL2006)
 })
     .AddContextStore<IntakeContextStore>()          // every store in use is chosen (ADR 0028):
     .AddIdempotencyStore<IntakeIdempotencyStore>()  // durable, or AddInMemoryStores() for development
     .AddHttp();
 ```
 
-`AddKaleido()` auto-registers Processor + Queryable runtimes and binds
-`Kaleido:*` config into a `KaleidoServiceOptions` snapshot. Set options via the
-`KaleidoServiceOptionsBuilder` configure lambda; `Build()` validates and
-normalizes them (service name, assemblies, roles).
+`AddKaleido()` auto-registers Processor + Queryable runtimes and registers the
+service's `KaleidoServiceOptions`.
 
-**Options are startup inputs.** Every Kaleido options object is configured while
-the host composes its services: the `AddKaleido` builder, `AddHttp`'s
-`KaleidoHttpOptions`, `MapKaleidoHttp`'s `KaleidoHttpMapOptions`, the
-`Kaleido:Clients` options, the `AddMcp` builder and
-`KaleidoOpenTelemetryOptions`. Set them in configuration or in the configure
-callback, then leave them alone: changing an options object after the `Add…`/
-`Map…` call is unsupported, and what it changes is undefined. Kaleido does not
-copy options defensively (ADR 0018).
+**Options are immutable; configuration overrides code** ([ADR 0030](decisions/0030-options-are-immutable-configuration-overrides-code.md)).
+Every options type is a record with `get; init;` and defaults. A registration takes
+an optional options object - `AddKaleido(configuration, new() { ... })`,
+`AddHttp(new() { ... })`, `MapKaleidoHttp(new() { ... })`,
+`AddOpenTelemetry(new() { ... })`, `AddMcp(new() { ... })` - naming only what
+differs from the defaults, and lays its configuration section over a copy of it
+(`Kaleido`, `Kaleido:Http`, `Kaleido:Http:Map`, `Kaleido:Clients` and
+`Kaleido:Resilience`, `Kaleido:OpenTelemetry`, `Kaleido:Mcp`). Precedence, lowest
+to highest: Kaleido's defaults, code, configuration - each environment can change a
+setting without a code change. Kaleido never changes a value it is given: a blank,
+out-of-range or unreadable setting stops startup with an error naming it.
 
 ### Kaleido's HTTP behavior is scoped to Kaleido's endpoints
 
@@ -387,8 +387,8 @@ for every project including the host-agnostic `Kaleido`, `Kaleido.Http.Client` a
 ## Dependency injection
 
 Constructor injection, service abstractions, readonly fields — enforced by
-KAL0004–KAL0013 (see the source rules in `ANALYZERS.md`). AddHttpClients /
-AddKaleido configure lambdas are composition roots; `IServiceProvider` resolution
+KAL0004–KAL0013 (see the source rules in `ANALYZERS.md`). The host's registration
+code (`AddKaleido`, `AddHttpClients`...) is the composition root; `IServiceProvider` resolution
 belongs there or in `HttpContext.RequestServices` — nowhere else.
 
 ## Static helpers vs extension methods

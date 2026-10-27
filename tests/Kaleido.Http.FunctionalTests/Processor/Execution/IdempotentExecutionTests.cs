@@ -157,12 +157,12 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
                 webBuilder.ConfigureServices(services =>
                 {
                     services.AddRouting();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                        {
-                            o.ServiceName = FunctionalProcessorNames.TestProcessor;
-                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                            o.Assemblies = [typeof(RuntimeRootStep).Assembly];
-                        })
+                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    {
+                        ServiceName = FunctionalProcessorNames.TestProcessor,
+                        AuthorizationMode = KaleidoAuthorizationMode.None,
+                        Assemblies = [typeof(RuntimeRootStep).Assembly],
+                    })
                         .AddInMemoryStores()
                         .AddHttp()
                         .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");

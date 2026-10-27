@@ -1,6 +1,8 @@
 # 0018. Options are startup inputs; no defensive copies and no deep-immutability analyzer
 
-- **Status:** Accepted
+- **Status:** Superseded in part by [ADR 0030](0030-options-are-immutable-configuration-overrides-code.md):
+  options are immutable records, the builders are removed, configuration overrides code, and nothing
+  supplied is normalized (decisions 1 and 2); decision 3 (KAL0015, no deep-immutability analyzer) stands.
 - **Date:** 2026-10-19
 - **Related:** #294, #305, #284
 

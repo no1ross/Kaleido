@@ -96,9 +96,11 @@ dropped.)
 Override the predicate to apply a custom policy (e.g. service-account-only trust):
 
 ```csharp
-.AddHttp(o =>
-    o.TrustCorrelationIdentity = ctx =>
-        ctx.User.IsInRole("internal-service"));
+.AddHttp(new()
+{
+    TrustCorrelationIdentity = ctx =>
+        ctx.User.IsInRole("internal-service"),
+});
 ```
 
 ### Caller identity

@@ -111,6 +111,22 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
         Assert.Contains("Kaleido:Clients:Member:BaseUrl", exception.Message, StringComparison.Ordinal);
     }
 
+    // ADR 0030: out-of-range or unreadable client settings stop startup; nothing is adjusted.
+    [Theory]
+    [InlineData("Kaleido:RegistryTtl", "-00:00:01")]
+    [InlineData("Kaleido:Resilience:MaxRetryAttempts", "-1")]
+    [InlineData("Kaleido:Clients:Member:Resilience:TotalTimeout", "00:00:00")]
+    [InlineData("Kaleido:Clients:Member:RegistryTtl", "often")]
+    public void AddHttpClients_AnInvalidSetting_ThrowsAConfigurationError(string key, string value)
+    {
+        var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/", [key] = value });
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.AddHttpClients);
+
+        Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
+    }
+
     // #434: the route prefix is the downstream ServiceName in every route; anything else fails at startup.
     [Theory]
     [InlineData("Kaleido:Clients:Member:RoutePrefix", "Member")]

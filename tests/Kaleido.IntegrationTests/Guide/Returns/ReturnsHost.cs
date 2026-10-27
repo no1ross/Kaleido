@@ -34,13 +34,13 @@ public sealed class ReturnsHost : IAsyncDisposable
                 web.ConfigureServices(s =>
                 {
                     s.AddRouting();
-                    s.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                        {
-                            o.ServiceName = "returns";
-                            o.Assemblies = [typeof(ReturnsHost).Assembly];
-                            o.TypeFilter = type => type.Namespace == typeof(ReturnsHost).Namespace;
-                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                        })
+                    s.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    {
+                        ServiceName = "returns",
+                        Assemblies = [typeof(ReturnsHost).Assembly],
+                        TypeFilter = type => type.Namespace == typeof(ReturnsHost).Namespace,
+                        AuthorizationMode = KaleidoAuthorizationMode.None,
+                    })
                         .AddInMemoryStores()
                         .AddHttp();
                 });

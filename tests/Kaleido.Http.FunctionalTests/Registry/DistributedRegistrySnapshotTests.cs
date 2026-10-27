@@ -33,16 +33,16 @@ public sealed class DistributedRegistrySnapshotTests : IAsyncLifetime
             services => services
                 .AddSingleton(new BehaviorSwitches())
                 .AddSingleton(new BehaviorGate())
-                .AddKaleido(new ConfigurationBuilder().Build(), o =>
+                .AddKaleido(new ConfigurationBuilder().Build(), new()
                 {
-                    o.ServiceName = BehaviorFixture.ServiceName;
-                    o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                    o.Assemblies = [typeof(BehaviorFixture).Assembly];
-                    o.TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace;
+                    ServiceName = BehaviorFixture.ServiceName,
+                    AuthorizationMode = KaleidoAuthorizationMode.None,
+                    Assemblies = [typeof(BehaviorFixture).Assembly],
+                    TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace,
                 })
                 .AddInMemoryStores()
                 .AddHttp(),
-            map => map.AggregateRegistry = false);
+            new KaleidoHttpMapOptions { AggregateRegistry = false });
 
         _downstream = downstream.GetTestServer();
     }
@@ -130,12 +130,12 @@ public sealed class DistributedRegistrySnapshotTests : IAsyncLifetime
                         new ConfigurationBuilder()
                             .AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:Clients:behavior:BaseUrl"] = "http://behavior.test/" })
                             .Build(),
-                        o =>
+                        new()
                         {
-                            o.ServiceName = "router";
-                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                            o.Assemblies = [typeof(BehaviorFixture).Assembly];
-                            o.TypeFilter = _ => false;
+                            ServiceName = "router",
+                            AuthorizationMode = KaleidoAuthorizationMode.None,
+                            Assemblies = [typeof(BehaviorFixture).Assembly],
+                            TypeFilter = _ => false,
                         })
                     .AddInMemoryStores()
                     .AddHttp()
@@ -145,16 +145,9 @@ public sealed class DistributedRegistrySnapshotTests : IAsyncLifetime
                     .AddHttpClient(BehaviorFixture.ServiceName)
                     .ConfigurePrimaryHttpMessageHandler(() => new CountingHandler(_downstreamRequests) { InnerHandler = _downstream.CreateHandler() });
             },
-            map =>
-            {
-                map.AggregateRegistry = true;
-                if (registryCacheTtl is { } ttl)
-                {
-                    map.RegistryCacheTtl = ttl;
-                }
-            });
+            new KaleidoHttpMapOptions { AggregateRegistry = true, RegistryCacheTtl = registryCacheTtl ?? new KaleidoHttpMapOptions().RegistryCacheTtl });
 
-    private async Task<IHost> StartAsync(Action<IServiceCollection> configure, Action<KaleidoHttpMapOptions> map)
+    private async Task<IHost> StartAsync(Action<IServiceCollection> configure, KaleidoHttpMapOptions map)
     {
         var host = await new HostBuilder()
             .ConfigureWebHost(web =>

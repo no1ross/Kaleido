@@ -25,12 +25,12 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
             services => services
                 .AddSingleton(new BehaviorSwitches())
                 .AddSingleton(new BehaviorGate())
-                .AddKaleido(new ConfigurationBuilder().Build(), o =>
+                .AddKaleido(new ConfigurationBuilder().Build(), new()
                 {
-                    o.ServiceName = BehaviorFixture.ServiceName;
-                    o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                    o.Assemblies = [typeof(BehaviorFixture).Assembly];
-                    o.TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace;
+                    ServiceName = BehaviorFixture.ServiceName,
+                    AuthorizationMode = KaleidoAuthorizationMode.None,
+                    Assemblies = [typeof(BehaviorFixture).Assembly],
+                    TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace,
                 })
                 .AddInMemoryStores()
                 .AddHttp(),
@@ -46,12 +46,12 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
                         new ConfigurationBuilder()
                             .AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:Clients:behavior:BaseUrl"] = "http://behavior.test/" })
                             .Build(),
-                        o =>
+                        new()
                         {
-                            o.ServiceName = "router";
-                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                            o.Assemblies = [typeof(BehaviorFixture).Assembly];
-                            o.TypeFilter = _ => false;
+                            ServiceName = "router",
+                            AuthorizationMode = KaleidoAuthorizationMode.None,
+                            Assemblies = [typeof(BehaviorFixture).Assembly],
+                            TypeFilter = _ => false,
                         })
                     .AddInMemoryStores()
                     .AddHttp()
@@ -116,7 +116,7 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
                 web.Configure(app =>
                 {
                     app.UseRouting();
-                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp(o => o.AggregateRegistry = aggregate));
+                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp(new() { AggregateRegistry = aggregate }));
                 });
             })
             .StartAsync();

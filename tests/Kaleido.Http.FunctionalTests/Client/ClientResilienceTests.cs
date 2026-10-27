@@ -26,12 +26,12 @@ public sealed class ClientResilienceTests
 
         var handler = new CountingHandler();
         var services = new ServiceCollection();
-        services.AddKaleido(configuration, o =>
-            {
-                o.ServiceName = "caller";
-                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
-            })
+        services.AddKaleido(configuration, new()
+        {
+            ServiceName = "caller",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(KaleidoServiceOptions).Assembly],
+        })
             .AddInMemoryStores()
             .AddHttpClients();
         services.AddHttpClient("member").ConfigurePrimaryHttpMessageHandler(() => handler);

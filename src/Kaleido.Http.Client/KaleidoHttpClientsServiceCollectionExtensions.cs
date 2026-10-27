@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -22,8 +21,10 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var config = new KaleidoClientOptions();
-        builder.Configuration.GetSection(KaleidoServiceOptions.SectionName).Bind(config);
+        var config = builder.Configuration
+            .GetSection(KaleidoServiceOptions.SectionName)
+            .BindOver(new KaleidoClientOptions(), HttpClientErrorCodes.InvalidClientOptions);
+        KaleidoClientOptions.Validate(config);
         builder.Services.AddSingleton(config);
 
         foreach (var (name, entry) in config.Clients)
@@ -116,28 +117,18 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
                 "downstream service's ServiceName ([a-z0-9][a-z0-9_-]*). " +
                 $"Set 'Kaleido:Clients:{name}:RoutePrefix' to that service name.");
         }
-        var registryTtl = entry?.RegistryTtl ?? config.RegistryTtl;
-        var strictProbe = entry?.StrictRegistryProbe ?? config.StrictRegistryProbe;
-        var resilience = config.Resilience.ForClient(builder.Configuration, name);
 
-        builder.AddProcessorClient(o =>
+        var client = new KaleidoHttpClientOptions
         {
-            o.Name = name;
-            o.BaseUrl = baseUrl;
-            o.RoutePrefix = prefix;
-            o.RegistryTtl = registryTtl;
-            o.StrictRegistryProbe = strictProbe;
-            o.Resilience = resilience;
-        });
+            Name = name,
+            BaseUrl = baseUrl,
+            RoutePrefix = prefix,
+            RegistryTtl = entry?.RegistryTtl ?? config.RegistryTtl,
+            StrictRegistryProbe = entry?.StrictRegistryProbe ?? config.StrictRegistryProbe,
+            Resilience = config.Resilience.ForClient(builder.Configuration, name),
+        };
 
-        builder.AddQueryableClient(o =>
-        {
-            o.Name = name;
-            o.BaseUrl = baseUrl;
-            o.RoutePrefix = prefix;
-            o.RegistryTtl = registryTtl;
-            o.StrictRegistryProbe = strictProbe;
-            o.Resilience = resilience;
-        });
+        builder.AddProcessorClient(client);
+        builder.AddQueryableClient(client);
     }
 }

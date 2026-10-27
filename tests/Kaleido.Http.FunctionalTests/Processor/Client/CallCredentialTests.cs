@@ -94,11 +94,7 @@ public sealed class CallCredentialTests
 
         services.AddLogging();
         // No capabilities of its own: only the client pipeline is under test.
-        var kaleido = services.AddKaleido(configuration, o =>
-            {
-                o.Assemblies = [typeof(CallCredentialTests).Assembly];
-                o.TypeFilter = _ => false;
-            })
+        var kaleido = services.AddKaleido(configuration, new() { Assemblies = [typeof(CallCredentialTests).Assembly], TypeFilter = _ => false })
             .AddInMemoryStores()
             .AddHttpClients();
         credentials(kaleido);

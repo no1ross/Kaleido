@@ -170,12 +170,12 @@ Reference the relevant projects, or matching preview packages from your availabl
 var builder = WebApplication.CreateBuilder(args);
 
 var kaleido = builder.Services
-    .AddKaleido(builder.Configuration, options =>
+    .AddKaleido(builder.Configuration, new()
     {
-        options.ServiceName = "orders";
-        options.DisplayName = "Orders";
-        options.Assemblies = new[] { typeof(Program).Assembly };
-        options.AuthorizationMode = KaleidoAuthorizationMode.None; // Local evaluation only.
+        ServiceName = "orders",
+        DisplayName = "Orders",
+        Assemblies = new[] { typeof(Program).Assembly },
+        AuthorizationMode = KaleidoAuthorizationMode.None, // Local evaluation only.
     })
     .AddInMemoryStores() // Local evaluation only: process state is lost on restart.
     .AddHttp();
@@ -214,20 +214,20 @@ Then register the HTTP clients, how tool calls are authorized for the agent's us
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddKaleido(builder.Configuration, options =>
+    .AddKaleido(builder.Configuration, new()
     {
-        options.ServiceName = "router";
-        options.Assemblies = new[] { typeof(Program).Assembly };
-        options.AuthorizationMode = KaleidoAuthorizationMode.None; // Local evaluation only.
+        ServiceName = "router",
+        Assemblies = new[] { typeof(Program).Assembly },
+        AuthorizationMode = KaleidoAuthorizationMode.None, // Local evaluation only.
     })
     .AddHttp()
     .AddHttpClients()
     .ForwardCallerToken() // tool calls carry the agent user's token; required before AddMcp()
-    .AddMcp(options => options.ServerName = "business");
+    .AddMcp(new() { ServerName = "business" });
 
 var app = builder.Build();
 
-app.MapKaleidoHttp(options => options.AggregateRegistry = true);
+app.MapKaleidoHttp(new() { AggregateRegistry = true });
 app.MapKaleidoMcp("/mcp");
 
 app.Run();

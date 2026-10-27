@@ -62,7 +62,7 @@ One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup 
 
 One Processor-owned catalog supplies `pro_*` strings to startup exceptions, planning and step-validation diagnostics, Process events, and opt-in HTTP `FrameworkMessages`. `MessageType` carries severity separately from `Code`. Handler-authored `BusinessMessages` use domain-specific codes; a handler's `KaleidoValidationException.Code` is passed through unchanged rather than replaced by a generic framework code.
 
-Both message collections are present on Process execution responses. `BusinessMessages` contains handler-authored messages; `FrameworkMessages` is empty unless the HTTP host sets `AddHttp(o => o.IncludeFrameworkMessages = true)`. A different transport may encode an empty collection differently, but must preserve the same meaning.
+Both message collections are present on Process execution responses. `BusinessMessages` contains handler-authored messages; `FrameworkMessages` is empty unless the HTTP host sets `AddHttp(new() { IncludeFrameworkMessages = true })`. A different transport may encode an empty collection differently, but must preserve the same meaning.
 
 | Constant | Code | Meaning |
 |---|---|---|
@@ -122,6 +122,8 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization (`Authenticated` is the default) but no authentication scheme is registered: add host authentication, or set `AuthorizationMode = None` explicitly |
 | `InvalidAuthorizationMode` | `invalid_authorization_mode` | `AuthorizationMode` is not a defined value |
 | `InvalidEventOptions` | `invalid_event_options` | a `Kaleido:Events` setting is out of range (e.g. a non-positive `BatchSize` or `Resilience:AttemptTimeout`) |
+| `InvalidOptions` | `invalid_options` | A configured value in the `Kaleido` section cannot be read as its setting's type (e.g. text where a number or a duration is expected, or an unknown enum name); startup, ADR 0030 |
+| `InvalidHttpOptions` | `invalid_http_options` | An HTTP transport setting (`Kaleido:Http`, `Kaleido:Http:Map`, or the options passed to `AddHttp`/`MapKaleidoHttp`) is out of range or cannot be read, e.g. a non-positive idempotency lease (startup) |
 | `DuplicateRegistration` | `duplicate_registration` | `AddKaleido()` or `AddHttp()` was called a second time on the same service collection; a host runs one Kaleido service, configured in one call of each |
 | `ConflictingOutbox` | `conflicting_outbox` | Two outbox choices were registered: a service has one - Kaleido's built-in outbox (with one `AddOutboxStore` storage), the host's own (`AddOutbox`) or `AddDirectPublication` ([ADR 0023](decisions/0023-outbox-integration.md)) |
 | `ConflictingStore` | `conflicting_store` | Two different implementations of one store or of the transactions were registered (e.g. `AddSqliteContextStore` and `AddContextStore<T>()`) |
@@ -167,6 +169,7 @@ Runtime client codes are prefixed `httpclient_`; `missing_base_url` is a startup
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
 | `MissingBaseUrl` | `missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
 | `InvalidRoutePrefix` | `httpclient_invalid_route_prefix` | A configured client's `RoutePrefix` (or, without one, its lowercased name) is not a service name (`[a-z0-9][a-z0-9_-]*`); it must equal the downstream `ServiceName` (startup, `AddHttpClients()`, `KaleidoConfigurationException`; ADR 0027) |
+| `InvalidClientOptions` | `httpclient_invalid_options` | A client setting in configuration (`Kaleido:RegistryTtl`, `Kaleido:Resilience`, `Kaleido:Clients:{name}`...) is out of range or cannot be read, e.g. a negative registry TTL or a non-positive timeout (startup, `KaleidoConfigurationException`) |
 | `ConfiguredCredentialForCaller` | `httpclient_configured_credential_for_caller` | An `IKaleidoCallCredentialProvider` answered `Configured` for a call made for a caller: a caller's call never goes out with the host's own credentials (`KaleidoConfigurationException`, at the call; ADR 0022) |
 | `UnknownClient` | `httpclient_unknown_client` | `GetClient` was asked for a name not configured under `Kaleido:Clients`; the message lists the configured clients (`KaleidoConfigurationException`, at the call) |
 
@@ -187,7 +190,7 @@ The reference provider owns its own code; core knows nothing about it.
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `InvalidOptions` | `otel_invalid_options` | A `Kaleido:OpenTelemetry` setting cannot be used: a protocol other than `grpc`/`http/protobuf`, or a malformed `key=value` list (startup, `KaleidoConfigurationException`) |
+| `InvalidOptions` | `otel_invalid_options` | A `Kaleido:OpenTelemetry` setting cannot be used (or read): a protocol other than `grpc`/`http/protobuf`, or a malformed `key=value` list (startup, `KaleidoConfigurationException`) |
 
 ---
 
@@ -195,4 +198,4 @@ The reference provider owns its own code; core knows nothing about it.
 
 The `Kaleido` package bundles compile-time checks (`KAL2xxx`) that catch most startup registration failures above in consumer code before it runs. They are build diagnostics, not runtime codes; see [consumer rules in `ANALYZERS.md`](./ANALYZERS.md#consumer-rules--kal2xxx) for the rules, severities and the runtime code each one mirrors.
 
-Aggregate registries (`MapKaleidoHttp(o => o.AggregateRegistry = true)`) require `AddHttpClients()` — enforced at map time by a `KaleidoConfigurationException`, so no analyzer rule covers it.
+Aggregate registries (`MapKaleidoHttp(new() { AggregateRegistry = true })`) require `AddHttpClients()` — enforced at map time by a `KaleidoConfigurationException`, so no analyzer rule covers it.

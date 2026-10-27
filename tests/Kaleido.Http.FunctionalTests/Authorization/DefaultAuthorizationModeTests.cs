@@ -71,12 +71,12 @@ public sealed class DefaultAuthorizationModeTests
                     }
 
                     // No AuthorizationMode: the default applies.
-                    services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                        {
-                            o.ServiceName = "defaultmode";
-                            o.Assemblies = [typeof(DefaultAuthorizationModeTests).Assembly];
-                            o.TypeFilter = type => type.Namespace == "Kaleido.Http.FunctionalTests.Processor.Behavior";
-                        })
+                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    {
+                        ServiceName = "defaultmode",
+                        Assemblies = [typeof(DefaultAuthorizationModeTests).Assembly],
+                        TypeFilter = type => type.Namespace == "Kaleido.Http.FunctionalTests.Processor.Behavior",
+                    })
                         .AddInMemoryStores()
                         .AddHttp();
                 });

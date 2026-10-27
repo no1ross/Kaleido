@@ -42,7 +42,7 @@ internal sealed partial class ToolCatalogProvider(
         {
             return new ToolCatalog
             {
-                Unavailable = "The host has not mapped its Kaleido registry; call MapKaleidoHttp(o => o.AggregateRegistry = true) before MapKaleidoMcp().",
+                Unavailable = "The host has not mapped its Kaleido registry; call MapKaleidoHttp(new() { AggregateRegistry = true }) before MapKaleidoMcp().",
             };
         }
 

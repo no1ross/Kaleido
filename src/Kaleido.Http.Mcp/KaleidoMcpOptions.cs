@@ -1,8 +1,9 @@
 namespace Kaleido.Http.Mcp;
 
 /// <summary>
-/// Immutable settings of the Kaleido MCP adapter, built by <see cref="KaleidoMcpOptionsBuilder"/>
-/// from the <c>Kaleido:Mcp</c> configuration section and the <c>AddMcp</c> configure delegate.
+/// Immutable settings of the Kaleido MCP adapter: <c>AddMcp</c> lays the <c>Kaleido:Mcp</c> configuration
+/// section over a copy of the instance passed in code (configuration overrides code, setting by
+/// setting), validates it and registers it (ADR 0030).
 /// </summary>
 /// <remarks>
 /// The adapter is a layer on top of the Kaleido HTTP stack: the caller's tools come from the host's
@@ -10,26 +11,39 @@ namespace Kaleido.Http.Mcp;
 /// Kaleido clients (<c>AddHttpClients()</c>) with the caller's own token. It runs in any Kaleido host
 /// that aggregates the services it publishes — a router, or a dedicated MCP host.
 /// </remarks>
-[ExcludeFromCodeCoverage]
 public sealed record KaleidoMcpOptions
 {
-    /// <summary>The configuration section bound by <c>AddMcp</c>.</summary>
+    /// <summary>The configuration section that overrides these options: <c>Kaleido:Mcp</c>.</summary>
     public const string SectionName = "Kaleido:Mcp";
 
-    /// <summary>The MCP server name reported to clients.</summary>
+    /// <summary>The MCP server name reported to clients. Default <c>kaleido</c>; must not be blank.</summary>
     public string ServerName { get; init; } = "kaleido";
 
-    /// <summary>The MCP server version reported to clients.</summary>
+    /// <summary>The MCP server version reported to clients. Must not be blank.</summary>
     public string ServerVersion { get; init; } = "1.0.0";
 
     /// <summary>
-    /// The instructions sent to the agent when it connects: how Kaleido tools fit together (the
-    /// processId thread, verbatim messages, user-only answers). Resolved from
-    /// <see cref="KaleidoMcpOptionsBuilder.Instructions"/>,
-    /// <see cref="KaleidoMcpOptionsBuilder.InstructionsFile"/> or the packaged defaults, plus
-    /// <see cref="KaleidoMcpOptionsBuilder.AdditionalInstructions"/>.
+    /// Replaces the packaged default instructions - what the agent is told when it connects (how
+    /// Kaleido tools fit together: the processId thread, verbatim messages, user-only answers) - with
+    /// this text. <see langword="null"/> (the default) keeps the packaged instructions; use
+    /// <see cref="AdditionalInstructions"/> to extend them. Must not be blank, and not set together
+    /// with <see cref="InstructionsFile"/>.
     /// </summary>
-    public required string Instructions { get; init; }
+    public string? Instructions { get; init; }
+
+    /// <summary>
+    /// Replaces the packaged default instructions with the content of this file (e.g. a Markdown
+    /// prompt maintained with the domain). Relative paths resolve against the application base
+    /// directory; a missing file fails <c>AddMcp</c> (<see cref="McpErrorCodes.MissingInstructionsFile"/>).
+    /// Must not be blank, and not set together with <see cref="Instructions"/>.
+    /// </summary>
+    public string? InstructionsFile { get; init; }
+
+    /// <summary>
+    /// Appended to the instructions: domain guidance for the agent (e.g. how a business process
+    /// usually starts), without repeating the generic rules. Must not be blank when set.
+    /// </summary>
+    public string? AdditionalInstructions { get; init; }
 
     /// <summary>
     /// The maximum number of information-request rounds put to the user in one tool call before
@@ -50,7 +64,7 @@ public sealed record KaleidoMcpOptions
     /// With <see cref="McpToolListing.FrontDoor"/>: more tools to list by name (for example a search
     /// no starting step declares as a lookup, such as "find a previous request"). Names that are not
     /// tools of the host are reported at Warning when the tools are built. Ignored with
-    /// <see cref="McpToolListing.All"/>.
+    /// <see cref="McpToolListing.All"/>. A blank or repeated name fails <c>AddMcp</c>.
     /// </summary>
     public IReadOnlyList<string> ListedTools { get; init; } = [];
 
@@ -73,6 +87,30 @@ public sealed record KaleidoMcpOptions
     /// </para>
     /// </remarks>
     public bool RequireConfirmation { get; init; }
+
+    // Run by AddMcp after configuration is laid over the options. Nothing is trimmed or replaced: a
+    // blank, repeated, out-of-range or conflicting value stops startup.
+    internal static void Validate(KaleidoMcpOptions options)
+    {
+        Require(!string.IsNullOrWhiteSpace(options.ServerName), nameof(ServerName), "must not be blank");
+        Require(!string.IsNullOrWhiteSpace(options.ServerVersion), nameof(ServerVersion), "must not be blank");
+        Require(options.Instructions is null || !string.IsNullOrWhiteSpace(options.Instructions), nameof(Instructions), "must not be blank when set");
+        Require(options.InstructionsFile is null || !string.IsNullOrWhiteSpace(options.InstructionsFile), nameof(InstructionsFile), "must not be blank when set");
+        Require(options.AdditionalInstructions is null || !string.IsNullOrWhiteSpace(options.AdditionalInstructions), nameof(AdditionalInstructions), "must not be blank when set");
+        Require(options.Instructions is null || options.InstructionsFile is null, nameof(InstructionsFile), "must not be set together with Instructions (each replaces the packaged instructions)");
+        Require(options.MaxElicitationRounds >= 0, nameof(MaxElicitationRounds), $"is {options.MaxElicitationRounds.ToString(System.Globalization.CultureInfo.InvariantCulture)}; it must be zero or more (0 returns every information request to the agent)");
+        Require(Enum.IsDefined(options.ToolListing), nameof(ToolListing), $"is '{options.ToolListing}'; use {nameof(McpToolListing.All)} or {nameof(McpToolListing.FrontDoor)}");
+        Require(options.ListedTools.All(x => !string.IsNullOrWhiteSpace(x)), nameof(ListedTools), "must not contain a blank name");
+        Require(new HashSet<string>(options.ListedTools, StringComparer.Ordinal).Count == options.ListedTools.Count, nameof(ListedTools), "must not repeat a name");
+    }
+
+    private static void Require(bool condition, string name, string rule)
+    {
+        if (!condition)
+        {
+            throw new KaleidoConfigurationException(McpErrorCodes.InvalidOptions, $"{SectionName}:{name} {rule}.");
+        }
+    }
 }
 
 /// <summary>Which of the caller's tools the MCP adapter lists in <c>tools/list</c>.</summary>

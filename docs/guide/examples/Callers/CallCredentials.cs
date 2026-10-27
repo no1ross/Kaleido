@@ -36,11 +36,7 @@ public static class CallCredentialsRegistration
     public static void AddWithOnBehalfOf(IServiceCollection services, IConfiguration configuration)
     {
         // snippet: callers-credentials-registration
-        services.AddKaleido(configuration, o =>
-            {
-                o.ServiceName = "orders";
-                o.Assemblies = [typeof(OnBehalfOfCredentials).Assembly];
-            })
+        services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(OnBehalfOfCredentials).Assembly] })
             .AddHttp()
             .AddHttpClients()
             .AddCallCredentials<OnBehalfOfCredentials>();   // or .ForwardCallerToken(): the caller's token, unchanged

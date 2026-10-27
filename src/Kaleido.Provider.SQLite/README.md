@@ -120,11 +120,7 @@ The host creates the schema (see [Using the example implementation](#using-the-e
 For samples, demos, and local development:
 
 ```csharp
-builder.Services.AddKaleido(builder.Configuration, o =>
-{
-    o.ServiceName = "myservice";
-    o.Assemblies = [typeof(Program).Assembly];
-})
+builder.Services.AddKaleido(builder.Configuration, new() { ServiceName = "myservice", Assemblies = [typeof(Program).Assembly] })
     .AddSqliteContextStore("Data Source=my-process.sqlite")
     .AddSqliteOutboxStore("Data Source=my-process.sqlite")
     .AddSqliteIdempotencyStore("Data Source=my-process.sqlite");
@@ -152,7 +148,7 @@ Registration fails at startup with `KaleidoConfigurationException`:
 A host that already has an outbox (its own table and dispatcher, MassTransit's EF outbox, ...) keeps SQLite for the state and plugs its outbox in with `AddOutbox<T>()`; to commit with the state, it joins the SQLite transaction through `ISqliteKaleidoTransaction`:
 
 ```csharp
-builder.Services.AddKaleido(builder.Configuration, o => { /* ... */ })
+builder.Services.AddKaleido(builder.Configuration, new())
     .AddSqliteContextStore(connectionString)       // state + the SQLite transaction
     .AddOutbox<IntakeOutbox>();                    // the host's outbox, same database file
 

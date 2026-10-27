@@ -32,13 +32,13 @@ public sealed class SqliteTransitionTests : IDisposable
     {
         var services = new ServiceCollection();
         services.AddDbContext<HostOutboxDbContext>(o => o.UseSqlite(ConnectionString));
-        var builder = services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-            {
-                o.ServiceName = "transitions";
-                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                o.Assemblies = [typeof(SqliteTransitionTests).Assembly];
-                o.TypeFilter = type => type.Namespace == typeof(SqliteTransitionTests).Namespace;
-            })
+        var builder = services.AddKaleido(new ConfigurationBuilder().Build(), new()
+        {
+            ServiceName = "transitions",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(SqliteTransitionTests).Assembly],
+            TypeFilter = type => type.Namespace == typeof(SqliteTransitionTests).Namespace,
+        })
             .AddSqliteContextStore(ConnectionString);
         outbox(builder);
 

@@ -3,7 +3,6 @@ using Kaleido.Http.Mcp.Observability;
 using Kaleido.Http.Observability;
 using Kaleido.Http.Mcp.Tools;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 
@@ -21,9 +20,11 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// caller. Map the endpoint with <c>MapKaleidoMcp()</c>.
     /// </summary>
     /// <param name="builder">The Kaleido builder, after <c>AddHttp()</c> and <c>AddHttpClients()</c>.</param>
-    /// <param name="configure">
-    /// Adjusts the settings bound from <c>Kaleido:Mcp</c> (server name and version, instructions,
-    /// elicitation rounds, tool listing).
+    /// <param name="options">
+    /// The settings set in code (server name and version, instructions, elicitation rounds, tool
+    /// listing); the <c>Kaleido:Mcp</c> configuration section is laid over a copy of them
+    /// (configuration overrides code, setting by setting; ADR 0030). <see langword="null"/> uses the
+    /// defaults.
     /// </param>
     /// <returns>The builder, for chaining.</returns>
     /// <remarks>
@@ -31,7 +32,7 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// <list type="bullet">
     /// <item><description><b>Tools</b> come from <see cref="IKaleidoRegistryService"/> — the same
     /// snapshot and per-caller filtering as <c>GET /{service}/registry</c>. Map the registry with
-    /// aggregation (<c>MapKaleidoHttp(o =&gt; o.AggregateRegistry = true)</c>) to publish the
+    /// aggregation (<c>MapKaleidoHttp(new() { AggregateRegistry = true })</c>) to publish the
     /// downstream services' capabilities.</description></item>
     /// <item><description><b>Calls</b> go through the Kaleido clients of each tool's service, inside
     /// a caller-forwarding scope: services see the MCP caller's own token and authorize the real
@@ -48,7 +49,7 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// </exception>
     public static IKaleidoBuilder AddMcp(
         this IKaleidoBuilder builder,
-        Action<KaleidoMcpOptionsBuilder>? configure = null)
+        KaleidoMcpOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -56,13 +57,14 @@ public static class KaleidoMcpServiceCollectionExtensions
 
         RequirePrerequisites(services);
 
-        var optionsBuilder = new KaleidoMcpOptionsBuilder();
-        builder.Configuration.GetSection(KaleidoMcpOptions.SectionName).Bind(optionsBuilder);
-        configure?.Invoke(optionsBuilder);
-
-        var options = optionsBuilder.Build();
+        options = builder.Configuration
+            .GetSection(KaleidoMcpOptions.SectionName)
+            .BindOver(options ?? new KaleidoMcpOptions(), McpErrorCodes.InvalidOptions);
+        KaleidoMcpOptions.Validate(options);
+        var instructions = KaleidoMcpServerInstructions.Resolve(options);
 
         services.AddSingleton(options);
+        services.AddSingleton(instructions);
 
         services.AddSingleton<IToolNameBuilder, ToolNameBuilder>();
         services.AddSingleton<IToolSchemaBuilder, ToolSchemaBuilder>();
@@ -81,7 +83,7 @@ public static class KaleidoMcpServiceCollectionExtensions
                     Name = options.ServerName,
                     Version = options.ServerVersion,
                 };
-                server.ServerInstructions = options.Instructions;
+                server.ServerInstructions = instructions.Text;
             })
             // Stateless (the SDK default for the 2026-07-28 revision): no session affinity, so the
             // adapter can be load-balanced. Questions use MRTR rather than server-to-client calls.

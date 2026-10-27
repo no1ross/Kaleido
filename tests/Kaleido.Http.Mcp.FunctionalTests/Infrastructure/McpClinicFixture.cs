@@ -162,13 +162,13 @@ public class McpClinicFixture : IAsyncLifetime
 
                         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
-                        services.AddKaleido(configuration, o =>
-                            {
-                                o.ServiceName = "clinic";
-                                o.DisplayName = "Clinic";
-                                o.Assemblies = [typeof(McpClinicFixture).Assembly];
-                                o.AuthorizationMode = KaleidoAuthorizationMode.Authenticated;
-                            })
+                        services.AddKaleido(configuration, new()
+                        {
+                            ServiceName = "clinic",
+                            DisplayName = "Clinic",
+                            Assemblies = [typeof(McpClinicFixture).Assembly],
+                            AuthorizationMode = KaleidoAuthorizationMode.Authenticated,
+                        })
                             .AddInMemoryStores()
                             .AddHttp()
                             .AddHttpClients()
@@ -223,7 +223,7 @@ public class McpClinicFixture : IAsyncLifetime
                         app.UseAuthorization();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleidoHttp(o => o.AggregateRegistry = withDownstreamThatIsDown);
+                            endpoints.MapKaleidoHttp(new() { AggregateRegistry = withDownstreamThatIsDown });
                             var mcp = endpoints.MapKaleidoMcp("/mcp");
 
                             if (withSignIn)

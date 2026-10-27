@@ -118,7 +118,7 @@ public sealed class KaleidoEventRelayTests
     public void Lease_CoversAWholeBatchAtTheConfiguredParallelismPlusAMargin()
     {
         var options = new KaleidoEventOptions { BatchSize = 20, MaxConcurrentPublishes = 4 };
-        options.Resilience.AttemptTimeout = TimeSpan.FromSeconds(10);
+        options = options with { Resilience = options.Resilience with { AttemptTimeout = TimeSpan.FromSeconds(10) } };
 
         var sut = CreateSut(Mock.Of<IKaleidoOutboxStore>(), Publisher().Object, options);
 
@@ -146,7 +146,7 @@ public sealed class KaleidoEventRelayTests
     public async Task RelayBatchAsync_AfterTheLastRetry_ParksTheEntry()
     {
         var options = new KaleidoEventOptions();
-        options.Resilience.MaxRetryAttempts = 2;
+        options = options with { Resilience = options.Resilience with { MaxRetryAttempts = 2 } };
         var entry = Entry(attempts: 2);
         var store = StoreClaiming(entry);
 
@@ -159,7 +159,7 @@ public sealed class KaleidoEventRelayTests
     public async Task RelayBatchAsync_WhenThePublisherHangs_TheAttemptTimesOutAndFails()
     {
         var options = new KaleidoEventOptions();
-        options.Resilience.AttemptTimeout = TimeSpan.FromMilliseconds(100);
+        options = options with { Resilience = options.Resilience with { AttemptTimeout = TimeSpan.FromMilliseconds(100) } };
         var entry = Entry();
         var store = StoreClaiming(entry);
         var publisher = new Mock<IEventPublisher>();
@@ -176,7 +176,7 @@ public sealed class KaleidoEventRelayTests
     public async Task RelayBatchAsync_WhenTheCircuitOpens_StopsAttemptingWithoutBurningAttempts()
     {
         var options = new KaleidoEventOptions { BatchSize = 5 };
-        options.Resilience.CircuitBreakerMinimumThroughput = 2;
+        options = options with { Resilience = options.Resilience with { CircuitBreakerMinimumThroughput = 2 } };
         var store = StoreClaiming(Entry(), Entry(), Entry(), Entry(), Entry());
         var publisher = FailingPublisher();
 
@@ -324,7 +324,7 @@ public sealed class KaleidoEventRelayTests
         AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Warning, $"({retried.EventId}) failed (attempt 1); retrying at");
 
         var options = new KaleidoEventOptions();
-        options.Resilience.MaxRetryAttempts = 0;
+        options = options with { Resilience = options.Resilience with { MaxRetryAttempts = 0 } };
         var parked = Entry();
         await CreateSut(StoreClaiming(parked).Object, FailingPublisher().Object, options, logger: logger.Object).RelayBatchAsync(CancellationToken.None);
         AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Error, $"({parked.EventId}) failed 1 times; the event is parked");
@@ -378,7 +378,7 @@ public sealed class KaleidoEventRelayTests
     public async Task RelayBatchAsync_WhenTheCircuitOpens_LogsThePauseAndLeavesTheRestUntouched()
     {
         var options = new KaleidoEventOptions { BatchSize = 3 };
-        options.Resilience.CircuitBreakerMinimumThroughput = 2;
+        options = options with { Resilience = options.Resilience with { CircuitBreakerMinimumThroughput = 2 } };
         var logger = EnabledLogger();
         var store = StoreClaiming(Entry(), Entry(), Entry());
 
@@ -392,8 +392,7 @@ public sealed class KaleidoEventRelayTests
     public async Task RelayBatchAsync_WhenTheCircuitOpensAndLaterRecovers_LogsPauseAndResume()
     {
         var options = new KaleidoEventOptions { BatchSize = 2 };
-        options.Resilience.CircuitBreakerMinimumThroughput = 2;
-        options.Resilience.CircuitBreakerBreakDuration = TimeSpan.FromMilliseconds(500);
+        options = options with { Resilience = options.Resilience with { CircuitBreakerMinimumThroughput = 2, CircuitBreakerBreakDuration = TimeSpan.FromMilliseconds(500) } };
         var failing = true;
         var publisher = Publisher(() => failing ? Task.FromException(new InvalidOperationException("broker down")) : Task.CompletedTask);
         var logger = EnabledLogger();
@@ -418,8 +417,7 @@ public sealed class KaleidoEventRelayTests
     public async Task ExecuteAsync_WhileTheCircuitIsOpen_WaitsTheBreakDurationBeforeClaimingAgain()
     {
         var options = new KaleidoEventOptions { BatchSize = 2 };
-        options.Resilience.CircuitBreakerMinimumThroughput = 2;
-        options.Resilience.CircuitBreakerBreakDuration = TimeSpan.FromMilliseconds(500);
+        options = options with { Resilience = options.Resilience with { CircuitBreakerMinimumThroughput = 2, CircuitBreakerBreakDuration = TimeSpan.FromMilliseconds(500) } };
         var claimTimes = new List<DateTimeOffset>();
         var store = new Mock<IKaleidoOutboxStore>();
         store

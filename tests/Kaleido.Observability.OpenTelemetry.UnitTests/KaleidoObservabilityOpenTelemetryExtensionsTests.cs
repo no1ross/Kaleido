@@ -23,7 +23,7 @@ public sealed class KaleidoObservabilityOpenTelemetryExtensionsTests
     private const string RuntimeMeter = "OpenTelemetry.Instrumentation.Runtime";
 
     private static ServiceProvider BuildHost(
-        Action<KaleidoOpenTelemetryOptions>? configure = null,
+        KaleidoOpenTelemetryOptions? options = null,
         IDictionary<string, string?>? configuration = null)
     {
         // No collector listens in tests: a short OTLP timeout keeps the flush on dispose quick.
@@ -44,12 +44,12 @@ public sealed class KaleidoObservabilityOpenTelemetryExtensionsTests
         services
             .AddKaleido(
                 config,
-                o =>
+                new()
                 {
-                    o.ServiceName = "telemetry-test";
-                    o.Assemblies = [typeof(KaleidoObservabilityOpenTelemetryExtensionsTests).Assembly];
+                    ServiceName = "telemetry-test",
+                    Assemblies = [typeof(KaleidoObservabilityOpenTelemetryExtensionsTests).Assembly],
                 })
-            .AddOpenTelemetry(configure);
+            .AddOpenTelemetry(options);
 
         var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
@@ -102,7 +102,7 @@ public sealed class KaleidoObservabilityOpenTelemetryExtensionsTests
     [Fact]
     public void AddOpenTelemetry_WithoutLogs_StillExportsTracesAndMetrics()
     {
-        using var provider = BuildHost(o => o.Logs = false);
+        using var provider = BuildHost(new() { Logs = false });
 
         Assert.False(ExportsLogs(provider));
         Assert.True(TelemetryProbe.IsTraced(ProcessorTelemetry.ActivitySourceName));
@@ -112,11 +112,7 @@ public sealed class KaleidoObservabilityOpenTelemetryExtensionsTests
     [Fact]
     public void AddOpenTelemetry_WithoutTracesAndMetrics_OnlyExportsLogs()
     {
-        using var provider = BuildHost(o =>
-        {
-            o.Traces = false;
-            o.Metrics = false;
-        });
+        using var provider = BuildHost(new() { Traces = false, Metrics = false });
 
         Assert.True(ExportsLogs(provider));
         Assert.False(TelemetryProbe.IsTraced(ProcessorTelemetry.ActivitySourceName));
@@ -126,7 +122,7 @@ public sealed class KaleidoObservabilityOpenTelemetryExtensionsTests
     [Fact]
     public void AddOpenTelemetry_WithoutHostInstrumentation_KeepsOnlyKaleidosOwnTelemetry()
     {
-        using var provider = BuildHost(o => o.HostInstrumentation = false);
+        using var provider = BuildHost(new() { HostInstrumentation = false });
 
         Assert.True(TelemetryProbe.IsTraced(ProcessorTelemetry.ActivitySourceName));
         Assert.False(TelemetryProbe.IsTraced(AspNetCoreSource));
@@ -136,12 +132,7 @@ public sealed class KaleidoObservabilityOpenTelemetryExtensionsTests
     [Fact]
     public void AddOpenTelemetry_WithEverySignalOff_RegistersNothing()
     {
-        using var provider = BuildHost(o =>
-        {
-            o.Logs = false;
-            o.Traces = false;
-            o.Metrics = false;
-        });
+        using var provider = BuildHost(new() { Logs = false, Traces = false, Metrics = false });
 
         Assert.False(ExportsLogs(provider));
         Assert.Null(provider.GetService<TracerProvider>());
@@ -161,13 +152,15 @@ public sealed class KaleidoObservabilityOpenTelemetryExtensionsTests
     }
 
     [Fact]
-    public void AddOpenTelemetry_TheConfigureDelegateWinsOverConfiguration()
+    // ADR 0030: configuration overrides the options from code, setting by setting.
+    public void AddOpenTelemetry_ConfigurationWinsOverTheOptionsFromCode()
     {
         using var provider = BuildHost(
-            o => o.Logs = true,
+            new() { Logs = true, HostInstrumentation = false },
             new Dictionary<string, string?> { ["Kaleido:OpenTelemetry:Logs"] = "false" });
 
-        Assert.True(ExportsLogs(provider));
+        Assert.False(ExportsLogs(provider));
+        Assert.False(TelemetryProbe.IsTraced(AspNetCoreSource));
     }
 
     private static Dictionary<string, object> ResourceOf(IServiceProvider provider) =>

@@ -81,12 +81,12 @@ public sealed class EfCoreQueryContextExecutorTests : IAsyncLifetime
     {
         var services = new ServiceCollection();
         services.AddDbContext<MemberDbContext>(o => o.UseSqlite(_connection).AddInterceptors(_commands));
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
-            o.ServiceName = "members";
-            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-            o.Assemblies = [typeof(EfCoreQueryContextExecutorTests).Assembly];
-            o.TypeFilter = type => type.Namespace == typeof(EfCoreQueryContextExecutorTests).Namespace;
+            ServiceName = "members",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(EfCoreQueryContextExecutorTests).Assembly],
+            TypeFilter = type => type.Namespace == typeof(EfCoreQueryContextExecutorTests).Namespace,
         }).AddInMemoryStores();
 
         // After AddKaleido on purpose: the framework registers its default with TryAdd, so a host's

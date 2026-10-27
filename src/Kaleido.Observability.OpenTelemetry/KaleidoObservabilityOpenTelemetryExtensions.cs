@@ -17,8 +17,9 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
     /// <summary>
     /// Wires OpenTelemetry into a Kaleido service in one call and exports over OTLP: logs, traces
     /// (Kaleido + ASP.NET Core + HttpClient) and metrics (Kaleido + ASP.NET Core + HttpClient +
-    /// runtime). Each part can be switched off with <see cref="KaleidoOpenTelemetryOptions"/>
-    /// (<c>Kaleido:OpenTelemetry</c>, then <paramref name="configure"/>).
+    /// runtime). Each part can be switched off with <see cref="KaleidoOpenTelemetryOptions"/>:
+    /// <paramref name="options"/> from code, with the <c>Kaleido:OpenTelemetry</c> configuration section
+    /// laid over a copy of them (configuration overrides code, setting by setting; ADR 0030).
     /// </summary>
     /// <remarks>
     /// The export (endpoint, protocol, headers) and the resource's version and attributes come
@@ -33,7 +34,10 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
     /// </para>
     /// </remarks>
     /// <param name="builder">The Kaleido builder.</param>
-    /// <param name="configure">Optional: switch signals or the host instrumentation off.</param>
+    /// <param name="options">
+    /// Optional options set in code (e.g. switch signals or the host instrumentation off);
+    /// <see langword="null"/> uses the defaults.
+    /// </param>
     /// <param name="configureTracing">
     /// Optional hook for additional <see cref="TracerProviderBuilder"/> instrumentation
     /// (e.g. EntityFrameworkCore, SQL Client, gRPC) - invoked after the built-in
@@ -47,20 +51,20 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
     /// <example>
     /// <code>
     /// builder.Services.AddKaleido(builder.Configuration)
-    ///     .AddOpenTelemetry(o => o.Logs = false);   // traces and metrics over OTLP, logs elsewhere
+    ///     .AddOpenTelemetry(new() { Logs = false });   // traces and metrics over OTLP, logs elsewhere
     /// </code>
     /// </example>
     public static IKaleidoBuilder AddOpenTelemetry(
         this IKaleidoBuilder builder,
-        Action<KaleidoOpenTelemetryOptions>? configure = null,
+        KaleidoOpenTelemetryOptions? options = null,
         Action<TracerProviderBuilder>? configureTracing = null,
         Action<MeterProviderBuilder>? configureMetrics = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var options = new KaleidoOpenTelemetryOptions();
-        builder.Configuration.GetSection($"{KaleidoServiceOptions.SectionName}:{KaleidoOpenTelemetryOptions.SectionName}").Bind(options);
-        configure?.Invoke(options);
+        options = builder.Configuration
+            .GetSection($"{KaleidoServiceOptions.SectionName}:{KaleidoOpenTelemetryOptions.SectionName}")
+            .BindOver(options ?? new KaleidoOpenTelemetryOptions(), OpenTelemetryErrorCodes.InvalidOptions);
 
         if (!options.Logs && !options.Traces && !options.Metrics)
         {

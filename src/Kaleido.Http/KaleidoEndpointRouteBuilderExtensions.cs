@@ -4,6 +4,7 @@ using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -25,14 +26,21 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
     /// Returns an <see cref="IEndpointConventionBuilder"/> that
     /// propagates conventions (e.g. <c>.RequireAuthorization()</c>) to all mapped endpoints.
     /// </summary>
+    /// <remarks>
+    /// The <c>Kaleido:Http:Map</c> configuration section (from the host's <see cref="IConfiguration"/>) is
+    /// laid over a copy of <paramref name="options"/>: configuration overrides code, setting by setting
+    /// (ADR 0030). The result is validated; an invalid setting throws <c>invalid_http_options</c>.
+    /// </remarks>
+    /// <param name="endpoints">The host's endpoint route builder.</param>
+    /// <param name="options">The options set in code; <see langword="null"/> uses the defaults.</param>
+    /// <returns>A convention builder for every mapped Kaleido endpoint.</returns>
     public static IEndpointConventionBuilder MapKaleidoHttp(
         this IEndpointRouteBuilder endpoints,
-        Action<KaleidoHttpMapOptions>? configure = null)
+        KaleidoHttpMapOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
 
-        var mapOptions = new KaleidoHttpMapOptions();
-        configure?.Invoke(mapOptions);
+        var mapOptions = ResolveMapOptions(endpoints.ServiceProvider, options ?? new KaleidoHttpMapOptions());
 
         var logger = endpoints.ServiceProvider
             .GetRequiredService<ILoggerFactory>()
@@ -85,6 +93,18 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
         }
 
         return new RouteHandlerBuilder(builders);
+    }
+
+    // The host's Kaleido:Http:Map section over the options from code (ADR 0030), validated.
+    private static KaleidoHttpMapOptions ResolveMapOptions(IServiceProvider services, KaleidoHttpMapOptions options)
+    {
+        var resolved = services.GetService<IConfiguration>() is { } configuration
+            ? configuration.GetSection(KaleidoHttpMapOptions.SectionName).BindOver(options, ConfigurationErrorCodes.InvalidHttpOptions)
+            : options;
+
+        KaleidoHttpMapOptions.Validate(resolved);
+
+        return resolved;
     }
 
     // Startup authorization checks, by mode:

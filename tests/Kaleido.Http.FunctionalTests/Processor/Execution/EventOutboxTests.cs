@@ -258,13 +258,13 @@ public sealed class EventOutboxTests : IAsyncLifetime
                 {
                     services.AddRouting();
                     services.AddSingleton<FunctionalRecordData>();
-                    var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-                        {
-                            o.ServiceName = FunctionalProcessorNames.TestProcessor;
-                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                            o.Assemblies = [typeof(RuntimeRootStep).Assembly];
-                            o.Events.Resilience.RetryDelay = retryDelay ?? TimeSpan.FromMilliseconds(50);
-                        })
+                    var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    {
+                        ServiceName = FunctionalProcessorNames.TestProcessor,
+                        AuthorizationMode = KaleidoAuthorizationMode.None,
+                        Assemblies = [typeof(RuntimeRootStep).Assembly],
+                        Events = new() { Resilience = new() { RetryDelay = retryDelay ?? TimeSpan.FromMilliseconds(50) } },
+                    })
                         .AddInMemoryStores()
                         .AddHttp()
                         .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");

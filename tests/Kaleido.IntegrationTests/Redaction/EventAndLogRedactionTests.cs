@@ -35,12 +35,12 @@ public sealed class EventAndLogRedactionTests
         var services = new ServiceCollection();
         services.AddRedaction(r => r.SetRedactor<ErasingRedactor>(new DataClassificationSet(Phi), new DataClassificationSet(Pii)));   // logs
 
-        var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+        var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
-            o.ServiceName = "clinic";
-            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-            o.Assemblies = [typeof(EventAndLogRedactionTests).Assembly];
-            o.TypeFilter = type => type.Namespace == typeof(EventAndLogRedactionTests).Namespace;
+            ServiceName = "clinic",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(EventAndLogRedactionTests).Assembly],
+            TypeFilter = type => type.Namespace == typeof(EventAndLogRedactionTests).Namespace,
         }).AddInMemoryStores();
         events?.Invoke(kaleido);
 
@@ -94,12 +94,12 @@ public sealed class EventAndLogRedactionTests
     {
         var services = new ServiceCollection();
         services.AddRedaction(r => r.SetFallbackRedactor<NullRedactor>());   // logs keep everything
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
-            o.ServiceName = "clinic";
-            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-            o.Assemblies = [typeof(EventAndLogRedactionTests).Assembly];
-            o.TypeFilter = type => type.Namespace == typeof(EventAndLogRedactionTests).Namespace;
+            ServiceName = "clinic",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(EventAndLogRedactionTests).Assembly],
+            TypeFilter = type => type.Namespace == typeof(EventAndLogRedactionTests).Namespace,
         }).AddInMemoryStores();
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 

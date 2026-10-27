@@ -13,10 +13,10 @@ see [Who may continue a process](#who-may-continue-a-process) and the [threat mo
 ## The mode: `AuthorizationMode`
 
 ```csharp
-services.AddKaleido(configuration, o =>
+services.AddKaleido(configuration, new()
 {
-    o.AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust;
-    o.DefaultAuthorization = new AuthorizationMetadata(Policy: null, Roles: ["staff"]); // optional service default
+    AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
+    DefaultAuthorization = new AuthorizationMetadata(Policy: null, Roles: ["staff"]), // optional service default
 });
 ```
 

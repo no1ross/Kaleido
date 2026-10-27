@@ -18,9 +18,21 @@ public static class KaleidoHttpServiceCollectionExtensions
     /// <see cref="Microsoft.AspNetCore.Http.IHttpContextAccessor"/>, correlation and exception
     /// middleware, and HTTP-specific execution services.
     /// </summary>
+    /// <remarks>
+    /// The <c>Kaleido:Http</c> configuration section is laid over a copy of <paramref name="options"/>
+    /// (configuration overrides code, setting by setting; ADR 0030), validated and registered as the
+    /// <see cref="KaleidoHttpOptions"/> singleton.
+    /// </remarks>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <param name="options">The options set in code; <see langword="null"/> uses the defaults.</param>
+    /// <returns>The builder for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">
+    /// <c>AddHttp</c> was already called (<c>duplicate_registration</c>), or a setting is invalid
+    /// (<c>invalid_http_options</c>).
+    /// </exception>
     public static IKaleidoBuilder AddHttp(
         this IKaleidoBuilder builder,
-        Action<KaleidoHttpOptions>? configure = null)
+        KaleidoHttpOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -38,8 +50,10 @@ public static class KaleidoHttpServiceCollectionExtensions
 
         // Transport options — always registered so map-time conventions and
         // runtime services can resolve it unconditionally.
-        var httpOptions = new KaleidoHttpOptions();
-        configure?.Invoke(httpOptions);
+        var httpOptions = builder.Configuration
+            .GetSection(KaleidoHttpOptions.SectionName)
+            .BindOver(options ?? new KaleidoHttpOptions(), ConfigurationErrorCodes.InvalidHttpOptions);
+        KaleidoHttpOptions.Validate(httpOptions);
         builder.Services.AddSingleton(httpOptions);
 
         // Capability authorization: runtime evaluator. 401/403 responses are

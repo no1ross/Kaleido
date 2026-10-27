@@ -189,11 +189,7 @@ public sealed class OrdersTransactions(OrdersDbContext db) : IKaleidoTransaction
 ```csharp
 services.AddDbContext<OrdersDbContext>(o => o.UseSqlite(connectionString));   // scoped
 
-return services.AddKaleido(configuration, o =>
-    {
-        o.ServiceName = "orders";
-        o.Assemblies = [typeof(OrdersContextStore).Assembly];
-    })
+return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(OrdersContextStore).Assembly] })
     .AddContextStore<OrdersContextStore>()
     .AddOutbox<OrdersOutbox>()
     .AddTransactions<OrdersTransactions>()

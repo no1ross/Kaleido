@@ -3,6 +3,7 @@ using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Http.UnitTests;
@@ -10,11 +11,11 @@ namespace Kaleido.Http.UnitTests;
 public sealed class KaleidoHttpServiceCollectionExtensionsTests
     : SutFixture
 {
-    private static Action<KaleidoServiceOptionsBuilder> ConfigureKaleido(string serviceName) =>
-        o =>
+    private static KaleidoServiceOptions ConfigureKaleido(string serviceName) =>
+        new()
         {
-            o.ServiceName = serviceName;
-            o.Assemblies = [typeof(KaleidoServiceOptions).Assembly];
+            ServiceName = serviceName,
+            Assemblies = [typeof(KaleidoServiceOptions).Assembly],
         };
 
     [Fact]
@@ -42,10 +43,45 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), ConfigureKaleido("test"));
 
-        builder.AddHttp(o => o.IncludeFrameworkMessages = true);
+        builder.AddHttp(new() { IncludeFrameworkMessages = true });
 
         var options = Assert.Single(services, d => d.ServiceType == typeof(KaleidoHttpOptions)).ImplementationInstance;
         Assert.True(Assert.IsType<KaleidoHttpOptions>(options).IncludeFrameworkMessages);
+    }
+
+    // ADR 0030: the Kaleido:Http section overrides the options from code, setting by setting.
+    [Fact]
+    public void AddHttp_LaysTheKaleidoHttpSectionOverTheOptionsFromCode()
+    {
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:Http:IdempotencyLease"] = "00:10:00" })
+            .Build();
+        var services = new ServiceCollection();
+        var code = new KaleidoHttpOptions { IncludeFrameworkMessages = true, IdempotencyLease = TimeSpan.FromMinutes(1) };
+
+        services.AddKaleido(configuration, ConfigureKaleido("test")).AddHttp(code);
+
+        var options = Assert.IsType<KaleidoHttpOptions>(Assert.Single(services, d => d.ServiceType == typeof(KaleidoHttpOptions)).ImplementationInstance);
+        Assert.Equal(TimeSpan.FromMinutes(10), options.IdempotencyLease);
+        Assert.True(options.IncludeFrameworkMessages);
+        Assert.Equal(TimeSpan.FromMinutes(1), code.IdempotencyLease);
+    }
+
+    [Theory]
+    [InlineData("Kaleido:Http:IdempotencyLease", "00:00:00")]
+    [InlineData("Kaleido:Http:IdempotencyRetention", "-00:00:01")]
+    [InlineData("Kaleido:Http:IdempotencyLease", "soon")]
+    public void AddHttp_AnInvalidSetting_IsAConfigurationError(string key, string value)
+    {
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { [key] = value })
+            .Build();
+        var builder = new ServiceCollection().AddKaleido(configuration, ConfigureKaleido("test"));
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddHttp());
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidHttpOptions, exception.Code);
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
     }
 
     // #301: a second call would silently replace the first one's options.
@@ -54,7 +90,7 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
         var builder = services.AddKaleido(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), ConfigureKaleido("test"));
-        builder.AddHttp(o => o.IncludeFrameworkMessages = true);
+        builder.AddHttp(new() { IncludeFrameworkMessages = true });
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddHttp());
 

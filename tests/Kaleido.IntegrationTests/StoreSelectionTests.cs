@@ -27,11 +27,11 @@ public sealed class StoreSelectionTests : IDisposable
             .ConfigureServices(services =>
             {
                 services.AddSingleton<OrderBook>();
-                stores(services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+                stores(services.AddKaleido(new ConfigurationBuilder().Build(), new()
                 {
-                    o.ServiceName = "orders";
-                    o.Assemblies = [typeof(OrderSource).Assembly];
-                    o.AuthorizationMode = KaleidoAuthorizationMode.None;
+                    ServiceName = "orders",
+                    Assemblies = [typeof(OrderSource).Assembly],
+                    AuthorizationMode = KaleidoAuthorizationMode.None,
                 }));
             })
             .Build();

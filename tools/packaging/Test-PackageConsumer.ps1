@@ -271,11 +271,11 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 });
 
 builder.Services
-    .AddKaleido(builder.Configuration, o =>
+    .AddKaleido(builder.Configuration, new()
     {
-        o.ServiceName = "host";
-        o.Assemblies = [typeof(StartStep).Assembly];
-        o.AuthorizationMode = KaleidoAuthorizationMode.None;
+        ServiceName = "host",
+        Assemblies = [typeof(StartStep).Assembly],
+        AuthorizationMode = KaleidoAuthorizationMode.None,
     })
     .AddHttp()
     .AddHttpClients()

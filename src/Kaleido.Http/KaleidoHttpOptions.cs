@@ -8,8 +8,16 @@ namespace Kaleido.Http;
 /// authorization is controlled by
 /// <see cref="KaleidoServiceOptions.AuthorizationMode"/>.
 /// </summary>
-public sealed class KaleidoHttpOptions
+/// <remarks>
+/// Immutable: <c>AddHttp</c> lays the <c>Kaleido:Http</c> configuration section over a copy of the
+/// instance passed in code (configuration overrides code, setting by setting), validates it and
+/// registers it (ADR 0030). <see cref="TrustCorrelationIdentity"/> can only be set in code.
+/// </remarks>
+public sealed record KaleidoHttpOptions
 {
+    /// <summary>The configuration section that overrides these options: <c>Kaleido:Http</c>.</summary>
+    public const string SectionName = "Kaleido:Http";
+
     /// <summary>
     /// Decides whether identity-bearing correlation headers
     /// (<c>X-Kaleido-Request-Id</c>, <c>X-Kaleido-Calling-Processor</c>,
@@ -23,20 +31,20 @@ public sealed class KaleidoHttpOptions
     /// authenticated caller.
     /// </para>
     /// </summary>
-    public Func<HttpContext, bool>? TrustCorrelationIdentity { get; set; }
+    public Func<HttpContext, bool>? TrustCorrelationIdentity { get; init; }
 
     /// <summary>
     /// Includes framework-generated diagnostics in Process execution responses when enabled.
     /// Off by default: <c>FrameworkMessages</c> stays empty, while handler-authored
     /// <c>BusinessMessages</c> is always returned.
     /// </summary>
-    public bool IncludeFrameworkMessages { get; set; }
+    public bool IncludeFrameworkMessages { get; init; }
 
     /// <summary>
     /// How long the answer to an execute request sent with an <c>Idempotency-Key</c> is kept, so a retry
     /// with the same key gets it again instead of running the step a second time. Default 24 hours.
     /// </summary>
-    public TimeSpan IdempotencyRetention { get; set; } = TimeSpan.FromHours(24);
+    public TimeSpan IdempotencyRetention { get; init; } = TimeSpan.FromHours(24);
 
     /// <summary>
     /// How long a request sent with an <c>Idempotency-Key</c> counts as running. Meanwhile a retry with
@@ -45,5 +53,23 @@ public sealed class KaleidoHttpOptions
     /// <c>pro_idempotency_outcome_unknown</c> and never run again with that key. Default 5 minutes;
     /// keep it longer than a step can take.
     /// </summary>
-    public TimeSpan IdempotencyLease { get; set; } = TimeSpan.FromMinutes(5);
+    public TimeSpan IdempotencyLease { get; init; } = TimeSpan.FromMinutes(5);
+
+    // Run by AddHttp after configuration is laid over the options; nothing is adjusted, an invalid
+    // value stops startup.
+    internal static void Validate(KaleidoHttpOptions options)
+    {
+        Require(options.IdempotencyRetention > TimeSpan.Zero, nameof(IdempotencyRetention), options.IdempotencyRetention);
+        Require(options.IdempotencyLease > TimeSpan.Zero, nameof(IdempotencyLease), options.IdempotencyLease);
+    }
+
+    private static void Require(bool condition, string name, TimeSpan value)
+    {
+        if (!condition)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidHttpOptions,
+                $"{SectionName}:{name} is {value}; it must be positive.");
+        }
+    }
 }

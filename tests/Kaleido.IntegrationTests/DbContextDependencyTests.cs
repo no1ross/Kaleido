@@ -20,12 +20,12 @@ public sealed class DbContextDependencyTests
             options.UseInMemoryDatabase("TestDb"));
 
         // Act
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
-            o.ServiceName = "test-integration";
-            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-            o.Assemblies = new[] { typeof(DbContextDependencyTests).Assembly };
-            o.TypeFilter = type => type.Namespace?.StartsWith("Kaleido.IntegrationTests.TestArtifacts", StringComparison.Ordinal) ?? false;
+            ServiceName = "test-integration",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = new[] { typeof(DbContextDependencyTests).Assembly },
+            TypeFilter = type => type.Namespace?.StartsWith("Kaleido.IntegrationTests.TestArtifacts", StringComparison.Ordinal) ?? false,
         }).AddInMemoryStores();
 
         // This should NOT throw - the service provider should be able to construct
@@ -49,11 +49,11 @@ public sealed class DbContextDependencyTests
         var connectionString = "Data Source=:memory:";
 
         // Act
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
-            o.ServiceName = "test-integration";
-            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-            o.Assemblies = [typeof(DbContextDependencyTests).Assembly];
+            ServiceName = "test-integration",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(DbContextDependencyTests).Assembly],
         }).AddSqliteContextStore(connectionString).AddSqliteOutboxStore(connectionString).AddSqliteIdempotencyStore(connectionString);
 
         using var provider = services.BuildServiceProvider();

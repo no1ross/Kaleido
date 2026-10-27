@@ -3,8 +3,16 @@ namespace Kaleido.Http;
 /// <summary>
 /// Options for <see cref="KaleidoEndpointRouteBuilderExtensions.MapKaleidoHttp"/>.
 /// </summary>
-public sealed class KaleidoHttpMapOptions
+/// <remarks>
+/// Immutable: <c>MapKaleidoHttp</c> lays the <c>Kaleido:Http:Map</c> configuration section over a copy
+/// of the instance passed in code (configuration overrides code, setting by setting) and validates it
+/// (ADR 0030).
+/// </remarks>
+public sealed record KaleidoHttpMapOptions
 {
+    /// <summary>The configuration section that overrides these options: <c>Kaleido:Http:Map</c>.</summary>
+    public const string SectionName = "Kaleido:Http:Map";
+
     /// <summary>
     /// When true, the registry endpoint aggregates downstream services:
     /// every client registered via <c>AddHttpClients()</c> is fetched and
@@ -12,7 +20,7 @@ public sealed class KaleidoHttpMapOptions
     /// When false (default), <c>GET /{service}/registry</c> returns only this
     /// service's local registrations.
     /// </summary>
-    public bool AggregateRegistry { get; set; }
+    public bool AggregateRegistry { get; init; }
 
     /// <summary>
     /// How long the server-side registry snapshot is served before it is rebuilt on the next request.
@@ -25,7 +33,7 @@ public sealed class KaleidoHttpMapOptions
     /// restart. It also bounds how long a clean snapshot can mask a downstream that started failing.
     /// Null means the snapshot never expires on its own; use <c>?refresh</c> to force a rebuild.
     /// </remarks>
-    public TimeSpan? RegistryCacheTtl { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan? RegistryCacheTtl { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Minimum interval between honored <c>?refresh</c> requests, measured from
@@ -34,7 +42,7 @@ public sealed class KaleidoHttpMapOptions
     /// fan-out. Defaults to 30 seconds; <see cref="TimeSpan.Zero"/> disables
     /// throttling.
     /// </summary>
-    public TimeSpan RegistryRefreshCooldown { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan RegistryRefreshCooldown { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Maximum number of downstream registry fetches in flight at once during
@@ -43,5 +51,28 @@ public sealed class KaleidoHttpMapOptions
     /// set this when a router aggregates many services so one refresh cannot
     /// open a connection to every downstream simultaneously.
     /// </summary>
-    public int? RegistryDownstreamMaxParallelism { get; set; }
+    public int? RegistryDownstreamMaxParallelism { get; init; }
+
+    // Run by MapKaleidoHttp after configuration is laid over the options; nothing is adjusted, an
+    // invalid value stops startup.
+    internal static void Validate(KaleidoHttpMapOptions options)
+    {
+        if (options.RegistryCacheTtl < TimeSpan.Zero)
+        {
+            throw Invalid(nameof(RegistryCacheTtl), options.RegistryCacheTtl, "zero or more when set (zero rebuilds the snapshot on every request)");
+        }
+
+        if (options.RegistryRefreshCooldown < TimeSpan.Zero)
+        {
+            throw Invalid(nameof(RegistryRefreshCooldown), options.RegistryRefreshCooldown, "zero or more");
+        }
+
+        if (options.RegistryDownstreamMaxParallelism <= 0)
+        {
+            throw Invalid(nameof(RegistryDownstreamMaxParallelism), options.RegistryDownstreamMaxParallelism, "positive when set");
+        }
+    }
+
+    private static KaleidoConfigurationException Invalid(string name, object? value, string rule) =>
+        new(ConfigurationErrorCodes.InvalidHttpOptions, $"{SectionName}:{name} is {value}; it must be {rule}.");
 }

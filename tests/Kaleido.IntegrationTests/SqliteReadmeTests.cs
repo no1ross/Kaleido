@@ -64,13 +64,13 @@ public sealed class SqliteReadmeTests : IDisposable
     private ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
-            {
-                o.ServiceName = "myservice";
-                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                o.Assemblies = [typeof(SqliteReadmeTests).Assembly];
-                o.TypeFilter = _ => false;
-            })
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
+        {
+            ServiceName = "myservice",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(SqliteReadmeTests).Assembly],
+            TypeFilter = _ => false,
+        })
             .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });

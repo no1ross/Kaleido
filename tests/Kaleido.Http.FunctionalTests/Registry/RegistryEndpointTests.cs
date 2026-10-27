@@ -142,12 +142,12 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
                         })
                         .Build();
 
-                    services.AddKaleido(config, o =>
-                        {
-                            o.ServiceName = "kaleido";
-                            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                            o.Assemblies = [typeof(ProcessorAspNetCoreFixture).Assembly];
-                        })
+                    services.AddKaleido(config, new()
+                    {
+                        ServiceName = "kaleido",
+                        AuthorizationMode = KaleidoAuthorizationMode.None,
+                        Assemblies = [typeof(ProcessorAspNetCoreFixture).Assembly],
+                    })
                         .AddInMemoryStores()
                         .AddHttp()
                         .AddHttpClients();
@@ -156,7 +156,7 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
                 webBuilder.Configure(app =>
                 {
                     app.UseRouting();
-                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp(o => o.AggregateRegistry = true));
+                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp(new() { AggregateRegistry = true }));
                 });
             })
             .StartAsync();

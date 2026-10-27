@@ -15,9 +15,9 @@ public sealed class ServiceNameAnalyzerTests
     private const string KaleidoOptionsStub = @"
 namespace Kaleido
 {
-    public class KaleidoServiceOptionsBuilder
+    public sealed record KaleidoServiceOptions
     {
-        public string ServiceName { get; set; } = string.Empty;
+        public string ServiceName { get; init; } = string.Empty;
     }
 }";
 
@@ -31,10 +31,8 @@ namespace Kaleido
 public class Program
 {
 " + members + @"
-    public void Configure(Kaleido.KaleidoServiceOptionsBuilder o)
-    {
-        o.ServiceName = " + expression + @";
-    }
+    public Kaleido.KaleidoServiceOptions Create() =>
+        new() { ServiceName = " + expression + @" };
 }
 " + KaleidoOptionsStub;
 
@@ -96,8 +94,8 @@ public class Program
         await RunAsync(@"
 public class Program
 {
-    public Kaleido.KaleidoServiceOptionsBuilder Create() =>
-        new Kaleido.KaleidoServiceOptionsBuilder { ServiceName = {|#0:""My Service""|} };
+    public Kaleido.KaleidoServiceOptions Create() =>
+        new Kaleido.KaleidoServiceOptions { ServiceName = {|#0:""My Service""|} };
 }
 " + KaleidoOptionsStub,
             Expected.WithLocation(0).WithArguments("My Service", "myservice"));

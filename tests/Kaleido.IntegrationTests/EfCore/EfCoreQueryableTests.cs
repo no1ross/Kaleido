@@ -20,12 +20,12 @@ public sealed class EfCoreQueryableTests : IAsyncLifetime
 
         var services = new ServiceCollection();
         services.AddDbContext<MemberDbContext>(o => o.UseSqlite(_connection));
-        services.AddKaleido(new ConfigurationBuilder().Build(), o =>
+        services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
-            o.ServiceName = "members";
-            o.AuthorizationMode = KaleidoAuthorizationMode.None;
-            o.Assemblies = [typeof(EfCoreQueryableTests).Assembly];
-            o.TypeFilter = type => type.Namespace == typeof(EfCoreQueryableTests).Namespace;
+            ServiceName = "members",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(EfCoreQueryableTests).Assembly],
+            TypeFilter = type => type.Namespace == typeof(EfCoreQueryableTests).Namespace,
         }).AddInMemoryStores();
 
         _provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });

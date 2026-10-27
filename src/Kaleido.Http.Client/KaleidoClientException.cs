@@ -82,6 +82,13 @@ public static class HttpClientErrorCodes
     public const string InvalidRoutePrefix = "httpclient_invalid_route_prefix";
 
     /// <summary>
+    /// A client setting in configuration (<c>Kaleido:BaseUrl</c>, <c>Kaleido:RegistryTtl</c>,
+    /// <c>Kaleido:Resilience</c>, <c>Kaleido:Clients:{name}</c>...) is out of range or cannot be read, e.g. a
+    /// non-positive timeout or registry TTL. Raised at startup by <c>AddHttpClients()</c>.
+    /// </summary>
+    public const string InvalidClientOptions = "httpclient_invalid_options";
+
+    /// <summary>
     /// An <see cref="IKaleidoCallCredentialProvider"/> answered <see cref="KaleidoCallCredential.Configured"/>
     /// for a call made for a caller; a caller's call never goes out with the host's own credentials.
     /// Raised on the call as a configuration error.

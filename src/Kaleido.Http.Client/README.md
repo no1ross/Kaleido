@@ -260,7 +260,7 @@ anonymously without asking the provider, `Configured` for a caller's call is ref
 provider runs after every handler the host configured on its clients, so its answer is the one sent.
 
 ```csharp
-builder.Services.AddKaleido(builder.Configuration, o => { /* ... */ })
+builder.Services.AddKaleido(builder.Configuration, new())
     .AddHttp()
     .AddHttpClients()
     .AddCallCredentials<OnBehalfOfProvider>();   // or .ForwardCallerToken()

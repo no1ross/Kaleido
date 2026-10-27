@@ -126,13 +126,13 @@ public sealed class HandlerAndSourceCallTests
                             .AddScheme<AuthenticationSchemeOptions, TestAuthentication>(TestAuthentication.SchemeName, _ => { });
                         s.AddAuthorization();
 
-                        s.AddKaleido(configuration, o =>
-                            {
-                                o.ServiceName = "relay";
-                                o.Assemblies = [typeof(HandlerAndSourceCallTests).Assembly];
-                                o.TypeFilter = type => type.Namespace == typeof(HandlerAndSourceCallTests).Namespace;
-                                o.AuthorizationMode = KaleidoAuthorizationMode.None;
-                            })
+                        s.AddKaleido(configuration, new()
+                        {
+                            ServiceName = "relay",
+                            Assemblies = [typeof(HandlerAndSourceCallTests).Assembly],
+                            TypeFilter = type => type.Namespace == typeof(HandlerAndSourceCallTests).Namespace,
+                            AuthorizationMode = KaleidoAuthorizationMode.None,
+                        })
                             .AddInMemoryStores()
                             .AddHttp()
                             .AddHttpClients();

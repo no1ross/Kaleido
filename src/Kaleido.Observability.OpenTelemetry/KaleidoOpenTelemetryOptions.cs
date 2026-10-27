@@ -3,7 +3,7 @@ namespace Kaleido.Observability.OpenTelemetry;
 /// <summary>
 /// What <c>AddOpenTelemetry()</c> wires: which signals are exported over OTLP and whether the host's
 /// own instrumentation is included. Everything is on by default; bound from
-/// <c>Kaleido:OpenTelemetry</c>, then the configure delegate applies.
+/// <c>Kaleido:OpenTelemetry</c>, laid over the options passed in code (configuration overrides code, ADR 0030).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -37,25 +37,25 @@ namespace Kaleido.Observability.OpenTelemetry;
 /// }
 /// </code>
 /// </remarks>
-public sealed class KaleidoOpenTelemetryOptions
+public sealed record KaleidoOpenTelemetryOptions
 {
     /// <summary>The configuration section, below <c>Kaleido</c>.</summary>
     public const string SectionName = "OpenTelemetry";
 
     /// <summary>Export logs (<c>ILogger</c>, with formatted message and scopes) over OTLP. Default true.</summary>
-    public bool Logs { get; set; } = true;
+    public bool Logs { get; init; } = true;
 
     /// <summary>Export traces (Kaleido's activity sources, plus the host's with <see cref="HostInstrumentation"/>) over OTLP. Default true.</summary>
-    public bool Traces { get; set; } = true;
+    public bool Traces { get; init; } = true;
 
     /// <summary>Export metrics (Kaleido's meters with tuned histograms, plus the host's with <see cref="HostInstrumentation"/>) over OTLP. Default true.</summary>
-    public bool Metrics { get; set; } = true;
+    public bool Metrics { get; init; } = true;
 
     /// <summary>
     /// Also instrument the host: ASP.NET Core and HttpClient traces and metrics, runtime metrics.
     /// False keeps only Kaleido's own sources and meters. Default true.
     /// </summary>
-    public bool HostInstrumentation { get; set; } = true;
+    public bool HostInstrumentation { get; init; } = true;
 
     /// <summary>
     /// The OTLP collector's base address (for example <c>http://localhost:4317</c>). With
@@ -63,27 +63,27 @@ public sealed class KaleidoOpenTelemetryOptions
     /// is appended. <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> (or a signal's own
     /// <c>OTEL_EXPORTER_OTLP_{SIGNAL}_ENDPOINT</c>) wins. Null: the SDK default.
     /// </summary>
-    public Uri? Endpoint { get; set; }
+    public Uri? Endpoint { get; init; }
 
     /// <summary>
     /// The OTLP protocol: <c>grpc</c> or <c>http/protobuf</c>, as in the OpenTelemetry
     /// specification. <c>OTEL_EXPORTER_OTLP_PROTOCOL</c> wins. Null: the SDK default (gRPC).
     /// </summary>
-    public string? Protocol { get; set; }
+    public string? Protocol { get; init; }
 
     /// <summary>
     /// Headers sent with every export, as <c>key1=value1,key2=value2</c> (for example a backend's
     /// API key). <c>OTEL_EXPORTER_OTLP_HEADERS</c> wins.
     /// </summary>
-    public string? Headers { get; set; }
+    public string? Headers { get; init; }
 
     /// <summary>The <c>service.version</c> resource attribute, when set.</summary>
-    public string? ServiceVersion { get; set; }
+    public string? ServiceVersion { get; init; }
 
     /// <summary>
     /// Further resource attributes, as <c>key1=value1,key2=value2</c> (for example
     /// <c>deployment.environment=Production</c>). An attribute also set in
     /// <c>OTEL_RESOURCE_ATTRIBUTES</c> takes that value.
     /// </summary>
-    public string? ResourceAttributes { get; set; }
+    public string? ResourceAttributes { get; init; }
 }
