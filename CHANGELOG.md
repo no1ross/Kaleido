@@ -191,6 +191,10 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **MCP hosts in one process no longer share translated tools** (#464): the tool catalogs were cached
+  in one process-wide dictionary, keyed by a few settings, and cleared entirely at 256 entries. Each
+  `AddMcp()` registration now owns its cache, bounded at 256 registry revisions and dropping the least
+  recently used one at a time; a registry without a revision is translated every time.
 - **The MCP guided-lookup state is protected** (#452): with MRTR, the search results, process and
   arguments the client carries between the lookup's forms were readable Base64 that the adapter then
   trusted to fill the step's inputs. They are now encrypted and signed with ASP.NET Data Protection,

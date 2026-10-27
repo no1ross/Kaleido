@@ -7,13 +7,14 @@ namespace Kaleido.Http.Mcp.Tools.UnitTests;
 public sealed class ToolCatalogProviderTests
     : Kaleido.UnitTests.SutFixture
 {
-    // Translations are reused per registry revision across instances, so every test uses its own.
-    private readonly string revision = $"r-{Guid.NewGuid():N}";
+    private readonly string revision = "r-1";
     private readonly Mock<IKaleidoRegistryService> registry = new();
     private readonly Mock<IKaleidoUnfilteredRegistry> unfiltered = new();
     private readonly Mock<IToolCatalogBuilder> builder = new();
     private readonly Mock<IMcpObservability> observability = new();
-    private readonly string unfilteredRevision = $"u-{Guid.NewGuid():N}";
+    private readonly string unfilteredRevision = "u-1";
+    private readonly Mock<IToolCatalogCache> cache = new();
+    private readonly Dictionary<string, ToolCatalog> cached = new(StringComparer.Ordinal);
 
     public ToolCatalogProviderTests()
     {
@@ -24,15 +25,24 @@ public sealed class ToolCatalogProviderTests
             .ReturnsAsync(() => new AggregatedRegistryResponse { Revision = unfilteredRevision });
         builder.Setup(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()))
             .Returns((AggregatedRegistryResponse response, AggregatedRegistryResponse _) => new ToolCatalog { Revision = response.Revision });
+
+        // The cache is ToolCatalogCache's to test; here it remembers what it was given.
+        ToolCatalog? known = null;
+        cache.Setup(x => x.TryGet(It.IsAny<string>(), out known))
+            .Returns(new TryGetCatalog(cached.TryGetValue));
+        cache.Setup(x => x.Add(It.IsAny<string>(), It.IsAny<ToolCatalog>()))
+            .Callback((string key, ToolCatalog catalog) => cached[key] = catalog);
     }
 
-    private ToolCatalogProvider CreateSut(McpToolListing listing = McpToolListing.All, ILogger<ToolCatalogProvider>? logger = null, bool requireConfirmation = false) =>
+    private delegate bool TryGetCatalog(string key, out ToolCatalog? catalog);
+
+    private ToolCatalogProvider CreateSut(ILogger<ToolCatalogProvider>? logger = null) =>
         new(
             registry.Object,
             unfiltered.Object,
             builder.Object,
+            cache.Object,
             observability.Object,
-            new KaleidoMcpOptions { Instructions = "test", ToolListing = listing, RequireConfirmation = requireConfirmation },
             logger ?? NullLogger<ToolCatalogProvider>.Instance);
 
     private sealed class RecordingLogger : ILogger<ToolCatalogProvider>
@@ -71,7 +81,7 @@ public sealed class ToolCatalogProviderTests
         await CreateSut(logger: logger).GetAsync(Cancel);
         await CreateSut(logger: logger).GetAsync(Cancel);
         var firstRevision = logger.Entries.ToArray();
-        RegistryRevisionIs($"r-{Guid.NewGuid():N}");
+        RegistryRevisionIs("r-2");
         await CreateSut(logger: logger).GetAsync(Cancel);
 
         Assert.All(logger.Entries, x => Assert.Equal(LogLevel.Warning, x.Level));
@@ -120,35 +130,43 @@ public sealed class ToolCatalogProviderTests
         Assert.Empty(logger.Entries);
     }
 
+    // #464: a registry without a revision has no known content: translated every time, never kept.
     [Fact]
-    public async Task GetAsync_ARegistryWithoutARevision_IsReadAsTheEmptyRevision()
+    public async Task GetAsync_ACallerRegistryWithoutARevision_IsTranslatedEveryTime_AndNotKept()
     {
         RegistryRevisionIs(null);
 
-        var catalog = await CreateSut(McpToolListing.FrontDoor).GetAsync(Cancel);
+        var first = await CreateSut().GetAsync(Cancel);
+        var second = await CreateSut().GetAsync(Cancel);
 
-        Assert.Null(catalog.Revision);
-        observability.Verify(x => x.RegistryRead(It.IsIn(McpTelemetry.RegistryFetched, McpTelemetry.RegistryHit), string.Empty));
+        Assert.Null(first.Revision);
+        Assert.NotSame(first, second);
+        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
+        cache.Verify(x => x.Add(It.IsAny<string>(), It.IsAny<ToolCatalog>()), Times.Never);
+        observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryFetched, string.Empty), Times.Exactly(2));
     }
 
     [Fact]
-    public async Task GetAsync_KeepsABoundedNumberOfTranslations_SoAnOldRevisionIsTranslatedAgain()
+    public async Task GetAsync_AnUnfilteredRegistryWithoutARevision_IsTranslatedEveryTime_AndNotKept()
     {
+        unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AggregatedRegistryResponse { Revision = null });
+
+        await CreateSut().GetAsync(Cancel);
         await CreateSut().GetAsync(Cancel);
 
-        for (var i = 0; i < 256; i++)
-        {
-            RegistryRevisionIs($"r-{Guid.NewGuid():N}");
-            await CreateSut().GetAsync(Cancel);
-        }
-
-        RegistryRevisionIs(revision);
-        await CreateSut().GetAsync(Cancel);
-
-        builder.Verify(x => x.Build(It.Is<AggregatedRegistryResponse>(r => r.Revision == revision), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
-        observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryHit, revision), Times.Never);
+        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
+        cache.Verify(x => x.Add(It.IsAny<string>(), It.IsAny<ToolCatalog>()), Times.Never);
     }
 
+    // The translation is kept under both revisions: the caller's registry and the names' registry.
+    [Fact]
+    public async Task GetAsync_KeepsTheTranslation_UnderBothRevisions()
+    {
+        var catalog = await CreateSut().GetAsync(Cancel);
+
+        cache.Verify(x => x.Add("r-1|u-1", catalog), Times.Once);
+    }
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -174,33 +192,11 @@ public sealed class ToolCatalogProviderTests
     }
 
     [Fact]
-    public async Task GetAsync_ADifferentListing_IsTranslatedAgain_ForTheSameRevision()
-    {
-        var all = await CreateSut(McpToolListing.All).GetAsync(Cancel);
-        var frontDoor = await CreateSut(McpToolListing.FrontDoor).GetAsync(Cancel);
-
-        Assert.NotSame(all, frontDoor);
-        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
-    }
-
-    // #439: the confirmation round changes the step descriptions, so a host with it on never gets a
-    // catalog translated for a host without it (the cache is shared by every host in the process).
-    [Fact]
-    public async Task GetAsync_ADifferentConfirmationSetting_IsTranslatedAgain_ForTheSameRevision()
-    {
-        var hint = await CreateSut().GetAsync(Cancel);
-        var enforced = await CreateSut(requireConfirmation: true).GetAsync(Cancel);
-
-        Assert.NotSame(hint, enforced);
-        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
-    }
-
-    [Fact]
     public async Task GetAsync_ADifferentRevision_IsTranslatedAgain()
     {
         await CreateSut().GetAsync(Cancel);
 
-        var other = $"r-{Guid.NewGuid():N}";
+        var other = "r-2";
         registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AggregatedRegistryResponse { Revision = other });
 
@@ -227,7 +223,7 @@ public sealed class ToolCatalogProviderTests
         await CreateSut().GetAsync(Cancel);
 
         unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AggregatedRegistryResponse { Revision = $"u-{Guid.NewGuid():N}" });
+            .ReturnsAsync(new AggregatedRegistryResponse { Revision = "u-2" });
         await CreateSut().GetAsync(Cancel);
 
         builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));

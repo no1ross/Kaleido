@@ -119,6 +119,7 @@ delegated source makes during a caller's request (`Kaleido.IntegrationTests`' `H
 | `Registry/RegistryAggregationTests` (new) | aggregated registry missing downstream capabilities; strict read of a healthy aggregate |
 | `Registry/DistributedRegistrySnapshotTests` (new, #275) | router replicas each fanning out despite a shared cache; client copies not shared or keyed per consuming service; a cache outage failing registry reads or the replica not sharing again after it |
 | `Mcp.FunctionalTests/ConfirmationTests` (new, #439) | with `RequireConfirmation`, a `RequiresConfirmation` step running without an accepted MRTR form, on a decline/cancel/unchecked answer, from a client without forms or an older revision, or because the agent passed its own `confirm`; the form not naming the step and its inputs |
+| `Mcp.FunctionalTests/McpCatalogCacheTests` (new, #464) | two MCP hosts in one process sharing translated tools: a host listing another's tools when their registries match but their settings differ, or reusing another host's translation instead of its own |
 | `Mcp.FunctionalTests/McpKeyRingTests` (new, #452) | two MCP instances of one deployment: a form shown by one not answerable on the other despite a shared key ring; one answered there despite separate key rings or different application names, or without the Warning that names the cause; the startup Warning missing for a host without key storage, or given to one with it |
 | `Mcp.FunctionalTests/McpLookupTests` (new, #452) | a guided lookup over MRTR not filling the step's input from the row the user picked; the lookup state the client carries being readable, or a changed, self-made, oversized or another caller's state running the step (on `LookupFixture`, the clinic with its `AssignBedStep`) |
 | `Mcp.FunctionalTests/McpContractTests` (new) | query arguments reshaped wrongly; service errors mapped to internal errors; business messages lost or not marked for the user; rejection changing state; MRTR round trip; decline submitting answers; questions lost for older clients |
@@ -172,7 +173,8 @@ register them.
    over HTTP because the availability resolver already removes completed non-repeatable steps.
    Defense in depth, not a defect; disabling it changes no behavior.
 6. **`ToolCatalogProvider` cache is static**, shared by every host in a process (keyed by listing and
-   revision). Harmless today; a hidden coupling between hosts.
+   revision). **Resolved (#464):** each MCP registration owns a bounded LRU cache (`ToolCatalogCache`),
+   protected by `McpCatalogCacheTests`.
 7. **Still open (identified, not yet covered end to end):** ZeroTrust authorization mode on a real
    host; idempotency keys scoped per caller (two users, one key); `?refresh` on an aggregated
    registry; a transiently failing execute POST retried by the client's resilience pipeline with its
