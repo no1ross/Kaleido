@@ -71,6 +71,9 @@ public static class KaleidoMcpServiceCollectionExtensions
         services.AddSingleton<IToolNameBuilder, ToolNameBuilder>();
         services.AddSingleton<IToolSchemaBuilder, ToolSchemaBuilder>();
         services.AddSingleton<IToolCatalogBuilder, ToolCatalogBuilder>();
+
+        // The translated catalogs belong to this registration: hosts in one process never share them (#464).
+        services.AddSingleton<IToolCatalogCache, ToolCatalogCache>();
         services.AddSingleton<IInformationRequestElicitor, InformationRequestElicitor>();
         services.AddScoped<IMcpObservability, McpObservability>();
         services.AddScoped<IToolCatalogProvider, ToolCatalogProvider>();

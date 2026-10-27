@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Kaleido.Http.Mcp.Observability;
 using Microsoft.Extensions.Logging;
 
@@ -13,7 +12,9 @@ namespace Kaleido.Http.Mcp.Tools;
 /// Nothing is cached per caller. The translation is reused per registry revision: the revision
 /// hashes the caller-filtered registry, so the same revision always yields the same tools. Tool
 /// names come from the unfiltered registry (<see cref="IKaleidoUnfilteredRegistry"/>), so what a
-/// caller may see never changes a name (#435); its revision is part of the key too.
+/// caller may see never changes a name (#435); its revision is part of the key too. The translations
+/// are kept by this host's MCP registration (<see cref="IToolCatalogCache"/>, #464), whose settings are
+/// fixed, and a registry without a revision is translated every time.
 /// </remarks>
 internal interface IToolCatalogProvider
 {
@@ -24,18 +25,11 @@ internal sealed partial class ToolCatalogProvider(
     IKaleidoRegistryService registry,
     IKaleidoUnfilteredRegistry unfilteredRegistry,
     IToolCatalogBuilder catalogBuilder,
+    IToolCatalogCache catalogs,
     IMcpObservability observability,
-    KaleidoMcpOptions options,
     ILogger<ToolCatalogProvider> logger)
     : IToolCatalogProvider
 {
-    private const int MaxRevisions = 256;
-
-    // Translated catalogs by the settings that shape the tools and the registry revision (one per
-    // distinct caller-visible registry; the settings are part of the key - the listing and whether the
-    // confirmation round is on (#439) - so hosts with different settings never share a catalog).
-    private static readonly ConcurrentDictionary<string, ToolCatalog> Catalogs = new(StringComparer.Ordinal);
-
     public async Task<ToolCatalog> GetAsync(CancellationToken cancellationToken)
     {
         if (!registry.IsMapped)
@@ -49,9 +43,13 @@ internal sealed partial class ToolCatalogProvider(
         var response = await registry.GetForCallerAsync(refresh: false, cancellationToken: cancellationToken);
         var nameScope = await unfilteredRegistry.GetUnfilteredAsync(cancellationToken);
         var revision = response.Revision ?? string.Empty;
-        var key = $"{options.ToolListing}|{string.Join(',', options.ListedTools)}|{options.RequireConfirmation}|{revision}|{nameScope.Revision}";
 
-        if (Catalogs.TryGetValue(key, out var known))
+        // Both revisions hash what they describe; without one, the content is unknown and not kept.
+        var key = response.Revision is not null && nameScope.Revision is not null
+            ? $"{response.Revision}|{nameScope.Revision}"
+            : null;
+
+        if (key is not null && catalogs.TryGet(key, out var known))
         {
             observability.RegistryRead(McpTelemetry.RegistryHit, revision);
 
@@ -60,12 +58,11 @@ internal sealed partial class ToolCatalogProvider(
 
         var catalog = catalogBuilder.Build(response, nameScope);
 
-        if (Catalogs.Count >= MaxRevisions)
+        if (key is not null)
         {
-            Catalogs.Clear();
+            catalogs.Add(key, catalog);
         }
 
-        Catalogs[key] = catalog;
         observability.RegistryRead(McpTelemetry.RegistryFetched, revision);
         Report(catalog);
 
