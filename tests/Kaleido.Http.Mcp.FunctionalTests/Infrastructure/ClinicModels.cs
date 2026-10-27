@@ -170,6 +170,31 @@ public sealed record CloseVisitStep : IProcessStep
     public string? Note { get; init; }
 }
 
+// A step whose input is a record the user picks: the patient comes from one result of the Patients
+// search (a guided lookup in the MCP adapter, #452).
+[ProcessStep(DisplayName = "Assign bed", Description = "Assigns a bed to a patient picked from the Patients search.")]
+public sealed record AssignBedStep : IProcessStep
+{
+    [Lookup(Service = "clinic", Source = nameof(PatientSource), Field = nameof(PatientQueryContext.Id), Display = [nameof(PatientQueryContext.Name), nameof(PatientQueryContext.Ward)])]
+    [Description("The id of the patient to assign a bed to.")]
+    public int PatientId { get; init; }
+}
+
+public sealed record AssignedBed
+{
+    [Description("The patient the bed was assigned to.")]
+    public int PatientId { get; init; }
+}
+
+public sealed class AssignBedHandler : IProcessStepHandler<AssignBedStep, AssignedBed>
+{
+    public Task<ProcessStepHandlerResult<AssignedBed>> ExecuteAsync(
+        AssignBedStep processStep,
+        ProcessStepContext context,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ProcessStepHandlerResult.Success(new AssignedBed { PatientId = processStep.PatientId }));
+}
+
 // A closing note of "?" is rejected as correctable; otherwise the visit closes with a business
 // message for the user.
 public sealed class CloseVisitHandler : IProcessStepHandler<CloseVisitStep>

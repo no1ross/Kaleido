@@ -27,6 +27,8 @@ public sealed class KaleidoToolInvokerTests
     };
     private readonly Mock<IKaleidoQueryableClient> clinicQueries = new();
     private readonly Mock<IInformationRequestElicitor> elicitor = new();
+    private readonly Mock<IMcpLookupStateProtector> lookupState = new();
+    private bool refuseLookupStates;
     private readonly Mock<IKaleidoProcessForwarding> processForwarding = new();
     private readonly List<Guid?> forwardedProcessIds = [];
     private readonly Mock<McpServer> server = new();
@@ -146,6 +148,30 @@ public sealed class KaleidoToolInvokerTests
         processForwarding.Setup(x => x.ForwardProcess(It.IsAny<Guid?>()))
             .Callback((Guid? id) => forwardedProcessIds.Add(id))
             .Returns(Mock.Of<IDisposable>());
+
+        // Protection is McpLookupStateProtector's to test (#452); here a state round-trips as plain JSON,
+        // so tests can read and change it, and refuseLookupStates makes the protector refuse it.
+        lookupState.Setup(x => x.Protect(It.IsAny<McpLookupState>()))
+            .Returns((McpLookupState state) => McpLookupStateProtector.Prefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options)));
+        lookupState.Setup(x => x.Unprotect(It.IsAny<string?>()))
+            .Returns((string? value) => refuseLookupStates ? null : PlainLookupState(value));
+    }
+
+    private static McpLookupState? PlainLookupState(string? value)
+    {
+        if (value?.StartsWith(McpLookupStateProtector.Prefix, StringComparison.Ordinal) != true)
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<McpLookupState>(Convert.FromBase64String(value[McpLookupStateProtector.Prefix.Length..]), KaleidoJsonOptions.Options);
+        }
+        catch (Exception exception) when (exception is FormatException or JsonException)
+        {
+            return null;
+        }
     }
 
     private KaleidoToolInvoker CreateSut(int maxElicitationRounds = 5, ILogger<KaleidoToolInvoker>? logger = null, bool requireConfirmation = false) =>
@@ -154,6 +180,7 @@ public sealed class KaleidoToolInvokerTests
             queryables.Object,
             processForwarding.Object,
             elicitor.Object,
+            lookupState.Object,
             new KaleidoMcpOptions
             {
                 Instructions = "test",
@@ -978,6 +1005,23 @@ public sealed class KaleidoToolInvokerTests
         Assert.StartsWith("kaleido-mcp-lookup:", outcome.InputRequired?.RequestState, StringComparison.Ordinal);
         Assert.Empty(posts);
         Assert.Equal([ProcessId], forwardedProcessIds);
+    }
+
+    // #452: a lookup state the protector does not accept (changed, expired, another caller's) runs
+    // nothing: no query, no step.
+    [Fact]
+    public async Task ALookupRetry_WithAStateTheProtectorRefuses_RunsNothing()
+    {
+        LookupForms();
+        var searchState = (await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId }), LookupCatalog, Cancel)).InputRequired?.RequestState
+            ?? throw new Xunit.Sdk.XunitException("No state.");
+        refuseLookupStates = true;
+
+        var outcome = Body(await CreateSut().InvokeAsync(PickPatient, Call(requestState: searchState, inputResponses: LookupAnswered()), LookupCatalog, Cancel));
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, outcome["code"]?.GetValue<string>());
+        Assert.Empty(queries);
+        Assert.Empty(posts);
     }
 
     [Fact]
@@ -2764,7 +2808,7 @@ public sealed class KaleidoToolInvokerTests
         var body = Body(await CreateSut().InvokeAsync(PickPatient, Call(requestState: state), LookupCatalog, Cancel));
 
         Assert.Equal(McpErrorCodes.InvalidArguments, body["code"]?.GetValue<string>());
-        Assert.Equal("The lookup state is not readable; call the tool again.", body["message"]?.GetValue<string>());
+        Assert.Equal("The lookup state is not valid (changed, expired, or issued to another caller); nothing was run. Call the tool again.", body["message"]?.GetValue<string>());
     }
 
     [Theory]

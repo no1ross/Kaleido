@@ -70,6 +70,7 @@ internal sealed partial class KaleidoToolInvoker(
     IKaleidoQueryableClientFactory queryables,
     IKaleidoProcessForwarding processForwarding,
     IInformationRequestElicitor elicitor,
+    IMcpLookupStateProtector lookupState,
     KaleidoMcpOptions options,
     ILogger<KaleidoToolInvoker> logger)
     : IKaleidoToolInvoker
@@ -388,7 +389,7 @@ internal sealed partial class KaleidoToolInvoker(
         call.RequestState switch
         {
             { } state when state.StartsWith(ConfirmStatePrefix, StringComparison.Ordinal) => await ContinueConfirmationAsync(state, call, catalog, cancellationToken),
-            { } state when state.StartsWith(LookupStatePrefix, StringComparison.Ordinal) => await ContinueLookupAsync(call, catalog, cancellationToken),
+            { } state when state.StartsWith(McpLookupStateProtector.Prefix, StringComparison.Ordinal) => await ContinueLookupAsync(call, catalog, cancellationToken),
             { } state when state.StartsWith(StatePrefix, StringComparison.Ordinal) => await ContinueAsync(call, catalog, cancellationToken),
             _ => null,
         };
