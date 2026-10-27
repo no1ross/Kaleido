@@ -13,6 +13,11 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Two error codes take their area prefix** (#447, [ADR 0032](docs/decisions/0032-public-api-at-1-0.md)):
+  `ProcessorErrorCodes.MissingStepResult` is now `pro_missing_step_result` (was `missing_step_result`)
+  and `HttpClientErrorCodes.MissingBaseUrl` is now `httpclient_missing_base_url` (was
+  `missing_base_url`). Code using the constants is unaffected; code comparing the strings changes. The
+  public API was reviewed type by type (kept current until 1.0); every other public type is kept.
 - **Information requests have an exchange identity** (#442,
   [ADR 0031](docs/decisions/0031-information-requests-have-an-exchange-identity.md)): Kaleido issues
   `InformationRequest.ExchangeId` every time a handler requires information (a value the handler
