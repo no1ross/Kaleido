@@ -1,4 +1,3 @@
-using Kaleido.Processor.Context;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Storage;
@@ -40,21 +39,27 @@ internal sealed partial class InMemoryKaleidoIdempotencyStore : IKaleidoIdempote
         }
     }
 
-    public Task CompleteAsync(IdempotentResult result, CancellationToken cancellationToken)
+    public Task<bool> CompleteAsync(IdempotentResult result, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(result);
 
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Compare and set: only the admission that holds the key, while it is in progress.
         lock (_lock)
         {
+            if (!HoldsTheKey(result.Key, result.AdmissionId))
+            {
+                return Task.FromResult(false);
+            }
+
             _results[result.Key] = result;
         }
 
-        return Task.CompletedTask;
+        return Task.FromResult(true);
     }
 
-    public Task ReleaseAsync(string key, CancellationToken cancellationToken)
+    public Task<bool> ReleaseAsync(string key, Guid admissionId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(key);
 
@@ -62,14 +67,15 @@ internal sealed partial class InMemoryKaleidoIdempotencyStore : IKaleidoIdempote
 
         lock (_lock)
         {
-            if (_results.TryGetValue(key, out var existing) && existing.State == IdempotentResultState.InProgress)
-            {
-                _results.Remove(key);
-            }
+            return Task.FromResult(HoldsTheKey(key, admissionId) && _results.Remove(key));
         }
-
-        return Task.CompletedTask;
     }
+
+    // Called under the lock.
+    private bool HoldsTheKey(string key, Guid admissionId) =>
+        _results.TryGetValue(key, out var existing)
+        && existing.AdmissionId == admissionId
+        && existing.State == IdempotentResultState.InProgress;
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoIdempotencyStore is active. The records of requests sent with an idempotency key are kept in memory only: lost on restart, so a retry after a restart runs its step again, and each instance knows only its own. Register a durable IKaleidoIdempotencyStore (e.g. UseSqliteKaleidoContextStore) before deploying to production.")]
     private static partial void LogInMemoryStoreActive(ILogger logger);

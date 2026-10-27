@@ -1,10 +1,10 @@
 using System.Text.Json;
 using Kaleido.Exceptions;
-using Kaleido.Processor.Context;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Processor.UnitTests;
 
@@ -13,9 +13,10 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
 {
     private readonly Mock<IKaleidoIdempotencyStore> store = new();
     private readonly Mock<IKaleidoCorrelationContextAccessor> correlation = new();
+    private readonly Mock<ILogger<KaleidoIdempotencyEndpointFilter>> logger = new();
     private readonly List<IdempotentResult> admitted = [];
     private readonly List<IdempotentResult> saved = [];
-    private readonly List<string> released = [];
+    private readonly List<(string Key, Guid AdmissionId)> released = [];
     private int calls;
 
     public KaleidoIdempotencyEndpointFilterTests()
@@ -26,10 +27,11 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
             .ReturnsAsync((IdempotentResult?)null);
         store.Setup(x => x.CompleteAsync(It.IsAny<IdempotentResult>(), CancellationToken.None))
             .Callback<IdempotentResult, CancellationToken>((result, _) => saved.Add(result))
-            .Returns(Task.CompletedTask);
-        store.Setup(x => x.ReleaseAsync(It.IsAny<string>(), CancellationToken.None))
-            .Callback<string, CancellationToken>((key, _) => released.Add(key))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
+        store.Setup(x => x.ReleaseAsync(It.IsAny<string>(), It.IsAny<Guid>(), CancellationToken.None))
+            .Callback<string, Guid, CancellationToken>((key, admissionId, _) => released.Add((key, admissionId)))
+            .ReturnsAsync(true);
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
     }
 
     // The store already holds the key with this record.
@@ -40,9 +42,10 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     private KaleidoIdempotencyEndpointFilter CreateSut() =>
         new(
             store.Object,
-            new KaleidoHttpOptions { IdempotencyRetention = TimeSpan.FromHours(2) },
+            new KaleidoHttpOptions { IdempotencyRetention = TimeSpan.FromHours(2), IdempotencyUnknownOutcomeRetention = TimeSpan.FromDays(3) },
             new KaleidoServiceOptions { ServiceName = "svc" },
-            correlation.Object);
+            correlation.Object,
+            logger.Object);
 
     private ValueTask<object?> Endpoint(EndpointFilterInvocationContext _)
     {
@@ -142,15 +145,18 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     }
 
     [Fact]
-    public async Task AnAnswerWithoutAValue_IsNotStored()
+    public async Task ASuccessfulAnswerWithoutAValue_IsStoredWithAnEmptyBody()
     {
         var result = await CreateSut().InvokeAsync(
             Context("k1"),
             _ => ValueTask.FromResult<object?>(Results.NoContent()));
 
         Assert.IsType<NoContent>(result);
-        Assert.Empty(saved);
-        Assert.Equal("svc:name:alice:k1", Assert.Single(released));
+        var stored = Assert.Single(saved);
+        Assert.Equal(IdempotentResultState.Completed, stored.State);
+        Assert.Equal(StatusCodes.Status204NoContent, stored.StatusCode);
+        Assert.Empty(stored.Response);
+        Assert.Empty(released);
     }
 
     [Fact]
@@ -176,13 +182,13 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     }
 
     [Fact]
-    public async Task AnInformationalAnswer_IsNotStored()
+    public async Task AnAnswerThatIsNeither2xxNor4xx_MarksTheOutcomeUnknown()
     {
         await CreateSut().InvokeAsync(
             Context("k1"),
             _ => ValueTask.FromResult<object?>(Results.Json(new { }, JsonSerializerOptions.Default, statusCode: StatusCodes.Status102Processing)));
 
-        Assert.Empty(saved);
+        Assert.Equal(IdempotentResultState.OutcomeUnknown, Assert.Single(saved).State);
     }
 
     [Fact]
@@ -230,7 +236,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
             _ => ValueTask.FromResult<object?>(Results.Json(new { error = "no" }, JsonSerializerOptions.Default, statusCode: StatusCodes.Status400BadRequest)));
 
         Assert.Empty(saved);
-        Assert.Equal("svc:name:alice:k1", Assert.Single(released));
+        Assert.Equal("svc:name:alice:k1", Assert.Single(released).Key);
     }
 
     // #285: a retry while the first attempt still runs does not run; it is told to come back.
@@ -278,14 +284,14 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     }
 
     [Fact]
-    public async Task AnEndpointThatThrows_ReleasesTheKey_AndTheExceptionPropagates()
+    public async Task AnEndpointThatThrowsARefusal_ReleasesTheKey_AndTheExceptionPropagates()
     {
         await Assert.ThrowsAsync<KaleidoValidationException>(() => CreateSut().InvokeAsync(
             Context("k1"),
             _ => throw new KaleidoValidationException("code", "bad")).AsTask());
 
         Assert.Empty(saved);
-        Assert.Equal("svc:name:alice:k1", Assert.Single(released));
+        Assert.Equal("svc:name:alice:k1", Assert.Single(released).Key);
     }
 
     // #285: the caller gave up (a client timeout aborts the request) after the step ran: the answer is
@@ -306,10 +312,157 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
         Assert.Single(saved);
     }
 
+    // #441: the admission is kept for the unknown-outcome retention (not the replay retention), so an
+    // attempt that may still run is never freed by the replay window; the answer for the replay window.
+    [Fact]
+    public async Task TheAdmissionAndTheAnswer_ExpireAfterTheirOwnRetentions()
+    {
+        var before = DateTimeOffset.UtcNow;
+
+        await CreateSut().InvokeAsync(Context("k1"), Endpoint);
+
+        var after = DateTimeOffset.UtcNow;
+        var admission = Assert.Single(admitted);
+        Assert.InRange(admission.LeaseUntilUtc, before.AddMinutes(5), after.AddMinutes(5));
+        Assert.InRange(admission.ExpiresUtc, before.AddDays(3), after.AddDays(3));
+        Assert.InRange(Assert.Single(saved).ExpiresUtc, before.AddHours(2), after.AddHours(2));
+    }
+
+    // #441: every finalization carries the admission's own id, so the store can refuse it once the
+    // admission no longer holds the key.
+    [Fact]
+    public async Task TheFinalization_CarriesTheAdmissionsId()
+    {
+        await CreateSut().InvokeAsync(Context("k1"), Endpoint);
+        await CreateSut().InvokeAsync(Context("k2"), _ => ValueTask.FromResult<object?>(Results.BadRequest()));
+
+        Assert.NotEqual(admitted[0].AdmissionId, admitted[1].AdmissionId);
+        Assert.Equal(admitted[0].AdmissionId, Assert.Single(saved).AdmissionId);
+        Assert.Equal(admitted[1].AdmissionId, Assert.Single(released).AdmissionId);
+    }
+
+    // #441: a 5xx answer, an unexpected error or a cancellation may come after the step ran: the key is
+    // kept, marked unknown, for the unknown-outcome retention - never released for a second run.
+    [Fact]
+    public async Task AServerErrorAnswer_MarksTheOutcomeUnknown()
+    {
+        var before = DateTimeOffset.UtcNow;
+
+        var result = await CreateSut().InvokeAsync(
+            Context("k1"),
+            _ => ValueTask.FromResult<object?>(Results.Json(new { error = "down" }, JsonSerializerOptions.Default, statusCode: StatusCodes.Status503ServiceUnavailable)));
+
+        var unknown = Assert.Single(saved);
+        Assert.Equal(IdempotentResultState.OutcomeUnknown, unknown.State);
+        Assert.Empty(unknown.Response);
+        Assert.InRange(unknown.ExpiresUtc, before.AddDays(3), DateTimeOffset.UtcNow.AddDays(3));
+        Assert.Empty(released);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("unexpected")]
+    [InlineData("canceled")]
+    [InlineData("configuration")]
+    public async Task AnEndpointThatThrowsAfterItMayHaveRun_MarksTheOutcomeUnknown_AndTheExceptionPropagates(string failure)
+    {
+        Exception thrown = failure switch
+        {
+            "unexpected" => new TimeoutException("db"),
+            "canceled" => new OperationCanceledException(),
+            _ => new KaleidoConfigurationException("code", "bad"),
+        };
+
+        var exception = await Assert.ThrowsAnyAsync<Exception>(() => CreateSut().InvokeAsync(Context("k1"), _ => throw thrown).AsTask());
+
+        Assert.Same(thrown, exception);
+        Assert.Equal(IdempotentResultState.OutcomeUnknown, Assert.Single(saved).State);
+        Assert.Empty(released);
+    }
+
+    [Theory]
+    [InlineData("authorization")]
+    [InlineData("conflict")]
+    [InlineData("argument")]
+    public async Task AnEndpointThatThrowsBeforeAnythingRan_ReleasesTheKey(string refusal)
+    {
+        Exception thrown = refusal switch
+        {
+            "authorization" => new KaleidoAuthorizationException("start", callerIsAuthenticated: true),
+            "conflict" => new KaleidoConcurrencyException(Guid.NewGuid()),
+            _ => new ArgumentException("bad"),
+        };
+
+        await Assert.ThrowsAnyAsync<Exception>(() => CreateSut().InvokeAsync(Context("k1"), _ => throw thrown).AsTask());
+
+        Assert.Empty(saved);
+        Assert.Single(released);
+    }
+
+    [Fact]
+    public async Task WithAKeyWhoseOutcomeIsUnknown_AnswersOutcomeUnknown_WithoutRunningTheEndpoint()
+    {
+        Holding(InProgress("svc:name:alice:k1", DateTimeOffset.UtcNow.AddMinutes(1)) with { State = IdempotentResultState.OutcomeUnknown });
+
+        var result = await CreateSut().InvokeAsync(Context("k1"), Endpoint);
+
+        Assert.Equal(0, calls);
+        var error = Assert.IsType<JsonHttpResult<KaleidoErrorResponse>>(result);
+        Assert.Equal(StatusCodes.Status409Conflict, error.StatusCode);
+        Assert.Equal(ProcessorErrorCodes.IdempotencyOutcomeUnknown, Assert.Single(error.Value!.Errors).Code);
+    }
+
+    // #441: the request's own answer never depends on its bookkeeping: a store failure is logged at Error.
+    [Fact]
+    public async Task WhenTheStoreFailsToFinalize_TheAnswerIsUnchanged_AndTheFailureIsLoggedAsError()
+    {
+        store.Setup(x => x.CompleteAsync(It.IsAny<IdempotentResult>(), CancellationToken.None)).ThrowsAsync(new TimeoutException("store down"));
+
+        var result = await CreateSut().InvokeAsync(Context("k1"), Endpoint);
+
+        Assert.Equal(1, calls);
+        Assert.Equal(StatusCodes.Status200OK, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+        Assert.Equal(LogLevel.Error, Assert.Single(Logs()).Level);
+    }
+
+    [Fact]
+    public async Task WhenTheStoreFailsToFinalizeAFailedRequest_TheRequestsOwnExceptionPropagates()
+    {
+        store.Setup(x => x.CompleteAsync(It.IsAny<IdempotentResult>(), CancellationToken.None)).ThrowsAsync(new TimeoutException("store down"));
+        var thrown = new InvalidCastException("handler");
+
+        var exception = await Assert.ThrowsAsync<InvalidCastException>(() => CreateSut().InvokeAsync(Context("k1"), _ => throw thrown).AsTask());
+
+        Assert.Same(thrown, exception);
+        Assert.Equal(LogLevel.Error, Assert.Single(Logs()).Level);
+    }
+
+    // #441: the admission lost its key (it expired and the key was admitted again): nothing is written
+    // over the newer record, and the request's answer is unchanged.
+    [Fact]
+    public async Task WhenTheStoreNoLongerAcceptsTheFinalization_TheAnswerIsUnchanged_AndAWarningIsLogged()
+    {
+        store.Setup(x => x.CompleteAsync(It.IsAny<IdempotentResult>(), CancellationToken.None)).ReturnsAsync(false);
+
+        var result = await CreateSut().InvokeAsync(Context("k1"), Endpoint);
+
+        Assert.Equal(1, calls);
+        Assert.NotNull(result);
+        var log = Assert.Single(Logs());
+        Assert.Equal(LogLevel.Warning, log.Level);
+        Assert.Contains("no longer holds the key", log.Message, StringComparison.Ordinal);
+    }
+
+    private IEnumerable<(LogLevel Level, string Message)> Logs() =>
+        logger.Invocations
+            .Where(x => x.Method.Name == nameof(ILogger.Log))
+            .Select(x => ((LogLevel)x.Arguments[0], x.Arguments[2].ToString() ?? string.Empty));
+
     private static IdempotentResult InProgress(string key, DateTimeOffset leaseUntilUtc) =>
         new()
         {
             Key = key,
+            AdmissionId = Guid.NewGuid(),
             RequestHash = Sha256("POST /svc/processes/steps/start\n\n" + JsonSerializer.Serialize(new { step = "start" }, KaleidoJsonOptions.Options)),
             State = IdempotentResultState.InProgress,
             LeaseUntilUtc = leaseUntilUtc,

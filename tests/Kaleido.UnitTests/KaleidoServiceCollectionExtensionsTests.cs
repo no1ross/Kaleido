@@ -594,11 +594,11 @@ public sealed class KaleidoServiceCollectionExtensionsTests
 
     private sealed class OwnIdempotencyStore : Kaleido.Storage.IKaleidoIdempotencyStore
     {
-        public Task<Kaleido.Processor.Context.IdempotentResult?> AdmitAsync(Kaleido.Processor.Context.IdempotentResult admission, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Kaleido.Storage.IdempotentResult?> AdmitAsync(Kaleido.Storage.IdempotentResult admission, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public Task CompleteAsync(Kaleido.Processor.Context.IdempotentResult result, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> CompleteAsync(Kaleido.Storage.IdempotentResult result, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public Task ReleaseAsync(string key, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> ReleaseAsync(string key, Guid admissionId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class OwnTransactions : Kaleido.Storage.IKaleidoTransactions

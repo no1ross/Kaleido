@@ -1,4 +1,5 @@
-using Kaleido.Processor.Context;
+using Kaleido.Storage;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
@@ -41,22 +42,15 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         new()
         {
             Key = key,
+            AdmissionId = Guid.NewGuid(),
             RequestHash = hash,
             State = IdempotentResultState.InProgress,
             LeaseUntilUtc = leaseUntilUtc ?? DateTimeOffset.UtcNow.AddMinutes(5),
             ExpiresUtc = expiresUtc ?? DateTimeOffset.UtcNow.AddHours(1),
         };
 
-    private static IdempotentResult Completed(string key, string response) =>
-        new()
-        {
-            Key = key,
-            RequestHash = "hash",
-            State = IdempotentResultState.Completed,
-            StatusCode = 200,
-            Response = response,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
-        };
+    private static IdempotentResult Completed(IdempotentResult admission, string response) =>
+        admission with { State = IdempotentResultState.Completed, StatusCode = 200, Response = response };
 
     [Fact]
     public async Task AdmitAsync_ANewKey_IsAdmitted_AndASecondAdmissionGetsTheRecordInProgress()
@@ -113,35 +107,110 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
     }
 
     [Fact]
-    public async Task CompleteAsync_ThenAdmitAsync_ReturnsTheCompletedAnswer()
+    public async Task CompleteAsync_ByTheAdmission_IsAccepted_AndAdmitAsyncThenReturnsTheAnswer()
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken);
+        var admission = Admission("svc:alice:k1");
+        await sut.AdmitAsync(admission, TestContext.Current.CancellationToken);
 
-        await sut.CompleteAsync(Completed("svc:alice:k1", """{"processId":"p"}"""), TestContext.Current.CancellationToken);
+        Assert.True(await sut.CompleteAsync(Completed(admission, """{"processId":"p"}"""), TestContext.Current.CancellationToken));
 
         var existing = await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken);
         Assert.NotNull(existing);
         Assert.Equal(IdempotentResultState.Completed, existing.State);
         Assert.Equal(200, existing.StatusCode);
         Assert.Equal("""{"processId":"p"}""", existing.Response);
+        Assert.Equal(admission.AdmissionId, existing.AdmissionId);
     }
 
     [Fact]
-    public async Task ReleaseAsync_FreesAKeyInProgress_ButKeepsACompletedOne()
+    public async Task CompleteAsync_WithAnUnknownOutcome_KeepsTheKeyRefusing()
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.AdmitAsync(Admission("svc:alice:failed"), TestContext.Current.CancellationToken);
-        await sut.AdmitAsync(Admission("svc:alice:done"), TestContext.Current.CancellationToken);
-        await sut.CompleteAsync(Completed("svc:alice:done", "{}"), TestContext.Current.CancellationToken);
+        var admission = Admission("svc:alice:k1");
+        await sut.AdmitAsync(admission, TestContext.Current.CancellationToken);
 
-        await sut.ReleaseAsync("svc:alice:failed", TestContext.Current.CancellationToken);
-        await sut.ReleaseAsync("svc:alice:done", TestContext.Current.CancellationToken);
+        Assert.True(await sut.CompleteAsync(admission with { State = IdempotentResultState.OutcomeUnknown }, TestContext.Current.CancellationToken));
+
+        Assert.Equal(IdempotentResultState.OutcomeUnknown, (await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken))?.State);
+    }
+
+    // A finalized record is final: neither a second completion nor a release changes it.
+    [Fact]
+    public async Task CompleteAsync_And_ReleaseAsync_DoNotTouchAFinalizedRecord()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var admission = Admission("svc:alice:done");
+        await sut.AdmitAsync(admission, TestContext.Current.CancellationToken);
+        await sut.CompleteAsync(Completed(admission, "{}"), TestContext.Current.CancellationToken);
+
+        Assert.False(await sut.CompleteAsync(Completed(admission, "{\"again\":true}"), TestContext.Current.CancellationToken));
+        Assert.False(await sut.ReleaseAsync(admission.Key, admission.AdmissionId, TestContext.Current.CancellationToken));
+
+        Assert.Equal("{}", (await sut.AdmitAsync(Admission("svc:alice:done"), TestContext.Current.CancellationToken))?.Response);
+    }
+
+    [Fact]
+    public async Task ReleaseAsync_ByTheAdmission_FreesTheKey()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var admission = Admission("svc:alice:failed");
+        await sut.AdmitAsync(admission, TestContext.Current.CancellationToken);
+
+        Assert.True(await sut.ReleaseAsync(admission.Key, admission.AdmissionId, TestContext.Current.CancellationToken));
 
         Assert.Null(await sut.AdmitAsync(Admission("svc:alice:failed"), TestContext.Current.CancellationToken));
-        Assert.Equal(IdempotentResultState.Completed, (await sut.AdmitAsync(Admission("svc:alice:done"), TestContext.Current.CancellationToken))?.State);
+    }
+
+    // #441: two service instances on one database file. Instance 1 admits A, whose record expires;
+    // instance 2 admits the same key (same request) as B; then A finishes late on instance 1. A's
+    // completion and release are refused, and B's record is untouched.
+    [Fact]
+    public async Task AnAdmissionThatOutlivedItsRecord_CannotCompleteOrReleaseTheNextAdmission_AcrossInstances()
+    {
+        var path = Path.Join(Path.GetTempPath(), $"kaleido-idempotency-{Guid.NewGuid():N}.sqlite");
+
+        try
+        {
+            using (var first = CreateSharedDbContext($"DataSource={path}"))
+            using (var second = CreateSharedDbContext($"DataSource={path}"))
+            {
+                var a = Admission("svc:alice:k", expiresUtc: DateTimeOffset.UtcNow.AddMinutes(-1));
+                var b = Admission("svc:alice:k");
+                await CreateSut(first).AdmitAsync(a, TestContext.Current.CancellationToken);
+                Assert.Null(await CreateSut(second).AdmitAsync(b, TestContext.Current.CancellationToken));
+
+                Assert.False(await CreateSut(first).CompleteAsync(Completed(a, "{\"from\":\"a\"}"), TestContext.Current.CancellationToken));
+                Assert.False(await CreateSut(first).ReleaseAsync(a.Key, a.AdmissionId, TestContext.Current.CancellationToken));
+
+                var existing = await CreateSut(second).AdmitAsync(Admission("svc:alice:k"), TestContext.Current.CancellationToken);
+                Assert.NotNull(existing);
+                Assert.Equal(b.AdmissionId, existing.AdmissionId);
+                Assert.Equal(IdempotentResultState.InProgress, existing.State);
+                Assert.True(await CreateSut(second).CompleteAsync(Completed(b, "{\"from\":\"b\"}"), TestContext.Current.CancellationToken));
+            }
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task CompleteAsync_And_ReleaseAsync_ForAKeyWithoutARecord_AreRefused()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var admission = Admission("svc:alice:none");
+
+        Assert.False(await sut.CompleteAsync(Completed(admission, "{}"), TestContext.Current.CancellationToken));
+        Assert.False(await sut.ReleaseAsync(admission.Key, admission.AdmissionId, TestContext.Current.CancellationToken));
+        Assert.Null(await sut.AdmitAsync(Admission("svc:alice:none"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -162,6 +231,6 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.AdmitAsync(null!, TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.CompleteAsync(null!, TestContext.Current.CancellationToken));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.ReleaseAsync(null!, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.ReleaseAsync(null!, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 }

@@ -15,6 +15,7 @@ internal sealed class IdempotentResultEntityConfiguration
         builder.ToTable("IdempotentResults");
         builder.HasKey(x => x.Key);
         builder.Property(x => x.Key).HasMaxLength(400);
+        builder.Property(x => x.AdmissionId).HasMaxLength(36).IsRequired();
         builder.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
         builder.Property(x => x.Response).IsRequired();
 

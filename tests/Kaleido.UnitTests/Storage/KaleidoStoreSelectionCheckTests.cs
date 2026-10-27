@@ -122,10 +122,10 @@ public sealed class KaleidoStoreSelectionCheckTests
 
     private sealed class FakeIdempotencyStore : IKaleidoIdempotencyStore
     {
-        public Task<Kaleido.Processor.Context.IdempotentResult?> AdmitAsync(Kaleido.Processor.Context.IdempotentResult result, CancellationToken cancellationToken) => Task.FromResult<Kaleido.Processor.Context.IdempotentResult?>(null);
+        public Task<IdempotentResult?> AdmitAsync(IdempotentResult result, CancellationToken cancellationToken) => Task.FromResult<IdempotentResult?>(null);
 
-        public Task CompleteAsync(Kaleido.Processor.Context.IdempotentResult result, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<bool> CompleteAsync(IdempotentResult result, CancellationToken cancellationToken) => Task.FromResult(true);
 
-        public Task ReleaseAsync(string key, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<bool> ReleaseAsync(string key, Guid admissionId, CancellationToken cancellationToken) => Task.FromResult(true);
     }
 }

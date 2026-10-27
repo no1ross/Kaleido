@@ -53,9 +53,10 @@ public static class ProcessorErrorCodes
     public const string IdempotencyInProgress = "pro_idempotency_in_progress";
 
     /// <summary>
-    /// The first request with this idempotency key never finished (e.g. the service stopped while it
-    /// ran), so it may or may not have run. It is not run again with this key: read the process state
-    /// and decide on the next step. HTTP 409.
+    /// The first request with this idempotency key did not finish with an answer: it never finished (e.g.
+    /// the service stopped while it ran) or failed after its step may have run (an unexpected error, a
+    /// cancellation). It may or may not have run, so it is not run again with this key until the record
+    /// expires: read the process state and decide on the next step. HTTP 409.
     /// </summary>
     public const string IdempotencyOutcomeUnknown = "pro_idempotency_outcome_unknown";
 

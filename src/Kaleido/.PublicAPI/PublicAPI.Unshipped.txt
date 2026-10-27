@@ -388,27 +388,6 @@ Kaleido.Processor.AvailableAfterAttribute<TStep>.StepType.get -> System.Type!
 Kaleido.Processor.AvailableUntilAttribute<TStep>
 Kaleido.Processor.AvailableUntilAttribute<TStep>.AvailableUntilAttribute() -> void
 Kaleido.Processor.AvailableUntilAttribute<TStep>.StepType.get -> System.Type!
-Kaleido.Processor.Context.IdempotentResult
-Kaleido.Processor.Context.IdempotentResult.<Clone>$() -> Kaleido.Processor.Context.IdempotentResult!
-Kaleido.Processor.Context.IdempotentResult.Equals(Kaleido.Processor.Context.IdempotentResult? other) -> bool
-Kaleido.Processor.Context.IdempotentResult.ExpiresUtc.get -> System.DateTimeOffset
-Kaleido.Processor.Context.IdempotentResult.ExpiresUtc.init -> void
-Kaleido.Processor.Context.IdempotentResult.IdempotentResult() -> void
-Kaleido.Processor.Context.IdempotentResult.Key.get -> string!
-Kaleido.Processor.Context.IdempotentResult.Key.init -> void
-Kaleido.Processor.Context.IdempotentResult.LeaseUntilUtc.get -> System.DateTimeOffset
-Kaleido.Processor.Context.IdempotentResult.LeaseUntilUtc.init -> void
-Kaleido.Processor.Context.IdempotentResult.RequestHash.get -> string!
-Kaleido.Processor.Context.IdempotentResult.RequestHash.init -> void
-Kaleido.Processor.Context.IdempotentResult.Response.get -> string!
-Kaleido.Processor.Context.IdempotentResult.Response.init -> void
-Kaleido.Processor.Context.IdempotentResult.State.get -> Kaleido.Processor.Context.IdempotentResultState
-Kaleido.Processor.Context.IdempotentResult.State.init -> void
-Kaleido.Processor.Context.IdempotentResult.StatusCode.get -> int
-Kaleido.Processor.Context.IdempotentResult.StatusCode.init -> void
-Kaleido.Processor.Context.IdempotentResultState
-Kaleido.Processor.Context.IdempotentResultState.Completed = 1 -> Kaleido.Processor.Context.IdempotentResultState
-Kaleido.Processor.Context.IdempotentResultState.InProgress = 0 -> Kaleido.Processor.Context.IdempotentResultState
 Kaleido.Processor.Context.ProcessorContext
 Kaleido.Processor.Context.ProcessorContext.<Clone>$() -> Kaleido.Processor.Context.ProcessorContext!
 Kaleido.Processor.Context.ProcessorContext.AvailableSteps.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
@@ -1051,13 +1030,37 @@ Kaleido.Registry.AuthorizationMetadata.Policy.get -> string?
 Kaleido.Registry.AuthorizationMetadata.Policy.init -> void
 Kaleido.Registry.AuthorizationMetadata.Roles.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Kaleido.Registry.AuthorizationMetadata.Roles.init -> void
+Kaleido.Storage.IdempotentResult
+Kaleido.Storage.IdempotentResult.<Clone>$() -> Kaleido.Storage.IdempotentResult!
+Kaleido.Storage.IdempotentResult.AdmissionId.get -> System.Guid
+Kaleido.Storage.IdempotentResult.AdmissionId.init -> void
+Kaleido.Storage.IdempotentResult.Equals(Kaleido.Storage.IdempotentResult? other) -> bool
+Kaleido.Storage.IdempotentResult.ExpiresUtc.get -> System.DateTimeOffset
+Kaleido.Storage.IdempotentResult.ExpiresUtc.init -> void
+Kaleido.Storage.IdempotentResult.IdempotentResult() -> void
+Kaleido.Storage.IdempotentResult.Key.get -> string!
+Kaleido.Storage.IdempotentResult.Key.init -> void
+Kaleido.Storage.IdempotentResult.LeaseUntilUtc.get -> System.DateTimeOffset
+Kaleido.Storage.IdempotentResult.LeaseUntilUtc.init -> void
+Kaleido.Storage.IdempotentResult.RequestHash.get -> string!
+Kaleido.Storage.IdempotentResult.RequestHash.init -> void
+Kaleido.Storage.IdempotentResult.Response.get -> string!
+Kaleido.Storage.IdempotentResult.Response.init -> void
+Kaleido.Storage.IdempotentResult.State.get -> Kaleido.Storage.IdempotentResultState
+Kaleido.Storage.IdempotentResult.State.init -> void
+Kaleido.Storage.IdempotentResult.StatusCode.get -> int
+Kaleido.Storage.IdempotentResult.StatusCode.init -> void
+Kaleido.Storage.IdempotentResultState
+Kaleido.Storage.IdempotentResultState.Completed = 1 -> Kaleido.Storage.IdempotentResultState
+Kaleido.Storage.IdempotentResultState.InProgress = 0 -> Kaleido.Storage.IdempotentResultState
+Kaleido.Storage.IdempotentResultState.OutcomeUnknown = 2 -> Kaleido.Storage.IdempotentResultState
 Kaleido.Storage.IKaleidoContextStore
 Kaleido.Storage.IKaleidoContextStore.LoadAsync(System.Guid processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.ProcessorContext?>!
 Kaleido.Storage.IKaleidoContextStore.SaveAsync(Kaleido.Processor.Context.ProcessorContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.ProcessorContext!>!
 Kaleido.Storage.IKaleidoIdempotencyStore
-Kaleido.Storage.IKaleidoIdempotencyStore.AdmitAsync(Kaleido.Processor.Context.IdempotentResult! admission, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.IdempotentResult?>!
-Kaleido.Storage.IKaleidoIdempotencyStore.CompleteAsync(Kaleido.Processor.Context.IdempotentResult! result, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
-Kaleido.Storage.IKaleidoIdempotencyStore.ReleaseAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Storage.IKaleidoIdempotencyStore.AdmitAsync(Kaleido.Storage.IdempotentResult! admission, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Storage.IdempotentResult?>!
+Kaleido.Storage.IKaleidoIdempotencyStore.CompleteAsync(Kaleido.Storage.IdempotentResult! result, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Kaleido.Storage.IKaleidoIdempotencyStore.ReleaseAsync(string! key, System.Guid admissionId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
 Kaleido.Storage.IKaleidoOutbox
 Kaleido.Storage.IKaleidoOutbox.AddAsync(System.Collections.Generic.IReadOnlyCollection<Kaleido.Storage.KaleidoOutboxEvent!>! events, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Kaleido.Storage.IKaleidoOutbox.CommittedAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
@@ -1114,9 +1117,6 @@ override Kaleido.Observability.KaleidoCaller.ToString() -> string!
 override Kaleido.Observability.KaleidoCorrelationContext.Equals(object? obj) -> bool
 override Kaleido.Observability.KaleidoCorrelationContext.GetHashCode() -> int
 override Kaleido.Observability.KaleidoCorrelationContext.ToString() -> string!
-override Kaleido.Processor.Context.IdempotentResult.Equals(object? obj) -> bool
-override Kaleido.Processor.Context.IdempotentResult.GetHashCode() -> int
-override Kaleido.Processor.Context.IdempotentResult.ToString() -> string!
 override Kaleido.Processor.Context.ProcessorContext.Equals(object? obj) -> bool
 override Kaleido.Processor.Context.ProcessorContext.GetHashCode() -> int
 override Kaleido.Processor.Context.ProcessorContext.ToString() -> string!
@@ -1221,6 +1221,9 @@ override Kaleido.Queryable.Query.QuerySort.ToString() -> string!
 override Kaleido.Registry.AuthorizationMetadata.Equals(object? obj) -> bool
 override Kaleido.Registry.AuthorizationMetadata.GetHashCode() -> int
 override Kaleido.Registry.AuthorizationMetadata.ToString() -> string!
+override Kaleido.Storage.IdempotentResult.Equals(object? obj) -> bool
+override Kaleido.Storage.IdempotentResult.GetHashCode() -> int
+override Kaleido.Storage.IdempotentResult.ToString() -> string!
 override Kaleido.Storage.KaleidoOutboxEvent.Equals(object? obj) -> bool
 override Kaleido.Storage.KaleidoOutboxEvent.GetHashCode() -> int
 override Kaleido.Storage.KaleidoOutboxEvent.ToString() -> string!
@@ -1256,8 +1259,6 @@ static Kaleido.Observability.KaleidoCaller.operator !=(Kaleido.Observability.Kal
 static Kaleido.Observability.KaleidoCaller.operator ==(Kaleido.Observability.KaleidoCaller? left, Kaleido.Observability.KaleidoCaller? right) -> bool
 static Kaleido.Observability.KaleidoCorrelationContext.operator !=(Kaleido.Observability.KaleidoCorrelationContext? left, Kaleido.Observability.KaleidoCorrelationContext? right) -> bool
 static Kaleido.Observability.KaleidoCorrelationContext.operator ==(Kaleido.Observability.KaleidoCorrelationContext? left, Kaleido.Observability.KaleidoCorrelationContext? right) -> bool
-static Kaleido.Processor.Context.IdempotentResult.operator !=(Kaleido.Processor.Context.IdempotentResult? left, Kaleido.Processor.Context.IdempotentResult? right) -> bool
-static Kaleido.Processor.Context.IdempotentResult.operator ==(Kaleido.Processor.Context.IdempotentResult? left, Kaleido.Processor.Context.IdempotentResult? right) -> bool
 static Kaleido.Processor.Context.ProcessorContext.operator !=(Kaleido.Processor.Context.ProcessorContext? left, Kaleido.Processor.Context.ProcessorContext? right) -> bool
 static Kaleido.Processor.Context.ProcessorContext.operator ==(Kaleido.Processor.Context.ProcessorContext? left, Kaleido.Processor.Context.ProcessorContext? right) -> bool
 static Kaleido.Processor.Context.StepContext.operator !=(Kaleido.Processor.Context.StepContext? left, Kaleido.Processor.Context.StepContext? right) -> bool
@@ -1335,6 +1336,8 @@ static Kaleido.Queryable.Query.QuerySort.operator ==(Kaleido.Queryable.Query.Que
 static Kaleido.Registry.AuthorizationMetadata.operator !=(Kaleido.Registry.AuthorizationMetadata? left, Kaleido.Registry.AuthorizationMetadata? right) -> bool
 static Kaleido.Registry.AuthorizationMetadata.operator ==(Kaleido.Registry.AuthorizationMetadata? left, Kaleido.Registry.AuthorizationMetadata? right) -> bool
 static Kaleido.Registry.AuthorizationMetadata.Unspecified.get -> Kaleido.Registry.AuthorizationMetadata!
+static Kaleido.Storage.IdempotentResult.operator !=(Kaleido.Storage.IdempotentResult? left, Kaleido.Storage.IdempotentResult? right) -> bool
+static Kaleido.Storage.IdempotentResult.operator ==(Kaleido.Storage.IdempotentResult? left, Kaleido.Storage.IdempotentResult? right) -> bool
 static Kaleido.Storage.KaleidoOutboxEvent.operator !=(Kaleido.Storage.KaleidoOutboxEvent? left, Kaleido.Storage.KaleidoOutboxEvent? right) -> bool
 static Kaleido.Storage.KaleidoOutboxEvent.operator ==(Kaleido.Storage.KaleidoOutboxEvent? left, Kaleido.Storage.KaleidoOutboxEvent? right) -> bool
 virtual Kaleido.KaleidoResilienceSettings.<Clone>$() -> Kaleido.KaleidoResilienceSettings!

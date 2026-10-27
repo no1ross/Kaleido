@@ -13,6 +13,18 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Idempotency admissions are fenced; an unknown outcome is kept** (#441, ADR 0019 amendment): custom
+  `IKaleidoIdempotencyStore` implementations change. `IdempotentResult` and `IdempotentResultState`
+  move to `Kaleido.Storage`; `IdempotentResult` gains `AdmissionId` (set on admission);
+  `CompleteAsync` returns `Task<bool>` and updates only the record still in progress under that
+  admission id (never inserts); `ReleaseAsync(key, admissionId)` returns `Task<bool>` and deletes only
+  that admission's in-progress record; a new state `OutcomeUnknown`. On HTTP, a 4xx releases the key,
+  a 5xx or an exception marks the outcome unknown (a retry gets `pro_idempotency_outcome_unknown` at
+  once), and a store failure while finalizing is logged instead of changing the answer. An admission
+  in progress and an unknown outcome are kept for the new
+  `KaleidoHttpOptions.IdempotencyUnknownOutcomeRetention` (default 7 days), separately from the
+  replay `IdempotencyRetention`. The SQLite `IdempotentResults` table gains an `AdmissionId` column:
+  recreate development databases.
 - **Options are immutable; configuration overrides code** (#445,
   [ADR 0030](docs/decisions/0030-options-are-immutable-configuration-overrides-code.md)): every options
   type is a record with `init` properties, and the registrations take an optional options object

@@ -21,6 +21,8 @@ Kaleido.Http.KaleidoHttpOptions.IdempotencyLease.get -> System.TimeSpan
 Kaleido.Http.KaleidoHttpOptions.IdempotencyLease.init -> void
 Kaleido.Http.KaleidoHttpOptions.IdempotencyRetention.get -> System.TimeSpan
 Kaleido.Http.KaleidoHttpOptions.IdempotencyRetention.init -> void
+Kaleido.Http.KaleidoHttpOptions.IdempotencyUnknownOutcomeRetention.get -> System.TimeSpan
+Kaleido.Http.KaleidoHttpOptions.IdempotencyUnknownOutcomeRetention.init -> void
 Kaleido.Http.KaleidoHttpOptions.IncludeFrameworkMessages.get -> bool
 Kaleido.Http.KaleidoHttpOptions.IncludeFrameworkMessages.init -> void
 Kaleido.Http.KaleidoHttpOptions.KaleidoHttpOptions() -> void
