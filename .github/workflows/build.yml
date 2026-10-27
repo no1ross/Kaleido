@@ -87,8 +87,10 @@ jobs:
     # Analysis scope: C# in src, tools and the consumer guide's examples (tests are test code, generated
     # obj/ excluded). The samples live in their own repositories (#95); the guide's compiled examples
     # (docs/guide/examples) are the task-focused examples here.
-    # Coverage is measured on src only, like the coverage report below. The quality gate (zero new
-    # issues, 90% coverage on new code) is evaluated by the end step, which fails the build.
+    # Coverage is measured on src and the guide's examples (tools and tests excluded). The quality gate
+    # is the project's SonarCloud gate "Kaleido Default" (95% coverage on new code, no new rating
+    # regressions, duplication at most 2.5%, every hotspot reviewed); the end step waits for it and fails
+    # the build when it fails (#490).
     # The .NET analyzers' findings (Meziantou, Roslynator, CA, IDE) are imported into Sonar, including
     # suggestion-level ones: every finding is visible and fixed, and each fixed rule becomes a warning
     # in .editorconfig (which fails the build). A rule that is off is 'none' there, with the reason.
@@ -128,8 +130,10 @@ jobs:
         reportgenerator \
           "-reports:TestResults/*.cobertura.xml" \
           "-targetdir:coverage" \
-          "-reporttypes:lcov;HtmlSummary;SonarQube" \
+          "-reporttypes:lcov;HtmlSummary;SonarQube;MarkdownSummaryGithub" \
           "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*;-Kaleido.Analyzers*"
+        # The coverage table on the run's page (#490); the files themselves are uploaded below.
+        cat coverage/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
 
     - name: Sonar end (upload, quality gate)
       if: ${{ env.SONAR_TOKEN != '' }}
@@ -164,6 +168,7 @@ jobs:
           TestResults/*.cobertura.xml
           coverage/lcov.info
           coverage/index.html
+          coverage/SummaryGithub.md
         if-no-files-found: ignore
 
     # Pack shipped src/ projects and the consumer analyzer on PRs and master
