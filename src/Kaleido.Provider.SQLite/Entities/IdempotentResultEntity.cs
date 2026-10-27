@@ -1,9 +1,16 @@
-using Kaleido.Processor.Context;
+using Kaleido.Storage;
 namespace Kaleido.Provider.SQLite.Entities;
 
 internal sealed class IdempotentResultEntity
 {
     public string Key
+    {
+        get;
+        set;
+    } = string.Empty;
+
+    // The admission's id as text (Guid "D" format), the same form the store writes with raw SQL.
+    public string AdmissionId
     {
         get;
         set;

@@ -137,6 +137,46 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
         Assert.Equal(1L, await ScalarAsync("SELECT COUNT(*) FROM IdempotentResults"));
     }
 
+    // #441: a key whose attempt may have run (marked unknown, or still in progress past its lease) is
+    // refused until it expires - here dated past the replay window but inside the unknown window - and
+    // an operator resolves it by deleting the record, after which the key runs again.
+    [Theory]
+    [InlineData(2, 0)]
+    [InlineData(0, -1)]
+    public async Task AKeyWhoseOutcomeIsUnknown_IsRefused_UntilAnOperatorDeletesTheRecord(int state, int leaseMinutes)
+    {
+        using var host = await StartHostAsync();
+        var client = host.GetTestClient();
+        using var first = await PostAsync(client, "key-unknown");
+        await ExecuteAsync(
+            $"UPDATE IdempotentResults SET State = {state}, Response = '', StatusCode = 0, LeaseUntilUtc = {DateTimeOffset.UtcNow.AddMinutes(leaseMinutes).UtcTicks}, ExpiresUtc = {DateTimeOffset.UtcNow.AddDays(3).UtcTicks}");
+
+        using var refused = await PostAsync(client, "key-unknown");
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Contains("pro_idempotency_outcome_unknown", await refused.Content.ReadAsStringAsync(Cancel), StringComparison.Ordinal);
+        Assert.Equal(1L, await ScalarAsync("SELECT COUNT(*) FROM ProcessContexts"));
+
+        await ExecuteAsync("DELETE FROM IdempotentResults");
+        using var resolved = await PostAsync(client, "key-unknown");
+
+        Assert.Equal(HttpStatusCode.OK, resolved.StatusCode);
+        Assert.Equal(2L, await ScalarAsync("SELECT COUNT(*) FROM ProcessContexts"));
+    }
+
+    // #441: a 4xx is a refusal before anything ran: the key is released (no record) and may be retried.
+    [Fact]
+    public async Task ARefusedRequest_ReleasesItsKey()
+    {
+        using var host = await StartHostAsync();
+        var client = host.GetTestClient();
+
+        using var refused = await PostAsync(client, "key-refused", processId: Guid.NewGuid());
+
+        Assert.InRange((int)refused.StatusCode, 400, 499);
+        Assert.Equal(0L, await ScalarAsync("SELECT COUNT(*) FROM IdempotentResults"));
+    }
+
     // Like the PriorAuth services: the host creates the store's schema at startup (the SQLite store does
     // not do that itself).
     private async Task<IHost> StartHostAsync()

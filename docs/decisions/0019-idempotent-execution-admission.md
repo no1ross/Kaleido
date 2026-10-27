@@ -1,8 +1,8 @@
 # 0019. Idempotent execution: a key is admitted before its step runs
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by #441 (see [Amendment: admissions are fenced](#amendment-admissions-are-fenced-441))
 - **Date:** 2026-10-19
-- **Related:** #285, #286, #396, #284
+- **Related:** #285, #286, #396, #284, #441
 
 ## Context
 Execute calls sent with an `Idempotency-Key` stored the first successful answer, so a retry got
@@ -66,3 +66,28 @@ only after the runtime returns.
 - A step taking longer than the lease is treated as abandoned by retries; keep the lease longer
   than a step can take.
 - The PriorAuth sample UI sends no key yet (#396).
+
+## Amendment: admissions are fenced (#441)
+Two gaps remained in decision 1. An admission in progress expired with the replay retention (24 h),
+so an attempt that never finished could be freed and run again while it might still have run; and
+completion was an upsert and release a delete by key, so an attempt that outlived its record could
+overwrite or delete the record of a later admission of the same key. Any failure also released the
+key, though a 5xx or an exception may come after the step ran.
+
+1. **Every admission has an id** (`IdempotentResult.AdmissionId`, a fencing token). `CompleteAsync`
+   (now `Task<bool>`) updates the record only while it is in progress under that id, never inserts;
+   `ReleaseAsync(key, admissionId)` (now `Task<bool>`) deletes only that admission's in-progress
+   record. A refused finalization writes nothing and is logged at Warning.
+2. **The outcome decides the finalization:** 2xx completes; 4xx (refused before anything was
+   committed: validation, authorization, a concurrent change) releases; anything else - a 5xx, an
+   unexpected error, a cancellation - marks the record `OutcomeUnknown`, so a retry gets 409
+   `pro_idempotency_outcome_unknown` at once rather than after the lease. A store failure during
+   finalization is logged at Error and never changes the request's answer.
+3. **Two retentions:** a completed answer is kept for `IdempotencyRetention` (replay, 24 h); an
+   admission in progress and an unknown outcome for `IdempotencyUnknownOutcomeRetention` (default
+   7 days, at least the lease), so the replay window never frees an attempt that may have run. An
+   operator resolves an unknown outcome sooner by reading the process state and deleting the record.
+
+Breaking for custom stores (preview): `IdempotentResult` and `IdempotentResultState` move to
+`Kaleido.Storage`, the store's finalization methods change shape, and the SQLite `IdempotentResults`
+table gains an `AdmissionId` column (development databases are recreated).

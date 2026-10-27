@@ -50,22 +50,41 @@ public sealed record KaleidoHttpOptions
     /// How long a request sent with an <c>Idempotency-Key</c> counts as running. Meanwhile a retry with
     /// the same key does not run (409 <c>pro_idempotency_in_progress</c>, with <c>Retry-After</c>). If
     /// the request has not finished by then (e.g. the service stopped), a retry is answered 409
-    /// <c>pro_idempotency_outcome_unknown</c> and never run again with that key. Default 5 minutes;
-    /// keep it longer than a step can take.
+    /// <c>pro_idempotency_outcome_unknown</c> and the key is not run again (see
+    /// <see cref="IdempotencyUnknownOutcomeRetention"/>). Default 5 minutes; keep it longer than a step
+    /// can take.
     /// </summary>
     public TimeSpan IdempotencyLease { get; init; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// How long a key whose attempt may have run without an answer is kept, refusing retries with 409
+    /// <c>pro_idempotency_outcome_unknown</c>: an attempt that never finished (its lease passed), or one
+    /// that failed after its step may have run (an unexpected error, a cancellation). Separate from, and
+    /// at least as long as, the lease; independent of <see cref="IdempotencyRetention"/>, so an
+    /// attempt that may have run is never freed by the replay window. Default 7 days. To resolve such a
+    /// key sooner, read the process state and delete the record from the idempotency store, or continue
+    /// with a new key.
+    /// </summary>
+    public TimeSpan IdempotencyUnknownOutcomeRetention { get; init; } = TimeSpan.FromDays(7);
 
     // Run by AddHttp after configuration is laid over the options; nothing is adjusted, an invalid
     // value stops startup.
     internal static void Validate(KaleidoHttpOptions options)
     {
-        Require(options.IdempotencyRetention > TimeSpan.Zero, nameof(IdempotencyRetention), options.IdempotencyRetention);
-        Require(options.IdempotencyLease > TimeSpan.Zero, nameof(IdempotencyLease), options.IdempotencyLease);
+        RequirePositive(options.IdempotencyRetention, nameof(IdempotencyRetention));
+        RequirePositive(options.IdempotencyLease, nameof(IdempotencyLease));
+
+        if (options.IdempotencyUnknownOutcomeRetention < options.IdempotencyLease)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidHttpOptions,
+                $"{SectionName}:{nameof(IdempotencyUnknownOutcomeRetention)} is {options.IdempotencyUnknownOutcomeRetention}; it must be at least {SectionName}:{nameof(IdempotencyLease)} ({options.IdempotencyLease}).");
+        }
     }
 
-    private static void Require(bool condition, string name, TimeSpan value)
+    private static void RequirePositive(TimeSpan value, string name)
     {
-        if (!condition)
+        if (value <= TimeSpan.Zero)
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidHttpOptions,

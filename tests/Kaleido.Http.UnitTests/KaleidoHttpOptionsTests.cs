@@ -15,6 +15,7 @@ public sealed class KaleidoHttpOptionsTests
 
         Assert.Equal(TimeSpan.FromHours(24), Sut.IdempotencyRetention);
         Assert.Equal(TimeSpan.FromMinutes(5), Sut.IdempotencyLease);
+        Assert.Equal(TimeSpan.FromDays(7), Sut.IdempotencyUnknownOutcomeRetention);
         Assert.Equal("Kaleido:Http", KaleidoHttpOptions.SectionName);
     }
 
@@ -32,5 +33,27 @@ public sealed class KaleidoHttpOptionsTests
 
         Assert.Equal(ConfigurationErrorCodes.InvalidHttpOptions, exception.Code);
         Assert.StartsWith($"Kaleido:Http:{setting} ", exception.Message, StringComparison.Ordinal);
+    }
+
+    // #441: an attempt whose outcome is unknown must outlive its lease; the replay retention is independent.
+    [Fact]
+    public void Validate_AnUnknownOutcomeRetentionShorterThanTheLease_FailsWithItsCode()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => KaleidoHttpOptions.Validate(
+            Sut with { IdempotencyLease = TimeSpan.FromMinutes(10), IdempotencyUnknownOutcomeRetention = TimeSpan.FromMinutes(9) }));
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidHttpOptions, exception.Code);
+        Assert.StartsWith("Kaleido:Http:IdempotencyUnknownOutcomeRetention ", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_AnUnknownOutcomeRetentionEqualToTheLease_AndShorterThanTheReplayRetention_Passes()
+    {
+        KaleidoHttpOptions.Validate(Sut with
+        {
+            IdempotencyLease = TimeSpan.FromMinutes(10),
+            IdempotencyUnknownOutcomeRetention = TimeSpan.FromMinutes(10),
+            IdempotencyRetention = TimeSpan.FromHours(1),
+        });
     }
 }
