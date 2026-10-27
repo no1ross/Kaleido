@@ -104,10 +104,11 @@ try {
         Set-Content (Join-Path $probe "$decoy/Probe.Tests.dll") 'not the build output'
     }
 
-    # The old rule (the first Probe.Tests.dll found recursively) picks a decoy: the fixture reproduces it.
-    $firstMatch = Get-ChildItem (Join-Path $probe 'bin/Release') -Recurse -Filter 'Probe.Tests.dll' | Select-Object -First 1
+    # The old rule (the first Probe.Tests.dll found recursively) is ambiguous here: the search finds the
+    # build output and both decoys, in an order the file system decides (#486), so it may pick a decoy.
     $expectedPath = [IO.Path]::GetFullPath((Join-Path $probe 'bin/Release/net8.0/Probe.Tests.dll'))
-    Assert ($firstMatch.FullName -ne $expectedPath) "the first recursive match is a decoy ($($firstMatch.FullName))"
+    $recursiveMatches = @(Get-ChildItem (Join-Path $probe 'bin/Release') -Recurse -Filter 'Probe.Tests.dll' | ForEach-Object { $_.FullName })
+    Assert ($recursiveMatches.Count -eq 3 -and $recursiveMatches -contains $expectedPath) "the recursive search finds the build output and both decoys ($($recursiveMatches -join ', '))"
 
     $resolved = Resolve-TestAssembly (Join-Path $probe 'Probe.Tests.csproj') 'Release'
     Assert ($resolved -notmatch "`n") 'the TargetPath is one path'
