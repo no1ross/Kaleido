@@ -146,7 +146,7 @@ internal static class ProcessorServiceCollectionExtensions
             stepType
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .Where(x =>
-                    x.Name is not (nameof(IInformationStep.InformationRequestId) or nameof(IInformationStep.Items)))
+                    x.Name is not (nameof(IInformationStep.InformationRequestId) or nameof(IInformationStep.ExchangeId) or nameof(IInformationStep.Items)))
                 .Select(x => x.Name)
                 .ToArray();
 
@@ -155,7 +155,7 @@ internal static class ProcessorServiceCollectionExtensions
             throw new KaleidoConfigurationException(
                 ProcessorErrorCodes.InvalidRegistration,
                 $"Information step '{stepType.FullName}' declares {string.Join(", ", extra)}. "
-                + $"An {nameof(IInformationStep)} may only declare {nameof(IInformationStep.InformationRequestId)} and {nameof(IInformationStep.Items)}; "
+                + $"An {nameof(IInformationStep)} may only declare {nameof(IInformationStep.InformationRequestId)}, {nameof(IInformationStep.ExchangeId)} and {nameof(IInformationStep.Items)}; "
                 + "put known inputs on an ordinary step instead.");
         }
     }

@@ -15,9 +15,11 @@ public sealed class InformationRequestsExampleTests
         return (processId, await host.StepAsync("GiftWrapStep", new { }, processId));
     }
 
-    private static object Answers(params (string Item, string Value)[] answers) => new
+    // The answers echo the exchange id the questions came with (#442).
+    private static object Answers(JsonElement asked, params (string Item, string Value)[] answers) => new
     {
         informationRequestId = "gift-wrap",
+        exchangeId = asked.GetProperty("requiredStep").GetProperty("informationRequest").GetProperty("exchangeId").GetString(),
         items = answers.Select(x => new { itemId = x.Item, answers = new[] { new { value = x.Value } } }).ToArray(),
     };
 
@@ -28,7 +30,7 @@ public sealed class InformationRequestsExampleTests
         var (processId, asked) = await AskAsync(host);
 
         var required = asked.GetProperty("requiredStep");
-        var answered = await host.StepAsync("GiftWrapAnswersStep", Answers(("wrap", "true"), ("paper", "gold")), processId);
+        var answered = await host.StepAsync("GiftWrapAnswersStep", Answers(asked, ("wrap", "true"), ("paper", "gold")), processId);
 
         Assert.Equal("GiftWrapAnswersStep", required.GetProperty("name").GetString());
         Assert.Equal("gift-wrap", required.GetProperty("informationRequest").GetProperty("informationRequestId").GetString());
@@ -40,9 +42,9 @@ public sealed class InformationRequestsExampleTests
     public async Task WhenTheConditionIsFalse_TheQuestionNeedsNoAnswer()
     {
         await using var host = await GuideHost.StartAsync();
-        var (processId, _) = await AskAsync(host);
+        var (processId, asked) = await AskAsync(host);
 
-        var answered = await host.StepAsync("GiftWrapAnswersStep", Answers(("wrap", "false")), processId);
+        var answered = await host.StepAsync("GiftWrapAnswersStep", Answers(asked, ("wrap", "false")), processId);
 
         Assert.Equal("completed", answered.GetProperty("outcome").GetString());
         Assert.Equal(JsonValueKind.Null, answered.GetProperty("result").GetProperty("paper").ValueKind);
@@ -54,12 +56,12 @@ public sealed class InformationRequestsExampleTests
     public async Task AnAnswerToAQuestionThatIsNotEnabled_IsNotAccepted_AndTheRequestIsAskedAgain()
     {
         await using var host = await GuideHost.StartAsync();
-        var (processId, _) = await AskAsync(host);
+        var (processId, asked) = await AskAsync(host);
 
         var (status, body) = await host.SendAsync(
             HttpMethod.Post,
             "/orders/processes/steps/GiftWrapAnswersStep",
-            new { processStep = Answers(("wrap", "false"), ("paper", "red")) },
+            new { processStep = Answers(asked, ("wrap", "false"), ("paper", "red")) },
             processId);
 
         Assert.Equal(HttpStatusCode.OK, status);

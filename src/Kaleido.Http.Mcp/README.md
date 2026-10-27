@@ -199,8 +199,14 @@ the agent never sees them and only asks what it is handed:
   `answer_information_request` again with the new answers and the token. When nothing more applies,
   everything is submitted and the service validates it as always. An answer to a question that does
   not apply is not sent.
-- The token holds the earlier answers for that process and request only; a token for anything else is
-  ignored. It is not a security boundary: the service validates the complete submission.
+- The questions always come with an `answersToken` (#442): it ties the answers to the exchange the
+  questions were shown for, and holds the earlier answers for that process and request only; a token
+  for anything else is ignored. If the same questions were asked again since (a repeatable step asking
+  them anew), a token from the earlier time is refused and nothing is submitted. It is not a security
+  boundary: the service validates the complete submission, and refuses answers to an earlier exchange
+  itself (`pro_information_response_stale`).
+- Forms carry the exchange in the continuation state the same way: a form shown for an earlier time
+  the questions were asked is not submitted, and the current state is returned instead.
 
 ## Lookups
 

@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Operations;
 namespace Kaleido.Analyzers.Process;
 
 /// <summary>
-/// KAL2012 — an IInformationStep declares a property other than InformationRequestId and Items.
+/// KAL2012 — an IInformationStep declares a property other than InformationRequestId, ExchangeId and Items.
 /// KAL2013 — Success&lt;TNext&gt;() or Next&lt;TNext&gt;() names an information step, which needs a request to answer.
 /// Both fail at runtime (pro_invalid_registration at startup, pro_information_request_missing
 /// when the step completes), so they are reported at compile time.
@@ -30,7 +30,7 @@ public sealed class InformationStepAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor ShapeRule =
         new(
             DiagnosticIds.InformationStepShape,
-            "An information step declares only InformationRequestId and Items",
+            "An information step declares only InformationRequestId, ExchangeId and Items",
             "Information step '{0}' declares '{1}'. Its payload is the answers to an information request; put known inputs on an ordinary step instead.",
             "Kaleido.Usage",
             DiagnosticSeverity.Error,
@@ -71,7 +71,7 @@ public sealed class InformationStepAnalyzer : DiagnosticAnalyzer
 
         foreach (var property in DeclaredProperties(type))
         {
-            if (property.Name is "InformationRequestId" or "Items")
+            if (property.Name is "InformationRequestId" or "ExchangeId" or "Items")
             {
                 continue;
             }

@@ -41,7 +41,7 @@ internal static class DiagnosticIds
     /// <summary>[Filterable]/[Searchable]/[Sortable] on a property of a type that is not an IQueryContext.</summary>
     public const string QueryRuleAttributeOutsideQueryContext = "KAL2011";
 
-    /// <summary>An IInformationStep declares properties other than InformationRequestId and Items.</summary>
+    /// <summary>An IInformationStep declares properties other than InformationRequestId, ExchangeId and Items.</summary>
     public const string InformationStepShape = "KAL2012";
 
     /// <summary>Success&lt;TNext&gt;() names an information step; use RequireInformation&lt;TNext&gt;(request).</summary>

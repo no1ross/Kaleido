@@ -1,3 +1,4 @@
+using System.Globalization;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Registry;
 
@@ -105,10 +106,12 @@ internal sealed class StepExecutionEvaluator(
                     $"The information request from '{currentCandidate.StepName}' for '{requiredStep}' is not well-formed: {string.Join(' ', problems.Select(x => x.Message))}"));
         }
 
+        // Every time questions are put is a new exchange, whatever the handler set (#442): answers to
+        // an earlier exchange of the same questionnaire can then be told apart.
         return IsAvailable(currentCandidate, requiredStep, candidates, context)
             ? ExecutionDecision.AwaitingInformation(
                 requiredStep,
-                informationRequest)
+                informationRequest with { ExchangeId = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture) })
             : NotAValidNextStep(currentCandidate, requiredStep);
     }
 

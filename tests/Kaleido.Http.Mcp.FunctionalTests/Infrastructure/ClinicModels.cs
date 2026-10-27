@@ -148,6 +148,7 @@ public sealed class StartVisitHandler : IProcessStepHandler<StartVisitStep>
 public sealed record VisitQuestionsStep : IInformationStep
 {
     public string InformationRequestId { get; init; } = string.Empty;
+    public string ExchangeId { get; init; } = string.Empty;
 
     public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
 }

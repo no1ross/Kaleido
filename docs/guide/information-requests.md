@@ -25,7 +25,7 @@ sequenceDiagram
     rect rgba(70, 130, 180, 0.25)
         Note over C,H: The caller answers
         C->>C: ask the user (a form, a chat)
-        C->>S: POST GiftWrapAnswersStep { informationRequestId, items }
+        C->>S: POST GiftWrapAnswersStep { informationRequestId, exchangeId, items }
         S->>S: check the answers against the request it sent
         S->>H: GiftWrapAnswersHandler(answers)
         H-->>S: Success(result) / another request / Reject
@@ -79,12 +79,13 @@ public sealed class GiftWrapHandler : IProcessStepHandler<GiftWrapStep>
 }
 ```
 
-The answers come back as the information step's payload:
+The answers come back as the information step's payload, with the request's `informationRequestId` and the `exchangeId` Kaleido issued when it put the questions (#442). The exchange id tells this time the questions were asked from any other (the same questionnaire can be asked again), so a late answer, a stale form or a replayed answer to an earlier exchange is refused (`pro_information_response_stale`) before your handler runs:
 
 ```json
 {
   "processStep": {
     "informationRequestId": "gift-wrap",
+    "exchangeId": "8f0c2a6e5b1d4c3fa9e7d2b1c0a96e45",
     "items": [
       { "itemId": "wrap", "answers": [{ "value": "true" }] },
       { "itemId": "paper", "answers": [{ "value": "gold" }] }
@@ -102,6 +103,7 @@ The answers come back as the information step's payload:
 public sealed record GiftWrapAnswersStep : IInformationStep
 {
     public required string InformationRequestId { get; init; }
+    public required string ExchangeId { get; init; }
 
     public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
 }

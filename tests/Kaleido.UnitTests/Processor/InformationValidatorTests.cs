@@ -230,6 +230,25 @@ public sealed class InformationValidatorTests
         Assert.Equal(ProcessorErrorCodes.InformationResponseMismatch, problem.Code);
     }
 
+    // #442: answers to an earlier exchange of the same questionnaire - same id, same items, answers that
+    // would otherwise fit - are stale, and that is the only problem reported.
+    [Fact]
+    public void ValidateResponse_ForAnEarlierExchange_IsStale_BeforeAnyOtherCheck()
+    {
+        var pending = Request with { ExchangeId = "second" };
+
+        var problem = Assert.Single(CreateSut().ValidateResponse(pending, ValidAnswers() with { ExchangeId = "first", InformationRequestId = "site-of-care" }));
+
+        Assert.Equal(ProcessorErrorCodes.InformationResponseStale, problem.Code);
+        Assert.Contains("earlier exchange", problem.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ValidateResponse_ForThePendingExchange_IsChecked()
+    {
+        Assert.Empty(CreateSut().ValidateResponse(Request with { ExchangeId = "second" }, ValidAnswers() with { ExchangeId = "second" }));
+    }
+
     [Fact]
     public void ValidateResponse_MissingAnswer_IsUnanswered()
     {
@@ -603,6 +622,7 @@ public sealed class InformationValidatorTests
     private sealed record Answers : IInformationStep
     {
         public string InformationRequestId { get; init; } = string.Empty;
+        public string ExchangeId { get; init; } = string.Empty;
 
         public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
     }

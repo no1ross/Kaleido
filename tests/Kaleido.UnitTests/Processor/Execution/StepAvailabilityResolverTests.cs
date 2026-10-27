@@ -835,6 +835,7 @@ public sealed class StepAvailabilityResolverTests
     private sealed class TestInformationStep : IInformationStep
     {
         public required string InformationRequestId { get; init; }
+        public string ExchangeId { get; init; } = string.Empty;
 
         public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
     }

@@ -13,6 +13,15 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Information requests have an exchange identity** (#442,
+  [ADR 0031](docs/decisions/0031-information-requests-have-an-exchange-identity.md)): Kaleido issues
+  `InformationRequest.ExchangeId` every time a handler requires information (a value the handler
+  sets is replaced; the rounds of one request share it), and every `IInformationStep` declares
+  `ExchangeId` next to `InformationRequestId` and `Items` (KAL2012). Answers must echo the
+  `exchangeId` received with the questions; answers to an earlier exchange - even of the same
+  questionnaire with the same item ids - are rejected with the new `pro_information_response_stale`
+  before any handler runs. The MCP adapter captures the id when it shows questions and submits it;
+  the agent now gets an `answersToken` with every set of questions and passes it back.
 - **Idempotency admissions are fenced; an unknown outcome is kept** (#441, ADR 0019 amendment): custom
   `IKaleidoIdempotencyStore` implementations change. `IdempotentResult` and `IdempotentResultState`
   move to `Kaleido.Storage`; `IdempotentResult` gains `AdmissionId` (set on admission);

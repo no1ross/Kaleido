@@ -58,6 +58,7 @@ public sealed class GiftWrapHandler : IProcessStepHandler<GiftWrapStep>
 public sealed record GiftWrapAnswersStep : IInformationStep
 {
     public required string InformationRequestId { get; init; }
+    public required string ExchangeId { get; init; }
 
     public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
 }

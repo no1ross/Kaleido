@@ -104,6 +104,7 @@ const Kaleido.Processor.ProcessorErrorCodes.InformationRequestInvalid = "pro_inf
 const Kaleido.Processor.ProcessorErrorCodes.InformationRequestMissing = "pro_information_request_missing" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InformationResponseInvalidAnswer = "pro_information_response_invalid_answer" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InformationResponseMismatch = "pro_information_response_mismatch" -> string!
+const Kaleido.Processor.ProcessorErrorCodes.InformationResponseStale = "pro_information_response_stale" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InformationResponseUnanswered = "pro_information_response_unanswered" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidFormat = "pro_invalid_format" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidHandler = "pro_invalid_handler" -> string!
@@ -613,6 +614,8 @@ Kaleido.Processor.ExecutionDecisionType.HandOff = 4 -> Kaleido.Processor.Executi
 Kaleido.Processor.ExecutionDecisionType.ProcessViolation = 3 -> Kaleido.Processor.ExecutionDecisionType
 Kaleido.Processor.ExecutionDecisionType.Rejected = 8 -> Kaleido.Processor.ExecutionDecisionType
 Kaleido.Processor.IInformationStep
+Kaleido.Processor.IInformationStep.ExchangeId.get -> string!
+Kaleido.Processor.IInformationStep.ExchangeId.init -> void
 Kaleido.Processor.IInformationStep.InformationRequestId.get -> string!
 Kaleido.Processor.IInformationStep.InformationRequestId.init -> void
 Kaleido.Processor.IInformationStep.Items.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Processor.InformationResponseItem!>!
@@ -688,6 +691,8 @@ Kaleido.Processor.InformationOption.Value.init -> void
 Kaleido.Processor.InformationRequest
 Kaleido.Processor.InformationRequest.<Clone>$() -> Kaleido.Processor.InformationRequest!
 Kaleido.Processor.InformationRequest.Equals(Kaleido.Processor.InformationRequest? other) -> bool
+Kaleido.Processor.InformationRequest.ExchangeId.get -> string!
+Kaleido.Processor.InformationRequest.ExchangeId.init -> void
 Kaleido.Processor.InformationRequest.InformationRequest() -> void
 Kaleido.Processor.InformationRequest.InformationRequestId.get -> string!
 Kaleido.Processor.InformationRequest.InformationRequestId.init -> void

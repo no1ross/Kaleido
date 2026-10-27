@@ -1088,6 +1088,49 @@ public sealed class KaleidoToolInvokerTests
         Assert.Contains("different questions", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
     }
 
+    // #442: the same questionnaire asked again (same id, same item ids) is another exchange: a form shown
+    // for the earlier one is not submitted as answers to the new one.
+    [Fact]
+    public async Task TheMrtrRetry_ForTheSameQuestionnaireAskedAgain_SubmitsNothing()
+    {
+        var state = await MrtrStateAsync(QuestionsRequired with { InformationRequest = Questions with { ExchangeId = "first-exchange" } });
+        StateIs("clinic", StateResponse(QuestionsRequired with { InformationRequest = Questions with { ExchangeId = "second-exchange" } }));
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel));
+
+        Assert.Empty(posts);
+        Assert.Contains("different questions", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    // #442: the answers are submitted with the exchange id captured when the questions were shown.
+    [Fact]
+    public async Task AnswerInformationRequest_SubmitsTheExchangeIdItsQuestionsCameWith()
+    {
+        StateIs("clinic", StateResponse(ConditionalRequired with { InformationRequest = ConditionalQuestions with { ExchangeId = "shown" } }));
+        var shown = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+        var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
+
+        await CreateSut().InvokeAsync(Answer, AnswerCall("reason", "Chest pain", token), Catalog, Cancel);
+
+        Assert.Equal("shown", Assert.Single(posts).Body["exchangeId"]?.GetValue<string>());
+    }
+
+    // #442: a token from an earlier exchange of the same questionnaire is refused; nothing is submitted.
+    [Fact]
+    public async Task AnswerInformationRequest_WithATokenFromAnEarlierExchange_SubmitsNothing()
+    {
+        StateIs("clinic", StateResponse(ConditionalRequired with { InformationRequest = ConditionalQuestions with { ExchangeId = "first-exchange" } }));
+        var shown = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+        var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
+        StateIs("clinic", StateResponse(ConditionalRequired with { InformationRequest = ConditionalQuestions with { ExchangeId = "second-exchange" } }));
+
+        var outcome = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("reason", "Chest pain", token), Catalog, Cancel));
+
+        Assert.Empty(posts);
+        Assert.Equal(McpErrorCodes.InvalidArguments, outcome["code"]?.GetValue<string>());
+        Assert.Contains("asked again", outcome.ToJsonString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task AnUnreadableContinuationState_IsAnArgumentError()
     {
@@ -2148,8 +2191,20 @@ public sealed class KaleidoToolInvokerTests
 
         var items = body["next"]?["informationRequest"]?["items"]?.AsArray() ?? throw new Xunit.Sdk.XunitException("No questions.");
         Assert.Equal("urgent", Assert.Single(items)?["id"]?.GetValue<string>());
-        Assert.Null(body["next"]?[KaleidoToolInvoker.AnswersTokenArgument]);
         Assert.DoesNotContain("enableWhen", body.ToJsonString(), StringComparison.Ordinal);
+    }
+
+    // #442: the questions come with a token that ties the answers to this exchange, even before any
+    // round was answered; the agent is told to pass it back.
+    [Fact]
+    public async Task Questions_ForTheAgent_ComeWithATokenForTheirExchange()
+    {
+        StepReturns(StepResponse(required: ConditionalRequired));
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.StartsWith("kaleido-answers:", body["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Contains("answersToken unchanged", body["next"]?["instruction"]?.GetValue<string>(), StringComparison.Ordinal);
     }
 
     private KaleidoToolCall AnswerCall(string itemId, string value, string? answersToken = null) =>

@@ -233,6 +233,7 @@ public sealed class SqliteKaleidoContextStoreTests
                 RequiredInformationRequest = new InformationRequest
                 {
                     InformationRequestId = "out-of-network",
+                    ExchangeId = "5c1e0b9a7d3f4e2a8b6c4d2e0f1a3b5c",
                     Title = "Out-of-network attestation",
                     Items =
                     [
@@ -261,6 +262,9 @@ public sealed class SqliteKaleidoContextStoreTests
         Assert.NotNull(loaded?.RequiredInformationRequest);
         var request = loaded.RequiredInformationRequest;
         Assert.Equal("out-of-network", request.InformationRequestId);
+
+        // #442: the exchange id survives a reload (a restart), so a stale answer is still refused.
+        Assert.Equal("5c1e0b9a7d3f4e2a8b6c4d2e0f1a3b5c", request.ExchangeId);
         Assert.Equal("Out-of-network attestation", request.Title);
         Assert.Equal(InformationItemType.Choice, request.Items[0].Type);
         Assert.Equal("Continuity of care", Assert.Single(request.Items[0].Options).Display);

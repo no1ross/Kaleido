@@ -216,6 +216,7 @@ public sealed class StepCandidateNextStepCheckerTests
     private sealed class InfoStep : IInformationStep
     {
         public string InformationRequestId { get; init; } = string.Empty;
+        public string ExchangeId { get; init; } = string.Empty;
 
         public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
     }

@@ -114,6 +114,7 @@ public sealed class ProcessStepHandlerResultTests
     private sealed record AnswerStep : IInformationStep
     {
         public required string InformationRequestId { get; init; }
+        public string ExchangeId { get; init; } = string.Empty;
 
         public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
     }

@@ -141,6 +141,14 @@ public static class ProcessorErrorCodes
     /// </summary>
     public const string InformationResponseMismatch = "pro_information_response_mismatch";
 
+    /// <summary>
+    /// Answers carry the exchange id of an earlier time the questions were put, not of the pending
+    /// request (a delayed answer, a stale form, a replayed continuation - perhaps of the same
+    /// questionnaire with the same item ids). Rejected before any handler runs; answer the current
+    /// questions (#442).
+    /// </summary>
+    public const string InformationResponseStale = "pro_information_response_stale";
+
     /// <summary>A presented question has no answer.</summary>
     public const string InformationResponseUnanswered = "pro_information_response_unanswered";
 
