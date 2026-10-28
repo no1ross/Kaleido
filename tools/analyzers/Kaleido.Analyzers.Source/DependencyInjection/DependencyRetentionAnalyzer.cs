@@ -36,8 +36,7 @@ public sealed class DependencyRetentionAnalyzer : DiagnosticAnalyzer
     private static void Start(CompilationStartAnalysisContext context)
     {
         var registrations =
-            ServiceConventions.Harvest(
-                context.Compilation, context.CancellationToken);
+            ServiceConventions.ModelFor(context.Compilation);
 
         if (registrations.Implementations.Count == 0)
         {

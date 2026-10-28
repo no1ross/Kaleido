@@ -1,5 +1,8 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -8,10 +11,9 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers.Source.DependencyInjection;
 
 /// <summary>
-/// Shared model of the DI registrations visible in a compilation, harvested
-/// from *ServiceCollectionExtensions classes: implementation types,
-/// abstraction→implementation pairs, and service lifetimes. Used by the
-/// KAL0004–KAL0013 DI enforcement rules.
+/// Shared model of the DI registrations visible in a compilation, harvested from its composition
+/// roots: implementation types, abstraction-to-implementation pairs, and service lifetimes. Used by
+/// the KAL0004-KAL0013 DI enforcement rules.
 /// </summary>
 internal sealed class ServiceRegistrationModel
 {
@@ -19,11 +21,11 @@ internal sealed class ServiceRegistrationModel
     public HashSet<INamedTypeSymbol> Implementations { get; } =
         new(SymbolEqualityComparer.Default);
 
-    /// <summary>Service type (abstraction or self) → implementation type.</summary>
+    /// <summary>Service type (abstraction or self) to implementation type.</summary>
     public Dictionary<INamedTypeSymbol, INamedTypeSymbol> ServiceToImpl { get; } =
         new(SymbolEqualityComparer.Default);
 
-    /// <summary>Service type → registered lifetime.</summary>
+    /// <summary>Service type to registered lifetime.</summary>
     public Dictionary<INamedTypeSymbol, ServiceLifetime> Lifetimes { get; } =
         new(SymbolEqualityComparer.Default);
 
@@ -40,12 +42,47 @@ internal sealed class ServiceRegistrationModel
 
 internal static class ServiceConventions
 {
+    // The types a composition root extends, and the types whose methods register services (#465).
+    private static readonly ImmutableHashSet<string> RegistrationReceivers =
+        ImmutableHashSet.Create(
+            "Microsoft.Extensions.DependencyInjection.IServiceCollection",
+            "Microsoft.Extensions.DependencyInjection.IHttpClientBuilder",
+            "Kaleido.IKaleidoBuilder");
+
+    private static readonly ImmutableHashSet<string> CompositionRootReceivers =
+        RegistrationReceivers.Add("Microsoft.AspNetCore.Routing.IEndpointRouteBuilder");
+
+    private const string ServiceDescriptorType = "Microsoft.Extensions.DependencyInjection.ServiceDescriptor";
+
+    // Microsoft.Extensions.DependencyInjection methods that register with a lifetime other than the
+    // scoped default, by their exact names on the resolved MS DI symbol (not a substring of any name).
+    private static readonly ImmutableHashSet<string> SingletonMethods =
+        ImmutableHashSet.Create(
+            "AddSingleton", "TryAddSingleton", "AddKeyedSingleton", "TryAddKeyedSingleton",
+            "Singleton", "KeyedSingleton", "AddHostedService");
+
+    private static readonly ImmutableHashSet<string> TransientMethods =
+        ImmutableHashSet.Create(
+            "AddTransient", "TryAddTransient", "AddKeyedTransient", "TryAddKeyedTransient",
+            "Transient", "KeyedTransient");
+
+    // One harvest per compilation, shared by the seven DI analyzers (#465). Lazy: of two analyzers
+    // starting at once, one harvests and the other waits for it.
+    private static readonly ConditionalWeakTable<Compilation, Lazy<ServiceRegistrationModel>> Models = new();
+
+    /// <summary>The compilation's registration model, harvested once and shared.</summary>
+    public static ServiceRegistrationModel ModelFor(Compilation compilation) =>
+        Models.GetValue(
+            compilation,
+            c => new Lazy<ServiceRegistrationModel>(() => Harvest(c, System.Threading.CancellationToken.None)))
+        .Value;
+
     /// <summary>
-    /// Harvests DI registrations from *ServiceCollectionExtensions classes in
-    /// the compilation: generic args of Add*/TryAdd*/Use* calls, typeof() args,
-    /// and new-expressions inside registration lambdas.
+    /// Harvests DI registrations from the compilation's composition roots: generic args of
+    /// registration calls, typeof() args, and new-expressions inside registration lambdas and
+    /// factory members. Use <see cref="ModelFor"/>, which harvests once per compilation.
     /// </summary>
-    public static ServiceRegistrationModel Harvest(
+    internal static ServiceRegistrationModel Harvest(
         Compilation compilation,
         System.Threading.CancellationToken cancellationToken)
     {
@@ -54,32 +91,27 @@ internal static class ServiceConventions
         foreach (var tree in compilation.SyntaxTrees)
         {
             var root = tree.GetRoot(cancellationToken);
-            var model_ = compilation.GetSemanticModel(tree);
+            var semanticModel = compilation.GetSemanticModel(tree);
 
             foreach (var typeDecl in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
-                if (!IsCompositionRoot(typeDecl))
+                if (semanticModel.GetDeclaredSymbol(typeDecl, cancellationToken) is not { } type ||
+                    !IsCompositionRoot(type))
                 {
                     continue;
                 }
 
-                foreach (var invocation in typeDecl.DescendantNodes()
-                             .OfType<InvocationExpressionSyntax>())
+                foreach (var invocation in typeDecl.DescendantNodes().OfType<InvocationExpressionSyntax>())
                 {
-                    var name = InvocationName(invocation);
-
-                    if (name is null || !IsRegistrationMethod(name))
+                    if (RegistrationLifetime(invocation, semanticModel, cancellationToken) is not { } lifetime)
                     {
                         continue;
                     }
 
-                    var lifetime = LifetimeOf(name);
-
                     // typeof(T) args
-                    foreach (var typeOf in invocation.DescendantNodes()
-                                 .OfType<TypeOfExpressionSyntax>())
+                    foreach (var typeOf in invocation.DescendantNodes().OfType<TypeOfExpressionSyntax>())
                     {
-                        AddType(model_, typeOf.Type, model, lifetime, cancellationToken);
+                        AddType(semanticModel, typeOf.Type, model, lifetime, cancellationToken);
                     }
 
                     // generic type args
@@ -95,7 +127,7 @@ internal static class ServiceConventions
                     {
                         var resolved =
                             typeArgs
-                                .Select(a => model_.GetTypeInfo(a, cancellationToken).Type)
+                                .Select(a => semanticModel.GetTypeInfo(a, cancellationToken).Type)
                                 .OfType<INamedTypeSymbol>()
                                 .ToList();
 
@@ -105,10 +137,8 @@ internal static class ServiceConventions
                         }
 
                         // pair interface service args to their impl args
-                        var services =
-                            resolved.Where(t => t.TypeKind == TypeKind.Interface).ToList();
-                        var impls =
-                            resolved.Where(t => t.TypeKind != TypeKind.Interface).ToList();
+                        var services = resolved.Where(t => t.TypeKind == TypeKind.Interface).ToList();
+                        var impls = resolved.Where(t => t.TypeKind != TypeKind.Interface).ToList();
 
                         if (services.Count == 1 && impls.Count >= 1)
                         {
@@ -116,33 +146,30 @@ internal static class ServiceConventions
                         }
                     }
 
-                    // returned new T() inside registration lambdas → impl type T
+                    // returned new T() inside registration lambdas -> impl type T
                     // (sp => new T(...) or sp => { return new T(...); })
-                    foreach (var lambda in invocation.DescendantNodes()
-                                 .OfType<AnonymousFunctionExpressionSyntax>())
+                    foreach (var lambda in invocation.DescendantNodes().OfType<AnonymousFunctionExpressionSyntax>())
                     {
-                        HarvestReturnedNew(
-                            lambda.Body, model_, model, lifetime, cancellationToken);
+                        HarvestReturnedNew(lambda.Body, semanticModel, model, lifetime, cancellationToken);
                     }
                 }
 
-                // new T() returned by expression-bodied members or return
-                // statements — e.g. internal factory methods on the extensions
-                // class (CreateFoo() => new Foo())
+                // new T() returned by expression-bodied members or return statements - e.g. internal
+                // factory methods on the extensions class (CreateFoo() => new Foo())
                 foreach (var member in typeDecl.DescendantNodes())
                 {
                     switch (member)
                     {
                         case ArrowExpressionClauseSyntax arrow:
                             HarvestReturnedNew(
-                                arrow.Expression, model_, model,
+                                arrow.Expression, semanticModel, model,
                                 ServiceRegistrationModel.ServiceLifetime.Scoped,
                                 cancellationToken);
                             break;
                         case ReturnStatementSyntax returnStatement
                             when returnStatement.Expression is not null:
                             HarvestReturnedNew(
-                                returnStatement.Expression, model_, model,
+                                returnStatement.Expression, semanticModel, model,
                                 ServiceRegistrationModel.ServiceLifetime.Scoped,
                                 cancellationToken);
                             break;
@@ -155,21 +182,73 @@ internal static class ServiceConventions
     }
 
     /// <summary>
-    /// Composition-root types: DI registration extensions and endpoint
-    /// route builders. Service location and manual construction inside
-    /// these types is legitimate — they are the wiring seam.
+    /// A composition root: a static class with an extension method on a registration or routing
+    /// builder (<c>IServiceCollection</c>, <c>IKaleidoBuilder</c>, <c>IHttpClientBuilder</c>,
+    /// <c>IEndpointRouteBuilder</c>). Service location and manual construction inside it is
+    /// legitimate - it is the wiring seam. Judged by symbol, not by the class name (#465).
     /// </summary>
-    public static bool IsCompositionRoot(SyntaxNode node) =>
-        node is TypeDeclarationSyntax decl &&
-        IsCompositionRootName(decl.Identifier.ValueText);
+    public static bool IsCompositionRoot(INamedTypeSymbol type) =>
+        type.IsStatic &&
+        type.GetMembers()
+            .OfType<IMethodSymbol>()
+            .Any(m => m.IsExtensionMethod &&
+                      m.Parameters.Length > 0 &&
+                      m.Parameters[0].Type is INamedTypeSymbol receiver &&
+                      CompositionRootReceivers.Contains(FullName(receiver)));
 
-    public static bool IsInsideCompositionRoot(SyntaxNodeAnalysisContext context) =>
-        context.ContainingSymbol?.ContainingType?.Name is { } name &&
-        IsCompositionRootName(name);
+    public static bool IsInsideCompositionRoot(SyntaxNodeAnalysisContext context)
+    {
+        for (var type = context.ContainingSymbol?.ContainingType; type is not null; type = type.ContainingType)
+        {
+            if (IsCompositionRoot(type))
+            {
+                return true;
+            }
+        }
 
-    private static bool IsCompositionRootName(string name) =>
-        name.EndsWith("ServiceCollectionExtensions", System.StringComparison.Ordinal) ||
-        name.EndsWith("EndpointRouteBuilderExtensions", System.StringComparison.Ordinal);
+        return false;
+    }
+
+    // The lifetime a registration call registers with, or null when the call registers nothing: a
+    // method on IServiceCollection/IKaleidoBuilder/IHttpClientBuilder or a ServiceDescriptor factory,
+    // resolved by symbol. Scoped unless MS DI's method says otherwise.
+    private static ServiceRegistrationModel.ServiceLifetime? RegistrationLifetime(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        var info = semanticModel.GetSymbolInfo(invocation, cancellationToken);
+
+        if ((info.Symbol ?? info.CandidateSymbols.FirstOrDefault()) is not IMethodSymbol method)
+        {
+            return null;
+        }
+
+        var original = method.ReducedFrom ?? method;
+        var receiver = original.IsExtensionMethod && original.Parameters.Length > 0
+            ? original.Parameters[0].Type as INamedTypeSymbol
+            : original.ContainingType;
+
+        var registers =
+            (receiver is not null && RegistrationReceivers.Contains(FullName(receiver.OriginalDefinition))) ||
+            FullName(original.ContainingType) == ServiceDescriptorType;
+
+        if (!registers)
+        {
+            return null;
+        }
+
+        var fromMicrosoftDi = original.ContainingNamespace.ToDisplayString()
+            .StartsWith("Microsoft.Extensions.DependencyInjection", StringComparison.Ordinal);
+
+        return !fromMicrosoftDi ? ServiceRegistrationModel.ServiceLifetime.Scoped
+            : SingletonMethods.Contains(original.Name) ? ServiceRegistrationModel.ServiceLifetime.Singleton
+            : TransientMethods.Contains(original.Name) ? ServiceRegistrationModel.ServiceLifetime.Transient
+            : ServiceRegistrationModel.ServiceLifetime.Scoped;
+    }
+
+    private static string FullName(INamedTypeSymbol type) =>
+        $"{type.ContainingNamespace.ToDisplayString()}.{type.Name}";
 
     private static void AddType(
         SemanticModel model,
@@ -226,37 +305,10 @@ internal static class ServiceConventions
         if (returned is not null &&
             (returned.IsKind(SyntaxKind.ObjectCreationExpression) ||
              returned.IsKind(SyntaxKind.ImplicitObjectCreationExpression)) &&
-            model.GetTypeInfo(returned, cancellationToken).Type
-                is INamedTypeSymbol t &&
+            model.GetTypeInfo(returned, cancellationToken).Type is INamedTypeSymbol t &&
             t.TypeKind == TypeKind.Class)
         {
             Register(registrations, t, t, lifetime);
         }
     }
-
-    private static bool IsRegistrationMethod(string name) =>
-        name.StartsWith("Add", System.StringComparison.Ordinal) ||
-        name.StartsWith("TryAdd", System.StringComparison.Ordinal) ||
-        name.StartsWith("Use", System.StringComparison.Ordinal);
-
-    private static ServiceRegistrationModel.ServiceLifetime LifetimeOf(string name) =>
-        name.Contains("Singleton")
-            ? ServiceRegistrationModel.ServiceLifetime.Singleton
-            : name.Contains("Transient")
-                ? ServiceRegistrationModel.ServiceLifetime.Transient
-                : ServiceRegistrationModel.ServiceLifetime.Scoped;
-
-    private static string? InvocationName(InvocationExpressionSyntax invocation) =>
-        invocation.Expression switch
-        {
-            MemberAccessExpressionSyntax access => access.Name switch
-            {
-                GenericNameSyntax generic => generic.Identifier.ValueText,
-                IdentifierNameSyntax ident => ident.Identifier.ValueText,
-                _ => null
-            },
-            GenericNameSyntax generic => generic.Identifier.ValueText,
-            IdentifierNameSyntax ident => ident.Identifier.ValueText,
-            _ => null
-        };
 }

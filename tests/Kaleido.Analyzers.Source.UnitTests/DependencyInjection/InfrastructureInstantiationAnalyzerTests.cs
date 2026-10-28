@@ -31,6 +31,7 @@ public class Consumer
         await RunAsync(@"
 public static class AppServiceCollectionExtensions
 {
+    public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddApp(this Microsoft.Extensions.DependencyInjection.IServiceCollection services) => services;
     public static object Build() => new System.Net.Http.HttpClient();
 }");
     }

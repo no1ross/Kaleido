@@ -70,5 +70,16 @@ public sealed class ObservabilityCancellationAnalyzer : DiagnosticAnalyzer
 
     private static bool IsObservabilityCall(InvocationExpressionSyntax invocation, SemanticModel model, SyntaxNodeAnalysisContext context) =>
         model.GetSymbolInfo(invocation, context.CancellationToken).Symbol is IMethodSymbol method &&
-        (method.ContainingType.Name.Contains("Observation") || method.ContainingType.Name.Contains("Observability"));
+        IsObservabilityType(method.ContainingType);
+
+    // Kaleido's observation types (#465): declared in a Kaleido '*.Observability' namespace and named
+    // '*Observation'/'*Observability' (IProcessorStepObservation, McpObservability...). A type that only
+    // mentions the word elsewhere in its name, or lives outside Kaleido's observability namespaces
+    // (a domain 'WeatherObservation'), is not one.
+    private static bool IsObservabilityType(INamedTypeSymbol type) =>
+        (type.Name.EndsWith("Observation", System.StringComparison.Ordinal) ||
+         type.Name.EndsWith("Observability", System.StringComparison.Ordinal)) &&
+        type.ContainingNamespace.ToDisplayString() is { } ns &&
+        ns.StartsWith("Kaleido.", System.StringComparison.Ordinal) &&
+        ns.EndsWith(".Observability", System.StringComparison.Ordinal);
 }

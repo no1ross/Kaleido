@@ -17,7 +17,7 @@ public sealed class ConcreteDependencyAnalyzerTests
     private const string Registrations = @"
 public static class AppServiceCollectionExtensions
 {
-    public static void Add(object s)
+    public static void Add(this Microsoft.Extensions.DependencyInjection.IServiceCollection s)
     {
         s.Add<IFoo, Foo>();
         s.Add<Bar>();
@@ -28,8 +28,8 @@ public class Foo : IFoo { }
 public class Bar { }
 public static class ServiceCollectionExtensionsForObject
 {
-    public static void Add<TService, TImpl>(this object s) { }
-    public static void Add<TService>(this object s) { }
+    public static void Add<TService, TImpl>(this Microsoft.Extensions.DependencyInjection.IServiceCollection s) { }
+    public static void Add<TService>(this Microsoft.Extensions.DependencyInjection.IServiceCollection s) { }
 }
 ";
 

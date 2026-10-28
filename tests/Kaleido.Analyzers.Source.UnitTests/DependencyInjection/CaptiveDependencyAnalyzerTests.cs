@@ -15,6 +15,7 @@ public sealed class CaptiveDependencyAnalyzerTests
         new("KAL0013", DiagnosticSeverity.Error);
 
     private const string Registrations = @"
+using Microsoft.Extensions.DependencyInjection;
 public interface IScoped { }
 public interface ISingleton { }
 public class ScopedImpl : IScoped { }
@@ -34,17 +35,12 @@ public static class ServiceProviderServiceExtensions
         await RunAsync(Registrations + @"
 public static class AppServiceCollectionExtensions
 {
-    public static void Add(object s)
+    public static void Add(this Microsoft.Extensions.DependencyInjection.IServiceCollection s)
     {
         s.AddScoped<IScoped, ScopedImpl>();
         s.AddSingleton<ISingleton>(sp =>
             new SingletonImpl({|#0:sp.GetRequiredService<IScoped>()|}));
     }
-}
-public static class ServiceCollectionExtensionsForObject
-{
-    public static void AddScoped<TService, TImpl>(this object s) { }
-    public static void AddSingleton<TService>(this object s, System.Func<System.IServiceProvider, TService> f) { }
 }",
             Expected.WithLocation(0).WithArguments("IScoped"));
     }
@@ -55,17 +51,12 @@ public static class ServiceCollectionExtensionsForObject
         await RunAsync(Registrations + @"
 public static class AppServiceCollectionExtensions
 {
-    public static void Add(object s)
+    public static void Add(this Microsoft.Extensions.DependencyInjection.IServiceCollection s)
     {
         s.AddSingleton<IScoped, ScopedImpl>();
         s.AddSingleton<ISingleton>(sp =>
             new SingletonImpl(sp.GetRequiredService<IScoped>()));
     }
-}
-public static class ServiceCollectionExtensionsForObject
-{
-    public static void AddSingleton<TService, TImpl>(this object s) { }
-    public static void AddSingleton<TService>(this object s, System.Func<System.IServiceProvider, TService> f) { }
 }");
     }
 }

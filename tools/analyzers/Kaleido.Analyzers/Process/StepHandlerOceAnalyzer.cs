@@ -37,66 +37,53 @@ public sealed class StepHandlerOceAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
-        context.RegisterSyntaxNodeAction(Analyze, SyntaxKind.MethodDeclaration);
+
+        // Kaleido's handler interfaces, by metadata name (#465): an unrelated interface that happens to
+        // be called IProcessStepHandler is not a step handler.
+        context.RegisterCompilationStartAction(start =>
+        {
+            var handlers = new[]
+                {
+                    start.Compilation.GetTypeByMetadataName("Kaleido.Processor.Execution.IProcessStepHandler`1"),
+                    start.Compilation.GetTypeByMetadataName("Kaleido.Processor.Execution.IProcessStepHandler`2"),
+                }
+                .Where(x => x is not null)
+                .Cast<INamedTypeSymbol>()
+                .ToImmutableArray();
+
+            if (handlers.Length > 0)
+            {
+                start.RegisterSyntaxNodeAction(nodeContext => Analyze(nodeContext, handlers), SyntaxKind.MethodDeclaration);
+            }
+        });
     }
 
-    private static void Analyze(SyntaxNodeAnalysisContext context)
+    private static void Analyze(SyntaxNodeAnalysisContext context, ImmutableArray<INamedTypeSymbol> handlers)
     {
         var method = (MethodDeclarationSyntax)context.Node;
 
-        // Only look at ExecuteAsync methods
-        if (method.Identifier.Text != "ExecuteAsync")
+        if (method.Body is null ||
+            context.SemanticModel.GetDeclaredSymbol(method, context.CancellationToken) is not IMethodSymbol methodSymbol ||
+            !ImplementsHandlerExecute(methodSymbol, handlers))
         {
             return;
         }
 
-        // Check that the containing type implements IProcessStepHandler<T> or IProcessStepHandler<T, TResult>
-        if (context.SemanticModel.GetDeclaredSymbol(method, context.CancellationToken)
-                is not IMethodSymbol methodSymbol)
+        var swallowing = method.Body.DescendantNodes()
+            .OfType<CatchClauseSyntax>()
+            .Where(x => CancellationCatch.SeesCancellationAsFailure(x, context.SemanticModel, context.CancellationToken));
+
+        foreach (var catchClause in swallowing)
         {
-            return;
-        }
-
-        var containingType = methodSymbol.ContainingType;
-        if (!ImplementsProcessStepHandler(containingType))
-        {
-            return;
-        }
-
-        // Walk catch clauses in the method body
-        if (method.Body is null)
-        {
-            return;
-        }
-
-        var catchClauses = method.Body.DescendantNodes().OfType<CatchClauseSyntax>();
-
-        foreach (var catchClause in catchClauses)
-        {
-            if (!CancellationCatch.SeesCancellationAsFailure(catchClause, context.SemanticModel, context.CancellationToken))
-            {
-                continue;
-            }
-
-            context.ReportDiagnostic(
-                Diagnostic.Create(
-                    Rule,
-                    catchClause.GetLocation(),
-                    containingType.Name));
+            context.ReportDiagnostic(Diagnostic.Create(Rule, catchClause.GetLocation(), methodSymbol.ContainingType.Name));
         }
     }
 
-    private static bool ImplementsProcessStepHandler(INamedTypeSymbol type)
-    {
-        foreach (var iface in type.AllInterfaces)
-        {
-            if (iface.Name == "IProcessStepHandler" &&
-                (iface.TypeArguments.Length == 1 || iface.TypeArguments.Length == 2))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    // The method is the containing type's implementation of a Kaleido handler interface's ExecuteAsync
+    // (implicit or explicit), not just any method of that name.
+    private static bool ImplementsHandlerExecute(IMethodSymbol method, ImmutableArray<INamedTypeSymbol> handlers) =>
+        method.ContainingType.AllInterfaces
+            .Where(x => handlers.Contains(x.OriginalDefinition, SymbolEqualityComparer.Default))
+            .SelectMany(x => x.GetMembers("ExecuteAsync").OfType<IMethodSymbol>())
+            .Any(x => SymbolEqualityComparer.Default.Equals(method.ContainingType.FindImplementationForInterfaceMember(x), method));
 }

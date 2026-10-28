@@ -50,6 +50,16 @@ namespace Kaleido.Runtime
     {
     }
     public record CollaboratorContract(int Id);
+    // A service whose name reads like data: it is judged by the interface it implements (#465).
+    public class CollaboratorRequest : ICollaborator
+    {
+        public void Help() { }
+    }
+    // Methods, but no Kaleido interface: arrangement, not a collaborator.
+    public class Formatter
+    {
+        public string Format(string value) => value;
+    }
     public class NonTestable
     {
     }
@@ -130,6 +140,32 @@ public class WidgetTests : SutFixture<Kaleido.Runtime.Widget>
         var o = new Kaleido.Runtime.CollaboratorOptions();
         var c = new Kaleido.Runtime.CollaboratorContract(1);
     }
+}");
+    }
+
+    // #465: implementing a Kaleido interface makes a collaborator, whatever the name says.
+    [Fact]
+    public async Task NewServiceNamedLikeData_Reports()
+    {
+        await RunAsync(@"
+public class WidgetTests : SutFixture<Kaleido.Runtime.Widget>
+{
+    protected override Kaleido.Runtime.Widget CreateSut() => new();
+    [Xunit.Fact]
+    public void M_S_E() { var c = {|#0:new Kaleido.Runtime.CollaboratorRequest()|}; }
+}",
+            Expected.WithLocation(0).WithArguments("CollaboratorRequest"));
+    }
+
+    [Fact]
+    public async Task NewClassWithMethodsButNoKaleidoInterface_NoDiagnostic()
+    {
+        await RunAsync(@"
+public class WidgetTests : SutFixture<Kaleido.Runtime.Widget>
+{
+    protected override Kaleido.Runtime.Widget CreateSut() => new();
+    [Xunit.Fact]
+    public void M_S_E() { var f = new Kaleido.Runtime.Formatter(); }
 }");
     }
 
