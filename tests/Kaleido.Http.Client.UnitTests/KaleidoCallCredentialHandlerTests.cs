@@ -10,7 +10,7 @@ public sealed class KaleidoCallCredentialHandlerTests
 {
     private static readonly ClaimsPrincipal Carol = new(new ClaimsIdentity([new Claim(ClaimTypes.Name, "carol")], "test"));
 
-    private static (HttpMessageInvoker Invoker, List<HttpRequestMessage> Sent) CreateSut(IKaleidoCallCredentialProvider provider)
+    private static (HttpMessageInvoker Invoker, List<HttpRequestMessage> Sent) CreateSut(params IKaleidoCallCredentialProvider[] providers)
     {
         var sent = new List<HttpRequestMessage>();
         var inner = new Mock<HttpMessageHandler>();
@@ -22,7 +22,14 @@ public sealed class KaleidoCallCredentialHandlerTests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-        return (new HttpMessageInvoker(new KaleidoCallCredentialHandler(provider, "Member", "member") { InnerHandler = inner.Object }), sent);
+        return (new HttpMessageInvoker(new KaleidoCallCredentialHandler("Member", providers, Catalog()) { InnerHandler = inner.Object }), sent);
+    }
+
+    private static IKaleidoClientCatalog Catalog()
+    {
+        var catalog = new Mock<IKaleidoClientCatalog>();
+        catalog.Setup(x => x.Find("Member")).Returns(new KaleidoClientDefinition("Member", "member", RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5)));
+        return catalog.Object;
     }
 
     private static Mock<IKaleidoCallCredentialProvider> Answering(KaleidoCallCredential credential)
@@ -64,6 +71,20 @@ public sealed class KaleidoCallCredentialHandlerTests
                 r.ServiceName == "member" && r.ClientName == "Member" && r.Purpose == KaleidoCallPurpose.OnBehalfOfCaller &&
                 r.Caller == Carol && r.CallerAuthorization == "Bearer carol-inbound"),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // As for any single resolution, the provider registered last decides (#498).
+    [Fact]
+    public async Task WithSeveralProviders_TheLastRegisteredDecides()
+    {
+        var (invoker, sent) = CreateSut(
+            Answering(KaleidoCallCredential.Header("Bearer first")).Object,
+            Answering(KaleidoCallCredential.Header("Bearer last")).Object);
+        using var request = Request(KaleidoCallPurpose.OnBehalfOfCaller, Carol);
+
+        await invoker.SendAsync(request, Cancel);
+
+        Assert.Equal(["Bearer last"], Assert.Single(sent).Headers.GetValues("Authorization"));
     }
 
     [Fact]

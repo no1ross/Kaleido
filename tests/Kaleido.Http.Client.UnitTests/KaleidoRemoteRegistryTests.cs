@@ -12,33 +12,43 @@ public sealed class KaleidoRemoteRegistryTests
         ILogger<KaleidoRemoteRegistry>? logger = null,
         System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? data = null)
     {
-        var store = new Mock<IRegistrySnapshotStore>();
+        // The cache keeps what it is given, serves it while the check interval allows, and otherwise
+        // revalidates with the held revision (its own rules are tested in HttpClientRegistryCacheTests).
+        var cache = new Mock<IHttpClientRegistryCache>();
         data ??= new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
-        store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, CancellationToken _) =>
+        cache.Setup(c => c.GetOrRevalidateAsync(
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan?>(),
+                It.IsAny<Func<string?, CancellationToken, Task<AggregatedRegistryResponse?>>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(async (string key, TimeSpan? checkInterval, Func<string?, CancellationToken, Task<AggregatedRegistryResponse?>> revalidate, CancellationToken cancellationToken) =>
             {
-                data.TryGetValue(k, out var snapshot);
-                return new ValueTask<AggregatedRegistryResponse?>(snapshot);
+                data.TryGetValue(key, out var held);
+
+                if (held is not null && checkInterval != TimeSpan.Zero)
+                {
+                    return held;
+                }
+
+                var current = await revalidate(held?.Revision, cancellationToken);
+                return current is null ? held ?? throw new InvalidOperationException("unchanged without a snapshot") : data[key] = current;
             });
-        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, AggregatedRegistryResponse v, CancellationToken _) =>
+        cache.Setup(c => c.ResetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string key, CancellationToken _) =>
             {
-                data[k] = v;
-                return ValueTask.CompletedTask;
-            });
-        store.Setup(s => s.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, CancellationToken _) =>
-            {
-                data.TryRemove(k, out var _);
+                data.TryRemove(key, out var _);
                 return ValueTask.CompletedTask;
             });
 
         return new KaleidoRemoteRegistry(
             httpClientFactory,
-            store.Object,
+            cache.Object,
             new KaleidoServiceOptions { ServiceName = "consumer" },
             logger ?? NullLogger<KaleidoRemoteRegistry>.Instance);
     }
+
+    private static KaleidoClientDefinition Client(string name, string routePrefix, TimeSpan? registryTtl) =>
+        new(name, routePrefix, registryTtl, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
 
     private static readonly AggregatedRegistryResponse FakeRegistry = new()
     {
@@ -97,7 +107,7 @@ public sealed class KaleidoRemoteRegistryTests
         var (sut, _) = CreateSutWithHandler(_ => new HttpResponseMessage(statusCode), logger);
 
         await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
-            sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
+            sut.GetAsync(Client("remote", "remote-svc", null), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(LogLevel.Warning, entry.Level);
@@ -136,9 +146,7 @@ public sealed class KaleidoRemoteRegistryTests
         });
 
         var result = await sut.GetAsync(
-            "remote",
-            "remote-svc",
-            null,
+            Client("remote", "remote-svc", null),
             Mock.Of<ICorrelationHeaderStamper>(),
             CancellationToken.None);
 
@@ -158,11 +166,11 @@ public sealed class KaleidoRemoteRegistryTests
         });
 
         var stamper = Mock.Of<ICorrelationHeaderStamper>();
-        await sut.GetAsync("remote", "remote-svc", null, stamper, CancellationToken.None);
-        await sut.GetAsync("remote", "remote-svc", null, stamper, CancellationToken.None);
+        await sut.GetAsync(Client("remote", "remote-svc", null), stamper, CancellationToken.None);
+        await sut.GetAsync(Client("remote", "remote-svc", null), stamper, CancellationToken.None);
         // The copy is the view of the identity a client's requests carry, so another client name
         // pointing at the same service has its own entry.
-        await sut.GetAsync("alias", "remote-svc", null, stamper, CancellationToken.None);
+        await sut.GetAsync(Client("alias", "remote-svc", null), stamper, CancellationToken.None);
 
         Assert.Equal(2, callCount);
     }
@@ -186,7 +194,7 @@ public sealed class KaleidoRemoteRegistryTests
             },
             data: data);
 
-        var result = await sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
+        var result = await sut.GetAsync(Client("remote", "remote-svc", null), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
 
         Assert.Equal(1, callCount);
         Assert.Single(result.Processes);
@@ -212,7 +220,7 @@ public sealed class KaleidoRemoteRegistryTests
             new HttpResponseMessage(HttpStatusCode.NotFound));
 
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
-            sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
+            sut.GetAsync(Client("remote", "remote-svc", null), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
 
         Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
         Assert.Equal(HttpStatusCode.NotFound, ex.StatusCode);
@@ -230,7 +238,7 @@ public sealed class KaleidoRemoteRegistryTests
         });
 
         var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
-            sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
+            sut.GetAsync(Client("remote", "remote-svc", null), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
 
         Assert.Equal(HttpClientErrorCodes.EmptyResponse, ex.Code);
     }
@@ -246,12 +254,12 @@ public sealed class KaleidoRemoteRegistryTests
 
         if (statusCode == HttpStatusCode.OK)
         {
-            await sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
+            await sut.GetAsync(Client("remote", "remote-svc", null), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
         }
         else
         {
             await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
-                sut.GetAsync("remote", "remote-svc", null, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
+                sut.GetAsync(Client("remote", "remote-svc", null), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
         }
 
         Assert.True(content.Disposed);
@@ -289,10 +297,10 @@ public sealed class KaleidoRemoteRegistryTests
         });
 
         var stamper = Mock.Of<ICorrelationHeaderStamper>();
-        await sut.GetAsync("remote", "remote-svc", null, stamper, CancellationToken.None);
+        await sut.GetAsync(Client("remote", "remote-svc", null), stamper, CancellationToken.None);
 
         await sut.InvalidateAsync("remote", CancellationToken.None);
-        await sut.GetAsync("remote", "remote-svc", null, stamper, CancellationToken.None);
+        await sut.GetAsync(Client("remote", "remote-svc", null), stamper, CancellationToken.None);
 
         Assert.Equal(2, callCount);
     }
@@ -311,8 +319,8 @@ public sealed class KaleidoRemoteRegistryTests
         });
 
         // A zero check interval makes every read due, so the second read checks the revision.
-        var first = await sut.GetAsync("remote", "remote-svc", TimeSpan.Zero, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
-        var second = await sut.GetAsync("remote", "remote-svc", TimeSpan.Zero, Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
+        var first = await sut.GetAsync(Client("remote", "remote-svc", TimeSpan.Zero), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
+        var second = await sut.GetAsync(Client("remote", "remote-svc", TimeSpan.Zero), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
 
         Assert.Equal([null, "\"rev-1\""], requests);
         Assert.Equal("rev-1", second.Revision);
@@ -325,7 +333,7 @@ public sealed class KaleidoRemoteRegistryTests
         var (sut, _) = CreateSutWithHandler(_ => new HttpResponseMessage(HttpStatusCode.NotModified));
 
         var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
-            sut.GetAsync("remote", "remote-svc", TimeSpan.FromSeconds(30), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
+            sut.GetAsync(Client("remote", "remote-svc", TimeSpan.FromSeconds(30)), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
 
         Assert.Equal(HttpStatusCode.NotModified, exception.StatusCode);
     }

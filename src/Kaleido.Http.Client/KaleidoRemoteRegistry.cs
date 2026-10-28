@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -21,29 +20,34 @@ namespace Kaleido.Http.Client;
 /// unfiltered snapshot (#381), and never shared with another consuming service, whose copy is
 /// filtered for a different caller (#275).
 /// </remarks>
+internal interface IKaleidoRemoteRegistry
+{
+    /// <summary>The registry of <paramref name="client"/>'s remote service, from the cache while fresh.</summary>
+    Task<AggregatedRegistryResponse> GetAsync(
+        KaleidoClientDefinition client,
+        ICorrelationHeaderStamper stamper,
+        CancellationToken cancellationToken);
+
+    /// <summary>Drops the cached registry of the client, so the next read loads the current one.</summary>
+    Task InvalidateAsync(string clientName, CancellationToken cancellationToken);
+}
+
 internal sealed partial class KaleidoRemoteRegistry(
     IHttpClientFactory httpClientFactory,
-    IRegistrySnapshotStore snapshotStore,
+    IHttpClientRegistryCache cache,
     KaleidoServiceOptions serviceOptions,
     ILogger<KaleidoRemoteRegistry> logger)
+    : IKaleidoRemoteRegistry
 {
-    private readonly ConcurrentDictionary<string, HttpClientRegistryCache> _caches =
-        new(StringComparer.OrdinalIgnoreCase);
-
     public Task<AggregatedRegistryResponse> GetAsync(
-        string clientName,
-        string routePrefix,
-        TimeSpan? registryTtl,
+        KaleidoClientDefinition client,
         ICorrelationHeaderStamper stamper,
         CancellationToken cancellationToken) =>
-        _caches.GetOrAdd(
-                clientName,
-                static (name, state) => new HttpClientRegistryCache(state.Store, CacheKey(state.ServiceName, name)),
-                (Store: snapshotStore, serviceOptions.ServiceName))
-            .GetOrRevalidateAsync(
-                registryTtl,
-                (revision, ct) => FetchAsync(clientName, routePrefix, stamper, revision, ct),
-                cancellationToken);
+        cache.GetOrRevalidateAsync(
+            CacheKey(serviceOptions.ServiceName, client.Name),
+            client.RegistryTtl,
+            (revision, ct) => FetchAsync(client.Name, client.RoutePrefix, stamper, revision, ct),
+            cancellationToken);
 
     // The client's own key, scoped to this (consuming) service: in a shared store a caller-filtered
     // copy must never replace the remote service's unfiltered snapshot (kaleido:{ServiceName}), nor
@@ -52,13 +56,8 @@ internal sealed partial class KaleidoRemoteRegistry(
 
     public async Task InvalidateAsync(
         string clientName,
-        CancellationToken cancellationToken)
-    {
-        if (_caches.TryGetValue(clientName, out var cache))
-        {
-            await cache.ResetAsync(cancellationToken);
-        }
-    }
+        CancellationToken cancellationToken) =>
+        await cache.ResetAsync(CacheKey(serviceOptions.ServiceName, clientName), cancellationToken);
 
     // The remote's registry, or null when it answers that the known revision is still current (304).
     private async Task<AggregatedRegistryResponse?> FetchAsync(

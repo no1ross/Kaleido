@@ -7,7 +7,15 @@ public sealed class HttpClientRegistryCacheTests
 
     private static HttpClientRegistryCache CreateSut(
         IRegistrySnapshotStore? store = null) =>
-        new(store ?? CreateStore(), Key);
+        new(store ?? CreateStore());
+
+    // A plain fetch: the revision is ignored, the fetched registry always returned.
+    private static Task<AggregatedRegistryResponse> GetOrFetchAsync(
+        HttpClientRegistryCache sut,
+        TimeSpan? checkInterval,
+        Func<CancellationToken, Task<AggregatedRegistryResponse>> fetch,
+        CancellationToken cancellationToken) =>
+        sut.GetOrRevalidateAsync(Key, checkInterval, async (_, ct) => await fetch(ct), cancellationToken);
 
     private static IRegistrySnapshotStore CreateStore(
         System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? backing = null)
@@ -46,12 +54,13 @@ public sealed class HttpClientRegistryCacheTests
     };
 
     [Fact]
-    public async Task GetOrFetchAsync_WhenNothingCached_InvokesFetch()
+    public async Task GetOrRevalidateAsync_WhenNothingCached_InvokesFetch()
     {
         using var sut = CreateSut();
         var fetchCalled = false;
 
-        var result = await sut.GetOrFetchAsync(
+        var result = await GetOrFetchAsync(
+            sut,
             null,
             _ =>
             {
@@ -65,14 +74,15 @@ public sealed class HttpClientRegistryCacheTests
     }
 
     [Fact]
-    public async Task GetOrFetchAsync_WhenAlreadyCached_DoesNotInvokeFetchAgain()
+    public async Task GetOrRevalidateAsync_WhenAlreadyCached_DoesNotInvokeFetchAgain()
     {
         using var sut = CreateSut();
 
-        await sut.GetOrFetchAsync(null, _ => Task.FromResult(Fresh), CancellationToken.None);
+        await GetOrFetchAsync(sut, null, _ => Task.FromResult(Fresh), CancellationToken.None);
 
         var fetchCount = 0;
-        var result = await sut.GetOrFetchAsync(
+        var result = await GetOrFetchAsync(
+            sut,
             null,
             _ =>
             {
@@ -86,7 +96,7 @@ public sealed class HttpClientRegistryCacheTests
     }
 
     [Fact]
-    public async Task GetOrFetchAsync_WhenSnapshotOlderThanTtl_Refetches()
+    public async Task GetOrRevalidateAsync_WhenSnapshotOlderThanTtl_Refetches()
     {
         var store = CreateStore();
         await store.SetAsync(Key, Stale, TestContext.Current.CancellationToken);
@@ -94,7 +104,8 @@ public sealed class HttpClientRegistryCacheTests
         using var sut = CreateSut(store);
         var fetchCount = 0;
 
-        var result = await sut.GetOrFetchAsync(
+        var result = await GetOrFetchAsync(
+            sut,
             TimeSpan.FromMinutes(5),
             _ =>
             {
@@ -108,7 +119,7 @@ public sealed class HttpClientRegistryCacheTests
     }
 
     [Fact]
-    public async Task GetOrFetchAsync_WhenSnapshotWithinTtl_ServesCached()
+    public async Task GetOrRevalidateAsync_WhenSnapshotWithinTtl_ServesCached()
     {
         var store = CreateStore();
         await store.SetAsync(Key, Fresh, TestContext.Current.CancellationToken);
@@ -116,7 +127,8 @@ public sealed class HttpClientRegistryCacheTests
         using var sut = CreateSut(store);
         var fetchCount = 0;
 
-        var result = await sut.GetOrFetchAsync(
+        var result = await GetOrFetchAsync(
+            sut,
             TimeSpan.FromMinutes(5),
             _ =>
             {
@@ -130,16 +142,17 @@ public sealed class HttpClientRegistryCacheTests
     }
 
     [Fact]
-    public async Task GetOrFetchAsync_SharesSnapshotAcrossInstances()
+    public async Task GetOrRevalidateAsync_SharesSnapshotAcrossInstances()
     {
         var store = CreateStore();
 
         using var first = CreateSut(store);
-        await first.GetOrFetchAsync(null, _ => Task.FromResult(Fresh), CancellationToken.None);
+        await GetOrFetchAsync(first, null, _ => Task.FromResult(Fresh), CancellationToken.None);
 
         using var second = CreateSut(store);
         var fetchCount = 0;
-        var result = await second.GetOrFetchAsync(
+        var result = await GetOrFetchAsync(
+            second,
             null,
             _ =>
             {
@@ -152,17 +165,32 @@ public sealed class HttpClientRegistryCacheTests
         Assert.Same(Fresh, result);
     }
 
+    // One singleton serves every client (#498): each key has its own snapshot and its own last check.
+    [Fact]
+    public async Task GetOrRevalidateAsync_KeysAreIndependent()
+    {
+        using var sut = CreateSut();
+        var other = new AggregatedRegistryResponse { GeneratedAt = DateTimeOffset.UtcNow, Revision = "other" };
+
+        await GetOrFetchAsync(sut, null, _ => Task.FromResult(Fresh), CancellationToken.None);
+        var result = await sut.GetOrRevalidateAsync("kaleido:another", null, (_, _) => Task.FromResult<AggregatedRegistryResponse?>(other), CancellationToken.None);
+
+        Assert.Same(other, result);
+        Assert.Same(Fresh, await GetOrFetchAsync(sut, null, _ => Task.FromResult(Stale), CancellationToken.None));
+    }
+
     [Fact]
     public async Task ResetAsync_ClearsCache_SoNextFetchIsInvoked()
     {
         using var sut = CreateSut();
 
-        await sut.GetOrFetchAsync(null, _ => Task.FromResult(Fresh), CancellationToken.None);
+        await GetOrFetchAsync(sut, null, _ => Task.FromResult(Fresh), CancellationToken.None);
 
-        await sut.ResetAsync(CancellationToken.None);
+        await sut.ResetAsync(Key, CancellationToken.None);
 
         var fetchCalled = false;
-        var result = await sut.GetOrFetchAsync(
+        var result = await GetOrFetchAsync(
+            sut,
             null,
             _ =>
             {
@@ -190,7 +218,7 @@ public sealed class HttpClientRegistryCacheTests
         using var cancellation = new CancellationTokenSource();
         using var sut = CreateSut(store.Object);
 
-        var reset = sut.ResetAsync(cancellation.Token).AsTask();
+        var reset = sut.ResetAsync(Key, cancellation.Token).AsTask();
 
         Assert.False(reset.IsCompleted);
         removal.SetResult();
@@ -213,6 +241,7 @@ public sealed class HttpClientRegistryCacheTests
         string? sentRevision = null;
 
         await sut.GetOrRevalidateAsync(
+            Key,
             TimeSpan.FromSeconds(30),
             (revision, _) =>
             {
@@ -238,8 +267,8 @@ public sealed class HttpClientRegistryCacheTests
             return Task.FromResult<AggregatedRegistryResponse?>(null);
         }
 
-        var first = await sut.GetOrRevalidateAsync(TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
-        var second = await sut.GetOrRevalidateAsync(TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
+        var first = await sut.GetOrRevalidateAsync(Key, TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
+        var second = await sut.GetOrRevalidateAsync(Key, TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
 
         Assert.Same(StaleWithRevision, first);
         Assert.Same(StaleWithRevision, second);
@@ -254,6 +283,7 @@ public sealed class HttpClientRegistryCacheTests
         using var sut = CreateSut(store);
 
         var result = await sut.GetOrRevalidateAsync(
+            Key,
             TimeSpan.FromSeconds(30),
             (_, _) => Task.FromResult<AggregatedRegistryResponse?>(Fresh),
             CancellationToken.None);
@@ -272,6 +302,7 @@ public sealed class HttpClientRegistryCacheTests
         var checks = 0;
 
         var result = await sut.GetOrRevalidateAsync(
+            Key,
             TimeSpan.FromSeconds(30),
             (_, _) =>
             {
@@ -285,7 +316,7 @@ public sealed class HttpClientRegistryCacheTests
     }
 
     [Fact]
-    public async Task GetOrFetchAsync_ACallerWaitingForAnotherFetch_ServesItsResultWithoutFetchingAgain()
+    public async Task GetOrRevalidateAsync_ACallerWaitingForAnotherFetch_ServesItsResultWithoutFetchingAgain()
     {
         using var sut = CreateSut();
         var release = new TaskCompletionSource<AggregatedRegistryResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -297,8 +328,8 @@ public sealed class HttpClientRegistryCacheTests
             return release.Task;
         }
 
-        var first = sut.GetOrFetchAsync(null, Fetch, CancellationToken.None);
-        var second = sut.GetOrFetchAsync(null, Fetch, CancellationToken.None);
+        var first = GetOrFetchAsync(sut, null, Fetch, CancellationToken.None);
+        var second = GetOrFetchAsync(sut, null, Fetch, CancellationToken.None);
         release.SetResult(Fresh);
 
         Assert.Same(Fresh, await first);
@@ -313,6 +344,7 @@ public sealed class HttpClientRegistryCacheTests
 
         var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
             sut.GetOrRevalidateAsync(
+                Key,
                 TimeSpan.FromSeconds(30),
                 (_, _) => Task.FromResult<AggregatedRegistryResponse?>(null),
                 CancellationToken.None));
@@ -321,7 +353,7 @@ public sealed class HttpClientRegistryCacheTests
     }
 
     [Fact]
-    public async Task GetOrFetchAsync_PassesTheCallersTokenToTheStoreAndTheFetch()
+    public async Task GetOrRevalidateAsync_PassesTheCallersTokenToTheStoreAndTheFetch()
     {
         using var cts = new CancellationTokenSource();
         var store = new Mock<IRegistrySnapshotStore>();
@@ -329,7 +361,7 @@ public sealed class HttpClientRegistryCacheTests
         using var sut = CreateSut(store.Object);
         var fetchToken = CancellationToken.None;
 
-        await sut.GetOrFetchAsync(null, ct => { fetchToken = ct; return Task.FromResult(Fresh); }, cts.Token);
+        await GetOrFetchAsync(sut, null, ct => { fetchToken = ct; return Task.FromResult(Fresh); }, cts.Token);
 
         Assert.Equal(cts.Token, fetchToken);
         store.Verify(s => s.SetAsync(Key, Fresh, cts.Token), Times.Once);
@@ -338,28 +370,28 @@ public sealed class HttpClientRegistryCacheTests
     // A store failure is the caller's failure; a store that may be unavailable handles that itself
     // (a distributed store falls back, #275).
     [Fact]
-    public async Task GetOrFetchAsync_WhenTheStoreFails_TheFailurePropagates_AndNothingIsFetched()
+    public async Task GetOrRevalidateAsync_WhenTheStoreFails_TheFailurePropagates_AndNothingIsFetched()
     {
         var store = new Mock<IRegistrySnapshotStore>();
         store.Setup(s => s.GetAsync(Key, It.IsAny<CancellationToken>())).ThrowsAsync(new TimeoutException("store down"));
         using var sut = CreateSut(store.Object);
         var fetched = false;
 
-        await Assert.ThrowsAsync<TimeoutException>(() => sut.GetOrFetchAsync(null, _ => { fetched = true; return Task.FromResult(Fresh); }, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<TimeoutException>(() => GetOrFetchAsync(sut, null, _ => { fetched = true; return Task.FromResult(Fresh); }, TestContext.Current.CancellationToken));
 
         Assert.False(fetched);
     }
 
     [Fact]
-    public async Task GetOrFetchAsync_WhenTheFetchFails_NothingIsStored_AndTheNextCallFetchesAgain()
+    public async Task GetOrRevalidateAsync_WhenTheFetchFails_NothingIsStored_AndTheNextCallFetchesAgain()
     {
         var backing = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
         using var sut = CreateSut(CreateStore(backing));
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetOrFetchAsync(null, _ => throw new HttpRequestException("down"), TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<HttpRequestException>(() => GetOrFetchAsync(sut, null, _ => throw new HttpRequestException("down"), TestContext.Current.CancellationToken));
         Assert.Empty(backing);
 
-        var result = await sut.GetOrFetchAsync(null, _ => Task.FromResult(Fresh), TestContext.Current.CancellationToken);
+        var result = await GetOrFetchAsync(sut, null, _ => Task.FromResult(Fresh), TestContext.Current.CancellationToken);
         Assert.Same(Fresh, result);
     }
 }

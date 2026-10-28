@@ -29,7 +29,7 @@ See also:
 
 ### Shared
 - `KaleidoHttpClientException` — the one exception both clients throw: non-success responses (`StatusCode`, the service's `Errors`) and registry lookup failures, with an `httpclient_*` `Code`
-- `KaleidoClientServiceCollectionExtensions` — internal `AddProcessorClient(...)`/`AddQueryableClient(...)` builder extensions (consumers register via `AddHttpClients`)
+- `KaleidoClientServiceCollectionExtensions` — internal `AddKaleidoClient(...)` builder extension (consumers register via `AddHttpClients`): each configured client's Process and Queryable clients are keyed services under its name, built by the container (#498)
 
 ---
 
@@ -73,7 +73,7 @@ builder.Services.AddKaleido(builder.Configuration)
 }
 ```
 
-The granular `AddProcessorClient`/`AddQueryableClient` builder extensions are internal — `AddHttpClients` is the consumer-facing registration seam.
+The per-client `AddKaleidoClient` builder extension is internal — `AddHttpClients` is the consumer-facing registration seam. Resolve a client through its factory (`GetClient("Radiology")`) when the name is chosen at runtime, or inject it as a keyed service under its configured name when it is fixed: `[FromKeyedServices("Radiology")] IKaleidoProcessorClient`.
 
 **Route-prefix contract:** `RoutePrefix` must equal the downstream service's `Kaleido:ServiceName` — every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. The default (client key lowercased) works when the service sets `ServiceName` to the same lowercase name. A mismatch produces 404s at call time, not a startup error.
 
@@ -329,5 +329,7 @@ This project does not contain:
 - `../Kaleido.Http.Abstractions/Queryable/IKaleidoQueryableClient.cs` — queryable client interface
 - `Queryable/KaleidoQueryableClient.cs` — queryable client implementation
 - `KaleidoHttpClientsServiceCollectionExtensions.cs` — `AddHttpClients()` consumer registration
-- `KaleidoClientServiceCollectionExtensions.cs` — internal `AddProcessorClient(...)`/`AddQueryableClient(...)` registration
+- `KaleidoClientServiceCollectionExtensions.cs` — internal `AddKaleidoClient(...)` registration: one client's definition, named `HttpClient` and keyed services
+- `../Kaleido.Http.Abstractions/KaleidoClientCatalog.cs` — the configured clients by name
+- `KaleidoClientTransport.cs` — how every client call is sent and its answer read
 - `KaleidoClientException.cs` — `KaleidoHttpClientException` and `HttpClientErrorCodes`

@@ -1,76 +1,83 @@
+using System.Collections.Concurrent;
+
 namespace Kaleido.Http.Client;
 
 /// <summary>
-/// Thread-safe cache for one remote registry payload, backed by
-/// <see cref="IRegistrySnapshotStore"/> under the client's own key
-/// (<c>kaleido-client:{ServiceName}:{clientName}</c>, never the remote service's
-/// <c>kaleido:{ServiceName}</c>). With a distributed store registered, replicas of
-/// the consuming host share the same entry per client. Owns the SemaphoreSlim and
-/// double-check locking for <see cref="KaleidoRemoteRegistry"/>. Failed fetches
-/// are never stored — the next call retries naturally.
+/// The remote registry payloads this host fetched, backed by <see cref="IRegistrySnapshotStore"/>
+/// under each client's own key (<c>kaleido-client:{ServiceName}:{clientName}</c>, never the remote
+/// service's <c>kaleido:{ServiceName}</c>). With a distributed store registered, replicas of the
+/// consuming host share the same entry per client. Failed fetches are never stored - the next call
+/// retries naturally.
 /// </summary>
 /// <remarks>
 /// A snapshot older than the check interval is revalidated, not simply reloaded: the remote is asked
 /// whether its revision is still current (ETag), and an unchanged registry costs one small request
-/// with an empty 304 answer.
+/// with an empty 304 answer. One singleton for all clients (#498): the key is a parameter, and the
+/// per-key lock and last check live here.
 /// </remarks>
-internal sealed class HttpClientRegistryCache(
-    IRegistrySnapshotStore store,
-    string key)
-    : IDisposable
+internal interface IHttpClientRegistryCache
 {
-    private readonly SemaphoreSlim _lock = new(1, 1);
-    private DateTimeOffset _checkedAtUtc;
-
-    public void Dispose() => _lock.Dispose();
-
     /// <summary>
-    /// Drops the stored snapshot so the next call re-fetches from the remote endpoint. With a
+    /// Drops the stored snapshot of <paramref name="key"/> so the next call re-fetches it. With a
     /// distributed store this invalidates across all instances sharing the store.
     /// </summary>
-    public ValueTask ResetAsync(CancellationToken cancellationToken) =>
-        store.RemoveAsync(key, cancellationToken);
-
-    /// <summary>The snapshot while fresh; otherwise <paramref name="fetch"/> loads it again.</summary>
-    public Task<AggregatedRegistryResponse> GetOrFetchAsync(
-        TimeSpan? checkInterval,
-        Func<CancellationToken, Task<AggregatedRegistryResponse>> fetch,
-        CancellationToken cancellationToken) =>
-        GetOrRevalidateAsync(
-            checkInterval,
-            async (_, ct) => await fetch(ct),
-            cancellationToken);
+    ValueTask ResetAsync(string key, CancellationToken cancellationToken);
 
     /// <summary>
-    /// The snapshot while fresh (checked within <paramref name="checkInterval"/>; null = never
-    /// checked again); otherwise <paramref name="revalidate"/> is called with the snapshot's revision
-    /// (null when there is no snapshot) and returns the new registry, or null when the remote reports
-    /// the revision unchanged - the snapshot is then kept and counts as checked.
+    /// The snapshot of <paramref name="key"/> while fresh (checked within
+    /// <paramref name="checkInterval"/>; null = never checked again); otherwise
+    /// <paramref name="revalidate"/> is called with the snapshot's revision (null when there is no
+    /// snapshot) and returns the new registry, or null when the remote reports the revision unchanged -
+    /// the snapshot is then kept and counts as checked.
     /// </summary>
+    Task<AggregatedRegistryResponse> GetOrRevalidateAsync(
+        string key,
+        TimeSpan? checkInterval,
+        Func<string?, CancellationToken, Task<AggregatedRegistryResponse?>> revalidate,
+        CancellationToken cancellationToken);
+}
+
+internal sealed class HttpClientRegistryCache(IRegistrySnapshotStore store) : IHttpClientRegistryCache, IDisposable
+{
+    private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);
+
+    public void Dispose()
+    {
+        foreach (var entry in _entries.Values)
+        {
+            entry.Lock.Dispose();
+        }
+    }
+
+    public ValueTask ResetAsync(string key, CancellationToken cancellationToken) =>
+        store.RemoveAsync(key, cancellationToken);
+
     public async Task<AggregatedRegistryResponse> GetOrRevalidateAsync(
+        string key,
         TimeSpan? checkInterval,
         Func<string?, CancellationToken, Task<AggregatedRegistryResponse?>> revalidate,
         CancellationToken cancellationToken)
     {
+        var entry = _entries.GetOrAdd(key, static _ => new Entry());
         var snapshot = await store.GetAsync(key, cancellationToken);
 
-        if (snapshot is not null && IsFresh(snapshot, checkInterval))
+        if (snapshot is not null && IsFresh(entry, snapshot, checkInterval))
         {
             return snapshot;
         }
 
-        await _lock.WaitAsync(cancellationToken);
+        await entry.Lock.WaitAsync(cancellationToken);
         try
         {
             snapshot = await store.GetAsync(key, cancellationToken);
 
-            if (snapshot is not null && IsFresh(snapshot, checkInterval))
+            if (snapshot is not null && IsFresh(entry, snapshot, checkInterval))
             {
                 return snapshot;
             }
 
             var current = await revalidate(snapshot?.Revision, cancellationToken);
-            _checkedAtUtc = DateTimeOffset.UtcNow;
+            entry.CheckedAtUtc = DateTimeOffset.UtcNow;
 
             if (current is null)
             {
@@ -86,13 +93,11 @@ internal sealed class HttpClientRegistryCache(
         }
         finally
         {
-            _lock.Release();
+            entry.Lock.Release();
         }
     }
 
-    private bool IsFresh(
-        AggregatedRegistryResponse snapshot,
-        TimeSpan? checkInterval)
+    private static bool IsFresh(Entry entry, AggregatedRegistryResponse snapshot, TimeSpan? checkInterval)
     {
         if (checkInterval is null)
         {
@@ -102,9 +107,9 @@ internal sealed class HttpClientRegistryCache(
         // Age basis: the later of the remote's own GeneratedAt (real data age, including the
         // remote's own caching) and the last time this instance checked it; else treat as just-seen.
         var basis =
-            snapshot.GeneratedAt > _checkedAtUtc
+            snapshot.GeneratedAt > entry.CheckedAtUtc
                 ? snapshot.GeneratedAt
-                : _checkedAtUtc;
+                : entry.CheckedAtUtc;
 
         if (basis == default)
         {
@@ -112,5 +117,13 @@ internal sealed class HttpClientRegistryCache(
         }
 
         return DateTimeOffset.UtcNow - basis < checkInterval.Value;
+    }
+
+    // One key's lock (double-checked fetch) and the last time this instance checked it.
+    private sealed class Entry
+    {
+        public SemaphoreSlim Lock { get; } = new(1, 1);
+
+        public DateTimeOffset CheckedAtUtc { get; set; }
     }
 }

@@ -24,6 +24,10 @@ namespace Microsoft.Extensions.DependencyInjection
         public static T GetRequiredService<T>(this System.IServiceProvider provider) => default;
         public static object GetRequiredService(this System.IServiceProvider provider, System.Type type) => null;
     }
+    public static class ServiceProviderKeyedServiceExtensions
+    {
+        public static T GetRequiredKeyedService<T>(this System.IServiceProvider provider, object serviceKey) => default;
+    }
     public interface IServiceScope : System.IDisposable
     {
         System.IServiceProvider ServiceProvider { get; }
@@ -58,6 +62,37 @@ public sealed class Consumer
     public Consumer(System.IServiceProvider provider) => this.provider = provider;
     public void M(System.Type handlerType) { var x = provider.GetRequiredService(handlerType); }
 }");
+    }
+
+    // #498: a client chosen by name at runtime is the container's dispatch seam, like a runtime Type.
+    [Fact]
+    public async Task GetRequiredKeyedService_WithARuntimeKey_NoDiagnostic()
+    {
+        await RunAsync(References + @"
+public sealed class Factory
+{
+    private readonly System.IServiceProvider provider;
+    public Factory(System.IServiceProvider provider) => this.provider = provider;
+    public IFoo Get(string name) => provider.GetRequiredKeyedService<IFoo>(name);
+    public IFoo GetStatic(string name) => ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService<IFoo>(provider, serviceKey: name);
+}");
+    }
+
+    // A constant key could be injected with [FromKeyedServices]: still a service locator call.
+    [Fact]
+    public async Task GetRequiredKeyedService_WithAConstantKey_Reports()
+    {
+        await RunAsync(References + @"
+public sealed class Consumer
+{
+    private const string Name = ""orders"";
+    private readonly System.IServiceProvider provider;
+    public Consumer(System.IServiceProvider provider) => this.provider = provider;
+    public IFoo Get() => {|#0:provider.GetRequiredKeyedService<IFoo>(Name)|};
+    public IFoo GetStatic() => {|#1:ServiceProviderKeyedServiceExtensions.GetRequiredKeyedService<IFoo>(provider, ""orders"")|};
+}",
+            Expected.WithLocation(0).WithArguments("GetRequiredKeyedService"),
+            Expected.WithLocation(1).WithArguments("GetRequiredKeyedService"));
     }
 
     [Fact]

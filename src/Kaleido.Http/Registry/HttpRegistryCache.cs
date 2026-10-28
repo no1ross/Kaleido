@@ -9,14 +9,36 @@ namespace Kaleido.Http.Registry;
 /// store, so the last clean snapshot remains available for subsequent calls —
 /// and every request while degraded naturally retries the failed downstreams.
 /// </summary>
-internal sealed class HttpRegistryCache(
-    IRegistrySnapshotStore store,
-    string key)
-    : IDisposable
+internal interface IHttpRegistryCache
 {
-    private readonly SemaphoreSlim _lock = new(1, 1);
+    /// <summary>
+    /// The snapshot of <paramref name="key"/> while it is fresh: younger than <paramref name="ttl"/>
+    /// (null = never expires) and not force-refreshed - except that refresh requests inside the
+    /// <paramref name="refreshCooldown"/> window are throttled back to the cache. Otherwise invokes
+    /// <paramref name="build"/>, stamps <see cref="AggregatedRegistryResponse.GeneratedAt"/>/<c>IsPartial</c>,
+    /// and commits the result to the store only when it has no ClientErrors.
+    /// </summary>
+    Task<AggregatedRegistryResponse> GetOrBuildAsync(
+        string key,
+        TimeSpan? ttl,
+        TimeSpan refreshCooldown,
+        bool forceRefresh,
+        Func<CancellationToken, Task<AggregatedRegistryResponse>> build,
+        CancellationToken cancellationToken);
+}
 
-    public void Dispose() => _lock.Dispose();
+// One singleton for every snapshot key (#498): the key is a parameter, the per-key lock lives here.
+internal sealed class HttpRegistryCache(IRegistrySnapshotStore store) : IHttpRegistryCache, IDisposable
+{
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _locks = new(StringComparer.Ordinal);
+
+    public void Dispose()
+    {
+        foreach (var gate in _locks.Values)
+        {
+            gate.Dispose();
+        }
+    }
 
     /// <summary>
     /// Returns the cached snapshot while it is fresh: younger than
@@ -28,6 +50,7 @@ internal sealed class HttpRegistryCache(
     /// and commits the result to the store only when it has no ClientErrors.
     /// </summary>
     public async Task<AggregatedRegistryResponse> GetOrBuildAsync(
+        string key,
         TimeSpan? ttl,
         TimeSpan refreshCooldown,
         bool forceRefresh,
@@ -41,7 +64,9 @@ internal sealed class HttpRegistryCache(
             return cached;
         }
 
-        await _lock.WaitAsync(cancellationToken);
+        var gate = _locks.GetOrAdd(key, static _ => new SemaphoreSlim(1, 1));
+
+        await gate.WaitAsync(cancellationToken);
         try
         {
             cached = await store.GetAsync(key, cancellationToken);
@@ -68,7 +93,7 @@ internal sealed class HttpRegistryCache(
         }
         finally
         {
-            _lock.Release();
+            gate.Release();
         }
     }
 

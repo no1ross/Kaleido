@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Kaleido.Exceptions;
-using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry.Contracts;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
@@ -45,12 +44,10 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
         Assert.Null(FindEndpoint(endpoints));
     }
 
-    [Theory]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public void MapRegistry_WhenAggregatingWithClients_MapsTheAggregatingEndpoint(bool processClients, bool queryableClients)
+    [Fact]
+    public void MapRegistry_WhenAggregatingWithClients_MapsTheAggregatingEndpoint()
     {
-        var endpoints = CreateEndpoints(processClients: processClients, queryableClients: queryableClients);
+        var endpoints = CreateEndpoints(clients: true);
 
         var group = endpoints.MapRegistry(new KaleidoHttpMapOptions { AggregateRegistry = true });
 
@@ -89,7 +86,7 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
     [Fact]
     public void MapRegistry_ConfiguresTheSharedSnapshot()
     {
-        var endpoints = CreateEndpoints(snapshot: true, processClients: true);
+        var endpoints = CreateEndpoints(snapshot: true, clients: true);
         var mapOptions = new KaleidoHttpMapOptions
         {
             AggregateRegistry = true,
@@ -193,7 +190,7 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
                 IsPartial = true,
                 ClientErrors = [new RegistryClientError { ClientName = "radiology", ClientType = "Registry", Reason = "down" }],
             });
-        var endpoints = CreateEndpoints(processClients: true);
+        var endpoints = CreateEndpoints(clients: true);
         endpoints.MapRegistry(new KaleidoHttpMapOptions { AggregateRegistry = true });
 
         var context = await InvokeAsync(endpoints, query: "?strict");
@@ -214,7 +211,7 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
                 IsPartial = true,
                 ClientErrors = [new RegistryClientError { ClientName = "radiology", ClientType = "Registry", Reason = "down" }],
             });
-        var endpoints = CreateEndpoints(processClients: true);
+        var endpoints = CreateEndpoints(clients: true);
         endpoints.MapRegistry(new KaleidoHttpMapOptions { AggregateRegistry = true });
 
         var context = await InvokeAsync(endpoints);
@@ -276,8 +273,7 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
                     .Any(m => string.Equals(m.EndpointName, RegistryEndpointNames.RegistryEndpointName, StringComparison.Ordinal)));
 
     private WebApplication CreateEndpoints(
-        bool processClients = false,
-        bool queryableClients = false,
+        bool clients = false,
         bool snapshot = false,
         bool registryService = true)
     {
@@ -285,19 +281,14 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
         builder.Services.AddRouting();
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = "test" });
 
-        if (processClients)
+        if (clients)
         {
-            builder.Services.AddSingleton(new KaleidoProcessorClientRouteOptionsMap());
-        }
-
-        if (queryableClients)
-        {
-            builder.Services.AddSingleton(new KaleidoQueryableClientRouteOptionsMap());
+            builder.Services.AddSingleton(Mock.Of<IKaleidoClientCatalog>());
         }
 
         if (snapshot)
         {
-            builder.Services.AddSingleton(Mock.Of<IRegistrySnapshotStore>());
+            builder.Services.AddSingleton(Mock.Of<IHttpRegistryCache>());
             builder.Services.AddSingleton<RegistrySnapshot>();
         }
 

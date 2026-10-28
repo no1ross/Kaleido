@@ -7,7 +7,7 @@ public sealed class HttpRegistryCacheTests
 
     private static HttpRegistryCache CreateSut(
         IRegistrySnapshotStore? store = null) =>
-        new(store ?? CreateStore(), Key);
+        new(store ?? CreateStore());
 
     private static IRegistrySnapshotStore CreateStore()
     {
@@ -58,6 +58,7 @@ public sealed class HttpRegistryCacheTests
         var buildCalled = false;
 
         var result = await sut.GetOrBuildAsync(
+            key: Key,
             ttl: null,
             refreshCooldown: TimeSpan.FromSeconds(30),
             forceRefresh: false,
@@ -78,10 +79,11 @@ public sealed class HttpRegistryCacheTests
     {
         using var sut = CreateSut();
 
-        var first = await sut.GetOrBuildAsync(null, TimeSpan.FromSeconds(30), false, _ => Clean(), default);
+        var first = await sut.GetOrBuildAsync(Key, null, TimeSpan.FromSeconds(30), false, _ => Clean(), default);
 
         var buildCount = 0;
         var result = await sut.GetOrBuildAsync(
+            key: Key,
             ttl: null,
             refreshCooldown: TimeSpan.FromSeconds(30),
             forceRefresh: false,
@@ -101,11 +103,12 @@ public sealed class HttpRegistryCacheTests
     {
         using var sut = CreateSut();
 
-        var partial = await sut.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => Partial(), default);
+        var partial = await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => Partial(), default);
         Assert.True(partial.IsPartial);
 
         var buildCount = 0;
         var result = await sut.GetOrBuildAsync(
+            key: Key,
             ttl: null,
             refreshCooldown: TimeSpan.Zero,
             forceRefresh: false,
@@ -133,6 +136,7 @@ public sealed class HttpRegistryCacheTests
         var buildCount = 0;
 
         await sut.GetOrBuildAsync(
+            key: Key,
             ttl: TimeSpan.FromMinutes(5),
             refreshCooldown: TimeSpan.FromSeconds(30),
             forceRefresh: false,
@@ -159,6 +163,7 @@ public sealed class HttpRegistryCacheTests
         var buildCount = 0;
 
         await sut.GetOrBuildAsync(
+            key: Key,
             ttl: TimeSpan.FromMinutes(5),
             refreshCooldown: TimeSpan.FromSeconds(30),
             forceRefresh: false,
@@ -177,10 +182,11 @@ public sealed class HttpRegistryCacheTests
     {
         using var sut = CreateSut();
 
-        await sut.GetOrBuildAsync(null, TimeSpan.FromSeconds(30), false, _ => Clean(), default);
+        await sut.GetOrBuildAsync(Key, null, TimeSpan.FromSeconds(30), false, _ => Clean(), default);
 
         var buildCount = 0;
         await sut.GetOrBuildAsync(
+            key: Key,
             ttl: null,
             refreshCooldown: TimeSpan.FromSeconds(30),
             forceRefresh: true,
@@ -206,6 +212,7 @@ public sealed class HttpRegistryCacheTests
         var buildCount = 0;
 
         var result = await sut.GetOrBuildAsync(
+            key: Key,
             ttl: null,
             refreshCooldown: TimeSpan.FromSeconds(30),
             forceRefresh: false,
@@ -225,10 +232,11 @@ public sealed class HttpRegistryCacheTests
     public async Task GetOrBuildAsync_RefreshWithoutACooldown_AlwaysRebuilds()
     {
         using var sut = CreateSut();
-        await sut.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => Clean(), default);
+        await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => Clean(), default);
         var buildCount = 0;
 
         await sut.GetOrBuildAsync(
+            key: Key,
             ttl: null,
             refreshCooldown: TimeSpan.Zero,
             forceRefresh: true,
@@ -255,6 +263,7 @@ public sealed class HttpRegistryCacheTests
         var buildCount = 0;
 
         await sut.GetOrBuildAsync(
+            key: Key,
             ttl: null,
             refreshCooldown: TimeSpan.FromSeconds(30),
             forceRefresh: true,
@@ -268,6 +277,20 @@ public sealed class HttpRegistryCacheTests
         Assert.Equal(1, buildCount);
     }
 
+    // One singleton serves every key (#498): a snapshot under one key is never served for another.
+    [Fact]
+    public async Task GetOrBuildAsync_KeysAreIndependent()
+    {
+        using var sut = CreateSut();
+        var builds = 0;
+
+        await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
+        await sut.GetOrBuildAsync("kaleido:other", null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
+        await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, builds);
+    }
+
     // IRegistrySnapshotStore is the public seam for a shared store (#293): two caches over one
     // store (e.g. two router replicas) serve one snapshot, built once.
     [Fact]
@@ -278,8 +301,8 @@ public sealed class HttpRegistryCacheTests
         using var second = CreateSut(store);
         var builds = 0;
 
-        await first.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
-        await second.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
+        await first.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
+        await second.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
 
         Assert.Equal(1, builds);
     }
@@ -292,7 +315,7 @@ public sealed class HttpRegistryCacheTests
         store.Setup(s => s.GetAsync(Key, cts.Token)).ReturnsAsync((AggregatedRegistryResponse?)null);
         using var sut = CreateSut(store.Object);
 
-        await sut.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => Clean(), cts.Token);
+        await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => Clean(), cts.Token);
 
         store.Verify(s => s.GetAsync(Key, cts.Token), Times.Exactly(2));
         store.Verify(s => s.SetAsync(Key, It.IsAny<AggregatedRegistryResponse>(), cts.Token), Times.Once);
@@ -308,7 +331,7 @@ public sealed class HttpRegistryCacheTests
         using var sut = CreateSut(store.Object);
         var built = false;
 
-        await Assert.ThrowsAsync<TimeoutException>(() => sut.GetOrBuildAsync(null, TimeSpan.Zero, false, _ => { built = true; return Clean(); }, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<TimeoutException>(() => sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => { built = true; return Clean(); }, TestContext.Current.CancellationToken));
 
         Assert.False(built);
     }
@@ -322,6 +345,7 @@ public sealed class HttpRegistryCacheTests
         using var cts = new CancellationTokenSource();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.GetOrBuildAsync(
+            Key,
             null,
             TimeSpan.Zero,
             false,

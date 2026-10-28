@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Registry;
@@ -16,7 +17,8 @@ namespace Kaleido.Http.Registry;
 /// as with the in-memory store. An entry that cannot be read counts as absent, so the caller rebuilds it.
 /// </para>
 /// <para>
-/// The cache never fails a registry read. Every snapshot is also kept in memory. When the cache throws
+/// The cache never fails a registry read. Every snapshot is also kept in memory (an
+/// <see cref="InMemoryRegistrySnapshotStore"/> registered under <see cref="MemoryKey"/>, #498). When the cache throws
 /// (anything but the caller's own cancellation), the store logs a warning once, serves and keeps
 /// snapshots in memory, and leaves the cache alone for <see cref="RetryAfter"/>, so requests do not
 /// each wait on a cache timeout during an outage.
@@ -24,16 +26,19 @@ namespace Kaleido.Http.Registry;
 /// </remarks>
 internal sealed partial class DistributedRegistrySnapshotStore(
     IDistributedCache cache,
+    [FromKeyedServices(DistributedRegistrySnapshotStore.MemoryKey)] IRegistrySnapshotStore memory,
     ILogger<DistributedRegistrySnapshotStore> logger,
     TimeProvider timeProvider)
     : IRegistrySnapshotStore
 {
+    /// <summary>The key of the in-memory store that keeps every snapshot too.</summary>
+    internal const string MemoryKey = "kaleido-registry-memory";
+
     /// <summary>How long the cache is left alone after it failed.</summary>
     internal static readonly TimeSpan RetryAfter = TimeSpan.FromSeconds(30);
 
     private static readonly DistributedCacheEntryOptions NoExpiry = new();
 
-    private readonly InMemoryRegistrySnapshotStore _memory = new();
     private long _unavailableUntilUtcTicks;
 
     public async ValueTask<AggregatedRegistryResponse?> GetAsync(
@@ -46,8 +51,8 @@ internal sealed partial class DistributedRegistrySnapshotStore(
             {
                 var snapshot = Read(key, await cache.GetAsync(key, cancellationToken));
                 await (snapshot is null
-                    ? _memory.RemoveAsync(key, cancellationToken)
-                    : _memory.SetAsync(key, snapshot, cancellationToken));
+                    ? memory.RemoveAsync(key, cancellationToken)
+                    : memory.SetAsync(key, snapshot, cancellationToken));
                 return snapshot;
             }
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
@@ -56,7 +61,7 @@ internal sealed partial class DistributedRegistrySnapshotStore(
             }
         }
 
-        return await _memory.GetAsync(key, cancellationToken);
+        return await memory.GetAsync(key, cancellationToken);
     }
 
     public async ValueTask SetAsync(
@@ -64,7 +69,7 @@ internal sealed partial class DistributedRegistrySnapshotStore(
         AggregatedRegistryResponse snapshot,
         CancellationToken cancellationToken)
     {
-        await _memory.SetAsync(key, snapshot, cancellationToken);
+        await memory.SetAsync(key, snapshot, cancellationToken);
 
         if (IsAvailable())
         {
@@ -87,7 +92,7 @@ internal sealed partial class DistributedRegistrySnapshotStore(
         string key,
         CancellationToken cancellationToken)
     {
-        await _memory.RemoveAsync(key, cancellationToken);
+        await memory.RemoveAsync(key, cancellationToken);
 
         if (IsAvailable())
         {

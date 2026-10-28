@@ -128,7 +128,6 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
             Resilience = config.Resilience.ForClient(builder.Configuration, name),
         };
 
-        builder.AddProcessorClient(client);
-        builder.AddQueryableClient(client);
+        builder.AddKaleidoClient(client);
     }
 }

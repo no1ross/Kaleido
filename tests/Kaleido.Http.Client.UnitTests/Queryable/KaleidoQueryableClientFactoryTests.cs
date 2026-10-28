@@ -1,80 +1,57 @@
 using Kaleido.Exceptions;
 using Kaleido.Http.Queryable;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Http.Client.Queryable.UnitTests;
 
 public sealed class KaleidoQueryableClientFactoryTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static KaleidoQueryableClientFactory CreateSut(
-        IHttpClientFactory httpClientFactory,
-        KaleidoQueryableClientRouteOptionsMap routeOptionsMap) =>
-        new(
-            httpClientFactory,
-            Mock.Of<ICorrelationHeaderStamper>(),
-            NullLogger<KaleidoQueryableClient>.Instance,
-            routeOptionsMap,
-            new KaleidoRemoteRegistry(
-                httpClientFactory,
-                Mock.Of<IRegistrySnapshotStore>(),
-                new KaleidoServiceOptions { ServiceName = "consumer" },
-                NullLogger<KaleidoRemoteRegistry>.Instance));
+    private readonly Mock<IKaleidoClientCatalog> catalog = new();
+    private readonly IKaleidoQueryableClient member = Mock.Of<IKaleidoQueryableClient>();
+
+    private KaleidoQueryableClientFactory CreateSut()
+    {
+        var services = new ServiceCollection();
+        services.AddKeyedSingleton("MemberService", member);
+
+        return new(services.BuildServiceProvider(), catalog.Object);
+    }
+
+    private static KaleidoClientDefinition Member =>
+        new("MemberService", "member", RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
 
     [Fact]
-    public void GetClient_ForAnUnconfiguredName_FailsNamingTheConfiguredClients()
+    public void GetClient_ForAnUnconfiguredName_FailsWithUnknownClient()
     {
-        var httpClientFactory = new Mock<IHttpClientFactory>();
+        catalog.Setup(x => x.Clients).Returns([]);
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(
-            () => CreateSut(httpClientFactory.Object, new KaleidoQueryableClientRouteOptionsMap()).GetClient("Member"));
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut().GetClient("Member"));
 
         Assert.Equal(HttpClientErrorCodes.UnknownClient, exception.Code);
-        Assert.Equal("Kaleido client 'Member' is not configured under Kaleido:Clients; no clients are configured.", exception.Message);
-        httpClientFactory.Verify(f => f.CreateClient(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
-    public void GetClient_WhenNamedClientIsRegistered_ReturnsClient()
+    public void GetClient_ResolvesTheClientRegisteredUnderTheConfiguredName()
     {
-        var routeMap = new KaleidoQueryableClientRouteOptionsMap();
-        routeMap.SetRoutePrefix("remote-svc", "remote-svc");
+        catalog.Setup(x => x.Find("memberservice")).Returns(Member);
 
-        var httpClientFactory = new Mock<IHttpClientFactory>();
-        httpClientFactory
-            .Setup(f => f.CreateClient(It.IsAny<string>()))
-            .Returns(new System.Net.Http.HttpClient());
-
-        var factory = CreateSut(httpClientFactory.Object, routeMap);
-
-        var client = factory.GetClient("remote-svc");
-
-        Assert.NotNull(client);
+        Assert.Same(member, CreateSut().GetClient("memberservice"));
     }
 
     [Fact]
     public void TryGetClientForService_FindsTheClientByItsRoutePrefix()
     {
-        var routeMap = new KaleidoQueryableClientRouteOptionsMap();
-        routeMap.SetRoutePrefix("MemberService", "member");
+        catalog.Setup(x => x.FindByService("member")).Returns(Member);
 
-        using var httpClient = new System.Net.Http.HttpClient();
-        var httpClientFactory = new Mock<IHttpClientFactory>();
-        httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
-
-        var factory = CreateSut(httpClientFactory.Object, routeMap);
-
-        Assert.True(factory.TryGetClientForService("member", out var client));
-        Assert.NotNull(client);
-        httpClientFactory.Verify(f => f.CreateClient("MemberService"));
+        Assert.True(CreateSut().TryGetClientForService("member", out var client));
+        Assert.Same(member, client);
     }
 
     [Fact]
     public void TryGetClientForService_ForAServiceWithoutAClient_ReturnsFalse()
     {
-        var factory = CreateSut(Mock.Of<IHttpClientFactory>(), new KaleidoQueryableClientRouteOptionsMap());
-
-        Assert.False(factory.TryGetClientForService("codeset", out var client));
+        Assert.False(CreateSut().TryGetClientForService("codeset", out var client));
         Assert.Null(client);
     }
 }

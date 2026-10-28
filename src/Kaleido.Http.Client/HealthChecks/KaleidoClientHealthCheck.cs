@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
@@ -13,14 +14,24 @@ namespace Kaleido.Http.Client.HealthChecks;
 /// Never retried and bounded by its own short timeout, so health reporting stays fast and honest; an open
 /// circuit reports Unhealthy at once.
 /// </remarks>
+// A keyed service per configured client (#498): the container passes the client name; the probe's
+// path and timeout come from that client's definition.
 internal sealed partial class KaleidoClientHealthCheck(
+    [ServiceKey] string clientName,
     IHttpClientFactory httpClientFactory,
-    string clientName,
-    string registryPath,
-    TimeSpan timeout,
+    IKaleidoClientCatalog catalog,
     ILogger<KaleidoClientHealthCheck> logger)
     : IHealthCheck
 {
+    private readonly KaleidoClientDefinition _client = catalog.Require(clientName);
+
+    private string RegistryPath =>
+        _client.StrictRegistryProbe
+            ? $"{Registry.RegistryContractUrls.Registry(_client.RoutePrefix)}?strict"
+            : Registry.RegistryContractUrls.Registry(_client.RoutePrefix);
+
+    private TimeSpan Timeout => _client.HealthCheckTimeout;
+
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
@@ -28,11 +39,11 @@ internal sealed partial class KaleidoClientHealthCheck(
         try
         {
             using var client = httpClientFactory.CreateClient(clientName);
-            using var request = new HttpRequestMessage(HttpMethod.Get, registryPath);
+            using var request = new HttpRequestMessage(HttpMethod.Get, RegistryPath);
             request.Options.Set(KaleidoResilienceOptions.NoRetry, value: true);
 
             using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutSource.CancelAfter(timeout);
+            timeoutSource.CancelAfter(Timeout);
 
             using var response = await client.SendAsync(request, timeoutSource.Token);
 
@@ -53,7 +64,7 @@ internal sealed partial class KaleidoClientHealthCheck(
             LogHealthCheckFailed(logger, ex, clientName);
 
             return HealthCheckResult.Unhealthy(
-                string.Create(CultureInfo.InvariantCulture, $"Kaleido remote '{clientName}' did not answer within {timeout.TotalSeconds:0.#} s."),
+                string.Create(CultureInfo.InvariantCulture, $"Kaleido remote '{clientName}' did not answer within {Timeout.TotalSeconds:0.#} s."),
                 ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

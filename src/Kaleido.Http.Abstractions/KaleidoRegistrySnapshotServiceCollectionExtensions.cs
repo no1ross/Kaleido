@@ -2,7 +2,6 @@ using Kaleido.Http.Registry;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http;
 
@@ -39,12 +38,11 @@ public static class KaleidoRegistrySnapshotServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.Services.Replace(
-            ServiceDescriptor.Singleton<IRegistrySnapshotStore>(services =>
-                new DistributedRegistrySnapshotStore(
-                    services.GetRequiredService<IDistributedCache>(),
-                    services.GetRequiredService<ILogger<DistributedRegistrySnapshotStore>>(),
-                    services.GetService<TimeProvider>() ?? TimeProvider.System)));
+        // Every piece built by the container (#498): the snapshots also kept in memory, the clock that
+        // times the cache's retry, and the store itself.
+        builder.Services.TryAddKeyedSingleton<IRegistrySnapshotStore, InMemoryRegistrySnapshotStore>(DistributedRegistrySnapshotStore.MemoryKey);
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        builder.Services.Replace(ServiceDescriptor.Singleton<IRegistrySnapshotStore, DistributedRegistrySnapshotStore>());
 
         return builder;
     }
