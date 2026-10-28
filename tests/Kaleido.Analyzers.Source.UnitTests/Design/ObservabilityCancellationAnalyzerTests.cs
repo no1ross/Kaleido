@@ -12,10 +12,13 @@ public sealed class ObservabilityCancellationAnalyzerTests
         new();
 
     private const string Stubs = @"
-public interface IExecutionObservation
+namespace Kaleido.Processor.Observability
 {
-    void Failed(System.Exception exception);
-    void Canceled();
+    public interface IExecutionObservation
+    {
+        void Failed(System.Exception exception);
+        void Canceled();
+    }
 }
 
 public interface ILog
@@ -32,7 +35,7 @@ public interface ILog
         await RunAsync(@"
 public class C
 {
-    public void M(IExecutionObservation observation)
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation)
     {
         try { }
         {|#0:catch|} (System.Exception ex) { observation.Failed(ex); throw; }
@@ -47,7 +50,7 @@ public class C
         await RunAsync(@"
 public class C
 {
-    public void M(IExecutionObservation observation)
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation)
     {
         try { }
         {|#0:catch|} { observation.Canceled(); throw; }
@@ -62,7 +65,7 @@ public class C
         await RunAsync(@"
 public class C
 {
-    public void M(IExecutionObservation observation)
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation)
     {
         try { }
         catch (System.Exception ex) when (ex is not System.OperationCanceledException) { observation.Failed(ex); throw; }
@@ -76,7 +79,7 @@ public class C
         await RunAsync(@"
 public class C
 {
-    public void M(IExecutionObservation observation)
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation)
     {
         try { }
         catch (System.OperationCanceledException) { observation.Canceled(); throw; }
@@ -92,7 +95,7 @@ public class C
 {
     private bool retry;
 
-    public void M(IExecutionObservation observation)
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation)
     {
         System.Exception other = null;
         try { }
@@ -169,13 +172,48 @@ public class C
 }" + Stubs);
     }
 
+    // #465: a type is an observation by symbol - Kaleido's '*.Observability' namespace and the name
+    // suffix - not because its name contains the word somewhere.
+    [Theory]
+    [InlineData("namespace Weather { public interface IWeatherObservation { void Failed(System.Exception exception); } }", "Weather.IWeatherObservation")]
+    [InlineData("namespace Kaleido.Processor.Observability { public interface IObservationLog { void Failed(System.Exception exception); } }", "Kaleido.Processor.Observability.IObservationLog")]
+    [InlineData("namespace Kaleido.Processor { public interface IStepObservation { void Failed(System.Exception exception); } }", "Kaleido.Processor.IStepObservation")]
+    public async Task CatchException_CallsATypeThatIsNotAKaleidoObservation_NoDiagnostic(string declaration, string type)
+    {
+        await RunAsync(declaration + @"
+public class C
+{
+    public void M(" + type + @" observation)
+    {
+        try { }
+        catch (System.Exception ex) { observation.Failed(ex); throw; }
+    }
+}");
+    }
+
+    [Fact]
+    public async Task CatchException_CallsAKaleidoObservability_Reports()
+    {
+        await RunAsync(@"
+namespace Kaleido.Http.Mcp.Observability { public interface IMcpObservability { void RegistryRead(string result); } }
+public class C
+{
+    public void M(Kaleido.Http.Mcp.Observability.IMcpObservability observability)
+    {
+        try { }
+        {|#0:catch|} (System.Exception) { observability.RegistryRead(""failed""); throw; }
+    }
+}",
+            Expected.WithLocation(0).WithArguments("observability.RegistryRead"));
+    }
+
     [Fact]
     public async Task CatchSpecificException_CallsObservation_NoDiagnostic()
     {
         await RunAsync(@"
 public class C
 {
-    public void M(IExecutionObservation observation)
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation)
     {
         try { }
         catch (System.InvalidOperationException ex) { observation.Failed(ex); throw; }

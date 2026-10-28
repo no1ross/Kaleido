@@ -17,7 +17,7 @@ public sealed class InjectedDisposalAnalyzerTests
     private const string Registrations = @"
 public static class AppServiceCollectionExtensions
 {
-    public static void Add(object s)
+    public static void Add(this Microsoft.Extensions.DependencyInjection.IServiceCollection s)
     {
         s.Add<IFoo, Foo>();
     }
@@ -29,7 +29,7 @@ public class Foo : IFoo
 }
 public static class ServiceCollectionExtensionsForObject
 {
-    public static void Add<TService, TImpl>(this object s) { }
+    public static void Add<TService, TImpl>(this Microsoft.Extensions.DependencyInjection.IServiceCollection s) { }
 }
 ";
 

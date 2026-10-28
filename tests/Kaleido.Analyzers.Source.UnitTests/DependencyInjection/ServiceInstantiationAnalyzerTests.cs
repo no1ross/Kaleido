@@ -17,6 +17,7 @@ public sealed class ServiceInstantiationAnalyzerTests
     private const string Registrations = @"
 public static class AppServiceCollectionExtensions
 {
+    public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddApp(this Microsoft.Extensions.DependencyInjection.IServiceCollection services) => services;
     public static object CreateFoo() => new Foo();
     public static object CreateSelf() => new SelfService();
 }

@@ -191,6 +191,11 @@ sections.
   tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **KAL2006 and KAL2004 judge Kaleido's symbols, not names** (#465): KAL2006 only reports a call that
+  binds to Kaleido's `AddKaleido`, and only counts an assignment to the real
+  `KaleidoServiceOptions.Assemblies`, so a method of yours named `AddKaleido` is no longer flagged.
+  KAL2004 only judges the `ExecuteAsync` that implements Kaleido's `IProcessStepHandler` (including
+  an explicit implementation), not any interface of that name.
 - **MCP hosts in one process no longer share translated tools** (#464): the tool catalogs were cached
   in one process-wide dictionary, keyed by a few settings, and cleared entirely at 256 entries. Each
   `AddMcp()` registration now owns its cache, bounded at 256 registry revisions and dropping the least

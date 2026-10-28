@@ -1,9 +1,8 @@
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace Kaleido.Analyzers.Bootstrap;
 
@@ -13,9 +12,18 @@ namespace Kaleido.Analyzers.Bootstrap;
 /// left out, <c>null</c>, or an object creation (<c>new() { ... }</c>) whose initializer does not set
 /// <c>Assemblies</c>; options passed as a variable or built elsewhere are not judged.
 /// </summary>
+/// <remarks>
+/// Judged by symbol (#465): only a call that binds to Kaleido's
+/// <c>KaleidoServiceCollectionExtensions.AddKaleido</c>, and only an assignment to the real
+/// <c>KaleidoServiceOptions.Assemblies</c> property counts - a consumer's own method named
+/// <c>AddKaleido</c>, or a different member named <c>Assemblies</c>, is not mistaken for them.
+/// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class AddKaleidoAssembliesAnalyzer : DiagnosticAnalyzer
 {
+    private const string ExtensionsTypeName = "Kaleido.KaleidoServiceCollectionExtensions";
+    private const string OptionsTypeName = "Kaleido.KaleidoServiceOptions";
+
     private static readonly DiagnosticDescriptor Rule =
         new(
             DiagnosticIds.AddKaleidoMissingAssemblies,
@@ -34,41 +42,74 @@ public sealed class AddKaleidoAssembliesAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
-        context.RegisterSyntaxNodeAction(Analyze, SyntaxKind.InvocationExpression);
+        context.RegisterCompilationStartAction(start =>
+        {
+            var extensions = start.Compilation.GetTypeByMetadataName(ExtensionsTypeName);
+            var options = start.Compilation.GetTypeByMetadataName(OptionsTypeName);
+
+            if (extensions is null || options is null)
+            {
+                return;
+            }
+
+            var assemblies = options.GetMembers("Assemblies").OfType<IPropertySymbol>().FirstOrDefault();
+
+            start.RegisterOperationAction(
+                operationContext => Analyze(operationContext, extensions, options, assemblies),
+                OperationKind.Invocation);
+        });
     }
 
-    private static void Analyze(SyntaxNodeAnalysisContext context)
+    private static void Analyze(
+        OperationAnalysisContext context,
+        INamedTypeSymbol extensions,
+        INamedTypeSymbol options,
+        IPropertySymbol? assemblies)
     {
-        var invocation = (InvocationExpressionSyntax)context.Node;
+        var invocation = (IInvocationOperation)context.Operation;
+        var method = invocation.TargetMethod.ReducedFrom ?? invocation.TargetMethod;
 
-        if (invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "AddKaleido" })
+        if (method.Name != "AddKaleido" || !SymbolEqualityComparer.Default.Equals(method.ContainingType, extensions))
         {
             return;
         }
 
-        if (OptionsArgument(invocation.ArgumentList) is { } options && !LeavesOutAssemblies(options))
-        {
-            return;
-        }
+        var argument = invocation.Arguments.FirstOrDefault(x =>
+            x.Parameter is not null && SymbolEqualityComparer.Default.Equals(x.Parameter.Type.OriginalDefinition, options));
 
-        context.ReportDiagnostic(Diagnostic.Create(Rule, invocation.GetLocation()));
+        if (argument is null || LeavesOutAssemblies(argument, assemblies))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(Rule, invocation.Syntax.GetLocation()));
+        }
     }
 
-    // services.AddKaleido(configuration, options): the named "options" argument, else the second one.
-    private static ExpressionSyntax? OptionsArgument(ArgumentListSyntax arguments) =>
-        arguments.Arguments.FirstOrDefault(x => x.NameColon?.Name.Identifier.ValueText == "options")?.Expression
-        ?? (arguments.Arguments.Count >= 2 && arguments.Arguments[1].NameColon is null ? arguments.Arguments[1].Expression : null);
-
-    private static bool LeavesOutAssemblies(ExpressionSyntax options) =>
-        options switch
+    // Left out (the parameter's default), null, or created here without setting Assemblies. Options
+    // from a variable, a method or a with-expression are not judged: what they hold is not visible.
+    private static bool LeavesOutAssemblies(IArgumentOperation argument, IPropertySymbol? assemblies)
+    {
+        if (argument.ArgumentKind == ArgumentKind.DefaultValue)
         {
-            LiteralExpressionSyntax literal => literal.IsKind(SyntaxKind.NullLiteralExpression),
-            BaseObjectCreationExpressionSyntax creation => !SetsAssemblies(creation.Initializer),
+            return true;
+        }
+
+        var value = argument.Value;
+
+        while (value is IConversionOperation conversion)
+        {
+            value = conversion.Operand;
+        }
+
+        return value switch
+        {
+            ILiteralOperation { ConstantValue: { HasValue: true, Value: null } } => true,
+            IObjectCreationOperation creation => !SetsAssemblies(creation.Initializer, assemblies),
             _ => false,
         };
+    }
 
-    private static bool SetsAssemblies(InitializerExpressionSyntax? initializer) =>
+    private static bool SetsAssemblies(IObjectOrCollectionInitializerOperation? initializer, IPropertySymbol? assemblies) =>
         initializer is not null
-        && initializer.Expressions.Any(x =>
-            x is AssignmentExpressionSyntax { Left: IdentifierNameSyntax { Identifier.ValueText: "Assemblies" } });
+        && initializer.Initializers.Any(x =>
+            x is ISimpleAssignmentOperation { Target: IPropertyReferenceOperation target }
+            && SymbolEqualityComparer.Default.Equals(target.Property.OriginalDefinition, assemblies));
 }

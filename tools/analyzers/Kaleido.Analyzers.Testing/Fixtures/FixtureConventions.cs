@@ -150,7 +150,8 @@ internal static class FixtureConventions
 
     /// <summary>
     /// KAL1011 only: true when constructing the type in a fixture would be using a real collaborator -
-    /// a public or internal, non-static, non-abstract class with an ordinary method. DTOs, records,
+    /// a public or internal, non-static, non-abstract class with an ordinary method that implements a Kaleido
+    /// interface (a service, by symbol - #465). DTOs, records,
     /// exceptions, attributes, and [ExcludeFromCodeCoverage] types are exempt: new-ing those in a
     /// fixture is arrangement (domain data the SUT consumes), not a collaborator violation. Which types
     /// need their own fixture is decided by behavior instead (TypeBehavior, KAL1009).
@@ -177,7 +178,9 @@ internal static class FixtureConventions
             return false;
         }
 
-        if (DtoSuffixes.Any(s => type.Name.EndsWith(s, System.StringComparison.Ordinal)))
+        // A collaborator implements a Kaleido service interface (#465): data - options, requests,
+        // responses, metadata - does not, whatever its name says.
+        if (!type.AllInterfaces.Any(IsKaleidoInterface))
         {
             return false;
         }
@@ -196,8 +199,9 @@ internal static class FixtureConventions
                 !m.IsImplicitlyDeclared);
     }
 
-    private static readonly string[] DtoSuffixes =
-        ["Options", "Settings", "Request", "Response", "Metadata", "Details", "Parameters", "Envelope", "Descriptor", "Summary", "Item", "Message", "Event"];
+    private static bool IsKaleidoInterface(INamedTypeSymbol type) =>
+        type.ContainingNamespace.ToDisplayString() is { } ns &&
+        (ns == "Kaleido" || ns.StartsWith("Kaleido.", System.StringComparison.Ordinal));
 
     private static bool InheritsFrom(INamedTypeSymbol type, string baseTypeName)
     {

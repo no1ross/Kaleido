@@ -95,6 +95,7 @@ public sealed class Consumer
         await RunAsync(References + @"
 public static class AppServiceCollectionExtensions
 {
+    public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddApp(this Microsoft.Extensions.DependencyInjection.IServiceCollection services) => services;
     public static object Build(System.IServiceProvider provider) =>
         provider.GetRequiredService<IFoo>();
 }");
