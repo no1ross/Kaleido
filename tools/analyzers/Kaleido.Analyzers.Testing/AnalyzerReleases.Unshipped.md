@@ -10,7 +10,7 @@ KAL1005 | Kaleido.Tests | Error | BuildServiceProvider requires ValidateScopes +
 KAL1006 | Kaleido.Tests | Error | Unit-test fixtures must inherit SutFixture<TSut>
 KAL1007 | Kaleido.Tests | Error | Fixture name must match its declared SUT
 KAL1008 | Kaleido.Tests | Error | SUT may only be constructed inside CreateSut()
-KAL1009 | Kaleido.Tests | Warning | Every testable source type must have a {Name}Tests fixture
+KAL1009 | Kaleido.Tests | Error | Every testable source type must have a {Name}Tests fixture
 KAL1010 | Kaleido.Tests | Error | Fixture class exists but has no [Fact] or [Theory] test methods
 KAL1011 | Kaleido.Tests | Error | Unit-test fixtures must mock Kaleido collaborators, not new them
 KAL1012 | Kaleido.Tests | Error | Fixture namespace must be the SUT namespace plus .UnitTests

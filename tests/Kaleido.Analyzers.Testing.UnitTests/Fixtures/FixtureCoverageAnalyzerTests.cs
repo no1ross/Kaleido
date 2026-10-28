@@ -52,9 +52,10 @@ namespace Kaleido.UnitTests
     }
 }");
 
+        // #458: blocking on its own - an Error, whatever the project's warnings-as-errors setting.
         Assert.Contains(
             diagnostics,
-            d => d.Id == "KAL1009");
+            d => d.Id == "KAL1009" && d.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
