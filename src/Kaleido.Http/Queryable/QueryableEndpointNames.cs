@@ -1,6 +1,5 @@
 namespace Kaleido.Http.Queryable;
 
-#pragma warning disable KAL0001 // Pure name factory — no state, intentional static
 internal static class QueryableEndpointNames
 {
     public static string QuerySourceEndpointName(

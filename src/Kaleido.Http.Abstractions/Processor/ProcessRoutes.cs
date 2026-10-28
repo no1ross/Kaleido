@@ -1,7 +1,5 @@
 namespace Kaleido.Http.Processor;
 
-#pragma warning disable KAL0001 // Pure route/endpoint wiring — no state, intentional static
-
 internal static class ProcessRoutePaths
 {
     public const string Process =

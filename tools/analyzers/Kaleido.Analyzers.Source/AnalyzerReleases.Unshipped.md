@@ -2,7 +2,7 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-----------------------------
-KAL0001 | Kaleido.Design | Warning | Static classes are for extension methods only
+KAL0001 | Kaleido.Design | Warning | Static classes hold extension methods or stateless value mechanics, not behavior or state
 KAL0002 | Kaleido.Design | Warning | Do not throw general BCL exception types
 KAL0003 | Kaleido.Design | Warning | Do not use the null-forgiving operator
 KAL0004 | Kaleido.Design | Error | Service-like types must not be static
