@@ -7,68 +7,79 @@ namespace Kaleido.Http.Client;
 
 internal static class KaleidoClientServiceCollectionExtensions
 {
-    internal static IServiceCollection AddKaleidoClient<TClient, TMap, TFactory, TFactoryInterface>(
-        this IServiceCollection services,
+    // One configured client (#498): its definition in the catalog, its named HttpClient, and its keyed
+    // services - the process and queryable clients, the health check and the credential handler -
+    // registered by type, so the container builds every one of them. Registering a name twice is a
+    // no-op (AddHttpClients() may be called more than once).
+    internal static IKaleidoBuilder AddKaleidoClient(
+        this IKaleidoBuilder builder,
         KaleidoHttpClientOptions options,
-        Func<string, string> registryUrlFactory,
         Action<IHttpClientBuilder>? configureClient = null)
-        where TClient : class
-        where TMap : class, IKaleidoClientRouteOptionsMap, new()
-        where TFactory : class, TFactoryInterface
-        where TFactoryInterface : class
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(options);
 
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Name, nameof(options));
         ArgumentException.ThrowIfNullOrWhiteSpace(options.BaseUrl, nameof(options));
 
+        var services = builder.Services;
+
+        AddSharedServices(services);
+
+        if (services.Any(x => x.ImplementationInstance is KaleidoClientDefinition known &&
+                              string.Equals(known.Name, options.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return builder;
+        }
+
+        services.AddSingleton(new KaleidoClientDefinition(
+            options.Name,
+            options.RoutePrefix,
+            options.RegistryTtl,
+            options.StrictRegistryProbe,
+            options.Resilience?.HealthCheckTimeout ?? new KaleidoResilienceOptions().HealthCheckTimeout));
+
         var httpClientBuilder = services.AddHttpClient(options.Name, client => client.BaseAddress = new Uri(options.BaseUrl));
 
         configureClient?.Invoke(httpClientBuilder);
 
-        // The processor and the queryable client share the named HttpClient: one pipeline per name.
-        if (options.Resilience is { Enabled: true } resilience && GetOrAddResilientClients(services).Add(options.Name))
+        if (options.Resilience is { Enabled: true } resilience)
         {
             httpClientBuilder.AddResilienceHandler("kaleido", pipeline => pipeline.AddKaleidoResilience(resilience));
         }
 
-        var routeOptions = GetOrAddRouteOptions<TMap>(services);
-        routeOptions.SetRoutePrefix(options.Name, options.RoutePrefix);
+        services.AddKeyedScoped<IKaleidoProcessorClient, KaleidoProcessorClient>(options.Name);
+        services.AddKeyedScoped<IKaleidoQueryableClient, KaleidoQueryableClient>(options.Name);
+        services.AddKeyedTransient<KaleidoCallCredentialHandler>(options.Name);
+        services.AddKeyedTransient<KaleidoClientHealthCheck>(options.Name);
 
-        if (options.RegistryTtl.HasValue)
-        {
-            routeOptions.SetRegistryTtl(options.Name, options.RegistryTtl.Value);
-        }
+        AddClientHealthCheck(services, options.Name);
 
+        return builder;
+    }
+
+    // What every client shares, registered once (TryAdd*).
+    private static void AddSharedServices(IServiceCollection services)
+    {
+        services.TryAddSingleton<IKaleidoClientCatalog, KaleidoClientCatalog>();
         services.TryAddSingleton<Registry.IRegistrySnapshotStore, Registry.InMemoryRegistrySnapshotStore>();
-        services.TryAddSingleton<KaleidoRemoteRegistry>();
+        services.TryAddSingleton<IHttpClientRegistryCache, HttpClientRegistryCache>();
+        services.TryAddSingleton<IKaleidoRemoteRegistry, KaleidoRemoteRegistry>();
         services.TryAddSingleton<IKaleidoProcessForwarding, KaleidoProcessForwarding>();
         services.TryAddScoped<IKaleidoInboundCallerAccessor, KaleidoInboundCallerAccessor>();
         services.TryAddScoped<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
-        services.TryAddScoped<TFactoryInterface, TFactory>();
-
-        AddClientHealthCheck(services, options, registryUrlFactory);
-
-        return services;
+        services.TryAddScoped<IKaleidoClientTransport, KaleidoClientTransport>();
+        services.TryAddScoped<IKaleidoProcessorClientFactory, KaleidoProcessorClientFactory>();
+        services.TryAddScoped<IKaleidoQueryableClientFactory, KaleidoQueryableClientFactory>();
     }
 
     // A health check that probes the remote registry endpoint, through the same named HttpClient so
-    // BaseAddress and any configured delegating handlers apply (never retried, own short timeout).
-    // Configure<HealthCheckServiceOptions> runs at resolution time, so the guard inside safely skips
-    // duplicate names even when AddHttpClients() is called multiple times.
-    private static void AddClientHealthCheck(
-        IServiceCollection services,
-        KaleidoHttpClientOptions options,
-        Func<string, string> registryUrlFactory)
+    // BaseAddress and any configured delegating handlers apply (never retried, own short timeout). The
+    // check is the client's keyed service; the registration only resolves it. Configure<...> runs at
+    // resolution time, so the guard inside skips duplicate names.
+    private static void AddClientHealthCheck(IServiceCollection services, string clientName)
     {
-        var clientName = options.Name;
         var healthCheckName = $"kaleido-{clientName}";
-        var healthCheckTimeout = options.Resilience?.HealthCheckTimeout ?? new KaleidoResilienceOptions().HealthCheckTimeout;
-        var registryPath =
-            options.StrictRegistryProbe
-                ? $"{registryUrlFactory(options.RoutePrefix)}?strict"
-                : registryUrlFactory(options.RoutePrefix);
 
         services.AddHealthChecks();
         services.Configure<HealthCheckServiceOptions>(o =>
@@ -80,81 +91,9 @@ internal static class KaleidoClientServiceCollectionExtensions
 
             o.Registrations.Add(new HealthCheckRegistration(
                 name: healthCheckName,
-                factory: sp => new KaleidoClientHealthCheck(
-                    sp.GetRequiredService<IHttpClientFactory>(),
-                    clientName,
-                    registryPath,
-                    healthCheckTimeout,
-                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<KaleidoClientHealthCheck>>()),
+                factory: sp => sp.GetRequiredKeyedService<KaleidoClientHealthCheck>(clientName),
                 failureStatus: HealthStatus.Unhealthy,
                 tags: ["kaleido", "remote"]));
         });
-    }
-
-    internal static IKaleidoBuilder AddProcessorClient(
-        this IKaleidoBuilder builder,
-        KaleidoHttpClientOptions options,
-        Action<IHttpClientBuilder>? configureClient = null)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(options);
-
-        builder.Services.AddKaleidoClient<IKaleidoProcessorClient, KaleidoProcessorClientRouteOptionsMap, KaleidoProcessorClientFactory, IKaleidoProcessorClientFactory>(
-            options,
-            Registry.RegistryContractUrls.Registry,
-            configureClient);
-
-        return builder;
-    }
-
-    internal static IKaleidoBuilder AddQueryableClient(
-        this IKaleidoBuilder builder,
-        KaleidoHttpClientOptions options,
-        Action<IHttpClientBuilder>? configureClient = null)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(options);
-
-        builder.Services.AddKaleidoClient<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap, KaleidoQueryableClientFactory, IKaleidoQueryableClientFactory>(
-            options,
-            Registry.RegistryContractUrls.Registry,
-            configureClient);
-
-        return builder;
-    }
-
-    private static ResilientClients GetOrAddResilientClients(IServiceCollection services)
-    {
-        if (services.FirstOrDefault(d => d.ServiceType == typeof(ResilientClients))?.ImplementationInstance is ResilientClients existing)
-        {
-            return existing;
-        }
-
-        var clients = new ResilientClients();
-        services.AddSingleton(clients);
-        return clients;
-    }
-
-    // The client names that already have a resilience pipeline (registration time only).
-    private sealed class ResilientClients
-    {
-        private readonly HashSet<string> _names = new(StringComparer.OrdinalIgnoreCase);
-
-        public bool Add(string name) => _names.Add(name);
-    }
-
-    private static TMap GetOrAddRouteOptions<TMap>(IServiceCollection services)
-        where TMap : class, IKaleidoClientRouteOptionsMap, new()
-    {
-        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(TMap));
-
-        if (descriptor?.ImplementationInstance is TMap existing)
-        {
-            return existing;
-        }
-
-        var map = new TMap();
-        services.AddSingleton(map);
-        return map;
     }
 }

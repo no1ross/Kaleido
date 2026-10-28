@@ -8,50 +8,42 @@ namespace Kaleido.Http.Client.UnitTests;
 public sealed class ClientDownstreamRegistriesTests
     : Kaleido.UnitTests.SutFixture
 {
-    private readonly KaleidoProcessorClientRouteOptionsMap processMap = new();
-    private readonly KaleidoQueryableClientRouteOptionsMap queryableMap = new();
-    private readonly Dictionary<string, Mock<IKaleidoProcessorClient>> processClients = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, Mock<IKaleidoQueryableClient>> queryableClients = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<KaleidoClientDefinition> clients = [];
+    private readonly Mock<IKaleidoRemoteRegistry> remoteRegistry = new();
+    private readonly ICorrelationHeaderStamper stamper = Mock.Of<ICorrelationHeaderStamper>();
 
     private void Client(string name, string routePrefix, Exception? failure = null)
     {
-        processMap.SetRoutePrefix(name, routePrefix);
-        queryableMap.SetRoutePrefix(name, routePrefix);
+        var client = new KaleidoClientDefinition(name, routePrefix, RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
+        clients.Add(client);
 
-        var process = new Mock<IKaleidoProcessorClient>();
-        var queryable = new Mock<IKaleidoQueryableClient>();
+        var registry = remoteRegistry.Setup(x => x.GetAsync(client, stamper, It.IsAny<CancellationToken>()));
 
         if (failure is not null)
         {
-            process.Setup(x => x.GetRegistryAsync(It.IsAny<CancellationToken>())).ThrowsAsync(failure);
+            registry.ThrowsAsync(failure);
         }
         else
         {
-            process.Setup(x => x.GetRegistryAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([new ProcessorRegistryResponse { Name = routePrefix, ServiceName = routePrefix }]);
-            queryable.Setup(x => x.GetRegistryAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync([new QueryableSourceResponse { Name = $"{routePrefix}-source", ServiceName = routePrefix }]);
+            registry.ReturnsAsync(new AggregatedRegistryResponse
+            {
+                Processes = [new ProcessorRegistryResponse { Name = routePrefix, ServiceName = routePrefix }],
+                Queryables = [new QueryableSourceResponse { Name = $"{routePrefix}-source", ServiceName = routePrefix }],
+            });
         }
-
-        processClients[name] = process;
-        queryableClients[name] = queryable;
     }
 
     private ClientDownstreamRegistries CreateSut(
         string serviceName = "router",
         ILogger<ClientDownstreamRegistries>? logger = null)
     {
-        var processFactory = new Mock<IKaleidoProcessorClientFactory>();
-        processFactory.Setup(x => x.GetClient(It.IsAny<string>())).Returns((string name) => processClients[name].Object);
-
-        var queryableFactory = new Mock<IKaleidoQueryableClientFactory>();
-        queryableFactory.Setup(x => x.GetClient(It.IsAny<string>())).Returns((string name) => queryableClients[name].Object);
+        var catalog = new Mock<IKaleidoClientCatalog>();
+        catalog.Setup(x => x.Clients).Returns(clients);
 
         return new ClientDownstreamRegistries(
-            processMap,
-            queryableMap,
-            processFactory.Object,
-            queryableFactory.Object,
+            catalog.Object,
+            remoteRegistry.Object,
+            stamper,
             new KaleidoServiceOptions { ServiceName = serviceName },
             logger ?? NullLogger<ClientDownstreamRegistries>.Instance);
     }
@@ -80,7 +72,7 @@ public sealed class ClientDownstreamRegistriesTests
         var registries = await CreateSut("router").GetAsync(maxParallelism: null, cancellationToken: Cancel);
 
         Assert.Equal(["intake"], registries.Processes.Select(x => x.Name));
-        processClients["Self"].Verify(x => x.GetRegistryAsync(It.IsAny<CancellationToken>()), Times.Never);
+        remoteRegistry.Verify(x => x.GetAsync(It.Is<KaleidoClientDefinition>(c => c.Name == "Self"), It.IsAny<ICorrelationHeaderStamper>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -105,42 +97,6 @@ public sealed class ClientDownstreamRegistriesTests
         Client("Intake", "intake", failure: new OperationCanceledException(cancellation.Token));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().GetAsync(maxParallelism: null, cancellationToken: cancellation.Token));
-    }
-
-    [Fact]
-    public async Task InvalidateAsync_DropsEachClientsCachedRegistry_ExceptThisServices()
-    {
-        Client("Self", "router");
-        Client("Intake", "intake");
-
-        await CreateSut("router").InvalidateAsync(Cancel);
-
-        processClients["Intake"].Verify(x => x.InvalidateRegistryAsync(Cancel), Times.Once);
-        processClients["Self"].Verify(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task InvalidateAsync_AQueryableOnlyClient_IsInvalidatedThroughItsQueryableClient()
-    {
-        queryableMap.SetRoutePrefix("Catalog", "catalog");
-        queryableClients["Catalog"] = new Mock<IKaleidoQueryableClient>();
-
-        await CreateSut().InvalidateAsync(Cancel);
-
-        queryableClients["Catalog"].Verify(x => x.InvalidateRegistryAsync(Cancel), Times.Once);
-    }
-
-    [Fact]
-    public async Task InvalidateAsync_AFailingClient_DoesNotStopTheOthers()
-    {
-        Client("Intake", "intake");
-        Client("Radiology", "radiology");
-        processClients["Intake"].Setup(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new HttpRequestException("store down"));
-
-        await CreateSut().InvalidateAsync(Cancel);
-
-        processClients["Radiology"].Verify(x => x.InvalidateRegistryAsync(Cancel), Times.Once);
     }
 
     [Fact]
@@ -176,14 +132,37 @@ public sealed class ClientDownstreamRegistriesTests
     }
 
     [Fact]
+    public async Task InvalidateAsync_DropsEachClientsCachedRegistry_ExceptThisServices()
+    {
+        Client("Self", "router");
+        Client("Intake", "intake");
+
+        await CreateSut("router").InvalidateAsync(Cancel);
+
+        remoteRegistry.Verify(x => x.InvalidateAsync("Intake", Cancel), Times.Once);
+        remoteRegistry.Verify(x => x.InvalidateAsync("Self", It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task InvalidateAsync_AFailingClient_DoesNotStopTheOthers()
+    {
+        Client("Intake", "intake");
+        Client("Radiology", "radiology");
+        remoteRegistry.Setup(x => x.InvalidateAsync("Intake", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("store down"));
+
+        await CreateSut().InvalidateAsync(Cancel);
+
+        remoteRegistry.Verify(x => x.InvalidateAsync("Radiology", Cancel), Times.Once);
+    }
+
+    [Fact]
     public async Task InvalidateAsync_AFailingClient_IsLoggedAsAWarning()
     {
         var logger = new RecordingLogger();
         Client("Intake", "intake");
         Client("Radiology", "radiology");
-        processClients["Intake"].Setup(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new HttpRequestException("store down"));
-        processClients["Radiology"].Setup(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()))
+        remoteRegistry.Setup(x => x.InvalidateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("store down"));
 
         await CreateSut(logger: logger).InvalidateAsync(Cancel);
@@ -192,6 +171,18 @@ public sealed class ClientDownstreamRegistriesTests
             ["Failed to invalidate registry cache for client Intake.", "Failed to invalidate registry cache for client Radiology."],
             logger.Entries.Select(e => e.Message).Order());
         Assert.All(logger.Entries, e => Assert.Equal(LogLevel.Warning, e.Level));
+    }
+
+    [Fact]
+    public async Task InvalidateAsync_TheCallersCancellation_Propagates()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        Client("Intake", "intake");
+        remoteRegistry.Setup(x => x.InvalidateAsync("Intake", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().InvalidateAsync(cancellation.Token));
     }
 
     private sealed class RecordingLogger : ILogger<ClientDownstreamRegistries>
@@ -205,17 +196,5 @@ public sealed class ClientDownstreamRegistriesTests
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
             Entries.Enqueue((logLevel, formatter(state, exception), exception));
-    }
-
-    [Fact]
-    public async Task InvalidateAsync_TheCallersCancellation_Propagates()
-    {
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        Client("Intake", "intake");
-        processClients["Intake"].Setup(x => x.InvalidateRegistryAsync(It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().InvalidateAsync(cancellation.Token));
     }
 }

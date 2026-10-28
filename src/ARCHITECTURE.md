@@ -177,15 +177,20 @@ Public seams consumers are expected to implement or replace:
 
 **Process client**
 - `IKaleidoProcessorClient` — typed interface: `GetRegistryAsync`, `InvalidateRegistryAsync`, `GetProcessStateAsync`, `ExecuteAsync`, `ExecuteStepAsync<TStep>`, `ExecuteStepAsync<TStep, TResult>` (the step name is `typeof(TStep).Name`)
-- `KaleidoProcessorClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
+- `KaleidoProcessorClient` — concrete implementation: builds each call (URL, body, idempotency) and hands it to the transport; the registry comes from `KaleidoRemoteRegistry`
 - `KaleidoHttpClientException` — thrown on non-success responses and on registry lookup failures
-- `KaleidoClientServiceCollectionExtensions` — internal `AddProcessorClient(...)` registration used by `AddHttpClients`
 
 **Queryable client**
 - `IKaleidoQueryableClient` — interface: `GetRegistryAsync`, `InvalidateRegistryAsync`, `QueryViewAsync(source, view, …)`, `QuerySourceAsync(source, …)` (with and without parameters). Sources and views are addressed by their published names (strings): the caller cannot reference the remote types
-- `KaleidoQueryableClient` — concrete implementation; lazily fetches and caches the remote registry per client instance
+- `KaleidoQueryableClient` — concrete implementation: builds each query and hands it to the transport, as the Process client does
 - Non-success responses and registry lookup failures throw `KaleidoHttpClientException`, as for the Process client
-- `KaleidoClientServiceCollectionExtensions` — internal `AddQueryableClient(...)` registration used by `AddHttpClients`
+
+**Shared services (#498)** — every piece is built by the container; no service creates another
+- `IKaleidoClientCatalog` (in `Kaleido.Http.Abstractions`) — the configured clients by name: one `KaleidoClientDefinition` (route prefix, registry TTL, health-check settings) per entry in `Kaleido:Clients`
+- Per client, keyed services under its name (`[ServiceKey]`): the Process and Queryable clients, its `KaleidoClientHealthCheck` and its `KaleidoCallCredentialHandler`. Code that knows the name injects `[FromKeyedServices("name")]`; the factories (`IKaleidoProcessorClientFactory`, `IKaleidoQueryableClientFactory`) resolve a name chosen at runtime
+- `IKaleidoClientTransport` — sends one call through the client's named `HttpClient`: correlation headers, idempotency key, logging, failure mapping, deserialization, and dropping the registry snapshot when a capability call answers 404
+- `IKaleidoRemoteRegistry` and `IHttpClientRegistryCache` — singletons for every client: the remote registry fetch (ETag revalidation) and its snapshot cache, keyed per client
+- `KaleidoClientServiceCollectionExtensions` — internal `AddKaleidoClient(...)` registration used by `AddHttpClients`
 
 ### Key design invariants
 - Both clients share one cached registry per downstream (`KaleidoRemoteRegistry`, keyed `kaleido-client:{ServiceName}:{clientName}`) for discovery and aggregation, revalidated every `RegistryTtl` (default 30 s) with `If-None-Match` and dropped when a capability call answers 404. Capability calls never read it: a registry is filtered per caller, so step and query URLs are built from the route prefix (#381).

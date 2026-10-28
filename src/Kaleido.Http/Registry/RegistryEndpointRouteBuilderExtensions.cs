@@ -71,13 +71,12 @@ internal static class RegistryEndpointRouteBuilderExtensions
     }
 
     // Guard — aggregation requires AddHttpClients() with at least one configured client. The
-    // route-options maps are singletons registered per client; neither present means no client
-    // infrastructure exists. Resolved once at map-time — these do not change after startup.
+    // client catalog is registered with the first client; without it no client infrastructure exists.
+    // Resolved once at map-time — it does not change after startup.
     private static void EnsureClientsForAggregation(IServiceProvider services, bool aggregate)
     {
         if (aggregate &&
-            services.GetService<KaleidoProcessorClientRouteOptionsMap>() is null &&
-            services.GetService<KaleidoQueryableClientRouteOptionsMap>() is null)
+            services.GetService<IKaleidoClientCatalog>() is null)
         {
             throw new KaleidoConfigurationException(
                 ProcessorErrorCodes.InvalidRegistration,

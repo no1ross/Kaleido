@@ -113,8 +113,8 @@ Some tests (e.g. correlation-header tests) need a fresh `ServiceCollection` with
 
 `AddHttpMessageHandler<T>()` and `ConfigurePrimaryHttpMessageHandler()` on an `IHttpClientBuilder`
 work correctly in production but have been found to silently produce pipelines that skip registered
-delegating handlers when the named client is registered twice (once inside `AddQueryableClient` /
-`AddProcessorClient` and once explicitly in test setup).
+delegating handlers when the named client is registered twice (once by `AddHttpClients()` and once
+explicitly in test setup).
 
 **Do not** try to inject a capture/spy handler through the `IHttpClientBuilder` callback in tests.
 

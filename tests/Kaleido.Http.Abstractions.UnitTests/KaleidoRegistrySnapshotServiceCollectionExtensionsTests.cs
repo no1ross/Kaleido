@@ -40,8 +40,21 @@ public sealed class KaleidoRegistrySnapshotServiceCollectionExtensionsTests
 
         builder.AddDistributedRegistrySnapshots();
 
-        Assert.Single(builder.Services, d => d.ServiceType == typeof(IRegistrySnapshotStore));
+        Assert.Single(builder.Services, d => d.ServiceType == typeof(IRegistrySnapshotStore) && !d.IsKeyedService);
         Assert.IsType<DistributedRegistrySnapshotStore>(Resolve(builder.Services));
+    }
+
+    // The snapshots it also keeps in memory are a store of their own, built by the container (#498).
+    [Fact]
+    public void AddDistributedRegistrySnapshots_RegistersTheInMemoryStoreItKeepsSnapshotsIn()
+    {
+        var builder = CreateBuilder();
+
+        builder.AddDistributedRegistrySnapshots();
+
+        var memory = Assert.Single(builder.Services, d => d.ServiceType == typeof(IRegistrySnapshotStore) && d.IsKeyedService);
+        Assert.Equal(DistributedRegistrySnapshotStore.MemoryKey, memory.ServiceKey);
+        Assert.Equal(typeof(InMemoryRegistrySnapshotStore), memory.KeyedImplementationType);
     }
 
     // AddHttp() and AddHttpClients() register the in-memory default with TryAdd: called after this,

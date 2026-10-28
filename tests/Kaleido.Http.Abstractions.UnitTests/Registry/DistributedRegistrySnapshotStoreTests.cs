@@ -23,7 +23,29 @@ public sealed class DistributedRegistrySnapshotStoreTests
         IDistributedCache cache,
         FakeTime? time = null,
         ILogger<DistributedRegistrySnapshotStore>? logger = null) =>
-        new(cache, logger ?? NullLogger<DistributedRegistrySnapshotStore>.Instance, time ?? new FakeTime());
+        new(cache, MemoryStore(), logger ?? NullLogger<DistributedRegistrySnapshotStore>.Instance, time ?? new FakeTime());
+
+    // The snapshots this replica keeps in memory (the in-memory store's own rules are tested in its fixture).
+    private static IRegistrySnapshotStore MemoryStore()
+    {
+        var data = new ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.Ordinal);
+        var store = new Mock<IRegistrySnapshotStore>();
+        store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, CancellationToken _) => new ValueTask<AggregatedRegistryResponse?>(data.TryGetValue(k, out var v) ? v : null));
+        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, AggregatedRegistryResponse v, CancellationToken _) =>
+            {
+                data[k] = v;
+                return ValueTask.CompletedTask;
+            });
+        store.Setup(s => s.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, CancellationToken _) =>
+            {
+                data.TryRemove(k, out var _);
+                return ValueTask.CompletedTask;
+            });
+        return store.Object;
+    }
 
     [Fact]
     public async Task SetAsync_ThenGetOnAnotherReplica_ReturnsTheSameSnapshot()

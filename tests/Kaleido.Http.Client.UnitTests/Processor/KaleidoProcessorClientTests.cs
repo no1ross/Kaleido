@@ -1,776 +1,207 @@
 using System.Text.Json;
 using Kaleido.Http.Processor;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Client.Processor.UnitTests;
 
+// What the processor client sends (#498): each call's URL, body and flags, handed to the transport,
+// which is tested in KaleidoClientTransportTests.
 public sealed class KaleidoProcessorClientTests
     : Kaleido.UnitTests.SutFixture
 {
-    // ---------------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------------
+    private readonly Mock<IKaleidoClientTransport> transport = new();
+    private readonly Mock<IKaleidoRemoteRegistry> remoteRegistry = new();
+    private readonly ICorrelationHeaderStamper stamper = Mock.Of<ICorrelationHeaderStamper>();
+    private readonly List<KaleidoClientRequest> sent = [];
 
-    private static KaleidoProcessorClient CreateSut(
-        HttpClient httpClient,
-        ICorrelationHeaderStamper headerStamper,
-        string serviceName = "",
-        ILogger<KaleidoProcessorClient>? logger = null)
+    private KaleidoProcessorClient CreateSut(string routePrefix = "radiology")
     {
-        // Registry fetches go through the shared remote registry, which pulls
-        // the HttpClient from IHttpClientFactory — return the test client.
-        var factory = new Mock<IHttpClientFactory>();
-        factory
-            .Setup(f => f.CreateClient(It.IsAny<string>()))
-            .Returns(httpClient);
+        var catalog = new Mock<IKaleidoClientCatalog>();
+        catalog.Setup(x => x.Find("RadiologyClient")).Returns(Definition(routePrefix));
 
-        var remoteRegistry = new KaleidoRemoteRegistry(
-            factory.Object,
-            CreateSnapshotStore(),
-            new KaleidoServiceOptions { ServiceName = "consumer" },
-            NullLogger<KaleidoRemoteRegistry>.Instance);
+        transport.Setup(x => x.SendAsync<ProcessExecutionResponse>(Captured(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() });
+        transport.Setup(x => x.SendAsync<StepExecutionResponse>(Captured(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StepExecutionResponse { ProcessId = Guid.NewGuid(), StepName = "MyStep" });
+        transport.Setup(x => x.SendAsync<StepExecutionResponse<MyStepResponse>>(Captured(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StepExecutionResponse<MyStepResponse> { ProcessId = Guid.NewGuid(), StepName = "MyStep", Result = new MyStepResponse { Value = "typed" } });
+        transport.Setup(x => x.SendAsync<StepExecutionResponse<JsonElement>>(Captured(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StepExecutionResponse<JsonElement> { ProcessId = Guid.NewGuid(), StepName = "MyStep", Result = JsonSerializer.SerializeToElement(new { visitId = "V-1" }) });
 
-        return new(
-            httpClient,
-            headerStamper,
-            logger ?? NullLogger<KaleidoProcessorClient>.Instance,
-            remoteRegistry,
-            "test",
-            serviceName);
+        return new("RadiologyClient", catalog.Object, transport.Object, remoteRegistry.Object, stamper);
     }
 
-    private static IRegistrySnapshotStore CreateSnapshotStore()
+    private KaleidoClientRequest Captured() =>
+        Capture.In(sent);
+
+    private static KaleidoClientDefinition Definition(string routePrefix) =>
+        new("RadiologyClient", routePrefix, RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
+
+    private static CancellationToken Cancel => TestContext.Current.CancellationToken;
+
+    private static JsonElement Json(object value) => JsonSerializer.SerializeToElement(value);
+
+    private sealed class MyStep;
+
+    private sealed record FakeStepRequest;
+
+    private sealed class MyStepResponse
     {
-        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
-        var store = new Mock<IRegistrySnapshotStore>();
-        store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, CancellationToken _) =>
-            {
-                data.TryGetValue(k, out var snapshot);
-                return new ValueTask<AggregatedRegistryResponse?>(snapshot);
-            });
-        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, AggregatedRegistryResponse v, CancellationToken _) =>
-            {
-                data[k] = v;
-                return ValueTask.CompletedTask;
-            });
-        store.Setup(s => s.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, CancellationToken _) =>
-            {
-                data.TryRemove(k, out var _);
-                return ValueTask.CompletedTask;
-            });
-        return store.Object;
-    }
-
-    private static readonly ProcessStepResponse FakeStep = new()
-    {
-        Name = "MyStep",
-        Description = "Test step.",
-        ExecuteUrl = "/processes/steps/mystep",
-        Fields = [],
-        Dependencies = [],
-        AvailableAfter = [],
-        AvailableUntil = []
-    };
-
-    private static readonly ProcessorRegistryResponse FakeProcessor = new()
-    {
-        ServiceName = "test-processor",
-        Name = "test-processor",
-        Description = "Test processor.",
-        DisplayName = "Test Processor",
-        RegistryUrl = "/test-processor/registry",
-        Steps = [FakeStep],
-        InitialSteps = []
-    };
-
-    private static readonly AggregatedRegistryResponse FakeRegistry = new()
-    {
-        Processes = [FakeProcessor]
-    };
-
-    private static HttpResponseMessage JsonOk<T>(T value) =>
-        new(HttpStatusCode.OK)
-        {
-            Content = JsonContent.Create(value, options: KaleidoJsonOptions.Options)
-        };
-
-    private static (KaleidoProcessorClient client, Mock<HttpMessageHandler> handler) CreateClient(
-        string routePrefix = "",
-        Func<HttpRequestMessage, HttpResponseMessage>? respond = null)
-    {
-        var mock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
-        mock.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync((HttpRequestMessage req, CancellationToken _) =>
-                respond != null ? respond(req) : JsonOk(FakeRegistry));
-
-        var httpClient = new HttpClient(mock.Object) { BaseAddress = new Uri("http://localhost") };
-        var stamper = new Mock<ICorrelationHeaderStamper>();
-
-        var client = CreateSut(httpClient, stamper.Object, routePrefix);
-        return (client, mock);
+        public string Value { get; init; } = "";
     }
 
     // ---------------------------------------------------------------------------
-    // GetRegistryAsync
+    // Registry
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task GetRegistryAsync_ReturnsRegistry()
+    public async Task GetRegistryAsync_ReturnsTheProcessesOfTheClientsRemoteRegistry()
     {
-        var (client, _) = CreateClient();
+        var sut = CreateSut();
+        remoteRegistry.Setup(x => x.GetAsync(Definition("radiology"), stamper, Cancel))
+            .ReturnsAsync(new AggregatedRegistryResponse { Processes = [new ProcessorRegistryResponse { Name = "radiology", ServiceName = "radiology" }] });
 
-        var result = await client.GetRegistryAsync(TestContext.Current.CancellationToken);
+        var result = await sut.GetRegistryAsync(Cancel);
 
-        Assert.Single(result, p => p.Name == "test-processor");
+        Assert.Equal("radiology", Assert.Single(result).Name);
     }
 
     [Fact]
-    public async Task GetRegistryAsync_CachesRegistry_DoesNotSendSecondRequest()
+    public async Task InvalidateRegistryAsync_DropsTheClientsRemoteRegistry()
     {
-        var callCount = 0;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            callCount++;
-            return JsonOk(FakeRegistry);
-        });
+        await CreateSut().InvalidateRegistryAsync(Cancel);
 
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal(1, callCount);
-    }
-
-    [Fact]
-    public async Task InvalidateRegistryAsync_DropsTheSnapshot_SoTheNextReadRefetches()
-    {
-        var callCount = 0;
-        var (client, _) = CreateClient(respond: _ =>
-        {
-            callCount++;
-            return JsonOk(FakeRegistry);
-        });
-
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-        await client.InvalidateRegistryAsync(TestContext.Current.CancellationToken);
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal(2, callCount);
-    }
-
-    [Fact]
-    public async Task GetRegistryAsync_WhenResponseBodyIsNull_Throws()
-    {
-        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
-        handler.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("null")
-                {
-                    Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
-                }
-            });
-
-        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
-        var client = CreateSut(httpClient, new Mock<ICorrelationHeaderStamper>().Object);
-
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.GetRegistryAsync(TestContext.Current.CancellationToken));
+        remoteRegistry.Verify(x => x.InvalidateAsync("RadiologyClient", Cancel), Times.Once);
     }
 
     // ---------------------------------------------------------------------------
-    // ExecuteStepAsync by name (untyped)
+    // Process state
     // ---------------------------------------------------------------------------
 
-    private static (KaleidoProcessorClient Client, List<(HttpRequestMessage Request, string? Body)> Sent) CreateStepClient(
-        Mock<ICorrelationHeaderStamper>? stamper = null,
-        HttpStatusCode stepStatus = HttpStatusCode.OK)
+    // 404 is an unknown process here: answered null, and the registry is left alone.
+    [Fact]
+    public async Task GetProcessStateAsync_GetsTheStateUrl_AsANotFoundCall_WithoutAKey()
     {
-        var sent = new List<(HttpRequestMessage, string?)>();
-        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
-        handler.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync((HttpRequestMessage req, CancellationToken _) =>
-            {
-                if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
-                {
-                    return JsonOk(FakeRegistry);
-                }
+        var processId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        var state = new ProcessStateResponse { ProcessId = processId, AvailableSteps = [], Steps = [] };
+        transport.Setup(x => x.SendOrNotFoundAsync<ProcessStateResponse>(Captured(), Cancel)).ReturnsAsync(state);
+        var sut = CreateSut();
 
-                sent.Add((req, req.Content?.ReadAsStringAsync(CancellationToken.None).GetAwaiter().GetResult()));
+        var result = await sut.GetProcessStateAsync(processId, Cancel);
 
-                return stepStatus == HttpStatusCode.OK
-                    ? JsonOk(new StepExecutionResponse<object>
-                    {
-                        ProcessId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                        StepName = "MyStep",
-                        Result = new { visitId = "V-1" }
-                    })
-                    : new HttpResponseMessage(stepStatus);
-            });
+        Assert.Same(state, result);
+        var request = Assert.Single(sent);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Equal(ProcessContractUrls.ProcessState("radiology", processId), request.Url);
+        Assert.Null(request.Body);
+        Assert.False(request.Idempotent);
+        Assert.False(request.InvalidatesRegistryOnNotFound);
+    }
 
-        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
-        var client = CreateSut(httpClient, (stamper ?? new Mock<ICorrelationHeaderStamper>()).Object);
-        return (client, sent);
+    // ---------------------------------------------------------------------------
+    // Execute
+    // ---------------------------------------------------------------------------
+
+    // Every execute call is idempotent (the caller's key, else its own) and a 404 drops the snapshot.
+    [Fact]
+    public async Task ExecuteAsync_PostsTheRequestToTheExecuteUrl_WithTheCallersKey()
+    {
+        var body = new ExecuteProcessRequest();
+        var sut = CreateSut();
+
+        await sut.ExecuteAsync(body, "order-42", Cancel);
+
+        var request = Assert.Single(sent);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal(ProcessContractUrls.Execute("radiology"), request.Url);
+        Assert.Same(body, request.Body);
+        Assert.Equal("order-42", request.IdempotencyKey);
+        Assert.True(request.Idempotent);
+        Assert.True(request.InvalidatesRegistryOnNotFound);
+        Assert.Equal("Process execute request", request.Description);
     }
 
     [Fact]
-    public async Task ExecuteStepAsync_ByName_PostsTheJsonPayload_ToTheStepsRegistryUrl()
+    public async Task ExecuteStepAsync_PostsTheStepToItsUrl_NamedByItsType()
     {
-        var (client, sent) = CreateStepClient();
-        var step = System.Text.Json.JsonSerializer.SerializeToElement(new { memberId = "M1" });
+        var step = new MyStep();
+        var sut = CreateSut();
 
-        var response = await client.ExecuteStepAsync("mystep", step, null, null, TestContext.Current.CancellationToken);
+        var result = await sut.ExecuteStepAsync(step, Cancel);
 
-        var (request, body) = Assert.Single(sent);
-        Assert.Equal("/processes/steps/mystep", request.RequestUri!.AbsolutePath);
-        Assert.Contains("\"processStep\":{\"memberId\":\"M1\"}", body, StringComparison.Ordinal);
-        Assert.Equal("MyStep", response.StepName);
+        Assert.Equal("MyStep", result.StepName);
+        var request = Assert.Single(sent);
+        Assert.Equal("/radiology/processes/steps/mystep", request.Url);
+        Assert.Same(step, Assert.IsType<ExecuteStepRequest<MyStep>>(request.Body).ProcessStep);
+        Assert.True(request.Idempotent);
+        Assert.True(request.InvalidatesRegistryOnNotFound);
+        Assert.Null(request.IdempotencyKey);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_TypedResult_ReturnsTheTypedAnswer()
+    {
+        var sut = CreateSut();
+
+        var result = await sut.ExecuteStepAsync<FakeStepRequest, MyStepResponse>(new FakeStepRequest(), Cancel);
+
+        Assert.Equal("typed", result.Result?.Value);
+        Assert.Equal("/radiology/processes/steps/fakesteprequest", Assert.Single(sent).Url);
+    }
+
+    [Fact]
+    public async Task ExecuteStepAsync_ByName_PostsTheJsonPayload_WithTheProcessAndTheCallersKey()
+    {
+        var processId = Guid.NewGuid();
+        var sut = CreateSut();
+
+        var response = await sut.ExecuteStepAsync("MyStep", Json(new { memberId = "M1" }), processId, "order-42", Cancel);
+
         Assert.Equal("V-1", response.Result.GetProperty("visitId").GetString());
-    }
-
-    [Fact]
-    public async Task ExecuteStepAsync_ByName_AnExplicitProcessId_WinsOverTheAmbientOne()
-    {
-        var explicitId = Guid.NewGuid();
-        var stamper = new Mock<ICorrelationHeaderStamper>();
-        stamper.Setup(x => x.Stamp(It.IsAny<HttpRequestMessage>()))
-            .Callback((HttpRequestMessage r) => r.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, Guid.NewGuid().ToString()));
-        var (client, sent) = CreateStepClient(stamper);
-
-        await client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), explicitId, null, TestContext.Current.CancellationToken);
-
-        Assert.Equal(explicitId.ToString(), Assert.Single(Assert.Single(sent).Request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
-    }
-
-    [Fact]
-    public async Task ExecuteStepAsync_ByName_WithoutAProcessId_KeepsTheAmbientOne()
-    {
-        var ambient = Guid.NewGuid().ToString();
-        var stamper = new Mock<ICorrelationHeaderStamper>();
-        stamper.Setup(x => x.Stamp(It.IsAny<HttpRequestMessage>()))
-            .Callback((HttpRequestMessage r) => r.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, ambient));
-        var (client, sent) = CreateStepClient(stamper);
-
-        await client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, null, TestContext.Current.CancellationToken);
-
-        Assert.Equal(ambient, Assert.Single(Assert.Single(sent).Request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
-    }
-
-    // An unknown (or forbidden) step is the service's own answer, not a client-side registry check.
-    [Theory]
-    [InlineData(HttpStatusCode.NotFound)]
-    [InlineData(HttpStatusCode.Forbidden)]
-    public async Task ExecuteStepAsync_ByName_AStepTheServiceRefuses_GetsItsOwnStatus(HttpStatusCode status)
-    {
-        var (client, sent) = CreateStepClient(stepStatus: status);
-
-        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync("NoSuchStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, null, TestContext.Current.CancellationToken));
-
-        Assert.Equal(HttpClientErrorCodes.RequestFailed, exception.Code);
-        Assert.Equal(status, exception.StatusCode);
-        Assert.Equal("/processes/steps/nosuchstep", Assert.Single(sent).Request.RequestUri!.AbsolutePath);
+        var request = Assert.Single(sent);
+        Assert.Equal("/radiology/processes/steps/mystep", request.Url);
+        Assert.Equal("M1", Assert.IsType<ExecuteStepRequest<JsonElement>>(request.Body).ProcessStep.GetProperty("memberId").GetString());
+        Assert.Equal(processId, request.ProcessId);
+        Assert.Equal("order-42", request.IdempotencyKey);
+        Assert.True(request.Idempotent);
+        Assert.Equal("Process step request for 'MyStep'", request.Description);
     }
 
     [Fact]
     public async Task ExecuteStepAsync_ByName_KeepsTheNameOneRouteSegment()
     {
-        var (client, sent) = CreateStepClient();
+        await CreateSut().ExecuteStepAsync("../registry", Json(new { }), null, null, Cancel);
 
-        await client.ExecuteStepAsync("../registry", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, null, TestContext.Current.CancellationToken);
-
-        Assert.Equal("/processes/steps/..%2Fregistry", Assert.Single(sent).Request.RequestUri!.AbsolutePath);
+        Assert.Equal("/radiology/processes/steps/..%2Fregistry", Assert.Single(sent).Url);
     }
 
-    [Fact]
-    public async Task ExecuteStepAsync_ByName_AFailedCall_Throws_RequestFailed()
-    {
-        var (client, _) = CreateStepClient(stepStatus: HttpStatusCode.Conflict);
-
-        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync("MyStep", System.Text.Json.JsonSerializer.SerializeToElement(new { }), null, null, TestContext.Current.CancellationToken));
-
-        Assert.Equal(HttpClientErrorCodes.RequestFailed, exception.Code);
-        Assert.Equal(HttpStatusCode.Conflict, exception.StatusCode);
-    }
-
-    // ---------------------------------------------------------------------------
-    // GetProcessStateAsync
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task GetProcessStateAsync_WhenFound_ReturnsState()
-    {
-        var processId = Guid.NewGuid();
-        var fakeState = new ProcessStateResponse
-        {
-            ProcessId = processId,
-            AvailableSteps = [],
-            Steps = []
-        };
-
-        // First call = GetProcessStateAsync sends one GET (no registry needed for state URL)
-        // The state endpoint does not require registry lookup — just build the URL from options
-        var (client, _) = CreateClient(respond: _ => JsonOk(fakeState));
-
-        var result = await client.GetProcessStateAsync(processId, TestContext.Current.CancellationToken);
-
-        Assert.NotNull(result);
-        Assert.Equal(processId, result!.ProcessId);
-    }
-
-    [Fact]
-    public async Task GetProcessStateAsync_WhenNotFound_ReturnsNull()
-    {
-        var (client, _) = CreateClient(respond: _ => new HttpResponseMessage(HttpStatusCode.NotFound));
-
-        var result = await client.GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        Assert.Null(result);
-    }
-
-    [Fact]
-    public async Task GetProcessStateAsync_WhenHttpFails_ThrowsKaleidoException()
-    {
-        var (client, _) = CreateClient(respond: _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
-
-        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
-
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, ex.StatusCode);
-        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
-    }
-
-    // ---------------------------------------------------------------------------
-    // ExecuteStepAsync (untyped)
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task ExecuteStepAsync_ResolvesStepUrlAndPosts()
-    {
-        var fakeResult = new StepExecutionResponse
-        {
-            ProcessId = Guid.NewGuid(),
-            StepName = "MyStep",
-            BusinessMessages = []
-        };
-
-        string? postedUrl = null;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            postedUrl = req.RequestUri!.PathAndQuery;
-            return JsonOk(fakeResult);
-        });
-
-        var result = await client.ExecuteStepAsync(new MyStep(), TestContext.Current.CancellationToken);
-
-        Assert.Equal("MyStep", result.StepName);
-        Assert.Equal("/processes/steps/mystep", postedUrl);
-    }
-
-    [Fact]
-    public async Task ExecuteStepAsync_WhenTheServiceDoesNotHaveTheStep_Throws()
-    {
-        var (client, _) = CreateClient(respond: _ => new HttpResponseMessage(HttpStatusCode.NotFound));
-
-        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync(new UnknownTypeForTest(), TestContext.Current.CancellationToken));
-
-        Assert.Equal(HttpStatusCode.NotFound, ex.StatusCode);
-        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
-    }
-
-    [Fact]
-    public async Task ExecuteStepAsync_WhenHttpFails_ThrowsKaleidoException()
-    {
-        var (client, _) = CreateClient(respond: _ => new HttpResponseMessage(HttpStatusCode.BadGateway));
-
-        var ex = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync(new MyStep(), TestContext.Current.CancellationToken));
-
-        Assert.Equal(HttpStatusCode.BadGateway, ex.StatusCode);
-        Assert.Equal(HttpClientErrorCodes.RequestFailed, ex.Code);
-    }
-
-    // ---------------------------------------------------------------------------
-    // ExecuteStepAsync (typed)
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task ExecuteStepAsync_TypedResult_ReturnsTypedResponse()
-    {
-        var fakeResult = new StepExecutionResponse<MyStepResponse>
-        {
-            ProcessId = Guid.NewGuid(),
-            StepName = "MyStep",
-            BusinessMessages = [],
-            Result = new MyStepResponse { Value = "done" }
-        };
-
-        var (client, _) = CreateClient(respond: _ => JsonOk(fakeResult));
-
-        var result = await client.ExecuteStepAsync<MyStep, MyStepResponse>(new MyStep(), TestContext.Current.CancellationToken);
-
-        Assert.Equal("MyStep", result.StepName);
-        Assert.NotNull(result.Result);
-        Assert.Equal("done", result.Result!.Value);
-    }
-
-    // ---------------------------------------------------------------------------
-    // Route prefix
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task RoutePrefix_IsAppliedToRegistryUrl()
-    {
-        string? registryUrl = null;
-        var (client, _) = CreateClient(routePrefix: "radiology", respond: req =>
-        {
-            registryUrl = req.RequestUri!.PathAndQuery;
-            return JsonOk(FakeRegistry);
-        });
-
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal("/radiology/registry", registryUrl);
-    }
-
-    [Fact]
-    public async Task RoutePrefix_IsAppliedToProcessStateUrl()
-    {
-        var processId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
-        string? stateUrl = null;
-        var (client, _) = CreateClient(routePrefix: "radiology", respond: req =>
-        {
-            stateUrl = req.RequestUri!.PathAndQuery;
-            // Always 404 for simplicity
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-
-        await client.GetProcessStateAsync(processId, TestContext.Current.CancellationToken);
-
-        Assert.Contains("/radiology/processes/", stateUrl);
-        Assert.Contains(processId.ToString(), stateUrl);
-    }
-
-    [Fact]
-    public async Task RoutePrefix_WhenEmpty_UsesDefaultRegistryUrl()
-    {
-        string? registryUrl = null;
-        var (client, _) = CreateClient(routePrefix: "", respond: req =>
-        {
-            registryUrl = req.RequestUri!.PathAndQuery;
-            return JsonOk(FakeRegistry);
-        });
-
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal("/registry", registryUrl);
-    }
-
-    // ---------------------------------------------------------------------------
-    // Correlation headers
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task GetProcessStateAsync_StampsCorrelationHeadersOnRequest()
-    {
-        var fakeState = new ProcessStateResponse
-        {
-            ProcessId = Guid.NewGuid(),
-            AvailableSteps = [],
-            Steps = []
-        };
-        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
-        handler.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync((HttpRequestMessage _, CancellationToken _) => JsonOk(fakeState));
-
-        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
-        var stamper = new Mock<ICorrelationHeaderStamper>();
-
-        var client = CreateSut(httpClient, stamper.Object);
-        await client.GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        stamper.Verify(x => x.Stamp(It.IsAny<HttpRequestMessage>()), Times.Once);
-    }
-
-    // ---------------------------------------------------------------------------
-    // Fake types
-    // ---------------------------------------------------------------------------
-
-    // The step name is the type name: "MyStep" matches FakeStep.Name
-    private sealed class MyStep { }
-
-    private sealed class UnknownTypeForTest { }
-
-    private sealed class MyStepResponse { public string Value { get; init; } = ""; }
-
-    // A 404 from a step means the service was deployed without it: the registry is loaded again.
-    [Fact]
-    public async Task ExecuteAsync_WhenTheServiceAnswers404_DropsTheRegistrySnapshot()
-    {
-        var registryReads = 0;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
-            {
-                registryReads++;
-                return JsonOk(FakeRegistry);
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken));
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal(2, registryReads);
-    }
-
-    // The state endpoint answers 404 for an unknown process, which says nothing about the registry.
-    [Fact]
-    public async Task GetProcessStateAsync_WhenNotFound_KeepsTheRegistrySnapshot()
-    {
-        var registryReads = 0;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
-            {
-                registryReads++;
-                return JsonOk(FakeRegistry);
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-        await client.GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
-        await client.GetRegistryAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal(1, registryReads);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_WhenTheProcessWasChangedConcurrently_ThrowsAConflictWithTheServiceErrors()
-    {
-        var (client, _) = CreateClient(respond: req =>
-            req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal)
-                ? JsonOk(FakeRegistry)
-                : new HttpResponseMessage(HttpStatusCode.Conflict)
-                {
-                    Content = JsonContent.Create(
-                        new KaleidoErrorResponse([new KaleidoError("pro_process_conflict", "Changed by another request.")]),
-                        options: KaleidoJsonOptions.Options),
-                });
-
-        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken));
-
-        Assert.Equal(HttpClientErrorCodes.Conflict, exception.Code);
-        Assert.Equal(HttpStatusCode.Conflict, exception.StatusCode);
-        Assert.Equal("pro_process_conflict", Assert.Single(exception.Errors).Code);
-    }
-
-    // One key per execute call: a retry of the same request carries the same key, a new call a new one.
-    [Fact]
-    public async Task ExecuteAsync_SendsANewIdempotencyKeyWithEveryCall()
-    {
-        var keys = new List<string>();
-        var (client, _) = CreateClient(respond: req =>
-        {
-            keys.Add(req.Headers.GetValues(KaleidoIdempotencyHeaders.IdempotencyKey).Single());
-            return JsonOk(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() });
-        });
-
-        await client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken);
-        await client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken);
-
-        Assert.Equal(2, keys.Count);
-        Assert.All(keys, key => Assert.False(string.IsNullOrWhiteSpace(key)));
-        Assert.NotEqual(keys[0], keys[1]);
-    }
-
-    // #440: a caller's own key for a logical call is sent as is, on both the multi-step and the by-name
-    // call, so repeating the call repeats the key; a blank key is no key (one is generated).
     [Theory]
-    [InlineData("order-42-confirm", "order-42-confirm")]
-    [InlineData("  ", null)]
-    public async Task ExecuteAsync_AndExecuteStepAsyncByName_SendTheCallersIdempotencyKey(string given, string? expected)
+    [InlineData(null)]
+    [InlineData(" ")]
+    public async Task ExecuteStepAsync_ByName_WithoutAName_IsRefused(string? stepName)
     {
-        var keys = new List<string>();
-        var (client, _) = CreateClient(respond: req =>
-        {
-            keys.Add(req.Headers.GetValues(KaleidoIdempotencyHeaders.IdempotencyKey).Single());
-            return req.RequestUri!.AbsolutePath.EndsWith("/execute", StringComparison.Ordinal)
-                ? JsonOk(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() })
-                : JsonOk(new StepExecutionResponse<JsonElement> { ProcessId = Guid.NewGuid(), StepName = "MyStep", Result = JsonSerializer.SerializeToElement(new { }) });
-        });
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => CreateSut().ExecuteStepAsync(stepName!, Json(new { }), null, null, Cancel));
 
-        await client.ExecuteAsync(new ExecuteProcessRequest(), given, TestContext.Current.CancellationToken);
-        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), null, given, TestContext.Current.CancellationToken);
-
-        Assert.Equal(2, keys.Count);
-        Assert.All(keys, key => Assert.False(string.IsNullOrWhiteSpace(key)));
-
-        if (expected is not null)
-        {
-            Assert.All(keys, key => Assert.Equal(expected, key));
-        }
-        else
-        {
-            Assert.NotEqual(keys[0], keys[1]);
-        }
+        Assert.Empty(sent);
     }
 
+    // Step URLs come from the route prefix, never from the registry (#381).
     [Fact]
-    public async Task ExecuteStepAsync_TypedResult_WhenTheServiceRejectsTheStep_ThrowsValidationFailedWithTheErrors()
+    public async Task ExecuteStepAsync_WithoutARoutePrefix_UsesTheDefaultUrl_AndReadsNoRegistry()
     {
-        var (client, _) = CreateClient(respond: req =>
-            req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal)
-                ? JsonOk(FakeRegistry)
-                : new HttpResponseMessage(HttpStatusCode.BadRequest)
-                {
-                    Content = JsonContent.Create(
-                        new KaleidoErrorResponse([new KaleidoError("pro_invalid_step", "Field required.")]),
-                        options: KaleidoJsonOptions.Options),
-                });
+        await CreateSut(routePrefix: "").ExecuteStepAsync("MyStep", Json(new { }), null, null, Cancel);
 
-        var exception = await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.ExecuteStepAsync<MyStep, MyStepResponse>(new MyStep(), TestContext.Current.CancellationToken));
-
-        Assert.Equal(HttpClientErrorCodes.ValidationFailed, exception.Code);
-        Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
-        Assert.Equal("pro_invalid_step", Assert.Single(exception.Errors).Code);
-        Assert.Equal("Process step request failed: Field required.", exception.Message);
+        Assert.Equal("/processes/steps/mystep", Assert.Single(sent).Url);
+        remoteRegistry.Verify(x => x.GetAsync(It.IsAny<KaleidoClientDefinition>(), It.IsAny<ICorrelationHeaderStamper>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // Step calls never read the registry (#381): with an empty cache they make no registry request.
+    // A failure is the transport's answer, passed on as it is.
     [Fact]
-    public async Task ExecuteStepAsync_MakesNoRegistryRequest_AndUsesTheRoutePrefix()
+    public async Task ExecuteAsync_AFailure_IsPassedOn()
     {
-        var paths = new List<string>();
-        var (client, _) = CreateClient(routePrefix: "radiology", respond: req =>
-        {
-            paths.Add(req.RequestUri!.AbsolutePath);
-            return JsonOk(new StepExecutionResponse<object> { ProcessId = Guid.NewGuid(), StepName = "MyStep" });
-        });
+        var failure = new KaleidoHttpClientException(HttpClientErrorCodes.Conflict, "changed", HttpStatusCode.Conflict);
+        var sut = CreateSut();
+        transport.Setup(x => x.SendAsync<ProcessExecutionResponse>(It.IsAny<KaleidoClientRequest>(), Cancel)).ThrowsAsync(failure);
 
-        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), processId: null, idempotencyKey: null, cancellationToken: TestContext.Current.CancellationToken);
-        await client.ExecuteStepAsync<FakeStepRequest>(new FakeStepRequest(), TestContext.Current.CancellationToken);
-
-        Assert.Equal(["/radiology/processes/steps/mystep", "/radiology/processes/steps/fakesteprequest"], paths);
-    }
-
-    // The registry is filtered per caller: a cached view that lacks the step (another caller fetched
-    // it) does not stop a caller who may run the step (#381).
-    [Fact]
-    public async Task ExecuteStepAsync_WhenTheCachedRegistryLacksTheStep_StillCallsIt()
-    {
-        string? postedPath = null;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            if (req.RequestUri!.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal))
-            {
-                return JsonOk(new AggregatedRegistryResponse { Processes = [] });
-            }
-
-            postedPath = req.RequestUri.AbsolutePath;
-            return JsonOk(new StepExecutionResponse<object> { ProcessId = Guid.NewGuid(), StepName = "MyStep" });
-        });
-
-        Assert.Empty(await client.GetRegistryAsync(TestContext.Current.CancellationToken));
-        await client.ExecuteStepAsync("MyStep", JsonSerializer.SerializeToElement(new { }), processId: null, idempotencyKey: null, cancellationToken: TestContext.Current.CancellationToken);
-
-        Assert.Equal("/processes/steps/mystep", postedPath);
-    }
-
-    private sealed record FakeStepRequest;
-
-    private static (KaleidoProcessorClient Client, RecordingLogger Logger) CreateLoggedClient(Func<HttpRequestMessage, HttpResponseMessage> respond)
-    {
-        var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
-        handler.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync((HttpRequestMessage req, CancellationToken _) => respond(req));
-        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri("http://localhost") };
-        var logger = new RecordingLogger();
-
-        return (CreateSut(httpClient, Mock.Of<ICorrelationHeaderStamper>(), "radiology", logger), logger);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_LogsTheOutgoingCallAtDebug()
-    {
-        var (client, logger) = CreateLoggedClient(_ => JsonOk(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() }));
-
-        await client.ExecuteAsync(new ExecuteProcessRequest(), null, TestContext.Current.CancellationToken);
-
-        var entry = Assert.Single(logger.Entries);
-        Assert.Equal(LogLevel.Debug, entry.Level);
-        Assert.Contains("Sending POST", entry.Message, StringComparison.Ordinal);
-        Assert.Contains("remote processor 'radiology'", entry.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task GetProcessStateAsync_WhenTheServiceFails_LogsAWarningWithTheStatus()
-    {
-        var (client, logger) = CreateLoggedClient(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
-
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(
-            () => client.GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
-
-        Assert.Collection(
-            logger.Entries,
-            sending => Assert.Equal(LogLevel.Debug, sending.Level),
-            failed =>
-            {
-                Assert.Equal(LogLevel.Warning, failed.Level);
-                Assert.Contains("Remote processor 'radiology' returned 503 (ServiceUnavailable) for GET", failed.Message, StringComparison.Ordinal);
-                Assert.Contains("/radiology/processes/", failed.Message, StringComparison.Ordinal);
-            });
-    }
-
-    private sealed class RecordingLogger : ILogger<KaleidoProcessorClient>
-    {
-        public List<(LogLevel Level, string Message)> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-            Entries.Add((logLevel, formatter(state, exception)));
-    }
-
-    [Fact]
-    public async Task GetProcessStateAsync_SendsNoIdempotencyKey()
-    {
-        var hasKey = true;
-        var (client, _) = CreateClient(respond: req =>
-        {
-            hasKey = req.Headers.Contains(KaleidoIdempotencyHeaders.IdempotencyKey);
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-
-        await client.GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        Assert.False(hasKey);
+        Assert.Same(failure, await Assert.ThrowsAsync<KaleidoHttpClientException>(() => sut.ExecuteAsync(new ExecuteProcessRequest(), null, Cancel)));
     }
 }

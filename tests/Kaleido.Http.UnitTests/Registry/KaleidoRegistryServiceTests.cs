@@ -48,17 +48,36 @@ public sealed class KaleidoRegistryServiceTests
         ILogger<KaleidoRegistryService>? logger = null,
         IHttpContextAccessor? httpContextAccessor = null)
     {
-        var store = new Mock<IRegistrySnapshotStore>();
-        store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, CancellationToken _) => new ValueTask<AggregatedRegistryResponse?>(stored.TryGetValue(k, out var v) ? v : null));
-        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, AggregatedRegistryResponse v, CancellationToken _) =>
+        // The cache's contract (its own rules are tested in HttpRegistryCacheTests): it serves what it
+        // holds unless refreshed outside the cooldown, stamps what it builds, and keeps only a complete
+        // result.
+        var cache = new Mock<IHttpRegistryCache>();
+        cache.Setup(c => c.GetOrBuildAsync(
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan?>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<bool>(),
+                It.IsAny<Func<CancellationToken, Task<AggregatedRegistryResponse>>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(async (string key, TimeSpan? _, TimeSpan refreshCooldown, bool forceRefresh, Func<CancellationToken, Task<AggregatedRegistryResponse>> build, CancellationToken cancellationToken) =>
             {
-                stored[k] = v;
-                return ValueTask.CompletedTask;
+                if (stored.TryGetValue(key, out var held) && (!forceRefresh || refreshCooldown > TimeSpan.Zero))
+                {
+                    return held;
+                }
+
+                var built = await build(cancellationToken) with { GeneratedAt = DateTimeOffset.UtcNow };
+                built = built with { IsPartial = built.ClientErrors.Count > 0 };
+
+                if (!built.IsPartial)
+                {
+                    stored[key] = built;
+                }
+
+                return built;
             });
 
-        var snapshot = new RegistrySnapshot(store.Object, serviceOptions);
+        var snapshot = new RegistrySnapshot(cache.Object, serviceOptions);
         snapshot.Configure(new KaleidoHttpMapOptions
         {
             AggregateRegistry = aggregate,

@@ -75,6 +75,7 @@ public static class KaleidoHttpServiceCollectionExtensions
         // The unified registry, in process: the registry endpoint and in-host consumers (e.g. the
         // MCP adapter) both use IKaleidoRegistryService. Downstream registries come from
         // AddHttpClients(), which replaces the "no downstream" default when clients are configured.
+        builder.Services.TryAddSingleton<IHttpRegistryCache, HttpRegistryCache>();
         builder.Services.TryAddSingleton<RegistrySnapshot>();
         builder.Services.TryAddSingleton<LocalRegistrations>();
         builder.Services.TryAddScoped<IKaleidoDownstreamRegistries, NoDownstreamRegistries>();

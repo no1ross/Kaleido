@@ -1,5 +1,4 @@
-using Kaleido.Http.Processor;
-using Kaleido.Http.Queryable;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 
 namespace Kaleido.Http.Client.UnitTests;
@@ -7,23 +6,36 @@ namespace Kaleido.Http.Client.UnitTests;
 public sealed class KaleidoCallCredentialHandlerFilterTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static KaleidoCallCredentialHandlerFilter CreateSut(params IKaleidoCallCredentialProvider[] providers)
+    private static KaleidoClientDefinition Client(string name) =>
+        new(name, name.ToLowerInvariant(), RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
+
+    private static readonly IKaleidoClientCatalog Catalog = CreateCatalog();
+
+    private static IKaleidoClientCatalog CreateCatalog()
     {
-        var processMap = new KaleidoProcessorClientRouteOptionsMap();
-        processMap.SetRoutePrefix("Intake", "intake");
-
-        var queryableMap = new KaleidoQueryableClientRouteOptionsMap();
-        queryableMap.SetRoutePrefix("Member", "member");
-
-        return new KaleidoCallCredentialHandlerFilter(processMap, queryableMap, providers);
+        var catalog = new Mock<IKaleidoClientCatalog>();
+        catalog.Setup(x => x.Find(It.IsAny<string>())).Returns((string name) =>
+            new[] { Client("Intake"), Client("Member") }.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)));
+        return catalog.Object;
     }
 
+    private static KaleidoCallCredentialHandlerFilter CreateSut(params IKaleidoCallCredentialProvider[] providers) =>
+        new(Catalog, providers);
+
+    // The pipeline's services, where the filter resolves the client's keyed handler.
     private static Mock<HttpMessageHandlerBuilder> Builder(string? name)
     {
+        var services = new ServiceCollection();
+        services.AddSingleton(Catalog);
+        services.AddSingleton(Mock.Of<IKaleidoCallCredentialProvider>());
+        services.AddKeyedTransient<KaleidoCallCredentialHandler>("Intake");
+        services.AddKeyedTransient<KaleidoCallCredentialHandler>("Member");
+
         var handlers = new List<DelegatingHandler>();
         var builder = new Mock<HttpMessageHandlerBuilder>();
         builder.SetupProperty(x => x.Name, name);
         builder.Setup(x => x.AdditionalHandlers).Returns(handlers);
+        builder.Setup(x => x.Services).Returns(services.BuildServiceProvider());
         return builder;
     }
 

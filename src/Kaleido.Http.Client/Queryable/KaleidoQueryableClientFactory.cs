@@ -1,27 +1,24 @@
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Http.Client.Queryable;
 
+// For a client name chosen at runtime (an MCP tool call, the registry aggregation): the configured
+// client of that name, as the container built it (a keyed service, #498). Code that knows the name
+// injects [FromKeyedServices("name")] IKaleidoQueryableClient instead.
 internal sealed class KaleidoQueryableClientFactory(
-    IHttpClientFactory httpClientFactory,
-    ICorrelationHeaderStamper headerStamper,
-    ILogger<KaleidoQueryableClient> logger,
-    KaleidoQueryableClientRouteOptionsMap routeOptionsMap,
-    KaleidoRemoteRegistry remoteRegistry)
-    : KaleidoClientFactoryBase<IKaleidoQueryableClient, KaleidoQueryableClientRouteOptionsMap>,
-      IKaleidoQueryableClientFactory
+    IServiceProvider services,
+    IKaleidoClientCatalog catalog)
+    : IKaleidoQueryableClientFactory
 {
-    protected override IHttpClientFactory HttpClientFactory => httpClientFactory;
-    protected override ICorrelationHeaderStamper HeaderStamper => headerStamper;
-    protected override KaleidoQueryableClientRouteOptionsMap RouteOptionsMap => routeOptionsMap;
+    public IKaleidoQueryableClient GetClient(string name) =>
+        services.GetRequiredKeyedService<IKaleidoQueryableClient>(catalog.Require(name).Name);
 
-    protected override IKaleidoQueryableClient CreateClient(
-        System.Net.Http.HttpClient httpClient,
-        ICorrelationHeaderStamper stamper,
-        string clientName,
-        string serviceName,
-        TimeSpan? registryTtl)
+    public bool TryGetClientForService(string serviceName, [NotNullWhen(true)] out IKaleidoQueryableClient? client)
     {
-        return new KaleidoQueryableClient(httpClient, stamper, logger, remoteRegistry, clientName, serviceName, registryTtl);
+        client = catalog.FindByService(serviceName) is { } found
+            ? services.GetRequiredKeyedService<IKaleidoQueryableClient>(found.Name)
+            : null;
+
+        return client is not null;
     }
 }

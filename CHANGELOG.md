@@ -170,6 +170,14 @@ sections.
 - Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
 
 ### Changed
+- **The Kaleido clients are built by the container** (#498): each client configured under
+  `Kaleido:Clients` is registered once, and its Process and Queryable clients, health check and
+  credential handler are keyed services under its name, so a fixed client can be injected with
+  `[FromKeyedServices("Radiology")]`; the factories resolve a name chosen at runtime. Sending a call
+  is one shared transport, and the registry caches are singletons; no Kaleido service creates
+  another. Log messages of client calls now name the client and the service ("Sending POST ... through
+  Kaleido client 'Radiology' to service 'radiology'"). KAL0006 accepts a keyed resolution whose key is
+  only known at runtime.
 - **The MCP server reports the host's version** (#463): `KaleidoMcpOptions.ServerVersion` is optional;
   left unset, the initialize response carries the host application's version (the entry assembly's
   informational version without its `+commit` suffix, else its assembly version) instead of a fixed

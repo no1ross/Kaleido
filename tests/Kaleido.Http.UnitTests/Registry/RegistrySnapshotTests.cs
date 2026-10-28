@@ -3,29 +3,17 @@ namespace Kaleido.Http.Registry.UnitTests;
 public sealed class RegistrySnapshotTests
     : Kaleido.UnitTests.SutFixture
 {
-    private readonly Dictionary<string, AggregatedRegistryResponse> stored = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Mock<IHttpRegistryCache> cache = new();
 
-    private RegistrySnapshot CreateSut(string serviceName = "router")
-    {
-        var store = new Mock<IRegistrySnapshotStore>();
-        store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, CancellationToken _) => new ValueTask<AggregatedRegistryResponse?>(stored.TryGetValue(k, out var v) ? v : null));
-        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, AggregatedRegistryResponse v, CancellationToken _) =>
-            {
-                stored[k] = v;
-                return ValueTask.CompletedTask;
-            });
-
-        return new RegistrySnapshot(store.Object, new KaleidoServiceOptions { ServiceName = serviceName });
-    }
+    private RegistrySnapshot CreateSut(string serviceName = "router") =>
+        new(cache.Object, new KaleidoServiceOptions { ServiceName = serviceName });
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     [Fact]
     public void BeforeConfigure_IsNotMapped_AndHasTheDefaults()
     {
-        using var sut = CreateSut();
+        var sut = CreateSut();
 
         Assert.False(sut.IsMapped);
         Assert.False(sut.Aggregate);
@@ -37,7 +25,7 @@ public sealed class RegistrySnapshotTests
     [Fact]
     public void Configure_TakesTheMapOptions()
     {
-        using var sut = CreateSut();
+        var sut = CreateSut();
 
         sut.Configure(new KaleidoHttpMapOptions
         {
@@ -55,22 +43,20 @@ public sealed class RegistrySnapshotTests
     }
 
     [Fact]
-    public async Task GetOrBuild_StoresUnderTheServicesCanonicalKey_AndServesItAfterwards()
+    public async Task GetOrBuild_AsksTheCacheUnderTheServicesCanonicalKey_WithTheMappedSettings()
     {
-        using var sut = CreateSut("router");
-        sut.Configure(new KaleidoHttpMapOptions());
-        var builds = 0;
-
-        Task<AggregatedRegistryResponse> Build(CancellationToken _)
+        var sut = CreateSut("router");
+        sut.Configure(new KaleidoHttpMapOptions
         {
-            builds++;
-            return Task.FromResult(new AggregatedRegistryResponse());
-        }
+            RegistryCacheTtl = TimeSpan.FromMinutes(5),
+            RegistryRefreshCooldown = TimeSpan.FromSeconds(3)
+        });
+        var built = new AggregatedRegistryResponse();
+        cache.Setup(c => c.GetOrBuildAsync("kaleido:router", TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(3), true, It.IsAny<Func<CancellationToken, Task<AggregatedRegistryResponse>>>(), Cancel))
+            .ReturnsAsync(built);
 
-        await sut.GetOrBuildAsync(refresh: false, Build, Cancel);
-        await sut.GetOrBuildAsync(refresh: false, Build, Cancel);
+        var result = await sut.GetOrBuildAsync(refresh: true, _ => Task.FromResult(new AggregatedRegistryResponse()), Cancel);
 
-        Assert.Equal(1, builds);
-        Assert.True(stored.ContainsKey("kaleido:router"));
+        Assert.Same(built, result);
     }
 }

@@ -75,6 +75,16 @@ public sealed class ServiceLocatorAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        // A keyed resolution whose key is only known at runtime (a client name chosen by the caller) is
+        // the container's dispatch seam, like a runtime Type (#498): no constructor can declare it. A
+        // constant key could be injected with [FromKeyedServices] and is still reported.
+        if (method.Name is "GetKeyedService" or "GetRequiredKeyedService" &&
+            KeyArgument(invocation, method) is { } key &&
+            !context.SemanticModel.GetConstantValue(key, context.CancellationToken).HasValue)
+        {
+            return;
+        }
+
         // dynamic resolution is the container's dispatch seam — only flag
         // statically-closed service types that could be ctor-injected
         var resolvedType =
@@ -90,6 +100,17 @@ public sealed class ServiceLocatorAnalyzer : DiagnosticAnalyzer
 
         context.ReportDiagnostic(
             Diagnostic.Create(Rule, invocation.GetLocation(), method.Name));
+    }
+
+    // The serviceKey argument of a keyed resolution: the first argument of the reduced extension call
+    // (provider.GetRequiredKeyedService<T>(key)), the second of the static form.
+    private static ExpressionSyntax? KeyArgument(InvocationExpressionSyntax invocation, IMethodSymbol method)
+    {
+        var arguments = invocation.ArgumentList.Arguments;
+        var index = method.ReducedFrom is not null ? 0 : 1;
+
+        return arguments.FirstOrDefault(x => x.NameColon?.Name.Identifier.ValueText == "serviceKey")?.Expression
+            ?? (arguments.Count > index ? arguments[index].Expression : null);
     }
 
     // scope.ServiceProvider.Get…() where `scope` is a local initialized by

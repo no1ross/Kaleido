@@ -10,13 +10,19 @@ public sealed class KaleidoClientHealthCheckTests
     private static KaleidoClientHealthCheck CreateSut(
         IHttpClientFactory httpClientFactory,
         TimeSpan? timeout = null,
-        ILogger<KaleidoClientHealthCheck>? logger = null) =>
-        new(
-            httpClientFactory,
+        ILogger<KaleidoClientHealthCheck>? logger = null,
+        bool strict = false)
+    {
+        var catalog = new Mock<IKaleidoClientCatalog>();
+        catalog.Setup(x => x.Find("test-client")).Returns(
+            new KaleidoClientDefinition("test-client", "test-client", RegistryTtl: null, strict, timeout ?? TimeSpan.FromSeconds(5)));
+
+        return new(
             "test-client",
-            "/test-client/registry",
-            timeout ?? TimeSpan.FromSeconds(5),
+            httpClientFactory,
+            catalog.Object,
             logger ?? NullLogger<KaleidoClientHealthCheck>.Instance);
+    }
 
     [Theory]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
@@ -118,6 +124,26 @@ public sealed class KaleidoClientHealthCheckTests
 
         Assert.NotNull(sent);
         Assert.True(sent.Options.TryGetValue(KaleidoResilienceOptions.NoRetry, out var noRetry) && noRetry);
+    }
+
+    // The probe path comes from the client's definition: its service's registry, ?strict when asked.
+    [Theory]
+    [InlineData(false, "/test-client/registry")]
+    [InlineData(true, "/test-client/registry?strict")]
+    public async Task CheckHealthAsync_ProbesTheClientsRegistry(bool strict, string expected)
+    {
+        HttpRequestMessage? sent = null;
+        var check = CreateSut(
+            FactoryFor((request, _) =>
+            {
+                sent = request;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            }),
+            strict: strict);
+
+        await check.CheckHealthAsync(CreateContext(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(expected, sent?.RequestUri?.PathAndQuery);
     }
 
     [Fact]

@@ -29,6 +29,10 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
     private static ServiceProvider Build(IServiceCollection services) =>
         services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
+    // The configured clients' definitions, by name.
+    private static Dictionary<string, KaleidoClientDefinition> Definitions(IServiceCollection services) =>
+        services.Select(d => d.ImplementationInstance).OfType<KaleidoClientDefinition>().ToDictionary(x => x.Name, StringComparer.Ordinal);
+
     private static T Instance<T>(IServiceCollection services)
         where T : class =>
         (T)Assert.Single(services, d => d.ServiceType == typeof(T)).ImplementationInstance!;
@@ -72,14 +76,11 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
 
         builder.AddHttpClients();
 
-        var processMap = Instance<KaleidoProcessorClientRouteOptionsMap>(builder.Services);
-        var queryableMap = Instance<KaleidoQueryableClientRouteOptionsMap>(builder.Services);
-        Assert.Equal("member", processMap.Options["Member"]);
-        Assert.Equal("imaging", processMap.Options["Radiology"]);
-        Assert.Equal("member", queryableMap.Options["Member"]);
-        Assert.Equal("imaging", queryableMap.Options["Radiology"]);
-        Assert.Equal(TimeSpan.FromMinutes(2), processMap.RegistryTtls["Member"]);
-        Assert.Equal(TimeSpan.FromSeconds(5), processMap.RegistryTtls["Radiology"]);
+        var clients = Definitions(builder.Services);
+        Assert.Equal("member", clients["Member"].RoutePrefix);
+        Assert.Equal("imaging", clients["Radiology"].RoutePrefix);
+        Assert.Equal(TimeSpan.FromMinutes(2), clients["Member"].RegistryTtl);
+        Assert.Equal(TimeSpan.FromSeconds(5), clients["Radiology"].RegistryTtl);
         Assert.Contains(builder.Services, d => d.ServiceType == typeof(IKaleidoProcessorClientFactory));
         Assert.Contains(builder.Services, d => d.ServiceType == typeof(IKaleidoQueryableClientFactory));
     }
@@ -95,9 +96,9 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
 
         builder.AddHttpClients();
 
-        var processMap = Instance<KaleidoProcessorClientRouteOptionsMap>(builder.Services);
-        Assert.Equal("member", processMap.Options["Member"]);
-        Assert.Equal(TimeSpan.FromSeconds(30), processMap.RegistryTtls["Member"]);
+        var member = Definitions(builder.Services)["Member"];
+        Assert.Equal("member", member.RoutePrefix);
+        Assert.Equal(TimeSpan.FromSeconds(30), member.RegistryTtl);
     }
 
     [Fact]
