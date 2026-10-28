@@ -231,6 +231,8 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 | `tools/` | yes | yes |
 | `tests/` | yes | yes |
 
+Whitespace and final newlines are not build rules: CI checks them with `dotnet format whitespace --folder --include src/ tools/ tests/ docs/ --exclude '**/obj/**' '**/bin/**' --verify-no-changes` (a few seconds; drop `--verify-no-changes` to fix) (#462).
+
 IDE0005 (unused usings) needs `GenerateDocumentationFile`, so `tests/` and `tools/` generate XML docs with CS1591 off. `dotnet format <solution> style --diagnostics IDE0005 --include tests/` fixes unused usings in bulk; IDE0005 reports one per file at a time, so build again until clean.
 
 CI (`build.yml`) also checks that every Kaleido type or member named in the Markdown docs exists in the sources (`python3 tools/docs/check-doc-symbols.py`; ADRs and audit records are skipped as historical; a deliberate non-symbol in code style goes in the script's `ALLOWED` list with its reason). Run it before committing doc changes.
