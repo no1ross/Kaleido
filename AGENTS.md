@@ -245,7 +245,7 @@ Never delete `bin`/`obj` folders inside `node_modules`; if a clean is needed, ex
 
 Stale bin/obj folders are the most common cause after a failed or partial build. Run `full_clean.cmd` from the repo root to nuke all bin/obj folders and restore, then rebuild:
 ```
-full_clean.cmd --no-pause   # deletes bin/, obj/, .vs/, TestResults/ (not inside node_modules), restores Kaleido.slnx, runs npm ci per UI
+full_clean.cmd --no-pause   # deletes bin/, obj/, .vs/, TestResults/ (not inside node_modules), restores Kaleido.slnx, runs npm ci per npm project (none today)
 dotnet build Kaleido.slnx
 ./tools/test/Run-Tests.ps1
 ```

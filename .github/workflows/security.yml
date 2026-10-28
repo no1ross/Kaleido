@@ -6,6 +6,11 @@ on:
   push:
     branches: [master]
 
+# A newer push to a pull request cancels the run it supersedes; runs on master always finish (#466).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
   security-events: write

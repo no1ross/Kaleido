@@ -9,6 +9,14 @@ on:
     branches:
       - master
 
+  workflow_dispatch:
+
+# A newer push to a pull request cancels the run it supersedes; runs on master always finish, so
+# every merged commit is analyzed, tested and packed (#466).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -176,6 +184,7 @@ jobs:
           coverage/index.html
           coverage/SummaryGithub.md
         if-no-files-found: ignore
+        retention-days: 14
 
     # Pack shipped src/ projects and the consumer analyzer on PRs and master
     # merges; master uploads artifacts. Publishing is the release workflow's (release.yml, RELEASING.md).
@@ -206,4 +215,39 @@ jobs:
         name: packages
         path: artifacts/*.nupkg
         if-no-files-found: error
+        retention-days: 30
 
+  # The maintainer develops on Windows: build and test there too, so path, line-ending and shell
+  # differences surface on master instead of on a contributor's machine (#466). Not on pull requests,
+  # to keep their checks fast; run it by hand (workflow_dispatch) before merging a risky change.
+  build-windows:
+
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    runs-on: windows-latest
+
+    steps:
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        fetch-depth: 0  # NBGV needs full history for version height
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68  # v6.0.0
+      with:
+        global-json-file: global.json
+        dotnet-version: 8.0.x
+
+    - name: Restore
+      run: dotnet restore Kaleido.slnx
+
+    - name: Self-test the test gate
+      shell: pwsh
+      run: ./tools/test/Test-RunTests.ps1
+
+    - name: Build
+      run: dotnet build Kaleido.slnx --configuration Release --no-restore
+
+    - name: Test
+      shell: pwsh
+      run: ./tools/test/Run-Tests.ps1 -Configuration Release
