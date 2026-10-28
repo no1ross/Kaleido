@@ -29,6 +29,13 @@ braces...) run in the build (#406, root [`AGENTS.md`](../AGENTS.md#per-commit-qu
 - Do not turn unit tests into business workflow, transport, or integration tests
 - Use functional tests to validate transport, real implementations, and broader business behavior
 
+**Why collaborators are always mocked (the mocking policy, #461).** A unit test tests one unit. Its
+collaborators are mocked (KAL1011), so changing class B never fails class A's tests, and finding the
+tests for a class is a matter of its name - not of searching every test that happens to run it
+through another class. How the classes work together - the flow - is what the functional and
+integration tests are for. This is deliberate; do not replace mocks with real collaborators to make
+a unit test "more realistic" - write or extend a functional test instead.
+
 ## Unit test fixtures (SutFixture)
 
 Every unit-test fixture must declare its subject under test by inheriting
