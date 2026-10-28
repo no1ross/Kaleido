@@ -69,12 +69,13 @@ public sealed class StepHandlerOceAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        foreach (var catchClause in method.Body.DescendantNodes().OfType<CatchClauseSyntax>())
+        var swallowing = method.Body.DescendantNodes()
+            .OfType<CatchClauseSyntax>()
+            .Where(x => CancellationCatch.SeesCancellationAsFailure(x, context.SemanticModel, context.CancellationToken));
+
+        foreach (var catchClause in swallowing)
         {
-            if (CancellationCatch.SeesCancellationAsFailure(catchClause, context.SemanticModel, context.CancellationToken))
-            {
-                context.ReportDiagnostic(Diagnostic.Create(Rule, catchClause.GetLocation(), methodSymbol.ContainingType.Name));
-            }
+            context.ReportDiagnostic(Diagnostic.Create(Rule, catchClause.GetLocation(), methodSymbol.ContainingType.Name));
         }
     }
 
