@@ -68,6 +68,12 @@ jobs:
         global-json-file: global.json
         dotnet-version: 8.0.x
 
+    # Whitespace and final newlines as .editorconfig states them (#462). The build enforces code style
+    # but not these. Folder mode: no MSBuild load (seconds), and every C# file in src, tools, tests and
+    # the guide's examples is checked, whatever project it belongs to.
+    - name: Check whitespace
+      run: dotnet format whitespace --folder --include src/ tools/ tests/ docs/ --exclude '**/obj/**' '**/bin/**' --verify-no-changes
+
     - name: Restore
       run: dotnet restore Kaleido.slnx
 
