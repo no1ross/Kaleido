@@ -394,11 +394,18 @@ belongs there or in `HttpContext.RequestServices` — nowhere else.
 
 ## Static helpers vs extension methods
 
-Convention (KAL0001 + MP-027): **a transformation that derives from one type is
-an extension on that type** — `query.ToApiBody()`, `type.GetQueryViewInterface()`.
-**Orchestration stays a helper/builder** — registry compile passes, metadata
-composition, multi-source assembly. `static` classes exist only to host
-extension methods.
+Convention (KAL0001 + MP-027): **static is fine for mechanics; static is not
+where behavior lives** (#459). Meaningful runtime behavior lives in injectable
+concrete types with explicit dependencies — an interface only where there is a
+real abstraction boundary, never manufactured for a pattern. A static class holds
+extension methods, or stateless value mechanics: names, routes, URLs, formats
+(`ProcessContractUrls.ExecuteStep(service, step)`, `QueryableEndpointNames`).
+- **A transformation that derives from one type is an extension on that type** —
+  `query.ToApiBody()`, `type.GetQueryViewInterface()`.
+- **Orchestration stays a helper/builder instance** — registry compile passes,
+  metadata composition, multi-source assembly.
+- **No mutable static state**, and no static method that works on runtime,
+  domain or service types (that is behavior — give it an owner).
 
 ## Correlation
 

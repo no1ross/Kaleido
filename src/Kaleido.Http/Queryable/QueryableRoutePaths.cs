@@ -1,6 +1,5 @@
 namespace Kaleido.Http.Queryable;
 
-#pragma warning disable KAL0001 // Pure route factory — no state, intentional static
 internal static class QueryableRoutePaths
 {
     public static string QuerySourceQuery(string sourceName)
