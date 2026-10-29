@@ -57,7 +57,9 @@ what was verified and how; an agent's claims about behavior are checked, not ass
 
 ## Review and ownership
 
-The maintainers listed in [`.github/CODEOWNERS`](./.github/CODEOWNERS) review and merge.
+The maintainers listed in [`.github/CODEOWNERS`](./.github/CODEOWNERS) review and merge. Kaleido has
+one maintainer today, with a backup account; [`MAINTAINERS.md`](./MAINTAINERS.md) lists the roles,
+where the accounts are held and how a maintainer is added.
 
 ## License
 
