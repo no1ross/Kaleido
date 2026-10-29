@@ -13,7 +13,7 @@ Canonical vocabulary — type names, namespaces, and docs must follow it:
 | Term | Meaning |
 |---|---|
 | **Service** | A deployed Kaleido host — `Kaleido:ServiceName`, route prefix `/{service}` |
-| **Processor** | The unit a service hosts that owns and executes Steps — the runtime/DI identity (`Kaleido.Processor` namespace, `IProcessorRuntime`, `ProcessorContext`, `IKaleidoContextStore`, `AddProcessor`/`MapProcessor`, `kaleido.processor.*` telemetry) |
+| **Processor** | The unit a service hosts that owns and executes Steps — the runtime/DI identity (`Kaleido.Processor` namespace, `IProcessorRuntime`, `ProcessorContext`, `IKaleidoContextStore`, the internal `AddProcessor`/`MapProcessor` that `AddKaleido()`/`MapKaleidoHttp()` call, `kaleido.processor.*` telemetry) |
 | **Process** | One executing workflow instance — the wire/transport domain (`/processes` routes, `ProcessId`, `ProcessExecutionState`, `ProcessStateResponse`, `ExecuteProcessRequest`, process events) |
 | **Step** | A unit of work inside a Processor — identified by `IProcessStep`, described by `[ProcessStep]`, named by its type name (it marks the work, not the executor) |
 | **Source / View / Query context** | Queryable-side (`Queryable` is the feature namespace). Names are type names. <br>- **Query source** (`IQuerySource<T>`, described by `[QuerySource]`): the published capability. <br>- **Query view** (`IQueryViewSource<TSource, …>`, `[QueryView]`): projects a source. <br>- **Query context** (`IQueryContext`): the record that describes how a source is queried. |
@@ -26,20 +26,18 @@ Rule of thumb: if a name refers to *who runs the work* (runtime, registries, pla
 
 ## Project dependency graph
 
-```
-Kaleido.Http.Client ──────────────────────────────────┐
-                                                       ↓
-Kaleido.Http ──────────────────────────────────► Kaleido.Http.Abstractions
-                                                       ↑
-Kaleido ◄──────────────────────────────────────────────┘
-
-Kaleido.Provider.SQLite ──► Kaleido
+```text
+Kaleido.Http.Mcp ──► Kaleido.Http ────────┐
+        │                                 ├──► Kaleido.Http.Abstractions ──► Kaleido
+        └──────────► Kaleido.Http.Client ─┘
 Kaleido.Observability.OpenTelemetry ──► Kaleido
+Kaleido.Provider.SQLite ──────────────► Kaleido
 ```
 
 - `Kaleido` has no Kaleido project dependencies — it is the foundation.
 - `Kaleido.Http` depends on `Kaleido.Http.Abstractions` (which depends on `Kaleido`).
 - `Kaleido.Http.Client` depends on `Kaleido` and `Kaleido.Http.Abstractions`.
+- `Kaleido.Http.Mcp` depends on `Kaleido.Http` (the registry service, the endpoint pipeline) and `Kaleido.Http.Client` (every tool call); nothing depends on it.
 - `Kaleido.Observability.OpenTelemetry` depends on `Kaleido` only.
 - `Kaleido.Provider.SQLite` depends on `Kaleido` only.
 
@@ -220,6 +218,26 @@ Public seams consumers are expected to implement or replace:
 ### Key design invariants
 - Each SQLite registration replaces one in-memory default registered by `AddKaleido()`; all share one database (one connection string).
 - The store must correctly implement state reconciliation so that existing saved contexts remain valid when the step registry changes.
+
+---
+
+## 7. Kaleido.Http.Mcp
+
+### Internal structure
+- `KaleidoMcpServiceCollectionExtensions` — `AddMcp()`: the MCP server (stateless Streamable HTTP), `KaleidoMcpOptions` (configuration over code, ADR 0030), the tool catalog and the tool invoker; startup fails without `AddHttp()`, `AddHttpClients()` or a call-credential registration
+- `KaleidoMcpEndpointRouteBuilderExtensions` — `MapKaleidoMcp(pattern)`; the endpoint runs the same correlation setup as Kaleido's HTTP endpoints
+- `KaleidoMcpToolHandler` — the server's hooks: `tools/list` returns the caller's tools, `tools/call` runs one
+- Tool catalog: `ToolCatalogProvider` (the caller's tools, from `IKaleidoRegistryService` — the same shared snapshot and per-caller filtering as the registry endpoint), `ToolCatalogBuilder` (registry to tools, incl. the front-door menu), `ToolCatalogCache` (translated catalogs by registry revision, per registration, #464), `ToolNameBuilder` (`{service}_{capability}`, independent of what the caller sees, #435), `ToolSchemaBuilder` (input metadata to JSON Schema)
+- `KaleidoToolInvoker` — one tool call: a query or a step through the Kaleido clients; its parts handle the confirmation round (#439), the front door (`search_tools`, `describe_tool`, `next`) and guided lookups
+- `InformationRequestElicitor` — information requests as MCP forms (elicitation, or an MRTR round) and the answers back
+- `McpLookupStateProtector` / `McpKeyRingCheck` — the guided-lookup state round-tripped through the client is protected with Data Protection; a startup warning when the key ring would not be shared across instances (#452, #484)
+- `McpObservability` — the adapter's traces, metrics and boundary logs (`McpTelemetry` names)
+
+### Key design invariants
+- Tools are generated from the registry, never declared: a capability is a tool because the service publishes it, and the list is the caller's (a tool not in it is `mcp_unknown_tool`, and no service is called).
+- Every tool call goes through the Kaleido clients **as the caller**: the credential is the host's call-credential provider's decision for that caller, never the host's own identity ([ADR 0022](../docs/decisions/0022-call-credentials.md), [ADR 0027](../docs/decisions/0027-forward-caller-token-kept-with-guards.md)).
+- The agent and the MCP client are untrusted input: authorization, validation and confirmation are decided on the server ([trust boundary](./Kaleido.Http.Mcp/README.md#trust-boundary)).
+- The adapter has no transport or client logic of its own; it references `Kaleido.Http` and `Kaleido.Http.Client` only.
 
 ---
 
