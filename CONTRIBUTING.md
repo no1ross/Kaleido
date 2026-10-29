@@ -17,7 +17,7 @@ dotnet build Kaleido.slnx
 ./tools/test/Run-Tests.ps1             # runs every test project (PowerShell; pwsh on Linux and macOS)
 ```
 
-If a test project fails to run or reports zero tests, see [AGENTS.md](./AGENTS.md#when-a-test-project-fails-to-run-or-reports-zero-tests).
+If a test project fails to run or reports zero tests, see [the conventions](./docs/CONVENTIONS.md#when-a-test-project-fails-to-run-or-reports-zero-tests).
 
 ## Work starts with an issue
 

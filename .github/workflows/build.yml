@@ -68,6 +68,10 @@ jobs:
     - name: Check guide snippets
       run: python3 tools/docs/check-guide-snippets.py
 
+    # Every AGENTS.md stays small enough for agent tooling to load it whole (#455).
+    - name: Check AGENTS.md size
+      run: python3 tools/docs/check-agents-size.py
+
     # The SDK from global.json builds; the .NET 8 runtime is installed too, because the packages
     # target net8.0 and the tests must run on the runtime consumers use (docs/VERSIONING.md).
     - name: Setup .NET
