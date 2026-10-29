@@ -39,14 +39,18 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.DoesNotContain(BehaviorSteps.Archive, AvailableSteps(state));
     }
 
+    // A retry of a finished step is told it is done, not refused (#504): the consistency check answers
+    // it before availability would reject it as pro_step_not_available.
     [Fact]
-    public async Task ANonRepeatableStep_RunsOnlyOnce()
+    public async Task ANonRepeatableStep_RunsOnlyOnce_AndASecondSendIsToldItIsAlreadyProcessed()
     {
         var processId = await StartAsync();
 
         var (_, again) = await PostStepAsync(BehaviorSteps.Start, processId: processId);
 
         Assert.NotEqual("completed", Outcome(again));
+        Assert.Equal([ProcessorErrorCodes.AlreadyProcessed], FrameworkCodes(again));
+        Assert.Equal("information", Assert.Single(again.GetProperty("frameworkMessages").EnumerateArray()).GetProperty("type").GetString());
     }
 
     [Fact]
@@ -434,6 +438,60 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
 
         await QuickAsync($"other-{started.ProcessId:N}");
         Assert.NotEqual(ranAt, await LastRunAsync());
+    }
+
+    // #503: the answer to an execute is lost after the step ran (a dropped connection). The client's
+    // resilience pipeline retries the POST because it carries an Idempotency-Key - the same key, so the
+    // service replays its stored answer and the handler runs once. Catches a retry that mints a new key
+    // (the step would run twice) or a keyed POST that is not retried at all.
+    [Fact]
+    public async Task AnExecuteWhoseAnswerIsLost_IsRetriedWithTheSameKey_AndTheStepRunsOnce()
+    {
+        var cancel = TestContext.Current.CancellationToken;
+        var started = await fixture.ProcessClient.ExecuteStepAsync(new BehaviorStartStep(), cancel);
+        fixture.Gate.Reset();
+        fixture.Gate.Release.TrySetResult();
+
+        var losing = new LoseTheFirstAnswer();
+        var (client, provider) = fixture.CreateProcessClient(
+            server =>
+            {
+                losing.InnerHandler = server;
+                return losing;
+            },
+            new Dictionary<string, string?> { ["Kaleido:Resilience:RetryDelay"] = "00:00:00.010" });
+
+        using (provider)
+        {
+            var slow = await client.ExecuteStepAsync(BehaviorSteps.Slow, JsonSerializer.SerializeToElement(new { }), started.ProcessId, idempotencyKey: null, cancel);
+
+            Assert.Equal(StepExecutionOutcome.Completed, slow.Outcome);
+        }
+
+        Assert.Equal(1, fixture.Gate.Invocations);
+        Assert.Equal(2, losing.Keys.Count);
+        Assert.Single(losing.Keys.Distinct(StringComparer.Ordinal));
+    }
+
+    // Lets the first execute reach the service, then drops its answer as a lost connection would.
+    private sealed class LoseTheFirstAnswer : DelegatingHandler
+    {
+        public List<string?> Keys { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Keys.Add(request.Headers.TryGetValues(KaleidoIdempotencyHeaders.IdempotencyKey, out var values) ? values.Single() : null);
+
+            var response = await base.SendAsync(request, cancellationToken);
+
+            if (Keys.Count > 1)
+            {
+                return response;
+            }
+
+            response.Dispose();
+            throw new HttpRequestException("The connection was lost after the request was sent.");
+        }
     }
 
     [Fact]

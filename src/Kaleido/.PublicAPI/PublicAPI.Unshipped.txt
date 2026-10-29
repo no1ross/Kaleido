@@ -33,7 +33,6 @@ const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidOptions = "invalid_optio
 const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceName = "invalid_service_name" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.MissingAssembly = "missing_assembly" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.StoresNotChosen = "stores_not_chosen" -> string!
-const Kaleido.Exceptions.FrameworkErrorCodes.DataConversionError = "data_conversion_error" -> string!
 const Kaleido.Exceptions.FrameworkErrorCodes.InvalidHandlerResult = "invalid_handler_result" -> string!
 const Kaleido.Exceptions.FrameworkErrorCodes.MissingRegistration = "missing_registration" -> string!
 const Kaleido.Exceptions.FrameworkErrorCodes.ReflectionError = "reflection_error" -> string!

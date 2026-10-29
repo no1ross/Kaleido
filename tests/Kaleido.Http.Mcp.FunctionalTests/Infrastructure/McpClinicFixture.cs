@@ -32,7 +32,14 @@ public class McpClinicFixture : IAsyncLifetime
     public const string AuthorizationServer = "https://login.example.test/";
     public const string Scope = "kaleido.mcp";
 
+    /// <summary>The service a clinic visit is handed off to, hosted only by <see cref="HandOffFixture"/>.</summary>
+    public const string WardService = "ward";
+
+    private static readonly string HandOffNamespace = typeof(HandOff.TransferToWardStep).Namespace!;
+    private static readonly string WardNamespace = typeof(HandOff.Ward.AdmitStep).Namespace!;
+
     private readonly bool withDownstreamThatIsDown;
+    private readonly bool withWard;
     private readonly bool withSignIn;
     private readonly bool withFrontDoor;
     private readonly bool withConfirmation;
@@ -41,6 +48,7 @@ public class McpClinicFixture : IAsyncLifetime
     private readonly string applicationName;
 
     private IHost? host;
+    private IHost? wardHost;
 
     /// <summary>The Authorization header of every request the clinic service received (path, header).</summary>
     public System.Collections.Concurrent.ConcurrentQueue<(string Path, string Authorization)> ServiceRequests { get; } = new();
@@ -73,9 +81,10 @@ public class McpClinicFixture : IAsyncLifetime
     {
     }
 
-    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false, bool withFrontDoor = false, bool withConfirmation = false, bool withLookupStep = false, string? keyRing = null, string applicationName = "clinic")
+    protected McpClinicFixture(bool withDownstreamThatIsDown, bool withSignIn = false, bool withFrontDoor = false, bool withConfirmation = false, bool withLookupStep = false, string? keyRing = null, string applicationName = "clinic", bool withWard = false)
     {
         this.withDownstreamThatIsDown = withDownstreamThatIsDown;
+        this.withWard = withWard;
         this.withSignIn = withSignIn;
         this.withFrontDoor = withFrontDoor;
         this.withConfirmation = withConfirmation;
@@ -107,6 +116,11 @@ public class McpClinicFixture : IAsyncLifetime
             },
         };
         ActivitySource.AddActivityListener(spanListener);
+
+        if (withWard)
+        {
+            wardHost = await StartWardAsync();
+        }
 
         host =
             await new HostBuilder()
@@ -167,6 +181,11 @@ public class McpClinicFixture : IAsyncLifetime
                             settings["Kaleido:Clients:radiology:RoutePrefix"] = "radiology";
                         }
 
+                        if (withWard)
+                        {
+                            settings[$"Kaleido:Clients:{WardService}:BaseUrl"] = "http://ward.test/";
+                        }
+
                         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
                         // An instance of a multi-instance deployment: its Data Protection keys in a folder
@@ -185,8 +204,12 @@ public class McpClinicFixture : IAsyncLifetime
                             Assemblies = [typeof(McpClinicFixture).Assembly],
 
                             // The guided-lookup step only where its tests run: elsewhere it would change the
-                            // tool list and what is next after a visit closes.
-                            TypeFilter = withLookupStep ? null : type => type != typeof(AssignBedStep) && type != typeof(AssignBedHandler),
+                            // tool list and what is next after a visit closes. Likewise the hand-off step;
+                            // the ward's own steps belong to the ward host.
+                            TypeFilter = type =>
+                                (withLookupStep || (type != typeof(AssignBedStep) && type != typeof(AssignBedHandler)))
+                                && type.Namespace != WardNamespace
+                                && (withWard || type.Namespace != HandOffNamespace),
                             AuthorizationMode = KaleidoAuthorizationMode.Authenticated,
                         })
                             .AddInMemoryStores()
@@ -207,6 +230,12 @@ public class McpClinicFixture : IAsyncLifetime
                         {
                             services.AddHttpClient("radiology")
                                 .ConfigurePrimaryHttpMessageHandler(() => new UnreachableHandler());
+                        }
+
+                        if (wardHost is { } ward)
+                        {
+                            services.AddHttpClient(WardService)
+                                .ConfigurePrimaryHttpMessageHandler(() => ward.GetTestServer().CreateHandler());
                         }
                     });
 
@@ -243,7 +272,7 @@ public class McpClinicFixture : IAsyncLifetime
                         app.UseAuthorization();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleidoHttp(new() { AggregateRegistry = withDownstreamThatIsDown });
+                            endpoints.MapKaleidoHttp(new() { AggregateRegistry = withDownstreamThatIsDown || withWard });
                             var mcp = endpoints.MapKaleidoMcp("/mcp");
 
                             if (withSignIn)
@@ -255,6 +284,34 @@ public class McpClinicFixture : IAsyncLifetime
                 })
                 .StartAsync();
     }
+
+    // The ward: a second Kaleido service on its own TestServer, with only the ward's steps. It does not
+    // authenticate (the clinic host and its tools do); it is reached through the clinic's ward client.
+    private static Task<IHost> StartWardAsync() =>
+        new HostBuilder()
+            .ConfigureWebHost(web =>
+            {
+                web.UseTestServer();
+                web.ConfigureServices(services =>
+                {
+                    services.AddRouting();
+                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    {
+                        ServiceName = WardService,
+                        Assemblies = [typeof(McpClinicFixture).Assembly],
+                        TypeFilter = type => type.Namespace == WardNamespace,
+                        AuthorizationMode = KaleidoAuthorizationMode.None,
+                    })
+                        .AddInMemoryStores()
+                        .AddHttp();
+                });
+                web.Configure(app =>
+                {
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp());
+                });
+            })
+            .StartAsync();
 
     /// <summary>
     /// An MCP client connected as <paramref name="authorization"/> (null = anonymous). Pass an
@@ -345,6 +402,12 @@ public class McpClinicFixture : IAsyncLifetime
         {
             await host.StopAsync();
             host.Dispose();
+        }
+
+        if (wardHost is not null)
+        {
+            await wardHost.StopAsync();
+            wardHost.Dispose();
         }
 
         GC.SuppressFinalize(this);

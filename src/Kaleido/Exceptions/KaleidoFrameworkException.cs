@@ -69,7 +69,4 @@ public static class FrameworkErrorCodes
     /// registered, as a <see cref="KaleidoConfigurationException"/>.
     /// </summary>
     public const string UnsupportedDataType = "unsupported_data_type";
-
-    /// <summary>TypeDescriber failed to convert a value to the target type.</summary>
-    public const string DataConversionError = "data_conversion_error";
 }

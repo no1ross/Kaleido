@@ -143,7 +143,6 @@ These indicate a framework bug or broken DI wiring, not a user error.
 | `MissingRegistration` | `missing_registration` | Required entry not found in an internal registry |
 | `InvalidHandlerResult` | `invalid_handler_result` | Handler returned an unexpected or null result |
 | `UnsupportedDataType` | `unsupported_data_type` | A published input or result is a dictionary whose key type is not `string` (keys become JSON property names); raised at registration as a `KaleidoConfigurationException` (#446). Other unknown CLR types are described as generic objects |
-| `DataConversionError` | `data_conversion_error` | Reserved: defined but not raised by the current code (value conversion failures surface as `argument_error` or `qry_invalid_filter_value`) |
 
 ---
 

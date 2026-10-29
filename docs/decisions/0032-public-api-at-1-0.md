@@ -67,7 +67,8 @@ decision) in the same change, so the list matches the baselines when they move t
   `StepProcessingMessage` (the runtime messages on `StepCompleted`). Keep: an event consumer reads
   them.
 - [x] **Constants:** `ProcessorErrorCodes` (one value renamed), `QueryableErrorCodes`,
-  `ConfigurationErrorCodes`, `FrameworkErrorCodes`, `KaleidoEventTypes`, and the telemetry names
+  `ConfigurationErrorCodes`, `FrameworkErrorCodes` (`DataConversionError` removed: nothing raised it,
+  #505), `KaleidoEventTypes`, and the telemetry names
   (`ProcessorTelemetry`, `QueryableTelemetry`, `KaleidoEventTelemetry`, `KaleidoTelemetryTags`) - telemetry
   names are a 1.0 contract (VERSIONING.md). Keep.
 - [x] **Exceptions:** `KaleidoValidationException`, `KaleidoAuthorizationException`,

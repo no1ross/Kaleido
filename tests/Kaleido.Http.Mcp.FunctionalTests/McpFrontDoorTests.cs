@@ -89,6 +89,24 @@ public sealed class McpFrontDoorTests(FrontDoorFixture fixture)
         Assert.Equal("clinic_close_visit", found["tools"]![0]!["name"]!.GetValue<string>());
     }
 
+    // #503: describe_tool answers an unlisted tool in full - its inputs and how to run it - and refuses
+    // a tool the caller has none of. Catches describe_tool losing the schema or the unlisted hint.
+    [Fact]
+    public async Task DescribeTool_GivesAnUnlistedToolsInputs_AndHowToRunIt()
+    {
+        await using var client = await fixture.ConnectAsync(Nurse);
+
+        var described = Body(await Call(client, "describe_tool", new() { ["name"] = "clinic_close_visit" }));
+        var unknown = await Call(client, "describe_tool", new() { ["name"] = "clinic_no_such_tool" });
+
+        Assert.Equal("clinic_close_visit", described["name"]!.GetValue<string>());
+        Assert.False(described["listed"]!.GetValue<bool>());
+        Assert.NotNull(described["inputs"]!["properties"]!["note"]);
+        Assert.Contains("call_tool", described["howToRun"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.True(unknown.IsError);
+        Assert.Contains(McpErrorCodes.UnknownTool, Body(unknown).ToJsonString(), StringComparison.Ordinal);
+    }
+
     private static async Task<CallToolResult> Call(
         McpClient client,
         string tool,
