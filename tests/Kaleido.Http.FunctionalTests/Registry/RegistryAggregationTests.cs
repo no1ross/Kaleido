@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Http.FunctionalTests.Registry;
 
@@ -16,6 +17,12 @@ namespace Kaleido.Http.FunctionalTests.Registry;
 // reported as failing - the flow consumers (and the MCP adapter) depend on to discover services.
 public sealed class RegistryAggregationTests : IAsyncLifetime
 {
+    private static readonly TimeSpan RefreshCooldown = TimeSpan.FromSeconds(30);
+
+    // The router's clock (#460), so the refresh cooldown is crossed without waiting. The snapshot
+    // never expires (RegistryCacheTtl = null), so only a refresh rebuilds it.
+    private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 10, 29, 12, 0, 0, TimeSpan.Zero));
+    private readonly RegistryRequestCounter _downstreamRegistryReads = new();
     private IHost? _downstream;
     private IHost? _router;
 
@@ -36,11 +43,12 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
                 .AddHttp(),
             aggregate: false);
 
-        var downstreamHandler = _downstream.GetTestServer().CreateHandler();
+        _downstreamRegistryReads.InnerHandler = _downstream.GetTestServer().CreateHandler();
 
         _router = await StartAsync(
             services =>
             {
+                services.AddSingleton<TimeProvider>(_time);
                 services
                     .AddKaleido(
                         new ConfigurationBuilder()
@@ -56,7 +64,7 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
                     .AddInMemoryStores()
                     .AddHttp()
                     .AddHttpClients();
-                services.AddHttpClient(BehaviorFixture.ServiceName).ConfigurePrimaryHttpMessageHandler(() => downstreamHandler);
+                services.AddHttpClient(BehaviorFixture.ServiceName).ConfigurePrimaryHttpMessageHandler(() => _downstreamRegistryReads);
             },
             aggregate: true);
     }
@@ -103,6 +111,52 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    // #503: ?refresh on an aggregated registry rebuilds it from the downstreams, but not more often
+    // than the cooldown: a refresh inside it is answered from the snapshot, one at its end reads the
+    // downstream again. Catches ?refresh ignored on a router, or the cooldown not throttling it.
+    [Fact]
+    public async Task ARefresh_RereadsTheDownstreams_ButNotInsideTheCooldown()
+    {
+        using var client = _router!.GetTestClient();
+        var cancel = TestContext.Current.CancellationToken;
+
+        using (await client.GetAsync("/router/registry", cancel))
+        {
+        }
+
+        var afterFirstRead = _downstreamRegistryReads.Count;
+
+        using (await client.GetAsync("/router/registry?refresh", cancel))
+        {
+        }
+
+        Assert.Equal(afterFirstRead, _downstreamRegistryReads.Count);
+
+        _time.Advance(RefreshCooldown);
+        using var refreshed = await client.GetAsync("/router/registry?refresh", cancel);
+
+        Assert.Equal(HttpStatusCode.OK, refreshed.StatusCode);
+        Assert.Equal(afterFirstRead + 1, _downstreamRegistryReads.Count);
+    }
+
+    // The router's calls to the downstream: counts its registry reads.
+    private sealed class RegistryRequestCounter : DelegatingHandler
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.RequestUri?.AbsolutePath.EndsWith("/registry", StringComparison.Ordinal) == true)
+            {
+                Interlocked.Increment(ref _count);
+            }
+
+            return base.SendAsync(request, cancellationToken);
+        }
+    }
+
     private static Task<IHost> StartAsync(Action<IServiceCollection> configure, bool aggregate) =>
         new HostBuilder()
             .ConfigureWebHost(web =>
@@ -116,7 +170,7 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
                 web.Configure(app =>
                 {
                     app.UseRouting();
-                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp(new() { AggregateRegistry = aggregate }));
+                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp(new() { AggregateRegistry = aggregate, RegistryCacheTtl = null, RegistryRefreshCooldown = RefreshCooldown }));
                 });
             })
             .StartAsync();

@@ -56,13 +56,25 @@ public sealed class BehaviorFixture : IAsyncLifetime
 
         Client = _host.GetTestClient();
 
-        var handler = _host.GetTestServer().CreateHandler();
+        (ProcessClient, _clientProvider) = CreateProcessClient(server => server);
+    }
+
+    // A real typed process client (with its resilience pipeline) whose primary handler is the server,
+    // wrapped as the test needs. The caller disposes the provider; settings are Kaleido configuration.
+    public (IKaleidoProcessorClient Client, ServiceProvider Provider) CreateProcessClient(
+        Func<HttpMessageHandler, HttpMessageHandler> wrapServer,
+        IReadOnlyDictionary<string, string?>? settings = null)
+    {
+        var handler = wrapServer(_host!.GetTestServer().CreateHandler());
+        var configuration = new Dictionary<string, string?>(settings ?? new Dictionary<string, string?>(), StringComparer.Ordinal)
+        {
+            [$"Kaleido:Clients:{ServiceName}:BaseUrl"] = "http://localhost/",
+        };
+
         var clientServices = new ServiceCollection();
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor>(new EmptyCorrelation());
         clientServices.AddKaleido(
-                new ConfigurationBuilder()
-                    .AddInMemoryCollection(new Dictionary<string, string?> { [$"Kaleido:Clients:{ServiceName}:BaseUrl"] = "http://localhost/" })
-                    .Build(),
+                new ConfigurationBuilder().AddInMemoryCollection(configuration).Build(),
                 new()
                 {
                     ServiceName = "behavior-caller",
@@ -71,8 +83,9 @@ public sealed class BehaviorFixture : IAsyncLifetime
                 })
             .AddHttpClients();
         clientServices.AddHttpClient(ServiceName).ConfigurePrimaryHttpMessageHandler(() => handler);
-        _clientProvider = clientServices.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-        ProcessClient = _clientProvider.CreateScope().ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient(ServiceName);
+
+        var provider = clientServices.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        return (provider.CreateScope().ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient(ServiceName), provider);
     }
 
     public async ValueTask DisposeAsync()

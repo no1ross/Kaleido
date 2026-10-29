@@ -14,14 +14,24 @@ namespace Kaleido.Http.FunctionalTests.Authorization;
 /// (<see cref="TestAuthHandler"/>) and <see cref="KaleidoServiceOptions"/>.<c>AuthorizationMode = Authenticated</c>
 /// — undeclared capabilities require an authenticated caller,
 /// capabilities declaring <c>[KaleidoAuthorization]</c> require the
-/// declared role/policy or open with <c>AllowAnonymous</c>.
+/// declared role/policy or open with <c>AllowAnonymous</c>. <see cref="ZeroTrustAuthorizationFixture"/>
+/// hosts the same capabilities in <c>ZeroTrust</c>.
 /// </summary>
-public sealed class AuthorizationAspNetCoreFixture
+public class AuthorizationAspNetCoreFixture
     : IAsyncLifetime
 {
     internal const string InProcessRegistryUrl = "/test/in-process-registry";
 
+    private readonly KaleidoAuthorizationMode _mode;
     private IHost? _host;
+
+    public AuthorizationAspNetCoreFixture()
+        : this(KaleidoAuthorizationMode.Authenticated)
+    {
+    }
+
+    protected AuthorizationAspNetCoreFixture(KaleidoAuthorizationMode mode) =>
+        _mode = mode;
 
     public HttpClient Client { get; private set; } = null!;
 
@@ -89,7 +99,7 @@ public sealed class AuthorizationAspNetCoreFixture
                             ServiceName = "kaleido",
                             DisplayName = "Auth Test Processor",
                             Assemblies = new[] { typeof(AuthorizationAspNetCoreFixture).Assembly },
-                            AuthorizationMode = KaleidoAuthorizationMode.Authenticated,
+                            AuthorizationMode = _mode,
                         })
                             .AddInMemoryStores()
                             .AddHttp();
@@ -128,5 +138,7 @@ public sealed class AuthorizationAspNetCoreFixture
             await _host.StopAsync();
             _host.Dispose();
         }
+
+        GC.SuppressFinalize(this);
     }
 }
