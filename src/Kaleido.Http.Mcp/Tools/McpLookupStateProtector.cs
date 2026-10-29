@@ -32,7 +32,8 @@ internal sealed class McpLookupStateProtector(
     IDataProtectionProvider provider,
     IKeyManager keys,
     IKaleidoCorrelationContextAccessor correlation,
-    IMcpObservability observability)
+    IMcpObservability observability,
+    TimeProvider time)
     : IMcpLookupStateProtector
 {
     internal const string Prefix = "kaleido-mcp-lookup:";
@@ -56,7 +57,7 @@ internal sealed class McpLookupStateProtector(
 
         return Prefix + _protector.Protect(
             JsonSerializer.Serialize(
-                state with { Caller = Caller(), ExpiresUtc = DateTimeOffset.UtcNow + Lifetime },
+                state with { Caller = Caller(), ExpiresUtc = time.GetUtcNow() + Lifetime },
                 KaleidoJsonOptions.Options));
     }
 
@@ -90,7 +91,7 @@ internal sealed class McpLookupStateProtector(
         return state switch
         {
             null => Refused(McpTelemetry.LookupStateInvalid),
-            { ExpiresUtc: var expires } when expires <= DateTimeOffset.UtcNow => Refused(McpTelemetry.LookupStateExpired),
+            { ExpiresUtc: var expires } when expires <= time.GetUtcNow() => Refused(McpTelemetry.LookupStateExpired),
             _ when !string.Equals(state.Caller, Caller(), StringComparison.Ordinal) => Refused(McpTelemetry.LookupStateAnotherCaller),
             _ => state,
         };

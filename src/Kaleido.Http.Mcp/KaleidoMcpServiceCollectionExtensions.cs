@@ -4,6 +4,7 @@ using Kaleido.Http.Observability;
 using Kaleido.Http.Mcp.Tools;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using ModelContextProtocol.Protocol;
 
 namespace Kaleido.Http.Mcp;
@@ -81,6 +82,7 @@ public static class KaleidoMcpServiceCollectionExtensions
 
         // The guided-lookup state the client carries between form rounds is encrypted and signed (#452).
         services.AddDataProtection();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IMcpLookupStateProtector, McpLookupStateProtector>();
         services.AddHostedService<McpKeyRingCheck>();
         services.AddScoped<IKaleidoMcpToolHandler, KaleidoMcpToolHandler>();

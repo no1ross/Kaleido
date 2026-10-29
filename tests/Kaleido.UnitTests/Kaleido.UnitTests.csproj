@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
 		<Compile Include="..\Shared\SutFixture.cs" />
 		<Compile Include="..\Shared\ServiceNameCases.cs" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" />

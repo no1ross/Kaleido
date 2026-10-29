@@ -2,6 +2,7 @@ using Kaleido.Provider.SQLite.Entities;
 using Kaleido.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Provider.SQLite.UnitTests;
 
@@ -36,12 +37,15 @@ public sealed class SqliteKaleidoOutboxStoreTests
         return context;
     }
 
-    private static SqliteKaleidoOutboxStore CreateSut(SqliteKaleidoContextDbContext dbContext, Guid? instanceId = null) =>
-        new(dbContext, new KaleidoServiceOptions { ServiceName = "test-svc", InstanceId = instanceId ?? Guid.NewGuid() });
+    // One clock for every instance of a test: leases and retries move only when the test advances it.
+    private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 28, 12, 0, 0, TimeSpan.Zero));
 
-    private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null)
+    private SqliteKaleidoOutboxStore CreateSut(SqliteKaleidoContextDbContext dbContext, Guid? instanceId = null) =>
+        new(dbContext, new KaleidoServiceOptions { ServiceName = "test-svc", InstanceId = instanceId ?? Guid.NewGuid() }, time);
+
+    private KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null)
     {
-        var occurred = occurredUtc ?? DateTimeOffset.UtcNow.AddSeconds(-1);
+        var occurred = occurredUtc ?? time.GetUtcNow().AddSeconds(-1);
 
         return new KaleidoOutboxEvent
         {
@@ -58,7 +62,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext, Guid.NewGuid());
-        var now = DateTimeOffset.UtcNow;
+        var now = time.GetUtcNow();
         var oldest = Event(now.AddSeconds(-3));
         var middle = Event(now.AddSeconds(-2));
         await sut.AddAsync([Event(now.AddSeconds(-1)), middle, oldest], TestContext.Current.CancellationToken);
@@ -76,7 +80,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.AddAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }], TestContext.Current.CancellationToken);
+        await sut.AddAsync([Event() with { NextAttemptUtc = time.GetUtcNow().AddMinutes(1) }], TestContext.Current.CancellationToken);
 
         Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
     }
@@ -88,7 +92,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
         using var first = CreateSharedDbContext(connectionString);
         using var second = CreateSharedDbContext(connectionString);
-        var events = Enumerable.Range(0, 30).Select(i => Event(DateTimeOffset.UtcNow.AddSeconds(-30 + i))).ToArray();
+        var events = Enumerable.Range(0, 30).Select(i => Event(time.GetUtcNow().AddSeconds(-30 + i))).ToArray();
         await CreateSut(first).AddAsync(events, TestContext.Current.CancellationToken);
         var a = CreateSut(first, Guid.NewGuid());
         var b = CreateSut(second, Guid.NewGuid());
@@ -134,8 +138,8 @@ public sealed class SqliteKaleidoOutboxStoreTests
         var @event = Event();
         await stale.AddAsync([@event], TestContext.Current.CancellationToken);
 
-        await stale.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1), TestContext.Current.CancellationToken);
-        await Task.Delay(20);
+        await stale.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+        time.Advance(TimeSpan.FromMinutes(1));
         Assert.Single(await owner.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
 
         await stale.CompleteEventAsync(@event.EventId, TestContext.Current.CancellationToken);
@@ -144,6 +148,43 @@ public sealed class SqliteKaleidoOutboxStoreTests
         var entry = Assert.Single(await second.OutboxEvents.AsNoTracking().ToListAsync());
         Assert.False(entry.IsParked);
         Assert.Equal(0, entry.Attempts);
+    }
+
+    // Another instance claims the entry only once the lease has ended, not a tick before.
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, 1)]
+    public async Task ClaimEventsAsync_ByAnotherInstance_AroundTheEndOfTheLease(int ticksFromTheEnd, int claimed)
+    {
+        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
+        using var first = CreateSharedDbContext(connectionString);
+        using var second = CreateSharedDbContext(connectionString);
+        var holder = CreateSut(first, Guid.NewGuid());
+        await holder.AddAsync([Event()], TestContext.Current.CancellationToken);
+        await holder.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+
+        time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromTicks(ticksFromTheEnd));
+
+        Assert.Equal(claimed, (await CreateSut(second, Guid.NewGuid()).ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken)).Count);
+    }
+
+    // A retry is due at its time, not a tick before.
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, 1)]
+    public async Task ClaimEventsAsync_AroundTheRetryTime(int ticksFromTheRetry, int claimed)
+    {
+        using var db = CreateDbContext();
+        var sut = CreateSut(db);
+        var @event = Event();
+        await sut.AddAsync([@event], TestContext.Current.CancellationToken);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+        var retryAt = time.GetUtcNow().AddSeconds(30);
+        await sut.FailEventAsync(@event.EventId, retryAt, "broker down", TestContext.Current.CancellationToken);
+
+        time.SetUtcNow(retryAt + TimeSpan.FromTicks(ticksFromTheRetry));
+
+        Assert.Equal(claimed, (await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken)).Count);
     }
 
     [Fact]
@@ -155,7 +196,7 @@ public sealed class SqliteKaleidoOutboxStoreTests
         await sut.AddAsync([@event], TestContext.Current.CancellationToken);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
 
-        await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down", TestContext.Current.CancellationToken);
+        await sut.FailEventAsync(@event.EventId, time.GetUtcNow().AddSeconds(-1), "broker down", TestContext.Current.CancellationToken);
 
         var retried = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
         Assert.Equal(1, retried.Attempts);

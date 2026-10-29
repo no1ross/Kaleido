@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />

@@ -9,7 +9,8 @@ namespace Kaleido.Provider.SQLite;
 // events commit together), on their own otherwise, and leased to the relay of this instance.
 internal sealed class SqliteKaleidoOutboxStore(
     SqliteKaleidoContextDbContext dbContext,
-    KaleidoServiceOptions serviceOptions)
+    KaleidoServiceOptions serviceOptions,
+    TimeProvider time)
     : IKaleidoOutboxStore
 {
     internal const int MaxErrorLength = 2000;
@@ -27,7 +28,7 @@ internal sealed class SqliteKaleidoOutboxStore(
     // reads back only the entries it leased itself.
     public async Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken)
     {
-        var now = DateTimeOffset.UtcNow.UtcTicks;
+        var now = time.GetUtcNow().UtcTicks;
         var leaseUntil = now + lease.Ticks;
 
         var due = await dbContext.OutboxEvents
@@ -63,7 +64,7 @@ internal sealed class SqliteKaleidoOutboxStore(
     // Only while this instance still holds the lease.
     public async Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken)
     {
-        var now = DateTimeOffset.UtcNow.UtcTicks;
+        var now = time.GetUtcNow().UtcTicks;
 
         await dbContext.OutboxEvents
             .Where(x => x.EventId == eventId && x.LeaseOwner == Owner && x.LeaseUntil > now)
@@ -73,7 +74,7 @@ internal sealed class SqliteKaleidoOutboxStore(
     // Only while this instance still holds the lease; releases it.
     public async Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken)
     {
-        var now = DateTimeOffset.UtcNow.UtcTicks;
+        var now = time.GetUtcNow().UtcTicks;
         var lastError = errorMessage.Length > MaxErrorLength ? errorMessage[..MaxErrorLength] : errorMessage;
         var parked = retryAtUtc is null;
         var retryAt = retryAtUtc?.UtcTicks ?? now;

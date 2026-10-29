@@ -44,6 +44,7 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
     KaleidoHttpOptions httpOptions,
     KaleidoServiceOptions serviceOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor,
+    TimeProvider time,
     ILogger<KaleidoIdempotencyEndpointFilter> logger)
     : IEndpointFilter
 {
@@ -66,7 +67,7 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
             return Error(StatusCodes.Status400BadRequest, ProcessorErrorCodes.InvalidIdempotencyKey, $"The {KaleidoIdempotencyHeaders.IdempotencyKey} header is longer than {MaxKeyLength} characters.");
         }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = time.GetUtcNow();
         var admission = new IdempotentResult
         {
             Key = Scope(key),
@@ -163,14 +164,14 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
             State = IdempotentResultState.Completed,
             StatusCode = (result as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK,
             Response = result is IValueHttpResult value ? JsonSerializer.Serialize(value.Value, KaleidoJsonOptions.Options) : string.Empty,
-            ExpiresUtc = DateTimeOffset.UtcNow + httpOptions.IdempotencyRetention,
+            ExpiresUtc = time.GetUtcNow() + httpOptions.IdempotencyRetention,
         };
 
     private IdempotentResult Unknown(IdempotentResult admission) =>
         admission with
         {
             State = IdempotentResultState.OutcomeUnknown,
-            ExpiresUtc = DateTimeOffset.UtcNow + httpOptions.IdempotencyUnknownOutcomeRetention,
+            ExpiresUtc = time.GetUtcNow() + httpOptions.IdempotencyUnknownOutcomeRetention,
         };
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The outcome ({Outcome}) of the request with Idempotency-Key '{IdempotencyKey}' could not be stored; the request's own answer is unchanged.")]
@@ -205,7 +206,7 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
 
     // The answer for a key another request holds: a different request is refused; a running one is
     // retried later; one that never finished is not run again; a completed one is replayed.
-    private static IResult Answer(HttpContext http, IdempotentResult existing, string requestHash)
+    private IResult Answer(HttpContext http, IdempotentResult existing, string requestHash)
     {
         if (!string.Equals(existing.RequestHash, requestHash, StringComparison.Ordinal))
         {
@@ -215,7 +216,7 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
                 $"The {KaleidoIdempotencyHeaders.IdempotencyKey} was already used with a different request. Use a new key for a new call.");
         }
 
-        if (existing.State == IdempotentResultState.InProgress && existing.LeaseUntilUtc > DateTimeOffset.UtcNow)
+        if (existing.State == IdempotentResultState.InProgress && existing.LeaseUntilUtc > time.GetUtcNow())
         {
             http.Response.Headers.RetryAfter = RetryAfterSeconds;
 

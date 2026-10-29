@@ -119,6 +119,11 @@ The rule is: **one observability signal per cancellation, at the lowest level th
 - Do **not** add `Canceled()` calls at higher levels (`ProcessorRuntime`, `ProcessorStepInvoker`) — you will get duplicate signals for the same cancellation event.
 - KAL0018 enforces the "exclude OCE" half: a catch-all that calls an observability member without a filter that provably excludes cancellation (`when (ex is not OperationCanceledException)`, read by meaning, not by name — see [`docs/ANALYZERS.md`](./docs/ANALYZERS.md#cancellation-filters)) or an earlier unfiltered `catch (OperationCanceledException)` is reported. The one-signal-per-cancellation placement is still a review responsibility.
 
+### Time
+- A decision that depends on the current time - a lease, an expiry or retention, a retry or backoff, a TTL, a circuit's break, a delay - reads it from the injected `TimeProvider` (`time.GetUtcNow()`, `Task.Delay(delay, time, token)`, Polly's `ResiliencePipelineBuilder { TimeProvider = time }`), never from `DateTimeOffset.UtcNow` (#460). `AddKaleido()` registers `TimeProvider.System` with `TryAdd`, as does each package registration whose services need it, so a host or a test may register its own first.
+- A timestamp that is only recorded (`CreatedUtc`, an event's `OccurredOn`) may read `DateTimeOffset.UtcNow`.
+- Tests drive the clock with `FakeTimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`) and test a boundary one tick before, at and after it - never with real waits.
+
 ### Record conversion
 - Convert immutable data containers with init-only properties to records
 - Do NOT convert service classes with behavior to records

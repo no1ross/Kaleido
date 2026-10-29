@@ -1,23 +1,26 @@
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Storage.UnitTests;
 
 public sealed class InMemoryKaleidoIdempotencyStoreTests
     : SutFixture
 {
-    private static InMemoryKaleidoIdempotencyStore CreateSut(ILogger<InMemoryKaleidoIdempotencyStore>? logger = null) =>
-        new(logger ?? new Mock<ILogger<InMemoryKaleidoIdempotencyStore>>().Object);
+    private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 28, 12, 0, 0, TimeSpan.Zero));
 
-    private static IdempotentResult Admission(string key, DateTimeOffset? expiresUtc = null, string hash = "hash") =>
+    private InMemoryKaleidoIdempotencyStore CreateSut(ILogger<InMemoryKaleidoIdempotencyStore>? logger = null) =>
+        new(time, logger ?? new Mock<ILogger<InMemoryKaleidoIdempotencyStore>>().Object);
+
+    private IdempotentResult Admission(string key, DateTimeOffset? expiresUtc = null, string hash = "hash") =>
         new()
         {
             Key = key,
             AdmissionId = Guid.NewGuid(),
             RequestHash = hash,
             State = IdempotentResultState.InProgress,
-            LeaseUntilUtc = DateTimeOffset.UtcNow.AddMinutes(5),
-            ExpiresUtc = expiresUtc ?? DateTimeOffset.UtcNow.AddHours(1),
+            LeaseUntilUtc = time.GetUtcNow().AddMinutes(5),
+            ExpiresUtc = expiresUtc ?? time.GetUtcNow().AddHours(1),
         };
 
     private static IdempotentResult Completed(IdempotentResult admission, string response) =>
@@ -111,7 +114,7 @@ public sealed class InMemoryKaleidoIdempotencyStoreTests
     public async Task AnAdmissionThatOutlivedItsRecord_CannotCompleteOrReleaseTheNextAdmission()
     {
         var sut = CreateSut();
-        var a = Admission("svc:alice:k", DateTimeOffset.UtcNow.AddMinutes(-1));
+        var a = Admission("svc:alice:k", time.GetUtcNow().AddMinutes(-1));
         var b = Admission("svc:alice:k");
         await sut.AdmitAsync(a, TestContext.Current.CancellationToken);
         Assert.Null(await sut.AdmitAsync(b, TestContext.Current.CancellationToken));
@@ -140,9 +143,26 @@ public sealed class InMemoryKaleidoIdempotencyStoreTests
     public async Task AdmitAsync_OverAnExpiredRecord_AdmitsTheKeyAgain()
     {
         var sut = CreateSut();
-        await sut.AdmitAsync(Admission("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)), TestContext.Current.CancellationToken);
+        await sut.AdmitAsync(Admission("svc:alice:old", time.GetUtcNow().AddMinutes(-1)), TestContext.Current.CancellationToken);
 
         Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old"), TestContext.Current.CancellationToken));
+    }
+
+    // A record is kept until its retention ends: just before, the key still refuses; at the end it is
+    // admitted again.
+    [Theory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    public async Task AdmitAsync_AroundTheEndOfTheRetention(int ticksFromTheEnd, bool admittedAgain)
+    {
+        var sut = CreateSut();
+        var expires = time.GetUtcNow().AddHours(1);
+        await sut.AdmitAsync(Admission("svc:alice:kept", expires), TestContext.Current.CancellationToken);
+
+        time.SetUtcNow(expires + TimeSpan.FromTicks(ticksFromTheEnd));
+
+        Assert.Equal(admittedAgain, await sut.AdmitAsync(Admission("svc:alice:kept"), TestContext.Current.CancellationToken) is null);
     }
 
     [Fact]
