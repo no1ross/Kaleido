@@ -59,14 +59,18 @@ jobs:
                     findings += 1
         sys.exit(1 if findings else 0)
 
-    # Every Kaleido type or member named in the docs must exist in the sources (ADRs and audit
-    # records are historical and skipped).
+    # Every Kaleido type or member named in the docs must exist in the sources (ADRs are historical
+    # and skipped).
     - name: Check documentation symbols
       run: python3 tools/docs/check-doc-symbols.py
 
     # Every C# example in the consumer guide equals a compiled region of docs/guide/examples (#409).
     - name: Check guide snippets
       run: python3 tools/docs/check-guide-snippets.py
+
+    # Every AGENTS.md stays small enough for agent tooling to load it whole (#455).
+    - name: Check AGENTS.md size
+      run: python3 tools/docs/check-agents-size.py
 
     # The SDK from global.json builds; the .NET 8 runtime is installed too, because the packages
     # target net8.0 and the tests must run on the runtime consumers use (docs/VERSIONING.md).

@@ -6,7 +6,9 @@
 
 Report them privately through GitHub: on the repository's **Security** tab, choose
 **Report a vulnerability** ([private vulnerability reporting](https://github.com/no1ross/Kaleido/security/advisories/new)).
-Only the maintainers see the report, and the fix is coordinated in a private advisory.
+Only the maintainers see the report, and the fix is coordinated in a private advisory. The report
+reaches every maintainer account, the backup account included ([maintainers](./MAINTAINERS.md)), so
+it is not lost if one account is unavailable.
 
 Please include:
 

@@ -165,7 +165,7 @@ This is not exactly-once for a handler's own external calls: a service that stop
 Inject `IKaleidoProcessorClientFactory` and resolve a client by name (`GetClient`; a name not configured under `Kaleido:Clients` throws a `KaleidoConfigurationException`, `httpclient_unknown_client`, listing the configured clients), or by the downstream's service name when you start from a registry entry (`TryGetClientForService(serviceName, out var client)`, as gateways and the MCP adapter do).
 
 ```csharp
-// Get the full registry (lazily fetched and cached per client instance)
+// Get the remote registry (fetched on first use, cached per configured client)
 var registry = await clientFactory
     .GetClient("RemoteProcessor")
     .GetRegistryAsync(cancellationToken);
@@ -200,7 +200,7 @@ The typed `ExecuteStepAsync` identifies the remote step by the payload's type na
 Inject `IKaleidoQueryableClientFactory` and resolve a client by name.
 
 ```csharp
-// Get the full registry (lazily fetched and cached per client instance)
+// Get the remote registry (fetched on first use, cached per configured client)
 var registry = await clientFactory
     .GetClient("MemberService")
     .GetRegistryAsync(cancellationToken);

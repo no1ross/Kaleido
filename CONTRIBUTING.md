@@ -17,7 +17,7 @@ dotnet build Kaleido.slnx
 ./tools/test/Run-Tests.ps1             # runs every test project (PowerShell; pwsh on Linux and macOS)
 ```
 
-If a test project fails to run or reports zero tests, see [AGENTS.md](./AGENTS.md#when-a-test-project-fails-to-run-or-reports-zero-tests).
+If a test project fails to run or reports zero tests, see [the conventions](./docs/CONVENTIONS.md#when-a-test-project-fails-to-run-or-reports-zero-tests).
 
 ## Work starts with an issue
 
@@ -57,7 +57,9 @@ what was verified and how; an agent's claims about behavior are checked, not ass
 
 ## Review and ownership
 
-The maintainers listed in [`.github/CODEOWNERS`](./.github/CODEOWNERS) review and merge.
+The maintainers listed in [`.github/CODEOWNERS`](./.github/CODEOWNERS) review and merge. Kaleido has
+one maintainer today, with a backup account; [`MAINTAINERS.md`](./MAINTAINERS.md) lists the roles,
+where the accounts are held and how a maintainer is added.
 
 ## License
 

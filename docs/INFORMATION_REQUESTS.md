@@ -184,8 +184,10 @@ job.
 - **No history.** Kaleido doesn't keep past questions or answers. Recording them is yours.
   `StepCompleted` already carries each step's payload (the answers), and `PlanBuilt` /
   `StepCompleted` / `ExecutionCompleted` carry `RequiredInformationRequest`.
-- **Who answered** will be tagged on events by #193; until then, events carry no caller
-  identity.
+- **Who answered** is tagged on the events: `ProcessEventContext.Caller` carries the caller as
+  the principal provides it (#193; [caller tags](./CORRELATION.md#caller-tags-tagging-only)). It is
+  personal data in the event stream; a consumer that must not publish it removes it in an
+  `IKaleidoEventRedactor`.
 
 ## Wording and verbatim text
 

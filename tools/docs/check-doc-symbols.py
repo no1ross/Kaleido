@@ -2,8 +2,8 @@
 
 Every backticked identifier in the tracked Markdown that looks like Kaleido API (a name starting
 with Kaleido, Process, Query, Step, Registry, Information, Mcp, Sqlite, ...) must be declared in
-the repository's C# or TypeScript sources. Namespaces and file names are skipped. ADRs and the
-audit records are historical and may name removed symbols, so they are not checked.
+the repository's C# or TypeScript sources. Namespaces and file names are skipped. ADRs are
+historical and may name removed symbols, so they are not checked.
 
 Run from the repository root: python3 tools/docs/check-doc-symbols.py
 """
@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 # Documents that record history on purpose (they name symbols that no longer exist).
-HISTORICAL = ("docs/decisions/", "docs/DOCUMENTATION-AUDIT.md", "tests/FUNCTIONAL-TEST-AUDIT.md")
+HISTORICAL = ("docs/decisions/",)
 
 # Names that are not symbols, each with the reason it is written in code style.
 ALLOWED = {

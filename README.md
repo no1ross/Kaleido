@@ -22,7 +22,7 @@
 </p>
 
 > [!IMPORTANT]
-> Kaleido is under active pre-1.0 development. APIs and package boundaries may change while the public contract is refined. Use the preview for evaluation and experimentation, not as a stable compatibility or production-readiness commitment.
+> Kaleido is under active pre-1.0 development. APIs and package boundaries may change while the public contract is refined. Use the preview for evaluation and experimentation, not as a stable compatibility or production-readiness commitment. It has one maintainer today ([maintainers](MAINTAINERS.md)).
 
 ## What is Kaleido?
 
