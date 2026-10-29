@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Time.Testing;
+
 namespace Kaleido.Http.Registry.UnitTests;
 
 public sealed class HttpRegistryCacheTests
@@ -5,9 +7,13 @@ public sealed class HttpRegistryCacheTests
 {
     private const string Key = "kaleido:test";
 
-    private static HttpRegistryCache CreateSut(
+    private static readonly DateTimeOffset Start = new(2026, 10, 28, 12, 0, 0, TimeSpan.Zero);
+
+    private readonly FakeTimeProvider time = new(Start);
+
+    private HttpRegistryCache CreateSut(
         IRegistrySnapshotStore? store = null) =>
-        new(store ?? CreateStore());
+        new(store ?? CreateStore(), time);
 
     private static IRegistrySnapshotStore CreateStore()
     {
@@ -70,7 +76,7 @@ public sealed class HttpRegistryCacheTests
             cancellationToken: default);
 
         Assert.True(buildCalled);
-        Assert.NotEqual(default, result.GeneratedAt);
+        Assert.Equal(Start, result.GeneratedAt);
         Assert.False(result.IsPartial);
     }
 
@@ -129,7 +135,7 @@ public sealed class HttpRegistryCacheTests
         var store = CreateStore();
         await store.SetAsync(Key, new AggregatedRegistryResponse
         {
-            GeneratedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
+            GeneratedAt = Start.AddMinutes(-10)
         }, TestContext.Current.CancellationToken);
 
         using var sut = CreateSut(store);
@@ -156,7 +162,7 @@ public sealed class HttpRegistryCacheTests
         var store = CreateStore();
         await store.SetAsync(Key, new AggregatedRegistryResponse
         {
-            GeneratedAt = DateTimeOffset.UtcNow
+            GeneratedAt = Start
         }, TestContext.Current.CancellationToken);
 
         using var sut = CreateSut(store);
@@ -203,7 +209,7 @@ public sealed class HttpRegistryCacheTests
     [Fact]
     public async Task GetOrBuildAsync_WhenAnotherCallerBuiltWhileWaiting_ServesThatSnapshot()
     {
-        var builtMeanwhile = new AggregatedRegistryResponse { GeneratedAt = DateTimeOffset.UtcNow, Revision = "meanwhile" };
+        var builtMeanwhile = new AggregatedRegistryResponse { GeneratedAt = Start, Revision = "meanwhile" };
         var store = new Mock<IRegistrySnapshotStore>();
         store.SetupSequence(s => s.GetAsync(Key, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AggregatedRegistryResponse?)null)
@@ -256,7 +262,7 @@ public sealed class HttpRegistryCacheTests
         var store = CreateStore();
         await store.SetAsync(Key, new AggregatedRegistryResponse
         {
-            GeneratedAt = DateTimeOffset.UtcNow.AddMinutes(-1)
+            GeneratedAt = Start.AddMinutes(-1)
         }, TestContext.Current.CancellationToken);
 
         using var sut = CreateSut(store);
@@ -289,6 +295,38 @@ public sealed class HttpRegistryCacheTests
         await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => { builds++; return Clean(); }, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, builds);
+    }
+
+    // A snapshot is served while younger than the TTL; at the TTL it is rebuilt.
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, 1)]
+    public async Task GetOrBuildAsync_AroundTheTtl(int ticksFromTheTtl, int builds)
+    {
+        using var sut = CreateSut();
+        await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => Clean(), TestContext.Current.CancellationToken);
+        var rebuilt = 0;
+        time.Advance(TimeSpan.FromMinutes(5) + TimeSpan.FromTicks(ticksFromTheTtl));
+
+        await sut.GetOrBuildAsync(Key, TimeSpan.FromMinutes(5), TimeSpan.Zero, false, _ => { rebuilt++; return Clean(); }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(builds, rebuilt);
+    }
+
+    // A refresh inside the cooldown is served from the snapshot; at the end of the cooldown it rebuilds.
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, 1)]
+    public async Task GetOrBuildAsync_ARefreshAroundTheCooldown(int ticksFromTheCooldown, int builds)
+    {
+        using var sut = CreateSut();
+        await sut.GetOrBuildAsync(Key, null, TimeSpan.FromSeconds(30), false, _ => Clean(), TestContext.Current.CancellationToken);
+        var rebuilt = 0;
+        time.Advance(TimeSpan.FromSeconds(30) + TimeSpan.FromTicks(ticksFromTheCooldown));
+
+        await sut.GetOrBuildAsync(Key, null, TimeSpan.FromSeconds(30), true, _ => { rebuilt++; return Clean(); }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(builds, rebuilt);
     }
 
     // IRegistrySnapshotStore is the public seam for a shared store (#293): two caches over one

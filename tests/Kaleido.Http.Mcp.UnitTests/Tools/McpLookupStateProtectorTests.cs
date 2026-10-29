@@ -5,6 +5,7 @@ using Kaleido.Observability;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Http.Mcp.Tools.UnitTests;
 
@@ -14,6 +15,7 @@ public sealed class McpLookupStateProtectorTests
     private readonly Mock<IKaleidoCorrelationContextAccessor> correlation = new();
     private readonly Mock<IKeyManager> keys = new();
     private readonly Mock<IMcpObservability> observability = new();
+    private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 28, 12, 0, 0, TimeSpan.Zero));
 
     // One ephemeral key ring for the fixture: real encryption and signing, keys only in memory.
     private readonly EphemeralDataProtectionProvider provider = new();
@@ -32,7 +34,7 @@ public sealed class McpLookupStateProtectorTests
         correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext { CallerId = id, CallerName = name });
 
     private McpLookupStateProtector CreateSut(IDataProtectionProvider? dataProtection = null) =>
-        new(dataProtection ?? provider, keys.Object, correlation.Object, observability.Object);
+        new(dataProtection ?? provider, keys.Object, correlation.Object, observability.Object, time);
 
     private static Guid KeyIdOf(string payload)
     {
@@ -66,7 +68,7 @@ public sealed class McpLookupStateProtectorTests
         Assert.Equal("clinic_pick_patient", state.Tool);
         Assert.Equal("P-1", state.Candidates[0].Values["patientId"].GetString());
         Assert.Equal("id:sub-1", state.Caller);
-        Assert.InRange(state.ExpiresUtc, DateTimeOffset.UtcNow.AddMinutes(29), DateTimeOffset.UtcNow.AddMinutes(31));
+        Assert.Equal(time.GetUtcNow() + McpLookupStateProtector.Lifetime, state.ExpiresUtc);
         observability.Verify(x => x.LookupStateRefused(It.IsAny<string>(), It.IsAny<Guid?>()), Times.Never);
     }
 
@@ -151,10 +153,24 @@ public sealed class McpLookupStateProtectorTests
     public void Unprotect_AnExpiredState_IsRefused()
     {
         var expired = provider.CreateProtector(McpLookupStateProtector.Purpose)
-            .Protect(JsonSerializer.Serialize(State() with { Caller = "id:sub-1", ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(-1) }, KaleidoJsonOptions.Options));
+            .Protect(JsonSerializer.Serialize(State() with { Caller = "id:sub-1", ExpiresUtc = time.GetUtcNow().AddMinutes(-1) }, KaleidoJsonOptions.Options));
 
         Assert.Null(CreateSut().Unprotect(McpLookupStateProtector.Prefix + expired));
         RefusedWith(McpTelemetry.LookupStateExpired);
+    }
+
+    // A state is valid until the end of its lifetime: one tick before, it is read; at the end, refused.
+    [Theory]
+    [InlineData(-1, true)]
+    [InlineData(0, false)]
+    public void Unprotect_AroundTheEndOfTheLifetime(int ticksFromTheEnd, bool read)
+    {
+        var sut = CreateSut();
+        var value = sut.Protect(State());
+
+        time.Advance(McpLookupStateProtector.Lifetime + TimeSpan.FromTicks(ticksFromTheEnd));
+
+        Assert.Equal(read, sut.Unprotect(value) is not null);
     }
 
     [Fact]

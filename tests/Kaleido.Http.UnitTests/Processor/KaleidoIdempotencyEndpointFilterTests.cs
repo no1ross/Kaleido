@@ -5,6 +5,7 @@ using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Http.Processor.UnitTests;
 
@@ -14,6 +15,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     private readonly Mock<IKaleidoIdempotencyStore> store = new();
     private readonly Mock<IKaleidoCorrelationContextAccessor> correlation = new();
     private readonly Mock<ILogger<KaleidoIdempotencyEndpointFilter>> logger = new();
+    private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 28, 12, 0, 0, TimeSpan.Zero));
     private readonly List<IdempotentResult> admitted = [];
     private readonly List<IdempotentResult> saved = [];
     private readonly List<(string Key, Guid AdmissionId)> released = [];
@@ -45,6 +47,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
             new KaleidoHttpOptions { IdempotencyRetention = TimeSpan.FromHours(2), IdempotencyUnknownOutcomeRetention = TimeSpan.FromDays(3) },
             new KaleidoServiceOptions { ServiceName = "svc" },
             correlation.Object,
+            time,
             logger.Object);
 
     private ValueTask<object?> Endpoint(EndpointFilterInvocationContext _)
@@ -84,13 +87,13 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
         Assert.Equal(1, calls);
         var admission = Assert.Single(admitted);
         Assert.Equal(IdempotentResultState.InProgress, admission.State);
-        Assert.InRange(admission.LeaseUntilUtc, DateTimeOffset.UtcNow.AddMinutes(4.9), DateTimeOffset.UtcNow.AddMinutes(5.1));
+        Assert.Equal(time.GetUtcNow().AddMinutes(5), admission.LeaseUntilUtc);
         var stored = Assert.Single(saved);
         Assert.Equal("svc:name:alice:k1", stored.Key);
         Assert.Equal(IdempotentResultState.Completed, stored.State);
         Assert.Equal(StatusCodes.Status200OK, stored.StatusCode);
         Assert.Equal("""{"processId":"p-1"}""", stored.Response);
-        Assert.InRange(stored.ExpiresUtc, DateTimeOffset.UtcNow.AddHours(1.9), DateTimeOffset.UtcNow.AddHours(2.1));
+        Assert.Equal(time.GetUtcNow().AddHours(2), stored.ExpiresUtc);
     }
 
     [Theory]
@@ -243,7 +246,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     [Fact]
     public async Task WithAKeyStillInProgress_Answers409WithRetryAfter_WithoutRunningTheEndpoint()
     {
-        Holding(InProgress("svc:name:alice:k1", DateTimeOffset.UtcNow.AddMinutes(1)));
+        Holding(InProgress("svc:name:alice:k1", time.GetUtcNow().AddMinutes(1)));
         var retry = Context("k1");
 
         var result = await CreateSut().InvokeAsync(retry, Endpoint);
@@ -260,7 +263,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     [Fact]
     public async Task WithAKeyWhoseLeaseExpired_AnswersOutcomeUnknown_WithoutRunningTheEndpoint()
     {
-        Holding(InProgress("svc:name:alice:k1", DateTimeOffset.UtcNow.AddMinutes(-1)));
+        Holding(InProgress("svc:name:alice:k1", time.GetUtcNow().AddMinutes(-1)));
         var retry = Context("k1");
 
         var result = await CreateSut().InvokeAsync(retry, Endpoint);
@@ -272,10 +275,25 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
         Assert.False(retry.HttpContext.Response.Headers.ContainsKey("Retry-After"));
     }
 
+    // The first attempt holds the key until the end of its lease: one tick before, a retry is told to
+    // come back; at the end, the attempt counts as never finished.
+    [Theory]
+    [InlineData(1, ProcessorErrorCodes.IdempotencyInProgress)]
+    [InlineData(0, ProcessorErrorCodes.IdempotencyOutcomeUnknown)]
+    public async Task WithAKeyAroundTheEndOfItsLease(int ticksLeft, string code)
+    {
+        Holding(InProgress("svc:name:alice:k1", time.GetUtcNow() + TimeSpan.FromTicks(ticksLeft)));
+
+        var result = await CreateSut().InvokeAsync(Context("k1"), Endpoint);
+
+        Assert.Equal(0, calls);
+        Assert.Equal(code, Assert.Single(Assert.IsType<JsonHttpResult<KaleidoErrorResponse>>(result).Value!.Errors).Code);
+    }
+
     [Fact]
     public async Task WithAKeyInProgressForADifferentRequest_Answers422()
     {
-        Holding(InProgress("svc:name:alice:k1", DateTimeOffset.UtcNow.AddMinutes(1)) with { RequestHash = "other" });
+        Holding(InProgress("svc:name:alice:k1", time.GetUtcNow().AddMinutes(1)) with { RequestHash = "other" });
 
         var result = await CreateSut().InvokeAsync(Context("k1"), Endpoint);
 
@@ -317,15 +335,14 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     [Fact]
     public async Task TheAdmissionAndTheAnswer_ExpireAfterTheirOwnRetentions()
     {
-        var before = DateTimeOffset.UtcNow;
+        var now = time.GetUtcNow();
 
         await CreateSut().InvokeAsync(Context("k1"), Endpoint);
 
-        var after = DateTimeOffset.UtcNow;
         var admission = Assert.Single(admitted);
-        Assert.InRange(admission.LeaseUntilUtc, before.AddMinutes(5), after.AddMinutes(5));
-        Assert.InRange(admission.ExpiresUtc, before.AddDays(3), after.AddDays(3));
-        Assert.InRange(Assert.Single(saved).ExpiresUtc, before.AddHours(2), after.AddHours(2));
+        Assert.Equal(now.AddMinutes(5), admission.LeaseUntilUtc);
+        Assert.Equal(now.AddDays(3), admission.ExpiresUtc);
+        Assert.Equal(now.AddHours(2), Assert.Single(saved).ExpiresUtc);
     }
 
     // #441: every finalization carries the admission's own id, so the store can refuse it once the
@@ -346,8 +363,6 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     [Fact]
     public async Task AServerErrorAnswer_MarksTheOutcomeUnknown()
     {
-        var before = DateTimeOffset.UtcNow;
-
         var result = await CreateSut().InvokeAsync(
             Context("k1"),
             _ => ValueTask.FromResult<object?>(Results.Json(new { error = "down" }, JsonSerializerOptions.Default, statusCode: StatusCodes.Status503ServiceUnavailable)));
@@ -355,7 +370,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
         var unknown = Assert.Single(saved);
         Assert.Equal(IdempotentResultState.OutcomeUnknown, unknown.State);
         Assert.Empty(unknown.Response);
-        Assert.InRange(unknown.ExpiresUtc, before.AddDays(3), DateTimeOffset.UtcNow.AddDays(3));
+        Assert.Equal(time.GetUtcNow().AddDays(3), unknown.ExpiresUtc);
         Assert.Empty(released);
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
     }
@@ -402,7 +417,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     [Fact]
     public async Task WithAKeyWhoseOutcomeIsUnknown_AnswersOutcomeUnknown_WithoutRunningTheEndpoint()
     {
-        Holding(InProgress("svc:name:alice:k1", DateTimeOffset.UtcNow.AddMinutes(1)) with { State = IdempotentResultState.OutcomeUnknown });
+        Holding(InProgress("svc:name:alice:k1", time.GetUtcNow().AddMinutes(1)) with { State = IdempotentResultState.OutcomeUnknown });
 
         var result = await CreateSut().InvokeAsync(Context("k1"), Endpoint);
 
@@ -458,7 +473,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
             .Where(x => x.Method.Name == nameof(ILogger.Log))
             .Select(x => ((LogLevel)x.Arguments[0], x.Arguments[2].ToString() ?? string.Empty));
 
-    private static IdempotentResult InProgress(string key, DateTimeOffset leaseUntilUtc) =>
+    private IdempotentResult InProgress(string key, DateTimeOffset leaseUntilUtc) =>
         new()
         {
             Key = key,
@@ -466,6 +481,6 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
             RequestHash = Sha256("POST /svc/processes/steps/start\n\n" + JsonSerializer.Serialize(new { step = "start" }, KaleidoJsonOptions.Options)),
             State = IdempotentResultState.InProgress,
             LeaseUntilUtc = leaseUntilUtc,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
+            ExpiresUtc = time.GetUtcNow().AddHours(1),
         };
 }

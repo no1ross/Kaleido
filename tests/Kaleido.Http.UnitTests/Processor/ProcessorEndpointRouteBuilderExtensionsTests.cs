@@ -419,6 +419,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessorRegistry());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, DisplayName = "Test Processor", AuthorizationMode = mode });
         builder.Services.AddSingleton(Mock.Of<IKaleidoIdempotencyStore>());
+        builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton(Mock.Of<IKaleidoCorrelationContextAccessor>(x => x.Current == new KaleidoCorrelationContext()));
 
         if (exceptionHandler is not null)

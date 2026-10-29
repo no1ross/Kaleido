@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Time.Testing;
+
 namespace Kaleido.Http.Client.UnitTests;
 
 public sealed class HttpClientRegistryCacheTests
@@ -5,9 +7,13 @@ public sealed class HttpClientRegistryCacheTests
 {
     private const string Key = "kaleido:remote";
 
-    private static HttpClientRegistryCache CreateSut(
+    private static readonly DateTimeOffset Start = new(2026, 10, 28, 12, 0, 0, TimeSpan.Zero);
+
+    private readonly FakeTimeProvider time = new(Start);
+
+    private HttpClientRegistryCache CreateSut(
         IRegistrySnapshotStore? store = null) =>
-        new(store ?? CreateStore());
+        new(store ?? CreateStore(), time);
 
     // A plain fetch: the revision is ignored, the fetched registry always returned.
     private static Task<AggregatedRegistryResponse> GetOrFetchAsync(
@@ -45,12 +51,12 @@ public sealed class HttpClientRegistryCacheTests
 
     private static readonly AggregatedRegistryResponse Fresh = new()
     {
-        GeneratedAt = DateTimeOffset.UtcNow
+        GeneratedAt = Start
     };
 
     private static readonly AggregatedRegistryResponse Stale = new()
     {
-        GeneratedAt = DateTimeOffset.UtcNow.AddHours(-1)
+        GeneratedAt = Start.AddHours(-1)
     };
 
     [Fact]
@@ -170,13 +176,65 @@ public sealed class HttpClientRegistryCacheTests
     public async Task GetOrRevalidateAsync_KeysAreIndependent()
     {
         using var sut = CreateSut();
-        var other = new AggregatedRegistryResponse { GeneratedAt = DateTimeOffset.UtcNow, Revision = "other" };
+        var other = new AggregatedRegistryResponse { GeneratedAt = Start, Revision = "other" };
 
         await GetOrFetchAsync(sut, null, _ => Task.FromResult(Fresh), CancellationToken.None);
         var result = await sut.GetOrRevalidateAsync("kaleido:another", null, (_, _) => Task.FromResult<AggregatedRegistryResponse?>(other), CancellationToken.None);
 
         Assert.Same(other, result);
         Assert.Same(Fresh, await GetOrFetchAsync(sut, null, _ => Task.FromResult(Stale), CancellationToken.None));
+    }
+
+    // A snapshot is served until the check interval has passed since its age basis; at that instant
+    // it is revalidated.
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, 1)]
+    [InlineData(1, 1)]
+    public async Task GetOrRevalidateAsync_AroundTheCheckInterval(int ticksFromTheInterval, int checks)
+    {
+        var store = CreateStore();
+        await store.SetAsync(Key, Fresh, TestContext.Current.CancellationToken);
+        using var sut = CreateSut(store);
+        var revalidated = 0;
+        time.Advance(TimeSpan.FromMinutes(5) + TimeSpan.FromTicks(ticksFromTheInterval));
+
+        await sut.GetOrRevalidateAsync(
+            Key,
+            TimeSpan.FromMinutes(5),
+            (_, _) =>
+            {
+                revalidated++;
+                return Task.FromResult<AggregatedRegistryResponse?>(null);
+            },
+            CancellationToken.None);
+
+        Assert.Equal(checks, revalidated);
+    }
+
+    // A check that found the snapshot unchanged counts as its age: the next check is one interval later.
+    [Fact]
+    public async Task GetOrRevalidateAsync_AfterAnUnchangedCheck_ServesUntilTheNextInterval()
+    {
+        var store = CreateStore();
+        await store.SetAsync(Key, Stale, TestContext.Current.CancellationToken);
+        using var sut = CreateSut(store);
+        var checks = 0;
+
+        Task<AggregatedRegistryResponse?> Unchanged(string? revision, CancellationToken _)
+        {
+            checks++;
+            return Task.FromResult<AggregatedRegistryResponse?>(null);
+        }
+
+        await sut.GetOrRevalidateAsync(Key, TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
+        time.Advance(TimeSpan.FromSeconds(30) - TimeSpan.FromTicks(1));
+        await sut.GetOrRevalidateAsync(Key, TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
+        Assert.Equal(1, checks);
+
+        time.Advance(TimeSpan.FromTicks(1));
+        await sut.GetOrRevalidateAsync(Key, TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
+        Assert.Equal(2, checks);
     }
 
     [Fact]
@@ -228,7 +286,7 @@ public sealed class HttpClientRegistryCacheTests
 
     private static readonly AggregatedRegistryResponse StaleWithRevision = new()
     {
-        GeneratedAt = DateTimeOffset.UtcNow.AddHours(-1),
+        GeneratedAt = Start.AddHours(-1),
         Revision = "abc123",
     };
 

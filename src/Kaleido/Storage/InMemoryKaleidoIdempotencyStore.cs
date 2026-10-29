@@ -7,9 +7,13 @@ internal sealed partial class InMemoryKaleidoIdempotencyStore : IKaleidoIdempote
 {
     private readonly Dictionary<string, IdempotentResult> _results = new(StringComparer.Ordinal);
     private readonly object _lock = new();
+    private readonly TimeProvider _time;
 
-    public InMemoryKaleidoIdempotencyStore(ILogger<InMemoryKaleidoIdempotencyStore> logger) =>
+    public InMemoryKaleidoIdempotencyStore(TimeProvider time, ILogger<InMemoryKaleidoIdempotencyStore> logger)
+    {
+        _time = time;
         LogInMemoryStoreActive(logger);
+    }
 
     public Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken)
     {
@@ -21,7 +25,7 @@ internal sealed partial class InMemoryKaleidoIdempotencyStore : IKaleidoIdempote
         lock (_lock)
         {
             // Expired records are dropped as new keys arrive, so the dictionary does not grow without bound.
-            var now = DateTimeOffset.UtcNow;
+            var now = _time.GetUtcNow();
 
             foreach (var expired in _results.Where(x => x.Value.ExpiresUtc <= now).Select(x => x.Key).ToList())
             {

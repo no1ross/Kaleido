@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Http.Registry.UnitTests;
 
@@ -17,6 +18,7 @@ public sealed class KaleidoRegistryServiceTests
     private static readonly AuthorizationMetadata Radiology = new(null, ["radiology"]);
 
     private readonly ConcurrentDictionary<string, AggregatedRegistryResponse> stored = new(StringComparer.OrdinalIgnoreCase);
+    private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 28, 12, 0, 0, TimeSpan.Zero));
     private readonly Mock<IKaleidoDownstreamRegistries> downstream = new();
     private readonly Mock<IKaleidoAuthorizer> authorizer = new();
     private readonly Mock<IProcessorResponseFactory> responses = new();
@@ -66,7 +68,7 @@ public sealed class KaleidoRegistryServiceTests
                     return held;
                 }
 
-                var built = await build(cancellationToken) with { GeneratedAt = DateTimeOffset.UtcNow };
+                var built = await build(cancellationToken) with { GeneratedAt = time.GetUtcNow() };
                 built = built with { IsPartial = built.ClientErrors.Count > 0 };
 
                 if (!built.IsPartial)
@@ -123,7 +125,7 @@ public sealed class KaleidoRegistryServiceTests
         var sut = CreateSut(cooldown: TimeSpan.Zero).Sut;
 
         var first = await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
-        await Task.Delay(TimeSpan.FromMilliseconds(20), Cancel);
+        time.Advance(TimeSpan.FromSeconds(1));
         var rebuilt = await sut.GetForCallerAsync(refresh: true, cancellationToken: Cancel);
 
         Assert.NotEqual(first.GeneratedAt, rebuilt.GeneratedAt);

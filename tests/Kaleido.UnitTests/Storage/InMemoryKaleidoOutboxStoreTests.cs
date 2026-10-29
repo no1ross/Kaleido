@@ -1,14 +1,19 @@
 using Kaleido.Eventing;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Storage.UnitTests;
 
 public sealed class InMemoryKaleidoOutboxStoreTests
     : SutFixture
 {
-    private static InMemoryKaleidoOutboxStore CreateSut(ILogger<InMemoryKaleidoOutboxStore>? logger = null) =>
-        new(logger ?? new Mock<ILogger<InMemoryKaleidoOutboxStore>>().Object);
+    private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 28, 12, 0, 0, TimeSpan.Zero));
+
+    private static readonly TimeSpan Tick = TimeSpan.FromTicks(1);
+
+    private InMemoryKaleidoOutboxStore CreateSut(ILogger<InMemoryKaleidoOutboxStore>? logger = null) =>
+        new(time, logger ?? new Mock<ILogger<InMemoryKaleidoOutboxStore>>().Object);
 
     [Fact]
     public async Task CompleteEventAsync_AfterTheLeaseExpired_LeavesTheEntryForTheNextClaim()
@@ -27,21 +32,21 @@ public sealed class InMemoryKaleidoOutboxStoreTests
         Assert.False(reclaimed.IsParked);
     }
 
-    private static KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null) =>
+    private KaleidoOutboxEvent Event(DateTimeOffset? occurredUtc = null) =>
         new()
         {
             EventId = Guid.NewGuid(),
             EventType = KaleidoEventTypes.ProcessStepCompleted,
             Payload = "{}",
-            OccurredUtc = occurredUtc ?? DateTimeOffset.UtcNow.AddSeconds(-1),
-            NextAttemptUtc = occurredUtc ?? DateTimeOffset.UtcNow.AddSeconds(-1),
+            OccurredUtc = occurredUtc ?? time.GetUtcNow().AddSeconds(-1),
+            NextAttemptUtc = occurredUtc ?? time.GetUtcNow().AddSeconds(-1),
         };
 
     [Fact]
     public async Task ClaimEventsAsync_TakesAtMostTheBatchOldestFirstAndNeverTwice()
     {
         var sut = CreateSut();
-        var now = DateTimeOffset.UtcNow;
+        var now = time.GetUtcNow();
         var oldest = Event(now.AddSeconds(-3));
         var middle = Event(now.AddSeconds(-2));
         await sut.AddAsync([Event(now.AddSeconds(-1)), middle, oldest], TestContext.Current.CancellationToken);
@@ -58,7 +63,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
     public async Task ClaimEventsAsync_SkipsEntriesThatAreNotDueYet()
     {
         var sut = CreateSut();
-        await sut.AddAsync([Event() with { NextAttemptUtc = DateTimeOffset.UtcNow.AddMinutes(1) }], TestContext.Current.CancellationToken);
+        await sut.AddAsync([Event() with { NextAttemptUtc = time.GetUtcNow().AddMinutes(1) }], TestContext.Current.CancellationToken);
 
         Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
     }
@@ -68,8 +73,73 @@ public sealed class InMemoryKaleidoOutboxStoreTests
     {
         var sut = CreateSut();
         await sut.AddAsync([Event()], TestContext.Current.CancellationToken);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1), TestContext.Current.CancellationToken);
-        await Task.Delay(20);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+        time.Advance(TimeSpan.FromMinutes(1));
+
+        Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
+    }
+
+    // The lease is held until its end: just before it the entry is not claimed again, at its end it is.
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, 1)]
+    [InlineData(1, 1)]
+    public async Task ClaimEventsAsync_AroundTheEndOfTheLease(int ticksFromTheEnd, int claimed)
+    {
+        var sut = CreateSut();
+        await sut.AddAsync([Event()], TestContext.Current.CancellationToken);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+
+        time.Advance(TimeSpan.FromMinutes(1) + (Tick * ticksFromTheEnd));
+
+        Assert.Equal(claimed, (await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken)).Count);
+    }
+
+    // A completion counts while the lease is held, up to its last tick.
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, 1)]
+    public async Task CompleteEventAsync_AroundTheEndOfTheLease(int ticksFromTheEnd, int left)
+    {
+        var sut = CreateSut();
+        var @event = Event();
+        await sut.AddAsync([@event], TestContext.Current.CancellationToken);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+        time.Advance(TimeSpan.FromMinutes(1) + (Tick * ticksFromTheEnd));
+
+        await sut.CompleteEventAsync(@event.EventId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(left, (await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken)).Count);
+    }
+
+    // A retry is due at its time, not before.
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(0, 1)]
+    [InlineData(1, 1)]
+    public async Task ClaimEventsAsync_AroundTheRetryTime(int ticksFromTheRetry, int claimed)
+    {
+        var sut = CreateSut();
+        var @event = Event();
+        await sut.AddAsync([@event], TestContext.Current.CancellationToken);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+        var retryAt = time.GetUtcNow().AddSeconds(30);
+        await sut.FailEventAsync(@event.EventId, retryAt, "broker down", TestContext.Current.CancellationToken);
+
+        time.SetUtcNow(retryAt + (Tick * ticksFromTheRetry));
+
+        Assert.Equal(claimed, (await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken)).Count);
+    }
+
+    // An event the store does not hold (completed by another attempt, or never added) is ignored.
+    [Fact]
+    public async Task CompleteEventAsync_AndFailEventAsync_ForAnUnknownEvent_ChangeNothing()
+    {
+        var sut = CreateSut();
+        await sut.AddAsync([Event()], TestContext.Current.CancellationToken);
+
+        await sut.CompleteEventAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        await sut.FailEventAsync(Guid.NewGuid(), retryAtUtc: null, "unknown", TestContext.Current.CancellationToken);
 
         Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
     }
@@ -80,10 +150,10 @@ public sealed class InMemoryKaleidoOutboxStoreTests
         var sut = CreateSut();
         var @event = Event();
         await sut.AddAsync([@event], TestContext.Current.CancellationToken);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
 
         await sut.CompleteEventAsync(@event.EventId, TestContext.Current.CancellationToken);
-        await Task.Delay(250);
+        time.Advance(TimeSpan.FromMinutes(1));
 
         Assert.Empty(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
     }
@@ -94,8 +164,8 @@ public sealed class InMemoryKaleidoOutboxStoreTests
         var sut = CreateSut();
         var @event = Event();
         await sut.AddAsync([@event], TestContext.Current.CancellationToken);
-        await sut.ClaimEventsAsync(10, TimeSpan.FromMilliseconds(1), TestContext.Current.CancellationToken);
-        await Task.Delay(20);
+        await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+        time.Advance(TimeSpan.FromMinutes(1));
 
         await sut.CompleteEventAsync(@event.EventId, TestContext.Current.CancellationToken);
 
@@ -110,7 +180,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
         await sut.AddAsync([@event], TestContext.Current.CancellationToken);
         await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
 
-        await sut.FailEventAsync(@event.EventId, DateTimeOffset.UtcNow.AddSeconds(-1), "broker down", TestContext.Current.CancellationToken);
+        await sut.FailEventAsync(@event.EventId, time.GetUtcNow().AddSeconds(-1), "broker down", TestContext.Current.CancellationToken);
 
         var retried = Assert.Single(await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
         Assert.Equal(1, retried.Attempts);

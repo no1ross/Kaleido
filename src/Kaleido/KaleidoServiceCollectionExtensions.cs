@@ -102,6 +102,10 @@ public static class KaleidoServiceCollectionExtensions
         services.TryAddScoped<IKaleidoInboundCallerAccessor, KaleidoInboundCallerAccessor>(); // ADR 0022
         services.TryAddSingleton<IEventPublisher, EventPublisher>();
 
+        // The clock of every lease, expiry, retry, TTL and circuit decision (#460); a host (or a
+        // test) that registers its own TimeProvider first keeps it.
+        services.TryAddSingleton(TimeProvider.System);
+
         AddStores(services);
         AddEventWriting(services);
         services.TryAddSingleton<IKaleidoAuthorizationEvaluator, KaleidoAuthorizationEvaluator>();

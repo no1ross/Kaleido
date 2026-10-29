@@ -8,9 +8,13 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
 {
     private readonly Dictionary<Guid, OutboxEntry> _outbox = [];
     private readonly object _lock = new();
+    private readonly TimeProvider _time;
 
-    public InMemoryKaleidoOutboxStore(ILogger<InMemoryKaleidoOutboxStore> logger) =>
+    public InMemoryKaleidoOutboxStore(TimeProvider time, ILogger<InMemoryKaleidoOutboxStore> logger)
+    {
+        _time = time;
         LogInMemoryStoreActive(logger);
+    }
 
     public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
@@ -33,7 +37,7 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var now = DateTimeOffset.UtcNow;
+        var now = _time.GetUtcNow();
 
         lock (_lock)
         {
@@ -87,7 +91,7 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
 
     // A completed or failed attempt counts only while the lease is still held.
     private bool TryGetLeased(Guid eventId, [NotNullWhen(true)] out OutboxEntry? entry) =>
-        _outbox.TryGetValue(eventId, out entry) && entry.LeaseUntil > DateTimeOffset.UtcNow;
+        _outbox.TryGetValue(eventId, out entry) && entry.LeaseUntil > _time.GetUtcNow();
 
     private sealed class OutboxEntry(KaleidoOutboxEvent @event)
     {

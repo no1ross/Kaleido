@@ -28,7 +28,7 @@ internal interface IHttpRegistryCache
 }
 
 // One singleton for every snapshot key (#498): the key is a parameter, the per-key lock lives here.
-internal sealed class HttpRegistryCache(IRegistrySnapshotStore store) : IHttpRegistryCache, IDisposable
+internal sealed class HttpRegistryCache(IRegistrySnapshotStore store, TimeProvider time) : IHttpRegistryCache, IDisposable
 {
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _locks = new(StringComparer.Ordinal);
 
@@ -80,7 +80,7 @@ internal sealed class HttpRegistryCache(IRegistrySnapshotStore store) : IHttpReg
 
             result = result with
             {
-                GeneratedAt = DateTimeOffset.UtcNow,
+                GeneratedAt = time.GetUtcNow(),
                 IsPartial = result.ClientErrors.Count > 0,
             };
 
@@ -97,13 +97,13 @@ internal sealed class HttpRegistryCache(IRegistrySnapshotStore store) : IHttpReg
         }
     }
 
-    private static bool ServeFromCache(
+    private bool ServeFromCache(
         AggregatedRegistryResponse cached,
         bool forceRefresh,
         TimeSpan? ttl,
         TimeSpan refreshCooldown)
     {
-        var age = DateTimeOffset.UtcNow - cached.GeneratedAt;
+        var age = time.GetUtcNow() - cached.GeneratedAt;
 
         // Throttle: refreshes inside the cooldown window reuse the snapshot
         // instead of triggering another downstream fan-out.

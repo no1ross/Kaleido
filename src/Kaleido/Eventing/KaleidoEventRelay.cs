@@ -28,6 +28,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     private readonly IKaleidoEventSignal _signal;
     private readonly ILogger<KaleidoEventRelay> _logger;
     private readonly KaleidoEventOptions _options;
+    private readonly TimeProvider _time;
     private readonly CircuitBreakerStateProvider _circuit = new();
     private readonly ResiliencePipeline _pipeline;
 
@@ -40,9 +41,11 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         IEventPublisher publisher,
         IKaleidoEventSignal signal,
         KaleidoServiceOptions serviceOptions,
+        TimeProvider time,
         ILogger<KaleidoEventRelay> logger)
     {
         _scopeFactory = scopeFactory;
+        _time = time;
         _publisher = publisher;
         _signal = signal;
         _logger = logger;
@@ -84,7 +87,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
             // While the circuit is open nothing is claimed: the entries stay untouched in the outbox.
             if (CircuitIsOpen)
             {
-                await Task.Delay(BreakRemaining, stoppingToken);
+                await Task.Delay(BreakRemaining, _time, stoppingToken);
                 continue;
             }
 
@@ -110,7 +113,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
             await using var scope = _scopeFactory.CreateAsyncScope();
             var store = scope.ServiceProvider.GetRequiredService<IKaleidoOutboxStore>();
 
-            var leaseUntil = DateTimeOffset.UtcNow + Lease;
+            var leaseUntil = _time.GetUtcNow() + Lease;
             var entries = await store.ClaimEventsAsync(_options.BatchSize, Lease, cancellationToken);
 
             // The store of this scope is not thread-safe: its calls take turns.
@@ -139,7 +142,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     {
         // Not enough lease left for a full attempt, or the circuit opened meanwhile: leave the entry;
         // it is claimed again once its lease expires.
-        if (CircuitIsOpen || DateTimeOffset.UtcNow + _options.Resilience.AttemptTimeout > leaseUntil)
+        if (CircuitIsOpen || _time.GetUtcNow() + _options.Resilience.AttemptTimeout > leaseUntil)
         {
             return;
         }
@@ -182,7 +185,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
             return;
         }
 
-        var retryAt = DateTimeOffset.UtcNow + RetryDelay(_options.Resilience.RetryDelay, attempts);
+        var retryAt = _time.GetUtcNow() + RetryDelay(_options.Resilience.RetryDelay, attempts);
         await store.FailEventAsync(entry.EventId, retryAt, exception.Message, CancellationToken.None);
         LogRetryScheduled(_logger, exception, entry.EventType, entry.EventId, attempts, retryAt);
     }
@@ -200,14 +203,14 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     {
         get
         {
-            var remaining = new DateTimeOffset(Interlocked.Read(ref _breakUntilTicks), TimeSpan.Zero) - DateTimeOffset.UtcNow;
+            var remaining = new DateTimeOffset(Interlocked.Read(ref _breakUntilTicks), TimeSpan.Zero) - _time.GetUtcNow();
 
             return remaining > TimeSpan.Zero ? Min(remaining, _options.Resilience.CircuitBreakerBreakDuration) : TimeSpan.Zero;
         }
     }
 
     private ResiliencePipeline BuildPipeline(KaleidoResilienceSettings resilience) =>
-        new ResiliencePipelineBuilder()
+        new ResiliencePipelineBuilder { TimeProvider = _time }
             .AddCircuitBreaker(new CircuitBreakerStrategyOptions
             {
                 FailureRatio = resilience.CircuitBreakerFailureRatio,
@@ -217,7 +220,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
                 StateProvider = _circuit,
                 OnOpened = args =>
                 {
-                    Interlocked.Exchange(ref _breakUntilTicks, (DateTimeOffset.UtcNow + args.BreakDuration).UtcTicks);
+                    Interlocked.Exchange(ref _breakUntilTicks, (_time.GetUtcNow() + args.BreakDuration).UtcTicks);
                     LogCircuitOpened(_logger, args.BreakDuration);
                     return default;
                 },

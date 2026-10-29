@@ -28,6 +28,10 @@ braces...) run in the build (#406, root [`AGENTS.md`](../AGENTS.md#per-commit-qu
 - In unit tests, verify that the class behaves as designed at its seam/contract boundary
 - Do not turn unit tests into business workflow, transport, or integration tests
 - Use functional tests to validate transport, real implementations, and broader business behavior
+- Never wait on the wall clock for a time-dependent decision (a lease, an expiry, a retry, a TTL, a
+  circuit's break): give the SUT a `FakeTimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`),
+  advance it, and test the boundary one tick before, at and after it (#460). Wait for background work
+  with a `TaskCompletionSource` gate, not a `Task.Delay`.
 
 **Why collaborators are always mocked (the mocking policy, #461).** A unit test tests one unit. Its
 collaborators are mocked (KAL1011), so changing class B never fails class A's tests, and finding the

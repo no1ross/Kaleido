@@ -63,6 +63,7 @@ internal static class KaleidoClientServiceCollectionExtensions
     {
         services.TryAddSingleton<IKaleidoClientCatalog, KaleidoClientCatalog>();
         services.TryAddSingleton<Registry.IRegistrySnapshotStore, Registry.InMemoryRegistrySnapshotStore>();
+        services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IHttpClientRegistryCache, HttpClientRegistryCache>();
         services.TryAddSingleton<IKaleidoRemoteRegistry, KaleidoRemoteRegistry>();
         services.TryAddSingleton<IKaleidoProcessForwarding, KaleidoProcessForwarding>();

@@ -2,6 +2,7 @@ using Kaleido.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Provider.SQLite.UnitTests;
 
@@ -36,17 +37,19 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         return context;
     }
 
-    private static SqliteKaleidoIdempotencyStore CreateSut(SqliteKaleidoContextDbContext dbContext) => new(dbContext);
+    private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 28, 12, 0, 0, TimeSpan.Zero));
 
-    private static IdempotentResult Admission(string key, DateTimeOffset? expiresUtc = null, DateTimeOffset? leaseUntilUtc = null, string hash = "hash") =>
+    private SqliteKaleidoIdempotencyStore CreateSut(SqliteKaleidoContextDbContext dbContext) => new(dbContext, time);
+
+    private IdempotentResult Admission(string key, DateTimeOffset? expiresUtc = null, DateTimeOffset? leaseUntilUtc = null, string hash = "hash") =>
         new()
         {
             Key = key,
             AdmissionId = Guid.NewGuid(),
             RequestHash = hash,
             State = IdempotentResultState.InProgress,
-            LeaseUntilUtc = leaseUntilUtc ?? DateTimeOffset.UtcNow.AddMinutes(5),
-            ExpiresUtc = expiresUtc ?? DateTimeOffset.UtcNow.AddHours(1),
+            LeaseUntilUtc = leaseUntilUtc ?? time.GetUtcNow().AddMinutes(5),
+            ExpiresUtc = expiresUtc ?? time.GetUtcNow().AddHours(1),
         };
 
     private static IdempotentResult Completed(IdempotentResult admission, string response) =>
@@ -57,7 +60,7 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        var lease = DateTimeOffset.UtcNow.AddMinutes(5);
+        var lease = time.GetUtcNow().AddMinutes(5);
 
         Assert.Null(await sut.AdmitAsync(Admission("svc:alice:k1", leaseUntilUtc: lease), TestContext.Current.CancellationToken));
 
@@ -91,7 +94,7 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
     {
         var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
         using var keepAlive = CreateSharedDbContext(connectionString);
-        var expiredLease = DateTimeOffset.UtcNow.AddMinutes(-1);
+        var expiredLease = time.GetUtcNow().AddMinutes(-1);
 
         using (var before = CreateSharedDbContext(connectionString))
         {
@@ -103,7 +106,7 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
 
         Assert.NotNull(existing);
         Assert.Equal(IdempotentResultState.InProgress, existing.State);
-        Assert.True(existing.LeaseUntilUtc < DateTimeOffset.UtcNow);
+        Assert.True(existing.LeaseUntilUtc < time.GetUtcNow());
     }
 
     [Fact]
@@ -179,7 +182,7 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
             using (var first = CreateSharedDbContext($"DataSource={path}"))
             using (var second = CreateSharedDbContext($"DataSource={path}"))
             {
-                var a = Admission("svc:alice:k", expiresUtc: DateTimeOffset.UtcNow.AddMinutes(-1));
+                var a = Admission("svc:alice:k", expiresUtc: time.GetUtcNow().AddMinutes(-1));
                 var b = Admission("svc:alice:k");
                 await CreateSut(first).AdmitAsync(a, TestContext.Current.CancellationToken);
                 Assert.Null(await CreateSut(second).AdmitAsync(b, TestContext.Current.CancellationToken));
@@ -218,9 +221,26 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
     {
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
-        await sut.AdmitAsync(Admission("svc:alice:old", DateTimeOffset.UtcNow.AddMinutes(-1)), TestContext.Current.CancellationToken);
+        await sut.AdmitAsync(Admission("svc:alice:old", time.GetUtcNow().AddMinutes(-1)), TestContext.Current.CancellationToken);
 
         Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old"), TestContext.Current.CancellationToken));
+    }
+
+    // A record is kept until its retention ends, also across instances: one tick before, the key still
+    // refuses; at the end it is admitted again.
+    [Theory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    public async Task AdmitAsync_AroundTheEndOfTheRetention(int ticksFromTheEnd, bool admittedAgain)
+    {
+        using var db = CreateDbContext();
+        var sut = CreateSut(db);
+        var expires = time.GetUtcNow().AddHours(1);
+        await sut.AdmitAsync(Admission("svc:alice:kept", expires), TestContext.Current.CancellationToken);
+
+        time.SetUtcNow(expires + TimeSpan.FromTicks(ticksFromTheEnd));
+
+        Assert.Equal(admittedAgain, await sut.AdmitAsync(Admission("svc:alice:kept"), TestContext.Current.CancellationToken) is null);
     }
 
     [Fact]

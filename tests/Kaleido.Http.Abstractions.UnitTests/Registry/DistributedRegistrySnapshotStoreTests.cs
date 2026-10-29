@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Http.Registry.UnitTests;
 
@@ -17,13 +18,15 @@ public sealed class DistributedRegistrySnapshotStoreTests
         Revision = "abc123",
     };
 
+    private static FakeTimeProvider NewClock() => new(new DateTimeOffset(2026, 10, 22, 12, 0, 0, TimeSpan.Zero));
+
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     private static DistributedRegistrySnapshotStore CreateSut(
         IDistributedCache cache,
-        FakeTime? time = null,
+        FakeTimeProvider? time = null,
         ILogger<DistributedRegistrySnapshotStore>? logger = null) =>
-        new(cache, MemoryStore(), logger ?? NullLogger<DistributedRegistrySnapshotStore>.Instance, time ?? new FakeTime());
+        new(cache, MemoryStore(), logger ?? NullLogger<DistributedRegistrySnapshotStore>.Instance, time ?? NewClock());
 
     // The snapshots this replica keeps in memory (the in-memory store's own rules are tested in its fixture).
     private static IRegistrySnapshotStore MemoryStore()
@@ -127,7 +130,7 @@ public sealed class DistributedRegistrySnapshotStoreTests
     public async Task AfterAFailure_TheCacheIsLeftAloneUntilRetryAfter()
     {
         var cache = new DictionaryCache { Fail = true };
-        var time = new FakeTime();
+        var time = NewClock();
         var sut = CreateSut(cache, time);
 
         await sut.GetAsync(Key, Cancel);
@@ -146,7 +149,7 @@ public sealed class DistributedRegistrySnapshotStoreTests
     public async Task AFailure_IsLoggedOncePerOutage()
     {
         var cache = new DictionaryCache { Fail = true };
-        var time = new FakeTime();
+        var time = NewClock();
         var logger = new Mock<ILogger<DistributedRegistrySnapshotStore>>();
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
         var sut = CreateSut(cache, time, logger.Object);
@@ -228,14 +231,5 @@ public sealed class DistributedRegistrySnapshotStoreTests
                 throw new InvalidOperationException("The cache is unreachable.");
             }
         }
-    }
-
-    private sealed class FakeTime : TimeProvider
-    {
-        private DateTimeOffset _now = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
-
-        public override DateTimeOffset GetUtcNow() => _now;
-
-        public void Advance(TimeSpan by) => _now += by;
     }
 }

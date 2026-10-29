@@ -37,7 +37,7 @@ internal interface IHttpClientRegistryCache
         CancellationToken cancellationToken);
 }
 
-internal sealed class HttpClientRegistryCache(IRegistrySnapshotStore store) : IHttpClientRegistryCache, IDisposable
+internal sealed class HttpClientRegistryCache(IRegistrySnapshotStore store, TimeProvider time) : IHttpClientRegistryCache, IDisposable
 {
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);
 
@@ -77,7 +77,7 @@ internal sealed class HttpClientRegistryCache(IRegistrySnapshotStore store) : IH
             }
 
             var current = await revalidate(snapshot?.Revision, cancellationToken);
-            entry.CheckedAtUtc = DateTimeOffset.UtcNow;
+            entry.CheckedAtUtc = time.GetUtcNow();
 
             if (current is null)
             {
@@ -97,7 +97,7 @@ internal sealed class HttpClientRegistryCache(IRegistrySnapshotStore store) : IH
         }
     }
 
-    private static bool IsFresh(Entry entry, AggregatedRegistryResponse snapshot, TimeSpan? checkInterval)
+    private bool IsFresh(Entry entry, AggregatedRegistryResponse snapshot, TimeSpan? checkInterval)
     {
         if (checkInterval is null)
         {
@@ -116,7 +116,7 @@ internal sealed class HttpClientRegistryCache(IRegistrySnapshotStore store) : IH
             return true;
         }
 
-        return DateTimeOffset.UtcNow - basis < checkInterval.Value;
+        return time.GetUtcNow() - basis < checkInterval.Value;
     }
 
     // One key's lock (double-checked fetch) and the last time this instance checked it.

@@ -9,7 +9,8 @@ namespace Kaleido.Provider.SQLite;
 // database as the process state. Every write is one SQL statement, atomic in SQLite; finalizing is
 // conditional on the admission id (#441), so it works across processes sharing the database.
 internal sealed class SqliteKaleidoIdempotencyStore(
-    SqliteKaleidoContextDbContext dbContext)
+    SqliteKaleidoContextDbContext dbContext,
+    TimeProvider time)
     : IKaleidoIdempotencyStore
 {
     public async Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken)
@@ -17,7 +18,7 @@ internal sealed class SqliteKaleidoIdempotencyStore(
         ArgumentNullException.ThrowIfNull(admission);
 
         // Expired records are deleted as new keys arrive, so the table does not grow without bound.
-        var nowTicks = DateTimeOffset.UtcNow.UtcTicks;
+        var nowTicks = time.GetUtcNow().UtcTicks;
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM IdempotentResults WHERE ExpiresUtc <= {nowTicks}",
             cancellationToken);
