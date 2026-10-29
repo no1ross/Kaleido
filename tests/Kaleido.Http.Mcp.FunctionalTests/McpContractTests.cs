@@ -151,7 +151,7 @@ public sealed class McpContractTests(McpClinicFixture fixture)
 
     // A client on an initialize-based revision that can show forms: over the adapter's stateless
     // HTTP transport there is no session to elicit in, so the questions must still reach the agent
-    // (next.informationRequest) rather than be lost. See the functional-test audit (session path).
+    // (next.informationRequest) rather than be lost. An opt-in session path is #350.
     [Fact]
     public async Task WithAnOlderRevision_TheQuestionsAreNeverLost()
     {

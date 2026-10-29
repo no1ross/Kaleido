@@ -56,3 +56,10 @@ builder.Services.AddKaleido(builder.Configuration)
 - **Proven in one host:** `tests/Kaleido.IntegrationTests/Redaction/EventAndLogRedactionTests.cs`
   (logs erase PII while events keep it; events erased without an event policy).
 - The PriorAuth sample sets "events: PHI erased, PII kept" for every service that publishes events.
+
+## Erratum (#457)
+Point 5 reads "`AddEventRedaction` - not `AddEventRedaction`" because a later rename (14725b52) was
+applied to it mechanically. At the decision the method was `AddEventClassificationRedaction`; it was
+renamed **`AddEventRedaction`**, which is the method's name. The decision of point 5 stands in that
+form: the method that sets the event policy is `AddEventRedaction`, distinct from
+`AddEventRedactor<T>()`, which registers code-based redactors.

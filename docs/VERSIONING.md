@@ -49,7 +49,9 @@ Each package records its public API in two files in its project's `.PublicAPI` f
   does it for a whole project.
 - Several overloads with optional parameters are rejected (RS0026/RS0027), since adding a parameter
   later would break compiled callers: one overload takes the optional parameters.
-- **At each release** the `Unshipped` lines move to `Shipped` ([releasing](../RELEASING.md)).
+- **At each stable release (1.0 and later)** the `Unshipped` lines move to `Shipped`
+  ([releasing](../RELEASING.md)). A preview release moves nothing: during the preview `Unshipped`
+  holds the whole API and `Shipped` stays empty, so the first move is the 1.0 release.
 - **After 1.0 ships**, package validation (`EnablePackageValidation`) compares each package with the
   released 1.0 package, so a binary-breaking change in a 1.x is caught at pack time.
 

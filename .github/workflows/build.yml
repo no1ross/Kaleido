@@ -59,8 +59,8 @@ jobs:
                     findings += 1
         sys.exit(1 if findings else 0)
 
-    # Every Kaleido type or member named in the docs must exist in the sources (ADRs and audit
-    # records are historical and skipped).
+    # Every Kaleido type or member named in the docs must exist in the sources (ADRs are historical
+    # and skipped).
     - name: Check documentation symbols
       run: python3 tools/docs/check-doc-symbols.py
 

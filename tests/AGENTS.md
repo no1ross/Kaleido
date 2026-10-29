@@ -92,9 +92,15 @@ A functional test proves that real Kaleido components agree with each other: it 
 performs a consumer action, and asserts the consumer-visible result (records, state read back with
 `GET /processes/{id}`, error codes, registry metadata, MCP tool results) - not which collaborator
 was called. Before adding one, name the production regression it would catch; if none, it belongs in
-a unit test or nowhere. The audit of what is protected, the gaps closed and the open risks is
-[`FUNCTIONAL-TEST-AUDIT.md`](./FUNCTIONAL-TEST-AUDIT.md); keep it current when you add or remove
-functional coverage.
+a unit test or nowhere. Prove it catches that regression once: apply the mutation to the production
+code (a reversed condition, a dropped registration, ignored metadata), see the test fail, restore.
+A flow that still lacks such a test, or a risk found while testing, is an Issue (e.g. #503), never a
+list in a document.
+
+Not functional-tested on purpose (unit tests own them): startup registration failures (a host cannot
+start with them), per-operator and per-type exhaustiveness and error-code strings (one functional case
+per class of behavior), and internals such as relay timing, cache TTLs, the header sanitizer, telemetry
+names, option validation, tool-name truncation and catalog-cache eviction.
 
 Models for one scenario family live in their own namespace and are registered with a `TypeFilter` on
 that namespace (e.g. `Processor/Behavior`, `IntegrationTests/EfCore`), so they cannot change what the
