@@ -22,3 +22,4 @@ KAL0017 | Kaleido.Design | Warning | Endpoint names must come from an *EndpointN
 KAL0018 | Kaleido.Design | Warning | Catch-all that records observability must exclude OperationCanceledException
 KAL0019 | Kaleido.Layout | Warning | A type with behavior must be declared in a file named after it
 KAL0020 | Kaleido.Layout | Warning | Do not exclude a type with behavior from code coverage
+KAL0021 | Kaleido.Design | Warning | A wall-clock read that decides behavior uses the injected TimeProvider

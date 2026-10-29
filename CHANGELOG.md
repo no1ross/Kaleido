@@ -173,8 +173,9 @@ sections.
 - **One controllable clock** (#460): leases, idempotency retention, the event relay's retries,
   timeouts and circuit break, the registry caches' TTLs and the MCP lookup states' lifetime read the
   injected `TimeProvider`. `AddKaleido()` registers `TimeProvider.System` with `TryAdd`, so a host can
-  register its own first (for example to test time-dependent behavior). Recorded timestamps are
-  unchanged.
+  register its own first. Recorded timestamps (`CreatedUtc`, `OccurredOn`) keep the wall clock: the
+  clock is a dependency only where Kaleido's behavior depends on the time. KAL0021 reports a
+  wall-clock read in `src/` that is compared or used in date arithmetic (#501).
 - **The Kaleido clients are built by the container** (#498): each client configured under
   `Kaleido:Clients` is registered once, and its Process and Queryable clients, health check and
   credential handler are keyed services under its name, so a fixed client can be injected with

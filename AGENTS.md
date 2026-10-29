@@ -120,9 +120,11 @@ The rule is: **one observability signal per cancellation, at the lowest level th
 - KAL0018 enforces the "exclude OCE" half: a catch-all that calls an observability member without a filter that provably excludes cancellation (`when (ex is not OperationCanceledException)`, read by meaning, not by name — see [`docs/ANALYZERS.md`](./docs/ANALYZERS.md#cancellation-filters)) or an earlier unfiltered `catch (OperationCanceledException)` is reported. The one-signal-per-cancellation placement is still a review responsibility.
 
 ### Time
-- A decision that depends on the current time - a lease, an expiry or retention, a retry or backoff, a TTL, a circuit's break, a delay - reads it from the injected `TimeProvider` (`time.GetUtcNow()`, `Task.Delay(delay, time, token)`, Polly's `ResiliencePipelineBuilder { TimeProvider = time }`), never from `DateTimeOffset.UtcNow` (#460). `AddKaleido()` registers `TimeProvider.System` with `TryAdd`, as does each package registration whose services need it, so a host or a test may register its own first.
-- A timestamp that is only recorded (`CreatedUtc`, an event's `OccurredOn`) may read `DateTimeOffset.UtcNow`.
-- Tests drive the clock with `FakeTimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`) and test a boundary one tick before, at and after it - never with real waits.
+Kaleido uses `TimeProvider` where time is a production dependency, not where time is merely inconvenient in a test: *testability can reveal a missing abstraction, but testability alone does not justify an abstraction* (#501).
+- A decision that depends on the current time - a lease, an expiry or retention, a retry or backoff, a timeout, a TTL, a circuit's break - makes the clock a dependency of the component, so it reads the injected `TimeProvider` (`time.GetUtcNow()`, `Task.Delay(delay, time, token)`, Polly's `ResiliencePipelineBuilder { TimeProvider = time }`), never `DateTimeOffset.UtcNow` (#460). KAL0021 reports a wall-clock read that is compared or used in date arithmetic.
+- A timestamp that is only recorded (`CreatedUtc`, `UpdatedUtc`, `FirstExecuted`, an event's `OccurredOn`) is not a clock dependency: it reads `DateTimeOffset.UtcNow`, and its tests do not assert an exact value. Do not inject a `TimeProvider` to make such an assertion possible.
+- The clock stays in the infrastructure component that owns the behavior (the outbox, idempotency, the relay, the caches); it never becomes part of the consumer programming model (handlers, steps, sources). `AddKaleido()` registers `TimeProvider.System` with `TryAdd`, as does each package registration whose services need it, so a host may register its own first.
+- Tests of a time decision drive the clock with `FakeTimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`, test projects only) and test the boundary one tick before, at and after it - never with real waits.
 
 ### Record conversion
 - Convert immutable data containers with init-only properties to records
