@@ -63,4 +63,7 @@ internal static class DiagnosticIds
 
     /// <summary>[ExcludeFromCodeCoverage] is not allowed on a type with behavior: its logic is tested in its own test class.</summary>
     public const string CoverageExclusionOnBehavior = "KAL0020";
+
+    /// <summary>A wall-clock read whose value decides behavior (compared, or used in date arithmetic) reads the injected TimeProvider; a recorded timestamp may read the wall clock.</summary>
+    public const string WallClockDecision = "KAL0021";
 }

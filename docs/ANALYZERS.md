@@ -99,6 +99,7 @@ Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 | KAL0018 | A catch-all (`catch` / `catch (Exception)`) that calls a member on a Kaleido `*Observation`/`*Observability` type (in a `*.Observability` namespace) must exclude `OperationCanceledException`, via a `when` filter or an earlier `catch (OperationCanceledException)` | `This catch-all calls '{0}' but does not exclude OperationCanceledException — add 'when (ex is not OperationCanceledException)' or an earlier catch (OperationCanceledException)` |
 | KAL0019 | A type with behavior is declared in a file named after it - its [convention name](#types-with-behavior) (`ProcessStepHandlerResult<T>` in `ProcessStepHandlerResultOfT.cs`); partial parts in `{Name}.{Part}.cs` | `Type '{0}' has behavior and must be declared in '{1}' (or a '{2}.*.cs' part), not '{3}' — a type with behavior has its own file and its own test class` |
 | KAL0020 | `[ExcludeFromCodeCoverage]` is not allowed on a type with behavior | `Type '{0}' has behavior: remove [ExcludeFromCodeCoverage] and test it in its own test class` |
+| KAL0021 | A wall-clock read (`DateTimeOffset.UtcNow/Now`, `DateTime.UtcNow/Now/Today`) whose value decides behavior - compared, or used in date arithmetic - reads the injected `TimeProvider`; a recorded timestamp is not reported | `'{0}' decides behavior here - read the time from the injected TimeProvider` |
 
 ### What the security-relevant rules prevent
 
@@ -119,6 +120,7 @@ Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 | KAL0018 | Cancellations recorded as failures in observability catch-alls — inflated error metrics, false alerts |
 | KAL0019 | Logic hidden in another type's file - its test class is missing without anyone seeing it, and indirect tests stand in for it |
 | KAL0020 | Logic excluded from the coverage gate |
+| KAL0021 | A lease, expiry, retry or TTL decided on a hidden system clock - an implicit dependency the host cannot replace |
 
 ### Scope notes
 
@@ -129,6 +131,8 @@ Compliant shapes for all of the above are in [`PATTERNS.md`](./PATTERNS.md).
 **Cancellation in observability catch-alls (KAL0018).** The filter and earlier-clause rules are shared with KAL2004; see [how a filter is read](#cancellation-filters). The observability call is any member of a Kaleido observation type: declared in a Kaleido `*.Observability` namespace and named `*Observation` or `*Observability` (judged by symbol, #465).
 
 **One type with behavior per file (KAL0019, KAL0020).** Both use the shared [definition of behavior](#types-with-behavior), the same one KAL1009 uses, so the file rule and the fixture rule never disagree. Data-only records, interfaces (KAL0014 keeps one with its implementation), exceptions and attributes may share a file; MA0048 stays off for them. Files written by generators (`obj/`, `*.g.cs`) are skipped.
+
+**Time decisions, not timestamps (KAL0021).** Kaleido takes a `TimeProvider` where time is a production dependency, not to make a test easier ([AGENTS.md](../AGENTS.md#time), #501). A read decides when its value is an operand of a comparison or of date arithmetic (`+`, `-`, `Add*`, `Subtract`, `CompareTo`, `DateTimeOffset.Compare`): directly, through a member of it (`UtcNow.UtcTicks`), or through a local it initializes or is assigned to in the same method. A branch of `?:` or `??` passes the value on unchanged. A read that is only stored, assigned, returned or passed on - a recorded timestamp - is not reported. The rule judges syntax-local data flow only: a value passed to another method and compared there is not followed.
 
 **Endpoint names (KAL0017).** Endpoint names are declared as `const string` fields or name-factory methods on a `*EndpointNames` class in `Kaleido.Http.Abstractions` (`ProcessEndpointNames`, `RegistryEndpointNames`) or `Kaleido.Http` (`QueryableEndpointNames`). All names follow one pattern, `Kaleido` + area + action with `_` before any variable part (`KaleidoProcessExecute`, `KaleidoProcessStepExecute_{step}`, `KaleidoQueryableQuery_{source}`, `KaleidoQueryableViewQuery_{source}_{view}`, `KaleidoRegistry`); the prefix keeps them from colliding with the host app's own endpoint names. An inline literal or a constant from any other type passed to `WithName()` is reported. Endpoint names are link targets and OpenAPI operation ids, and an unenforced literal let the `KaleidoProcessStepREgistry` typo ship (HP-015, [#62](https://github.com/no1ross/Kaleido/issues/62)).
 
