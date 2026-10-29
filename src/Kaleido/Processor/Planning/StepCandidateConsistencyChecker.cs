@@ -76,6 +76,9 @@ internal sealed class StepCandidateConsistencyChecker : IStepCandidateConsistenc
             return;
         }
 
+        // A completed, non-repeatable step sent again is answered as done (pro_already_processed,
+        // information) and kept out of the plan. This runs before the next-step checker, which would
+        // otherwise refuse it as unavailable: a retry of a finished step is told it is done (#504).
         if (historicalStep.Status ==
             StepExecutionStatus.Completed)
         {

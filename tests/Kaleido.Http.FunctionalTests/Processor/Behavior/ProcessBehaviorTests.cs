@@ -39,14 +39,18 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.DoesNotContain(BehaviorSteps.Archive, AvailableSteps(state));
     }
 
+    // A retry of a finished step is told it is done, not refused (#504): the consistency check answers
+    // it before availability would reject it as pro_step_not_available.
     [Fact]
-    public async Task ANonRepeatableStep_RunsOnlyOnce()
+    public async Task ANonRepeatableStep_RunsOnlyOnce_AndASecondSendIsToldItIsAlreadyProcessed()
     {
         var processId = await StartAsync();
 
         var (_, again) = await PostStepAsync(BehaviorSteps.Start, processId: processId);
 
         Assert.NotEqual("completed", Outcome(again));
+        Assert.Equal([ProcessorErrorCodes.AlreadyProcessed], FrameworkCodes(again));
+        Assert.Equal("information", Assert.Single(again.GetProperty("frameworkMessages").EnumerateArray()).GetProperty("type").GetString());
     }
 
     [Fact]
