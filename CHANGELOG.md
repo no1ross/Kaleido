@@ -13,6 +13,9 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **`FrameworkErrorCodes.DataConversionError` is removed** (#505): nothing raised
+  `data_conversion_error`; value conversion failures are `argument_error` or
+  `qry_invalid_filter_value`, as before. Code that names the constant no longer compiles.
 - **Two error codes take their area prefix** (#447, [ADR 0032](docs/decisions/0032-public-api-at-1-0.md)):
   `ProcessorErrorCodes.MissingStepResult` is now `pro_missing_step_result` (was `missing_step_result`)
   and `HttpClientErrorCodes.MissingBaseUrl` is now `httpclient_missing_base_url` (was
