@@ -312,7 +312,6 @@ public sealed class ProcessorStateUpdaterTests
     [Theory]
     [InlineData(ExecutionDecisionType.Continue, ProcessExecutionState.Active)]
     [InlineData(ExecutionDecisionType.BusinessFailure, ProcessExecutionState.BusinessFailure)]
-    [InlineData(ExecutionDecisionType.ProcessViolation, ProcessExecutionState.ProcessViolation)]
     [InlineData(ExecutionDecisionType.AwaitingRequiredStep, ProcessExecutionState.AwaitingRequiredStep)]
     [InlineData(ExecutionDecisionType.AwaitingStepSelection, ProcessExecutionState.AwaitingStepSelection)]
     [InlineData(ExecutionDecisionType.HandOff, ProcessExecutionState.HandOff)]
@@ -323,6 +322,32 @@ public sealed class ProcessorStateUpdaterTests
         var result = Sut.ApplyExecution(context, new StepCandidate { StepName = "test-step" }, new ExecutionDecision { Type = decisionType });
 
         Assert.Equal(expected, result.State);
+    }
+
+    // A process violation is the handler's defect: like an exception, the process keeps its state and
+    // next steps, and only the step's status records it (#522).
+    [Fact]
+    public void ApplyExecution_ForAProcessViolation_KeepsTheProcessAndRecordsTheStepAsAnException()
+    {
+        var context = new ProcessorContext
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test",
+            State = ProcessExecutionState.AwaitingStepSelection,
+            AvailableSteps = ["test-step", "other-step"],
+            Steps = [new StepContext { StepName = "test-step" }],
+        };
+
+        var result = Sut.ApplyExecution(
+            context,
+            new StepCandidate { StepName = "test-step" },
+            new ExecutionDecision { Type = ExecutionDecisionType.ProcessViolation, RequiredStep = "ignored", TargetProcessorName = "ignored" });
+
+        Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
+        Assert.Equal(["test-step", "other-step"], result.AvailableSteps);
+        Assert.Null(result.RequiredStep);
+        Assert.Null(result.TargetProcessorName);
+        Assert.Equal(StepExecutionStatus.Exception, Assert.Single(result.Steps).Status);
     }
 
     [Fact]

@@ -144,9 +144,9 @@ public enum ExecutionDecisionType
     BusinessFailure,
 
     /// <summary>
-    /// A process rule or framework invariant was violated.
-    /// Examples include illegal graph transitions or invalid
-    /// required step selections.
+    /// The handler's result broke a process rule: an illegal next step, an invalid information
+    /// request, a handoff to the service itself. The step is recorded as
+    /// <see cref="StepExecutionStatus.Exception"/> and the process keeps its state.
     /// </summary>
     ProcessViolation,
 
@@ -211,9 +211,12 @@ public enum ProcessExecutionState
     BusinessFailure,
 
     /// <summary>
-    /// The last step's result broke a process rule, for example by requiring a step that is not
-    /// registered or not a legal next step, or an information step without a well-formed
-    /// information request.
+    /// Not set by the runtime: a step whose result breaks a process rule (requiring a step that is
+    /// not registered or not a legal next step, an information step without a well-formed
+    /// information request, a handoff to the service itself) is the handler's defect. Like an
+    /// unexpected error, it leaves the process in the state it had before the step, recorded as
+    /// <see cref="StepExecutionStatus.Exception"/>, so the step can be retried once the handler is
+    /// fixed (#522). Kept for state written by earlier versions.
     /// </summary>
     ProcessViolation,
 

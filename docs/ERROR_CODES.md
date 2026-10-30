@@ -94,6 +94,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `ExceptionThrown` | `pro_exception_thrown` | Exception interrupted step processing |
 | `InvalidRequiredStep` | `pro_invalid_required_step` | Required next step is invalid |
 | `RequiredStepNotAllowed` | `pro_required_step_not_allowed` | Required next step cannot be executed (not a legal next step, or not a registered step in this processor) |
+| `InvalidHandOff` | `pro_invalid_hand_off` | A handler handed the process off to the service it runs in; a process violation, so the process keeps its state |
 | `ExecutionCanceled` | `pro_execution_canceled` | Step execution was cancelled |
 | `FrameworkException` | `pro_framework_exception` | Unexpected framework error interrupted a step |
 | `ProcessMessage` | `pro_process_message` | Process diagnostic message was produced |

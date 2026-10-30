@@ -108,6 +108,12 @@ public static class ProcessorErrorCodes
     /// <summary>The required next step cannot be executed.</summary>
     public const string RequiredStepNotAllowed = "pro_required_step_not_allowed";
 
+    /// <summary>
+    /// A handler handed the process off to the service it runs in; a handoff names another
+    /// service. Reported as a process violation: the process keeps its state.
+    /// </summary>
+    public const string InvalidHandOff = "pro_invalid_hand_off";
+
     /// <summary>Step execution was cancelled.</summary>
     public const string ExecutionCanceled = "pro_execution_canceled";
 

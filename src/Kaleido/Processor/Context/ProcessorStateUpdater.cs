@@ -116,6 +116,13 @@ internal sealed class ProcessorStateUpdater(
         ArgumentNullException.ThrowIfNull(candidate);
         ArgumentNullException.ThrowIfNull(decision);
 
+        // A process violation is the handler's defect (an invalid next step or request), not a
+        // business outcome: like an exception, only the step's status records it (#522).
+        if (decision.Type == ExecutionDecisionType.ProcessViolation)
+        {
+            return ApplyException(context, candidate);
+        }
+
         var step =
             GetStep(
                 context,
@@ -305,9 +312,6 @@ internal sealed class ProcessorStateUpdater(
 
             ExecutionDecisionType.BusinessFailure =>
                 ProcessExecutionState.BusinessFailure,
-
-            ExecutionDecisionType.ProcessViolation =>
-                ProcessExecutionState.ProcessViolation,
 
             ExecutionDecisionType.AwaitingRequiredStep =>
                 ProcessExecutionState.AwaitingRequiredStep,

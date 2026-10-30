@@ -13,6 +13,17 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Invalid hand-offs, dead step graphs and process violations are no longer silent** (#522):
+  - `ProcessStepHandlerResult.HandOff` refuses a null, empty or blank target (`ArgumentException`).
+    A hand-off to the service itself is a process violation (`pro_invalid_hand_off`), no longer a
+    local continuation.
+  - A cycle through `DependsOn` and `AvailableAfter` together (either one alone, or mixed) fails
+    startup with `pro_invalid_registration`: its steps could never become available. `AvailableUntil`
+    takes no part in cycles.
+  - A process violation (an invalid next step or information request, a hand-off to itself) behaves
+    like an unexpected error: the step is recorded as `Exception`, the process keeps its state and
+    next steps, and the step can be retried once the handler is fixed. It no longer moves the process
+    to `ProcessViolation` with the step recorded as completed.
 - **`FrameworkErrorCodes.DataConversionError` is removed** (#505): nothing raised
   `data_conversion_error`; value conversion failures are `argument_error` or
   `qry_invalid_filter_value`, as before. Code that names the constant no longer compiles.

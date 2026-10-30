@@ -85,6 +85,26 @@ public sealed class ProcessStepHandlerResultTests
         Assert.Equal([Note], result.Messages);
     }
 
+    // A handoff names a service: an empty or blank target used to degrade silently into a local
+    // continuation or a handoff to nowhere (#522).
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void HandOff_ToAnEmptyOrBlankTarget_IsRefused(string target)
+    {
+        var exception = Assert.Throws<ArgumentException>(() => ProcessStepHandlerResult.HandOff(target));
+
+        Assert.Equal("targetProcessorName", exception.ParamName);
+    }
+
+    [Fact]
+    public void HandOff_ToANullTarget_IsRefused()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => ProcessStepHandlerResult.HandOff(null!));
+
+        Assert.Equal("targetProcessorName", exception.ParamName);
+    }
+
     [Fact]
     public void SuccessWithResponse_IsATypedSuccess()
     {

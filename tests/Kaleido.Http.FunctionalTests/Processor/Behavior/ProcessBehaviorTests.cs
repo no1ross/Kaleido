@@ -159,6 +159,28 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.Equal(JsonValueKind.Null, state.GetProperty("requiredStep").ValueKind);
     }
 
+    // A handoff to the service itself is the handler's defect (#522): before, it silently continued
+    // here; now it is a process violation that, like an exception, leaves the process as it was.
+    [Fact]
+    public async Task AHandOffToThisServiceItself_IsAViolation_AndLeavesTheProcessAsItWas()
+    {
+        var processId = await StartAsync();
+        var before = await StateAsync(processId);
+
+        var (status, response) = await PostStepAsync(BehaviorSteps.HandOffHere, processId: processId);
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.NotEqual("completed", Outcome(response));
+        Assert.Contains(ProcessorErrorCodes.InvalidHandOff, FrameworkCodes(response));
+        Assert.Equal(JsonValueKind.Null, response.GetProperty("targetProcessorName").ValueKind);
+
+        var after = await StateAsync(processId);
+        Assert.Equal("exception", StepStatus(after, BehaviorSteps.HandOffHere));
+        Assert.Equal(before.GetProperty("state").GetString(), after.GetProperty("state").GetString());
+        Assert.Equal(AvailableSteps(before), AvailableSteps(after));
+        Assert.Equal(JsonValueKind.Null, after.GetProperty("targetProcessorName").ValueKind);
+    }
+
     [Fact]
     public async Task AProcessHandedOffByAnotherProcessor_StartsHereUnderItsId()
     {

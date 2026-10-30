@@ -107,6 +107,7 @@ const Kaleido.Processor.ProcessorErrorCodes.InformationResponseStale = "pro_info
 const Kaleido.Processor.ProcessorErrorCodes.InformationResponseUnanswered = "pro_information_response_unanswered" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidFormat = "pro_invalid_format" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidHandler = "pro_invalid_handler" -> string!
+const Kaleido.Processor.ProcessorErrorCodes.InvalidHandOff = "pro_invalid_hand_off" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidIdempotencyKey = "pro_invalid_idempotency_key" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidLength = "pro_invalid_length" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidRegistration = "pro_invalid_registration" -> string!

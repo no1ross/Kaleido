@@ -344,6 +344,42 @@ public sealed class StepExecutionEvaluatorTests
     }
 
     [Fact]
+    public void Evaluate_AHandOffWithoutARequiredStep_HandsOffToTheTarget()
+    {
+        var decision =
+            CreateSut(["step-b"]).Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, TargetProcessorName = "radiology" },
+                [],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.HandOff, decision.Type);
+        Assert.Equal("radiology", decision.TargetProcessorName);
+        Assert.Empty(decision.AvailableSteps);
+    }
+
+    // A handoff to the service itself used to fall through to a local continuation (#522): it is the
+    // handler's defect, a process violation, whatever the case of the name.
+    [Theory]
+    [InlineData(LocalProcessorName)]
+    [InlineData("TEST-PROCESSOR")]
+    public void Evaluate_AHandOffToThisServiceItself_IsAProcessViolation(string target)
+    {
+        var decision =
+            CreateSut(["step-b"]).Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, TargetProcessorName = target },
+                [],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.ProcessViolation, decision.Type);
+        var message = Assert.Single(decision.Messages);
+        Assert.Equal(ProcessorErrorCodes.InvalidHandOff, message.Code);
+        Assert.Contains("step-a", message.Message);
+        Assert.Null(decision.TargetProcessorName);
+    }
+
+    [Fact]
     public void Complete_InitializesEmptyMessagesCollection()
     {
         var decision =

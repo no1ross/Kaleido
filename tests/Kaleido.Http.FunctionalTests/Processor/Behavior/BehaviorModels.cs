@@ -9,6 +9,7 @@ namespace Kaleido.Http.FunctionalTests.Processor.Behavior;
 //   Archive  [AvailableAfter<Close>]
 //   Explode  [DependsOn<Start>] [Repeatable]   throws while BehaviorSwitches.Explode is set
 //   HandOff  [DependsOn<Start>]                hands the process to "radiology"
+//   HandOffHere [DependsOn<Start>] [Repeatable] hands the process to this service itself (a defect)
 //   Slow     [DependsOn<Start>] [Repeatable]   waits for BehaviorGate (to race two saves)
 //   Quick    [DependsOn<Start>] [Repeatable]
 // The models live in their own namespace: only BehaviorFixture registers them.
@@ -20,6 +21,7 @@ internal static class BehaviorSteps
     public const string Archive = nameof(BehaviorArchiveStep);
     public const string Explode = nameof(BehaviorExplodeStep);
     public const string HandOff = nameof(BehaviorHandOffStep);
+    public const string HandOffHere = nameof(BehaviorHandOffHereStep);
     public const string Slow = nameof(BehaviorSlowStep);
     public const string Quick = nameof(BehaviorQuickStep);
 
@@ -58,6 +60,11 @@ public sealed record BehaviorExplodeStep : IProcessStep;
 [ProcessStep(DisplayName = "Hand off", Description = "Hands the case to radiology.")]
 [DependsOn<BehaviorStartStep>]
 public sealed record BehaviorHandOffStep : IProcessStep;
+
+[ProcessStep(DisplayName = "Hand off here", Description = "Hands the case to this service itself: a handler defect.")]
+[DependsOn<BehaviorStartStep>]
+[Repeatable]
+public sealed record BehaviorHandOffHereStep : IProcessStep;
 
 [ProcessStep(DisplayName = "Slow", Description = "Waits for the gate.")]
 [DependsOn<BehaviorStartStep>]
@@ -154,6 +161,12 @@ public sealed class BehaviorHandOffHandler : IProcessStepHandler<BehaviorHandOff
 {
     public Task<ProcessStepHandlerResult> ExecuteAsync(BehaviorHandOffStep processStep, ProcessStepContext context, CancellationToken cancellationToken = default) =>
         Task.FromResult(ProcessStepHandlerResult.HandOff(BehaviorSteps.HandOffTarget));
+}
+
+public sealed class BehaviorHandOffHereHandler : IProcessStepHandler<BehaviorHandOffHereStep>
+{
+    public Task<ProcessStepHandlerResult> ExecuteAsync(BehaviorHandOffHereStep processStep, ProcessStepContext context, CancellationToken cancellationToken = default) =>
+        Task.FromResult(ProcessStepHandlerResult.HandOff(BehaviorFixture.ServiceName));
 }
 
 public sealed class BehaviorSlowHandler(BehaviorGate gate) : IProcessStepHandler<BehaviorSlowStep>

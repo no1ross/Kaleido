@@ -71,7 +71,7 @@ internal sealed partial class ProcessorStepRegistry
 
             throw new KaleidoConfigurationException(
                 ProcessorErrorCodes.InvalidRegistration,
-                $"Circular process step dependency detected: {string.Join(" -> ", cycle)}");
+                $"Circular process step dependency detected (DependsOn / AvailableAfter): {string.Join(" -> ", cycle)}. None of these steps can ever become available.");
         }
 
         if (!visited.Add(
@@ -83,7 +83,9 @@ internal sealed partial class ProcessorStepRegistry
         path.Push(
             definition.StepType);
 
-        foreach (var dependency in definition.Dependencies)
+        // Both need every named step completed first, so a cycle through either - or both -
+        // leaves its steps unavailable forever (#522). AvailableUntil only closes a step.
+        foreach (var dependency in definition.Dependencies.Concat(definition.AvailableAfter))
         {
             ValidateCircularDependency(
                 dependency,

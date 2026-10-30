@@ -42,8 +42,18 @@ internal sealed class StepExecutionEvaluator(
             return ExecutionDecision.BusinessFailure();
         }
 
-        if (result.RequiredStep is not null &&
-            string.IsNullOrEmpty(result.TargetProcessorName))
+        // A handoff gives the process to another service; this service itself is not one (#522).
+        if (result.TargetProcessorName is { } targetProcessorName)
+        {
+            return string.Equals(targetProcessorName, serviceOptions.ServiceName, StringComparison.OrdinalIgnoreCase)
+                ? ExecutionDecision.ProcessViolation(
+                    StepProcessingMessage.Error(
+                        ProcessorErrorCodes.InvalidHandOff,
+                        $"'{currentCandidate.StepName}' handed the process off to '{targetProcessorName}', which is this service; hand off to another service, or continue with a step of this one."))
+                : ExecutionDecision.HandOff(targetProcessorName);
+        }
+
+        if (result.RequiredStep is not null)
         {
             var requiredRegistration =
                 registry.Find(result.RequiredStep);
@@ -71,7 +81,6 @@ internal sealed class StepExecutionEvaluator(
         }
 
         return EvaluateAvailableSteps(
-            result.TargetProcessorName,
             currentCandidate,
             candidates,
             context);
@@ -144,24 +153,10 @@ internal sealed class StepExecutionEvaluator(
     }
 
     private ExecutionDecision EvaluateAvailableSteps(
-        string? targetProcessorName,
         StepCandidate currentCandidate,
         IReadOnlyCollection<StepCandidate> candidates,
         ProcessorContext context)
     {
-
-        // Cross-processor handoff — check TargetProcessorName before RequiredStep.
-        // A HandOff result has RequiredStep = set; and TargetProcessorName set;
-        // falling through to EvaluateAvailableSteps would silently drop the handoff.
-        if (!string.IsNullOrEmpty(targetProcessorName) &&
-            !string.Equals(
-                targetProcessorName,
-                serviceOptions.ServiceName,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return ExecutionDecision.HandOff(targetProcessorName);
-        }
-
         var availableSteps =
             availabilityResolver.Resolve(
                 currentCandidate,

@@ -186,10 +186,18 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     /// The framework will propagate <paramref name="targetProcessorName"/> to the
     /// HTTP response so the consumer can fetch authoritative state from the target.
     /// </summary>
+    /// <param name="targetProcessorName">
+    /// The service that takes the process over; another service's name. Handing off to this
+    /// service itself is reported as a process violation.
+    /// </param>
+    /// <param name="messages">Business messages returned to the caller.</param>
+    /// <exception cref="ArgumentException"><paramref name="targetProcessorName"/> is null, empty or whitespace.</exception>
     public static ProcessStepHandlerResult HandOff(
         string targetProcessorName,
         params ProcessMessage[] messages)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetProcessorName);
+
         return new()
         {
             Succeeded = true,
