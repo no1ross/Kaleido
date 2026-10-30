@@ -13,6 +13,23 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **One status model: where the process is, and what happened to the step** (#536):
+  - The StepExecutionOutcome enum is removed: it duplicated `StepExecutionStatus`. The step answer
+    (`StepExecutionResponse`) carries `Status` (JSON `status`) instead of `Outcome` (`outcome`), with
+    the detailed values: `completed`, `rejected`, `validationFailed`, `failed` (business failure),
+    `exception` (a defect; retry), `canceled`, or `pending` for a submitted step that did not run.
+    Code reading `outcome` reads `status`; a former `failed` is now `failed`, `validationFailed` or
+    `exception`. The MCP adapter's own `outcome` field carries these values.
+  - `ProcessExecutionState` loses `ProcessViolation`, `Exception` and `Canceled`, which nothing sets:
+    a step that breaks a process rule, throws, fails validation or is cancelled leaves the process
+    as it was, and only the step's status records it. A request abort no longer moves the process
+    to `Canceled`. The remaining values renumber (strings are unchanged); SQLite stores holding a
+    removed value must be recreated.
+  - `StepExecutionStatus.Skipped` is removed (never recorded), and a validation failure is now
+    recorded in the history as `ValidationFailed` (it was `Exception`).
+  - The `StepCompleted` event carries `Status` (was `ExecutionStatus` and `Outcome`); it keeps
+    `DecisionType`, and `PlanBuilt` keeps `CandidateStatus`: `ExecutionDecisionType` and
+    `StepCandidateStatus` are the events' audit vocabulary, not part of the transport answers.
 - **Invalid hand-offs, dead step graphs and process violations are no longer silent** (#522):
   - `ProcessStepHandlerResult.HandOff` refuses a null, empty or blank target (`ArgumentException`).
     A hand-off to the service itself is a process violation (`pro_invalid_hand_off`), no longer a

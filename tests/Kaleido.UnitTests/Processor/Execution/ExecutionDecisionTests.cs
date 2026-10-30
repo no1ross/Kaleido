@@ -81,4 +81,24 @@ public sealed class ExecutionDecisionTests
         Assert.Equal(ExecutionDecisionType.HandOff, decision.Type);
         Assert.Equal("radiology", decision.TargetProcessorName);
     }
+
+    // The one mapping the process state, the answer and the event share (#522, #536): every decision a
+    // handler's result can lead to gives its step one status.
+    [Fact]
+    public void StepStatus_IsTheStatusOfTheStepWhoseResultTheDecisionIs()
+    {
+        Assert.All(
+            [
+                ExecutionDecision.Continue(new StepCandidate { StepName = "Next" }),
+                CreateSut(),
+                ExecutionDecision.HandOff("radiology"),
+                ExecutionDecision.AwaitingRequiredStep("Next"),
+                ExecutionDecision.AwaitingStepSelection(["A"]),
+                ExecutionDecision.AwaitingInformation("Answers", new InformationRequest { InformationRequestId = "q" }),
+            ],
+            d => Assert.Equal(StepExecutionStatus.Completed, d.StepStatus));
+        Assert.Equal(StepExecutionStatus.Failed, ExecutionDecision.BusinessFailure().StepStatus);
+        Assert.Equal(StepExecutionStatus.Exception, ExecutionDecision.ProcessViolation(StepProcessingMessage.Error("pro_violation", "Not now.")).StepStatus);
+        Assert.Equal(StepExecutionStatus.Rejected, ExecutionDecision.Rejected().StepStatus);
+    }
 }

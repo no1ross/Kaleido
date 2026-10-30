@@ -34,7 +34,7 @@ public sealed class InformationRequestsExampleTests
 
         Assert.Equal("GiftWrapAnswersStep", required.GetProperty("name").GetString());
         Assert.Equal("gift-wrap", required.GetProperty("informationRequest").GetProperty("informationRequestId").GetString());
-        Assert.Equal("completed", answered.GetProperty("outcome").GetString());
+        Assert.Equal("completed", answered.GetProperty("status").GetString());
         Assert.Equal("gold", answered.GetProperty("result").GetProperty("paper").GetString());
     }
 
@@ -46,7 +46,7 @@ public sealed class InformationRequestsExampleTests
 
         var answered = await host.StepAsync("GiftWrapAnswersStep", Answers(asked, ("wrap", "false")), processId);
 
-        Assert.Equal("completed", answered.GetProperty("outcome").GetString());
+        Assert.Equal("completed", answered.GetProperty("status").GetString());
         Assert.Equal(JsonValueKind.Null, answered.GetProperty("result").GetProperty("paper").ValueKind);
     }
 
@@ -65,7 +65,7 @@ public sealed class InformationRequestsExampleTests
             processId);
 
         Assert.Equal(HttpStatusCode.OK, status);
-        Assert.Equal("pending", body.GetProperty("outcome").GetString());
+        Assert.Equal("pending", body.GetProperty("status").GetString());
         Assert.Equal("gift-wrap", body.GetProperty("requiredStep").GetProperty("informationRequest").GetProperty("informationRequestId").GetString());
         Assert.Equal(JsonValueKind.Null, body.GetProperty("result").ValueKind);
     }

@@ -34,7 +34,7 @@ sequenceDiagram
         R->>H: ExecuteAsync(step, context)
         H-->>R: Success / Next / Reject / Failure / RequireInformation / HandOff
         R->>S: save the new state (conditional on its version)
-        R-->>C: outcome, result, requiredStep, availableSteps, messages
+        R-->>C: status, result, requiredStep, availableSteps, messages
     end
 ```
 
@@ -97,7 +97,7 @@ public sealed record ShipOrderStep : IProcessStep
 
 A handler can name the **required** next step (`Success<TNext>()`, or `Success(result).Next<TNext>()`;
 "Place order" requires "Confirm order"). While a step is required, **only it runs**: calling another
-step is answered with outcome `pending` and the required step again (not an error, nothing runs).
+step is answered with status `pending` and the required step again (not an error, nothing runs).
 When nothing is required, the caller chooses among the **available** steps.
 
 | After | Available | Not available |
@@ -145,14 +145,16 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 }
 ```
 
-| Handler returns | Answer's `outcome` | The process |
+| Handler returns | Answer's `status` | The process |
 |---|---|---|
 | `Success()`, `Success<TNext>()`, `Success(result).Next<TNext>()` | `completed` | moves on; `requiredStep` / `availableSteps` say what is next |
 | `RequireInformation<TNext>(request)` | `completed` | waits for answers ([Information requests](information-requests.md)) |
 | `HandOff(processor)` | `completed` | continues on another processor (`targetProcessorName`) |
 | `Reject(messages)` | `rejected` | **unchanged**: the caller corrects the input or retries ([ADR 0008](../decisions/0008-rejected-outcome-and-retryable-exceptions.md)) |
 | `Failure(messages)` | `failed` | ends: its state is `businessFailure` |
-| an unexpected exception | `failed` | unchanged, so the step can be retried once the defect is fixed |
+| an unexpected exception, or a result that breaks a process rule | `exception` | unchanged, so the step can be retried once the defect is fixed |
+| input that fails its validation rules | `validationFailed` | unchanged: the caller corrects the input |
+| the caller cancels while the handler runs | `canceled` | unchanged: the step can be sent again |
 
 The messages are your words for the user (`businessMessages` in the answer), kept apart from Kaleido's
 diagnostics (`frameworkMessages`). The process state is read with `GET /{service}/processes/{processId}`;

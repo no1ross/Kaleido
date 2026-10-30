@@ -24,8 +24,7 @@ public sealed class KaleidoOutboxEventExtensionsTests
                 StepName = "step-a",
                 Request = new { MemberId = "M-1" },
                 DecisionType = ExecutionDecisionType.Continue,
-                ExecutionStatus = StepExecutionStatus.Completed,
-                Outcome = StepExecutionOutcome.Completed,
+                Status = StepExecutionStatus.Completed,
                 ProcessState = ProcessExecutionState.Active,
             },
         };
@@ -62,7 +61,7 @@ public sealed class KaleidoOutboxEventExtensionsTests
         Assert.Equal(envelope.Event.EventId, published.Event.EventId);
         Assert.Equal(envelope.Event.OccurredOn, published.Event.OccurredOn);
         Assert.Equal(envelope.Context, published.Context);
-        Assert.Equal(StepExecutionStatus.Completed, published.Event.ExecutionStatus);
+        Assert.Equal(StepExecutionStatus.Completed, published.Event.Status);
 
         // object-typed members come back as JSON.
         var request = Assert.IsType<JsonElement>(published.Event.Request);

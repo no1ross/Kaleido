@@ -32,9 +32,9 @@ public sealed class ProcessesExampleTests
         var rejected = await host.StepAsync("ShipOrderStep", new { carrier = "courier", address = "1 Main St" }, processId);
         var shipped = await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "1 Main St" }, processId);
 
-        Assert.Equal("rejected", rejected.GetProperty("outcome").GetString());
+        Assert.Equal("rejected", rejected.GetProperty("status").GetString());
         Assert.Contains("ShipOrderStep", Available(rejected));
-        Assert.Equal("completed", shipped.GetProperty("outcome").GetString());
+        Assert.Equal("completed", shipped.GetProperty("status").GetString());
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public sealed class ProcessesExampleTests
         var failed = await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "Base 1, Antarctica" }, processId);
         var (_, state) = await host.SendAsync(HttpMethod.Get, $"/orders/processes/{processId}");
 
-        Assert.Equal("failed", failed.GetProperty("outcome").GetString());
+        Assert.Equal("failed", failed.GetProperty("status").GetString());
         Assert.Equal("businessFailure", state.GetProperty("state").GetString());
     }
 
@@ -60,7 +60,7 @@ public sealed class ProcessesExampleTests
 
         var note = await host.StepAsync("AddNoteStep", new { text = "Leave at the door" }, placed.GetProperty("processId").GetGuid());
 
-        Assert.Equal("pending", note.GetProperty("outcome").GetString());
+        Assert.Equal("pending", note.GetProperty("status").GetString());
         Assert.Equal("ConfirmOrderStep", note.GetProperty("requiredStep").GetProperty("name").GetString());
     }
 
@@ -73,8 +73,8 @@ public sealed class ProcessesExampleTests
         var first = await host.StepAsync("AddNoteStep", new { text = "Leave at the door" }, processId);
         var second = await host.StepAsync("AddNoteStep", new { text = "Ring twice" }, processId);
 
-        Assert.Equal("completed", first.GetProperty("outcome").GetString());
-        Assert.Equal("completed", second.GetProperty("outcome").GetString());
+        Assert.Equal("completed", first.GetProperty("status").GetString());
+        Assert.Equal("completed", second.GetProperty("status").GetString());
         Assert.Contains("AddNoteStep", Available(second));
         Assert.DoesNotContain("ConfirmOrderStep", Available(second));
     }
@@ -114,7 +114,7 @@ public sealed class ProcessesExampleTests
 
         var returned = await host.StepAsync("ReturnOrderStep", new { }, processId);
 
-        Assert.Equal("completed", returned.GetProperty("outcome").GetString());
+        Assert.Equal("completed", returned.GetProperty("status").GetString());
         Assert.Equal("returns", returned.GetProperty("targetProcessorName").GetString());
 
         var (stateStatus, state) = await returns.SendAsync(HttpMethod.Get, $"/returns/processes/{processId}", processId);
@@ -126,7 +126,7 @@ public sealed class ProcessesExampleTests
         var (receivedStatus, received) = await returns.SendAsync(
             HttpMethod.Post, $"/returns/processes/steps/{nameof(Returns.ReceiveReturnStep)}", processId, new { processStep = new { } });
         Assert.Equal(System.Net.HttpStatusCode.OK, receivedStatus);
-        Assert.Equal("completed", received.GetProperty("outcome").GetString());
+        Assert.Equal("completed", received.GetProperty("status").GetString());
         Assert.Equal(processId, received.GetProperty("processId").GetGuid());
     }
 }

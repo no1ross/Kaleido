@@ -170,16 +170,6 @@ internal sealed record ProcessStepResult
     }
 
     /// <summary>
-    /// The step's outcome in this request, derived from <see cref="ExecutionStatus"/>;
-    /// <see cref="StepExecutionOutcome.Pending"/> when it did not run.
-    /// </summary>
-    public StepExecutionOutcome Outcome
-    {
-        get;
-        init;
-    }
-
-    /// <summary>
     /// The runtime's messages about the step: its planning and validation messages, followed by the
     /// messages from its execution when it ran (a process violation, a validation failure, an
     /// unexpected error or a cancellation).
@@ -425,7 +415,6 @@ internal sealed class ProcessorRuntime(
             IncludedInExecutionPlan = candidate.IncludedInExecutionPlan,
             Response = outcome?.Response,
             ExecutionStatus = outcome?.Status ?? StepExecutionStatus.Pending,
-            Outcome = outcome?.Outcome ?? StepExecutionOutcome.Pending,
             RuntimeMessages = MergeMessages(candidate, outcome),
             BusinessMessages = outcome?.BusinessMessages ?? Array.Empty<ProcessMessage>(),
         };

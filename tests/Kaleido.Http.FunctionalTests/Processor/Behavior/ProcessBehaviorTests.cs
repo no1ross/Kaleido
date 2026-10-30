@@ -410,7 +410,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
     public async Task TheTypedClient_RunsAndResumesAProcess_AndReadsItsState()
     {
         var started = await fixture.ProcessClient.ExecuteStepAsync(new BehaviorStartStep(), TestContext.Current.CancellationToken);
-        Assert.Equal(StepExecutionOutcome.Completed, started.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, started.Status);
         Assert.NotEqual(Guid.Empty, started.ProcessId);
 
         var closed = await fixture.ProcessClient.ExecuteStepAsync(
@@ -419,7 +419,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
             started.ProcessId,
             idempotencyKey: null,
             TestContext.Current.CancellationToken);
-        Assert.Equal(StepExecutionOutcome.Completed, closed.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, closed.Status);
         Assert.Equal(started.ProcessId, closed.ProcessId);
 
         var state = await fixture.ProcessClient.GetProcessStateAsync(started.ProcessId, TestContext.Current.CancellationToken);
@@ -454,8 +454,8 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         await Task.Delay(20, TestContext.Current.CancellationToken);
         var repeated = await QuickAsync(key);
 
-        Assert.Equal(StepExecutionOutcome.Completed, first.Outcome);
-        Assert.Equal(first.Outcome, repeated.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, first.Status);
+        Assert.Equal(first.Status, repeated.Status);
         Assert.Equal(ranAt, await LastRunAsync());
 
         await QuickAsync($"other-{started.ProcessId:N}");
@@ -487,7 +487,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         {
             var slow = await client.ExecuteStepAsync(BehaviorSteps.Slow, JsonSerializer.SerializeToElement(new { }), started.ProcessId, idempotencyKey: null, cancel);
 
-            Assert.Equal(StepExecutionOutcome.Completed, slow.Outcome);
+            Assert.Equal(StepExecutionStatus.Completed, slow.Status);
         }
 
         Assert.Equal(1, fixture.Gate.Invocations);
@@ -605,7 +605,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
 
     private static Guid ProcessId(JsonElement body) => body.GetProperty("processId").GetGuid();
 
-    private static string? Outcome(JsonElement body) => body.GetProperty("outcome").GetString();
+    private static string? Outcome(JsonElement body) => body.GetProperty("status").GetString();
 
     private static string?[] FrameworkCodes(JsonElement body) =>
         body.GetProperty("frameworkMessages").EnumerateArray().Select(x => x.GetProperty("code").GetString()).ToArray();

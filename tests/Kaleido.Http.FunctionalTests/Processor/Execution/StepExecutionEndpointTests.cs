@@ -43,7 +43,7 @@ public sealed class StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixtur
         Assert.NotEqual(Guid.Empty, contract.ProcessId);
         Assert.True(response.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessId, out var values));
         Assert.Equal(contract.ProcessId.ToString(), Assert.Single(values));
-        Assert.Equal(StepExecutionOutcome.Completed, contract.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, contract.Status);
         Assert.Equal(RuntimeStepNames.Root, contract.Result?.Value);
         Assert.Empty(contract.BusinessMessages);
         Assert.Empty(contract.FrameworkMessages);

@@ -69,8 +69,7 @@ public sealed class KaleidoEventPayloadWriterTests
                 Request = request,
                 Response = response,
                 DecisionType = ExecutionDecisionType.Continue,
-                ExecutionStatus = StepExecutionStatus.Completed,
-                Outcome = StepExecutionOutcome.Completed,
+                Status = StepExecutionStatus.Completed,
                 ProcessState = ProcessExecutionState.Active,
             },
         };

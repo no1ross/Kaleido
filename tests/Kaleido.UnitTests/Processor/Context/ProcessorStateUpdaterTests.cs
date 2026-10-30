@@ -266,12 +266,12 @@ public sealed class ProcessorStateUpdaterTests
     }
 
     [Fact]
-    public void ApplyExceptionAndCancellation_TagTheCallerToo()
+    public void ApplyUnfinishedStep_TagsTheCallerToo()
     {
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var failed = Sut.ApplyException(RanBy(Alice), candidate).Steps.Single();
-        var canceled = Sut.ApplyCancellation(RanBy(Bob), candidate).Steps.Single();
+        var failed = Sut.ApplyUnfinishedStep(RanBy(Alice), candidate, StepExecutionStatus.Exception).Steps.Single();
+        var canceled = Sut.ApplyUnfinishedStep(RanBy(Bob), candidate, StepExecutionStatus.Canceled).Steps.Single();
 
         Assert.Equal(Alice, failed.StartedBy);
         Assert.Equal(Alice, failed.LastUpdatedBy);
@@ -433,7 +433,7 @@ public sealed class ProcessorStateUpdaterTests
     }
 
     [Fact]
-    public void ApplyException_KeepsThePendingRequest()
+    public void ApplyUnfinishedStep_KeepsThePendingRequest()
     {
         var context = new ProcessorContext
         {
@@ -444,7 +444,7 @@ public sealed class ProcessorStateUpdaterTests
             Steps = [new StepContext { StepName = "info-step" }]
         };
 
-        var result = Sut.ApplyException(context, new StepCandidate { StepName = "info-step" });
+        var result = Sut.ApplyUnfinishedStep(context, new StepCandidate { StepName = "info-step" }, StepExecutionStatus.Exception);
 
         Assert.Equal("out-of-network", result.RequiredInformationRequest?.InformationRequestId);
     }
@@ -473,25 +473,25 @@ public sealed class ProcessorStateUpdaterTests
     }
 
     [Fact]
-    public void ApplyException_WhenContextIsNull_Throws()
+    public void ApplyUnfinishedStep_WhenContextIsNull_Throws()
     {
         var candidate = new StepCandidate { StepName = "test" };
 
         Assert.Throws<ArgumentNullException>(() =>
-            Sut.ApplyException(null!, candidate));
+            Sut.ApplyUnfinishedStep(null!, candidate, StepExecutionStatus.Exception));
     }
 
     [Fact]
-    public void ApplyException_WhenCandidateIsNull_Throws()
+    public void ApplyUnfinishedStep_WhenCandidateIsNull_Throws()
     {
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
 
         Assert.Throws<ArgumentNullException>(() =>
-            Sut.ApplyException(context, null!));
+            Sut.ApplyUnfinishedStep(context, null!, StepExecutionStatus.Exception));
     }
 
     [Fact]
-    public void ApplyException_WhenStepNotFound_Throws()
+    public void ApplyUnfinishedStep_WhenStepNotFound_Throws()
     {
         var context = new ProcessorContext
         {
@@ -502,11 +502,11 @@ public sealed class ProcessorStateUpdaterTests
         var candidate = new StepCandidate { StepName = "unknown-step" };
 
         Assert.Throws<KaleidoFrameworkException>(() =>
-            Sut.ApplyException(context, candidate));
+            Sut.ApplyUnfinishedStep(context, candidate, StepExecutionStatus.Exception));
     }
 
     [Fact]
-    public void ApplyException_SetsStepStatusToException()
+    public void ApplyUnfinishedStep_SetsStepStatusToException()
     {
         var context = new ProcessorContext
         {
@@ -519,13 +519,13 @@ public sealed class ProcessorStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = Sut.ApplyException(context, candidate);
+        var result = Sut.ApplyUnfinishedStep(context, candidate, StepExecutionStatus.Exception);
 
         Assert.Equal(StepExecutionStatus.Exception, result.Steps.First().Status);
     }
 
     [Fact]
-    public void ApplyException_KeepsTheProcessState()
+    public void ApplyUnfinishedStep_KeepsTheProcessState()
     {
         var context = new ProcessorContext
         {
@@ -539,13 +539,13 @@ public sealed class ProcessorStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = Sut.ApplyException(context, candidate);
+        var result = Sut.ApplyUnfinishedStep(context, candidate, StepExecutionStatus.Exception);
 
         Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
     }
 
     [Fact]
-    public void ApplyException_KeepsTheNextSteps()
+    public void ApplyUnfinishedStep_KeepsTheNextSteps()
     {
         var context = new ProcessorContext
         {
@@ -561,7 +561,7 @@ public sealed class ProcessorStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = Sut.ApplyException(context, candidate);
+        var result = Sut.ApplyUnfinishedStep(context, candidate, StepExecutionStatus.Exception);
 
         Assert.Equal("required", result.RequiredStep);
         Assert.Equal("target", result.TargetProcessorName);
@@ -585,40 +585,7 @@ public sealed class ProcessorStateUpdaterTests
     }
 
     [Fact]
-    public void ApplyCancellation_WhenContextIsNull_Throws()
-    {
-        var candidate = new StepCandidate { StepName = "test" };
-
-        Assert.Throws<ArgumentNullException>(() =>
-            Sut.ApplyCancellation(null!, candidate));
-    }
-
-    [Fact]
-    public void ApplyCancellation_WhenCandidateIsNull_Throws()
-    {
-        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
-
-        Assert.Throws<ArgumentNullException>(() =>
-            Sut.ApplyCancellation(context, null!));
-    }
-
-    [Fact]
-    public void ApplyCancellation_WhenStepNotFound_Throws()
-    {
-        var context = new ProcessorContext
-        {
-            ProcessId = Guid.NewGuid(),
-            ProcessorName = "test",
-            Steps = []
-        };
-        var candidate = new StepCandidate { StepName = "unknown-step" };
-
-        Assert.Throws<KaleidoFrameworkException>(() =>
-            Sut.ApplyCancellation(context, candidate));
-    }
-
-    [Fact]
-    public void ApplyCancellation_SetsStepStatusToCanceled()
+    public void ApplyUnfinishedStep_SetsStepStatusToCanceled()
     {
         var context = new ProcessorContext
         {
@@ -631,37 +598,24 @@ public sealed class ProcessorStateUpdaterTests
         };
         var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = Sut.ApplyCancellation(context, candidate);
+        var result = Sut.ApplyUnfinishedStep(context, candidate, StepExecutionStatus.Canceled);
 
         Assert.Equal(StepExecutionStatus.Canceled, result.Steps.First().Status);
     }
 
-    [Fact]
-    public void ApplyCancellation_SetsStateToCancelled()
+    // A cancellation is a step status only (#517, #536): the process keeps its state and next steps, so
+    // the step can be sent again.
+    [Theory]
+    [InlineData(StepExecutionStatus.Canceled)]
+    [InlineData(StepExecutionStatus.ValidationFailed)]
+    [InlineData(StepExecutionStatus.Exception)]
+    public void ApplyUnfinishedStep_KeepsTheProcessAndRecordsOnlyTheStepStatus(StepExecutionStatus status)
     {
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
             ProcessorName = "test",
-            Steps =
-            [
-                new StepContext { StepName = "test-step" }
-            ]
-        };
-        var candidate = new StepCandidate { StepName = "test-step" };
-
-        var result = Sut.ApplyCancellation(context, candidate);
-
-        Assert.Equal(ProcessExecutionState.Canceled, result.State);
-    }
-
-    [Fact]
-    public void ApplyCancellation_ClearsStateProperties()
-    {
-        var context = new ProcessorContext
-        {
-            ProcessId = Guid.NewGuid(),
-            ProcessorName = "test",
+            State = ProcessExecutionState.AwaitingRequiredStep,
             Steps =
             [
                 new StepContext { StepName = "test-step" }
@@ -670,12 +624,31 @@ public sealed class ProcessorStateUpdaterTests
             TargetProcessorName = "target",
             AvailableSteps = ["step1"]
         };
-        var candidate = new StepCandidate { StepName = "test-step" };
 
-        var result = Sut.ApplyCancellation(context, candidate);
+        var result = Sut.ApplyUnfinishedStep(context, new StepCandidate { StepName = "test-step" }, status);
 
-        Assert.Null(result.RequiredStep);
-        Assert.Null(result.TargetProcessorName);
-        Assert.Empty(result.AvailableSteps);
+        Assert.Equal(ProcessExecutionState.AwaitingRequiredStep, result.State);
+        Assert.Equal("required", result.RequiredStep);
+        Assert.Equal("target", result.TargetProcessorName);
+        Assert.Equal(["step1"], result.AvailableSteps);
+        Assert.Equal(status, Assert.Single(result.Steps).Status);
+    }
+
+    // Completed and failed steps change the process: they go through ApplyExecution, never here.
+    [Theory]
+    [InlineData(StepExecutionStatus.Completed)]
+    [InlineData(StepExecutionStatus.Failed)]
+    [InlineData(StepExecutionStatus.Rejected)]
+    [InlineData(StepExecutionStatus.Pending)]
+    public void ApplyUnfinishedStep_ForAStatusOfAFinishedStep_ThrowsAFrameworkException(StepExecutionStatus status)
+    {
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test", Steps = [new StepContext { StepName = "test-step" }] };
+
+        var exception =
+            Assert.Throws<Kaleido.Exceptions.KaleidoFrameworkException>(() =>
+                Sut.ApplyUnfinishedStep(context, new StepCandidate { StepName = "test-step" }, status));
+
+        Assert.Equal(Kaleido.Exceptions.FrameworkErrorCodes.TypeMismatch, exception.Code);
+        Assert.Contains(status.ToString(), exception.Message);
     }
 }

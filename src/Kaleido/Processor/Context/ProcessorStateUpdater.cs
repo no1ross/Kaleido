@@ -15,13 +15,10 @@ internal interface IProcessorStateUpdater
         StepCandidate candidate,
         ExecutionDecision decision);
 
-    ProcessorContext ApplyException(
+    ProcessorContext ApplyUnfinishedStep(
         ProcessorContext context,
-        StepCandidate candidate);
-
-    ProcessorContext ApplyCancellation(
-        ProcessorContext context,
-        StepCandidate candidate);
+        StepCandidate candidate,
+        StepExecutionStatus status);
 }
 
 internal sealed class ProcessorStateUpdater(
@@ -118,9 +115,9 @@ internal sealed class ProcessorStateUpdater(
 
         // A process violation is the handler's defect (an invalid next step or request), not a
         // business outcome: like an exception, only the step's status records it (#522).
-        if (decision.Type == ExecutionDecisionType.ProcessViolation)
+        if (decision.StepStatus == StepExecutionStatus.Exception)
         {
-            return ApplyException(context, candidate);
+            return ApplyUnfinishedStep(context, candidate, StepExecutionStatus.Exception);
         }
 
         var step =
@@ -128,14 +125,12 @@ internal sealed class ProcessorStateUpdater(
                 context,
                 candidate);
 
-        // A business failure ends the process; the failed step is recorded as failed, not completed.
+        // A business failure is recorded as failed, not completed.
         var updatedStep =
             Executed(
                 step,
                 context,
-                decision.Type == ExecutionDecisionType.BusinessFailure
-                    ? StepExecutionStatus.Failed
-                    : StepExecutionStatus.Completed);
+                decision.StepStatus);
 
         var steps =
             context.Steps.ToList();
@@ -169,34 +164,38 @@ internal sealed class ProcessorStateUpdater(
         };
     }
 
-    public ProcessorContext ApplyException(
+    // A step whose attempt did not finish with a handler result that changes the process: an
+    // unexpected error, a process violation, a validation failure or a cancellation. Each is the
+    // caller's or the handler's problem, not a business outcome, so the process keeps the state,
+    // required step and available steps it had before the step, and the step can be sent again
+    // (ADR 0008). Only the step's status records what happened (#536).
+    public ProcessorContext ApplyUnfinishedStep(
         ProcessorContext context,
-        StepCandidate candidate)
+        StepCandidate candidate,
+        StepExecutionStatus status)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(candidate);
 
-        var step =
-            GetStep(
-                context,
-                candidate);
-
-        var updatedStep =
-            Executed(
-                step,
-                context,
-                StepExecutionStatus.Exception);
+        if (status is not (StepExecutionStatus.Exception or StepExecutionStatus.ValidationFailed or StepExecutionStatus.Canceled))
+        {
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
+                $"'{status}' is not the status of an unfinished step.");
+        }
 
         var steps =
             context.Steps.ToList();
 
         ReplaceStep(
             steps,
-            updatedStep);
+            Executed(
+                GetStep(
+                    context,
+                    candidate),
+                context,
+                status));
 
-        // An unexpected error is a defect, not a business outcome: the process keeps the state,
-        // required step and available steps it had before the step, so the step can be retried
-        // once the defect is fixed. Only the step's status records what happened.
         return context with
         {
             UpdatedUtc = DateTimeOffset.UtcNow,
@@ -204,49 +203,6 @@ internal sealed class ProcessorStateUpdater(
             Steps = steps,
         };
     }
-
-    public ProcessorContext ApplyCancellation(
-        ProcessorContext context,
-        StepCandidate candidate)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(candidate);
-
-        var step =
-            GetStep(
-                context,
-                candidate);
-
-        var updatedStep =
-            Executed(
-                step,
-                context,
-                StepExecutionStatus.Canceled);
-
-        var steps =
-            context.Steps.ToList();
-
-        ReplaceStep(
-            steps,
-            updatedStep);
-
-        return context with
-        {
-            State =
-                ProcessExecutionState.Canceled,
-
-            RequiredStep = null,
-
-            RequiredInformationRequest = null,
-
-            TargetProcessorName = null,
-
-            AvailableSteps = [],
-
-            Steps = steps,
-        };
-    }
-
     // An execution attempt of the step in this request: its status, the request and caller that ran it
     // (from the context, stamped per request by the runtime), and when. The first attempt's time and caller are kept.
     private static StepContext Executed(

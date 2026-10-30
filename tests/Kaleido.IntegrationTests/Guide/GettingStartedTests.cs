@@ -68,14 +68,14 @@ public sealed class GettingStartedTests : IAsyncLifetime
         await PostAsync("/orders/processes/steps/PlaceOrderStep", new { processStep = new { item = "Pen" } });
         var placed = await PostAsync("/orders/processes/steps/PlaceOrderStep", new { processStep = new { item = "Book", quantity = 2 } });
 
-        Assert.Equal("completed", placed.GetProperty("outcome").GetString());
+        Assert.Equal("completed", placed.GetProperty("status").GetString());
         Assert.Equal(2, placed.GetProperty("result").GetProperty("number").GetInt32());
         Assert.Equal("ConfirmOrderStep", placed.GetProperty("requiredStep").GetProperty("name").GetString());
 
         var processId = placed.GetProperty("processId").GetGuid();
         var confirmed = await PostAsync("/orders/processes/steps/ConfirmOrderStep", new { processStep = new { } }, processId);
 
-        Assert.Equal("completed", confirmed.GetProperty("outcome").GetString());
+        Assert.Equal("completed", confirmed.GetProperty("status").GetString());
 
         var orders = await PostAsync("/orders/queryable/OrderSource/query", new { query = new { searchText = "Book" } });
         var order = Assert.Single(orders.GetProperty("results").EnumerateArray());

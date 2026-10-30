@@ -161,7 +161,7 @@ public sealed class InMemoryKaleidoContextStoreTests
         await store.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, CancellationToken.None);
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            store.SaveAsync(loaded with { State = ProcessExecutionState.Exception }, CancellationToken.None));
+            store.SaveAsync(loaded with { State = ProcessExecutionState.BusinessFailure }, CancellationToken.None));
 
         Assert.Equal(loaded.ProcessId, exception.ProcessId);
         Assert.Equal(ProcessorErrorCodes.ProcessConflict, exception.Code);

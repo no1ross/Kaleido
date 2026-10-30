@@ -47,6 +47,17 @@ internal sealed record ExecutionDecision
     }
         = [];
 
+    // The status of the step whose handler result this decision is: the one mapping the state, the
+    // answer and the event share (#522, #536).
+    public StepExecutionStatus StepStatus =>
+        Type switch
+        {
+            ExecutionDecisionType.ProcessViolation => StepExecutionStatus.Exception,
+            ExecutionDecisionType.BusinessFailure => StepExecutionStatus.Failed,
+            ExecutionDecisionType.Rejected => StepExecutionStatus.Rejected,
+            _ => StepExecutionStatus.Completed,
+        };
+
     public static ExecutionDecision Continue(
         StepCandidate nextCandidate)
         => new()

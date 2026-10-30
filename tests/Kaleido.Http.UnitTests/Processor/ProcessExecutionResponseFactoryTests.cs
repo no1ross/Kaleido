@@ -46,7 +46,7 @@ public sealed class ProcessExecutionResponseFactoryTests
             .CreateStepResponse(processResult, step, CreateRegistry("Step-A", "Step-B"), "test");
 
         Assert.Equal("test-step", response.StepName);
-        Assert.Equal(StepExecutionOutcome.Failed, response.Outcome);
+        Assert.Equal(StepExecutionStatus.ValidationFailed, response.Status);
         Assert.Same(required, response.RequiredStep);
         Assert.Same(available, Assert.Single(response.AvailableSteps));
     }
@@ -264,7 +264,6 @@ public sealed class ProcessExecutionResponseFactoryTests
             CandidateStatus = StepCandidateStatus.Built,
             IncludedInExecutionPlan = true,
             ExecutionStatus = StepExecutionStatus.ValidationFailed,
-            Outcome = StepExecutionOutcome.Failed,
             Response = "payload",
             BusinessMessages =
             [
