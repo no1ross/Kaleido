@@ -89,7 +89,8 @@ internal sealed class ProcessorExecutor(
 
             return (context, GetNextCandidate(decision));
         }
-        catch (OperationCanceledException)
+        // Only the caller's token is a cancellation (#517); any other OperationCanceledException fails below.
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             stepObservation.Canceled();
 
@@ -107,9 +108,8 @@ internal sealed class ProcessorExecutor(
                 run,
                 FailedOutcome(candidate, StepExecutionStatus.ValidationFailed, exception.Code, exception.Message)), null);
         }
-        // Any other failure of the step (cancellation and validation are handled above). A concurrency
-        // conflict is not a step failure: nothing was saved, and the caller rereads the process (409).
-        catch (Exception exception) when (exception is not OperationCanceledException and not KaleidoConcurrencyException)
+        // Any other failure (a concurrency conflict is not one: nothing was saved, the caller rereads, 409).
+        catch (Exception exception) when (exception is not KaleidoConcurrencyException)
         {
             stepObservation.StepFailed(exception);
 

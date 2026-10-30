@@ -50,15 +50,23 @@ Information logs must stay minimal — treat them as the "normal operations" vie
   - `KaleidoErrorCodes` (`Kaleido.Http.Abstractions/KaleidoErrorResponse.cs`) — shared HTTP error codes (`argument_error`, `framework_error`)
 
 ## OperationCanceledException and observability
-Never record `OperationCanceledException` as an execution failure — it inflates error metrics and triggers false alerts.
+**A cancellation is the caller's token firing, not an exception type (#517).** An
+OperationCanceledException that no token of the caller raised - a downstream timeout, an HTTP client's
+own timeout, a token a handler owns - is a failure, recorded and answered as one. So a cancellation is
+caught with catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested), before
+the catch-all that records failures; on the HTTP transport, only an aborted request
+(HttpContext.RequestAborted) is answered with nothing, and any other OperationCanceledException is a 500.
+Where the work runs on CancellationToken.None (finalization, outbox delivery), no cancellation of the
+caller can reach it, so every exception there is a failure, logged.
 
+Never record a cancellation as an execution failure: it inflates error metrics and triggers false alerts.
 The rule is: **one observability signal per cancellation, at the lowest level that has full context.**
 
-- **Process:** `ProcessorExecutor` is the single recording point (`stepObservation.Canceled()`). It has step name, version, and processor name, and is where state is saved on cancellation. All layers above (`ProcessorStepInvoker`, `ProcessorRuntime`) use `when (exception is not OperationCanceledException)` on their `catch (Exception)` blocks so OCE propagates cleanly without triggering `ExecutionFailed` or `HandlerFailed`.
-- **Process finalization:** cancellation applies up to and during handler invocation only. A request cancelled before a step's handler runs does not invoke it; a handler that observes cancellation (throws `OperationCanceledException`) leaves the step Canceled. Once a handler has returned, its outcome is final: `ProcessorExecutor` saves the state and its `StepCompleted` event together with `CancellationToken.None`, never the request token, so a late cancellation neither discards the completion nor makes a retry repeat the handler's side effects. Saves of failure, cancellation and runtime events already use `CancellationToken.None`. Tested against the in-memory and SQLite stores (`CancellationFinalizationTests`).
-- **Queryable:** `QueryContextEngine` and `DelegatedQuerySourceEngine` each call `observation.Canceled()` in an explicit `catch (OperationCanceledException)` block placed before `catch (Exception)`. These are mutually exclusive code paths (dispatched by `QueryableService`), so only one signal fires per request.
-- Do **not** add `Canceled()` calls at higher levels (`ProcessorRuntime`, `ProcessorStepInvoker`) — you will get duplicate signals for the same cancellation event.
-- KAL0018 enforces the "exclude OCE" half: a catch-all that calls an observability member without a filter that provably excludes cancellation (`when (ex is not OperationCanceledException)`, read by meaning, not by name — see [`docs/ANALYZERS.md`](./ANALYZERS.md#cancellation-filters)) or an earlier unfiltered `catch (OperationCanceledException)` is reported. The one-signal-per-cancellation placement is still a review responsibility.
+- **Process:** ProcessorExecutor is the single recording point (stepObservation.Canceled()); the step is recorded as Canceled and the process keeps its state (#536). ProcessorRuntime passes the caller's cancellation on unrecorded (catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }) and records any other exception as a failure.
+- **Process finalization:** cancellation applies up to and during handler invocation only. A request cancelled before a step's handler runs does not invoke it; a handler that observes cancellation leaves the step Canceled. Once a handler has returned, its outcome is final: ProcessorExecutor saves the state and its StepCompleted event together with CancellationToken.None, never the request token, so a late cancellation neither discards the completion nor makes a retry repeat the handler's side effects. Saves of failure, cancellation and runtime events already use CancellationToken.None. Tested against the in-memory and SQLite stores (CancellationFinalizationTests). A failure while saving a completed step is #537.
+- **Queryable:** QueryContextEngine and DelegatedQuerySourceEngine each call observation.Canceled() in a catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) placed before catch (Exception). These are mutually exclusive code paths (dispatched by QueryableService), so only one signal fires per request.
+- Do **not** add Canceled() calls at higher levels (ProcessorRuntime, ProcessorStepInvoker) — you will get duplicate signals for the same cancellation event.
+- KAL0018 (and KAL2004 for handlers) enforces the "exclude cancellation" half: a catch-all that calls an observability member is reported unless its filter provably excludes OperationCanceledException (read by meaning, not by name — see [docs/ANALYZERS.md](./ANALYZERS.md#cancellation-filters)) or an earlier catch (OperationCanceledException) handles the cancellations, unfiltered or filtered on a CancellationToken's IsCancellationRequested. The one-signal-per-cancellation placement is still a review responsibility.
 
 ## Time
 Kaleido uses `TimeProvider` where time is a production dependency, not where time is merely inconvenient in a test: *testability can reveal a missing abstraction, but testability alone does not justify an abstraction* (#501).

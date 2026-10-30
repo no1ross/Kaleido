@@ -1292,9 +1292,22 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task TheCallersCancellation_Propagates()
     {
-        StepThrows(new OperationCanceledException());
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        StepThrows(new OperationCanceledException(cancellation.Token));
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().InvokeAsync(Start, Call(), Catalog, cancellation.Token));
+    }
+
+    // Only the caller's token is a cancellation (#517): a service timeout is reported to the agent.
+    [Fact]
+    public async Task AServiceTimeout_IsAnErrorResult_NotACancellation()
+    {
+        StepThrows(new TaskCanceledException("timeout"));
+
+        var result = await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InternalError, Body(result)["code"]?.GetValue<string>());
     }
 
     [Fact]

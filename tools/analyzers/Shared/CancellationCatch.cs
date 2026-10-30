@@ -47,6 +47,10 @@ internal static class CancellationCatch
         clause.Declaration is null ||
         model.GetTypeInfo(clause.Declaration.Type, cancellationToken).Type?.ToDisplayString() == "System.Exception";
 
+    // An earlier clause handles the cancellations: an unfiltered catch (OperationCanceledException), or
+    // one filtered on a token having been cancelled - catch (OperationCanceledException) when
+    // (token.IsCancellationRequested). A later catch-all then only sees the OperationCanceledExceptions
+    // no token of the caller raised (a downstream timeout), which are failures (#517).
     private static bool HasEarlierCancellationClause(
         CatchClauseSyntax clause, SemanticModel model, INamedTypeSymbol cancellation, CancellationToken cancellationToken) =>
         clause.Parent is TryStatementSyntax tryStatement &&
@@ -54,9 +58,16 @@ internal static class CancellationCatch
             .TakeWhile(earlier => earlier != clause)
             .Any(earlier =>
                 earlier.Declaration is { } declaration &&
-                earlier.Filter is null &&
+                (earlier.Filter is null || IsTokenCancelled(earlier.Filter, model, cancellationToken)) &&
                 model.GetTypeInfo(declaration.Type, cancellationToken).Type is { } type &&
                 Covers(type, cancellation));
+
+    private static bool IsTokenCancelled(CatchFilterClauseSyntax filter, SemanticModel model, CancellationToken cancellationToken) =>
+        model.GetOperation(filter.FilterExpression, cancellationToken) is IPropertyReferenceOperation
+        {
+            Property: { Name: "IsCancellationRequested", ContainingType: { } token },
+        } &&
+        token.ToDisplayString() == "System.Threading.CancellationToken";
 
     private static Outcome Evaluate(IOperation? operation, ISymbol? local, INamedTypeSymbol cancellation)
     {

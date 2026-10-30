@@ -12,6 +12,7 @@ namespace Kaleido.Http.FunctionalTests.Processor.Behavior;
 //   HandOffHere [DependsOn<Start>] [Repeatable] hands the process to this service itself (a defect)
 //   Fail     [DependsOn<Start>]                a business failure: ends the process
 //   Finish   [DependsOn<Start>]                completes the process, whatever else is available
+//   TimeOut  [DependsOn<Start>] [Repeatable]   its downstream call times out (an OperationCanceledException nobody asked for)
 //   Slow     [DependsOn<Start>] [Repeatable]   waits for BehaviorGate (to race two saves)
 //   Quick    [DependsOn<Start>] [Repeatable]
 // The models live in their own namespace: only BehaviorFixture registers them.
@@ -26,6 +27,7 @@ internal static class BehaviorSteps
     public const string HandOffHere = nameof(BehaviorHandOffHereStep);
     public const string Fail = nameof(BehaviorFailStep);
     public const string Finish = nameof(BehaviorFinishStep);
+    public const string TimeOut = nameof(BehaviorTimeOutStep);
     public const string Slow = nameof(BehaviorSlowStep);
     public const string Quick = nameof(BehaviorQuickStep);
 
@@ -77,6 +79,11 @@ public sealed record BehaviorFailStep : IProcessStep;
 [ProcessStep(DisplayName = "Finish", Description = "Completes the case, whatever steps are still open.")]
 [DependsOn<BehaviorStartStep>]
 public sealed record BehaviorFinishStep : IProcessStep;
+
+[ProcessStep(DisplayName = "Time out", Description = "Calls a downstream service that times out.")]
+[DependsOn<BehaviorStartStep>]
+[Repeatable]
+public sealed record BehaviorTimeOutStep : IProcessStep;
 
 [ProcessStep(DisplayName = "Slow", Description = "Waits for the gate.")]
 [DependsOn<BehaviorStartStep>]
@@ -191,6 +198,12 @@ public sealed class BehaviorFinishHandler : IProcessStepHandler<BehaviorFinishSt
 {
     public Task<ProcessStepHandlerResult> ExecuteAsync(BehaviorFinishStep processStep, ProcessStepContext context, CancellationToken cancellationToken = default) =>
         Task.FromResult(ProcessStepHandlerResult.Complete());
+}
+
+public sealed class BehaviorTimeOutHandler : IProcessStepHandler<BehaviorTimeOutStep>
+{
+    public Task<ProcessStepHandlerResult> ExecuteAsync(BehaviorTimeOutStep processStep, ProcessStepContext context, CancellationToken cancellationToken = default) =>
+        throw new TaskCanceledException("The downstream call timed out.", new TimeoutException());
 }
 
 public sealed class BehaviorSlowHandler(BehaviorGate gate) : IProcessStepHandler<BehaviorSlowStep>

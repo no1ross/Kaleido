@@ -85,6 +85,28 @@ public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
 " + KaleidoStubs);
     }
 
+    // The caller's cancellation is passed on; a downstream timeout (an OperationCanceledException the
+    // caller did not cause) may be handled as the handler's own failure (#517).
+    [Fact]
+    public async Task ExceptionCatch_AfterACatchFilteredOnTheCallersToken_NoDiagnostic()
+    {
+        await RunAsync(@"
+public class MyStep { }
+public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
+{
+    public System.Threading.Tasks.Task<int> ExecuteAsync(
+        MyStep step, object context,
+        System.Threading.CancellationToken cancellationToken = default)
+    {
+        try { }
+        catch (System.OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (System.Exception) { }
+        return System.Threading.Tasks.Task.FromResult(0);
+    }
+}
+" + KaleidoStubs);
+    }
+
     private static string Handler(string catches, string members = "") => @"
 using OCE = System.OperationCanceledException;
 public class MyStep { }

@@ -1275,6 +1275,31 @@ public sealed class ProcessorExecutorTests
         outbox.Verify(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>()), Times.Never);
     }
 
+    // Only the caller's token is a cancellation (#517): a handler's downstream timeout (an
+    // OperationCanceledException nobody asked for) is a failure - the step is an exception, observed
+    // as a failure, and retryable.
+    [Fact]
+    public async Task ExecuteAsync_AHandlerTimeout_IsAFailure_NotACancellation()
+    {
+        var candidate = CreateCandidate<TestStepA>("step-a", CreateRegistration<TestStepA>("step-a"));
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("The downstream call timed out.", new TimeoutException()));
+        var stepObservation = new Mock<IProcessorStepObservation>();
+        var stateUpdater = CreateStateUpdater();
+
+        var result = await CreateSut(invoker, stateUpdater: stateUpdater, stepObservation: stepObservation)
+            .ExecuteAsync([candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
+
+        var outcome = Assert.Single(result.Outcomes);
+        Assert.Equal(StepExecutionStatus.Exception, outcome.Status);
+        Assert.Contains(outcome.RuntimeMessages, x => x.Code == ProcessorErrorCodes.FrameworkException);
+        stepObservation.Verify(x => x.StepFailed(It.IsAny<TaskCanceledException>()), Times.Once);
+        stepObservation.Verify(x => x.Canceled(), Times.Never);
+        stateUpdater.Verify(x => x.ApplyUnfinishedStep(It.IsAny<ProcessorContext>(), candidate, StepExecutionStatus.Exception), Times.Once);
+    }
+
     [Fact]
     public async Task ExecuteAsync_CancelledAfterTheHandlerReturned_SavesTheCompletionAndItsEvent()
     {

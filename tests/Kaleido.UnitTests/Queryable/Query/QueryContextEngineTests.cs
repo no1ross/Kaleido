@@ -308,12 +308,31 @@ public sealed class QueryContextEngineTests
         var executor = new Mock<IQueryContextExecutor<FakeContext>>();
         var observation = new Mock<IQueryExecutionObservation>();
         var sut = CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, executor: executor, observation: observation);
-        executor.Setup(x => x.ToListAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+        var canceled = new CancellationToken(canceled: true);
+        executor.Setup(x => x.ToListAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(canceled));
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => sut.ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => sut.ExecuteAsync(new QueryRequest(), registration, canceled));
 
         observation.Verify(x => x.Canceled(), Times.Once);
         observation.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
+    }
+
+    // Only the caller's token is a cancellation (#517): a database timeout is a failure.
+    [Fact]
+    public async Task ExecuteAsync_Direct_WhenTheQueryTimesOut_RecordsAFailureNotACancellation()
+    {
+        var registration = CreateSourceRegistration(typeof(FakeSource), pageable: null);
+        var serviceProvider = new Mock<IServiceProvider>();
+        serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
+        var executor = new Mock<IQueryContextExecutor<FakeContext>>();
+        var observation = new Mock<IQueryExecutionObservation>();
+        var sut = CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, executor: executor, observation: observation);
+        executor.Setup(x => x.ToListAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>())).ThrowsAsync(new TaskCanceledException("timeout"));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken));
+
+        observation.Verify(x => x.Canceled(), Times.Never);
+        observation.Verify(x => x.ExecutionFailed(It.IsAny<TaskCanceledException>()), Times.Once);
     }
 
     [Fact]
@@ -411,10 +430,11 @@ public sealed class QueryContextEngineTests
         var executor = new Mock<IQueryContextExecutor<FakeView>>();
         var observation = new Mock<IQueryExecutionObservation>();
         var sut = CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, executor: executor, observation: observation);
-        executor.Setup(x => x.ToListAsync(It.IsAny<IQueryable<FakeView>>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+        var canceled = new CancellationToken(canceled: true);
+        executor.Setup(x => x.ToListAsync(It.IsAny<IQueryable<FakeView>>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(canceled));
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => sut.ExecuteAsync(new QueryRequest(), CreateSourceRegistration(typeof(FakeSource), pageable: null), CreateViewRegistration(pageable: null), TestContext.Current.CancellationToken));
+            () => sut.ExecuteAsync(new QueryRequest(), CreateSourceRegistration(typeof(FakeSource), pageable: null), CreateViewRegistration(pageable: null), canceled));
 
         observation.Verify(x => x.Canceled(), Times.Once);
         observation.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);

@@ -181,6 +181,25 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.Equal(JsonValueKind.Null, after.GetProperty("targetProcessorName").ValueKind);
     }
 
+    // Only the caller's cancellation is a cancellation (#517): a handler whose downstream call times out
+    // failed - the step is an exception and retryable, the process is unchanged, the answer is not a
+    // silent 200 with an empty body.
+    [Fact]
+    public async Task AHandlerTimeout_IsAnException_NotACancellation_AndLeavesTheProcessAsItWas()
+    {
+        var processId = await StartAsync();
+        var before = await StateAsync(processId);
+
+        var (status, body) = await PostStepAsync(BehaviorSteps.TimeOut, processId: processId);
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Equal("exception", Outcome(body));
+        var after = await StateAsync(processId);
+        Assert.Equal("exception", StepStatus(after, BehaviorSteps.TimeOut));
+        Assert.Equal(before.GetProperty("state").GetString(), after.GetProperty("state").GetString());
+        Assert.Equal(AvailableSteps(before), AvailableSteps(after));
+    }
+
     // The lifecycle (#512): an ended process admits no further step, and its state says so - what it
     // shows and what it admits agree.
     [Fact]

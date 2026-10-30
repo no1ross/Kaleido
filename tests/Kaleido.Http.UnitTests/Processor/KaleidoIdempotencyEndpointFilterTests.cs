@@ -440,6 +440,19 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
         Assert.Equal(LogLevel.Error, Assert.Single(Logs()).Level);
     }
 
+    // Finalization runs on CancellationToken.None: an OperationCanceledException of the store's own (a
+    // timeout) is a failure like any other, logged - it used to escape (#517).
+    [Fact]
+    public async Task WhenTheStoreTimesOutFinalizing_TheAnswerIsUnchanged_AndTheFailureIsLoggedAsError()
+    {
+        store.Setup(x => x.CompleteAsync(It.IsAny<IdempotentResult>(), CancellationToken.None)).ThrowsAsync(new TaskCanceledException("store timeout"));
+
+        var result = await CreateSut().InvokeAsync(Context("k1"), Endpoint);
+
+        Assert.Equal(StatusCodes.Status200OK, Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
+        Assert.Equal(LogLevel.Error, Assert.Single(Logs()).Level);
+    }
+
     [Fact]
     public async Task WhenTheStoreFailsToFinalizeAFailedRequest_TheRequestsOwnExceptionPropagates()
     {

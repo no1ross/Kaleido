@@ -126,7 +126,11 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
 
             return entries.Count;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
         {
             LogRelayFailed(_logger, exception);
             return 0;

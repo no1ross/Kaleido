@@ -37,8 +37,10 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
     {
         switch (exception)
         {
-            case OperationCanceledException:
-                // Client disconnected mid-request — not an error, log at Debug to avoid noise.
+            // The client went away (its request was aborted): not an error, logged at Debug, and nobody
+            // is waiting for an answer. Any other OperationCanceledException (a timeout) is a failure,
+            // answered 500 below (#517).
+            case OperationCanceledException when context.RequestAborted.IsCancellationRequested:
                 LogRequestCanceled(logger);
                 break;
 

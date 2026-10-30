@@ -143,10 +143,28 @@ public sealed class DelegatedQuerySourceEngineTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(source.Object), observation)
-                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
+                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), new CancellationToken(canceled: true)));
 
         observation.Verify(x => x.Canceled(), Times.Once);
         observation.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
+    }
+
+    // Only the caller's token is a cancellation (#517): a downstream timeout is a failure.
+    [Fact]
+    public async Task ExecuteAsync_WhenTheDownstreamTimesOut_RecordsAFailureNotACancellation()
+    {
+        var source = new Mock<IDelegatedQuerySource<FakeContext, FakeResult, FakeParameters>>();
+        source
+            .Setup(x => x.ExecuteAsync(It.IsAny<IQueryRequest<FakeParameters>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("timeout"));
+        var observation = new Mock<IQueryExecutionObservation>();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(source.Object), observation)
+                .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
+
+        observation.Verify(x => x.Canceled(), Times.Never);
+        observation.Verify(x => x.ExecutionFailed(It.IsAny<TaskCanceledException>()), Times.Once);
     }
 
     [Fact]

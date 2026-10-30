@@ -79,9 +79,11 @@ public sealed class KaleidoExceptionHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenOperationCanceled_LogsAtDebugOnly()
+    public async Task HandleAsync_WhenTheClientWentAway_LogsAtDebugOnly()
     {
-        await CreateSut().HandleAsync(CreateContext(), new OperationCanceledException(), CancellationToken.None);
+        var context = Aborted(CreateContext());
+
+        await CreateSut().HandleAsync(context, new OperationCanceledException(context.RequestAborted), context.RequestAborted);
 
         var log = Assert.Single(Logger.Invocations, x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
         Assert.Equal(LogLevel.Debug, log.Arguments[0]);
@@ -280,14 +282,33 @@ public sealed class KaleidoExceptionHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenOperationCanceled_WritesNothing()
+    public async Task HandleAsync_WhenTheClientWentAway_WritesNothing()
     {
-        var context = CreateContext();
+        var context = Aborted(CreateContext());
 
-        await CreateSut().HandleAsync(context, new OperationCanceledException(), CancellationToken.None);
+        await CreateSut().HandleAsync(context, new OperationCanceledException(context.RequestAborted), context.RequestAborted);
 
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
         Assert.Equal(string.Empty, ReadBody(context));
+    }
+
+    // Only the client going away is a cancellation (#517): any other OperationCanceledException (a
+    // timeout) is a failure, answered 500 - not a 200 with an empty body.
+    [Fact]
+    public async Task HandleAsync_AnOperationCanceledExceptionWhileTheClientIsStillThere_IsA500()
+    {
+        var context = CreateContext();
+
+        await CreateSut().HandleAsync(context, new TaskCanceledException("timeout"), CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
+        Assert.Contains(LogLevel.Error, Logger.Invocations.Where(x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal)).Select(x => (LogLevel)x.Arguments[0]));
+    }
+
+    private static DefaultHttpContext Aborted(DefaultHttpContext context)
+    {
+        context.RequestAborted = new CancellationToken(canceled: true);
+        return context;
     }
 
     [Fact]

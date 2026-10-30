@@ -146,7 +146,9 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
                 _ => await store.CompleteAsync(Unknown(admission), CancellationToken.None),
             };
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        // Finalized with CancellationToken.None: no cancellation of the caller reaches here, so any failure -
+        // an OperationCanceledException of the store's own (a timeout) included - is logged (#517).
+        catch (Exception exception)
         {
             LogFinalizationFailed(logger, exception, key, outcome);
             return;

@@ -245,17 +245,22 @@ internal sealed class ProcessorRuntime(
 
             return result;
         }
-        // OperationCanceledException intentionally propagates unrecorded here.
+        // The caller's cancellation intentionally propagates unrecorded here.
         // Invariant: ONE cancellation signal per event, recorded at the lowest
         // level with full context - that is ProcessorExecutor (stepObservation.Canceled(),
         // where state is saved). Do NOT add an observation.Canceled() catch block at
         // this level; it would double-record every cancellation. See AGENTS.md.
-        catch (Exception exception) when (exception is not OperationCanceledException && CallerErrorCode(exception) is { } code)
+        // An OperationCanceledException the caller's token did not raise is a failure (#517).
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (CallerErrorCode(exception) is { } code)
         {
             observation.ExecutionRejected(exception, code);
             throw;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception)
         {
             observation.ExecutionFailed(exception);
             throw;

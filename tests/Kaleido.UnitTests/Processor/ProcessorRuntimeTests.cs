@@ -296,6 +296,9 @@ public sealed class ProcessorRuntimeTests
             { new Kaleido.Exceptions.KaleidoConcurrencyException(Guid.Empty), new Kaleido.Exceptions.KaleidoConcurrencyException(Guid.Empty).Code },
             { new Kaleido.Exceptions.KaleidoAuthorizationException("Approve", callerIsAuthenticated: true), ProcessorTelemetry.AuthorizationRejectionCode },
             { new InvalidOperationException("store down"), null },
+
+            // A store timeout is a failure: only the caller's token is a cancellation (#517).
+            { new TaskCanceledException("store timeout"), null },
         };
 
     [Theory]
@@ -334,6 +337,35 @@ public sealed class ProcessorRuntimeTests
             execution.Verify(x => x.ExecutionRejected(failure, rejectionCode), Times.Once);
             execution.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
         }
+    }
+
+    // The caller's cancellation is passed on unrecorded: the executor records it once (one signal).
+    [Fact]
+    public async Task ExecuteAsync_WhenTheCallerCancels_PassesItOnWithoutRecordingAFailure()
+    {
+        var request = CreateRequest();
+        var canceled = new CancellationToken(canceled: true);
+        var contextStore = new Mock<IKaleidoContextStore>();
+        contextStore.Setup(x => x.LoadAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(canceled));
+        var execution = new Mock<IProcessorExecutionObservation>();
+        var observability = new Mock<IProcessorObservability>();
+        observability.Setup(x => x.BeginExecution(It.IsAny<ProcessorExecutionObservationDetails>())).Returns(execution.Object);
+
+        var runtime =
+            CreateSut(
+                contextStore.Object,
+                new Mock<IProcessorStateUpdater>(MockBehavior.Strict).Object,
+                new Mock<IProcessorPlanner>(MockBehavior.Strict).Object,
+                new Mock<IProcessorExecutor>(MockBehavior.Strict).Object,
+                CreateProcessEventFactory().Object,
+                new Mock<IKaleidoEventWriter>().Object,
+                observability.Object,
+                CreateCorrelationAccessor());
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => runtime.ExecuteAsync(request, canceled));
+
+        execution.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
+        execution.Verify(x => x.ExecutionRejected(It.IsAny<Exception>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

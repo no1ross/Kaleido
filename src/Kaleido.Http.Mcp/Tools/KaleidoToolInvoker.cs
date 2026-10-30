@@ -161,10 +161,14 @@ internal sealed partial class KaleidoToolInvoker(
                 McpErrorCodes.ServiceUnavailable,
                 $"{tool.Definition.Name}: the Kaleido service could not be reached. If it was a step, check the process with get_process_state before trying again.");
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
         {
             // Never a protocol error: the agent gets a result it can report. A cancelled call has
-            // nobody waiting for an answer, so cancellation still propagates.
+            // nobody waiting for an answer, so the caller's cancellation still propagates (#517).
             LogToolFailed(logger, exception, tool.Definition.Name);
 
             return Error(

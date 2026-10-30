@@ -61,7 +61,11 @@ internal sealed partial class KaleidoMcpToolHandler(
                 Tools = catalog.Tools.Where(x => x.Listed).Select(x => x.Definition).ToList(),
             };
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
         {
             LogListToolsFailed(logger, exception);
 
@@ -100,7 +104,7 @@ internal sealed partial class KaleidoMcpToolHandler(
 
             return result;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             observation.Canceled();
 
@@ -120,7 +124,11 @@ internal sealed partial class KaleidoMcpToolHandler(
         {
             catalog = await catalogProvider.GetAsync(cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
         {
             LogReadToolsFailed(logger, exception, name);
 

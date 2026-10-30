@@ -13,6 +13,18 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **A cancellation is the caller's token firing, not an exception type** (#517). An
+  `OperationCanceledException` that no token of the caller raised (a downstream or database timeout,
+  an `HttpClient` timeout) is now a failure everywhere:
+  - a step whose handler times out is recorded and answered as `exception` (retryable), not `canceled`;
+  - a query records a failure, not a cancellation;
+  - the HTTP transport answers 500, where it wrote an empty 200;
+  - the MCP adapter returns an error result to the agent;
+  - the outbox, the relay and the idempotency finalization log it instead of letting it escape.
+
+  A request the client aborted is still not an error. KAL2004 and KAL0018 accept
+  `catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)` before a
+  catch-all.
 - **An ended process admits no further step** (#512, #534, [ADR 0033](docs/decisions/0033-process-lifecycle-and-admission.md)):
   admission now reads the process state, not only the step graph. A step sent to a process that is
   `complete`, ended in `businessFailure` or was handed off is refused with the new
