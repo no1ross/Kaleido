@@ -311,8 +311,8 @@ internal sealed class ProcessorRuntime(
         observation.ContextLoaded(
             context.ProcessId);
 
-        return stateUpdater.Reconcile(
-            context)
+        return HandedBack(stateUpdater.Reconcile(
+            context))
             with
         {
             LatestRequestId = correlationAccessor.Current.RequestId,
@@ -321,6 +321,17 @@ internal sealed class ProcessorRuntime(
             UpdatedBy = correlationAccessor.Current.Caller,
         };
     }
+
+    // A process handed off to another service is that service's (#512): this one admits none of its own
+    // steps, except when the service holding the process hands it back. The process is then this
+    // service's again, from where its step graph stands; it is saved so when a step of this request runs.
+    private ProcessorContext HandedBack(
+        ProcessorContext context) =>
+        context.State == ProcessExecutionState.HandOff &&
+        correlationAccessor.Current.CallingProcessorName is { Length: > 0 } calling &&
+        string.Equals(calling, context.TargetProcessorName, StringComparison.OrdinalIgnoreCase)
+            ? context with { State = ProcessExecutionState.Active, TargetProcessorName = null }
+            : context;
 
     // A new process (or one handed off from another processor): initialized, observed, and saved
     // right away together with its ProcessCreated event - every created process exists and is

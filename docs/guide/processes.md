@@ -149,9 +149,10 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 |---|---|---|
 | `Success()`, `Success<TNext>()`, `Success(result).Next<TNext>()` | `completed` | moves on; `requiredStep` / `availableSteps` say what is next |
 | `RequireInformation<TNext>(request)` | `completed` | waits for answers ([Information requests](information-requests.md)) |
-| `HandOff(processor)` | `completed` | continues on another processor (`targetProcessorName`) |
+| `HandOff(processor)` | `completed` | continues on another processor (`targetProcessorName`); this one runs none of its steps on it, unless that processor hands it back |
+| `Complete(messages)` | `completed` | **ends**: its state is `complete`, even when its rules still offer steps |
 | `Reject(messages)` | `rejected` | **unchanged**: the caller corrects the input or retries ([ADR 0008](../decisions/0008-rejected-outcome-and-retryable-exceptions.md)) |
-| `Failure(messages)` | `failed` | ends: its state is `businessFailure` |
+| `Failure(messages)` | `failed` | **ends**: its state is `businessFailure`; to try again, start a new process |
 | an unexpected exception, or a result that breaks a process rule | `exception` | unchanged, so the step can be retried once the defect is fixed |
 | input that fails its validation rules | `validationFailed` | unchanged: the caller corrects the input |
 | the caller cancels while the handler runs | `canceled` | unchanged: the step can be sent again |
@@ -159,6 +160,8 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 The messages are your words for the user (`businessMessages` in the answer), kept apart from Kaleido's
 diagnostics (`frameworkMessages`). The process state is read with `GET /{service}/processes/{processId}`;
 enum values are camelCase on the wire (`businessFailure`, `awaitingRequiredStep`).
+
+A process **ends** as `complete`, `businessFailure` or `handOff`. From then on its state lists no available step, and any step sent to it is answered with status `pending` and `pro_process_ended` ([ADR 0033](../decisions/0033-process-lifecycle-and-admission.md)). Phases are the step graph's (`AvailableAfter` / `AvailableUntil`). A process whose steps stay open after its business outcome (an audit, an appeal) ends with `Complete()`, typically from an internal-only step that a job calls when the process truly ends. Such a step runs after other steps, never as an entry step (KAL2022).
 
 ```mermaid
 stateDiagram-v2
@@ -168,7 +171,8 @@ stateDiagram-v2
     Active --> AwaitingInformation: RequireInformation
     AwaitingInformation --> Active: answers accepted
     Active --> HandOff: HandOff
-    Active --> Complete: nothing left
+    HandOff --> Active: handed back by the target
+    Active --> Complete: nothing left, or Complete()
     Active --> BusinessFailure: Failure
 ```
 

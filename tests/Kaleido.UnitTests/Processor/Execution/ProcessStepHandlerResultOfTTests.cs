@@ -58,6 +58,25 @@ public sealed class ProcessStepHandlerResultOfTTests
         Assert.Equal(ProcessorErrorCodes.InvalidRequiredStep, Assert.Throws<KaleidoFrameworkException>(() => sut.RequireInformation<AnswerStep>(Request)).Code);
     }
 
+    // A result that completes the process cannot also require a next step (#534).
+    [Fact]
+    public void RequiringANextStep_OnAResultThatCompletesTheProcess_Throws()
+    {
+        var sut = ProcessStepHandlerResult.Complete(new Response("done"));
+
+        Assert.Equal(ProcessorErrorCodes.InvalidRequiredStep, Assert.Throws<KaleidoFrameworkException>(sut.Next<NextStep>).Code);
+        Assert.Equal(ProcessorErrorCodes.InvalidRequiredStep, Assert.Throws<KaleidoFrameworkException>(() => sut.RequireInformation<AnswerStep>(Request)).Code);
+    }
+
+    [Fact]
+    public void Conversion_KeepsThatTheResultCompletesTheProcess()
+    {
+        ProcessStepHandlerResult<Response> result = ProcessStepHandlerResult.Complete();
+
+        Assert.True(result.CompletesProcess);
+        Assert.True(result.Succeeded);
+    }
+
     [Fact]
     public void TheResponse_IsTheUntypedResponseToo()
     {

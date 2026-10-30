@@ -54,6 +54,40 @@ public sealed class StepCandidateNextStepCheckerTests
         Assert.Contains("Available: step-a", message.Message);
     }
 
+    // An ended process admits nothing, even a step its graph still offers (#512, #534): the state decides.
+    [Theory]
+    [InlineData(ProcessExecutionState.Complete, "complete")]
+    [InlineData(ProcessExecutionState.BusinessFailure, "business failure")]
+    [InlineData(ProcessExecutionState.HandOff, "handed off to 'radiology'")]
+    public void Check_OnAnEndedProcess_RejectsEveryStep_SayingWhy(ProcessExecutionState state, string reason)
+    {
+        var first = Candidate<StepA>("step-a");
+        var second = Candidate<StepB>("step-b");
+
+        CreateSut(["step-a", "step-b"]).Check([first, second], Context() with { State = state, TargetProcessorName = "radiology" });
+
+        Assert.All([first, second], candidate =>
+        {
+            Assert.False(candidate.IncludedInExecutionPlan);
+            Assert.Equal(StepCandidateStatus.Invalid, candidate.Status);
+            var message = Assert.Single(candidate.Messages);
+            Assert.Equal(ProcessorErrorCodes.ProcessEnded, message.Code);
+            Assert.Contains(reason, message.Message);
+        });
+    }
+
+    [Theory]
+    [InlineData(ProcessExecutionState.Active)]
+    [InlineData(ProcessExecutionState.AwaitingStepSelection)]
+    public void Check_OnAProcessThatContinues_AdmitsAnAvailableStep(ProcessExecutionState state)
+    {
+        var candidate = Candidate<StepA>("step-a");
+
+        CreateSut(["step-a"]).Check([candidate], Context() with { State = state });
+
+        Assert.True(candidate.IncludedInExecutionPlan);
+    }
+
     [Fact]
     public void Check_WhenAStepIsRequired_OnlyAdmitsTheRequiredStep()
     {

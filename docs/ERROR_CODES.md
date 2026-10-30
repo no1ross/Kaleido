@@ -94,6 +94,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `ExceptionThrown` | `pro_exception_thrown` | Exception interrupted step processing |
 | `InvalidRequiredStep` | `pro_invalid_required_step` | Required next step is invalid |
 | `RequiredStepNotAllowed` | `pro_required_step_not_allowed` | Required next step cannot be executed (not a legal next step, or not a registered step in this processor) |
+| `ProcessEnded` | `pro_process_ended` | The process has ended here (complete, business failure, handed off): no step of this service runs on it; a hand-back from the service holding it excepted ([ADR 0033](decisions/0033-process-lifecycle-and-admission.md)) |
 | `InvalidHandOff` | `pro_invalid_hand_off` | A handler handed the process off to the service it runs in; a process violation, so the process keeps its state |
 | `ExecutionCanceled` | `pro_execution_canceled` | Step execution was cancelled |
 | `FrameworkException` | `pro_framework_exception` | Unexpected framework error interrupted a step |

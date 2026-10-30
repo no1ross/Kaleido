@@ -343,6 +343,22 @@ public sealed class StepExecutionEvaluatorTests
             decision.Type);
     }
 
+    // Complete() ends the process even while the graph still offers steps (#534).
+    [Fact]
+    public void Evaluate_AResultThatCompletesTheProcess_IsComplete_WhateverIsStillAvailable()
+    {
+        var decision =
+            CreateSut(["step-b"]).Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, CompletesProcess = true },
+                [CreateCandidate<StepB>("step-b")],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.Complete, decision.Type);
+        Assert.Empty(decision.AvailableSteps);
+        Assert.Null(decision.NextCandidate);
+    }
+
     [Fact]
     public void Evaluate_AHandOffWithoutARequiredStep_HandsOffToTheTarget()
     {

@@ -65,6 +65,38 @@ public sealed class ProcessStepHandlerResultTests
     }
 
     [Fact]
+    public void Complete_IsASuccessThatCompletesTheProcess()
+    {
+        var result = ProcessStepHandlerResult.Complete(Note);
+
+        Assert.True(result.Succeeded);
+        Assert.True(result.CompletesProcess);
+        Assert.False(result.Rejected);
+        Assert.Null(result.RequiredStep);
+        Assert.Null(result.TargetProcessorName);
+        Assert.Equal([Note], result.Messages);
+    }
+
+    [Fact]
+    public void CompleteWithResponse_IsATypedSuccessThatCompletesTheProcess()
+    {
+        var result = ProcessStepHandlerResult.Complete("closed", Note);
+
+        Assert.True(result.Succeeded);
+        Assert.True(result.CompletesProcess);
+        Assert.Equal("closed", result.Response);
+        Assert.Equal([Note], result.Messages);
+    }
+
+    [Fact]
+    public void OtherResults_DoNotCompleteTheProcess()
+    {
+        Assert.All(
+            [CreateSut(), ProcessStepHandlerResult.Success<NextStep>(), ProcessStepHandlerResult.Failure(), ProcessStepHandlerResult.Reject(), ProcessStepHandlerResult.HandOff("billing")],
+            result => Assert.False(result.CompletesProcess));
+    }
+
+    [Fact]
     public void Reject_IsARejectedFailure()
     {
         var result = ProcessStepHandlerResult.Reject(Note);

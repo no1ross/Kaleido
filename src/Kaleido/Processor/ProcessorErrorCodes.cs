@@ -135,6 +135,13 @@ public static class ProcessorErrorCodes
     /// </summary>
     public const string StepNotAvailable = "pro_step_not_available";
 
+    /// <summary>
+    /// The process has ended here: it is complete, it ended in a business failure, or it was handed
+    /// off to another service. Nobody can run a step of this service on it (a handoff back from the
+    /// service that holds it excepted); start a new process, or continue on the named service (#512).
+    /// </summary>
+    public const string ProcessEnded = "pro_process_ended";
+
     /// <summary>A handler returned an information request that is not well-formed.</summary>
     public const string InformationRequestInvalid = "pro_information_request_invalid";
 

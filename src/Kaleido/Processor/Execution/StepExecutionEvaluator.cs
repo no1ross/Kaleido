@@ -32,25 +32,9 @@ internal sealed class StepExecutionEvaluator(
         ArgumentNullException.ThrowIfNull(candidates);
         ArgumentNullException.ThrowIfNull(context);
 
-        if (result.Rejected)
+        if (Concluded(currentCandidate, result) is { } concluded)
         {
-            return ExecutionDecision.Rejected();
-        }
-
-        if (!result.Succeeded)
-        {
-            return ExecutionDecision.BusinessFailure();
-        }
-
-        // A handoff gives the process to another service; this service itself is not one (#522).
-        if (result.TargetProcessorName is { } targetProcessorName)
-        {
-            return string.Equals(targetProcessorName, serviceOptions.ServiceName, StringComparison.OrdinalIgnoreCase)
-                ? ExecutionDecision.ProcessViolation(
-                    StepProcessingMessage.Error(
-                        ProcessorErrorCodes.InvalidHandOff,
-                        $"'{currentCandidate.StepName}' handed the process off to '{targetProcessorName}', which is this service; hand off to another service, or continue with a step of this one."))
-                : ExecutionDecision.HandOff(targetProcessorName);
+            return concluded;
         }
 
         if (result.RequiredStep is not null)
@@ -84,6 +68,41 @@ internal sealed class StepExecutionEvaluator(
             currentCandidate,
             candidates,
             context);
+    }
+
+    // A result that decides the process by itself, whatever the step graph offers; null otherwise.
+    private ExecutionDecision? Concluded(
+        StepCandidate currentCandidate,
+        StepInvocationResult result)
+    {
+        if (result.Rejected)
+        {
+            return ExecutionDecision.Rejected();
+        }
+
+        if (!result.Succeeded)
+        {
+            return ExecutionDecision.BusinessFailure();
+        }
+
+        // The handler completed the whole process: nothing more runs, whatever the rules still offer (#534).
+        if (result.CompletesProcess)
+        {
+            return ExecutionDecision.Complete();
+        }
+
+        // A handoff gives the process to another service; this service itself is not one (#522).
+        if (result.TargetProcessorName is not { } targetProcessorName)
+        {
+            return null;
+        }
+
+        return string.Equals(targetProcessorName, serviceOptions.ServiceName, StringComparison.OrdinalIgnoreCase)
+            ? ExecutionDecision.ProcessViolation(
+                StepProcessingMessage.Error(
+                    ProcessorErrorCodes.InvalidHandOff,
+                    $"'{currentCandidate.StepName}' handed the process off to '{targetProcessorName}', which is this service; hand off to another service, or continue with a step of this one."))
+            : ExecutionDecision.HandOff(targetProcessorName);
     }
 
     // An information step always waits for answers to the request presented now, so it never

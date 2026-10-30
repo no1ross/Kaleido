@@ -35,6 +35,9 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     /// <inheritdoc />
     public string? TargetProcessorName { get; internal init; }
 
+    /// <inheritdoc />
+    public bool CompletesProcess { get; internal init; }
+
     /// <summary>
     /// The typed response payload.
     /// </summary>
@@ -56,7 +59,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     /// </typeparam>
     /// <returns>A copy of this result with the required next step.</returns>
     /// <exception cref="KaleidoFrameworkException">
-    /// This result is not a success in the current processor (a failure, a rejection, or a hand-off).
+    /// This result is not a success that continues the process (a failure, a rejection, a hand-off, or a completion).
     /// </exception>
     /// <example>
     /// <code>
@@ -84,7 +87,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     /// <param name="request">The questions; the content is the implementer's, the shape is Kaleido's.</param>
     /// <returns>A copy of this result with the required information step and its request.</returns>
     /// <exception cref="KaleidoFrameworkException">
-    /// This result is not a success in the current processor (a failure, a rejection, or a hand-off).
+    /// This result is not a success that continues the process (a failure, a rejection, a hand-off, or a completion).
     /// </exception>
     /// <example>
     /// <code>
@@ -120,6 +123,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
             RequiredStep = result.RequiredStep,
             InformationRequest = result.InformationRequest,
             TargetProcessorName = result.TargetProcessorName,
+            CompletesProcess = result.CompletesProcess,
             Messages = result.Messages,
             Response = result.Response switch
             {
@@ -134,11 +138,11 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 
     private void EnsureCanRequireNextStep(Type next)
     {
-        if (!Succeeded || Rejected || TargetProcessorName is not null)
+        if (!Succeeded || Rejected || TargetProcessorName is not null || CompletesProcess)
         {
             throw new KaleidoFrameworkException(
                 ProcessorErrorCodes.InvalidRequiredStep,
-                $"Only a successful result in the current processor can require '{next.Name}' next.");
+                $"Only a successful result that continues the process can require '{next.Name}' next.");
         }
     }
 }

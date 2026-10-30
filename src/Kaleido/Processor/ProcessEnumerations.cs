@@ -162,19 +162,23 @@ public enum ProcessExecutionState
     Active,
 
     /// <summary>
-    /// The last step required no next step and the process rules make no further step available.
+    /// The process has ended: the last step's handler completed it (<c>Complete(...)</c>), or it
+    /// required no next step and the process rules make no further step available. No further step
+    /// runs (<c>pro_process_ended</c>, ADR 0033).
     /// </summary>
     Complete,
 
     /// <summary>
-    /// The last step's handler returned a business failure; that step is recorded as
-    /// <see cref="StepExecutionStatus.Failed"/>.
+    /// The process has ended: the last step's handler returned a business failure, recorded as
+    /// <see cref="StepExecutionStatus.Failed"/>. No further step runs (<c>pro_process_ended</c>); a new
+    /// process is started instead (ADR 0033).
     /// </summary>
     BusinessFailure,
 
     /// <summary>
-    /// The last step handed the process off to another processor, named by the process's
-    /// target processor name; the process continues there.
+    /// The last step handed the process off to another processor, named by the process's target
+    /// processor name; the process continues there. This service runs none of its steps on it
+    /// (<c>pro_process_ended</c>) unless that processor hands it back (ADR 0033).
     /// </summary>
     HandOff,
 

@@ -181,6 +181,84 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.Equal(JsonValueKind.Null, after.GetProperty("targetProcessorName").ValueKind);
     }
 
+    // The lifecycle (#512): an ended process admits no further step, and its state says so - what it
+    // shows and what it admits agree.
+    [Fact]
+    public async Task AFailedStep_EndsTheProcess_AndNoFurtherStepRuns()
+    {
+        var processId = await StartAsync();
+        Assert.Contains(BehaviorSteps.Note, AvailableSteps(await StateAsync(processId)));
+
+        var (_, failed) = await PostStepAsync(BehaviorSteps.Fail, processId: processId);
+        Assert.Equal("failed", Outcome(failed));
+
+        var ended = await StateAsync(processId);
+        Assert.Equal("businessFailure", ended.GetProperty("state").GetString());
+        Assert.Empty(AvailableSteps(ended));
+
+        var (_, late) = await PostStepAsync(BehaviorSteps.Note, """{"text":"late"}""", processId);
+        Assert.Equal("pending", Outcome(late));
+        Assert.Contains(ProcessorErrorCodes.ProcessEnded, FrameworkCodes(late));
+        Assert.NotEqual("completed", StepStatus(await StateAsync(processId), BehaviorSteps.Note));
+    }
+
+    // Complete() ends the process whatever its rules still offer (#534): Note was available.
+    [Fact]
+    public async Task AStepThatCompletesTheProcess_EndsIt_ThoughOtherStepsWereAvailable()
+    {
+        var processId = await StartAsync();
+        Assert.Contains(BehaviorSteps.Note, AvailableSteps(await StateAsync(processId)));
+
+        var (_, finished) = await PostStepAsync(BehaviorSteps.Finish, processId: processId);
+        Assert.Equal("completed", Outcome(finished));
+        Assert.Empty(finished.GetProperty("availableSteps").EnumerateArray());
+
+        var complete = await StateAsync(processId);
+        Assert.Equal("complete", complete.GetProperty("state").GetString());
+        Assert.Empty(AvailableSteps(complete));
+
+        var (_, late) = await PostStepAsync(BehaviorSteps.Note, """{"text":"late"}""", processId);
+        Assert.Equal("pending", Outcome(late));
+        Assert.Contains(ProcessorErrorCodes.ProcessEnded, FrameworkCodes(late));
+    }
+
+    // After a handoff the target owns the process: this service runs none of its steps, and the target
+    // name is kept (#512). A local step used to run and erase it.
+    [Fact]
+    public async Task AfterAHandOff_ThisServiceRunsNoStep_AndKeepsTheTarget()
+    {
+        var processId = await StartAsync();
+        await PostStepAsync(BehaviorSteps.HandOff, processId: processId);
+
+        foreach (var caller in new string?[] { null, "billing" })
+        {
+            var (_, late) = await PostStepAsync(BehaviorSteps.Note, """{"text":"late"}""", processId, callingProcessor: caller);
+            Assert.Equal("pending", Outcome(late));
+            Assert.Contains(ProcessorErrorCodes.ProcessEnded, FrameworkCodes(late));
+        }
+
+        var state = await StateAsync(processId);
+        Assert.Equal("handOff", state.GetProperty("state").GetString());
+        Assert.Equal(BehaviorSteps.HandOffTarget, state.GetProperty("targetProcessorName").GetString());
+        Assert.Empty(AvailableSteps(state));
+    }
+
+    // The service the process was handed to may hand it back: it is this service's again (#512).
+    [Fact]
+    public async Task AHandBackFromTheTarget_ReopensTheProcessHere()
+    {
+        var processId = await StartAsync();
+        await PostStepAsync(BehaviorSteps.HandOff, processId: processId);
+
+        var (_, back) = await PostStepAsync(BehaviorSteps.Note, """{"text":"back"}""", processId, callingProcessor: "RADIOLOGY");
+
+        Assert.Equal("completed", Outcome(back));
+        var state = await StateAsync(processId);
+        Assert.NotEqual("handOff", state.GetProperty("state").GetString());
+        Assert.Equal(JsonValueKind.Null, state.GetProperty("targetProcessorName").ValueKind);
+        Assert.Contains(BehaviorSteps.Note, AvailableSteps(state));
+    }
+
     [Fact]
     public async Task AProcessHandedOffByAnotherProcessor_StartsHereUnderItsId()
     {

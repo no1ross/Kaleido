@@ -13,6 +13,17 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **An ended process admits no further step** (#512, #534, [ADR 0033](docs/decisions/0033-process-lifecycle-and-admission.md)):
+  admission now reads the process state, not only the step graph. A step sent to a process that is
+  `complete`, ended in `businessFailure` or was handed off is refused with the new
+  `pro_process_ended` (status `pending`); the state lists no available step, as before. After a
+  hand-off, the target owns the process: this service runs none of its steps (a local step used to
+  run and erase the target), except when the target hands the process back (its calling processor is
+  the target), which reopens it here. `Failure()` is a hard stop: start a new process.
+- **`ProcessStepHandlerResult.Complete()` ends a process whatever its rules still offer** (#534):
+  `Complete(messages)` and `Complete(response, messages)`, with `IProcessStepHandlerResult.CompletesProcess`.
+  A result that completes the process cannot require a next step. The new consumer analyzer
+  KAL2022 reports one returned for an entry step.
 - **One status model: where the process is, and what happened to the step** (#536):
   - The StepExecutionOutcome enum is removed: it duplicated `StepExecutionStatus`. The step answer
     (`StepExecutionResponse`) carries `Status` (JSON `status`) instead of `Outcome` (`outcome`), with

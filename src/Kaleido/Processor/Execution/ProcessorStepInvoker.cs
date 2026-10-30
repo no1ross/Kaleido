@@ -26,6 +26,8 @@ internal sealed record StepInvocationResult
 
     public string? TargetProcessorName { get; init; }
 
+    public bool CompletesProcess { get; init; }
+
     public object? Response { get; init; }
 
     public IReadOnlyCollection<ProcessMessage> Messages { get; init; }
@@ -146,6 +148,7 @@ internal sealed class ProcessorStepInvoker(
             RequiredStep = handlerResult.RequiredStep,
             InformationRequest = handlerResult.InformationRequest,
             TargetProcessorName = handlerResult.TargetProcessorName,
+            CompletesProcess = handlerResult.CompletesProcess,
             Response = handlerResult.Response,
             Messages = handlerResult.Messages,
         };
