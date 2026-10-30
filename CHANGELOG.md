@@ -259,6 +259,10 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **A step handler's or query source's scope is disposed asynchronously** (#523): a scoped dependency
+  that implements only `IAsyncDisposable` (an async client, a pooled context) made the synchronous
+  disposal throw after the handler or source had run. It is now disposed on success, failure and
+  cancellation; synchronous disposables are disposed as before.
 - **KAL2006 and KAL2004 judge Kaleido's symbols, not names** (#465): KAL2006 only reports a call that
   binds to Kaleido's `AddKaleido`, and only counts an assignment to the real
   `KaleidoServiceOptions.Assemblies`, so a method of yours named `AddKaleido` is no longer flagged.
