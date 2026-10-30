@@ -204,8 +204,8 @@ sections.
   preview packages. Here, the consumer guide's compiled examples ([`docs/guide`](docs/guide/README.md))
   are the task-focused examples, and the repository has no `samples/` folder: the SQLite starter
   sample was removed. Database files were removed from the repository's history.
-- **The repository builds with the .NET 9 SDK** until the .NET 10 SDK is available again (#424); the
-  tests run per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
+- **The repository builds with the .NET 9 SDK**, the organization's standard SDK (#424); the tests run
+  per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
 - **KAL2006 and KAL2004 judge Kaleido's symbols, not names** (#465): KAL2006 only reports a call that

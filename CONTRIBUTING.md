@@ -9,7 +9,7 @@ it links. Everyone taking part follows the [code of conduct](./CODE_OF_CONDUCT.m
 
 ## Set up
 
-- Install the **.NET 9 SDK** (pinned in [`global.json`](./global.json); back to .NET 10 once it is available again, #424); the packages target
+- Install the **.NET 9 SDK** (pinned in [`global.json`](./global.json); the organization's standard SDK, #424); the packages target
   `net8.0`, so the .NET 8 runtime is needed to run the tests.
 
 ```bash

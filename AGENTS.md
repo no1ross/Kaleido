@@ -5,7 +5,7 @@ This is the repository-level contributor guide for Kaleido: seven framework proj
 ## Build and test commands
 
 ### SDK and target framework
-- **Building Kaleido needs the .NET 9 SDK** (`global.json`: 9.0.300, `rollForward: latestFeature`), for now: the repository moves back to the .NET 10 SDK when it is available again; #424 lists what to revert. That's a requirement for framework contributors only.
+- **Building Kaleido needs the .NET 9 SDK** (`global.json`: 9.0.300, `rollForward: latestFeature`), the organization's standard SDK. Moving to a newer SDK is a deliberate change with its own Issue (#424 lists what it would change). That's a requirement for framework contributors only.
 - **The published packages target `net8.0`** (`Directory.Build.props`), so any consumer on .NET 8 or later can use them. Don't raise `TargetFramework` because the SDK is newer; changing it is an explicit owner decision.
 
 ### Build and run tests
