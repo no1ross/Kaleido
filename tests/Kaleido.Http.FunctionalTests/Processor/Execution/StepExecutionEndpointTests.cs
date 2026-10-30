@@ -20,7 +20,8 @@ public sealed class StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixtur
     public async Task PostStepExecute_WithRawEnvelope_UsesOptionalProcessIdHeader(bool resume)
     {
         // Resuming needs an existing process in which the (non-repeatable) root step is still
-        // available, so it is created by an independent step instead of the root step.
+        // available, so it is created by an independent step instead of the root step (one that
+        // succeeds: a failed step ends its process, #512).
         var expectedProcessId = resume ? await StartProcessWithoutRootAsync() : (Guid?)null;
         using var request = new HttpRequestMessage(HttpMethod.Post, RootStepUrl)
         {
@@ -43,7 +44,7 @@ public sealed class StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixtur
         Assert.NotEqual(Guid.Empty, contract.ProcessId);
         Assert.True(response.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessId, out var values));
         Assert.Equal(contract.ProcessId.ToString(), Assert.Single(values));
-        Assert.Equal(StepExecutionOutcome.Completed, contract.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, contract.Status);
         Assert.Equal(RuntimeStepNames.Root, contract.Result?.Value);
         Assert.Empty(contract.BusinessMessages);
         Assert.Empty(contract.FrameworkMessages);
@@ -190,8 +191,8 @@ public sealed class StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixtur
     {
         using var response =
             await PostAsync(
-                "/kaleido/processes/steps/runtimefailingstep",
-                new ExecuteStepRequest<RuntimeFailingStep> { ProcessStep = new RuntimeFailingStep() },
+                InputStepUrl,
+                new ExecuteStepRequest<RuntimeInputStep> { ProcessStep = new RuntimeInputStep { ItemId = Guid.NewGuid() } },
                 processId: null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

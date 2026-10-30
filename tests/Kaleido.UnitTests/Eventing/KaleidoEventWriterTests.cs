@@ -172,4 +172,34 @@ public sealed class KaleidoEventWriterTests
 
         Assert.Equal(LogLevel.Error, Assert.Single(logger.Invocations, x => x.Method.Name == nameof(ILogger.Log)).Arguments[0]);
     }
+
+    // "Never fails" holds for an OperationCanceledException the caller did not cause too (#517): the
+    // runtime passes CancellationToken.None, so a timeout of the outbox's own is logged, not thrown.
+    [Fact]
+    public async Task WriteAndCommitted_WhenTheOutboxTimesOut_LogAnError_AndNeverFailTheCaller()
+    {
+        var outbox = BuiltInOutbox();
+        outbox.Setup(x => x.AddAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>())).ThrowsAsync(new TaskCanceledException("timeout"));
+        outbox.Setup(x => x.CommittedAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new TaskCanceledException("timeout"));
+        var logger = new Mock<ILogger<KaleidoEventWriter>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        var sut = CreateSut(outbox.Object, Mock.Of<IEventPublisher>(), logger: logger.Object);
+
+        await sut.WriteAsync(Envelope(), CancellationToken.None);
+        await sut.CommittedAsync(CancellationToken.None);
+
+        Assert.All(logger.Invocations.Where(x => x.Method.Name == nameof(ILogger.Log)), x => Assert.Equal(LogLevel.Error, x.Arguments[0]));
+        Assert.Equal(2, logger.Invocations.Count(x => x.Method.Name == nameof(ILogger.Log)));
+    }
+
+    // The caller's own cancellation is passed on.
+    [Fact]
+    public async Task CommittedAsync_WhenTheCallerCancels_Propagates()
+    {
+        var canceled = new CancellationToken(canceled: true);
+        var outbox = BuiltInOutbox();
+        outbox.Setup(x => x.CommittedAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(canceled));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut(outbox.Object, Mock.Of<IEventPublisher>()).CommittedAsync(canceled));
+    }
 }

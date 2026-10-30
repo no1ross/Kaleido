@@ -53,7 +53,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
 
         var answered = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: false, exchangeId), processId);
 
-        Assert.Equal(StepExecutionOutcome.Completed, answered.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, answered.Status);
         Assert.Null(answered.RequiredStep);
 
         var state = await GetStateAsync(processId);
@@ -68,18 +68,18 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
 
         var firstRound = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: true, exchangeId), processId);
 
-        Assert.Equal(StepExecutionOutcome.Completed, firstRound.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, firstRound.Status);
         Assert.Equal(RuntimeStepNames.Answer, firstRound.RequiredStep?.Name);
         Assert.Equal(RuntimeInformationRequests.SecondRound, firstRound.RequiredStep?.InformationRequest?.InformationRequestId);
 
         var staleRound = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: false, exchangeId), processId);
 
-        Assert.NotEqual(StepExecutionOutcome.Completed, staleRound.Outcome);
+        Assert.NotEqual(StepExecutionStatus.Completed, staleRound.Status);
         Assert.Equal(RuntimeInformationRequests.SecondRound, (await GetStateAsync(processId)).RequiredStep?.InformationRequest?.InformationRequestId);
 
         var secondRound = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.SecondRound, more: false, ExchangeIdOf(firstRound)), processId);
 
-        Assert.Equal(StepExecutionOutcome.Completed, secondRound.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, secondRound.Status);
     }
 
     // #442: the same questionnaire, with the same item ids, asked twice by a repeatable step. Answers to
@@ -100,14 +100,14 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
         // Identical questionnaire id and item ids: only the exchange id tells the late answer apart.
         var delayed = await PostAsync(AnswerUrl, Answers(round, more: false, first), processId);
 
-        Assert.NotEqual(StepExecutionOutcome.Completed, delayed.Outcome);
+        Assert.NotEqual(StepExecutionStatus.Completed, delayed.Status);
         var state = await GetStateAsync(processId);
         Assert.Equal(ProcessExecutionState.AwaitingInformation, state.State);
         Assert.Equal(second, state.RequiredStep?.InformationRequest?.ExchangeId);
 
         var current = await PostAsync(AnswerUrl, Answers(round, more: false, second), processId);
 
-        Assert.Equal(StepExecutionOutcome.Completed, current.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, current.Status);
     }
 
     // #442: a replay of an answer that was already accepted, after the exchange completed and the same
@@ -122,7 +122,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
         var again = await PostAsync(AnswerUrl, accepted, processId);
         var replayed = await PostAsync(AnswerUrl, accepted, processId);
 
-        Assert.NotEqual(StepExecutionOutcome.Completed, replayed.Outcome);
+        Assert.NotEqual(StepExecutionStatus.Completed, replayed.Status);
         Assert.Equal(ExchangeIdOf(again), (await GetStateAsync(processId)).RequiredStep?.InformationRequest?.ExchangeId);
     }
 
@@ -156,7 +156,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
                 },
                 processId);
 
-        Assert.NotEqual(StepExecutionOutcome.Completed, rejected.Outcome);
+        Assert.NotEqual(StepExecutionStatus.Completed, rejected.Status);
 
         var state = await GetStateAsync(processId);
         Assert.Equal(ProcessExecutionState.AwaitingInformation, state.State);
@@ -183,12 +183,12 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
 
         var missing = await PostAsync(AnswerUrl, ReasonB(round, exchangeId), processId);
 
-        Assert.NotEqual(StepExecutionOutcome.Completed, missing.Outcome);
+        Assert.NotEqual(StepExecutionStatus.Completed, missing.Status);
         Assert.Equal(ProcessExecutionState.AwaitingInformation, (await GetStateAsync(processId)).State);
 
         var answered = await PostAsync(AnswerUrl, ReasonB(round, exchangeId) with { Items = [.. ReasonB(round, exchangeId).Items, Answer($"{round}-detail", "Because")] }, processId);
 
-        Assert.Equal(StepExecutionOutcome.Completed, answered.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, answered.Status);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
 
         var rejected = await PostAsync(AnswerUrl, answers with { Items = [.. answers.Items, Answer($"{round}-detail", "Not asked")] }, processId);
 
-        Assert.NotEqual(StepExecutionOutcome.Completed, rejected.Outcome);
+        Assert.NotEqual(StepExecutionStatus.Completed, rejected.Status);
         Assert.Equal(ProcessExecutionState.AwaitingInformation, (await GetStateAsync(processId)).State);
     }
 
@@ -219,7 +219,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
 
         var bypass = await PostAsync(AskUrl, new RuntimeAskStep(), processId);
 
-        Assert.NotEqual(StepExecutionOutcome.Completed, bypass.Outcome);
+        Assert.NotEqual(StepExecutionStatus.Completed, bypass.Status);
         Assert.Equal(RuntimeStepNames.Answer, bypass.RequiredStep?.Name);
         Assert.Equal(ProcessExecutionState.AwaitingInformation, (await GetStateAsync(processId)).State);
     }
@@ -231,12 +231,12 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
         // available, but nothing is pending, so a further answer must be rejected.
         var (processId, exchangeId) = await StartAskingAsync();
         var completed = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: false, exchangeId), processId);
-        Assert.Equal(StepExecutionOutcome.Completed, completed.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, completed.Status);
         Assert.Null((await GetStateAsync(processId)).RequiredStep);
 
         var answered = await PostAsync(AnswerUrl, Answers(RuntimeInformationRequests.FirstRound, more: false, exchangeId), processId);
 
-        Assert.NotEqual(StepExecutionOutcome.Completed, answered.Outcome);
+        Assert.NotEqual(StepExecutionStatus.Completed, answered.Status);
         Assert.Null((await GetStateAsync(processId)).RequiredStep);
     }
 

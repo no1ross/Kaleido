@@ -392,10 +392,22 @@ public sealed class KaleidoEventRelayTests
         var store = new Mock<IKaleidoOutboxStore>();
         store
             .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new OperationCanceledException());
+            .ThrowsAsync(new OperationCanceledException(new CancellationToken(canceled: true)));
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => CreateSut(store.Object, Publisher().Object).RelayBatchAsync(CancellationToken.None));
+            () => CreateSut(store.Object, Publisher().Object).RelayBatchAsync(new CancellationToken(canceled: true)));
+    }
+
+    // Only the host stopping is a cancellation (#517): a store timeout is a failed batch, logged.
+    [Fact]
+    public async Task RelayBatchAsync_WhenTheStoreTimesOut_RelaysNothing_AndDoesNotThrow()
+    {
+        var store = new Mock<IKaleidoOutboxStore>();
+        store
+            .Setup(x => x.ClaimEventsAsync(It.IsAny<int>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("timeout"));
+
+        Assert.Equal(0, await CreateSut(store.Object, Publisher().Object).RelayBatchAsync(CancellationToken.None));
     }
 
     [Fact]

@@ -171,14 +171,12 @@ public sealed record StepCompleted : ProcessEventBase
     public required ExecutionDecisionType DecisionType { get; init; }
 
     /// <summary>
-    /// The step's execution status in this request: <see cref="StepExecutionStatus.Completed"/>,
+    /// What happened to the step, from <see cref="DecisionType"/>: <see cref="StepExecutionStatus.Completed"/>,
     /// <see cref="StepExecutionStatus.Failed"/> for a business failure, or
-    /// <see cref="StepExecutionStatus.Exception"/> for a process violation.
+    /// <see cref="StepExecutionStatus.Exception"/> for a process violation (the process kept its state;
+    /// see <see cref="RuntimeMessages"/>).
     /// </summary>
-    public required StepExecutionStatus ExecutionStatus { get; init; }
-
-    /// <summary>The step's outcome, derived from <see cref="ExecutionStatus"/>.</summary>
-    public required StepExecutionOutcome Outcome { get; init; }
+    public required StepExecutionStatus Status { get; init; }
 
     /// <summary>The business messages the step's handler returned.</summary>
     public IReadOnlyCollection<ProcessMessage> BusinessMessages { get; init; } = [];

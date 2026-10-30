@@ -606,7 +606,6 @@ public sealed class ProcessExecutionServiceTests
                     IncludedInExecutionPlan = true,
                     Response = response,
                     ExecutionStatus = StepExecutionStatus.Completed,
-                    Outcome = StepExecutionOutcome.Completed,
                     RuntimeMessages = [],
                     BusinessMessages = []
                 }

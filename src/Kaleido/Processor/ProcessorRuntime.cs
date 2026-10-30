@@ -170,16 +170,6 @@ internal sealed record ProcessStepResult
     }
 
     /// <summary>
-    /// The step's outcome in this request, derived from <see cref="ExecutionStatus"/>;
-    /// <see cref="StepExecutionOutcome.Pending"/> when it did not run.
-    /// </summary>
-    public StepExecutionOutcome Outcome
-    {
-        get;
-        init;
-    }
-
-    /// <summary>
     /// The runtime's messages about the step: its planning and validation messages, followed by the
     /// messages from its execution when it ran (a process violation, a validation failure, an
     /// unexpected error or a cancellation).
@@ -255,17 +245,22 @@ internal sealed class ProcessorRuntime(
 
             return result;
         }
-        // OperationCanceledException intentionally propagates unrecorded here.
+        // The caller's cancellation intentionally propagates unrecorded here.
         // Invariant: ONE cancellation signal per event, recorded at the lowest
         // level with full context - that is ProcessorExecutor (stepObservation.Canceled(),
         // where state is saved). Do NOT add an observation.Canceled() catch block at
         // this level; it would double-record every cancellation. See AGENTS.md.
-        catch (Exception exception) when (exception is not OperationCanceledException && CallerErrorCode(exception) is { } code)
+        // An OperationCanceledException the caller's token did not raise is a failure (#517).
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (CallerErrorCode(exception) is { } code)
         {
             observation.ExecutionRejected(exception, code);
             throw;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception)
         {
             observation.ExecutionFailed(exception);
             throw;
@@ -321,8 +316,8 @@ internal sealed class ProcessorRuntime(
         observation.ContextLoaded(
             context.ProcessId);
 
-        return stateUpdater.Reconcile(
-            context)
+        return HandedBack(stateUpdater.Reconcile(
+            context))
             with
         {
             LatestRequestId = correlationAccessor.Current.RequestId,
@@ -331,6 +326,17 @@ internal sealed class ProcessorRuntime(
             UpdatedBy = correlationAccessor.Current.Caller,
         };
     }
+
+    // A process handed off to another service is that service's (#512): this one admits none of its own
+    // steps, except when the service holding the process hands it back. The process is then this
+    // service's again, from where its step graph stands; it is saved so when a step of this request runs.
+    private ProcessorContext HandedBack(
+        ProcessorContext context) =>
+        context.State == ProcessExecutionState.HandOff &&
+        correlationAccessor.Current.CallingProcessorName is { Length: > 0 } calling &&
+        string.Equals(calling, context.TargetProcessorName, StringComparison.OrdinalIgnoreCase)
+            ? context with { State = ProcessExecutionState.Active, TargetProcessorName = null }
+            : context;
 
     // A new process (or one handed off from another processor): initialized, observed, and saved
     // right away together with its ProcessCreated event - every created process exists and is
@@ -425,7 +431,6 @@ internal sealed class ProcessorRuntime(
             IncludedInExecutionPlan = candidate.IncludedInExecutionPlan,
             Response = outcome?.Response,
             ExecutionStatus = outcome?.Status ?? StepExecutionStatus.Pending,
-            Outcome = outcome?.Outcome ?? StepExecutionOutcome.Pending,
             RuntimeMessages = MergeMessages(candidate, outcome),
             BusinessMessages = outcome?.BusinessMessages ?? Array.Empty<ProcessMessage>(),
         };

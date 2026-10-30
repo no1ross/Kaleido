@@ -69,17 +69,22 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
 
     [Theory]
     [MemberData(nameof(Stores))]
-    public async Task CancelledWhileTheHandlerRuns_SavesTheStepAsCanceled(string store)
+    public async Task CancelledWhileTheHandlerRuns_SavesTheStepAsCanceled_AndLeavesTheProcessAsItWas(string store)
     {
         await StartHostAsync(store);
         var processId = await StartProcessAsync();
+        var before = await StateAsync(processId);
 
         using (await PostStepAsync(CancellationSteps.During, processId))
         {
         }
 
+        // A cancellation is a step status only (#517, #536): the process keeps its state and next steps.
+        var after = await StateAsync(processId);
         Assert.Equal(1, _cancellation.Invocations);
-        Assert.Equal("canceled", StepStatus(await StateAsync(processId), CancellationSteps.During));
+        Assert.Equal("canceled", StepStatus(after, CancellationSteps.During));
+        Assert.Equal(before.GetProperty("state").GetString(), after.GetProperty("state").GetString());
+        Assert.Equal(before.GetProperty("availableSteps").GetRawText(), after.GetProperty("availableSteps").GetRawText());
     }
 
     [Theory]

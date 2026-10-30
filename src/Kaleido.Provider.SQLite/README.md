@@ -68,7 +68,7 @@ Your implementation must preserve, with full fidelity:
 
 - `ProcessId`, `ProcessorName`, `LatestRequestId`, `CreatedBy`, `UpdatedBy` (caller tags: `KaleidoCaller` name and id; the SQLite store keeps them as `...Name`/`...Id` columns)
 - `Version` - the optimistic-concurrency version (see below)
-- `State` (`ProcessExecutionState` enum - Active, Complete, BusinessFailure, ProcessViolation, HandOff, AwaitingRequiredStep, AwaitingStepSelection, Exception, Canceled, AwaitingInformation)
+- `State` (`ProcessExecutionState` enum, stored by name - Active, Complete, BusinessFailure, HandOff, AwaitingRequiredStep, AwaitingStepSelection, AwaitingInformation; a store created before #536 may hold `ProcessViolation`, `Exception` or `Canceled`, which no longer load: recreate it)
 - `RequiredStep` and `TargetProcessorName` (mutually exclusive continuation markers)
 - `RequiredInformationRequest` - the pending information request for `RequiredStep`, stored whole (the SQLite store keeps it as JSON on the required-step row)
 - `AvailableSteps` (collection - order not significant)

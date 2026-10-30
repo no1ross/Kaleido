@@ -159,6 +159,125 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.Equal(JsonValueKind.Null, state.GetProperty("requiredStep").ValueKind);
     }
 
+    // A handoff to the service itself is the handler's defect (#522): before, it silently continued
+    // here; now it is a process violation that, like an exception, leaves the process as it was.
+    [Fact]
+    public async Task AHandOffToThisServiceItself_IsAViolation_AndLeavesTheProcessAsItWas()
+    {
+        var processId = await StartAsync();
+        var before = await StateAsync(processId);
+
+        var (status, response) = await PostStepAsync(BehaviorSteps.HandOffHere, processId: processId);
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.NotEqual("completed", Outcome(response));
+        Assert.Contains(ProcessorErrorCodes.InvalidHandOff, FrameworkCodes(response));
+        Assert.Equal(JsonValueKind.Null, response.GetProperty("targetProcessorName").ValueKind);
+
+        var after = await StateAsync(processId);
+        Assert.Equal("exception", StepStatus(after, BehaviorSteps.HandOffHere));
+        Assert.Equal(before.GetProperty("state").GetString(), after.GetProperty("state").GetString());
+        Assert.Equal(AvailableSteps(before), AvailableSteps(after));
+        Assert.Equal(JsonValueKind.Null, after.GetProperty("targetProcessorName").ValueKind);
+    }
+
+    // Only the caller's cancellation is a cancellation (#517): a handler whose downstream call times out
+    // failed - the step is an exception and retryable, the process is unchanged, the answer is not a
+    // silent 200 with an empty body.
+    [Fact]
+    public async Task AHandlerTimeout_IsAnException_NotACancellation_AndLeavesTheProcessAsItWas()
+    {
+        var processId = await StartAsync();
+        var before = await StateAsync(processId);
+
+        var (status, body) = await PostStepAsync(BehaviorSteps.TimeOut, processId: processId);
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Equal("exception", Outcome(body));
+        var after = await StateAsync(processId);
+        Assert.Equal("exception", StepStatus(after, BehaviorSteps.TimeOut));
+        Assert.Equal(before.GetProperty("state").GetString(), after.GetProperty("state").GetString());
+        Assert.Equal(AvailableSteps(before), AvailableSteps(after));
+    }
+
+    // The lifecycle (#512): an ended process admits no further step, and its state says so - what it
+    // shows and what it admits agree.
+    [Fact]
+    public async Task AFailedStep_EndsTheProcess_AndNoFurtherStepRuns()
+    {
+        var processId = await StartAsync();
+        Assert.Contains(BehaviorSteps.Note, AvailableSteps(await StateAsync(processId)));
+
+        var (_, failed) = await PostStepAsync(BehaviorSteps.Fail, processId: processId);
+        Assert.Equal("failed", Outcome(failed));
+
+        var ended = await StateAsync(processId);
+        Assert.Equal("businessFailure", ended.GetProperty("state").GetString());
+        Assert.Empty(AvailableSteps(ended));
+
+        var (_, late) = await PostStepAsync(BehaviorSteps.Note, """{"text":"late"}""", processId);
+        Assert.Equal("pending", Outcome(late));
+        Assert.Contains(ProcessorErrorCodes.ProcessEnded, FrameworkCodes(late));
+        Assert.NotEqual("completed", StepStatus(await StateAsync(processId), BehaviorSteps.Note));
+    }
+
+    // Complete() ends the process whatever its rules still offer (#534): Note was available.
+    [Fact]
+    public async Task AStepThatCompletesTheProcess_EndsIt_ThoughOtherStepsWereAvailable()
+    {
+        var processId = await StartAsync();
+        Assert.Contains(BehaviorSteps.Note, AvailableSteps(await StateAsync(processId)));
+
+        var (_, finished) = await PostStepAsync(BehaviorSteps.Finish, processId: processId);
+        Assert.Equal("completed", Outcome(finished));
+        Assert.Empty(finished.GetProperty("availableSteps").EnumerateArray());
+
+        var complete = await StateAsync(processId);
+        Assert.Equal("complete", complete.GetProperty("state").GetString());
+        Assert.Empty(AvailableSteps(complete));
+
+        var (_, late) = await PostStepAsync(BehaviorSteps.Note, """{"text":"late"}""", processId);
+        Assert.Equal("pending", Outcome(late));
+        Assert.Contains(ProcessorErrorCodes.ProcessEnded, FrameworkCodes(late));
+    }
+
+    // After a handoff the target owns the process: this service runs none of its steps, and the target
+    // name is kept (#512). A local step used to run and erase it.
+    [Fact]
+    public async Task AfterAHandOff_ThisServiceRunsNoStep_AndKeepsTheTarget()
+    {
+        var processId = await StartAsync();
+        await PostStepAsync(BehaviorSteps.HandOff, processId: processId);
+
+        foreach (var caller in new string?[] { null, "billing" })
+        {
+            var (_, late) = await PostStepAsync(BehaviorSteps.Note, """{"text":"late"}""", processId, callingProcessor: caller);
+            Assert.Equal("pending", Outcome(late));
+            Assert.Contains(ProcessorErrorCodes.ProcessEnded, FrameworkCodes(late));
+        }
+
+        var state = await StateAsync(processId);
+        Assert.Equal("handOff", state.GetProperty("state").GetString());
+        Assert.Equal(BehaviorSteps.HandOffTarget, state.GetProperty("targetProcessorName").GetString());
+        Assert.Empty(AvailableSteps(state));
+    }
+
+    // The service the process was handed to may hand it back: it is this service's again (#512).
+    [Fact]
+    public async Task AHandBackFromTheTarget_ReopensTheProcessHere()
+    {
+        var processId = await StartAsync();
+        await PostStepAsync(BehaviorSteps.HandOff, processId: processId);
+
+        var (_, back) = await PostStepAsync(BehaviorSteps.Note, """{"text":"back"}""", processId, callingProcessor: "RADIOLOGY");
+
+        Assert.Equal("completed", Outcome(back));
+        var state = await StateAsync(processId);
+        Assert.NotEqual("handOff", state.GetProperty("state").GetString());
+        Assert.Equal(JsonValueKind.Null, state.GetProperty("targetProcessorName").ValueKind);
+        Assert.Contains(BehaviorSteps.Note, AvailableSteps(state));
+    }
+
     [Fact]
     public async Task AProcessHandedOffByAnotherProcessor_StartsHereUnderItsId()
     {
@@ -388,7 +507,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
     public async Task TheTypedClient_RunsAndResumesAProcess_AndReadsItsState()
     {
         var started = await fixture.ProcessClient.ExecuteStepAsync(new BehaviorStartStep(), TestContext.Current.CancellationToken);
-        Assert.Equal(StepExecutionOutcome.Completed, started.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, started.Status);
         Assert.NotEqual(Guid.Empty, started.ProcessId);
 
         var closed = await fixture.ProcessClient.ExecuteStepAsync(
@@ -397,7 +516,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
             started.ProcessId,
             idempotencyKey: null,
             TestContext.Current.CancellationToken);
-        Assert.Equal(StepExecutionOutcome.Completed, closed.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, closed.Status);
         Assert.Equal(started.ProcessId, closed.ProcessId);
 
         var state = await fixture.ProcessClient.GetProcessStateAsync(started.ProcessId, TestContext.Current.CancellationToken);
@@ -432,8 +551,8 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         await Task.Delay(20, TestContext.Current.CancellationToken);
         var repeated = await QuickAsync(key);
 
-        Assert.Equal(StepExecutionOutcome.Completed, first.Outcome);
-        Assert.Equal(first.Outcome, repeated.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, first.Status);
+        Assert.Equal(first.Status, repeated.Status);
         Assert.Equal(ranAt, await LastRunAsync());
 
         await QuickAsync($"other-{started.ProcessId:N}");
@@ -465,7 +584,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         {
             var slow = await client.ExecuteStepAsync(BehaviorSteps.Slow, JsonSerializer.SerializeToElement(new { }), started.ProcessId, idempotencyKey: null, cancel);
 
-            Assert.Equal(StepExecutionOutcome.Completed, slow.Outcome);
+            Assert.Equal(StepExecutionStatus.Completed, slow.Status);
         }
 
         Assert.Equal(1, fixture.Gate.Invocations);
@@ -583,7 +702,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
 
     private static Guid ProcessId(JsonElement body) => body.GetProperty("processId").GetGuid();
 
-    private static string? Outcome(JsonElement body) => body.GetProperty("outcome").GetString();
+    private static string? Outcome(JsonElement body) => body.GetProperty("status").GetString();
 
     private static string?[] FrameworkCodes(JsonElement body) =>
         body.GetProperty("frameworkMessages").EnumerateArray().Select(x => x.GetProperty("code").GetString()).ToArray();

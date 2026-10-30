@@ -144,6 +144,19 @@ public sealed class ProcessorStepInvokerTests
             response.Value);
     }
 
+    // The handler's completion of the process reaches the evaluator (#534).
+    [Fact]
+    public async Task ExecuteAsync_WhenHandlerCompletesTheProcess_CarriesIt()
+    {
+        var result =
+            await CreateSut(services => services.AddTransient<CompletingHandler>())
+                .ExecuteAsync(CreateRegistration<CompletingHandler>(), new TestStep(), CreateContext(), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Succeeded);
+        Assert.True(result.CompletesProcess);
+        Assert.Equal("closed", Assert.IsType<TestStepResponse>(result.Response).Value);
+    }
+
     [Fact]
     public async Task ExecuteAsync_WhenHandlerIsNotRegistered_Throws()
     {
@@ -721,6 +734,16 @@ public sealed class ProcessorStepInvokerTests
                         }
                 });
         }
+    }
+
+    private sealed class CompletingHandler :
+        IProcessStepHandler<TestStep, TestStepResponse>
+    {
+        public Task<ProcessStepHandlerResult<TestStepResponse>> ExecuteAsync(
+            TestStep processStep,
+            ProcessStepContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(ProcessStepHandlerResult.Complete(new TestStepResponse { Value = "closed" }));
     }
 
     private sealed class FailureHandler :

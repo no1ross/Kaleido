@@ -261,12 +261,12 @@ Kaleido.Http.Processor.StepExecutionResponse.BusinessMessages.get -> System.Coll
 Kaleido.Http.Processor.StepExecutionResponse.BusinessMessages.init -> void
 Kaleido.Http.Processor.StepExecutionResponse.FrameworkMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
 Kaleido.Http.Processor.StepExecutionResponse.FrameworkMessages.init -> void
-Kaleido.Http.Processor.StepExecutionResponse.Outcome.get -> Kaleido.Processor.StepExecutionOutcome
-Kaleido.Http.Processor.StepExecutionResponse.Outcome.init -> void
 Kaleido.Http.Processor.StepExecutionResponse.ProcessId.get -> System.Guid
 Kaleido.Http.Processor.StepExecutionResponse.ProcessId.init -> void
 Kaleido.Http.Processor.StepExecutionResponse.RequiredStep.get -> Kaleido.Http.Processor.ProcessRequiredStep?
 Kaleido.Http.Processor.StepExecutionResponse.RequiredStep.init -> void
+Kaleido.Http.Processor.StepExecutionResponse.Status.get -> Kaleido.Processor.StepExecutionStatus
+Kaleido.Http.Processor.StepExecutionResponse.Status.init -> void
 Kaleido.Http.Processor.StepExecutionResponse.StepExecutionResponse() -> void
 Kaleido.Http.Processor.StepExecutionResponse.StepExecutionResponse(Kaleido.Http.Processor.StepExecutionResponse! original) -> void
 Kaleido.Http.Processor.StepExecutionResponse.StepName.get -> string!

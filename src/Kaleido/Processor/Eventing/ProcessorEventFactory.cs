@@ -21,6 +21,7 @@ internal interface IProcessorEventFactory
         ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
+        ExecutionDecisionType decision,
         StepInvocationResult result);
 
     KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext> CreateExecutionCompleted(
@@ -139,6 +140,7 @@ internal sealed class ProcessorEventFactory(
         ProcessorContext context,
         StepCandidate candidate,
         ProcessExecutionOutcome outcome,
+        ExecutionDecisionType decision,
         StepInvocationResult result)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -155,9 +157,8 @@ internal sealed class ProcessorEventFactory(
             StepName = candidate.StepName,
             Request = candidate.Step,
             Response = outcome.Response,
-            DecisionType = outcome.Decision,
-            ExecutionStatus = outcome.Status,
-            Outcome = outcome.Outcome,
+            DecisionType = decision,
+            Status = outcome.Status,
             BusinessMessages = outcome.BusinessMessages,
             RuntimeMessages = outcome.RuntimeMessages,
             ProcessState = context.State,

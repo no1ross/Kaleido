@@ -1,95 +1,57 @@
 namespace Kaleido.Processor;
 
 /// <summary>
-/// Represents the outcome of a process step after execution
-/// or evaluation by the process runtime.
+/// What happened to a step: the one step status, used in the process history (each step's last
+/// attempt), in the answer to the step that was sent, and in the step-completed event (#536).
 /// </summary>
-public enum StepExecutionOutcome
-{
-    /// <summary>
-    /// The step has not yet been evaluated or executed.
-    /// </summary>
-    Pending,
-
-    /// <summary>
-    /// The step completed successfully.
-    /// </summary>
-    Completed,
-
-    /// <summary>
-    /// The step executed but did not complete successfully.
-    /// </summary>
-    Failed,
-
-    /// <summary>
-    /// The step could not be executed because one or more
-    /// required prerequisites were not satisfied.
-    /// </summary>
-    Blocked,
-
-    /// <summary>
-    /// The request was cancelled while the step was executing (status
-    /// <see cref="StepExecutionStatus.Canceled"/>); the step did not finish.
-    /// </summary>
-    Canceled,
-
-    /// <summary>
-    /// The handler rejected the step's input as correctable (e.g. an unknown code): nothing was
-    /// recorded, and the process is exactly as it was before, so the caller can correct the input
-    /// and retry, or choose another step.
-    /// </summary>
-    Rejected,
-}
-
-/// <summary>
-/// Represents the processing status of a specific step request
-/// recorded in the processor execution history.
-/// </summary>
+/// <remarks>
+/// Where the process is afterwards is <see cref="ProcessExecutionState"/>. Only
+/// <see cref="Completed"/> and <see cref="Failed"/> come from a handler's result that changes the
+/// process; every other status leaves the process as it was.
+/// </remarks>
 public enum StepExecutionStatus
 {
     /// <summary>
-    /// The request has not yet been processed.
+    /// The step has not run: in the history, it never ran; in an answer, the submitted step did not
+    /// run in this request (it is not a next step, misses a dependency or was already done; the
+    /// framework messages say why).
     /// </summary>
     Pending,
 
     /// <summary>
-    /// The request was processed successfully.
+    /// The step ran and its handler succeeded.
     /// </summary>
     Completed,
 
     /// <summary>
-    /// The request failed validation and was never executed.
+    /// The step's input failed its validation rules (or a handler raised a validation error): it
+    /// did not complete, and the process keeps its state. Correct the input and send it again.
     /// </summary>
     ValidationFailed,
 
     /// <summary>
-    /// An unexpected exception occurred while processing the request. The process keeps the
-    /// state it had before the step, so the step can be retried.
+    /// A defect: the handler threw an unexpected error, or its result broke a process rule (an
+    /// invalid next step or information request, a handoff to the service itself). The process
+    /// keeps the state it had before the step, so the step can be retried once fixed (ADR 0008).
     /// </summary>
     Exception,
 
     /// <summary>
-    /// The step was not run because it had already completed: the status an execution outcome
-    /// gets for a <see cref="StepCandidateStatus.Satisfied"/> candidate. Satisfied candidates are
-    /// kept out of the execution plan, so the runtime does not normally record it.
-    /// </summary>
-    Skipped,
-
-    /// <summary>
-    /// The request was cancelled while the step was executing. The step's state is saved with this
-    /// status and the process moves to <see cref="ProcessExecutionState.Canceled"/>.
+    /// The caller cancelled the request while the step's handler was running: the step did not
+    /// finish, and the process keeps the state it had before the step, so the step can be sent
+    /// again.
     /// </summary>
     Canceled,
 
     /// <summary>
-    /// The step executed and its handler returned a business failure: the process has ended in
-    /// <see cref="ProcessExecutionState.BusinessFailure"/>. The step did not complete.
+    /// The step's handler returned a business failure: the step did not complete, and the process
+    /// is in <see cref="ProcessExecutionState.BusinessFailure"/>.
     /// </summary>
     Failed,
 
     /// <summary>
-    /// The handler rejected the step's input as correctable; the step was not completed and the
-    /// process was not changed.
+    /// The handler rejected the step's input as correctable: the step was not completed and the
+    /// process was not changed. Correct the input and send it again, or choose another step.
     /// </summary>
     Rejected,
 }
@@ -120,76 +82,76 @@ public enum MessageType
 }
 
 /// <summary>
-/// Represents the action the execution processor should take
-/// after evaluating the outcome of a step execution.
+/// What the runtime concluded from a step handler's result: the audit vocabulary of the
+/// <c>StepCompleted</c> process event, which carries it as <c>DecisionType</c> (#536).
 /// </summary>
+/// <remarks>
+/// Reporting reads it to see why the process moved where it did. The transport layers' answers do
+/// not carry it: callers get the <see cref="ProcessExecutionState"/> and the step's
+/// <see cref="StepExecutionStatus"/>. The decision sets the process state, and only the decision
+/// does.
+/// </remarks>
 public enum ExecutionDecisionType
 {
     /// <summary>
-    /// Execution can continue immediately using the specified
-    /// next candidate.
+    /// The step completed, and the process continues at once with the next step submitted in the
+    /// same request.
     /// </summary>
     Continue,
 
     /// <summary>
-    /// The process has reached a terminal state and no further
-    /// execution is possible or required.
+    /// The step completed, and nothing more is available: the process is complete.
     /// </summary>
     Complete,
 
     /// <summary>
-    /// The step executed successfully, but the business outcome
-    /// indicated failure and execution cannot continue.
+    /// The handler returned a business failure: the step is recorded as
+    /// <see cref="StepExecutionStatus.Failed"/>, and the process is in
+    /// <see cref="ProcessExecutionState.BusinessFailure"/>.
     /// </summary>
     BusinessFailure,
 
     /// <summary>
-    /// A process rule or framework invariant was violated.
-    /// Examples include illegal graph transitions or invalid
-    /// required step selections.
+    /// The handler's result broke a process rule (an illegal next step, an invalid information
+    /// request, a handoff to the service itself): the step is recorded as
+    /// <see cref="StepExecutionStatus.Exception"/>, and the process keeps its state.
     /// </summary>
     ProcessViolation,
 
     /// <summary>
-    /// The step executed successfully and is handing off to a
-    /// different processor for continued execution.
+    /// The step completed and handed the process off to another service.
     /// </summary>
     HandOff,
 
     /// <summary>
-    /// Execution cannot continue until a specific next step
-    /// is supplied by the consumer.
+    /// The step completed, and the process waits for a specific next step.
     /// </summary>
     AwaitingRequiredStep,
 
     /// <summary>
-    /// Execution cannot continue because no executable candidate
-    /// was supplied. The consumer must select one of the available
-    /// next steps returned by the process.
+    /// The step completed, and the process waits for the caller to choose one of its available steps.
     /// </summary>
     AwaitingStepSelection,
 
     /// <summary>
-    /// Execution cannot continue until the questions of the required
-    /// step's information request are answered, by submitting that
-    /// information step with the answers.
+    /// The step completed, and the process waits for the answers to an information request.
     /// </summary>
     AwaitingInformation,
 
     /// <summary>
-    /// The handler rejected the step's input as correctable. The process is not changed: its
-    /// state, required step and available steps stay as they were before the step.
+    /// The handler rejected the step's input as correctable: nothing is saved and no event is written,
+    /// so <c>StepCompleted</c> never carries it.
     /// </summary>
     Rejected,
 }
 
 /// <summary>
-/// The state of a process instance, stored in its process state and returned after each request.
+/// Where a process is: stored in its process state and returned after each request (#536).
 /// </summary>
 /// <remarks>
-/// Set when the process is created, from the <see cref="ExecutionDecisionType"/> of each step that
-/// runs on it, and on cancellation. A step its handler rejects, or one that fails with a validation
-/// error or an unexpected error, leaves the state unchanged.
+/// Set when the process is created and from the result of each step whose handler changes it. A step
+/// that is rejected, fails validation, throws an unexpected error, breaks a process rule or is
+/// cancelled leaves the state unchanged; only the step's <see cref="StepExecutionStatus"/> records it.
 /// </remarks>
 public enum ProcessExecutionState
 {
@@ -200,26 +162,23 @@ public enum ProcessExecutionState
     Active,
 
     /// <summary>
-    /// The last step required no next step and the process rules make no further step available.
+    /// The process has ended: the last step's handler completed it (<c>Complete(...)</c>), or it
+    /// required no next step and the process rules make no further step available. No further step
+    /// runs (<c>pro_process_ended</c>, ADR 0033).
     /// </summary>
     Complete,
 
     /// <summary>
-    /// The last step's handler returned a business failure; that step is recorded as
-    /// <see cref="StepExecutionStatus.Failed"/>.
+    /// The process has ended: the last step's handler returned a business failure, recorded as
+    /// <see cref="StepExecutionStatus.Failed"/>. No further step runs (<c>pro_process_ended</c>); a new
+    /// process is started instead (ADR 0033).
     /// </summary>
     BusinessFailure,
 
     /// <summary>
-    /// The last step's result broke a process rule, for example by requiring a step that is not
-    /// registered or not a legal next step, or an information step without a well-formed
-    /// information request.
-    /// </summary>
-    ProcessViolation,
-
-    /// <summary>
-    /// The last step handed the process off to another processor, named by the process's
-    /// target processor name; the process continues there.
+    /// The last step handed the process off to another processor, named by the process's target
+    /// processor name; the process continues there. This service runs none of its steps on it
+    /// (<c>pro_process_ended</c>) unless that processor hands it back (ADR 0033).
     /// </summary>
     HandOff,
 
@@ -234,49 +193,41 @@ public enum ProcessExecutionState
     AwaitingStepSelection,
 
     /// <summary>
-    /// Not set by the runtime: an unexpected error leaves the process in the state it had before
-    /// the step, so the step can be retried (ADR 0008). Kept for state written by earlier versions.
-    /// </summary>
-    Exception,
-
-    /// <summary>
-    /// The request was cancelled while a step was executing: that step is recorded as
-    /// <see cref="StepExecutionStatus.Canceled"/>, and the required step, target processor and
-    /// available steps are cleared.
-    /// </summary>
-    Canceled,
-
-    /// <summary>
     /// The process waits for the answers to the required step's information request.
     /// </summary>
     AwaitingInformation,
 }
 
 /// <summary>
-/// Represents the state of a step candidate during the planning phase.
+/// How a submitted step was planned: the audit vocabulary of the <c>PlanBuilt</c> process event,
+/// which carries it per candidate as <c>CandidateStatus</c> (#536).
 /// </summary>
+/// <remarks>
+/// Reporting reads it to see which submitted steps entered the plan and why the others did not. The
+/// transport layers' answers do not carry it: a step that did not run is
+/// <see cref="StepExecutionStatus.Pending"/> there, and the framework messages say why.
+/// </remarks>
 public enum StepCandidateStatus
 {
     /// <summary>
-    /// Initial state before any planning or validation has occurred.
+    /// Not yet planned; a published candidate is never in this status.
     /// </summary>
     Pending,
 
     /// <summary>
-    /// The candidate was successfully created from the request
-    /// and is eligible for validation and consistency checks.
+    /// Built from the request and valid: it entered the execution plan unless a later check (not a
+    /// next step) kept it out.
     /// </summary>
     Built,
 
     /// <summary>
-    /// The candidate failed validation or consistency checks
-    /// and cannot participate in the execution plan.
+    /// Rejected: not registered, unreadable, invalid input, a missing dependency, or not a next step.
+    /// The candidate's messages say which.
     /// </summary>
     Invalid,
 
     /// <summary>
-    /// The step has already been completed for the processor
-    /// and does not need to be included in the execution plan.
+    /// Already completed and not repeatable: it was not run again.
     /// </summary>
     Satisfied,
 }

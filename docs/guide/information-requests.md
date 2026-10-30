@@ -29,7 +29,7 @@ sequenceDiagram
         S->>S: check the answers against the request it sent
         S->>H: GiftWrapAnswersHandler(answers)
         H-->>S: Success(result) / another request / Reject
-        S-->>C: outcome, result, what is next
+        S-->>C: status, result, what is next
     end
 ```
 
@@ -145,7 +145,7 @@ public sealed class GiftWrapAnswersHandler : IProcessStepHandler<GiftWrapAnswers
 |---|---|
 | `wrap = true`, `paper = gold` | accepted; the handler sees both |
 | `wrap = false` (no paper) | accepted: the paper question is not enabled, so it needs no answer |
-| `wrap = false`, `paper = red` | **not accepted**: the outcome is `pending`, the same request is asked again, and the handler never sees the answer to a question that was not enabled |
+| `wrap = false`, `paper = red` | **not accepted**: the step's status is `pending`, the same request is asked again, and the handler never sees the answer to a question that was not enabled |
 
 The MCP adapter asks in rounds: forms where the client supports them, a chat conversation otherwise.
 

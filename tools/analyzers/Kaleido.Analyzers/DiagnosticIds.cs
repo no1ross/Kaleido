@@ -68,4 +68,7 @@ internal static class DiagnosticIds
     /// <summary>A [Filterable] operator does not apply to the property's type.</summary>
     public const string FilterOperatorTypeMismatch = "KAL2020";
     public const string OutputPropertyDescription = "KAL2021";
+
+    /// <summary>A handler returns Complete() for an entry step (no DependsOn or AvailableAfter).</summary>
+    public const string EntryStepCompletesProcess = "KAL2022";
 }

@@ -375,7 +375,7 @@ public sealed class SqliteKaleidoContextStoreTests
         await sut.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, TestContext.Current.CancellationToken);
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            sut.SaveAsync(loaded with { State = ProcessExecutionState.Exception }, TestContext.Current.CancellationToken));
+            sut.SaveAsync(loaded with { State = ProcessExecutionState.BusinessFailure }, TestContext.Current.CancellationToken));
 
         Assert.Equal(loaded.ProcessId, exception.ProcessId);
         Assert.Equal(ProcessExecutionState.Complete, (await sut.LoadAsync(loaded.ProcessId, TestContext.Current.CancellationToken))!.State);
@@ -409,7 +409,7 @@ public sealed class SqliteKaleidoContextStoreTests
         await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete }, TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            CreateSut(second).SaveAsync(loadedBySecond! with { State = ProcessExecutionState.Exception }, TestContext.Current.CancellationToken));
+            CreateSut(second).SaveAsync(loadedBySecond! with { State = ProcessExecutionState.BusinessFailure }, TestContext.Current.CancellationToken));
     }
 
     private static SqliteKaleidoContextDbContext CreateSharedDbContext(string connectionString)
@@ -589,7 +589,7 @@ public sealed class SqliteKaleidoContextStoreTests
         await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete }, TestContext.Current.CancellationToken);
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
-            CreateSut(second).SaveAsync(savedBySecond with { State = ProcessExecutionState.Exception }, TestContext.Current.CancellationToken));
+            CreateSut(second).SaveAsync(savedBySecond with { State = ProcessExecutionState.BusinessFailure }, TestContext.Current.CancellationToken));
 
         Assert.IsType<DbUpdateConcurrencyException>(exception.InnerException);
         Assert.Equal(ProcessExecutionState.Complete, (await CreateSut(first).LoadAsync(processId, TestContext.Current.CancellationToken))!.State);

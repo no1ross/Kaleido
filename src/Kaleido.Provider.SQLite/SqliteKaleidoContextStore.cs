@@ -51,7 +51,8 @@ internal sealed partial class SqliteKaleidoContextStore(
                 entity,
                 serviceOptions.ServiceName);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        // Only the caller's cancellation is not a load failure (#517).
+        catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             SqliteTelemetry.LoadFailuresCounter.Add(1);
             // The type, never the driver's message (SQL, connection details) (#290).
@@ -117,7 +118,7 @@ internal sealed partial class SqliteKaleidoContextStore(
             return context with { Version = entity.Version };
         }
         // A conflict is not a store failure: the request lost the race and the caller rereads (409).
-        catch (Exception exception) when (exception is not OperationCanceledException and not KaleidoConcurrencyException)
+        catch (Exception exception) when (exception is not KaleidoConcurrencyException && (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested))
         {
             SqliteTelemetry.SaveFailuresCounter.Add(1);
             activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);

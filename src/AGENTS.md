@@ -75,7 +75,7 @@ Registration invariants:
 - A step's name is its type name (`Type.Name`, unmodified); step type names must be unique across the assembly scan
 - Inside the runtime the next step is typed (`Success<TNext>()`, `Type` through invoker → evaluator); step names are produced only at the boundary (state, events, responses)
 - Every discovered step must have exactly one handler
-- No relationship may self-reference, and the `DependsOn` graph must not be circular; a relationship must name a step the processor registers (all fail at startup with `pro_invalid_registration`). `AvailableAfter`/`AvailableUntil` cycles are not detected
+- No relationship may self-reference, and the graph of `DependsOn` and `AvailableAfter` together must not be circular (both need every named step completed, so such a cycle can never run); a relationship must name a step the processor registers (all fail at startup with `pro_invalid_registration`). `AvailableUntil` only closes a step and takes no part in cycles
 
 The planning pipeline is layered — keep those responsibilities separated:
 - `StepCandidateBuilder` → resolves step names, hydrates input

@@ -106,7 +106,7 @@ internal sealed class ProcessExecutionResponseFactory(
             TargetProcessorName =
                 processResult.TargetProcessorName,
 
-            Outcome = stepResult.Outcome,
+            Status = stepResult.ExecutionStatus,
 
             AvailableSteps =
                 processResult.AvailableSteps
@@ -157,8 +157,8 @@ internal sealed class ProcessExecutionResponseFactory(
             TargetProcessorName =
                 response.TargetProcessorName,
 
-            Outcome =
-                response.Outcome,
+            Status =
+                response.Status,
 
             AvailableSteps =
                 response.AvailableSteps,

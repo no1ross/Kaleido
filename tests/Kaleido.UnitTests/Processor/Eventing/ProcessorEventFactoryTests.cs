@@ -199,9 +199,7 @@ public sealed class ProcessorEventFactoryTests
         new()
         {
             StepName = "test-step",
-            Decision = ExecutionDecisionType.Continue,
-            Status = StepExecutionStatus.Completed,
-            Outcome = StepExecutionOutcome.Completed
+            Status = StepExecutionStatus.Completed
         };
 
     [Fact]
@@ -215,7 +213,7 @@ public sealed class ProcessorEventFactoryTests
             Steps = [new StepContext { StepName = "test-step", LatestRequestId = "req-7", LastExecuted = executed }]
         };
 
-        var envelope = Sut.CreateStepCompleted(new KaleidoCorrelationContext(), context, new StepCandidate { StepName = "test-step" }, CompletedOutcome(), new StepInvocationResult());
+        var envelope = Sut.CreateStepCompleted(new KaleidoCorrelationContext(), context, new StepCandidate { StepName = "test-step" }, CompletedOutcome(), ExecutionDecisionType.Continue, new StepInvocationResult());
 
         Assert.Equal("req-7", envelope.Event.StepLatestRequestId);
         Assert.Equal(executed, envelope.Event.StepLastExecuted);
@@ -225,7 +223,7 @@ public sealed class ProcessorEventFactoryTests
     public void CreateStepCompleted_ForAStepNotInTheProcess_HasNoHistory()
     {
         var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test" };
-        var envelope = Sut.CreateStepCompleted(new KaleidoCorrelationContext(), context, new StepCandidate { StepName = "test-step" }, CompletedOutcome(), new StepInvocationResult());
+        var envelope = Sut.CreateStepCompleted(new KaleidoCorrelationContext(), context, new StepCandidate { StepName = "test-step" }, CompletedOutcome(), ExecutionDecisionType.Continue, new StepInvocationResult());
 
         Assert.Null(envelope.Event.StepLatestRequestId);
         Assert.Null(envelope.Event.StepLastExecuted);
@@ -240,13 +238,11 @@ public sealed class ProcessorEventFactoryTests
         {
             StepName = "test",
             Status = StepExecutionStatus.Completed,
-            Outcome = StepExecutionOutcome.Completed,
-            Decision = ExecutionDecisionType.Continue
         };
         var result = new StepInvocationResult();
 
         Assert.Throws<ArgumentNullException>(() =>
-            Sut.CreateStepCompleted(correlation, null!, candidate, outcome, result));
+            Sut.CreateStepCompleted(correlation, null!, candidate, outcome, ExecutionDecisionType.Continue, result));
     }
 
     [Fact]
@@ -258,13 +254,11 @@ public sealed class ProcessorEventFactoryTests
         {
             StepName = "test",
             Status = StepExecutionStatus.Completed,
-            Outcome = StepExecutionOutcome.Completed,
-            Decision = ExecutionDecisionType.Continue
         };
         var result = new StepInvocationResult();
 
         Assert.Throws<ArgumentNullException>(() =>
-            Sut.CreateStepCompleted(correlation, context, null!, outcome, result));
+            Sut.CreateStepCompleted(correlation, context, null!, outcome, ExecutionDecisionType.Continue, result));
     }
 
     [Fact]
@@ -276,7 +270,7 @@ public sealed class ProcessorEventFactoryTests
         var result = new StepInvocationResult();
 
         Assert.Throws<ArgumentNullException>(() =>
-            Sut.CreateStepCompleted(correlation, context, candidate, null!, result));
+            Sut.CreateStepCompleted(correlation, context, candidate, null!, ExecutionDecisionType.Continue, result));
     }
 
     [Fact]
@@ -289,12 +283,10 @@ public sealed class ProcessorEventFactoryTests
         {
             StepName = "test",
             Status = StepExecutionStatus.Completed,
-            Outcome = StepExecutionOutcome.Completed,
-            Decision = ExecutionDecisionType.Continue
         };
 
         Assert.Throws<ArgumentNullException>(() =>
-            Sut.CreateStepCompleted(correlation, context, candidate, outcome, null!));
+            Sut.CreateStepCompleted(correlation, context, candidate, outcome, ExecutionDecisionType.Continue, null!));
     }
 
     [Fact]
@@ -311,20 +303,17 @@ public sealed class ProcessorEventFactoryTests
         var outcome = new ProcessExecutionOutcome
         {
             StepName = "test-step",
-            Decision = ExecutionDecisionType.Continue,
-            Status = StepExecutionStatus.Completed,
-            Outcome = StepExecutionOutcome.Completed
+            Status = StepExecutionStatus.Completed
         };
         var result = new StepInvocationResult();
 
-        var envelope = Sut.CreateStepCompleted(correlation, context, candidate, outcome, result);
+        var envelope = Sut.CreateStepCompleted(correlation, context, candidate, outcome, ExecutionDecisionType.Continue, result);
 
         Assert.NotNull(envelope);
         Assert.NotNull(envelope.Event);
         Assert.Equal("test-step", envelope.Event.StepName);
         Assert.Equal(ExecutionDecisionType.Continue, envelope.Event.DecisionType);
-        Assert.Equal(StepExecutionStatus.Completed, envelope.Event.ExecutionStatus);
-        Assert.Equal(StepExecutionOutcome.Completed, envelope.Event.Outcome);
+        Assert.Equal(StepExecutionStatus.Completed, envelope.Event.Status);
     }
 
     [Fact]

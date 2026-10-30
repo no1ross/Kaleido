@@ -47,7 +47,7 @@ public sealed class CallersExampleTests
 
         Assert.Equal(HttpStatusCode.Forbidden, clerk);
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous);
-        Assert.Equal("completed", refunded.GetProperty("outcome").GetString());
+        Assert.Equal("completed", refunded.GetProperty("status").GetString());
     }
 
     // The process id is not a permission: another signed-in caller holding it may continue it.
@@ -59,6 +59,6 @@ public sealed class CallersExampleTests
 
         var confirmed = await host.StepAsync("ConfirmOrderStep", new { }, placed.GetProperty("processId").GetGuid(), "ben");
 
-        Assert.Equal("completed", confirmed.GetProperty("outcome").GetString());
+        Assert.Equal("completed", confirmed.GetProperty("status").GetString());
     }
 }

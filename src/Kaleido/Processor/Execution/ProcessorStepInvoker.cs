@@ -26,6 +26,8 @@ internal sealed record StepInvocationResult
 
     public string? TargetProcessorName { get; init; }
 
+    public bool CompletesProcess { get; init; }
+
     public object? Response { get; init; }
 
     public IReadOnlyCollection<ProcessMessage> Messages { get; init; }
@@ -55,8 +57,9 @@ internal sealed class ProcessorStepInvoker(
                 new ProcessorHandlerObservationDetails(
                     registration.Metadata.Name));
 
-        using var scope =
-            scopeFactory.CreateScope();
+        // Disposed asynchronously: a scoped dependency may implement only IAsyncDisposable (#523).
+        await using var scope =
+            scopeFactory.CreateAsyncScope();
 
         // The handler runs in its own scope, whose scoped correlation would otherwise be
         // empty: carry the request's correlation in, with this process's id and the
@@ -146,6 +149,7 @@ internal sealed class ProcessorStepInvoker(
             RequiredStep = handlerResult.RequiredStep,
             InformationRequest = handlerResult.InformationRequest,
             TargetProcessorName = handlerResult.TargetProcessorName,
+            CompletesProcess = handlerResult.CompletesProcess,
             Response = handlerResult.Response,
             Messages = handlerResult.Messages,
         };

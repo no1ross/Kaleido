@@ -197,7 +197,7 @@ public sealed record ProcessExecutionStepResponse
 /// a step without a typed result; the base of <see cref="StepExecutionResponse{TResponse}"/>.
 /// </summary>
 /// <remarks>
-/// An HTTP 200 does not mean the step completed: inspect <see cref="Outcome"/>.
+/// An HTTP 200 does not mean the step completed: inspect <see cref="Status"/>.
 /// </remarks>
 [ExcludeFromCodeCoverage]
 public record StepExecutionResponse
@@ -243,10 +243,15 @@ public record StepExecutionResponse
     }
 
     /// <summary>
-    /// What happened to the executed step (completed, failed, rejected, ...). The step's outcome,
-    /// not the HTTP status, says whether it completed.
+    /// What happened to the executed step: <see cref="StepExecutionStatus.Completed"/>,
+    /// <see cref="StepExecutionStatus.Rejected"/> or <see cref="StepExecutionStatus.ValidationFailed"/>
+    /// (correct the input), <see cref="StepExecutionStatus.Failed"/> (a business failure),
+    /// <see cref="StepExecutionStatus.Exception"/> (a defect; retry later),
+    /// <see cref="StepExecutionStatus.Canceled"/>, or <see cref="StepExecutionStatus.Pending"/> when it
+    /// did not run (the framework messages say why). The step's status, not the HTTP status, says
+    /// whether it completed.
     /// </summary>
-    public StepExecutionOutcome Outcome
+    public StepExecutionStatus Status
     {
         get;
         init;

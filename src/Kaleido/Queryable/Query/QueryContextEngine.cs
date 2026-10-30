@@ -83,7 +83,9 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             observation.ValidationFailed(exception);
             throw;
         }
-        catch (OperationCanceledException)
+        // The caller's cancellation; any other OperationCanceledException (a downstream timeout) is a
+        // failure, recorded below (#517).
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             observation.Canceled();
             throw;
@@ -143,7 +145,9 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
             observation.ValidationFailed(exception);
             throw;
         }
-        catch (OperationCanceledException)
+        // The caller's cancellation; any other OperationCanceledException (a downstream timeout) is a
+        // failure, recorded below (#517).
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             observation.Canceled();
             throw;

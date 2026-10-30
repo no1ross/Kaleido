@@ -185,10 +185,6 @@ public sealed class ProcessorExecutorTests
             Assert.Single(result.Outcomes);
 
         Assert.Equal(
-            ExecutionDecisionType.Complete,
-            outcome.Decision);
-
-        Assert.Equal(
             StepExecutionStatus.Completed,
             outcome.Status);
     }
@@ -296,7 +292,6 @@ public sealed class ProcessorExecutorTests
 
         var outcome = Assert.Single(result.Outcomes);
         Assert.Equal(StepExecutionStatus.Rejected, outcome.Status);
-        Assert.Equal(StepExecutionOutcome.Rejected, outcome.Outcome);
         Assert.Equal([message], outcome.BusinessMessages);
         Assert.Empty(saved);
         Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
@@ -348,10 +343,6 @@ public sealed class ProcessorExecutorTests
         Assert.Equal(
             StepExecutionStatus.Completed,
             outcome.Status);
-
-        Assert.Equal(
-            ExecutionDecisionType.Complete,
-            outcome.Decision);
 
         Assert.Same(
             response,
@@ -445,20 +436,12 @@ public sealed class ProcessorExecutorTests
                 Assert.Equal(
                     "step-a",
                     first.StepName);
-
-                Assert.Equal(
-                    ExecutionDecisionType.Continue,
-                    first.Decision);
             },
             second =>
             {
                 Assert.Equal(
                     "step-b",
                     second.StepName);
-
-                Assert.Equal(
-                    ExecutionDecisionType.Complete,
-                    second.Decision);
             });
 
         invoker.Verify(
@@ -492,12 +475,16 @@ public sealed class ProcessorExecutorTests
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new KaleidoValidationException("pro_custom_validation", "Member invalid."));
         var stepObservation = new Mock<IProcessorStepObservation>();
+        var stateUpdater = CreateStateUpdater();
 
-        var result = await CreateSut(invoker, stepObservation: stepObservation).ExecuteAsync(
+        var result = await CreateSut(invoker, stateUpdater: stateUpdater, stepObservation: stepObservation).ExecuteAsync(
             [candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
 
         var outcome = Assert.Single(result.Outcomes);
         Assert.Equal(StepExecutionStatus.ValidationFailed, outcome.Status);
+
+        // The history records the same status as the answer (#536); it used to say Exception.
+        stateUpdater.Verify(x => x.ApplyUnfinishedStep(It.IsAny<ProcessorContext>(), candidate, StepExecutionStatus.ValidationFailed), Times.Once);
         var message = Assert.Single(outcome.RuntimeMessages);
         Assert.Equal("pro_custom_validation", message.Code);
         Assert.Equal("Member invalid.", message.Message);
@@ -554,10 +541,6 @@ public sealed class ProcessorExecutorTests
             StepExecutionStatus.Exception,
             outcome.Status);
 
-        Assert.Equal(
-            ExecutionDecisionType.ProcessViolation,
-            outcome.Decision);
-
         Assert.Contains(
             outcome.RuntimeMessages,
             x => x.Code == ProcessorErrorCodes.FrameworkException);
@@ -566,7 +549,7 @@ public sealed class ProcessorExecutorTests
             Assert.Single(savedContexts);
 
         Assert.Equal(
-            ProcessExecutionState.Exception,
+            context.State,
             persisted.State);
     }
 
@@ -616,14 +599,6 @@ public sealed class ProcessorExecutorTests
             StepExecutionStatus.Canceled,
             outcome.Status);
 
-        Assert.Equal(
-            StepExecutionOutcome.Canceled,
-            outcome.Outcome);
-
-        Assert.Equal(
-            ExecutionDecisionType.ProcessViolation,
-            outcome.Decision);
-
         Assert.Contains(
             outcome.RuntimeMessages,
             x => x.Code == ProcessorErrorCodes.ExecutionCanceled);
@@ -641,7 +616,7 @@ public sealed class ProcessorExecutorTests
             Assert.Single(savedContexts);
 
         Assert.Equal(
-            ProcessExecutionState.Canceled,
+            context.State,
             persisted.State);
     }
 
@@ -681,10 +656,6 @@ public sealed class ProcessorExecutorTests
             StepExecutionStatus.Exception,
             outcome.Status);
 
-        Assert.Equal(
-            ExecutionDecisionType.ProcessViolation,
-            outcome.Decision);
-
         Assert.Contains(
             outcome.RuntimeMessages,
             x => x.Code == ProcessorErrorCodes.FrameworkException);
@@ -693,7 +664,7 @@ public sealed class ProcessorExecutorTests
             Assert.Single(savedContexts);
 
         Assert.Equal(
-            ProcessExecutionState.Exception,
+            context.State,
             persisted.State);
     }
 
@@ -733,10 +704,6 @@ public sealed class ProcessorExecutorTests
             StepExecutionStatus.Exception,
             outcome.Status);
 
-        Assert.Equal(
-            ExecutionDecisionType.ProcessViolation,
-            outcome.Decision);
-
         Assert.Contains(
             outcome.RuntimeMessages,
             x => x.Code == ProcessorErrorCodes.FrameworkException);
@@ -745,7 +712,7 @@ public sealed class ProcessorExecutorTests
             Assert.Single(savedContexts);
 
         Assert.Equal(
-            ProcessExecutionState.Exception,
+            context.State,
             persisted.State);
     }
 
@@ -766,10 +733,10 @@ public sealed class ProcessorExecutorTests
 
         stateUpdater
             .Setup(x =>
-                x.ApplyException(
+                x.ApplyUnfinishedStep(
                     context,
-                    candidate))
-            .Returns(context with { State = ProcessExecutionState.Exception });
+                    candidate, StepExecutionStatus.Exception))
+            .Returns(context with { State = ProcessExecutionState.AwaitingRequiredStep });
 
         var processor =
             CreateSut(
@@ -787,10 +754,6 @@ public sealed class ProcessorExecutorTests
         Assert.Equal(
             StepExecutionStatus.Exception,
             outcome.Status);
-
-        Assert.Equal(
-            ExecutionDecisionType.ProcessViolation,
-            outcome.Decision);
 
         Assert.Contains(
             outcome.RuntimeMessages,
@@ -821,21 +784,6 @@ public sealed class ProcessorExecutorTests
         return Assert.Single(result.Outcomes);
     }
 
-    [Theory]
-    [InlineData(StepCandidateStatus.Invalid, StepExecutionStatus.ValidationFailed, StepExecutionOutcome.Failed)]
-    [InlineData(StepCandidateStatus.Satisfied, StepExecutionStatus.Skipped, StepExecutionOutcome.Blocked)]
-    [InlineData(StepCandidateStatus.Pending, StepExecutionStatus.Pending, StepExecutionOutcome.Blocked)]
-    public async Task ExecuteAsync_TheCandidateStatus_DecidesTheReportedStatus(
-        StepCandidateStatus candidateStatus,
-        StepExecutionStatus expectedStatus,
-        StepExecutionOutcome expectedOutcome)
-    {
-        var outcome = await ExecuteOneAsync(candidateStatus, succeeded: true, ExecutionDecision.Complete());
-
-        Assert.Equal(expectedStatus, outcome.Status);
-        Assert.Equal(expectedOutcome, outcome.Outcome);
-    }
-
     [Fact]
     public async Task ExecuteAsync_AProcessViolationAfterASuccessfulHandler_IsReportedAsAnException()
     {
@@ -844,7 +792,6 @@ public sealed class ProcessorExecutorTests
         var outcome = await ExecuteOneAsync(StepCandidateStatus.Built, succeeded: true, ExecutionDecision.ProcessViolation(violation));
 
         Assert.Equal(StepExecutionStatus.Exception, outcome.Status);
-        Assert.Equal(StepExecutionOutcome.Failed, outcome.Outcome);
         Assert.Equal([violation], outcome.RuntimeMessages);
     }
 
@@ -854,8 +801,6 @@ public sealed class ProcessorExecutorTests
         var outcome = await ExecuteOneAsync(StepCandidateStatus.Built, succeeded: false, ExecutionDecision.BusinessFailure());
 
         Assert.Equal(StepExecutionStatus.Failed, outcome.Status);
-        Assert.Equal(StepExecutionOutcome.Failed, outcome.Outcome);
-        Assert.Equal(ExecutionDecisionType.BusinessFailure, outcome.Decision);
     }
 
     [Fact]
@@ -958,25 +903,18 @@ public sealed class ProcessorExecutorTests
                 ExecutionDecision _) =>
                 context);
 
+        // A step that did not finish leaves the process as it was; only its status is recorded.
         updater
             .Setup(x =>
-                x.ApplyException(
+                x.ApplyUnfinishedStep(
                     It.IsAny<ProcessorContext>(),
-                    It.IsAny<StepCandidate>()))
+                    It.IsAny<StepCandidate>(),
+                    It.IsAny<StepExecutionStatus>()))
             .Returns((
                 ProcessorContext context,
-                StepCandidate _) =>
-                context with { State = ProcessExecutionState.Exception });
-
-        updater
-            .Setup(x =>
-                x.ApplyCancellation(
-                    It.IsAny<ProcessorContext>(),
-                    It.IsAny<StepCandidate>()))
-            .Returns((
-                ProcessorContext context,
-                StepCandidate _) =>
-                context with { State = ProcessExecutionState.Canceled });
+                StepCandidate _,
+                StepExecutionStatus _) =>
+                context);
 
         return updater;
     }
@@ -1332,9 +1270,34 @@ public sealed class ProcessorExecutorTests
 
         Assert.Equal(StepExecutionStatus.Canceled, Assert.Single(result.Outcomes).Status);
         var (saved, events) = Assert.Single(saves);
-        Assert.Equal(ProcessExecutionState.Canceled, saved.State);
+        Assert.Equal(CreateContext("step-a").State, saved.State);
         Assert.Empty(events);
         outbox.Verify(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>()), Times.Never);
+    }
+
+    // Only the caller's token is a cancellation (#517): a handler's downstream timeout (an
+    // OperationCanceledException nobody asked for) is a failure - the step is an exception, observed
+    // as a failure, and retryable.
+    [Fact]
+    public async Task ExecuteAsync_AHandlerTimeout_IsAFailure_NotACancellation()
+    {
+        var candidate = CreateCandidate<TestStepA>("step-a", CreateRegistration<TestStepA>("step-a"));
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("The downstream call timed out.", new TimeoutException()));
+        var stepObservation = new Mock<IProcessorStepObservation>();
+        var stateUpdater = CreateStateUpdater();
+
+        var result = await CreateSut(invoker, stateUpdater: stateUpdater, stepObservation: stepObservation)
+            .ExecuteAsync([candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
+
+        var outcome = Assert.Single(result.Outcomes);
+        Assert.Equal(StepExecutionStatus.Exception, outcome.Status);
+        Assert.Contains(outcome.RuntimeMessages, x => x.Code == ProcessorErrorCodes.FrameworkException);
+        stepObservation.Verify(x => x.StepFailed(It.IsAny<TaskCanceledException>()), Times.Once);
+        stepObservation.Verify(x => x.Canceled(), Times.Never);
+        stateUpdater.Verify(x => x.ApplyUnfinishedStep(It.IsAny<ProcessorContext>(), candidate, StepExecutionStatus.Exception), Times.Once);
     }
 
     [Fact]
@@ -1362,7 +1325,6 @@ public sealed class ProcessorExecutorTests
 
         Assert.Equal(StepExecutionStatus.Completed, Assert.Single(result.Outcomes).Status);
         var (saved, events) = Assert.Single(saves);
-        Assert.NotEqual(ProcessExecutionState.Canceled, saved.State);
         Assert.Equal(stepEvent, Assert.Single(events));
     }
 

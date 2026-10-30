@@ -87,11 +87,36 @@ public sealed class KaleidoMcpToolHandlerTests
     [Fact]
     public async Task ListTools_WhenTheCallerCancels_Propagates()
     {
-        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(cancellation.Token));
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().ListToolsAsync(ListRequest(), Cancel).AsTask());
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().ListToolsAsync(ListRequest(), cancellation.Token).AsTask());
 
         listObservation.Verify(x => x.Dispose(), Times.Once);
+    }
+
+    // Only the caller's token is a cancellation (#517): a timeout reading the tools is a failure.
+    [Fact]
+    public async Task ListTools_AnOperationCanceledExceptionTheCallerDidNotCause_IsAFailure()
+    {
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new TaskCanceledException("timeout"));
+
+        var result = await CreateSut().ListToolsAsync(ListRequest(), Cancel);
+
+        Assert.Empty(result.Tools);
+    }
+
+    // Only the caller's token is a cancellation (#517): a timeout reading the tools fails the call.
+    [Fact]
+    public async Task CallTool_WhenReadingTheToolsTimesOut_IsAnErrorResult_NotACancellation()
+    {
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new TaskCanceledException("timeout"));
+
+        var result = await CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel);
+
+        Assert.True(result.IsError);
+        callObservation.Verify(x => x.Canceled(), Times.Never);
     }
 
     [Fact]
@@ -116,9 +141,11 @@ public sealed class KaleidoMcpToolHandlerTests
     [Fact]
     public async Task CallTool_WhenReadingTheToolsIsCanceled_IsObservedAsCanceled_AndPropagates()
     {
-        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        catalogs.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(cancellation.Token));
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel).AsTask());
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().CallToolAsync(CallRequest("clinic_patient"), cancellation.Token).AsTask());
 
         callObservation.Verify(x => x.Canceled());
         callObservation.Verify(x => x.Dispose(), Times.Once);
@@ -525,10 +552,12 @@ public sealed class KaleidoMcpToolHandlerTests
     [Fact]
     public async Task CallTool_Cancellation_IsObservedAsCanceled_AndPropagates()
     {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
         invoker.Setup(x => x.InvokeAsync(Search, It.IsAny<KaleidoToolCall>(), It.IsAny<ToolCatalog>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new OperationCanceledException());
+            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().CallToolAsync(CallRequest("clinic_patient"), Cancel).AsTask());
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().CallToolAsync(CallRequest("clinic_patient"), cancellation.Token).AsTask());
 
         callObservation.Verify(x => x.Canceled());
         callObservation.Verify(x => x.Completed(It.IsAny<CallToolResult>()), Times.Never);

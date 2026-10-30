@@ -112,14 +112,11 @@ public sealed class KaleidoJsonOptionsTests
     public void Options_WriteTheWireEnumsWithTheirContractNames()
     {
         Assert.Equal(
-            """["active","complete","businessFailure","processViolation","handOff","awaitingRequiredStep","awaitingStepSelection","exception","canceled","awaitingInformation"]""",
+            """["active","complete","businessFailure","handOff","awaitingRequiredStep","awaitingStepSelection","awaitingInformation"]""",
             Names<ProcessExecutionState>());
         Assert.Equal(
-            """["pending","completed","validationFailed","exception","skipped","canceled","failed","rejected"]""",
+            """["pending","completed","validationFailed","exception","canceled","failed","rejected"]""",
             Names<StepExecutionStatus>());
-        Assert.Equal(
-            """["pending","completed","failed","blocked","canceled","rejected"]""",
-            Names<StepExecutionOutcome>());
         Assert.Equal(
             """["information","warning","error"]""",
             Names<MessageType>());

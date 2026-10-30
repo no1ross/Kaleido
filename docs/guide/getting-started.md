@@ -167,13 +167,13 @@ sequenceDiagram
     rect rgba(70, 130, 180, 0.25)
         Note over C,S: Start a process
         C->>S: POST /orders/processes/steps/PlaceOrderStep { processStep: { item, quantity } }
-        S-->>C: outcome completed, result { number }, processId, requiredStep ConfirmOrderStep
+        S-->>C: status completed, result { number }, processId, requiredStep ConfirmOrderStep
     end
 
     rect rgba(70, 130, 180, 0.25)
         Note over C,S: Continue it
         C->>S: POST /orders/processes/steps/ConfirmOrderStep (X-Kaleido-Process-Id)
-        S-->>C: outcome completed, nothing required next
+        S-->>C: status completed, nothing required next
     end
 
     C->>S: POST /orders/queryable/OrderSource/query { query: { searchText: "Book" } }

@@ -59,8 +59,9 @@ internal sealed class QueryableService(
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        using var scope =
-            scopeFactory.CreateScope();
+        // Disposed asynchronously: a scoped dependency may implement only IAsyncDisposable (#523).
+        await using var scope =
+            scopeFactory.CreateAsyncScope();
 
         // The query runs in its own scope, whose scoped correlation would otherwise be empty (#413):
         // carry the request's correlation in, as the Process runtime does for a step handler, so

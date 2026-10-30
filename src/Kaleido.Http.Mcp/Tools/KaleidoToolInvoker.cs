@@ -161,10 +161,14 @@ internal sealed partial class KaleidoToolInvoker(
                 McpErrorCodes.ServiceUnavailable,
                 $"{tool.Definition.Name}: the Kaleido service could not be reached. If it was a step, check the process with get_process_state before trying again.");
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
         {
             // Never a protocol error: the agent gets a result it can report. A cancelled call has
-            // nobody waiting for an answer, so cancellation still propagates.
+            // nobody waiting for an answer, so the caller's cancellation still propagates (#517).
             LogToolFailed(logger, exception, tool.Definition.Name);
 
             return Error(
@@ -760,7 +764,7 @@ internal sealed partial class KaleidoToolInvoker(
             var mode = ElicitationMode(call);
 
             if (required?.InformationRequest is { } pending &&
-                step.Outcome == StepExecutionOutcome.Completed &&
+                step.Status == StepExecutionStatus.Completed &&
                 mode != Elicitation.None)
             {
                 if (round >= options.MaxElicitationRounds)
@@ -967,7 +971,7 @@ internal sealed partial class KaleidoToolInvoker(
             ["processId"] = step.ProcessId.ToString(),
             ["service"] = service,
             ["step"] = step.StepName,
-            ["outcome"] = Camel(step.Outcome.ToString()),
+            ["outcome"] = Camel(step.Status.ToString()),
         };
 
         if (step.Result.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
@@ -1004,13 +1008,13 @@ internal sealed partial class KaleidoToolInvoker(
 
         summary["next"] = Next(pendingService, required, available, catalog, elicited: answered.Count > 0, step.ProcessId);
 
-        // A rejected step, or one that failed unexpectedly, changed nothing: the process is where it
-        // was, so the user can correct the input and retry, or choose another step.
-        note ??= step.Outcome switch
+        // A rejected or unfinished step (invalid input, a defect, a cancellation) changed nothing: the
+        // user can correct the input and retry, or choose another step.
+        note ??= step.Status switch
         {
-            StepExecutionOutcome.Rejected =>
+            StepExecutionStatus.Rejected =>
                 "The step was rejected and nothing was changed. Tell the user why (messages verbatim; explain diagnostics); they can correct it and try again, or choose another step.",
-            StepExecutionOutcome.Failed when required is not null || available.Count > 0 =>
+            StepExecutionStatus.ValidationFailed or StepExecutionStatus.Exception or StepExecutionStatus.Canceled when required is not null || available.Count > 0 =>
                 "The step did not complete and nothing was recorded; the process is where it was. The user can try again or choose another step.",
             _ => null,
         };

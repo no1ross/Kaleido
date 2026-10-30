@@ -63,9 +63,9 @@ decision) in the same change, so the list matches the baselines when they move t
   `QueryExecuted`, `ProcessEventBase`, `IProcessEvent`, `IQueryEvent`, `ProcessEventContext`,
   `QueryableEventContext`, `KaleidoEventEnvelope<,>`). Keep.
 - [x] **Enums the audit events carry:** `ExecutionDecisionType`, `StepCandidateStatus`,
-  `StepExecutionOutcome`, `StepExecutionStatus`, `ProcessExecutionState`, and
-  `StepProcessingMessage` (the runtime messages on `StepCompleted`). Keep: an event consumer reads
-  them.
+  `StepExecutionStatus`, `ProcessExecutionState`, and `StepProcessingMessage` (the runtime messages on
+  `StepCompleted`). Keep: an event consumer reads them. `StepExecutionOutcome` is removed: it duplicated
+  `StepExecutionStatus`, which the step answer now carries as `status` (#536).
 - [x] **Constants:** `ProcessorErrorCodes` (one value renamed), `QueryableErrorCodes`,
   `ConfigurationErrorCodes`, `FrameworkErrorCodes` (`DataConversionError` removed: nothing raised it,
   #505), `KaleidoEventTypes`, and the telemetry names

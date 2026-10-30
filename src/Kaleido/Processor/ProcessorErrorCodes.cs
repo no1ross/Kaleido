@@ -108,6 +108,12 @@ public static class ProcessorErrorCodes
     /// <summary>The required next step cannot be executed.</summary>
     public const string RequiredStepNotAllowed = "pro_required_step_not_allowed";
 
+    /// <summary>
+    /// A handler handed the process off to the service it runs in; a handoff names another
+    /// service. Reported as a process violation: the process keeps its state.
+    /// </summary>
+    public const string InvalidHandOff = "pro_invalid_hand_off";
+
     /// <summary>Step execution was cancelled.</summary>
     public const string ExecutionCanceled = "pro_execution_canceled";
 
@@ -128,6 +134,13 @@ public static class ProcessorErrorCodes
     /// or not available under the process rules.
     /// </summary>
     public const string StepNotAvailable = "pro_step_not_available";
+
+    /// <summary>
+    /// The process has ended here: it is complete, it ended in a business failure, or it was handed
+    /// off to another service. Nobody can run a step of this service on it (a handoff back from the
+    /// service that holds it excepted); start a new process, or continue on the named service (#512).
+    /// </summary>
+    public const string ProcessEnded = "pro_process_ended";
 
     /// <summary>A handler returned an information request that is not well-formed.</summary>
     public const string InformationRequestInvalid = "pro_information_request_invalid";

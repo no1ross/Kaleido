@@ -23,3 +23,4 @@ KAL2018 | Kaleido.Usage | Warning | A [Required] process step input has a non-nu
 KAL2019 | Kaleido.Usage | Warning | A [Required] query parameter has a non-nullable value type
 KAL2020 | Kaleido.Usage | Error | A [Filterable] operator does not apply to the property's type
 KAL2021 | Kaleido.Usage | Warning | Step result or view output property has no description
+KAL2022 | Kaleido.Usage | Warning | An entry step's handler completes the process

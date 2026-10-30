@@ -45,6 +45,12 @@ public interface IProcessStepHandlerResult
     string? TargetProcessorName { get; }
 
     /// <summary>
+    /// <see langword="true"/> when the step completes the whole process (<c>Complete(...)</c>): the
+    /// process becomes complete whatever steps its rules still offer, and no further step runs.
+    /// </summary>
+    bool CompletesProcess { get; }
+
+    /// <summary>
     /// The step's response payload, if any.
     /// </summary>
     object? Response { get; }
@@ -76,6 +82,9 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
 
     /// <inheritdoc />
     public string? TargetProcessorName { get; internal init; }
+
+    /// <inheritdoc />
+    public bool CompletesProcess { get; internal init; }
 
     /// <inheritdoc />
     public object? Response { get; internal init; }
@@ -149,8 +158,32 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     }
 
     /// <summary>
+    /// Signals a successful step that completes the whole process: the process becomes
+    /// <c>Complete</c> whatever steps its rules still offer (an audit, an appeal), and no further step
+    /// runs on it - a later step is refused with <c>pro_process_ended</c> (#534).
+    /// </summary>
+    /// <remarks>
+    /// The end of a process is an explicit, usually internal decision: for example a job that closes a
+    /// case once its appeal window has passed calls an internal-only step whose handler returns this.
+    /// Such a step should run after other steps (<c>[AvailableAfter&lt;T&gt;]</c> or
+    /// <c>[DependsOn&lt;T&gt;]</c>), not start a process (KAL2022).
+    /// </remarks>
+    /// <param name="messages">Business messages returned to the caller.</param>
+    public static ProcessStepHandlerResult Complete(
+        params ProcessMessage[] messages)
+    {
+        return new()
+        {
+            Succeeded = true,
+            CompletesProcess = true,
+            Messages = messages,
+        };
+    }
+
+    /// <summary>
     /// Signals a business failure: the request cannot proceed, and the process ends in
-    /// <c>BusinessFailure</c>. For input the caller can correct, use <see cref="Reject"/>.
+    /// <c>BusinessFailure</c>: no further step runs on it, so the caller starts a new process. For
+    /// input the caller can correct, use <see cref="Reject"/>.
     /// </summary>
     /// <param name="messages">Business messages explaining the failure.</param>
     public static ProcessStepHandlerResult Failure(
@@ -186,10 +219,18 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     /// The framework will propagate <paramref name="targetProcessorName"/> to the
     /// HTTP response so the consumer can fetch authoritative state from the target.
     /// </summary>
+    /// <param name="targetProcessorName">
+    /// The service that takes the process over; another service's name. Handing off to this
+    /// service itself is reported as a process violation.
+    /// </param>
+    /// <param name="messages">Business messages returned to the caller.</param>
+    /// <exception cref="ArgumentException"><paramref name="targetProcessorName"/> is null, empty or whitespace.</exception>
     public static ProcessStepHandlerResult HandOff(
         string targetProcessorName,
         params ProcessMessage[] messages)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetProcessorName);
+
         return new()
         {
             Succeeded = true,
@@ -225,8 +266,29 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     }
 
     /// <summary>
+    /// Signals a successful step with a typed response that completes the whole process (see
+    /// <see cref="Complete(ProcessMessage[])"/>).
+    /// </summary>
+    /// <typeparam name="TProcessStepResult">The typed response, inferred from <paramref name="response"/>.</typeparam>
+    /// <param name="response">The typed response payload.</param>
+    /// <param name="messages">Business messages returned to the caller.</param>
+    public static ProcessStepHandlerResult<TProcessStepResult> Complete<TProcessStepResult>(
+        TProcessStepResult response,
+        params ProcessMessage[] messages)
+    {
+        return new()
+        {
+            Succeeded = true,
+            CompletesProcess = true,
+            Messages = messages,
+            Response = response,
+        };
+    }
+
+    /// <summary>
     /// Signals a business failure with a typed response: the request cannot proceed, and the process
-    /// ends in <c>BusinessFailure</c>. For input the caller can correct, use <see cref="Reject"/>.
+    /// ends in <c>BusinessFailure</c>: no further step runs on it. For input the caller can correct, use
+    /// <see cref="Reject"/>.
     /// </summary>
     /// <typeparam name="TProcessStepResult">The typed response, inferred from <paramref name="response"/>.</typeparam>
     /// <param name="response">The typed response payload.</param>

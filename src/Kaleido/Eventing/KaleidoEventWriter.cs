@@ -52,7 +52,13 @@ internal sealed partial class KaleidoEventWriter(
         {
             await outbox.CommittedAsync(cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        // Only the caller's cancellation is passed on; any other failure - an OperationCanceledException of
+        // the outbox's own (a timeout) included - is logged: this never fails (#517).
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
         {
             LogCommittedFailed(logger, exception);
         }
@@ -80,7 +86,11 @@ internal sealed partial class KaleidoEventWriter(
         {
             await outbox.AddAsync([payloadWriter.Write(envelope)], cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
         {
             EnqueueFailures.Add(1, new KeyValuePair<string, object?>(KaleidoEventTelemetry.TagEventType, envelope.EventType));
             LogEnqueueFailed(logger, exception, envelope.EventType, envelope.Event.EventId);

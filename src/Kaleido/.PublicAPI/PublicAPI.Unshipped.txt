@@ -107,6 +107,7 @@ const Kaleido.Processor.ProcessorErrorCodes.InformationResponseStale = "pro_info
 const Kaleido.Processor.ProcessorErrorCodes.InformationResponseUnanswered = "pro_information_response_unanswered" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidFormat = "pro_invalid_format" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidHandler = "pro_invalid_handler" -> string!
+const Kaleido.Processor.ProcessorErrorCodes.InvalidHandOff = "pro_invalid_hand_off" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidIdempotencyKey = "pro_invalid_idempotency_key" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidLength = "pro_invalid_length" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.InvalidRegistration = "pro_invalid_registration" -> string!
@@ -117,6 +118,7 @@ const Kaleido.Processor.ProcessorErrorCodes.MissingHandler = "pro_missing_handle
 const Kaleido.Processor.ProcessorErrorCodes.MissingStepResult = "pro_missing_step_result" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.OutOfRange = "pro_out_of_range" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.ProcessConflict = "pro_process_conflict" -> string!
+const Kaleido.Processor.ProcessorErrorCodes.ProcessEnded = "pro_process_ended" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.ProcessMessage = "pro_process_message" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.ProcessNotFound = "pro_process_not_found" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.PropertyNotFound = "pro_property_not_found" -> string!
@@ -532,10 +534,6 @@ Kaleido.Processor.Eventing.StepCompleted.BusinessMessages.init -> void
 Kaleido.Processor.Eventing.StepCompleted.DecisionType.get -> Kaleido.Processor.ExecutionDecisionType
 Kaleido.Processor.Eventing.StepCompleted.DecisionType.init -> void
 Kaleido.Processor.Eventing.StepCompleted.Equals(Kaleido.Processor.Eventing.StepCompleted? other) -> bool
-Kaleido.Processor.Eventing.StepCompleted.ExecutionStatus.get -> Kaleido.Processor.StepExecutionStatus
-Kaleido.Processor.Eventing.StepCompleted.ExecutionStatus.init -> void
-Kaleido.Processor.Eventing.StepCompleted.Outcome.get -> Kaleido.Processor.StepExecutionOutcome
-Kaleido.Processor.Eventing.StepCompleted.Outcome.init -> void
 Kaleido.Processor.Eventing.StepCompleted.ProcessState.get -> Kaleido.Processor.ProcessExecutionState
 Kaleido.Processor.Eventing.StepCompleted.ProcessState.init -> void
 Kaleido.Processor.Eventing.StepCompleted.Request.get -> object?
@@ -548,6 +546,8 @@ Kaleido.Processor.Eventing.StepCompleted.Response.get -> object?
 Kaleido.Processor.Eventing.StepCompleted.Response.init -> void
 Kaleido.Processor.Eventing.StepCompleted.RuntimeMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.StepProcessingMessage!>!
 Kaleido.Processor.Eventing.StepCompleted.RuntimeMessages.init -> void
+Kaleido.Processor.Eventing.StepCompleted.Status.get -> Kaleido.Processor.StepExecutionStatus
+Kaleido.Processor.Eventing.StepCompleted.Status.init -> void
 Kaleido.Processor.Eventing.StepCompleted.StepCompleted() -> void
 Kaleido.Processor.Eventing.StepCompleted.StepLastExecuted.get -> System.DateTimeOffset?
 Kaleido.Processor.Eventing.StepCompleted.StepLastExecuted.init -> void
@@ -562,6 +562,7 @@ Kaleido.Processor.Execution.IProcessStepHandler<TProcessStep, TProcessStepResult
 Kaleido.Processor.Execution.IProcessStepHandler<TProcessStep>
 Kaleido.Processor.Execution.IProcessStepHandler<TProcessStep>.ExecuteAsync(TProcessStep processStep, Kaleido.Processor.Execution.ProcessStepContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Execution.ProcessStepHandlerResult!>!
 Kaleido.Processor.Execution.IProcessStepHandlerResult
+Kaleido.Processor.Execution.IProcessStepHandlerResult.CompletesProcess.get -> bool
 Kaleido.Processor.Execution.IProcessStepHandlerResult.InformationRequest.get -> Kaleido.Processor.InformationRequest?
 Kaleido.Processor.Execution.IProcessStepHandlerResult.Messages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
 Kaleido.Processor.Execution.IProcessStepHandlerResult.Rejected.get -> bool
@@ -582,6 +583,7 @@ Kaleido.Processor.Execution.ProcessStepContext.StepContext.get -> Kaleido.Proces
 Kaleido.Processor.Execution.ProcessStepContext.StepContext.init -> void
 Kaleido.Processor.Execution.ProcessStepHandlerResult
 Kaleido.Processor.Execution.ProcessStepHandlerResult.<Clone>$() -> Kaleido.Processor.Execution.ProcessStepHandlerResult!
+Kaleido.Processor.Execution.ProcessStepHandlerResult.CompletesProcess.get -> bool
 Kaleido.Processor.Execution.ProcessStepHandlerResult.Equals(Kaleido.Processor.Execution.ProcessStepHandlerResult? other) -> bool
 Kaleido.Processor.Execution.ProcessStepHandlerResult.InformationRequest.get -> Kaleido.Processor.InformationRequest?
 Kaleido.Processor.Execution.ProcessStepHandlerResult.Messages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
@@ -592,6 +594,7 @@ Kaleido.Processor.Execution.ProcessStepHandlerResult.Succeeded.get -> bool
 Kaleido.Processor.Execution.ProcessStepHandlerResult.TargetProcessorName.get -> string?
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.<Clone>$() -> Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>!
+Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.CompletesProcess.get -> bool
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Equals(Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>? other) -> bool
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.InformationRequest.get -> Kaleido.Processor.InformationRequest?
 Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>.Messages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
@@ -731,15 +734,12 @@ Kaleido.Processor.MessageType.Warning = 1 -> Kaleido.Processor.MessageType
 Kaleido.Processor.Observability.ProcessorTelemetry
 Kaleido.Processor.ProcessExecutionState
 Kaleido.Processor.ProcessExecutionState.Active = 0 -> Kaleido.Processor.ProcessExecutionState
-Kaleido.Processor.ProcessExecutionState.AwaitingInformation = 9 -> Kaleido.Processor.ProcessExecutionState
-Kaleido.Processor.ProcessExecutionState.AwaitingRequiredStep = 5 -> Kaleido.Processor.ProcessExecutionState
-Kaleido.Processor.ProcessExecutionState.AwaitingStepSelection = 6 -> Kaleido.Processor.ProcessExecutionState
+Kaleido.Processor.ProcessExecutionState.AwaitingInformation = 6 -> Kaleido.Processor.ProcessExecutionState
+Kaleido.Processor.ProcessExecutionState.AwaitingRequiredStep = 4 -> Kaleido.Processor.ProcessExecutionState
+Kaleido.Processor.ProcessExecutionState.AwaitingStepSelection = 5 -> Kaleido.Processor.ProcessExecutionState
 Kaleido.Processor.ProcessExecutionState.BusinessFailure = 2 -> Kaleido.Processor.ProcessExecutionState
-Kaleido.Processor.ProcessExecutionState.Canceled = 8 -> Kaleido.Processor.ProcessExecutionState
 Kaleido.Processor.ProcessExecutionState.Complete = 1 -> Kaleido.Processor.ProcessExecutionState
-Kaleido.Processor.ProcessExecutionState.Exception = 7 -> Kaleido.Processor.ProcessExecutionState
-Kaleido.Processor.ProcessExecutionState.HandOff = 4 -> Kaleido.Processor.ProcessExecutionState
-Kaleido.Processor.ProcessExecutionState.ProcessViolation = 3 -> Kaleido.Processor.ProcessExecutionState
+Kaleido.Processor.ProcessExecutionState.HandOff = 3 -> Kaleido.Processor.ProcessExecutionState
 Kaleido.Processor.ProcessMessage
 Kaleido.Processor.ProcessMessage.<Clone>$() -> Kaleido.Processor.ProcessMessage!
 Kaleido.Processor.ProcessMessage.Code.get -> string!
@@ -770,21 +770,13 @@ Kaleido.Processor.StepCandidateStatus.Built = 1 -> Kaleido.Processor.StepCandida
 Kaleido.Processor.StepCandidateStatus.Invalid = 2 -> Kaleido.Processor.StepCandidateStatus
 Kaleido.Processor.StepCandidateStatus.Pending = 0 -> Kaleido.Processor.StepCandidateStatus
 Kaleido.Processor.StepCandidateStatus.Satisfied = 3 -> Kaleido.Processor.StepCandidateStatus
-Kaleido.Processor.StepExecutionOutcome
-Kaleido.Processor.StepExecutionOutcome.Blocked = 3 -> Kaleido.Processor.StepExecutionOutcome
-Kaleido.Processor.StepExecutionOutcome.Canceled = 4 -> Kaleido.Processor.StepExecutionOutcome
-Kaleido.Processor.StepExecutionOutcome.Completed = 1 -> Kaleido.Processor.StepExecutionOutcome
-Kaleido.Processor.StepExecutionOutcome.Failed = 2 -> Kaleido.Processor.StepExecutionOutcome
-Kaleido.Processor.StepExecutionOutcome.Pending = 0 -> Kaleido.Processor.StepExecutionOutcome
-Kaleido.Processor.StepExecutionOutcome.Rejected = 5 -> Kaleido.Processor.StepExecutionOutcome
 Kaleido.Processor.StepExecutionStatus
-Kaleido.Processor.StepExecutionStatus.Canceled = 5 -> Kaleido.Processor.StepExecutionStatus
+Kaleido.Processor.StepExecutionStatus.Canceled = 4 -> Kaleido.Processor.StepExecutionStatus
 Kaleido.Processor.StepExecutionStatus.Completed = 1 -> Kaleido.Processor.StepExecutionStatus
 Kaleido.Processor.StepExecutionStatus.Exception = 3 -> Kaleido.Processor.StepExecutionStatus
-Kaleido.Processor.StepExecutionStatus.Failed = 6 -> Kaleido.Processor.StepExecutionStatus
+Kaleido.Processor.StepExecutionStatus.Failed = 5 -> Kaleido.Processor.StepExecutionStatus
 Kaleido.Processor.StepExecutionStatus.Pending = 0 -> Kaleido.Processor.StepExecutionStatus
-Kaleido.Processor.StepExecutionStatus.Rejected = 7 -> Kaleido.Processor.StepExecutionStatus
-Kaleido.Processor.StepExecutionStatus.Skipped = 4 -> Kaleido.Processor.StepExecutionStatus
+Kaleido.Processor.StepExecutionStatus.Rejected = 6 -> Kaleido.Processor.StepExecutionStatus
 Kaleido.Processor.StepExecutionStatus.ValidationFailed = 2 -> Kaleido.Processor.StepExecutionStatus
 Kaleido.Processor.StepProcessingMessage
 Kaleido.Processor.StepProcessingMessage.<Clone>$() -> Kaleido.Processor.StepProcessingMessage!
@@ -1283,6 +1275,8 @@ static Kaleido.Processor.Eventing.StepCompleted.operator !=(Kaleido.Processor.Ev
 static Kaleido.Processor.Eventing.StepCompleted.operator ==(Kaleido.Processor.Eventing.StepCompleted? left, Kaleido.Processor.Eventing.StepCompleted? right) -> bool
 static Kaleido.Processor.Execution.ProcessStepContext.operator !=(Kaleido.Processor.Execution.ProcessStepContext? left, Kaleido.Processor.Execution.ProcessStepContext? right) -> bool
 static Kaleido.Processor.Execution.ProcessStepContext.operator ==(Kaleido.Processor.Execution.ProcessStepContext? left, Kaleido.Processor.Execution.ProcessStepContext? right) -> bool
+static Kaleido.Processor.Execution.ProcessStepHandlerResult.Complete(params Kaleido.Processor.ProcessMessage![]! messages) -> Kaleido.Processor.Execution.ProcessStepHandlerResult!
+static Kaleido.Processor.Execution.ProcessStepHandlerResult.Complete<TProcessStepResult>(TProcessStepResult response, params Kaleido.Processor.ProcessMessage![]! messages) -> Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>!
 static Kaleido.Processor.Execution.ProcessStepHandlerResult.Failure(params Kaleido.Processor.ProcessMessage![]! messages) -> Kaleido.Processor.Execution.ProcessStepHandlerResult!
 static Kaleido.Processor.Execution.ProcessStepHandlerResult.Failure<TProcessStepResult>(TProcessStepResult response, params Kaleido.Processor.ProcessMessage![]! messages) -> Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>!
 static Kaleido.Processor.Execution.ProcessStepHandlerResult.HandOff(string! targetProcessorName, params Kaleido.Processor.ProcessMessage![]! messages) -> Kaleido.Processor.Execution.ProcessStepHandlerResult!

@@ -206,13 +206,13 @@ public sealed class KaleidoToolInvokerTests
     private static StepExecutionResponse<JsonElement> StepResponse(
         ProcessRequiredStep? required = null,
         string? target = null,
-        StepExecutionOutcome outcome = StepExecutionOutcome.Completed,
+        StepExecutionStatus status = StepExecutionStatus.Completed,
         IReadOnlyCollection<ProcessStepSummary>? available = null) =>
         new()
         {
             ProcessId = ProcessId,
             StepName = "StartVisitStep",
-            Outcome = outcome,
+            Status = status,
             RequiredStep = required,
             TargetProcessorName = target,
             AvailableSteps = available ?? [],
@@ -626,7 +626,7 @@ public sealed class KaleidoToolInvokerTests
     {
         StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]) with
         {
-            Outcome = StepExecutionOutcome.Rejected
+            Status = StepExecutionStatus.Rejected
         });
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
@@ -636,17 +636,37 @@ public sealed class KaleidoToolInvokerTests
         Assert.Single(body["next"]?["available"]?.AsArray() ?? []);
     }
 
-    [Fact]
-    public async Task FailedStepWithNextSteps_SaysNothingWasRecorded()
+    // A step that did not finish (invalid input, a defect, a cancellation) left the process as it was.
+    [Theory]
+    [InlineData(StepExecutionStatus.ValidationFailed)]
+    [InlineData(StepExecutionStatus.Exception)]
+    [InlineData(StepExecutionStatus.Canceled)]
+    public async Task AnUnfinishedStepWithNextSteps_SaysNothingWasRecorded(StepExecutionStatus status)
     {
         StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]) with
         {
-            Outcome = StepExecutionOutcome.Failed
+            Status = status
         });
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
         Assert.Contains("nothing was recorded", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Equal(char.ToLowerInvariant(status.ToString()[0]) + status.ToString()[1..], body["outcome"]?.GetValue<string>());
+    }
+
+    // A business failure is a recorded outcome, not "nothing changed".
+    [Fact]
+    public async Task ABusinessFailure_IsNotDescribedAsNothingRecorded()
+    {
+        StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]) with
+        {
+            Status = StepExecutionStatus.Failed
+        });
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Null(body["note"]);
+        Assert.Equal("failed", body["outcome"]?.GetValue<string>());
     }
 
     // The step response keeps business and framework messages apart, and so does the summary:
@@ -801,7 +821,7 @@ public sealed class KaleidoToolInvokerTests
     {
         ClientShowsForms();
         server.Setup(x => x.IsMrtrSupported).Returns(true);
-        StepReturns(StepResponse(required: QuestionsRequired, outcome: StepExecutionOutcome.Failed));
+        StepReturns(StepResponse(required: QuestionsRequired, status: StepExecutionStatus.Failed));
 
         var outcome = await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
 
@@ -1272,9 +1292,22 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task TheCallersCancellation_Propagates()
     {
-        StepThrows(new OperationCanceledException());
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        StepThrows(new OperationCanceledException(cancellation.Token));
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut().InvokeAsync(Start, Call(), Catalog, cancellation.Token));
+    }
+
+    // Only the caller's token is a cancellation (#517): a service timeout is reported to the agent.
+    [Fact]
+    public async Task AServiceTimeout_IsAnErrorResult_NotACancellation()
+    {
+        StepThrows(new TaskCanceledException("timeout"));
+
+        var result = await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InternalError, Body(result)["code"]?.GetValue<string>());
     }
 
     [Fact]
@@ -1622,7 +1655,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AFailedStep_WithNothingNext_HasNoNote()
     {
-        StepReturns(StepResponse(outcome: StepExecutionOutcome.Failed));
+        StepReturns(StepResponse(status: StepExecutionStatus.Failed));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -1630,10 +1663,12 @@ public sealed class KaleidoToolInvokerTests
         Assert.Null(body["note"]);
     }
 
-    [Fact]
-    public async Task AFailedStep_WithARequiredStep_SaysNothingWasRecorded()
+    [Theory]
+    [InlineData(StepExecutionStatus.Exception)]
+    [InlineData(StepExecutionStatus.ValidationFailed)]
+    public async Task AnUnfinishedStep_WithARequiredStep_SaysNothingWasRecorded(StepExecutionStatus status)
     {
-        StepReturns(StepResponse(required: CloseRequired, outcome: StepExecutionOutcome.Failed));
+        StepReturns(StepResponse(required: CloseRequired, status: status));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 

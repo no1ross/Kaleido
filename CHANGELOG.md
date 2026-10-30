@@ -13,6 +13,57 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **A cancellation is the caller's token firing, not an exception type** (#517). An
+  `OperationCanceledException` that no token of the caller raised (a downstream or database timeout,
+  an `HttpClient` timeout) is now a failure everywhere:
+  - a step whose handler times out is recorded and answered as `exception` (retryable), not `canceled`;
+  - a query records a failure, not a cancellation;
+  - the HTTP transport answers 500, where it wrote an empty 200;
+  - the MCP adapter returns an error result to the agent;
+  - the outbox, the relay and the idempotency finalization log it instead of letting it escape.
+
+  A request the client aborted is still not an error. KAL2004 and KAL0018 accept
+  `catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)` before a
+  catch-all.
+- **An ended process admits no further step** (#512, #534, [ADR 0033](docs/decisions/0033-process-lifecycle-and-admission.md)):
+  admission now reads the process state, not only the step graph. A step sent to a process that is
+  `complete`, ended in `businessFailure` or was handed off is refused with the new
+  `pro_process_ended` (status `pending`); the state lists no available step, as before. After a
+  hand-off, the target owns the process: this service runs none of its steps (a local step used to
+  run and erase the target), except when the target hands the process back (its calling processor is
+  the target), which reopens it here. `Failure()` is a hard stop: start a new process.
+- **`ProcessStepHandlerResult.Complete()` ends a process whatever its rules still offer** (#534):
+  `Complete(messages)` and `Complete(response, messages)`, with `IProcessStepHandlerResult.CompletesProcess`.
+  A result that completes the process cannot require a next step. The new consumer analyzer
+  KAL2022 reports one returned for an entry step.
+- **One status model: where the process is, and what happened to the step** (#536):
+  - The StepExecutionOutcome enum is removed: it duplicated `StepExecutionStatus`. The step answer
+    (`StepExecutionResponse`) carries `Status` (JSON `status`) instead of `Outcome` (`outcome`), with
+    the detailed values: `completed`, `rejected`, `validationFailed`, `failed` (business failure),
+    `exception` (a defect; retry), `canceled`, or `pending` for a submitted step that did not run.
+    Code reading `outcome` reads `status`; a former `failed` is now `failed`, `validationFailed` or
+    `exception`. The MCP adapter's own `outcome` field carries these values.
+  - `ProcessExecutionState` loses `ProcessViolation`, `Exception` and `Canceled`, which nothing sets:
+    a step that breaks a process rule, throws, fails validation or is cancelled leaves the process
+    as it was, and only the step's status records it. A request abort no longer moves the process
+    to `Canceled`. The remaining values renumber (strings are unchanged); SQLite stores holding a
+    removed value must be recreated.
+  - `StepExecutionStatus.Skipped` is removed (never recorded), and a validation failure is now
+    recorded in the history as `ValidationFailed` (it was `Exception`).
+  - The `StepCompleted` event carries `Status` (was `ExecutionStatus` and `Outcome`); it keeps
+    `DecisionType`, and `PlanBuilt` keeps `CandidateStatus`: `ExecutionDecisionType` and
+    `StepCandidateStatus` are the events' audit vocabulary, not part of the transport answers.
+- **Invalid hand-offs, dead step graphs and process violations are no longer silent** (#522):
+  - `ProcessStepHandlerResult.HandOff` refuses a null, empty or blank target (`ArgumentException`).
+    A hand-off to the service itself is a process violation (`pro_invalid_hand_off`), no longer a
+    local continuation.
+  - A cycle through `DependsOn` and `AvailableAfter` together (either one alone, or mixed) fails
+    startup with `pro_invalid_registration`: its steps could never become available. `AvailableUntil`
+    takes no part in cycles.
+  - A process violation (an invalid next step or information request, a hand-off to itself) behaves
+    like an unexpected error: the step is recorded as `Exception`, the process keeps its state and
+    next steps, and the step can be retried once the handler is fixed. It no longer moves the process
+    to `ProcessViolation` with the step recorded as completed.
 - **`FrameworkErrorCodes.DataConversionError` is removed** (#505): nothing raised
   `data_conversion_error`; value conversion failures are `argument_error` or
   `qry_invalid_filter_value`, as before. Code that names the constant no longer compiles.
@@ -208,6 +259,10 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **A step handler's or query source's scope is disposed asynchronously** (#523): a scoped dependency
+  that implements only `IAsyncDisposable` (an async client, a pooled context) made the synchronous
+  disposal throw after the handler or source had run. It is now disposed on success, failure and
+  cancellation; synchronous disposables are disposed as before.
 - **KAL2006 and KAL2004 judge Kaleido's symbols, not names** (#465): KAL2006 only reports a call that
   binds to Kaleido's `AddKaleido`, and only counts an assignment to the real
   `KaleidoServiceOptions.Assemblies`, so a method of yours named `AddKaleido` is no longer flagged.

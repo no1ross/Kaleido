@@ -89,12 +89,13 @@ internal sealed class ProcessorExecutor(
 
             return (context, GetNextCandidate(decision));
         }
-        catch (OperationCanceledException)
+        // Only the caller's token is a cancellation (#517); any other OperationCanceledException fails below.
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             stepObservation.Canceled();
 
             return (await FailAsync(
-                stateUpdater.ApplyCancellation(context, candidate),
+                stateUpdater.ApplyUnfinishedStep(context, candidate, StepExecutionStatus.Canceled),
                 run,
                 FailedOutcome(candidate, StepExecutionStatus.Canceled, ProcessorErrorCodes.ExecutionCanceled, "Step execution was cancelled.")), null);
         }
@@ -103,18 +104,17 @@ internal sealed class ProcessorExecutor(
             stepObservation.StepValidationFailed(exception.Code);
 
             return (await FailAsync(
-                stateUpdater.ApplyException(context, candidate),
+                stateUpdater.ApplyUnfinishedStep(context, candidate, StepExecutionStatus.ValidationFailed),
                 run,
                 FailedOutcome(candidate, StepExecutionStatus.ValidationFailed, exception.Code, exception.Message)), null);
         }
-        // Any other failure of the step (cancellation and validation are handled above). A concurrency
-        // conflict is not a step failure: nothing was saved, and the caller rereads the process (409).
-        catch (Exception exception) when (exception is not OperationCanceledException and not KaleidoConcurrencyException)
+        // Any other failure (a concurrency conflict is not one: nothing was saved, the caller rereads, 409).
+        catch (Exception exception) when (exception is not KaleidoConcurrencyException)
         {
             stepObservation.StepFailed(exception);
 
             return (await FailAsync(
-                stateUpdater.ApplyException(context, candidate),
+                stateUpdater.ApplyUnfinishedStep(context, candidate, StepExecutionStatus.Exception),
                 run,
                 FailedOutcome(
                     candidate,
@@ -137,7 +137,7 @@ internal sealed class ProcessorExecutor(
         context = stateUpdater.ApplyExecution(context, candidate, decision);
 
         var outcome = Complete(candidate, result, decision, stepObservation);
-        var stepCompleted = eventFactory.CreateStepCompleted(correlationAccessor.Current, context, candidate, outcome, result);
+        var stepCompleted = eventFactory.CreateStepCompleted(correlationAccessor.Current, context, candidate, outcome, decision.Type, result);
 
         context = await transition.SaveAsync(context, eventWriter.Prepare(stepCompleted), CancellationToken.None);
         run.Outcomes.Add(outcome);
@@ -210,11 +210,9 @@ internal sealed class ProcessorExecutor(
         ExecutionDecision decision,
         IProcessorStepObservation stepObservation)
     {
-        var executionStatus = MapStatus(candidate, result, decision);
-
         stepObservation.DecisionRecorded(
             decision.Type.ToString(),
-            executionStatus.ToString());
+            decision.StepStatus.ToString());
 
         if (decision.InformationRequest is { } informationRequest)
         {
@@ -226,7 +224,7 @@ internal sealed class ProcessorExecutor(
             candidate,
             result,
             decision,
-            executionStatus);
+            decision.StepStatus);
     }
 
     // A failed step's state is saved even when the request was cancelled.
@@ -244,6 +242,7 @@ internal sealed class ProcessorExecutor(
 
         return saved;
     }
+
     private static ProcessExecutionOutcome FailedOutcome(
         StepCandidate candidate,
         StepExecutionStatus status,
@@ -257,12 +256,6 @@ internal sealed class ProcessorExecutor(
             Status =
                 status,
 
-            Outcome =
-                GetStepOutcome(status),
-
-            Decision =
-                ExecutionDecisionType.ProcessViolation,
-
             RuntimeMessages =
             [
                 StepProcessingMessage.Error(
@@ -272,7 +265,6 @@ internal sealed class ProcessorExecutor(
 
             Response = null,
         };
-
     private static ProcessExecutionResult ToResult(
         ProcessorContext context,
         List<ProcessExecutionOutcome> outcomes) =>
@@ -310,40 +302,6 @@ internal sealed class ProcessorExecutor(
             : null;
     }
 
-    private static StepExecutionOutcome GetStepOutcome(
-        StepExecutionStatus status)
-    {
-        return status switch
-        {
-            StepExecutionStatus.Pending =>
-                StepExecutionOutcome.Blocked,
-
-            StepExecutionStatus.Completed =>
-                StepExecutionOutcome.Completed,
-
-            StepExecutionStatus.ValidationFailed =>
-                StepExecutionOutcome.Failed,
-
-            StepExecutionStatus.Exception =>
-                StepExecutionOutcome.Failed,
-
-            StepExecutionStatus.Skipped =>
-                StepExecutionOutcome.Blocked,
-
-            StepExecutionStatus.Canceled =>
-                StepExecutionOutcome.Canceled,
-
-            StepExecutionStatus.Failed =>
-                StepExecutionOutcome.Failed,
-
-            StepExecutionStatus.Rejected =>
-                StepExecutionOutcome.Rejected,
-
-            _ =>
-                StepExecutionOutcome.Pending,
-        };
-    }
-
     private static ProcessExecutionOutcome CreateOutcome(
         StepCandidate candidate,
         StepInvocationResult result,
@@ -362,12 +320,6 @@ internal sealed class ProcessorExecutor(
             Status =
                 executionStatus,
 
-            Outcome =
-                GetStepOutcome(executionStatus),
-
-            Decision =
-                decision.Type,
-
             RuntimeMessages =
                 decision.Messages,
 
@@ -375,36 +327,6 @@ internal sealed class ProcessorExecutor(
 
             Response = result.Response,
         };
-    }
-
-    private static StepExecutionStatus MapStatus(
-        StepCandidate candidate,
-        StepInvocationResult result,
-        ExecutionDecision decision)
-    {
-        if (candidate.Status == StepCandidateStatus.Invalid)
-        {
-            return StepExecutionStatus.ValidationFailed;
-        }
-
-        if (candidate.Status == StepCandidateStatus.Satisfied)
-        {
-            return StepExecutionStatus.Skipped;
-        }
-
-        if (candidate.Status == StepCandidateStatus.Pending)
-        {
-            return StepExecutionStatus.Pending;
-        }
-
-        if (decision.Type == ExecutionDecisionType.ProcessViolation)
-        {
-            return StepExecutionStatus.Exception;
-        }
-
-        return result.Succeeded
-            ? StepExecutionStatus.Completed
-            : StepExecutionStatus.Failed;
     }
 
     // The state of one request's execution.

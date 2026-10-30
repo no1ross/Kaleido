@@ -146,6 +146,44 @@ public class C
             Expected.WithLocation(0).WithArguments("observation.Failed"));
     }
 
+    // Cancellation is the caller's token firing (#517): a clause filtered on a token being cancelled
+    // handles the cancellations; the catch-all then sees the other OperationCanceledExceptions (a
+    // downstream timeout) as the failures they are.
+    [Fact]
+    public async Task CatchException_AfterAClauseFilteredOnTheTokenBeingCancelled_NoDiagnostic()
+    {
+        await RunAsync(@"
+public class C
+{
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation, System.Threading.CancellationToken cancellationToken)
+    {
+        try { }
+        catch (System.OperationCanceledException) when (cancellationToken.IsCancellationRequested) { observation.Canceled(); throw; }
+        catch (System.Exception ex) { observation.Failed(ex); throw; }
+    }
+}" + Stubs);
+    }
+
+    // Only a CancellationToken's own flag counts: any other filter may let a cancellation through.
+    [Theory]
+    [InlineData("!cancellationToken.IsCancellationRequested")]
+    [InlineData("source.IsCancellationRequested")]
+    [InlineData("cancellationToken.CanBeCanceled")]
+    public async Task CatchException_AfterAClauseFilteredOnSomethingElse_Reports(string filter)
+    {
+        await RunAsync(@"
+public class C
+{
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation, System.Threading.CancellationToken cancellationToken, System.Threading.CancellationTokenSource source)
+    {
+        try { }
+        catch (System.OperationCanceledException) when (" + filter + @") { observation.Canceled(); throw; }
+        {|#0:catch|} (System.Exception ex) { observation.Failed(ex); throw; }
+    }
+}" + Stubs,
+            Expected.WithLocation(0).WithArguments("observation.Failed"));
+    }
+
     [Fact]
     public async Task CatchException_AfterAliasedCancellationClause_NoDiagnostic()
     {

@@ -347,6 +347,29 @@ public sealed class ProcessorStepRegistryTests
         Assert.Equal(ProcessorErrorCodes.InvalidRegistration, exception.Code);
     }
 
+    // AvailableAfter needs every named step completed, like DependsOn: a cycle through it - alone or
+    // mixed with DependsOn - can never become available, so it fails at startup too (#522).
+    [Theory]
+    [InlineData(typeof(AfterCycleStepA), typeof(AfterCycleStepB))]
+    [InlineData(typeof(MixedCycleStepA), typeof(MixedCycleStepB))]
+    public void Constructor_WhenAvailableAfterClosesACycle_ThrowsInvalidRegistrationNamingTheCycle(Type first, Type second)
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut(first, second));
+
+        Assert.Equal(ProcessorErrorCodes.InvalidRegistration, exception.Code);
+        Assert.Contains(first.Name, exception.Message);
+        Assert.Contains(second.Name, exception.Message);
+    }
+
+    // AvailableUntil only closes a step, so two steps closing each other are a valid choice.
+    [Fact]
+    public void Constructor_WhenStepsCloseEachOtherWithAvailableUntil_Registers()
+    {
+        var sut = CreateSut(typeof(UntilLoopStepA), typeof(UntilLoopStepB));
+
+        Assert.Equal(2, sut.Registrations.Count);
+    }
+
     [Fact]
     public void Registration_ByDefault_DeclaresAProcessOnlyStep()
     {
@@ -459,6 +482,12 @@ public sealed class ProcessorStepRegistryTests
             { typeof(SelfDependentStep), typeof(SelfDependentStepHandler) },
             { typeof(CycleStepA), typeof(CycleStepAHandler) },
             { typeof(CycleStepB), typeof(CycleStepBHandler) },
+            { typeof(AfterCycleStepA), typeof(AfterCycleStepAHandler) },
+            { typeof(AfterCycleStepB), typeof(AfterCycleStepBHandler) },
+            { typeof(MixedCycleStepA), typeof(MixedCycleStepAHandler) },
+            { typeof(MixedCycleStepB), typeof(MixedCycleStepBHandler) },
+            { typeof(UntilLoopStepA), typeof(UntilLoopStepAHandler) },
+            { typeof(UntilLoopStepB), typeof(UntilLoopStepBHandler) },
             { typeof(DeclaredStep), typeof(DeclaredStepHandler) },
             { typeof(SelfAvailableAfterStep), typeof(SelfAvailableAfterStepHandler) },
             { typeof(SelfAvailableUntilStep), typeof(SelfAvailableUntilStepHandler) },
@@ -515,11 +544,47 @@ public sealed class ProcessorStepRegistryTests
     [DependsOn<CycleStepA>]
     private sealed class CycleStepB : IProcessStep;
 
+    [ProcessStep(DisplayName = nameof(AfterCycleStepA), Description = "after-cycle-a description")]
+    [AvailableAfter<AfterCycleStepB>]
+    private sealed class AfterCycleStepA : IProcessStep;
+
+    [ProcessStep(DisplayName = nameof(AfterCycleStepB), Description = "after-cycle-b description")]
+    [AvailableAfter<AfterCycleStepA>]
+    private sealed class AfterCycleStepB : IProcessStep;
+
+    [ProcessStep(DisplayName = nameof(MixedCycleStepA), Description = "mixed-cycle-a description")]
+    [DependsOn<MixedCycleStepB>]
+    private sealed class MixedCycleStepA : IProcessStep;
+
+    [ProcessStep(DisplayName = nameof(MixedCycleStepB), Description = "mixed-cycle-b description")]
+    [AvailableAfter<MixedCycleStepA>]
+    private sealed class MixedCycleStepB : IProcessStep;
+
+    [ProcessStep(DisplayName = nameof(UntilLoopStepA), Description = "until-loop-a description")]
+    [AvailableUntil<UntilLoopStepB>]
+    private sealed class UntilLoopStepA : IProcessStep;
+
+    [ProcessStep(DisplayName = nameof(UntilLoopStepB), Description = "until-loop-b description")]
+    [AvailableUntil<UntilLoopStepA>]
+    private sealed class UntilLoopStepB : IProcessStep;
+
     private sealed class SelfDependentStepHandler : BaseHandler<SelfDependentStep, TestResponse>;
 
     private sealed class CycleStepAHandler : BaseHandler<CycleStepA, TestResponse>;
 
     private sealed class CycleStepBHandler : BaseHandler<CycleStepB, TestResponse>;
+
+    private sealed class AfterCycleStepAHandler : BaseHandler<AfterCycleStepA, TestResponse>;
+
+    private sealed class AfterCycleStepBHandler : BaseHandler<AfterCycleStepB, TestResponse>;
+
+    private sealed class MixedCycleStepAHandler : BaseHandler<MixedCycleStepA, TestResponse>;
+
+    private sealed class MixedCycleStepBHandler : BaseHandler<MixedCycleStepB, TestResponse>;
+
+    private sealed class UntilLoopStepAHandler : BaseHandler<UntilLoopStepA, TestResponse>;
+
+    private sealed class UntilLoopStepBHandler : BaseHandler<UntilLoopStepB, TestResponse>;
 
     [ProcessStep(DisplayName = nameof(SecuredStep), Description = "secured-step description")]
     [KaleidoAuthorization(Policy = "step-policy", Roles = "internal")]
