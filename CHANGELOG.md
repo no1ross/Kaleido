@@ -280,6 +280,16 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Idempotency keys: an unambiguous scope, random keys for callers without an identity, the process id on a replay** (#514):
+  - The scope is the tuple {service, identity kind, identity, key}, length-framed and hashed (`v1:` +
+    SHA-256), so a separator in a name or a key can no longer join two callers' keys (`alice` +
+    `tenant:K` and `alice:tenant` + `K` were one admission). **Stored format change:** records admitted in
+    the earlier `service:caller:key` format no longer match; they expire by their retention.
+  - A caller without an identity shares one key space: its key must be random, and one shorter than 16
+    characters is refused with 400 `pro_invalid_idempotency_key` (a GUID qualifies).
+  - A replay sets `X-Kaleido-Process-Id` from the stored answer, as the first answer did.
+  - A conflict after the handler ran keeps the key as outcome unknown (#537); only refusals before
+    anything ran release it.
 - **A caller without a name is authenticated all the same** (#515). Authorization read authentication from
   the caller's display name, so a subject-only or client-credentials token got no roles and counted as
   anonymous in discovery, generic execute and the typed-route checks. The transport now carries the

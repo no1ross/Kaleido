@@ -93,8 +93,8 @@ public sealed class PersistenceFailureTests : IAsyncLifetime
         var processId = await StartAsync();
         _refusedSaves.On = true;
 
-        var (status, _) = await PostStepAsync(PersistenceSteps.Record, processId, idempotencyKey: "close-1");
-        var (retryStatus, retry) = await PostStepAsync(PersistenceSteps.Record, processId, idempotencyKey: "close-1");
+        var (status, _) = await PostStepAsync(PersistenceSteps.Record, processId, idempotencyKey: "close-1-7f3a9c2e5b1d");
+        var (retryStatus, retry) = await PostStepAsync(PersistenceSteps.Record, processId, idempotencyKey: "close-1-7f3a9c2e5b1d");
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, status);
         Assert.Equal(HttpStatusCode.Conflict, retryStatus);

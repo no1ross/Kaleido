@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 using Kaleido.Http.FunctionalTests.Processor.Infrastructure;
+using Kaleido.Http.Processor;
 using Kaleido.Provider.SQLite;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -39,8 +40,8 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
         using var host = await StartHostAsync();
         var client = host.GetTestClient();
 
-        using var first = await PostAsync(client, "key-1");
-        using var retry = await PostAsync(client, "key-1");
+        using var first = await PostAsync(client, "key-1-0a1b2c3d4e5f");
+        using var retry = await PostAsync(client, "key-1-0a1b2c3d4e5f");
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.OK, retry.StatusCode);
@@ -52,8 +53,12 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
 
         // One process (the step ran once) and one stored answer, keyed per service and caller.
         Assert.Equal(1L, await ScalarAsync("SELECT COUNT(*) FROM ProcessContexts"));
-        Assert.Equal("kaleido:anonymous:key-1", await ScalarAsync("SELECT Key FROM IdempotentResults"));
+        Assert.Equal(KaleidoIdempotencyEndpointFilter.RecordKey("kaleido", "anonymous", string.Empty, "key-1-0a1b2c3d4e5f"), await ScalarAsync("SELECT Key FROM IdempotentResults"));
         Assert.Equal(ProcessIdOf(firstBody), ProcessIdOf((string)(await ScalarAsync("SELECT Response FROM IdempotentResults"))!));
+
+        // #514: the replay of a new process's answer carries its id in the header too, as the first did.
+        Assert.Equal(ProcessIdOf(firstBody), Assert.Single(retry.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
+        Assert.Equal(first.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId), retry.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId));
     }
 
     [Fact]
@@ -63,13 +68,13 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
 
         using (var host = await StartHostAsync())
         {
-            using var first = await PostAsync(host.GetTestClient(), "key-restart");
+            using var first = await PostAsync(host.GetTestClient(), "key-restart-0a1b2c3d4e5f");
             firstBody = await first.Content.ReadAsStringAsync(Cancel);
             await host.StopAsync(Cancel);
         }
 
         using var restarted = await StartHostAsync();
-        using var retry = await PostAsync(restarted.GetTestClient(), "key-restart");
+        using var retry = await PostAsync(restarted.GetTestClient(), "key-restart-0a1b2c3d4e5f");
 
         Assert.Equal("true", Assert.Single(retry.Headers.GetValues(KaleidoIdempotencyHeaders.Replayed)));
         Assert.Equal(firstBody, await retry.Content.ReadAsStringAsync(Cancel));
@@ -96,8 +101,8 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
         using var host = await StartHostAsync();
         var client = host.GetTestClient();
 
-        using var first = await PostAsync(client, "key-reused");
-        using var different = await PostAsync(client, "key-reused", processId: Guid.NewGuid());
+        using var first = await PostAsync(client, "key-reused-0a1b2c3d4e5f");
+        using var different = await PostAsync(client, "key-reused-0a1b2c3d4e5f", processId: Guid.NewGuid());
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, different.StatusCode);
         Assert.Contains("pro_idempotency_key_reused", await different.Content.ReadAsStringAsync(Cancel), StringComparison.Ordinal);
@@ -110,11 +115,11 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
         using var host = await StartHostAsync();
         var client = host.GetTestClient();
 
-        using var first = await PostAsync(client, "key-scope");
+        using var first = await PostAsync(client, "key-scope-0a1b2c3d4e5f");
 
-        await ExecuteAsync("UPDATE IdempotentResults SET Key = 'other-service:anonymous:key-scope'");
+        await ExecuteAsync($"UPDATE IdempotentResults SET Key = '{KaleidoIdempotencyEndpointFilter.RecordKey("other-service", "anonymous", string.Empty, "key-scope-0a1b2c3d4e5f")}'");
 
-        using var second = await PostAsync(client, "key-scope");
+        using var second = await PostAsync(client, "key-scope-0a1b2c3d4e5f");
 
         Assert.False(second.Headers.Contains(KaleidoIdempotencyHeaders.Replayed));
         Assert.Equal(2L, await ScalarAsync("SELECT COUNT(*) FROM ProcessContexts"));
@@ -126,11 +131,11 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
         using var host = await StartHostAsync();
         var client = host.GetTestClient();
 
-        using var first = await PostAsync(client, "key-expired");
+        using var first = await PostAsync(client, "key-expired-0a1b2c3d4e5f");
 
         await ExecuteAsync($"UPDATE IdempotentResults SET ExpiresUtc = {DateTimeOffset.UtcNow.AddMinutes(-1).UtcTicks}");
 
-        using var retry = await PostAsync(client, "key-expired");
+        using var retry = await PostAsync(client, "key-expired-0a1b2c3d4e5f");
 
         Assert.False(retry.Headers.Contains(KaleidoIdempotencyHeaders.Replayed));
         Assert.Equal(2L, await ScalarAsync("SELECT COUNT(*) FROM ProcessContexts"));
@@ -147,18 +152,18 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
     {
         using var host = await StartHostAsync();
         var client = host.GetTestClient();
-        using var first = await PostAsync(client, "key-unknown");
+        using var first = await PostAsync(client, "key-unknown-0a1b2c3d4e5f");
         await ExecuteAsync(
             $"UPDATE IdempotentResults SET State = {state}, Response = '', StatusCode = 0, LeaseUntilUtc = {DateTimeOffset.UtcNow.AddMinutes(leaseMinutes).UtcTicks}, ExpiresUtc = {DateTimeOffset.UtcNow.AddDays(3).UtcTicks}");
 
-        using var refused = await PostAsync(client, "key-unknown");
+        using var refused = await PostAsync(client, "key-unknown-0a1b2c3d4e5f");
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
         Assert.Contains("pro_idempotency_outcome_unknown", await refused.Content.ReadAsStringAsync(Cancel), StringComparison.Ordinal);
         Assert.Equal(1L, await ScalarAsync("SELECT COUNT(*) FROM ProcessContexts"));
 
         await ExecuteAsync("DELETE FROM IdempotentResults");
-        using var resolved = await PostAsync(client, "key-unknown");
+        using var resolved = await PostAsync(client, "key-unknown-0a1b2c3d4e5f");
 
         Assert.Equal(HttpStatusCode.OK, resolved.StatusCode);
         Assert.Equal(2L, await ScalarAsync("SELECT COUNT(*) FROM ProcessContexts"));
@@ -171,7 +176,7 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
         using var host = await StartHostAsync();
         var client = host.GetTestClient();
 
-        using var refused = await PostAsync(client, "key-refused", processId: Guid.NewGuid());
+        using var refused = await PostAsync(client, "key-refused-0a1b2c3d4e5f", processId: Guid.NewGuid());
 
         Assert.InRange((int)refused.StatusCode, 400, 499);
         Assert.Equal(0L, await ScalarAsync("SELECT COUNT(*) FROM IdempotentResults"));

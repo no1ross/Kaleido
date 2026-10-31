@@ -43,7 +43,11 @@ public static class ProcessorErrorCodes
     /// </summary>
     public const string IdempotencyKeyReused = "pro_idempotency_key_reused";
 
-    /// <summary>The idempotency key is longer than 200 characters. HTTP 400.</summary>
+    /// <summary>
+    /// The idempotency key is longer than 200 characters, or shorter than 16 from a caller without an
+    /// identity (no subject id, no name), who shares the key space with every other such caller and must
+    /// send a random key such as a GUID. HTTP 400.
+    /// </summary>
     public const string InvalidIdempotencyKey = "pro_invalid_idempotency_key";
 
     /// <summary>
