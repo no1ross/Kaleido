@@ -172,9 +172,11 @@ jobs:
           echo "::error::No coverable lines found in coverage/lcov.info."
           exit 1
         fi
-        rate=$(awk "BEGIN{printf \"%.1f\", $lh*100.0/$lf}")
+        # The rounded rate is for display only; the floor is compared on the exact counts, so 94.96%
+        # never passes a 95% floor by rounding (#526).
+        rate=$(awk "BEGIN{printf \"%.2f\", $lh*100.0/$lf}")
         echo "Merged line coverage: $rate% ($lh/$lf) - floor: $COVERAGE_FLOOR%"
-        if awk "BEGIN{exit !($rate+0 >= $COVERAGE_FLOOR)}"; then
+        if awk "BEGIN{exit !($lh*100 >= $COVERAGE_FLOOR*$lf)}"; then
           echo "Coverage meets the $COVERAGE_FLOOR% floor."
         else
           echo "::error::Merged line coverage $rate% is below the $COVERAGE_FLOOR% floor."

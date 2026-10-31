@@ -8,7 +8,9 @@ decided at 1.0. Nothing here promises a support period or a date.
 - Package versions come from [`version.json`](../version.json)
   ([Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning)): `1.0.0-preview.{height}`,
   where the height is the number of commits since the version was last changed. All eight
-  packages (the seven `src/` packages and `Kaleido.Analyzers`) share one version.
+  packages (the seven `src/` packages and `Kaleido.Analyzers`) share one version. Only master and
+  `v*` tags build that public version; any other branch adds the commit (`-g<commit>`), so a package
+  packed from a topic branch is never mistaken for a published one (#526).
 - **The packages move together.** Each package depends on its sibling Kaleido packages at exactly
   its own version (`[x.y.z]`, #431): the transports, the client and the MCP adapter use core's
   internal seams (`InternalsVisibleTo`), which the public API baseline does not cover, so a mixed set
@@ -75,9 +77,9 @@ The packages depend on the 8.x lines of Microsoft.Extensions.* (and Microsoft.En
 8.0.x for the SQLite provider), which stop getting patches on the same date. **Override them in your
 service** to supported, patched versions - a direct PackageReference, or a version in central package
 management - and NuGet uses the higher version. Choose a version that still ships a build for your
-runtime and for 
+runtime and for
 et8.0, which Kaleido's assemblies target: some newer majors (EF Core 10, for example)
-need a newer runtime. Adding a 
+need a newer runtime. Adding a
 et10.0 target waits for an SDK that can build it (#424).
 
 ### Deployment modes

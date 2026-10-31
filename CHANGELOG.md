@@ -329,6 +329,13 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Release and CI integrity** (#526):
+  - a release refuses a commit that is not on master, or whose Build workflow (the full gate) has not passed on
+    master, before anything is built or published; RELEASING recommends a `v*` tag ruleset;
+  - the coverage floor compares the exact counts (94.96% no longer passes 95% by rounding);
+  - only master and `v*` tags build the public version (`publicReleaseRefSpec`); other branches carry the commit;
+  - the symbols packages are attested too;
+  - dependency review allows only permissive licenses (it denied only AGPL).
 - **Documentation drift before 1.0** (#527):
   - `IKaleidoEventRedactor` names `AddEventRedaction` (ADR 0025) for event payloads, not the host's log policy;
   - the information-step payload example includes `exchangeId`;

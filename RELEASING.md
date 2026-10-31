@@ -26,12 +26,21 @@ The repository cannot configure these; a tag run fails before publishing anythin
 3. **Repository variable** `NUGET_USER` (Settings -> Secrets and variables -> Actions -> Variables): the
    nuget.org user name or organization of that policy. It is not a secret; no API key is stored.
 4. **The `release` environment** with required reviewers and deployment tags `v*` (see below).
+5. **A tag ruleset** (Settings -> Rules -> Rulesets -> New tag ruleset) targeting `v*`: restrict
+   creation, update and deletion to the maintainers (bypass list), so only a maintainer can tag a
+   release and a released tag cannot be moved. The workflow refuses a tag that is not on master
+   anyway; the ruleset stops anyone else from starting a release at all (#526).
 
 ## What the workflow guarantees
 
 Every run, from a clean checkout of the tag (or master, for a dry run):
-1. restores, builds and tests the solution (`Kaleido.slnx`) in Release;
-2. packs the eight packages and verifies them ([`tools/packaging/Test-PackageConsumer.ps1`](tools/packaging/Test-PackageConsumer.ps1)):
+1. refuses, before anything is built, a commit that is not on master (a tag marks a merged commit;
+   it is never merged itself), and a commit whose Build workflow has not passed on master: the full
+   gate (doc checks, whitespace, coverage floor, package-gate self-test, Sonar, Windows) ran on that
+   commit when it was merged, and the release reuses that result. A tag pushed before that run
+   finished fails here: wait for it, then re-run the release (#526);
+2. restores, builds and tests the solution (`Kaleido.slnx`) in Release;
+3. packs the eight packages and verifies them ([`tools/packaging/Test-PackageConsumer.ps1`](tools/packaging/Test-PackageConsumer.ps1)):
    exactly the release set (the script's manifest of ids, one version, one symbols package per
    library: a missing, duplicate, unexpected or mixed-version package fails), contents and metadata
    (assembly, XML docs, README, icon, LICENSE, NOTICE, license, repository and commit), exact
@@ -40,16 +49,17 @@ Every run, from a clean checkout of the tag (or master, for a dry run):
    analyzer and no repository-only rule, a clean host of every runtime package that starts and
    answers, and deterministic source paths with Source Link in every symbols package (#436). CI also
    runs its self-test (`Test-PackageConsumer.Tests.ps1`), which breaks the set each of those ways;
-3. on a tag, refuses to publish unless the tag equals the packed version and the nuget.org publisher
+4. on a tag, refuses to publish unless the tag equals the packed version and the nuget.org publisher
    (`NUGET_USER`) is configured;
-4. attests the build provenance of every `.nupkg`;
-5. publishes the `.nupkg` files (`--skip-duplicate`) to GitHub Packages and, on a tag, to nuget.org;
+5. attests the build provenance of every `.nupkg` and `.snupkg`;
+6. publishes the `.nupkg` files (`--skip-duplicate`) to GitHub Packages and, on a tag, to nuget.org;
    keeps packages and symbols with the run, and on a tag creates the GitHub Release (a prerelease for
    a version with a suffix).
 
 **Least privilege.** The workflow has `contents: read` by default; the release job adds only
 `contents: write` (the GitHub Release), `packages: write` (the feed), and `id-token: write` with
-`attestations: write` (the OIDC token for nuget.org trusted publishing and the attestation). It
+`attestations: write` (the OIDC token for nuget.org trusted publishing and the attestation), and
+`actions: read` (the Build workflow's result for the released commit). It
 publishes to GitHub Packages with the run's `GITHUB_TOKEN` and to nuget.org with a short-lived key
 exchanged from the run's OIDC token - no stored publication secret. The job runs in the **`release` environment**: configure
 it in the repository settings with **required reviewers** and **deployment tags `v*`** (plus master for
@@ -91,7 +101,7 @@ version, since published versions are immutable).
 ## Provenance
 
 The packages are built only by this workflow, from a tagged commit, with deterministic builds and Source
-Link (each symbol file points at the exact commit). Each `.nupkg` has a signed
+Link (each symbol file points at the exact commit). Each `.nupkg` and `.snupkg` has a signed
 [build provenance attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations)
 naming the workflow run and commit that built it; verify a downloaded package with:
 
@@ -99,8 +109,18 @@ naming the workflow run and commit that built it; verify a downloaded package wi
 gh attestation verify Kaleido.<version>.nupkg --repo no1ross/Kaleido
 ```
 
+The same command verifies a symbols package (`Kaleido.<version>.snupkg`).
+
 nuget.org repository-signs every package it accepts. Author signing (a code-signing certificate) is
 deliberately not used for now: it needs a certificate and its custody, and the attestation already
 ties each package to its build (#432).
 
 Every package carries the `LICENSE` and `NOTICE` files.
+
+## Dependencies that set a package's compatibility
+
+`Kaleido.Http.Mcp` builds on the MCP C# SDK (`ModelContextProtocol.AspNetCore`, 2.x), so its 1.x promise
+holds only as far as the SDK's own: an SDK major version is a `Kaleido.Http.Mcp` major. The SDK's minor
+versions can change its API surface too - 2.3.0 made the client's server information nullable, which broke the
+build after a Dependabot update (#544, #546) - so a minor SDK update is reviewed like a code change, and the MCP
+unit and functional tests must pass before it merges (#526, D4).
