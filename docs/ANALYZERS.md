@@ -154,7 +154,7 @@ For the remaining rules, see their implementations under [`Kaleido.Analyzers.Sou
 
 ## Test rules — `KAL1xxx`
 
-**Audience:** contributors writing tests. **Project:** [`Kaleido.Analyzers.Testing`](../tools/analyzers/Kaleido.Analyzers.Testing/), referenced by every test project through `tests/Directory.Build.props`; never shipped. Individual rules have their own applicability checks and `.editorconfig` exemptions: KAL1006 is disabled for functional/integration tests, KAL1009 runs only in `*.UnitTests` assemblies, and KAL1010 applies wherever its matching test-project code occurs.
+**Audience:** contributors writing tests. **Project:** [`Kaleido.Analyzers.Testing`](../tools/analyzers/Kaleido.Analyzers.Testing/), referenced by every test project through `tests/Directory.Build.props`; never shipped. Individual rules have their own applicability checks and `.editorconfig` exemptions: KAL1006 is disabled for functional/integration tests, KAL1001-KAL1004, KAL1009 and KAL1012 run only in `*.UnitTests` assemblies; KAL1007, KAL1008 and KAL1011 apply to fixtures inheriting `SutFixture<TSut>`; KAL1010 applies in every test project (unit, functional and integration).
 
 | ID | Rule | Diagnostic message |
 |---|---|---|

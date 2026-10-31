@@ -8,7 +8,7 @@ namespace Kaleido.Analyzers.Testing.Fixtures;
 /// <summary>
 /// KAL1007 — a fixture inheriting SutFixture&lt;TSut&gt; must be named
 /// {TSut.Name}Tests — the name encodes the subject under test exactly.
-/// Scoped to unit-test projects via .editorconfig.
+/// Applies to fixtures inheriting SutFixture&lt;TSut&gt;, which only unit tests declare.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class FixtureNameMatchesSutAnalyzer : DiagnosticAnalyzer

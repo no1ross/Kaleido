@@ -7,7 +7,7 @@ namespace Kaleido.Analyzers.Testing.Fixtures;
 /// <summary>
 /// KAL1002 — the {Sut}Tests prefix must resolve to a real type (the subject
 /// under test). Catches fixtures named after scenarios instead of the SUT.
-/// Scoped to unit-test projects via .editorconfig.
+/// Scoped to unit-test assemblies (*.UnitTests, FixtureConventions.IsUnitTestAssembly).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class FixtureSutResolutionAnalyzer : DiagnosticAnalyzer

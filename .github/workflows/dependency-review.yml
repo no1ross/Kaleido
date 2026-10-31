@@ -23,4 +23,6 @@ jobs:
       uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
       with:
         fail-on-severity: high
-        deny-licenses: AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later
+        # Permissive licenses only (#526): anything else - GPL, LGPL, AGPL, SSPL, BUSL... - fails the
+        # review, and adding a license here is a maintainer decision.
+        allow-licenses: MIT, MIT-0, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, BSL-1.0, Unlicense, CC0-1.0

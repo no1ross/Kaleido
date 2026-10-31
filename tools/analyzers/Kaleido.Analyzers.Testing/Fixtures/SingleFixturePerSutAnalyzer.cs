@@ -9,7 +9,7 @@ namespace Kaleido.Analyzers.Testing.Fixtures;
 /// <summary>
 /// KAL1004 — one fixture per subject under test: two fixture classes that
 /// resolve to the same SUT type are flagged.
-/// Scoped to unit-test projects via .editorconfig.
+/// Scoped to unit-test assemblies (*.UnitTests, FixtureConventions.IsUnitTestAssembly).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class SingleFixturePerSutAnalyzer : DiagnosticAnalyzer

@@ -291,6 +291,9 @@ sections.
 - Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
 
 ### Changed
+- **The 1.0 runtime support window is stated** (#528, ADR 0035): the packages stay on `net8.0`; Kaleido supports a
+  runtime while Microsoft does (.NET 8 and 9 end on 10 November 2026), and services override the 8.x dependencies
+  to patched versions (VERSIONING, SUPPORT, README).
 - **One controllable clock** (#460): leases, idempotency retention, the event relay's retries,
   timeouts and circuit break, the registry caches' TTLs and the MCP lookup states' lifetime read the
   injected `TimeProvider`. `AddKaleido()` registers `TimeProvider.System` with `TryAdd`, so a host can
@@ -326,6 +329,20 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Release and CI integrity** (#526):
+  - a release refuses a commit that is not on master, or whose Build workflow (the full gate) has not passed on
+    master, before anything is built or published; RELEASING recommends a `v*` tag ruleset;
+  - the coverage floor compares the exact counts (94.96% no longer passes 95% by rounding);
+  - only master and `v*` tags build the public version (`publicReleaseRefSpec`); other branches carry the commit;
+  - the symbols packages are attested too;
+  - dependency review allows only permissive licenses (it denied only AGPL).
+- **Documentation drift before 1.0** (#527):
+  - `IKaleidoEventRedactor` names `AddEventRedaction` (ADR 0025) for event payloads, not the host's log policy;
+  - the information-step payload example includes `exchangeId`;
+  - the step fields in the Http README no longer list `version` (ADR 0029);
+  - the analyzer counts and each test rule's scope are stated as they are (KAL1010 applies in every test project);
+  - `IKaleidoTransactions` and `IKaleidoOutboxStore` say what an outbox on another database means: a failed commit
+    still relays the transition's events.
 - **`SqliteTelemetry` holds constants only** (#525): its `ActivitySource`, `Meter` and failure counters moved into
   the SQLite context store, as the telemetry conventions require. The names are unchanged.
 - **MCP: information steps are confirmed like any step** (#516): with `RequireConfirmation` on, an information

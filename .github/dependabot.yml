@@ -3,7 +3,8 @@
 #
 # At most one PR per ecosystem per run (#383). Major NuGet versions are ignored: they are migrations
 # (they can change the net8.0 runtime line, a maintainer decision - docs/VERSIONING.md), done
-# deliberately through an issue. The sample UIs (npm) moved to their own repositories with the
+# deliberately through an issue. ADR 0035 (#528) keeps this for 1.0: consumers override the 8.x
+# dependency lines to patched versions in their own service; Kaleido's own lines move only by decision. The sample UIs (npm) moved to their own repositories with the
 # samples (#95).
 version: 2
 updates:

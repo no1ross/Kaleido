@@ -18,7 +18,8 @@ namespace Kaleido.Storage;
 /// <strong>Atomic with the process state</strong> when both are on one database and
 /// <see cref="IKaleidoTransactions"/> covers it (e.g. <c>AddSqliteContextStore</c> and
 /// <c>AddSqliteOutboxStore</c> on one SQLite database): write in the open transaction when there is
-/// one, on your own otherwise.
+/// one, on your own otherwise. An outbox on another database writes its events on their own: if the
+/// transition's commit then fails, they are still relayed, describing a state that was never saved.
 /// </para>
 /// <para>
 /// <strong>Several instances:</strong> with several instances on one shared store, each relay claims

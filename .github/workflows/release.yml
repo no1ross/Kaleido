@@ -36,12 +36,37 @@ jobs:
       packages: write      # GitHub Packages
       id-token: write      # OIDC: nuget.org trusted publishing and the build attestation
       attestations: write  # the build provenance attestation
+      actions: read        # the Build workflow's result for the released commit
 
     steps:
 
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 0  # NBGV needs full history for version height
+
+    # Only a commit already on master is released (#526): a tag marks a merged, reviewed commit, so a
+    # tag on a topic-branch commit (or a dry run from another branch) fails here, before anything is
+    # built, attested or published.
+    - name: Check the commit is on master
+      run: |
+        git fetch --no-tags origin master
+        git merge-base --is-ancestor "$GITHUB_SHA" origin/master || {
+          echo "::error::${GITHUB_REF_NAME} (${GITHUB_SHA}) is not on master. Release only a commit that was merged to master: tag that commit."
+          exit 1
+        }
+
+    # Every commit on master ran the full Build gate on push (doc checks, whitespace, coverage floor,
+    # package-gate self-test, Sonar, Windows); the release reuses that result instead of a narrower
+    # gate of its own (#526). A tag pushed before that run finished fails here: wait for it, then re-run.
+    - name: Check the Build gate passed for the commit
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        passed=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yml/runs?head_sha=${GITHUB_SHA}&event=push&branch=master&status=success" --jq '.total_count')
+        test "${passed:-0}" -gt 0 || {
+          echo "::error::The Build workflow has not passed on master for ${GITHUB_SHA}. Wait for it to succeed (or fix it), then re-run this release."
+          exit 1
+        }
 
     - name: Setup .NET
       uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68  # v6.0.0
@@ -94,12 +119,14 @@ jobs:
           exit 1
         }
 
-    # A signed SLSA build provenance attestation for every package: verify a downloaded package with
-    # `gh attestation verify <file>.nupkg --repo no1ross/Kaleido` (RELEASING.md).
+    # A signed SLSA build provenance attestation for every package and symbols package (#526): verify a
+    # downloaded file with `gh attestation verify <file> --repo no1ross/Kaleido` (RELEASING.md).
     - name: Attest build provenance
       uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
       with:
-        subject-path: artifacts/*.nupkg
+        subject-path: |
+          artifacts/*.nupkg
+          artifacts/*.snupkg
 
     # GitHub Packages hosts the .nupkg files; it does not host symbol packages, so the .snupkg files
     # travel with the workflow run (and with the GitHub Release on a tag).

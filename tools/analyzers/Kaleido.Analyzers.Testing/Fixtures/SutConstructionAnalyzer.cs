@@ -10,7 +10,7 @@ namespace Kaleido.Analyzers.Testing.Fixtures;
 /// KAL1008 — the SUT may only be constructed inside CreateSut(). new-ing the
 /// fixture's TSut inside test methods creates per-test construction drift;
 /// all arrangement belongs in the single CreateSut() seam.
-/// Scoped to unit-test projects via .editorconfig.
+/// Applies to fixtures inheriting SutFixture&lt;TSut&gt;, which only unit tests declare.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class SutConstructionAnalyzer : DiagnosticAnalyzer
