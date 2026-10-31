@@ -199,6 +199,7 @@ public sealed class McpContractTests(McpClinicFixture fixture)
             ["service"] = "clinic",
             ["processId"] = processId,
             ["informationRequestId"] = VisitQuestions.RequestId,
+            ["answersToken"] = started["next"]!["answersToken"]!.GetValue<string>(),
             ["answers"] = new object[]
             {
                 new { itemId = VisitQuestions.Reason, values = Checkup },

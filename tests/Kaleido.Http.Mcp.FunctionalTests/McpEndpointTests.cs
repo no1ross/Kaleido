@@ -165,7 +165,7 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         }));
 
         Assert.Equal("completed", closed["outcome"]!.GetValue<string>());
-        Assert.Contains("complete", closed["next"]!["note"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Equal("No further steps here.", closed["next"]!["note"]!.GetValue<string>());
     }
 
     [Fact]
@@ -185,6 +185,7 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
             ["service"] = "clinic",
             ["processId"] = started["processId"]!.GetValue<string>(),
             ["informationRequestId"] = VisitQuestions.RequestId,
+            ["answersToken"] = next["answersToken"]!.GetValue<string>(),
             ["answers"] = new object[]
             {
                 new { itemId = VisitQuestions.Reason, values = Checkup },
@@ -249,6 +250,7 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
             ["service"] = "clinic",
             ["processId"] = processId,
             ["informationRequestId"] = VisitQuestions.RequestId,
+            ["answersToken"] = started["next"]!["answersToken"]!.GetValue<string>(),
             ["answers"] = new object[]
             {
                 new { itemId = VisitQuestions.Reason, values = Injury },
@@ -292,6 +294,41 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         var body = Body(result);
         Assert.Equal("mcp_invalid_arguments", body["code"]!.GetValue<string>());
         Assert.Equal(VisitQuestions.RequestId, body["details"]!["informationRequestId"]!.GetValue<string>());
+    }
+
+    // #516: answers without the token the questions came with - or with a forged one - never reach the
+    // service: the questions stay pending, and the refusal carries them with a fresh token that works.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("kaleido-mcp-answers:eyJwcm9jZXNzSWQiOiJ4In0=")]
+    public async Task AnswersWithoutTheirToken_AreRefused_AndTheQuestionsStayPending(string? token)
+    {
+        await using var client = await fixture.ConnectAsync(Nurse);
+        var started = Body(await Call(client, "clinic_start_visit", new() { ["patientId"] = 2 }));
+        var processId = started["processId"]!.GetValue<string>();
+        Dictionary<string, object?> Answers(string? answersToken) => new()
+        {
+            ["service"] = "clinic",
+            ["processId"] = processId,
+            ["informationRequestId"] = VisitQuestions.RequestId,
+            ["answersToken"] = answersToken,
+            ["answers"] = new object[]
+            {
+                new { itemId = VisitQuestions.Reason, values = Checkup },
+                new { itemId = VisitQuestions.Urgent, values = NotUrgent },
+            },
+        };
+
+        var refused = await Call(client, "answer_information_request", Answers(token));
+
+        Assert.True(refused.IsError);
+        var body = Body(refused);
+        Assert.Equal("mcp_invalid_arguments", body["code"]!.GetValue<string>());
+        var state = Body(await Call(client, "get_process_state", new() { ["service"] = "clinic", ["processId"] = processId }));
+        Assert.Equal(VisitQuestions.RequestId, state["next"]!["informationRequest"]!["informationRequestId"]!.GetValue<string>());
+
+        var answered = Body(await Call(client, "answer_information_request", Answers(body["details"]!["answersToken"]!.GetValue<string>())));
+        Assert.Equal("completed", answered["outcome"]!.GetValue<string>());
     }
 
     [Fact]

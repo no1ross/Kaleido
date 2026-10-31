@@ -27,8 +27,7 @@ public sealed class KaleidoToolInvokerTests
     };
     private readonly Mock<IKaleidoQueryableClient> clinicQueries = new();
     private readonly Mock<IInformationRequestElicitor> elicitor = new();
-    private readonly Mock<IMcpLookupStateProtector> lookupState = new();
-    private bool refuseLookupStates;
+    private readonly PlainStates states = new();
     private readonly Mock<IKaleidoProcessForwarding> processForwarding = new();
     private readonly List<Guid?> forwardedProcessIds = [];
     private readonly Mock<McpServer> server = new();
@@ -149,28 +148,36 @@ public sealed class KaleidoToolInvokerTests
             .Callback((Guid? id) => forwardedProcessIds.Add(id))
             .Returns(Mock.Of<IDisposable>());
 
-        // Protection is McpLookupStateProtector's to test (#452); here a state round-trips as plain JSON,
-        // so tests can read and change it, and refuseLookupStates makes the protector refuse it.
-        lookupState.Setup(x => x.Protect(It.IsAny<McpLookupState>()))
-            .Returns((McpLookupState state) => McpLookupStateProtector.Prefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options)));
-        lookupState.Setup(x => x.Unprotect(It.IsAny<string?>()))
-            .Returns((string? value) => refuseLookupStates ? null : PlainLookupState(value));
     }
 
-    private static McpLookupState? PlainLookupState(string? value)
+    // Protection is McpStateProtector's to test (#452, #516); here a state round-trips as plain JSON
+    // under its kind's prefix, so tests can read and change it, and Refused makes a kind refused.
+    private sealed class PlainStates : IMcpStateProtector
     {
-        if (value?.StartsWith(McpLookupStateProtector.Prefix, StringComparison.Ordinal) != true)
-        {
-            return null;
-        }
+        public HashSet<McpStateKind> Refused { get; } = [];
 
-        try
+        public string Protect<T>(McpStateKind kind, T state)
+            where T : class =>
+            McpStateProtector.Prefix(kind) + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options));
+
+        public T? Unprotect<T>(McpStateKind kind, string? value)
+            where T : class
         {
-            return JsonSerializer.Deserialize<McpLookupState>(Convert.FromBase64String(value[McpLookupStateProtector.Prefix.Length..]), KaleidoJsonOptions.Options);
-        }
-        catch (Exception exception) when (exception is FormatException or JsonException)
-        {
-            return null;
+            var prefix = McpStateProtector.Prefix(kind);
+
+            if (Refused.Contains(kind) || value?.StartsWith(prefix, StringComparison.Ordinal) != true)
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<T>(Convert.FromBase64String(value[prefix.Length..]), KaleidoJsonOptions.Options);
+            }
+            catch (Exception exception) when (exception is FormatException or JsonException)
+            {
+                return null;
+            }
         }
     }
 
@@ -180,7 +187,7 @@ public sealed class KaleidoToolInvokerTests
             queryables.Object,
             processForwarding.Object,
             elicitor.Object,
-            lookupState.Object,
+            states,
             new KaleidoMcpOptions
             {
                 Instructions = "test",
@@ -718,11 +725,29 @@ public sealed class KaleidoToolInvokerTests
     }
 
     [Fact]
-    public async Task AStepResult_WithNothingNext_SaysTheProcessIsComplete()
+    public async Task AStepResult_WithNothingNext_SaysThereAreNoFurtherSteps()
     {
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
-        Assert.Contains("complete", body["next"]?["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Equal("No further steps here.", body["next"]?["note"]?.GetValue<string>());
+    }
+
+    // #516: a process waiting on steps the caller has no tool for, or that the service says the caller
+    // may not run, is never described as complete.
+    [Fact]
+    public async Task AStepResult_WhoseNextStepsTheCallerCannotRun_IsNotDescribedAsComplete()
+    {
+        StepReturns(StepResponse() with { AvailableSteps = [new ProcessStepSummary { Name = "ReviewStep", ExecuteUrl = "/clinic/processes/steps/ReviewStep" }] });
+        var hidden = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+        StepReturns(StepResponse() with { Notice = new KaleidoNotice("pro_not_permitted", "You do not have access to continue this process.") });
+        var notPermitted = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        foreach (var body in new[] { hidden, notPermitted })
+        {
+            var note = body["next"]?["note"]?.GetValue<string>();
+            Assert.Contains("No step here is available to you (pro_not_permitted)", note, StringComparison.Ordinal);
+            Assert.DoesNotContain("complete", note, StringComparison.Ordinal);
+        }
     }
 
     [Fact]
@@ -850,7 +875,7 @@ public sealed class KaleidoToolInvokerTests
         Assert.Null(outcome.Result);
         var inputRequired = Assert.IsType<InputRequiredResult>(outcome.InputRequired);
         Assert.Equal("Visit intake", Assert.Single(inputRequired.InputRequests!).Value.ElicitationParams?.Message);
-        Assert.StartsWith("kaleido-mcp:", inputRequired.RequestState, StringComparison.Ordinal);
+        Assert.StartsWith("kaleido-mcp-state:", inputRequired.RequestState, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1072,7 +1097,7 @@ public sealed class KaleidoToolInvokerTests
         LookupForms();
         var searchState = (await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId }), LookupCatalog, Cancel)).InputRequired?.RequestState
             ?? throw new Xunit.Sdk.XunitException("No state.");
-        refuseLookupStates = true;
+        states.Refused.Add(McpStateKind.Lookup);
 
         var outcome = Body(await CreateSut().InvokeAsync(PickPatient, Call(requestState: searchState, inputResponses: LookupAnswered()), LookupCatalog, Cancel));
 
@@ -1208,7 +1233,7 @@ public sealed class KaleidoToolInvokerTests
     public async Task AnswerInformationRequest_SubmitsTheExchangeIdItsQuestionsCameWith()
     {
         StateIs("clinic", StateResponse(ConditionalRequired with { InformationRequest = ConditionalQuestions with { ExchangeId = "shown" } }));
-        var shown = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+        var shown = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true", Issued("shown")), Catalog, Cancel));
         var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
 
         await CreateSut().InvokeAsync(Answer, AnswerCall("reason", "Chest pain", token), Catalog, Cancel);
@@ -1221,7 +1246,7 @@ public sealed class KaleidoToolInvokerTests
     public async Task AnswerInformationRequest_WithATokenFromAnEarlierExchange_SubmitsNothing()
     {
         StateIs("clinic", StateResponse(ConditionalRequired with { InformationRequest = ConditionalQuestions with { ExchangeId = "first-exchange" } }));
-        var shown = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+        var shown = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true", Issued("first-exchange")), Catalog, Cancel));
         var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
         StateIs("clinic", StateResponse(ConditionalRequired with { InformationRequest = ConditionalQuestions with { ExchangeId = "second-exchange" } }));
 
@@ -1235,7 +1260,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AnUnreadableContinuationState_IsAnArgumentError()
     {
-        var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: "kaleido-mcp:%%%"), Catalog, Cancel);
+        var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: "kaleido-mcp-state:%%%"), Catalog, Cancel);
 
         Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
     }
@@ -1249,7 +1274,7 @@ public sealed class KaleidoToolInvokerTests
 
         await CreateSut().InvokeAsync(
             Answer,
-            Call(new { service = "clinic", processId = ProcessId, informationRequestId = "visit-intake", answers = new[] { new { itemId = "urgent", values = new List<string> { "true" } } } }),
+            Call(new { service = "clinic", processId = ProcessId, informationRequestId = "visit-intake", answers = new[] { new { itemId = "urgent", values = new List<string> { "true" } } }, answersToken = Issued() }),
             Catalog,
             Cancel);
 
@@ -1757,7 +1782,7 @@ public sealed class KaleidoToolInvokerTests
 
         Assert.Equal("radiology", body["handoff"]?.GetValue<string>());
         Assert.Null(body["next"]?["required"]);
-        Assert.Contains("complete", body["next"]?["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Equal("No further steps here.", body["next"]?["note"]?.GetValue<string>());
     }
 
     // ── Confirmation (#439) ──────────────────────────────────────────────────
@@ -1942,6 +1967,37 @@ public sealed class KaleidoToolInvokerTests
         Assert.Empty(posts);
     }
 
+    // #516: a confirmation or answers-form state the protector refuses (forged, expired, another
+    // caller's, or protected with a key this instance lacks) runs nothing, whatever the form's answer.
+    [Fact]
+    public async Task Confirmation_WithMrtr_AStateTheProtectorRefuses_RunsNothing()
+    {
+        var state = await ConfirmationStateAsync();
+        states.Refused.Add(McpStateKind.Confirmation);
+
+        var outcome = await CreateSut(requireConfirmation: true).InvokeAsync(
+            Discharge, Call(requestState: state, inputResponses: Confirmed(Confirmation("accept", confirm: true))), ConfirmCatalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(posts);
+    }
+
+    [Fact]
+    public async Task Questions_WithMrtr_AnAnswersFormStateTheProtectorRefuses_SubmitsNothing()
+    {
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+        StepReturns(StepResponse(required: QuestionsRequired));
+        var state = (await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel)).InputRequired?.RequestState;
+        posts.Clear();
+        states.Refused.Add(McpStateKind.Continuation);
+
+        var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(posts);
+    }
+
     // A step with no display name, no declared effects and no inputs: the form names the tool.
     [Fact]
     public async Task Confirmation_ForAnUntitledStepWithoutInputs_NamesTheTool()
@@ -2023,6 +2079,131 @@ public sealed class KaleidoToolInvokerTests
     private static readonly InformationRequest FollowUpQuestions = Questions with { InformationRequestId = "follow-up" };
 
     private static readonly ProcessRequiredStep FollowUpRequired = QuestionsRequired with { InformationRequest = FollowUpQuestions };
+
+    // ── Information steps: confirmation (#516) ───────────────────────────────
+
+    // An information step declared RequiresConfirmation: with the host's RequireConfirmation on, its
+    // answers are submitted only after the user confirms them, on every path that submits them.
+    private static readonly ProcessRequiredStep ConfirmedQuestions = QuestionsRequired with { DisplayName = "Visit questions", RequiresConfirmation = true };
+
+    [Fact]
+    public async Task InformationStep_AnsweredByTheAgent_WithoutForms_IsRefused_AndNothingIsSubmitted()
+    {
+        StateIs("clinic", StateResponse(ConfirmedQuestions));
+
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+
+        Assert.Equal(McpErrorCodes.ConfirmationRequired, body["code"]?.GetValue<string>());
+        Assert.Contains("Visit questions", body["message"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Empty(posts);
+    }
+
+    [Theory]
+    [InlineData("accept", true, 1)]
+    [InlineData("accept", false, 0)]
+    [InlineData("decline", null, 0)]
+    public async Task InformationStep_AnsweredByTheAgent_InASession_IsSubmittedOnlyWhenTheUserConfirms(string action, bool? confirm, int submitted)
+    {
+        StateIs("clinic", StateResponse(ConfirmedQuestions));
+        UserAnswersInASession(Confirmation(action, confirm));
+
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+
+        var form = Assert.Single(sessionForms);
+        Assert.StartsWith("Confirm: submit the answers to Visit questions.", form.Message, StringComparison.Ordinal);
+        Assert.Contains("urgent: true", form.Message, StringComparison.Ordinal);
+        Assert.Equal(submitted, posts.Count);
+
+        if (submitted == 0)
+        {
+            Assert.Equal("notRun", body["outcome"]?.GetValue<string>());
+            Assert.Contains("Nothing was submitted", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        }
+    }
+
+    [Theory]
+    [InlineData("accept", true, 1)]
+    [InlineData("decline", null, 0)]
+    public async Task InformationStep_AnsweredByTheAgent_WithMrtr_ConfirmsInARound_ThenSubmitsOnce(string action, bool? confirm, int submitted)
+    {
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+        StateIs("clinic", StateResponse(ConfirmedQuestions));
+
+        var round = await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel);
+
+        Assert.Empty(posts);
+        Assert.StartsWith("kaleido-mcp-confirm:", round.InputRequired?.RequestState, StringComparison.Ordinal);
+
+        await CreateSut(requireConfirmation: true).InvokeAsync(
+            Answer, Call(requestState: round.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation(action, confirm))), Catalog, Cancel);
+
+        Assert.Equal(submitted, posts.Count);
+    }
+
+    // The confirmed answers belong to the questions the user saw: when the process asks something else by
+    // the time the user confirms, nothing is submitted.
+    [Fact]
+    public async Task InformationStep_ConfirmedWithMrtr_AfterTheQuestionsChanged_SubmitsNothing()
+    {
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+        StateIs("clinic", StateResponse(ConfirmedQuestions));
+        var round = await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel);
+        StateIs("clinic", StateResponse(ConfirmedQuestions with { InformationRequest = Questions with { ExchangeId = "asked-again" } }));
+
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(
+            Answer, Call(requestState: round.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation("accept", confirm: true))), Catalog, Cancel));
+
+        Assert.Empty(posts);
+        Assert.Contains("different questions", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    // The MRTR form path: the last form's answers are confirmed in one more round, then submitted once.
+    [Fact]
+    public async Task InformationStep_AnsweredInMrtrForms_ConfirmsInARound_ThenSubmitsOnce()
+    {
+        var state = await MrtrStateAsync(ConfirmedQuestions);
+        StateIs("clinic", StateResponse(ConfirmedQuestions));
+
+        var confirm = await CreateSut(requireConfirmation: true).InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel);
+
+        Assert.Empty(posts);
+        Assert.Equal("kaleido-confirm", Assert.Single(confirm.InputRequired?.InputRequests ?? new Dictionary<string, InputRequest>()).Key);
+
+        await CreateSut(requireConfirmation: true).InvokeAsync(
+            Start, Call(requestState: confirm.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation("accept", confirm: true))), Catalog, Cancel);
+
+        Assert.Equal(QuestionsRequired.Name, Assert.Single(posts).Step);
+    }
+
+    // The session form path: after the questions, one confirmation form; declined, nothing is submitted
+    // and the step's summary says so.
+    [Fact]
+    public async Task InformationStep_AnsweredInSessionForms_Declined_SubmitsNothing_AndSaysSo()
+    {
+        UserAnswersInASession(Accepted(), Confirmation("decline", confirm: null));
+        StepsReturn(StepResponse(required: ConfirmedQuestions));
+
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Equal(2, sessionForms.Count);
+        Assert.Equal("StartVisitStep", Assert.Single(posts).Step);
+        Assert.Contains("did not confirm submitting the answers to Visit questions (decline)", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    // Both switches are opt-in: without the host's RequireConfirmation, the step's declaration alone asks nothing.
+    [Fact]
+    public async Task InformationStep_WithoutTheHostsRequireConfirmation_IsSubmittedWithoutAForm()
+    {
+        StateIs("clinic", StateResponse(ConfirmedQuestions));
+        UserAnswersInASession();
+
+        await CreateSut(requireConfirmation: false).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel);
+
+        Assert.Empty(sessionForms);
+        Assert.Single(posts);
+    }
 
     // #537, KAL0022: the step completed before the questions; a client that fails to show them leaves
     // the step reported with a note, not as failed.
@@ -2141,7 +2322,7 @@ public sealed class KaleidoToolInvokerTests
 
         var outcome = await CreateSut().InvokeAsync(Start, call, Catalog, Cancel);
 
-        Assert.StartsWith("kaleido-mcp:", outcome.InputRequired?.RequestState, StringComparison.Ordinal);
+        Assert.StartsWith("kaleido-mcp-state:", outcome.InputRequired?.RequestState, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -2179,7 +2360,7 @@ public sealed class KaleidoToolInvokerTests
         var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel);
 
         var next = outcome.InputRequired?.RequestState ?? throw new Xunit.Sdk.XunitException("No next round.");
-        var decoded = JsonNode.Parse(Decode(next, "kaleido-mcp:"));
+        var decoded = JsonNode.Parse(Decode(next, "kaleido-mcp-state:"));
         Assert.Equal("follow-up", decoded?["informationRequestId"]?.GetValue<string>());
         Assert.Equal(1, decoded?["round"]?.GetValue<int>());
         Assert.Equal(["visit-intake"], decoded?["answered"]?.AsArray().Select(x => x?.GetValue<string>()));
@@ -2377,19 +2558,30 @@ public sealed class KaleidoToolInvokerTests
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
-        Assert.StartsWith("kaleido-answers:", body["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.StartsWith("kaleido-mcp-answers:", body["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>(), StringComparison.Ordinal);
         Assert.Contains("answersToken unchanged", body["next"]?["instruction"]?.GetValue<string>(), StringComparison.Ordinal);
     }
 
-    private KaleidoToolCall AnswerCall(string itemId, string value, string? answersToken = null) =>
+    // An answer with the token the questions came with (#516: required), unless the test passes another
+    // token or none (NoToken).
+    private KaleidoToolCall AnswerCall(string itemId, string value, string? answersToken = IssuedToken) =>
         Call(new Dictionary<string, object?>
         {
             ["service"] = "clinic",
             ["processId"] = ProcessId,
             ["informationRequestId"] = "visit-intake",
             ["answers"] = new[] { new { itemId, values = new List<string> { value } } },
-            [KaleidoToolInvoker.AnswersTokenArgument] = answersToken,
+            [KaleidoToolInvoker.AnswersTokenArgument] = answersToken == IssuedToken ? Issued() : answersToken,
         });
+
+    private const string IssuedToken = "(issued)";
+
+    // The token issued with the visit intake's questions, for this process, with no earlier answers.
+    private string Issued(string exchangeId = "") =>
+        states.Protect(McpStateKind.Answers, new IssuedAnswers(ProcessId, "visit-intake", exchangeId, new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)));
+
+    // The answers token's shape, as the invoker issues it.
+    private sealed record IssuedAnswers(Guid ProcessId, string InformationRequestId, string ExchangeId, IReadOnlyDictionary<string, IReadOnlyList<string>> Answers);
 
     [Fact]
     public async Task ConditionalQuestions_ForTheAgent_ReturnTheFollowUpWithAToken_ThenSubmitEveryAnswer()
@@ -2421,6 +2613,7 @@ public sealed class KaleidoToolInvokerTests
             processId = ProcessId,
             informationRequestId = "visit-intake",
             answers = new[] { new { itemId = "urgent", values = new List<string> { "false" } }, new { itemId = "reason", values = new List<string> { "None" } } },
+            answersToken = Issued(),
         });
 
         await CreateSut().InvokeAsync(Answer, call, Catalog, Cancel);
@@ -2428,24 +2621,42 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(["urgent"], Assert.Single(posts).Body["items"]?.AsArray().Select(x => x?["itemId"]?.GetValue<string>()));
     }
 
-    // A token is only read for the process and request it was issued for.
+    // #516: answers go only with the token issued for these questions - one for another request, an
+    // unreadable one or none is refused (never submitted under the current exchange), and the refusal
+    // carries the current questions with a fresh token.
     [Theory]
     [InlineData("another-request")]
     [InlineData("unreadable")]
-    public async Task ConditionalQuestions_ForTheAgent_ATokenForSomethingElse_IsIgnored(string kind)
+    [InlineData("none")]
+    public async Task ConditionalQuestions_ForTheAgent_ATokenForSomethingElse_IsRefused_AndNothingIsSubmitted(string kind)
     {
         StateIs("clinic", StateResponse(ConditionalRequired));
         var first = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
         var token = first["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
-        var changed = kind == "unreadable"
-            ? "kaleido-answers:%%%"
-            : Recode(token, "kaleido-answers:", json => json["informationRequestId"] = "another");
+        var changed = kind switch
+        {
+            "unreadable" => "kaleido-mcp-answers:%%%",
+            "none" => null,
+            _ => Recode(token, "kaleido-mcp-answers:", json => json["informationRequestId"] = "another"),
+        };
 
-        await CreateSut().InvokeAsync(Answer, AnswerCall("reason", "Chest pain", changed), Catalog, Cancel);
+        var refused = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("reason", "Chest pain", changed), Catalog, Cancel));
 
-        // Without the earlier answers "urgent" is unanswered, so "reason" does not apply and is not sent;
-        // Kaleido then reports the unanswered question, as for any incomplete answers.
-        Assert.Empty(Assert.Single(posts).Body["items"]?.AsArray() ?? throw new Xunit.Sdk.XunitException("No items."));
+        Assert.Empty(posts);
+        Assert.Equal(McpErrorCodes.InvalidArguments, refused["code"]?.GetValue<string>());
+        Assert.Contains("answersToken", refused["message"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.StartsWith("kaleido-mcp-answers:", refused.ToJsonString().Split("\"answersToken\":\"")[1], StringComparison.Ordinal);
+    }
+
+    // #516: a valid token submits once.
+    [Fact]
+    public async Task AnswerInformationRequest_WithTheIssuedToken_SubmitsOnce()
+    {
+        StateIs("clinic", StateResponse(QuestionsRequired));
+
+        await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel);
+
+        Assert.Single(posts);
     }
 
     [Fact]
@@ -2477,8 +2688,8 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AContinuationStateThatIsNotItsShape_IsAnArgumentError()
     {
-        var notJson = "kaleido-mcp:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("not json"));
-        var nullState = "kaleido-mcp:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("null"));
+        var notJson = "kaleido-mcp-state:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("not json"));
+        var nullState = "kaleido-mcp-state:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("null"));
 
         Assert.Equal(McpErrorCodes.InvalidArguments, Body(await CreateSut().InvokeAsync(Start, Call(requestState: notJson), Catalog, Cancel))["code"]?.GetValue<string>());
         Assert.Equal(McpErrorCodes.InvalidArguments, Body(await CreateSut().InvokeAsync(Start, Call(requestState: nullState), Catalog, Cancel))["code"]?.GetValue<string>());
@@ -2506,6 +2717,7 @@ public sealed class KaleidoToolInvokerTests
                   "service": "clinic",
                   "processId": "{{ProcessId}}",
                   "informationRequestId": "visit-intake",
+                  "answersToken": "{{Issued()}}",
                   "answers": [
                     { "itemId": "urgent", "values": [true, 3, "x"] },
                     { "itemId": "note", "values": "x" },
@@ -2531,7 +2743,7 @@ public sealed class KaleidoToolInvokerTests
 
         await CreateSut().InvokeAsync(
             Answer,
-            Call(new { service = "clinic", processId = ProcessId, informationRequestId = "visit-intake", answers = new { urgent = true } }),
+            Call(new { service = "clinic", processId = ProcessId, informationRequestId = "visit-intake", answers = new { urgent = true }, answersToken = Issued() }),
             Catalog,
             Cancel);
 

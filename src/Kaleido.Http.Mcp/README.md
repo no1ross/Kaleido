@@ -113,7 +113,11 @@ description, once per property (`service.Source.Field`), not once per tool.
 `[ProcessStep(RequiresConfirmation = true)]` is a hint by default. With
 `Kaleido:Mcp:RequireConfirmation` (`KaleidoMcpOptions.RequireConfirmation`, off by default) the
 adapter asks the user itself before running such a step, whichever way it is reached (its own tool,
-`call_tool`, or a guided lookup), and runs it only when the user accepts (#439):
+`call_tool`, or a guided lookup), and runs it only when the user accepts (#439). An **information
+step** declared `RequiresConfirmation` is confirmed the same way after its last answers and before
+they are submitted (the form names the step and lists the answers), whether the agent submits them
+with `answer_information_request` or the user answers in forms (#516). Both switches are opt-in;
+without either, nothing is asked:
 
 | Client | What happens |
 |---|---|
@@ -199,12 +203,18 @@ the agent never sees them and only asks what it is handed:
   `answer_information_request` again with the new answers and the token. When nothing more applies,
   everything is submitted and the service validates it as always. An answer to a question that does
   not apply is not sent.
-- The questions always come with an `answersToken` (#442): it ties the answers to the exchange the
-  questions were shown for, and holds the earlier answers for that process and request only; a token
-  for anything else is ignored. If the same questions were asked again since (a repeatable step asking
-  them anew), a token from the earlier time is refused and nothing is submitted. It is not a security
-  boundary: the service validates the complete submission, and refuses answers to an earlier exchange
-  itself (`pro_information_response_stale`).
+- The questions always come with an `answersToken` (#442), and `answer_information_request`
+  **requires** it (#516): it ties the answers to the exchange the questions were shown for, and holds
+  the earlier answers for that process and request only. A missing, unreadable or forged token, or one
+  for another process or request, is refused with `mcp_invalid_arguments` and nothing is submitted;
+  the refusal carries the current questions with a fresh token. If the same questions were asked again
+  since (a repeatable step asking them anew), a token from the earlier time is refused too. The answers
+  are never submitted under the current exchange by default. The service still validates the complete
+  submission, and refuses answers to an earlier exchange itself (`pro_information_response_stale`).
+- When nothing can be done next, `next.note` says so without claiming the process is complete: "No
+  further steps here." when the service offers nothing (`get_process_state` names the state), and
+  "No step here is available to you (`pro_not_permitted`)" when the remaining steps are not the caller's
+  to run (#516).
 - Forms carry the exchange in the continuation state the same way: a form shown for an earlier time
   the questions were asked is not submitted, and the current state is returned instead.
 
@@ -231,7 +241,10 @@ process and the original arguments travel in the `requestState` the client sends
 state is **encrypted and signed** with ASP.NET Data Protection, bound to the caller, and valid for 30
 minutes (#452): the client cannot read the ids, and a changed, forged, oversized, expired or
 another caller's state is refused with `mcp_invalid_arguments` and nothing runs. Clients without forms
-keep the instruction path.
+keep the instruction path. **Every state the adapter hands to the client is protected the same way**
+(#516), each kind with its own purpose, so one is never accepted as another: the lookup state, the
+state of an answers form, the `answersToken` the agent passes back, and the state of a confirmation
+form - which carries exactly the call the user confirmed.
 
 **Several instances share one key ring.** A form shown by one instance can be answered on another, so
 every instance behind a load balancer uses the same Data Protection application name and key storage
@@ -239,8 +252,8 @@ every instance behind a load balancer uses the same Data Protection application 
 settings. The [deployment guide](../../docs/guide/deployment.md#mcp-on-several-instances-one-key-ring)
 has the setup. A misconfiguration is reported, never silent: outside Development a host with no key
 storage configured logs a Warning at startup, and an instance that receives a form protected with a
-key it does not have logs a Warning naming the cause, counts it in
-`kaleido.mcp.lookup_states_refused` (reason `unknown_key`), and tells the user to search again.
+key it does not have logs a Warning naming the cause, counts it in `kaleido.mcp.states_refused`
+(reason `unknown_key`, with the state's kind), and tells the user to start again.
 
 **Lookups guide; services check.** A lookup reduces mistakes; it does not enforce anything. An agent
 can still pass ids itself (calling the step with its inputs skips the guided lookup). The service that owns the step checks what it receives and rejects a mismatch (the
@@ -291,6 +304,15 @@ A tool call never fails at the protocol level: a problem comes back as a tool re
 | `mcp_no_pending_information_request` | `answer_information_request` for a process that is not waiting for answers (already answered, or it needs a step instead). | Read the process with `get_process_state` and do what it needs now. |
 | `mcp_confirmation_required` | A step that needs the user's confirmation (`RequireConfirmation`), in a client that cannot show forms; nothing was run. | Tell the user; they run the step from a client that shows forms. Never claim the user agreed instead. |
 | `mcp_internal_error` | An unexpected error in the adapter. | Same as above. |
+
+**Telemetry tells a refusal from a failure (#525).** A tool call is counted in `kaleido.mcp.tool_calls`
+with `kaleido.mcp.outcome` `refused` for the caller's request refused - `mcp_unknown_tool`,
+`mcp_invalid_arguments`, `mcp_process_conflict`, `mcp_no_pending_information_request`,
+`mcp_confirmation_required`, or `mcp_service_error` with a 4xx from the service - and its span is not an
+error, as the runtimes treat a refused request. A failure of the adapter or the service
+(`mcp_internal_error`, `mcp_service_unavailable`, `mcp_service_error` with a 5xx or no status) is
+`error`, and its span is an error. The `kaleido.error.code` tag is always one of the codes above
+(`mcp_internal_error` for anything else), never a downstream service's own code.
 
 **Retries.** Tool calls go through the Kaleido clients: their resilience pipeline retries transient failures of one call with the same `Idempotency-Key`, so the service answers a retry it has already completed with the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#resilience)). When the *agent* calls a tool again (after a timeout, a lost answer, a restart), that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
 - a non-`[Repeatable]` step continuing a process, with the same inputs for the same process: same key, so the stored answer comes back (within the service's idempotency retention);

@@ -70,15 +70,13 @@ internal sealed partial class KaleidoToolInvoker(
     IKaleidoQueryableClientFactory queryables,
     IKaleidoProcessForwarding processForwarding,
     IInformationRequestElicitor elicitor,
-    IMcpLookupStateProtector lookupState,
+    IMcpStateProtector states,
     KaleidoMcpOptions options,
     ILogger<KaleidoToolInvoker> logger)
     : IKaleidoToolInvoker
 {
-    // The MRTR input-request key and the prefix of the adapter's opaque continuation state.
+    // The MRTR input-request key of an answers form.
     private const string AnswersInputKey = "kaleido-answers";
-    private const string StatePrefix = "kaleido-mcp:";
-    private const string AnswersPrefix = "kaleido-answers:";
 
     /// <summary>The <c>answer_information_request</c> argument carrying the answers of earlier rounds.</summary>
     internal const string AnswersTokenArgument = "answersToken";
@@ -418,9 +416,9 @@ internal sealed partial class KaleidoToolInvoker(
     // ordinary call.
     private static bool IsRetry(string? state) =>
         state is not null &&
-        (state.StartsWith(ConfirmStatePrefix, StringComparison.Ordinal) ||
-         state.StartsWith(McpLookupStateProtector.Prefix, StringComparison.Ordinal) ||
-         state.StartsWith(StatePrefix, StringComparison.Ordinal));
+        (state.StartsWith(McpStateProtector.Prefix(McpStateKind.Confirmation), StringComparison.Ordinal) ||
+         state.StartsWith(McpStateProtector.Prefix(McpStateKind.Lookup), StringComparison.Ordinal) ||
+         state.StartsWith(McpStateProtector.Prefix(McpStateKind.Continuation), StringComparison.Ordinal));
 
     // An MRTR retry, by the state the previous round returned: a confirmation (#439), a guided lookup
     // (the user searched or picked), or answers to an information request's form.
@@ -430,8 +428,8 @@ internal sealed partial class KaleidoToolInvoker(
         CancellationToken cancellationToken) =>
         call.RequestState switch
         {
-            { } state when state.StartsWith(ConfirmStatePrefix, StringComparison.Ordinal) => await ContinueConfirmationAsync(state, call, catalog, cancellationToken),
-            { } state when state.StartsWith(McpLookupStateProtector.Prefix, StringComparison.Ordinal) => await ContinueLookupAsync(call, catalog, cancellationToken),
+            { } state when state.StartsWith(McpStateProtector.Prefix(McpStateKind.Confirmation), StringComparison.Ordinal) => await ContinueConfirmationAsync(state, call, catalog, cancellationToken),
+            { } state when state.StartsWith(McpStateProtector.Prefix(McpStateKind.Lookup), StringComparison.Ordinal) => await ContinueLookupAsync(call, catalog, cancellationToken),
             _ => await ContinueAsync(call, catalog, cancellationToken),
         };
 
@@ -551,8 +549,13 @@ internal sealed partial class KaleidoToolInvoker(
             return notPending;
         }
 
-        var earlier = new Dictionary<string, IReadOnlyList<string>>(token?.Answers ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal), StringComparer.Ordinal);
-        var exchangeId = token?.ExchangeId ?? pending.Request.ExchangeId;
+        if (token is null)
+        {
+            return NoAnswersToken(service, pending, catalog, processId);
+        }
+
+        var earlier = new Dictionary<string, IReadOnlyList<string>>(token.Answers, StringComparer.Ordinal);
+        var exchangeId = token.ExchangeId;
         var given = AnswersArgument(arguments);
         var merged = Merge(earlier, given);
 
@@ -568,22 +571,46 @@ internal sealed partial class KaleidoToolInvoker(
             });
         }
 
-        // The agent's answers as given (Kaleido judges their shape), after the earlier rounds' answers;
-        // only answers to questions the answers disable are left out.
-        var enabled = pending.Request.EnabledItemIds(merged);
-        var questions = pending.Request.Questions().Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var submitted = Submitted(pending.Request, earlier, given, merged);
+
+        if (await ConfirmAnswersAsync(pending.Step, processId, new ConfirmedAnswers(service, informationRequestId, exchangeId, submitted, Round: 0, Answered: []), call, cancellationToken) is { } unconfirmed)
+        {
+            return unconfirmed;
+        }
+
+        var response = await SubmitAsync(service, pending.Step, pending.Request, exchangeId, submitted, processId, cancellationToken);
+
+        return await FollowUpAsync(service, response, catalog, call, [], round: 0, cancellationToken);
+    }
+
+    // #516: answers are submitted only with the token issued with the questions - never under the
+    // current exchange by default, which would take answers to earlier questions for answers to these.
+    // The refusal carries the current questions with a fresh token.
+    private CallToolResult NoAnswersToken(string service, PendingQuestions pending, ToolCatalog catalog, Guid processId) =>
+        Error(
+            McpErrorCodes.InvalidArguments,
+            $"The {AnswersTokenArgument} is missing, or not the one returned with these questions; nothing was submitted. Ask the user the questions below and answer with their {AnswersTokenArgument}, unchanged.",
+            Next(service, pending.Step, [], catalog, elicited: false, processId));
+
+    // The agent's answers as given (Kaleido judges their shape), after the earlier rounds' answers;
+    // only answers to questions the answers disable are left out.
+    private static InformationResponseItem[] Submitted(
+        InformationRequest request,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> earlier,
+        List<InformationResponseItem> given,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> merged)
+    {
+        var enabled = request.EnabledItemIds(merged);
+        var questions = request.Questions().Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
         var givenIds = given.Select(x => x.ItemId).ToHashSet(StringComparer.Ordinal);
-        InformationResponseItem[] submitted =
+
+        return
         [
             .. earlier
                 .Where(x => !givenIds.Contains(x.Key) && enabled.Contains(x.Key))
                 .Select(x => new InformationResponseItem { ItemId = x.Key, Answers = [.. x.Value.Select(value => new InformationAnswer { Value = value })] }),
             .. given.Where(x => !questions.Contains(x.ItemId) || enabled.Contains(x.ItemId)),
         ];
-
-        var response = await SubmitAsync(service, pending.Step, pending.Request, exchangeId, submitted, processId, cancellationToken);
-
-        return await FollowUpAsync(service, response, catalog, call, [], round: 0, cancellationToken);
     }
 
     // The agent answers another questionnaire, or questions that were asked again since the token was
@@ -700,17 +727,41 @@ internal sealed partial class KaleidoToolInvoker(
             return AskForAnswers(state.Service, state.ProcessId, pending.Request, state.Round, answered, merged);
         }
 
-        var response = await SubmitAsync(state.Service, pending.Step, pending.Request, state.ExchangeId, Enabled(pending.Request, merged), state.ProcessId, cancellationToken);
+        return await SubmitFormAnswersAsync(state, pending, Enabled(pending.Request, merged), call with { InputResponses = null, RequestState = null }, catalog, cancellationToken);
+    }
 
-        answered.Add(state.InformationRequestId);
+    // The last form's answers: confirmed when the step needs it (#516), then submitted, and the
+    // follow-up goes on with this request counted as answered.
+    private async Task<ToolOutcome> SubmitFormAnswersAsync(
+        ContinuationState state,
+        PendingQuestions pending,
+        InformationResponseItem[] items,
+        KaleidoToolCall call,
+        ToolCatalog catalog,
+        CancellationToken cancellationToken)
+    {
+        var confirmed = new ConfirmedAnswers(
+            state.Service,
+            state.InformationRequestId,
+            state.ExchangeId,
+            items,
+            state.Round + 1,
+            [.. state.Answered, state.InformationRequestId]);
+
+        if (await ConfirmAnswersAsync(pending.Step, state.ProcessId, confirmed, call, cancellationToken) is { } unconfirmed)
+        {
+            return unconfirmed;
+        }
+
+        var response = await SubmitAsync(state.Service, pending.Step, pending.Request, state.ExchangeId, items, state.ProcessId, cancellationToken);
 
         return await FollowUpAsync(
             state.Service,
             response,
             catalog,
-            call with { InputResponses = null, RequestState = null },
-            answered,
-            state.Round + 1,
+            call,
+            new JsonArray([.. confirmed.Answered.Select(x => (JsonNode?)x)]),
+            confirmed.Round,
             cancellationToken);
     }
 
@@ -737,7 +788,7 @@ internal sealed partial class KaleidoToolInvoker(
     {
         if (await Processor(service).GetProcessStateAsync(processId, cancellationToken) is not { } state)
         {
-            return Error(McpErrorCodes.ServiceError, $"Process {processId} was not found on '{service}', or you may not see it.");
+            return Error(McpErrorCodes.ServiceError, $"Process {processId} was not found on '{service}', or you may not see it.", Serialize(new { status = 404 }));
         }
 
         if (!string.IsNullOrWhiteSpace(state.TargetProcessorName))
@@ -758,7 +809,7 @@ internal sealed partial class KaleidoToolInvoker(
                 .Where(x => x.Status is StepExecutionStatus.Failed or StepExecutionStatus.Exception)
                 .Select(x => (JsonNode?)x.StepName)
                 .ToArray()),
-            ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false, processId),
+            ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false, processId, notice: state.Notice),
         };
 
         if (state.Notice is not null)
@@ -888,9 +939,16 @@ internal sealed partial class KaleidoToolInvoker(
             return (null, $"The user did not answer the questions ({session.Action}). Nothing was submitted; the process is still waiting for them.");
         }
 
+        var items = Enabled(pending, given);
+
+        if (await ConfirmAnswersInSessionAsync(call, required, items, processId, cancellationToken) is { } unconfirmed)
+        {
+            return (null, unconfirmed);
+        }
+
         try
         {
-            return (await SubmitAsync(service, required, pending, pending.ExchangeId, Enabled(pending, given), processId, cancellationToken), null);
+            return (await SubmitAsync(service, required, pending, pending.ExchangeId, items, processId, cancellationToken), null);
         }
         catch (Exception exception) when (!(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
@@ -1067,7 +1125,7 @@ internal sealed partial class KaleidoToolInvoker(
     private const string NotPermittedNote =
         "The process continues with a step this user may not run. Tell them they do not have access to continue it; do not guess or name another step.";
 
-    private static JsonObject Summary(
+    private JsonObject Summary(
         string service,
         string pendingService,
         StepExecutionResponse<JsonElement> step,
@@ -1117,7 +1175,7 @@ internal sealed partial class KaleidoToolInvoker(
             summary["handoff"] = step.TargetProcessorName;
         }
 
-        summary["next"] = Next(pendingService, required, available, catalog, elicited: answered.Count > 0, step.ProcessId);
+        summary["next"] = Next(pendingService, required, available, catalog, elicited: answered.Count > 0, step.ProcessId, notice: notice);
 
         if (notice is not null)
         {
@@ -1174,14 +1232,15 @@ internal sealed partial class KaleidoToolInvoker(
             },
         };
 
-    private static JsonObject Next(
+    private JsonObject Next(
         string service,
         ProcessRequiredStep? required,
         IReadOnlyCollection<ProcessStepSummary> available,
         ToolCatalog catalog,
         bool elicited,
         Guid? processId,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? answersSoFar = null)
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? answersSoFar = null,
+        KaleidoNotice? notice = null)
     {
         var next = new JsonObject { ["service"] = service };
 
@@ -1231,9 +1290,14 @@ internal sealed partial class KaleidoToolInvoker(
             next["choice"] = "Several steps are available: offer them to the user and let the user choose; do not pick one yourself. A step's 'closes' lists the steps it ends.";
         }
 
+        // #516: what the caller cannot see is never called complete. The service offers nothing: no
+        // further steps (get_process_state names the state). It offers steps the caller has no tool for,
+        // or says the caller may not continue: the caller is told so.
         if (required is null && tools.Length == 0)
         {
-            next["note"] = "No further steps: the process is complete here.";
+            next["note"] = available.Count == 0 && notice is null
+                ? "No further steps here."
+                : $"No step here is available to you ({ProcessorErrorCodes.NotPermitted}): tell the user they do not have access to continue it; do not guess another step.";
         }
 
         return next;
@@ -1313,64 +1377,32 @@ internal sealed partial class KaleidoToolInvoker(
     private static bool HasProposals(IEnumerable<InformationItem> items) =>
         items.Any(x => x.ProposedAnswers.Count > 0 || HasProposals(x.Items));
 
-    // ── Continuation state (MRTR) ────────────────────────────────────────────
+    // ── Continuation state (MRTR) and the answers token ──────────────────────
 
-    // Opaque to the client. It only says which process and round the form belongs to; the pending
-    // questions and the URL to submit to are always read fresh from Kaleido, never trusted from here.
-    private static string EncodeState(ContinuationState state) =>
-        StatePrefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options));
+    // Protected (#516): encrypted, signed, bound to the caller and short-lived, so the client can
+    // neither read, change nor replay it. It only says which process and round the form belongs to;
+    // the pending questions and the URL to submit to are always read fresh from Kaleido.
+    private string EncodeState(ContinuationState state) =>
+        states.Protect(McpStateKind.Continuation, state);
 
     // The answers of earlier rounds of one request, for the agent to send back with the next round
-    // (ADR 0024). Not trusted beyond that: it must name this process and request, and Kaleido validates
-    // the full set of answers when they are submitted.
-    private static string EncodeAnswers(Guid processId, string informationRequestId, string exchangeId, IReadOnlyDictionary<string, IReadOnlyList<string>> answers) =>
-        AnswersPrefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(new AnswersState(processId, informationRequestId, exchangeId, answers), KaleidoJsonOptions.Options));
+    // (ADR 0024), protected like the continuation state (#516). It must also name this process and
+    // request, and Kaleido validates the full set of answers when they are submitted.
+    private string EncodeAnswers(Guid processId, string informationRequestId, string exchangeId, IReadOnlyDictionary<string, IReadOnlyList<string>> answers) =>
+        states.Protect(McpStateKind.Answers, new AnswersState(processId, informationRequestId, exchangeId, answers));
 
     // The token's earlier answers and the exchange it was issued for; null when there is no usable
-    // token (none, unreadable, or for another process or questionnaire).
-    private static AnswersState? DecodeAnswers(string? value, Guid processId, string informationRequestId)
-    {
-        if (value?.StartsWith(AnswersPrefix, StringComparison.Ordinal) != true)
-        {
-            return null;
-        }
+    // token (none, refused by the protector, or for another process or questionnaire).
+    private AnswersState? DecodeAnswers(string? value, Guid processId, string informationRequestId) =>
+        value is not null &&
+        states.Unprotect<AnswersState>(McpStateKind.Answers, value) is { } state &&
+        state.ProcessId == processId &&
+        string.Equals(state.InformationRequestId, informationRequestId, StringComparison.Ordinal)
+            ? state
+            : null;
 
-        try
-        {
-            var state = JsonSerializer.Deserialize<AnswersState>(
-                Encoding.UTF8.GetString(Convert.FromBase64String(value[AnswersPrefix.Length..])),
-                KaleidoJsonOptions.Options);
-
-            return state is not null &&
-                   state.ProcessId == processId &&
-                   string.Equals(state.InformationRequestId, informationRequestId, StringComparison.Ordinal)
-                ? state
-                : null;
-        }
-        catch (Exception exception) when (exception is FormatException or JsonException)
-        {
-            return null;
-        }
-    }
-
-    private static ContinuationState? DecodeState(string? value)
-    {
-        if (value?.StartsWith(StatePrefix, StringComparison.Ordinal) != true)
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<ContinuationState>(
-                Encoding.UTF8.GetString(Convert.FromBase64String(value[StatePrefix.Length..])),
-                KaleidoJsonOptions.Options);
-        }
-        catch (Exception exception) when (exception is FormatException or JsonException)
-        {
-            return null;
-        }
-    }
+    private ContinuationState? DecodeState(string? value) =>
+        states.Unprotect<ContinuationState>(McpStateKind.Continuation, value);
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 

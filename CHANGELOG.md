@@ -13,6 +13,24 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **MCP telemetry: a refused tool call is not an error** (#525). `kaleido.mcp.outcome` has a new value,
+  `refused`, for the caller's request refused (invalid arguments, an unknown tool, a conflict, a confirmation
+  the client cannot ask for, no pending questions, or `mcp_service_error` with a 4xx): its span is no longer
+  an error and it is no longer counted as `error`. `kaleido.error.code` is always one of the adapter's
+  tool-call codes (`mcp_internal_error` for anything else); it could carry a downstream service's code, an
+  open-ended metric dimension.
+- **MCP: `answer_information_request` requires its `answersToken`** (#516). A missing, unreadable or
+  forged token, or one for another process or request, is refused with `mcp_invalid_arguments` and the current
+  questions with a fresh token; the answers were submitted under the current exchange before, which let
+  answers to earlier questions pass for answers to these.
+- **Every state the MCP adapter hands to the client is protected** (#516): the state of an answers form,
+  the `answersToken` and the state of a confirmation form were plain base64 JSON, so a client could read,
+  change or replay them. They are now protected like the guided-lookup state (ASP.NET Data Protection:
+  encrypted, signed, bound to the caller, valid 30 minutes; one purpose per kind). Instances behind a load
+  balancer share one key ring for every form, not only lookups. **Telemetry renamed:**
+  `kaleido.mcp.lookup_states_refused` is `kaleido.mcp.states_refused`, and its tag
+  `kaleido.mcp.lookup_state.refusal` is `kaleido.mcp.state.refusal`, with a new `kaleido.mcp.state.kind` tag
+  (`lookup`, `continuation`, `answers`, `confirmation`).
 - **`[Pageable]` limits are required** (#519): `DefaultSize` and `MaxSize` must both be greater than zero, and
   `DefaultSize` no greater than `MaxSize`; otherwise startup fails with `qry_invalid_registration`, naming the
   capability and both limits. A bare `[Pageable]` returned empty pages with a non-zero `TotalCount` and refused
@@ -308,6 +326,15 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **`SqliteTelemetry` holds constants only** (#525): its `ActivitySource`, `Meter` and failure counters moved into
+  the SQLite context store, as the telemetry conventions require. The names are unchanged.
+- **MCP: information steps are confirmed like any step** (#516): with `RequireConfirmation` on, an information
+  step declared `RequiresConfirmation` was submitted without asking (agent answers, MRTR forms and session forms
+  all skipped the confirmation). Its answers are now confirmed in the same form before they are submitted;
+  a client without forms is refused with `mcp_confirmation_required`. Both switches stay opt-in.
+- **MCP: a process is no longer called complete when the caller sees no next step** (#516): `next.note` says
+  "No further steps here.", or "No step here is available to you (pro_not_permitted)" when the remaining
+  steps are not the caller's to run.
 - **Query input the query cannot use is a 400, never a 500 or a silent Or** (#519):
   - an enum value that names no member (an unknown name, or any number: `Enum.Parse` accepted both) is
     `qry_invalid_filter_value`; a `[Flags]` enum value may combine members;

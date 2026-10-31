@@ -4,15 +4,18 @@ using System.Text.Json.Nodes;
 namespace Kaleido.Http.Mcp.FunctionalTests.Infrastructure;
 
 /// <summary>
-/// Sits in the SDK client's HTTP pipeline: sees, and may replace, the guided-lookup state the client
-/// sends back on each MRTR retry (#452). <c>rewrite</c> gets the retry's index and the state.
+/// Sits in the SDK client's HTTP pipeline: sees, and may replace, the state the client sends back on
+/// each MRTR retry - the guided-lookup state by default (#452), or another kind by its prefix (#516).
+/// <c>rewrite</c> gets the retry's index and the state.
 /// </summary>
-public sealed class LookupStateRewriter(Func<int, string, string> rewrite) : DelegatingHandler
+public sealed class LookupStateRewriter(Func<int, string, string> rewrite, string prefix = LookupStateRewriter.StatePrefix) : DelegatingHandler
 {
     public const string StatePrefix = "kaleido-mcp-lookup:";
 
-    public LookupStateRewriter(Func<string, string> rewrite)
-        : this((_, state) => rewrite(state))
+    public const string ConfirmationPrefix = "kaleido-mcp-confirm:";
+
+    public LookupStateRewriter(Func<string, string> rewrite, string prefix = StatePrefix)
+        : this((_, state) => rewrite(state), prefix)
     {
     }
 
@@ -27,7 +30,7 @@ public sealed class LookupStateRewriter(Func<int, string, string> rewrite) : Del
         if (request.Content is not null &&
             JsonNode.Parse(await request.Content.ReadAsStringAsync(cancellationToken)) is JsonObject message &&
             message["params"]?["requestState"]?.GetValue<string>() is { } state &&
-            state.StartsWith(StatePrefix, StringComparison.Ordinal))
+            state.StartsWith(prefix, StringComparison.Ordinal))
         {
             message["params"]!["requestState"] = rewrite(Seen.Count, state);
             Seen.Add(state);

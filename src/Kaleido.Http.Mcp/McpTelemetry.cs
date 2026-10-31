@@ -35,8 +35,13 @@ internal static class McpTelemetry
     /// <summary>Registry reads, by result: <c>hit</c> (the caller's registry revision was already translated into tools) or <c>fetched</c> (translated now).</summary>
     public const string RegistryReadsCounterName = "kaleido.mcp.registry_reads";
 
-    /// <summary>Guided-lookup states refused on a form retry, by reason (#452): <c>unknown_key</c> (the instances do not share a Data Protection key ring), <c>expired</c>, <c>another_caller</c> or <c>invalid</c>.</summary>
-    public const string LookupStatesRefusedCounterName = "kaleido.mcp.lookup_states_refused";
+    /// <summary>
+    /// States handed to the MCP client and refused when they came back (#452, #516), by kind
+    /// (<c>lookup</c>, <c>continuation</c>, <c>answers</c>, <c>confirmation</c>) and reason:
+    /// <c>unknown_key</c> (the instances do not share a Data Protection key ring), <c>expired</c>,
+    /// <c>another_caller</c> or <c>invalid</c>.
+    /// </summary>
+    public const string StatesRefusedCounterName = "kaleido.mcp.states_refused";
 
     // ── Tag names ────────────────────────────────────────────────────────────
 
@@ -49,10 +54,17 @@ internal static class McpTelemetry
 
     public const string TagCapability = "kaleido.mcp.capability";
 
-    /// <summary><c>completed</c>, <c>input_required</c>, <c>error</c>, or <c>canceled</c>.</summary>
+    /// <summary>
+    /// <c>completed</c>, <c>input_required</c>, <c>refused</c> (the caller's request was refused: invalid
+    /// arguments, an unknown tool, a conflict, a confirmation the client cannot ask for, or a 4xx from the
+    /// service), <c>error</c> (the adapter or the service failed), or <c>canceled</c>.
+    /// </summary>
     public const string TagOutcome = "kaleido.mcp.outcome";
 
-    /// <summary>The <c>mcp_*</c> code of a failed call (same key as the HTTP error tag).</summary>
+    /// <summary>
+    /// The <c>mcp_*</c> code of a refused or failed call (same key as the HTTP error tag); always one of
+    /// the adapter's tool-call codes, <c>mcp_internal_error</c> for anything else (#525).
+    /// </summary>
     public const string TagErrorCode = "kaleido.error.code";
 
     public const string TagToolCount = "kaleido.mcp.tool_count";
@@ -63,14 +75,19 @@ internal static class McpTelemetry
 
     public const string TagRegistryPartial = "kaleido.mcp.registry.partial";
 
-    /// <summary>Why a guided-lookup state was refused; see <see cref="LookupStatesRefusedCounterName"/>.</summary>
-    public const string TagLookupStateRefusal = "kaleido.mcp.lookup_state.refusal";
+    /// <summary>Why a state was refused; see <see cref="StatesRefusedCounterName"/>.</summary>
+    public const string TagStateRefusal = "kaleido.mcp.state.refusal";
+
+    /// <summary>The kind of a refused state; see <see cref="StatesRefusedCounterName"/>.</summary>
+    public const string TagStateKind = "kaleido.mcp.state.kind";
 
     // ── Tag values ───────────────────────────────────────────────────────────
 
     public const string OutcomeCompleted = "completed";
 
     public const string OutcomeInputRequired = "input_required";
+
+    public const string OutcomeRefused = "refused";
 
     public const string OutcomeError = "error";
 
@@ -80,11 +97,19 @@ internal static class McpTelemetry
 
     public const string RegistryFetched = "fetched";
 
-    public const string LookupStateUnknownKey = "unknown_key";
+    public const string StateUnknownKey = "unknown_key";
 
-    public const string LookupStateExpired = "expired";
+    public const string StateExpired = "expired";
 
-    public const string LookupStateAnotherCaller = "another_caller";
+    public const string StateAnotherCaller = "another_caller";
 
-    public const string LookupStateInvalid = "invalid";
+    public const string StateInvalid = "invalid";
+
+    public const string StateKindLookup = "lookup";
+
+    public const string StateKindContinuation = "continuation";
+
+    public const string StateKindAnswers = "answers";
+
+    public const string StateKindConfirmation = "confirmation";
 }

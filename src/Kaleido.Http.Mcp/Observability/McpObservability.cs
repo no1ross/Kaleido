@@ -21,12 +21,13 @@ internal interface IMcpObservability
     void RegistryRead(string result, string? revision);
 
     /// <summary>
-    /// A guided-lookup state was refused on a form retry (#452), with the reason
-    /// (<see cref="McpTelemetry.LookupStateUnknownKey"/> and the others). An unknown key is a deployment
+    /// A state handed to the client was refused when it came back (#452, #516), with its kind
+    /// (<see cref="McpTelemetry.StateKindLookup"/> and the others) and the reason
+    /// (<see cref="McpTelemetry.StateUnknownKey"/> and the others). An unknown key is a deployment
     /// problem - the instances do not share a Data Protection key ring - and is logged at Warning with
     /// the fix; the other reasons are the client's, at Debug.
     /// </summary>
-    void LookupStateRefused(string reason, Guid? keyId);
+    void StateRefused(string kind, string reason, Guid? keyId);
 }
 
 internal interface IMcpToolCallObservation : IDisposable
@@ -79,10 +80,10 @@ internal sealed partial class McpObservability(
             McpTelemetry.RegistryReadsCounterName,
             description: "Registry reads by result (hit: the caller's tools were already translated for this registry revision; fetched: translated now).");
 
-    private static readonly Counter<long> LookupStatesRefusedCounter =
+    private static readonly Counter<long> StatesRefusedCounter =
         Meter.CreateCounter<long>(
-            McpTelemetry.LookupStatesRefusedCounterName,
-            description: "Guided-lookup states refused on a form retry, by reason (unknown_key: the instances do not share a Data Protection key ring).");
+            McpTelemetry.StatesRefusedCounterName,
+            description: "States handed to the client and refused when they came back, by kind and reason (unknown_key: the instances do not share a Data Protection key ring).");
 
     public IMcpToolCallObservation BeginToolCall(string toolName)
     {
@@ -116,27 +117,31 @@ internal sealed partial class McpObservability(
         LogRegistryRead(logger, result, revision);
     }
 
-    public void LookupStateRefused(string reason, Guid? keyId)
+    public void StateRefused(string kind, string reason, Guid? keyId)
     {
-        LookupStatesRefusedCounter.Add(1, new KeyValuePair<string, object?>(McpTelemetry.TagLookupStateRefusal, reason));
+        StatesRefusedCounter.Add(
+            1,
+            new KeyValuePair<string, object?>(McpTelemetry.TagStateKind, kind),
+            new KeyValuePair<string, object?>(McpTelemetry.TagStateRefusal, reason));
 
-        Activity.Current?.SetTag(McpTelemetry.TagLookupStateRefusal, reason);
+        Activity.Current?.SetTag(McpTelemetry.TagStateKind, kind);
+        Activity.Current?.SetTag(McpTelemetry.TagStateRefusal, reason);
 
-        if (string.Equals(reason, McpTelemetry.LookupStateUnknownKey, StringComparison.Ordinal))
+        if (string.Equals(reason, McpTelemetry.StateUnknownKey, StringComparison.Ordinal))
         {
-            LogLookupStateKeyNotInRing(logger, keyId);
+            LogStateKeyNotInRing(logger, kind, keyId);
         }
         else
         {
-            LogLookupStateRefused(logger, reason);
+            LogStateRefused(logger, kind, reason);
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: a guided-lookup form was answered with state protected by Data Protection key {KeyId}, which this instance's key ring does not have, so the lookup was refused and the user must start it again. The MCP instances behind the load balancer do not share one key ring: configure AddDataProtection().SetApplicationName(...).PersistKeysTo...() the same on every instance (docs/guide/deployment.md).")]
-    private static partial void LogLookupStateKeyNotInRing(ILogger logger, Guid? keyId);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: a form was answered with {Kind} state protected by Data Protection key {KeyId}, which this instance's key ring does not have, so it was refused and the user must start again. The MCP instances behind the load balancer do not share one key ring: configure AddDataProtection().SetApplicationName(...).PersistKeysTo...() the same on every instance (docs/guide/deployment.md).")]
+    private static partial void LogStateKeyNotInRing(ILogger logger, string kind, Guid? keyId);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Kaleido MCP: a guided-lookup state was refused ({Reason}); nothing was run.")]
-    private static partial void LogLookupStateRefused(ILogger logger, string reason);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Kaleido MCP: a {Kind} state was refused ({Reason}); nothing was run.")]
+    private static partial void LogStateRefused(ILogger logger, string kind, string reason);
 
     private sealed partial class ToolCallObservation(
         Activity? activity,
@@ -185,14 +190,22 @@ internal sealed partial class McpObservability(
 
             if (result.IsError == true)
             {
-                var code = body?["code"]?.GetValue<string>() ?? McpErrorCodes.InternalError;
+                var (code, refused) = Classify(body);
 
-                activity?.SetStatus(ActivityStatusCode.Error, code);
                 activity?.SetTag(McpTelemetry.TagErrorCode, code);
 
-                var elapsedMs = Record(McpTelemetry.OutcomeError, code);
+                if (refused)
+                {
+                    // The caller's request, refused: answered to the caller, not a failure of the adapter
+                    // (as the runtimes mark a refused request), so the span stays Unset.
+                    LogToolRefused(logger, toolName, code, Record(McpTelemetry.OutcomeRefused, code), requestId);
 
-                LogToolReturnedError(logger, toolName, code, elapsedMs, requestId);
+                    return;
+                }
+
+                activity?.SetStatus(ActivityStatusCode.Error, code);
+
+                LogToolReturnedError(logger, toolName, code, Record(McpTelemetry.OutcomeError, code), requestId);
 
                 return;
             }
@@ -251,6 +264,45 @@ internal sealed partial class McpObservability(
             return (long)elapsed.TotalMilliseconds;
         }
 
+        // #525: the code tag is one of the adapter's tool-call codes - never a downstream service's own
+        // code from the body, which would make the metric dimension open-ended - and the outcome tells a
+        // refused request (the caller's to fix) from a failure. A service that answered 4xx refused the
+        // call; a 5xx, or no answer, is a failure.
+        private static (string Code, bool Refused) Classify(JsonObject? body)
+        {
+            var raw = body?["code"] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+            var code = raw is not null && ToolCallCodes.Contains(raw) ? raw : McpErrorCodes.InternalError;
+            var status = body?["details"]?["status"] is JsonValue given && given.TryGetValue<int>(out var number) ? number : (int?)null;
+
+            var refused = RefusedCodes.Contains(code) ||
+                          (string.Equals(code, McpErrorCodes.ServiceError, StringComparison.Ordinal) && status is >= 400 and < 500);
+
+            return (code, refused);
+        }
+
+        // The codes a tool call can answer with (the others are startup codes).
+        private static readonly HashSet<string> ToolCallCodes = new(StringComparer.Ordinal)
+        {
+            McpErrorCodes.UnknownTool,
+            McpErrorCodes.InvalidArguments,
+            McpErrorCodes.ServiceError,
+            McpErrorCodes.ProcessConflict,
+            McpErrorCodes.ServiceUnavailable,
+            McpErrorCodes.InternalError,
+            McpErrorCodes.NoPendingInformationRequest,
+            McpErrorCodes.ConfirmationRequired,
+        };
+
+        // The caller's mistakes, or a request the process refuses as it stands.
+        private static readonly HashSet<string> RefusedCodes = new(StringComparer.Ordinal)
+        {
+            McpErrorCodes.UnknownTool,
+            McpErrorCodes.InvalidArguments,
+            McpErrorCodes.ProcessConflict,
+            McpErrorCodes.NoPendingInformationRequest,
+            McpErrorCodes.ConfirmationRequired,
+        };
+
         private static JsonObject? Body(CallToolResult result)
         {
             var text = result.Content.OfType<TextContentBlock>().FirstOrDefault()?.Text;
@@ -272,6 +324,9 @@ internal sealed partial class McpObservability(
 
         [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido MCP tool {Tool} returned {ErrorCode} in {ElapsedMs} ms (request {RequestId}).")]
         private static partial void LogToolReturnedError(ILogger logger, string tool, string errorCode, long elapsedMs, string requestId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido MCP tool {Tool} refused the call with {ErrorCode} in {ElapsedMs} ms (request {RequestId}).")]
+        private static partial void LogToolRefused(ILogger logger, string tool, string errorCode, long elapsedMs, string requestId);
 
         [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido MCP tool {Tool} completed in {ElapsedMs} ms (request {RequestId}, process {ProcessId}).")]
         private static partial void LogToolCompleted(ILogger logger, string tool, long elapsedMs, string requestId, string? processId);
