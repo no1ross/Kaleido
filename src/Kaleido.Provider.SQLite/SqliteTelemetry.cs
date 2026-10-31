@@ -1,9 +1,8 @@
-using System.Diagnostics.Metrics;
-
 namespace Kaleido.Provider.SQLite;
 
 /// <summary>
-/// Activity source and metric names for the SQLite process context store.
+/// Activity source and metric names for the SQLite process context store: constants only. The store
+/// owns the instruments (#525).
 /// </summary>
 internal static class SqliteTelemetry
 {
@@ -26,22 +25,4 @@ internal static class SqliteTelemetry
     public const string LoadFailuresCounterName = "kaleido.sqlite.context.load_failures";
 
     public const string SaveFailuresCounterName = "kaleido.sqlite.context.save_failures";
-
-    // ── Internal instrumentation singletons ──────────────────────────────────
-
-    internal static readonly ActivitySource ActivitySource =
-        new(ActivitySourceName);
-
-    internal static readonly Meter Meter =
-        new(MeterName);
-
-    internal static readonly Counter<long> LoadFailuresCounter =
-        Meter.CreateCounter<long>(
-            LoadFailuresCounterName,
-            description: "Number of failed process context load operations.");
-
-    internal static readonly Counter<long> SaveFailuresCounter =
-        Meter.CreateCounter<long>(
-            SaveFailuresCounterName,
-            description: "Number of failed process context save operations.");
 }

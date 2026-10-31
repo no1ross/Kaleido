@@ -13,6 +13,12 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **MCP telemetry: a refused tool call is not an error** (#525). `kaleido.mcp.outcome` has a new value,
+  `refused`, for the caller's request refused (invalid arguments, an unknown tool, a conflict, a confirmation
+  the client cannot ask for, no pending questions, or `mcp_service_error` with a 4xx): its span is no longer
+  an error and it is no longer counted as `error`. `kaleido.error.code` is always one of the adapter's
+  tool-call codes (`mcp_internal_error` for anything else); it could carry a downstream service's code, an
+  open-ended metric dimension.
 - **MCP: `answer_information_request` requires its `answersToken`** (#516). A missing, unreadable or
   forged token, or one for another process or request, is refused with `mcp_invalid_arguments` and the current
   questions with a fresh token; the answers were submitted under the current exchange before, which let
@@ -320,6 +326,8 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **`SqliteTelemetry` holds constants only** (#525): its `ActivitySource`, `Meter` and failure counters moved into
+  the SQLite context store, as the telemetry conventions require. The names are unchanged.
 - **MCP: information steps are confirmed like any step** (#516): with `RequireConfirmation` on, an information
   step declared `RequiresConfirmation` was submitted without asking (agent answers, MRTR forms and session forms
   all skipped the confirmation). Its answers are now confirmed in the same form before they are submitted;

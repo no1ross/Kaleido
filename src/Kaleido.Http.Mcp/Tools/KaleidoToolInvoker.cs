@@ -788,7 +788,7 @@ internal sealed partial class KaleidoToolInvoker(
     {
         if (await Processor(service).GetProcessStateAsync(processId, cancellationToken) is not { } state)
         {
-            return Error(McpErrorCodes.ServiceError, $"Process {processId} was not found on '{service}', or you may not see it.");
+            return Error(McpErrorCodes.ServiceError, $"Process {processId} was not found on '{service}', or you may not see it.", Serialize(new { status = 404 }));
         }
 
         if (!string.IsNullOrWhiteSpace(state.TargetProcessorName))

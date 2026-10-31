@@ -54,10 +54,17 @@ internal static class McpTelemetry
 
     public const string TagCapability = "kaleido.mcp.capability";
 
-    /// <summary><c>completed</c>, <c>input_required</c>, <c>error</c>, or <c>canceled</c>.</summary>
+    /// <summary>
+    /// <c>completed</c>, <c>input_required</c>, <c>refused</c> (the caller's request was refused: invalid
+    /// arguments, an unknown tool, a conflict, a confirmation the client cannot ask for, or a 4xx from the
+    /// service), <c>error</c> (the adapter or the service failed), or <c>canceled</c>.
+    /// </summary>
     public const string TagOutcome = "kaleido.mcp.outcome";
 
-    /// <summary>The <c>mcp_*</c> code of a failed call (same key as the HTTP error tag).</summary>
+    /// <summary>
+    /// The <c>mcp_*</c> code of a refused or failed call (same key as the HTTP error tag); always one of
+    /// the adapter's tool-call codes, <c>mcp_internal_error</c> for anything else (#525).
+    /// </summary>
     public const string TagErrorCode = "kaleido.error.code";
 
     public const string TagToolCount = "kaleido.mcp.tool_count";
@@ -79,6 +86,8 @@ internal static class McpTelemetry
     public const string OutcomeCompleted = "completed";
 
     public const string OutcomeInputRequired = "input_required";
+
+    public const string OutcomeRefused = "refused";
 
     public const string OutcomeError = "error";
 

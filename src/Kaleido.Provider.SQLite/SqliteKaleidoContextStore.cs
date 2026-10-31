@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kaleido.Exceptions;
@@ -17,13 +18,29 @@ internal sealed partial class SqliteKaleidoContextStore(
     ILogger<SqliteKaleidoContextStore> logger)
     : IKaleidoContextStore
 {
+    // The store owns its instruments (src/AGENTS.md, telemetry conventions); SqliteTelemetry holds only
+    // their names (#525).
+    private static readonly ActivitySource ActivitySource = new(SqliteTelemetry.ActivitySourceName);
+
+    private static readonly Meter Meter = new(SqliteTelemetry.MeterName);
+
+    private static readonly Counter<long> LoadFailuresCounter =
+        Meter.CreateCounter<long>(
+            SqliteTelemetry.LoadFailuresCounterName,
+            description: "Number of failed process context load operations.");
+
+    private static readonly Counter<long> SaveFailuresCounter =
+        Meter.CreateCounter<long>(
+            SqliteTelemetry.SaveFailuresCounterName,
+            description: "Number of failed process context save operations.");
+
     public async Task<ProcessorContext?> LoadAsync(
         Guid processId,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        using var activity = SqliteTelemetry.ActivitySource
+        using var activity = ActivitySource
             .StartActivity(SqliteTelemetry.LoadActivityName, ActivityKind.Internal);
         activity?.SetTag(KaleidoTelemetryTags.ProcessId, processId.ToString());
 
@@ -53,7 +70,7 @@ internal sealed partial class SqliteKaleidoContextStore(
         // Only the caller's cancellation is not a load failure (#517).
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            SqliteTelemetry.LoadFailuresCounter.Add(1);
+            LoadFailuresCounter.Add(1);
             // The type, never the driver's message (SQL, connection details) (#290).
             activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
             LogLoadFailed(logger, exception, processId);
@@ -70,7 +87,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        using var activity = SqliteTelemetry.ActivitySource
+        using var activity = ActivitySource
             .StartActivity(SqliteTelemetry.SaveActivityName, ActivityKind.Internal);
         activity?.SetTag(KaleidoTelemetryTags.ProcessId, context.ProcessId.ToString());
 
@@ -98,7 +115,7 @@ internal sealed partial class SqliteKaleidoContextStore(
         // A conflict is not a store failure: the request lost the race and the caller rereads (409).
         catch (Exception exception) when (exception is not KaleidoConcurrencyException && (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested))
         {
-            SqliteTelemetry.SaveFailuresCounter.Add(1);
+            SaveFailuresCounter.Add(1);
             activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
             LogSaveFailed(logger, exception, context.ProcessId);
             throw;

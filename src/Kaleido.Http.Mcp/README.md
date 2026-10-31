@@ -305,6 +305,15 @@ A tool call never fails at the protocol level: a problem comes back as a tool re
 | `mcp_confirmation_required` | A step that needs the user's confirmation (`RequireConfirmation`), in a client that cannot show forms; nothing was run. | Tell the user; they run the step from a client that shows forms. Never claim the user agreed instead. |
 | `mcp_internal_error` | An unexpected error in the adapter. | Same as above. |
 
+**Telemetry tells a refusal from a failure (#525).** A tool call is counted in `kaleido.mcp.tool_calls`
+with `kaleido.mcp.outcome` `refused` for the caller's request refused - `mcp_unknown_tool`,
+`mcp_invalid_arguments`, `mcp_process_conflict`, `mcp_no_pending_information_request`,
+`mcp_confirmation_required`, or `mcp_service_error` with a 4xx from the service - and its span is not an
+error, as the runtimes treat a refused request. A failure of the adapter or the service
+(`mcp_internal_error`, `mcp_service_unavailable`, `mcp_service_error` with a 5xx or no status) is
+`error`, and its span is an error. The `kaleido.error.code` tag is always one of the codes above
+(`mcp_internal_error` for anything else), never a downstream service's own code.
+
 **Retries.** Tool calls go through the Kaleido clients: their resilience pipeline retries transient failures of one call with the same `Idempotency-Key`, so the service answers a retry it has already completed with the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#resilience)). When the *agent* calls a tool again (after a timeout, a lost answer, a restart), that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
 - a non-`[Repeatable]` step continuing a process, with the same inputs for the same process: same key, so the stored answer comes back (within the service's idempotency retention);
 - answers to one information request: same key for the same answers;

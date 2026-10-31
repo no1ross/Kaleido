@@ -77,8 +77,10 @@ public sealed class McpObservabilityTests(McpClinicFixture fixture)
         Assert.Equal("clinic_close_visit", span.GetTagItem(McpTelemetry.TagTool));
         Assert.Equal("step", span.GetTagItem(McpTelemetry.TagToolKind));
         Assert.Equal("clinic", span.GetTagItem(McpTelemetry.TagService));
-        Assert.Equal(McpTelemetry.OutcomeError, span.GetTagItem(McpTelemetry.TagOutcome));
+        // #525: a call missing its processId is the caller's mistake - refused, not an error span.
+        Assert.Equal(McpTelemetry.OutcomeRefused, span.GetTagItem(McpTelemetry.TagOutcome));
         Assert.Equal(McpErrorCodes.InvalidArguments, span.GetTagItem(McpTelemetry.TagErrorCode));
+        Assert.Equal(ActivityStatusCode.Unset, span.Status);
     }
 
     public void Dispose() => listener?.Dispose();

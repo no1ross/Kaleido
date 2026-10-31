@@ -190,14 +190,22 @@ internal sealed partial class McpObservability(
 
             if (result.IsError == true)
             {
-                var code = body?["code"]?.GetValue<string>() ?? McpErrorCodes.InternalError;
+                var (code, refused) = Classify(body);
 
-                activity?.SetStatus(ActivityStatusCode.Error, code);
                 activity?.SetTag(McpTelemetry.TagErrorCode, code);
 
-                var elapsedMs = Record(McpTelemetry.OutcomeError, code);
+                if (refused)
+                {
+                    // The caller's request, refused: answered to the caller, not a failure of the adapter
+                    // (as the runtimes mark a refused request), so the span stays Unset.
+                    LogToolRefused(logger, toolName, code, Record(McpTelemetry.OutcomeRefused, code), requestId);
 
-                LogToolReturnedError(logger, toolName, code, elapsedMs, requestId);
+                    return;
+                }
+
+                activity?.SetStatus(ActivityStatusCode.Error, code);
+
+                LogToolReturnedError(logger, toolName, code, Record(McpTelemetry.OutcomeError, code), requestId);
 
                 return;
             }
@@ -256,6 +264,45 @@ internal sealed partial class McpObservability(
             return (long)elapsed.TotalMilliseconds;
         }
 
+        // #525: the code tag is one of the adapter's tool-call codes - never a downstream service's own
+        // code from the body, which would make the metric dimension open-ended - and the outcome tells a
+        // refused request (the caller's to fix) from a failure. A service that answered 4xx refused the
+        // call; a 5xx, or no answer, is a failure.
+        private static (string Code, bool Refused) Classify(JsonObject? body)
+        {
+            var raw = body?["code"] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+            var code = raw is not null && ToolCallCodes.Contains(raw) ? raw : McpErrorCodes.InternalError;
+            var status = body?["details"]?["status"] is JsonValue given && given.TryGetValue<int>(out var number) ? number : (int?)null;
+
+            var refused = RefusedCodes.Contains(code) ||
+                          (string.Equals(code, McpErrorCodes.ServiceError, StringComparison.Ordinal) && status is >= 400 and < 500);
+
+            return (code, refused);
+        }
+
+        // The codes a tool call can answer with (the others are startup codes).
+        private static readonly HashSet<string> ToolCallCodes = new(StringComparer.Ordinal)
+        {
+            McpErrorCodes.UnknownTool,
+            McpErrorCodes.InvalidArguments,
+            McpErrorCodes.ServiceError,
+            McpErrorCodes.ProcessConflict,
+            McpErrorCodes.ServiceUnavailable,
+            McpErrorCodes.InternalError,
+            McpErrorCodes.NoPendingInformationRequest,
+            McpErrorCodes.ConfirmationRequired,
+        };
+
+        // The caller's mistakes, or a request the process refuses as it stands.
+        private static readonly HashSet<string> RefusedCodes = new(StringComparer.Ordinal)
+        {
+            McpErrorCodes.UnknownTool,
+            McpErrorCodes.InvalidArguments,
+            McpErrorCodes.ProcessConflict,
+            McpErrorCodes.NoPendingInformationRequest,
+            McpErrorCodes.ConfirmationRequired,
+        };
+
         private static JsonObject? Body(CallToolResult result)
         {
             var text = result.Content.OfType<TextContentBlock>().FirstOrDefault()?.Text;
@@ -277,6 +324,9 @@ internal sealed partial class McpObservability(
 
         [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido MCP tool {Tool} returned {ErrorCode} in {ElapsedMs} ms (request {RequestId}).")]
         private static partial void LogToolReturnedError(ILogger logger, string tool, string errorCode, long elapsedMs, string requestId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido MCP tool {Tool} refused the call with {ErrorCode} in {ElapsedMs} ms (request {RequestId}).")]
+        private static partial void LogToolRefused(ILogger logger, string tool, string errorCode, long elapsedMs, string requestId);
 
         [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido MCP tool {Tool} completed in {ElapsedMs} ms (request {RequestId}, process {ProcessId}).")]
         private static partial void LogToolCompleted(ILogger logger, string tool, long elapsedMs, string requestId, string? processId);

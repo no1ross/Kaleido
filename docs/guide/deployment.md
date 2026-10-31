@@ -105,7 +105,7 @@ kaleido.AddOpenTelemetry();   // export target under Kaleido:OpenTelemetry in co
 | `Kaleido.Processor` | `kaleido.processor.execution_failures`, `kaleido.processor.step_failures`, `kaleido.processor.execution.duration` |
 | `Kaleido.Queryable` | `kaleido.queryable.execution_failures`, `kaleido.queryable.execution.duration` |
 | `Kaleido.Events` | `kaleido.events.failed` (publishing retries), `kaleido.events.parked` (gave up: needs a person), `kaleido.events.enqueue_failures` (events lost) |
-| `Kaleido.Http.Mcp` | `kaleido.mcp.tool_calls` by outcome, `kaleido.mcp.tool_call.duration`, `kaleido.mcp.states_refused` by kind and reason (`unknown_key`: the instances do not share a key ring) |
+| `Kaleido.Http.Mcp` | `kaleido.mcp.tool_calls` by outcome (`completed`, `input_required`, `refused` - the caller's request was refused, not an error span - `error`, `canceled`) and `kaleido.error.code` (one of the adapter's tool-call codes), `kaleido.mcp.tool_call.duration`, `kaleido.mcp.states_refused` by kind and reason (`unknown_key`: the instances do not share a key ring) |
 
 Logs follow one rule: Information is a few lines per request; caller errors (400, 401, 403, 409) are
 Warnings, logged once; Errors are failures of the service. Every log, span and event carries the
