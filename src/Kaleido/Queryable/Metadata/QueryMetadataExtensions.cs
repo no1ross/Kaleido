@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using Kaleido.Registry;
@@ -132,7 +133,7 @@ internal static class QueryMetadataExtensions
         return pageable is null
             ? null
             : new PageableMetadata(
-                pageable.DefaultSize,
+                pageable.ValidateLimits("Query view", queryViewType).DefaultSize,
                 pageable.MaxSize,
                 ValidateDefaultSort("Query view", queryViewType, contextType, attribute.DefaultSortField));
     }
@@ -154,11 +155,28 @@ internal static class QueryMetadataExtensions
         return pageable is null
             ? null
             : new PageableMetadata(
-                pageable.DefaultSize,
+                pageable.ValidateLimits("Query source", sourceType).DefaultSize,
                 pageable.MaxSize,
                 kind == QuerySourceKind.Local
                     ? ValidateDefaultSort("Query source", sourceType, contextType, attribute.DefaultSortField)
                     : null);
+    }
+
+    // Both limits are required and consistent (#519): with a 0 default every page is empty while
+    // TotalCount is not, a 0 maximum refuses every explicit size, and a default above the maximum was
+    // silently clamped.
+    private static PageableAttribute ValidateLimits(this PageableAttribute pageable, string capability, Type capabilityType)
+    {
+        if (pageable.DefaultSize <= 0 || pageable.MaxSize <= 0 || pageable.DefaultSize > pageable.MaxSize)
+        {
+            throw new KaleidoConfigurationException(
+                QueryableErrorCodes.InvalidRegistration,
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{capability} '{capabilityType.Name}' declares [Pageable(DefaultSize = {pageable.DefaultSize}, MaxSize = {pageable.MaxSize})]: both must be greater than zero, and DefaultSize no greater than MaxSize."));
+        }
+
+        return pageable;
     }
 
     // Every declared filter operator must apply to the field's type, the way the query engine

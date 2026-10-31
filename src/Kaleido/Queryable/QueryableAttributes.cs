@@ -87,13 +87,18 @@ public sealed class QueryViewAttribute : Attribute
 /// Declares paging support. On a query source it applies to direct queries of that source; on a
 /// query view it applies to that view. Paging is not inherited between them.
 /// </summary>
+/// <remarks>
+/// Both limits are required: each must be greater than zero, and <see cref="DefaultSize"/> no greater
+/// than <see cref="MaxSize"/>, for example <c>[Pageable(DefaultSize = 25, MaxSize = 100)]</c>. Otherwise
+/// startup fails with <c>qry_invalid_registration</c>, naming the capability and both limits (#519).
+/// </remarks>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public sealed class PageableAttribute : Attribute
 {
-    /// <summary>The page size used when the request does not specify one.</summary>
+    /// <summary>The page size used when the request does not specify one. Required: greater than zero, at most <see cref="MaxSize"/>.</summary>
     public int DefaultSize { get; init; }
 
-    /// <summary>The largest page size a request may ask for.</summary>
+    /// <summary>The largest page size a request may ask for. Required: greater than zero.</summary>
     public int MaxSize { get; init; }
 }
 

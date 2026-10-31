@@ -33,7 +33,7 @@ Information logs must stay minimal — treat them as the "normal operations" vie
 
 ## Exception handling
 - Always use custom exceptions from `Kaleido.Exceptions` namespace, never `InvalidOperationException`
-- `KaleidoValidationException` — 400 Bad Request when caught by HTTP middleware; in a Process step handler, its original `Code` and `Message` become an opt-in framework message on a failed step outcome
+- `KaleidoValidationException` — 400 Bad Request when caught by HTTP middleware; in a Process step handler, its original `Code` and `Message` become an opt-in framework message on a failed step outcome. Its message is logged at Warning and returned in the 400 body, so it **never carries a value the caller sent** (a filter value, an operator, a direction - any of them may be a name or an identifier): name the field and what was expected, never what was received (#520)
 - `KaleidoConfigurationException` — 500; startup/DI misconfiguration; `Code` and `Message` are logged; when thrown during a request the 500 body carries the `Code` with a generic message, never the `Message` — still keep both free of sensitive data, since logs carry them
 - `KaleidoFrameworkException` — 500; internal integrity violation; `Code` and `Message` are logged; the 500 body carries the `Code` with a generic message, never the `Message` — still keep both free of sensitive data, since logs carry them
 - A failed span's status description is the error code, or the exception type for anything else (`ActivityExceptionExtensions.SetErrorStatus`), never `exception.Message`; the exception event (OpenTelemetry convention) carries the message and stack trace, as the Error log does

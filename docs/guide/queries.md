@@ -47,8 +47,9 @@ flowchart LR
   `[Filterable]` with that operator, or not `[Sortable]`, is a **400**, never silently ignored.
 - It **applies** search, filters, sort and paging to the source's `IQueryable`, so on EF Core they
   reach the database.
-- It **pages** with `[Pageable(DefaultSize, MaxSize)]`; without a sort, results are ordered by the
-  `DefaultSortField`, so pages are stable.
+- It **pages** with `[Pageable(DefaultSize, MaxSize)]` (both required, greater than zero, the default
+  no greater than the maximum); without a sort, results are ordered by the `DefaultSortField`, so pages
+  are stable.
 - It **counts** the total only when the page cannot tell (a full page, or an empty page past the
   start); `totalCount` is always the number of matching results.
 

@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Globalization;
+using System.Linq.Expressions;
 using Kaleido.Exceptions;
 
 namespace Kaleido.Queryable.Runtime.UnitTests;
@@ -25,11 +28,23 @@ public sealed class CompiledQueryApplierTests
         public bool? Verified { get; set; }
         public FakeStatus Status { get; set; }
         public DateTime CreatedOn { get; set; }
+        public byte Level { get; set; }
+    }
+
+    [Flags]
+    public enum FakeFlags
+    {
+        None = 0,
+        Read = 1,
+        Write = 2,
     }
 
     private sealed record UnknownFilter : CompiledFilterExpression;
 
-    private static CompiledQueryApplier<FakeRecord> CreateSut() => new();
+    private static CompiledQueryApplier<FakeRecord> CreateSut() => CreateSut<FakeRecord>();
+
+    private static CompiledQueryApplier<T> CreateSut<T>()
+        where T : class => new();
 
     private static readonly FakeRecord[] Records =
     [
@@ -179,6 +194,10 @@ public sealed class CompiledQueryApplierTests
             () => Filter(Condition(nameof(FakeRecord.CreatedOn), FilterOperator.Equals, "2024-01-01")));
 
         Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+
+        // #520: the expected type is named, the value never is.
+        Assert.Contains("'String'", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("2024-01-01", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -188,7 +207,7 @@ public sealed class CompiledQueryApplierTests
             () => Filter(Condition(nameof(FakeRecord.Age), FilterOperator.Equals, [null])));
 
         Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
-        Assert.Contains("'null'", exception.Message);
+        Assert.Equal("A null filter value is not valid here. Expected a value of type 'Int32'.", exception.Message);
     }
 
     [Fact]
@@ -426,6 +445,120 @@ public sealed class CompiledQueryApplierTests
                 ]));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
+    }
+
+    // #519: an enum value must name a member, whether cast, parsed from a name or from a number.
+    [Theory]
+    [InlineData("Retired")]
+    [InlineData("999")]
+    public void ApplyFilter_AnEnumNameOrNumberThatIsNoMember_IsAnInvalidFilterValue(string value)
+    {
+        var exception = Assert.Throws<KaleidoValidationException>(
+            () => Filter(Condition(nameof(FakeRecord.Status), FilterOperator.Equals, value)));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Equal("A filter value is not a valid 'FakeStatus' value.", exception.Message);
+    }
+
+    [Fact]
+    public void ApplyFilter_AnUndefinedEnumValue_IsAnInvalidFilterValue_AndAMemberIsAccepted()
+    {
+        Assert.Equal(
+            QueryableErrorCodes.InvalidFilterValue,
+            Assert.Throws<KaleidoValidationException>(() => Filter(Condition(nameof(FakeRecord.Status), FilterOperator.Equals, (FakeStatus)9))).Code);
+        Assert.Equal([20], Filter(Condition(nameof(FakeRecord.Status), FilterOperator.Equals, "INACTIVE")));
+        Assert.Equal([20], Filter(Condition(nameof(FakeRecord.Status), FilterOperator.Equals, FakeStatus.Inactive)));
+    }
+
+    [Fact]
+    public void ApplyFilter_AFlagsEnumValue_MayCombineMembers()
+    {
+        Assert.Single(CreateSut<FlagsRecord>().ApplyFilter(
+            new[] { new FlagsRecord { Flags = FakeFlags.Read | FakeFlags.Write } }.AsQueryable(),
+            new CompiledFilterCondition(new() { Name = nameof(FlagsRecord.Flags), FieldType = typeof(object), DataType = TestDataType }, FilterOperator.Equals, [FakeFlags.Read | FakeFlags.Write])));
+    }
+
+    // #519: a number the field's type cannot hold (300 for a byte) is the caller's mistake, not a 500.
+    [Fact]
+    public void ApplyFilter_ANumberTheFieldCannotHold_IsAnInvalidFilterValue_AndOneItCanHoldIsConverted()
+    {
+        var exception = Assert.Throws<KaleidoValidationException>(
+            () => Filter(Condition(nameof(FakeRecord.Level), FilterOperator.Equals, 300)));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Equal("A filter value is out of range. Expected a number that fits 'Byte'.", exception.Message);
+        Assert.Equal([10, 20, 30], Filter(Condition(nameof(FakeRecord.Level), FilterOperator.Equals, 0)));
+    }
+
+    // #519: in memory, case-insensitive matching does not depend on the current culture: under tr-TR
+    // "I".ToLower() is a dotless ı, so "INFO" missed "info".
+    [Fact]
+    public void ApplyFilterAndSearch_InMemory_MatchCaseInvariantly_UnderATurkishCulture()
+    {
+        var original = CultureInfo.CurrentCulture;
+        var records = new[] { new FakeRecord { Name = "INFO", Age = 1 } }.AsQueryable();
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("tr-TR");
+
+            Assert.Single(CreateSut().ApplyFilter(records, Condition(nameof(FakeRecord.Name), FilterOperator.Equals, "info")));
+            Assert.Single(CreateSut().ApplyFilter(records, Condition(nameof(FakeRecord.Name), FilterOperator.In, "info")));
+            Assert.Single(CreateSut().ApplyFilter(records, Condition(nameof(FakeRecord.Name), FilterOperator.Contains, "nf")));
+            Assert.Single(CreateSut().ApplySearch(records, new CompiledSearch("info", [new CompiledSearchField(Field(nameof(FakeRecord.Name)), MatchMode.Exact, 1)])));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    // A database provider translates ToLower() (EF Core), so its expression keeps it.
+    [Fact]
+    public void ApplyFilter_ForAProviderOtherThanLinqToObjects_KeepsToLower()
+    {
+        var provider = new RecordingProvider();
+
+        CreateSut().ApplyFilter(new RecordingQuery<FakeRecord>(provider), Condition(nameof(FakeRecord.Name), FilterOperator.Equals, "info"));
+
+        var expression = provider.Last?.ToString() ?? string.Empty;
+        Assert.Contains(".ToLower()", expression, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToLowerInvariant", expression, StringComparison.Ordinal);
+    }
+
+    private sealed class FlagsRecord
+    {
+        public FakeFlags Flags { get; set; }
+    }
+
+    private sealed class RecordingProvider : IQueryProvider
+    {
+        public Expression? Last { get; private set; }
+
+        public IQueryable CreateQuery(Expression expression) => throw new NotSupportedException();
+
+        public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
+        {
+            Last = expression;
+            return new RecordingQuery<TElement>(this, expression);
+        }
+
+        public object Execute(Expression expression) => throw new NotSupportedException();
+
+        public TResult Execute<TResult>(Expression expression) => throw new NotSupportedException();
+    }
+
+    private sealed class RecordingQuery<T>(IQueryProvider provider, Expression? expression = null) : IQueryable<T>
+    {
+        public Type ElementType => typeof(T);
+
+        public Expression Expression => expression ?? Expression.Constant(this, typeof(IQueryable<T>));
+
+        public IQueryProvider Provider => provider;
+
+        public IEnumerator<T> GetEnumerator() => throw new NotSupportedException();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     private static int[] Filter(CompiledFilterExpression filter) =>

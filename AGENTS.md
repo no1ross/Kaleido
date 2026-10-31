@@ -29,6 +29,7 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 CI (`build.yml`) also checks, and you run before committing:
 - whitespace and final newlines: `dotnet format whitespace --folder --include src/ tools/ tests/ docs/ --exclude '**/obj/**' '**/bin/**' --verify-no-changes` (drop `--verify-no-changes` to fix) (#462);
 - every Kaleido type or member named in the Markdown docs exists in the sources: `python3 tools/docs/check-doc-symbols.py` (ADRs are skipped as historical; a deliberate non-symbol in code style goes in the script's `ALLOWED` list with its reason);
+- every public error code is raised in `src/` and listed in `docs/ERROR_CODES.md` (no more, no less): `python3 tools/docs/check-error-codes.py` (#518);
 - every `AGENTS.md` is under 16,000 bytes: `python3 tools/docs/check-agents-size.py` (#455);
 - line coverage of the shipped `src/` assemblies, at least 95% ([build details](./docs/CONVENTIONS.md#build-details)).
 

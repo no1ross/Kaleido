@@ -66,9 +66,10 @@ decision) in the same change, so the list matches the baselines when they move t
   `StepExecutionStatus`, `ProcessExecutionState`, and `StepProcessingMessage` (the runtime messages on
   `StepCompleted`). Keep: an event consumer reads them. `StepExecutionOutcome` is removed: it duplicated
   `StepExecutionStatus`, which the step answer now carries as `status` (#536).
-- [x] **Constants:** `ProcessorErrorCodes` (one value renamed), `QueryableErrorCodes`,
+- [x] **Constants:** `ProcessorErrorCodes` (one value renamed; seven codes nothing raised removed,
+  #518), `QueryableErrorCodes` (four codes nothing raised removed, #518),
   `ConfigurationErrorCodes`, `FrameworkErrorCodes` (`DataConversionError` removed: nothing raised it,
-  #505), `KaleidoEventTypes`, and the telemetry names
+  #505); every remaining public error code is raised, checked in CI (`tools/docs/check-error-codes.py`), `KaleidoEventTypes`, and the telemetry names
   (`ProcessorTelemetry`, `QueryableTelemetry`, `KaleidoEventTelemetry`, `KaleidoTelemetryTags`) - telemetry
   names are a 1.0 contract (VERSIONING.md). Keep.
 - [x] **Exceptions:** `KaleidoValidationException`, `KaleidoAuthorizationException`,
