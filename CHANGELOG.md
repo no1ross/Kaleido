@@ -291,6 +291,9 @@ sections.
 - Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
 
 ### Changed
+- **The 1.0 runtime support window is stated** (#528, ADR 0035): the packages stay on `net8.0`; Kaleido supports a
+  runtime while Microsoft does (.NET 8 and 9 end on 10 November 2026), and services override the 8.x dependencies
+  to patched versions (VERSIONING, SUPPORT, README).
 - **One controllable clock** (#460): leases, idempotency retention, the event relay's retries,
   timeouts and circuit break, the registry caches' TTLs and the MCP lookup states' lifetime read the
   injected `TimeProvider`. `AddKaleido()` registers `TimeProvider.System` with `TryAdd`, so a host can

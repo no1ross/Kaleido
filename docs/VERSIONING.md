@@ -64,6 +64,22 @@ Each package records its public API in two files in its project's `.PublicAPI` f
   runtime the tests run on.
 - Changing the target framework, or adding one, is a maintainer decision recorded in an issue.
 
+### Support window
+
+Kaleido supports a runtime while Microsoft does ([ADR 0035](decisions/0035-runtime-support-window-at-1-0.md),
+#528). Microsoft's [.NET support policy](https://dotnet.microsoft.com/platform/support/policy/dotnet-core)
+ends support for .NET 8 and .NET 9 on **10 November 2026**: after that, run Kaleido services on .NET 10
+or later. Kaleido 1.x keeps working on .NET 8, but on a runtime that gets no security patches.
+
+The packages depend on the 8.x lines of Microsoft.Extensions.* (and Microsoft.EntityFrameworkCore.Sqlite
+8.0.x for the SQLite provider), which stop getting patches on the same date. **Override them in your
+service** to supported, patched versions - a direct PackageReference, or a version in central package
+management - and NuGet uses the higher version. Choose a version that still ships a build for your
+runtime and for 
+et8.0, which Kaleido's assemblies target: some newer majors (EF Core 10, for example)
+need a newer runtime. Adding a 
+et10.0 target waits for an SDK that can build it (#424).
+
 ### Deployment modes
 
 | Publish mode | 1.0 |
@@ -88,7 +104,7 @@ The 1.0 contract freeze ([#241](https://github.com/no1ross/Kaleido/issues/241)) 
 
 - which APIs and contracts are covered by the compatibility promise;
 - the deprecation rule for 1.x (how long an `[Obsolete]` member stays before removal);
-- the supported runtimes and how long each is supported.
+- the supported runtimes and how long each is supported ([support window](#support-window), ADR 0035).
 
 At 1.0 the public API baselines (`PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`) and the consumer
 analyzer rules (`KAL2xxx`, to `AnalyzerReleases.Shipped.md`) are moved, so later changes to them are
