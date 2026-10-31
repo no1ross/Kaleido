@@ -73,11 +73,7 @@ internal sealed class ProcessorRecoveryService(
             store.Remove(outcome.Context.ProcessId);
             observation.Parked("conflict", exception, outcome);
         }
-        catch (OperationCanceledException) when (saveToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
+        catch (Exception exception) when (!(exception is OperationCanceledException && saveToken.IsCancellationRequested))
         {
             var now = time.GetUtcNow();
 

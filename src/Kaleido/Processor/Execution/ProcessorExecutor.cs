@@ -157,14 +157,11 @@ internal sealed class ProcessorExecutor(
         {
             context = await transition.SaveAsync(context, transitionEvent, saveToken);
         }
-        // The save is not cancellable, so no cancellation reaches the catch-all below (#517).
-        catch (OperationCanceledException) when (saveToken.IsCancellationRequested)
-        {
-            throw;
-        }
         // The handler ran, but its outcome was not saved (#537): kept for recovery when it can be,
-        // and answered so that the caller knows the step ran and does not send it again.
-        catch (Exception exception)
+        // and answered so that the caller knows the step ran and does not send it again. The save is
+        // not cancellable, so only its own token's cancellation would be one (#517); any other
+        // OperationCanceledException is a failure.
+        catch (Exception exception) when (!(exception is OperationCanceledException && saveToken.IsCancellationRequested))
         {
             var unsaved = outcomeRecovery.Keep(context, transitionEvent, candidate.StepName, exception);
             stepObservation.OutcomeUnsaved(unsaved, context, transitionEvent, exception);
