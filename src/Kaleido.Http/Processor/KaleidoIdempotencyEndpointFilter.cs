@@ -221,7 +221,7 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
         return "v1:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(framed))).ToLowerInvariant();
     }
 
-    private static string Frame(string part) => string.Concat(part.Length.ToString(System.Globalization.CultureInfo.InvariantCulture), ":", part);
+    private static string Frame(string part) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{part.Length}:{part}");
 
     private static (string Kind, string Value) Identity(KaleidoCorrelationContext caller) =>
         caller.CallerId is { } id ? ("id", id)
