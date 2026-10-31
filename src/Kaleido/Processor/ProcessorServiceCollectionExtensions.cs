@@ -2,6 +2,7 @@ using System.Reflection;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
+using Kaleido.Processor.Recovery;
 using Kaleido.Processor.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -239,6 +240,11 @@ internal static class ProcessorServiceCollectionExtensions
         services.TryAddScoped<IProcessorRuntime, ProcessorRuntime>();
         services.TryAddScoped<IProcessorExecutor, ProcessorExecutor>();
         services.TryAddScoped<IProcessorTransition, ProcessorTransition>();
+
+        // Step outcomes whose save failed after the handler ran, and their recovery (#537).
+        services.TryAddSingleton<IProcessorRecoveryStore, ProcessorRecoveryStore>();
+        services.TryAddSingleton<IProcessorOutcomeRecovery, ProcessorOutcomeRecovery>();
+        services.AddHostedService<ProcessorRecoveryService>();
     }
 
     private static Type RegisterHandler(

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Kaleido.Observability;
+using Kaleido.Storage;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
 
@@ -379,6 +380,99 @@ public sealed class ProcessorObservabilityTests
         AssertLogged(logger, LogLevel.Debug, "Information request REQ-INFO presented");
         AssertLogged(logger, LogLevel.Warning, "Process step execution was canceled");
         AssertLogged(logger, LogLevel.Error, "Process step execution failed");
+    }
+
+    // #537: the handler ran, but its outcome was not saved. Kept for recovery, it is a Warning; lost
+    // (not kept, or a conflict), it is Critical with what an operator reconciles from.
+    [Theory]
+    [InlineData(nameof(Recovery.UnsavedOutcome.PendingRecovery), "pending_recovery", LogLevel.Warning)]
+    [InlineData(nameof(Recovery.UnsavedOutcome.NotSaved), "not_saved", LogLevel.Critical)]
+    [InlineData(nameof(Recovery.UnsavedOutcome.Conflict), "conflict", LogLevel.Critical)]
+    public void StepObservation_OutcomeUnsaved_MarksTheStep_CountsIt_AndLogsByWhatBecameOfIt(string outcomeName, string tag, LogLevel level)
+    {
+        var serviceName = $"test-processor-{Guid.NewGuid():N}";
+        var stepName = $"Step-{Guid.NewGuid():N}";
+        var logger = CreateEnabledLogger();
+        var observability = CreateSut(serviceName, logger.Object);
+        var activities = new List<Activity>();
+        using var listener = CreateActivityListener(activities);
+        var measurements = new List<(string Name, KeyValuePair<string, object?>[] Tags)>();
+        using var meterListener = CreateMeterListener(serviceName, measurements);
+        var outcome = Enum.Parse<Recovery.UnsavedOutcome>(outcomeName);
+        var attempted = new Context.ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = serviceName, Version = 3, State = ProcessExecutionState.Complete };
+
+        using (var observation = observability.BeginStep(new ProcessorStepObservationDetails(stepName)))
+        {
+            observation.OutcomeUnsaved(outcome, attempted, new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = "e", Payload = "{\"redacted\":true}", OccurredUtc = DateTimeOffset.UnixEpoch }, new InvalidOperationException("store down"));
+        }
+
+        var activity = Assert.Single(activities, x => x.GetTagItem(ProcessorTelemetry.TagStepName) as string == stepName);
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        var unsavedEvent = Assert.Single(activity.Events, x => x.Name == ProcessorTelemetry.StepOutcomeUnsavedEventName);
+        Assert.Equal(tag, unsavedEvent.Tags.Single(x => x.Key == ProcessorTelemetry.TagUnsavedOutcome).Value);
+
+        var counted = Assert.Single(measurements, x => x.Name == ProcessorTelemetry.OutcomesUnsavedCounterName);
+        Assert.Contains(counted.Tags, x => x.Key == ProcessorTelemetry.TagUnsavedOutcome && (string?)x.Value == tag);
+        Assert.Contains(counted.Tags, x => x.Key == ProcessorTelemetry.TagStepName && (string?)x.Value == stepName);
+
+        AssertLogged(logger, level, attempted.ProcessId.ToString());
+
+        if (level == LogLevel.Critical)
+        {
+            AssertLogged(logger, LogLevel.Critical, "{\"redacted\":true}");
+        }
+    }
+
+    [Fact]
+    public void RecoveryObservation_TagsItsActivity_CountsRecoveredAndParked_AndLogsEachSignal()
+    {
+        var serviceName = $"test-processor-{Guid.NewGuid():N}";
+        var stepName = $"Step-{Guid.NewGuid():N}";
+        var processId = Guid.NewGuid();
+        var logger = CreateEnabledLogger();
+        var observability = CreateSut(serviceName, logger.Object);
+        var activities = new List<Activity>();
+        using var listener = CreateActivityListener(activities);
+        var measurements = new List<(string Name, KeyValuePair<string, object?>[] Tags)>();
+        using var meterListener = CreateMeterListener(serviceName, measurements);
+        var outcome = new Recovery.PendingOutcome { Context = new Context.ProcessorContext { ProcessId = processId, ProcessorName = serviceName }, StepName = stepName };
+
+        using (var observation = observability.BeginRecovery(new ProcessorRecoveryObservationDetails(processId, stepName, 2)))
+        {
+            observation.Retrying(new TimeoutException("still down"));
+            observation.Recovered();
+            observation.Parked("expired", new TimeoutException("gave up"), outcome);
+        }
+
+        var activity = Assert.Single(activities, x => x.GetTagItem(ProcessorTelemetry.TagStepName) as string == stepName);
+        Assert.Equal(ProcessorTelemetry.RecoverActivityName, activity.OperationName);
+        Assert.Equal(processId.ToString(), activity.GetTagItem(KaleidoTelemetryTags.ProcessId));
+        Assert.Equal(2, activity.GetTagItem(ProcessorTelemetry.TagRecoveryAttempt));
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+
+        Assert.Single(measurements, x => x.Name == ProcessorTelemetry.OutcomesRecoveredCounterName);
+        var parked = Assert.Single(measurements, x => x.Name == ProcessorTelemetry.OutcomesParkedCounterName);
+        Assert.Contains(parked.Tags, x => x.Key == ProcessorTelemetry.TagParkReason && (string?)x.Value == "expired");
+
+        AssertLogged(logger, LogLevel.Warning, "could not be saved");
+        AssertLogged(logger, LogLevel.Information, "was saved");
+        AssertLogged(logger, LogLevel.Critical, "was given up");
+    }
+
+    [Fact]
+    public void BeginRecovery_AndTheUnsavedAndParkedSignals_RejectMissingArguments()
+    {
+        var observability = CreateSut();
+        using var step = observability.BeginStep(new ProcessorStepObservationDetails("Step-A"));
+        using var recovery = observability.BeginRecovery(new ProcessorRecoveryObservationDetails(Guid.NewGuid(), "Step-A", 1));
+        var context = new Context.ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
+
+        Assert.Throws<ArgumentNullException>(() => observability.BeginRecovery(null!));
+        Assert.Throws<ArgumentNullException>(() => step.OutcomeUnsaved(Recovery.UnsavedOutcome.NotSaved, null!, null, new InvalidOperationException()));
+        Assert.Throws<ArgumentNullException>(() => step.OutcomeUnsaved(Recovery.UnsavedOutcome.NotSaved, context, null, null!));
+        Assert.Throws<ArgumentNullException>(() => recovery.Retrying(null!));
+        Assert.Throws<ArgumentNullException>(() => recovery.Parked("conflict", null!, new Recovery.PendingOutcome { Context = context, StepName = "Step-A" }));
+        Assert.Throws<ArgumentNullException>(() => recovery.Parked("conflict", new InvalidOperationException(), null!));
     }
 
     [Fact]

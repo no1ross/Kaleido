@@ -8,12 +8,6 @@ internal sealed class ProcessorRequiredStepEntity
         set;
     }
 
-    public string ProcessorName
-    {
-        get;
-        set;
-    } = string.Empty;
-
     public string StepName
     {
         get;

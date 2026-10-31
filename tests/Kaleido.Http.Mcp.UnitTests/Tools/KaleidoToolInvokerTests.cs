@@ -752,6 +752,43 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(McpErrorCodes.ServiceError, Body(outcome)["code"]?.GetValue<string>());
     }
 
+    // #537: the step ran, but its outcome was not saved - repeating it could do its work twice, whatever
+    // the status (503, 500, or a 409 that is not the usual "nothing was saved"). A process being
+    // recovered ran nothing: the agent tries again shortly.
+    [Theory]
+    [InlineData(ProcessorErrorCodes.OutcomePendingRecovery, HttpStatusCode.ServiceUnavailable, McpErrorCodes.ServiceError, "Do not repeat the call")]
+    [InlineData(ProcessorErrorCodes.OutcomeNotSaved, HttpStatusCode.InternalServerError, McpErrorCodes.ServiceError, "Do not repeat the call")]
+    [InlineData(ProcessorErrorCodes.OutcomeNotSaved, HttpStatusCode.Conflict, McpErrorCodes.ServiceError, "Do not repeat the call")]
+    [InlineData(ProcessorErrorCodes.ProcessRecovering, HttpStatusCode.Conflict, McpErrorCodes.ServiceUnavailable, "nothing was run")]
+    public async Task AStepWhoseOutcomeWasNotSaved_SaysItRan_AndNotToRepeatIt(string serviceCode, HttpStatusCode status, string mcpCode, string guidance)
+    {
+        StepThrows(new KaleidoHttpClientException(
+            status == HttpStatusCode.Conflict ? HttpClientErrorCodes.Conflict : HttpClientErrorCodes.RequestFailed,
+            "Process step request for 'CloseVisitStep' failed",
+            status,
+            [new KaleidoError(serviceCode, "Step 'CloseVisitStep' ran, but ...")]));
+
+        var body = Body(await CreateSut().InvokeAsync(Close, Call(new { processId = ProcessId }), Catalog, Cancel));
+
+        Assert.Equal(mcpCode, body["code"]?.GetValue<string>());
+        Assert.Contains(guidance, body["message"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    // The step completed: failing to read the hand-off target's state is a note, not the step failing.
+    [Fact]
+    public async Task AHandoffWhoseTargetCannotBeRead_StillReportsTheCompletedStep()
+    {
+        StepReturns(StepResponse(target: "radiology"));
+        services["radiology"].Setup(x => x.GetProcessStateAsync(ProcessId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("radiology is down"));
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Equal("completed", body["outcome"]?.GetValue<string>());
+        Assert.Equal("radiology", body["handoff"]?.GetValue<string>());
+        Assert.Contains("could not be read", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+    }
+
     // Another call changed the process: the agent rereads the state instead of repeating the call.
     [Fact]
     public async Task AStepThatConflicted_IsAProcessConflict_ThatSaysToReadTheStateAgain()
@@ -1966,6 +2003,44 @@ public sealed class KaleidoToolInvokerTests
     private static readonly InformationRequest FollowUpQuestions = Questions with { InformationRequestId = "follow-up" };
 
     private static readonly ProcessRequiredStep FollowUpRequired = QuestionsRequired with { InformationRequest = FollowUpQuestions };
+
+    // #537, KAL0022: the step completed before the questions; a client that fails to show them leaves
+    // the step reported with a note, not as failed.
+    [Fact]
+    public async Task Questions_InASession_ThatCannotBeAsked_LeaveTheCompletedStepReported_WithANote()
+    {
+        UserAnswersInASession();
+        server.Setup(x => x.SendRequestAsync(It.IsAny<JsonRpcRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("The client went away."));
+        StepsReturn(StepResponse(required: QuestionsRequired));
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Equal("completed", body["outcome"]?.GetValue<string>());
+        Assert.StartsWith("The step completed, but its questions could not be put to the user.", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Single(posts);
+    }
+
+    // #537, KAL0022: the step before completed; answers the service refuses are a note on its summary,
+    // with the service's reasons - not the step failing.
+    [Fact]
+    public async Task Questions_InASession_WhoseAnswersCannotBeSubmitted_LeaveTheCompletedStepReported_WithANote()
+    {
+        UserAnswersInASession(Accepted());
+
+        foreach (var client in services.Values)
+        {
+            client.SetupSequence(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(StepResponse(required: QuestionsRequired))
+                .ThrowsAsync(new KaleidoHttpClientException(HttpClientErrorCodes.RequestFailed, "Refused", HttpStatusCode.BadRequest, [new KaleidoError("pro_information_response_invalid", "Answer refused.")]));
+        }
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Equal("completed", body["outcome"]?.GetValue<string>());
+        Assert.StartsWith("The step completed, but submitting the user's answers failed (Answer refused.).", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Empty(body["answered"]?.AsArray() ?? []);
+    }
 
     [Fact]
     public async Task Questions_InASession_AreAskedDuringTheCall_AndTheAnswersSubmitted()

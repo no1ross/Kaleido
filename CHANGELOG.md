@@ -13,6 +13,27 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **A step whose outcome cannot be saved is answered as having run, and is recovered** (#537, [ADR 0034](docs/decisions/0034-unsaved-step-outcomes.md)):
+  when the save fails after the handler returned, the step is no longer recorded as a failed step
+  (with a second save) or answered as a generic error.
+  - **Answers:** `503 pro_outcome_pending_recovery` (the outcome is kept and saved when the store is
+    back), `500 pro_outcome_not_saved` (it could not be kept) or `409 pro_outcome_not_saved` (another
+    request changed the process meanwhile; this was `pro_process_conflict`). A keyed retry gets
+    `pro_idempotency_outcome_unknown`.
+  - **Recovery:** an in-memory recovery service saves kept outcomes once the store is back; until
+    then every step on the process is refused with `409 pro_process_recovering`, so the handler is
+    never run twice. A restart loses pending outcomes; each one that is not saved is logged at
+    Critical with what to reconcile.
+  - **Telemetry:** `kaleido.processor.step.outcome_unsaved`, `kaleido.processor.recover` and the
+    `outcomes_unsaved` / `outcomes_recovered` / `outcomes_parked` counters. A step's decision is
+    recorded only once it is saved.
+  - **MCP:** the agent is told the step ran and not to repeat it, and a failure to read where a
+    completed step continues no longer reports the step as failed.
+  - **Contributors:** source rule KAL0022 reports one `try` whose `catch` handles the failure of an
+    operation with an effect and of a later operation on another dependency together. It found two more
+    instances, fixed: after a completed step, the MCP adapter no longer reports the step as failed when
+    the client cannot show its questions or the answers cannot be submitted (a note instead), and the
+    event relay no longer abandons the rest of a batch when recording one entry's attempt fails.
 - **A cancellation is the caller's token firing, not an exception type** (#517). An
   `OperationCanceledException` that no token of the caller raised (a downstream or database timeout,
   an `HttpClient` timeout) is now a failure everywhere:
@@ -259,6 +280,10 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **The SQLite context store keeps a hand-off's target, recovers from a rolled-back transition, and tells a duplicate process apart without reading the error message** (#513):
+  - The target is in its own `ProcessContexts.TargetProcessorName` column, so a hand-off (no required step) keeps it across a reload; `ProcessRequiredSteps.ProcessorName` is removed. **Schema change:** recreate a development `*-process.db`.
+  - A rolled-back transition no longer leaves the `DbContext` tracking the process at the version it was not saved at, so the next save in the same scope is not a phantom 409.
+  - A new process's row is inserted on its own: a primary-key violation there is a concurrent creation (409); any other constraint failure is a store failure (it was a 409 whenever the message named the table).
 - **A step handler's or query source's scope is disposed asynchronously** (#523): a scoped dependency
   that implements only `IAsyncDisposable` (an async client, a pooled context) made the synchronous
   disposal throw after the handler or source had run. It is now disposed on success, failure and

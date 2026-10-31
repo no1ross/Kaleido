@@ -69,7 +69,7 @@ Your implementation must preserve, with full fidelity:
 - `ProcessId`, `ProcessorName`, `LatestRequestId`, `CreatedBy`, `UpdatedBy` (caller tags: `KaleidoCaller` name and id; the SQLite store keeps them as `...Name`/`...Id` columns)
 - `Version` - the optimistic-concurrency version (see below)
 - `State` (`ProcessExecutionState` enum, stored by name - Active, Complete, BusinessFailure, HandOff, AwaitingRequiredStep, AwaitingStepSelection, AwaitingInformation; a store created before #536 may hold `ProcessViolation`, `Exception` or `Canceled`, which no longer load: recreate it)
-- `RequiredStep` and `TargetProcessorName` (mutually exclusive continuation markers)
+- `RequiredStep` and `TargetProcessorName`, each on its own: a hand-off has a target and no required step, a cross-processor required step has both, and a hand-back clears the target (the SQLite store keeps the target in its own `TargetProcessorName` column on `ProcessContexts`, #513)
 - `RequiredInformationRequest` - the pending information request for `RequiredStep`, stored whole (the SQLite store keeps it as JSON on the required-step row)
 - `AvailableSteps` (collection - order not significant)
 - `Steps` - every `StepContext` including `StepName`, `Status`, `LatestRequestId`, `FirstExecuted`, `StartedBy`, `LastExecuted`, `LastUpdatedBy`
@@ -85,7 +85,7 @@ Your implementation must preserve, with full fidelity:
 - Store the context with `Version + 1` and **return the saved context** (with the new version) - the runtime continues with it.
 - Otherwise throw `KaleidoConcurrencyException(context.ProcessId)` and save nothing. Kaleido then adds no event and rolls the transition back. The caller gets **409** `pro_process_conflict`.
 
-The compare and the write must be one step: a row version / ETag / `WHERE Version = @expected` in the `UPDATE`, a conditional put, or a lock - whatever your storage offers. The SQLite store uses an EF Core concurrency token on a `Version` column (the `UPDATE` is conditional on the version the row was read with) and turns a duplicate insert of a new process into a conflict too.
+The compare and the write must be one step: a row version / ETag / `WHERE Version = @expected` in the `UPDATE`, a conditional put, or a lock - whatever your storage offers. The SQLite store uses an EF Core concurrency token on a `Version` column (the `UPDATE` is conditional on the version the row was read with) and turns a duplicate insert of a new process into a conflict too: a new process's row is inserted in a statement of its own, so a primary-key violation there can only be the process id - other constraint failures stay store failures, and no error message is read (#513). When a transition rolls back, the store's `DbContext` forgets what it tracked in it, so a later save in the same scope reads the stored state again instead of a phantom conflict.
 
 ### Idempotent results
 
@@ -112,7 +112,7 @@ The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, t
 
 ### Schema changes
 
-The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, or with the step `Version` column in `ProcessStepContexts` (removed, #474), the `IdempotentResults` and `OutboxEvents` tables, the `IdempotentResults` `State`/`LeaseUntilUtc` columns (#285) or its `AdmissionId` column (#441), or the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed (delete the file; the host's `EnsureCreated` call recreates it at startup). A production store manages its own schema migrations.
+The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, or with the step `Version` column in `ProcessStepContexts` (removed, #474), the `IdempotentResults` and `OutboxEvents` tables, the `IdempotentResults` `State`/`LeaseUntilUtc` columns (#285) or its `AdmissionId` column (#441), the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed, or before the `ProcessContexts.TargetProcessorName` column (`ProcessRequiredSteps.ProcessorName` removed, #513) (delete the file; the host's `EnsureCreated` call recreates it at startup). A production store manages its own schema migrations.
 
 ---
 

@@ -95,6 +95,9 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `InvalidRequiredStep` | `pro_invalid_required_step` | Required next step is invalid |
 | `RequiredStepNotAllowed` | `pro_required_step_not_allowed` | Required next step cannot be executed (not a legal next step, or not a registered step in this processor) |
 | `ProcessEnded` | `pro_process_ended` | The process has ended here (complete, business failure, handed off): no step of this service runs on it; a hand-back from the service holding it excepted ([ADR 0033](decisions/0033-process-lifecycle-and-admission.md)) |
+| `OutcomePendingRecovery` | `pro_outcome_pending_recovery` | 503: the step ran, but the process could not be saved; its outcome is kept and saved when the store is available again. Do not send the step again ([ADR 0034](decisions/0034-unsaved-step-outcomes.md)) |
+| `OutcomeNotSaved` | `pro_outcome_not_saved` | 500: the step ran, but its outcome was not saved and could not be kept; or 409: another request changed the process meanwhile. Do not send the step again; the process must be reconciled ([ADR 0034](decisions/0034-unsaved-step-outcomes.md)) |
+| `ProcessRecovering` | `pro_process_recovering` | 409: an earlier step's outcome is still being saved; nothing was run. Try again shortly ([ADR 0034](decisions/0034-unsaved-step-outcomes.md)) |
 | `InvalidHandOff` | `pro_invalid_hand_off` | A handler handed the process off to the service it runs in; a process violation, so the process keeps its state |
 | `ExecutionCanceled` | `pro_execution_canceled` | Step execution was cancelled |
 | `FrameworkException` | `pro_framework_exception` | Unexpected framework error interrupted a step |

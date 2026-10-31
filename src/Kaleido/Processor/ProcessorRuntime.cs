@@ -1,6 +1,7 @@
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
+using Kaleido.Processor.Recovery;
 
 namespace Kaleido.Processor;
 
@@ -203,7 +204,8 @@ internal sealed class ProcessorRuntime(
     IKaleidoEventWriter eventWriter,
     IProcessorObservability observability,
     IKaleidoCorrelationContextAccessor correlationAccessor,
-    KaleidoServiceOptions serviceOptions)
+    KaleidoServiceOptions serviceOptions,
+    IProcessorRecoveryStore recoveryStore)
     : IProcessorRuntime
 {
 
@@ -220,6 +222,8 @@ internal sealed class ProcessorRuntime(
 
         try
         {
+            ThrowIfRecovering(request);
+
             var context = await LoadOrCreateContextAsync(request, observation, cancellationToken);
             var plan = planner.BuildPlan(request.Processor, context);
             var executionCandidates = GetExecutionCandidates(plan);
@@ -274,9 +278,20 @@ internal sealed class ProcessorRuntime(
         {
             KaleidoValidationException validation => validation.Code,
             KaleidoConcurrencyException conflict => conflict.Code,
+            ProcessRecoveringException => ProcessorErrorCodes.ProcessRecovering,
             KaleidoAuthorizationException => ProcessorTelemetry.AuthorizationRejectionCode,
             _ => null,
         };
+
+    // An earlier step's outcome is still being saved: nothing runs until it is, so that step's handler
+    // is never run a second time (#537). Checked before the store is touched.
+    private void ThrowIfRecovering(ProcessRequest request)
+    {
+        if (request.ProcessId is { } processId && recoveryStore.IsPending(processId))
+        {
+            throw new ProcessRecoveringException(processId);
+        }
+    }
 
     private bool IsHandOff() =>
         correlationAccessor.Current.CallingProcessorName is { Length: > 0 } calling &&

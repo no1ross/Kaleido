@@ -299,6 +299,8 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.Equal(HttpStatusCode.BadRequest, status);
     }
 
+    // The slow step's handler ran before its save lost the race: the answer says the step ran and its
+    // outcome was not saved (#537), not "nothing happened, reread" - and nothing of it is saved.
     [Fact]
     public async Task TwoRequestsForTheSameProcessAtOnce_TheSecondSaveIsAConflict_AndSavesNothing()
     {
@@ -316,7 +318,8 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         var (slowStatus, conflict) = await slow;
 
         Assert.Equal(HttpStatusCode.Conflict, slowStatus);
-        Assert.Equal("pro_process_conflict", conflict.GetProperty("errors")[0].GetProperty("code").GetString());
+        Assert.Equal(ProcessorErrorCodes.OutcomeNotSaved, conflict.GetProperty("errors")[0].GetProperty("code").GetString());
+        Assert.Contains("ran", conflict.GetProperty("errors")[0].GetProperty("message").GetString(), StringComparison.Ordinal);
 
         var state = await StateAsync(processId);
         Assert.Equal("completed", StepStatus(state, BehaviorSteps.Quick));

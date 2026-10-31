@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Kaleido.Processor.Context;
+using Kaleido.Processor.Recovery;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Processor.Observability;
@@ -14,6 +16,10 @@ internal interface IProcessorObservability
 
     IProcessorHandlerObservation BeginHandler(
         ProcessorHandlerObservationDetails details);
+
+    // One attempt of the recovery service to save an outcome that could not be saved (#537).
+    IProcessorRecoveryObservation BeginRecovery(
+        ProcessorRecoveryObservationDetails details);
 }
 
 internal interface IProcessorExecutionObservation
@@ -65,6 +71,29 @@ internal interface IProcessorStepObservation
     // never an Error, a failure count or an error status.
     void StepValidationFailed(
         string code);
+
+    // The handler ran, but its outcome could not be saved (#537): an error on the step, and what an
+    // operator needs to reconcile it when it was not kept for recovery.
+    void OutcomeUnsaved(
+        UnsavedOutcome outcome,
+        ProcessorContext attempted,
+        KaleidoOutboxEvent? transitionEvent,
+        Exception failure);
+}
+
+internal interface IProcessorRecoveryObservation
+    : IDisposable
+{
+    void Recovered();
+
+    void Retrying(
+        Exception exception);
+
+    // Given up for an operator: the process is open again, and the log carries what to reconcile.
+    void Parked(
+        string reason,
+        Exception exception,
+        PendingOutcome outcome);
 }
 
 internal interface IProcessorHandlerObservation
@@ -86,6 +115,12 @@ internal sealed record ProcessorStepObservationDetails(
 [ExcludeFromCodeCoverage]
 internal sealed record ProcessorHandlerObservationDetails(
     string StepName);
+
+[ExcludeFromCodeCoverage]
+internal sealed record ProcessorRecoveryObservationDetails(
+    Guid ProcessId,
+    string StepName,
+    int Attempt);
 
 internal sealed partial class ProcessorObservability(
     IKaleidoCorrelationContextAccessor correlationAccessor,
@@ -164,6 +199,18 @@ internal sealed partial class ProcessorObservability(
         Meter.CreateHistogram<double>(
             ProcessorTelemetry.StepDurationHistogramName,
             unit: "s");
+
+    private static readonly Counter<long> OutcomesUnsavedCounter =
+        Meter.CreateCounter<long>(
+            ProcessorTelemetry.OutcomesUnsavedCounterName);
+
+    private static readonly Counter<long> OutcomesRecoveredCounter =
+        Meter.CreateCounter<long>(
+            ProcessorTelemetry.OutcomesRecoveredCounterName);
+
+    private static readonly Counter<long> OutcomesParkedCounter =
+        Meter.CreateCounter<long>(
+            ProcessorTelemetry.OutcomesParkedCounterName);
 
     private readonly string _processorName = serviceOptions.ServiceName;
 
@@ -252,6 +299,28 @@ internal sealed partial class ProcessorObservability(
         LogHandlerStarted(logger, _processorName, details.StepName);
 
         return new ProcessHandlerObservation(
+            activity,
+            _processorName,
+            logger,
+            details);
+    }
+
+    public IProcessorRecoveryObservation BeginRecovery(
+        ProcessorRecoveryObservationDetails details)
+    {
+        ArgumentNullException.ThrowIfNull(details);
+
+        var activity =
+            ActivitySource.StartActivity(
+                ProcessorTelemetry.RecoverActivityName,
+                ActivityKind.Internal);
+
+        activity?.SetTag(KaleidoTelemetryTags.ProcessorName, _processorName);
+        activity?.SetTag(KaleidoTelemetryTags.ProcessId, details.ProcessId.ToString());
+        activity?.SetTag(ProcessorTelemetry.TagStepName, details.StepName);
+        activity?.SetTag(ProcessorTelemetry.TagRecoveryAttempt, details.Attempt);
+
+        return new ProcessRecoveryObservation(
             activity,
             _processorName,
             logger,
@@ -464,6 +533,46 @@ internal sealed partial class ProcessorObservability(
             LogStepValidationFailed(logger, processorName, details.StepName, code);
         }
 
+        public void OutcomeUnsaved(
+            UnsavedOutcome outcome,
+            ProcessorContext attempted,
+            KaleidoOutboxEvent? transitionEvent,
+            Exception failure)
+        {
+            ArgumentNullException.ThrowIfNull(attempted);
+            ArgumentNullException.ThrowIfNull(failure);
+
+            var tag = UnsavedTag(outcome);
+
+            activity.SetErrorStatus(failure);
+            activity.AddExceptionEvent(failure);
+            activity?.AddEvent(new ActivityEvent(
+                ProcessorTelemetry.StepOutcomeUnsavedEventName,
+                tags: new ActivityTagsCollection { [ProcessorTelemetry.TagUnsavedOutcome] = tag }));
+
+            var tags = CreateStepTags(processorName, details.StepName);
+            tags.Add(ProcessorTelemetry.TagUnsavedOutcome, tag);
+            OutcomesUnsavedCounter.Add(1, tags);
+
+            // Kept for recovery, it will probably heal itself: a Warning. Otherwise an operator must
+            // reconcile it, from this entry (the event payload is already redacted, ADR 0013).
+            if (outcome == UnsavedOutcome.PendingRecovery)
+            {
+                LogOutcomeKept(logger, failure, processorName, details.StepName, attempted.ProcessId, attempted.LatestRequestId);
+                return;
+            }
+
+            LogOutcomeLost(logger, failure, processorName, details.StepName, attempted.ProcessId, tag, attempted.LatestRequestId, attempted.Version, attempted.State, transitionEvent?.Payload);
+        }
+
+        private static string UnsavedTag(UnsavedOutcome outcome) =>
+            outcome switch
+            {
+                UnsavedOutcome.PendingRecovery => "pending_recovery",
+                UnsavedOutcome.Conflict => "conflict",
+                _ => "not_saved",
+            };
+
         public void Dispose()
         {
             ProcessStepDurationHistogram.Record(
@@ -489,6 +598,65 @@ internal sealed partial class ProcessorObservability(
 
         [LoggerMessage(Level = LogLevel.Debug, Message = "Process step for processor {ProcessorName} step {StepName} failed validation [{Code}].")]
         private static partial void LogStepValidationFailed(ILogger logger, string processorName, string stepName, string code);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "Process step {StepName} of processor {ProcessorName} ran for process {ProcessId}, but its outcome could not be saved (request {RequestId}); it is kept and saved when the store is available again. No step runs on the process until then.")]
+        private static partial void LogOutcomeKept(ILogger logger, Exception exception, string processorName, string stepName, Guid processId, string? requestId);
+
+        [LoggerMessage(Level = LogLevel.Critical, Message = "Process step {StepName} of processor {ProcessorName} ran for process {ProcessId}, but its outcome was not saved ({Outcome}; request {RequestId}). Reconcile the process: the step ran on version {Version} and would have left it in state {State}; the step's event: {EventPayload}")]
+        private static partial void LogOutcomeLost(ILogger logger, Exception exception, string processorName, string stepName, Guid processId, string outcome, string? requestId, long version, ProcessExecutionState state, string? eventPayload);
+    }
+
+    private sealed partial class ProcessRecoveryObservation(
+        Activity? activity,
+        string processorName,
+        ILogger logger,
+        ProcessorRecoveryObservationDetails details)
+        : IProcessorRecoveryObservation
+    {
+        public void Recovered()
+        {
+            OutcomesRecoveredCounter.Add(1, CreateStepTags(processorName, details.StepName));
+
+            LogRecovered(logger, processorName, details.StepName, details.ProcessId, details.Attempt);
+        }
+
+        public void Retrying(Exception exception)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+
+            activity.SetErrorStatus(exception);
+            activity.AddExceptionEvent(exception);
+
+            LogRetrying(logger, exception, processorName, details.StepName, details.ProcessId, details.Attempt);
+        }
+
+        public void Parked(string reason, Exception exception, PendingOutcome outcome)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+            ArgumentNullException.ThrowIfNull(outcome);
+
+            activity.SetErrorStatus(exception);
+            activity.AddExceptionEvent(exception);
+
+            var tags = CreateStepTags(processorName, details.StepName);
+            tags.Add(ProcessorTelemetry.TagParkReason, reason);
+            OutcomesParkedCounter.Add(1, tags);
+
+            var attempted = outcome.Context;
+            LogParked(logger, exception, processorName, details.StepName, details.ProcessId, reason, attempted.LatestRequestId, attempted.Version, attempted.State, outcome.TransitionEvent?.Payload);
+        }
+
+        public void Dispose() => activity?.Dispose();
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "The outcome of process step {StepName} of processor {ProcessorName} was saved for process {ProcessId} by recovery (attempt {Attempt}).")]
+        private static partial void LogRecovered(ILogger logger, string processorName, string stepName, Guid processId, int attempt);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "The outcome of process step {StepName} of processor {ProcessorName} could not be saved for process {ProcessId} yet (attempt {Attempt}); it is retried.")]
+        private static partial void LogRetrying(ILogger logger, Exception exception, string processorName, string stepName, Guid processId, int attempt);
+
+        // The event payload is already redacted (ADR 0013): it is what an operator reconciles from.
+        [LoggerMessage(Level = LogLevel.Critical, Message = "The outcome of process step {StepName} of processor {ProcessorName} was given up for process {ProcessId} ({Reason}; request {RequestId}), and the process is open again. Reconcile it: the step ran on version {Version} and would have left it in state {State}; the step's event: {EventPayload}")]
+        private static partial void LogParked(ILogger logger, Exception exception, string processorName, string stepName, Guid processId, string reason, string? requestId, long version, ProcessExecutionState state, string? eventPayload);
     }
 
     private sealed partial class ProcessHandlerObservation(

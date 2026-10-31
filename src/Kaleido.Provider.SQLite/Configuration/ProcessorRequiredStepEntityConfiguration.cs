@@ -18,11 +18,6 @@ internal sealed class ProcessorRequiredStepEntityConfiguration
             x => x.ProcessId);
 
         builder.Property(
-                x => x.ProcessorName)
-            .HasMaxLength(200)
-            .IsRequired();
-
-        builder.Property(
                 x => x.StepName)
             .HasMaxLength(200)
             .IsRequired();

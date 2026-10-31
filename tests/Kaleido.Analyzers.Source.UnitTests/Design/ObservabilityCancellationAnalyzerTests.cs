@@ -164,6 +164,41 @@ public class C
 }" + Stubs);
     }
 
+    // The same in one clause: everything but the caller's cancellation, so a foreign
+    // OperationCanceledException (a downstream timeout) is still the failure it is (#517).
+    [Fact]
+    public async Task CatchException_FilteredOnAllButTheTokensCancellation_NoDiagnostic()
+    {
+        await RunAsync(@"
+public class C
+{
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation, System.Threading.CancellationToken cancellationToken)
+    {
+        try { }
+        catch (System.Exception ex) when (!(ex is System.OperationCanceledException && cancellationToken.IsCancellationRequested)) { observation.Failed(ex); throw; }
+    }
+}" + Stubs);
+    }
+
+    // A filter that lets the caller's cancellation through, or reads another flag, still reports.
+    [Theory]
+    [InlineData("ex is not System.OperationCanceledException || cancellationToken.IsCancellationRequested")]
+    [InlineData("!(ex is System.OperationCanceledException && source.IsCancellationRequested)")]
+    [InlineData("!(ex is System.OperationCanceledException && !cancellationToken.IsCancellationRequested)")]
+    public async Task CatchException_FilteredSoTheTokensCancellationGetsThrough_Reports(string filter)
+    {
+        await RunAsync(@"
+public class C
+{
+    public void M(Kaleido.Processor.Observability.IExecutionObservation observation, System.Threading.CancellationToken cancellationToken, System.Threading.CancellationTokenSource source)
+    {
+        try { }
+        {|#0:catch|} (System.Exception ex) when (" + filter + @") { observation.Failed(ex); throw; }
+    }
+}" + Stubs,
+            Expected.WithLocation(0).WithArguments("observation.Failed"));
+    }
+
     // Only a CancellationToken's own flag counts: any other filter may let a cancellation through.
     [Theory]
     [InlineData("!cancellationToken.IsCancellationRequested")]

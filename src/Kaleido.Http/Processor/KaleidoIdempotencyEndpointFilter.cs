@@ -127,6 +127,7 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
         exception is KaleidoValidationException
             or KaleidoAuthorizationException
             or KaleidoConcurrencyException
+            or Kaleido.Processor.Recovery.ProcessRecoveringException
             or BadHttpRequestException
             or JsonException
             or ArgumentException;

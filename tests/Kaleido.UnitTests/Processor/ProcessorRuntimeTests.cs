@@ -3,6 +3,7 @@ using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
+using Kaleido.Processor.Recovery;
 using Kaleido.Processor.Registry;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
@@ -21,10 +22,12 @@ public sealed class ProcessorRuntimeTests
         IKaleidoEventWriter eventOutbox,
         IProcessorObservability observability,
         IKaleidoCorrelationContextAccessor correlationAccessor,
-        List<KaleidoOutboxEvent?>? transitionEvents = null) =>
+        List<KaleidoOutboxEvent?>? transitionEvents = null,
+        IProcessorRecoveryStore? recoveryStore = null) =>
         new(contextStore, Transition(contextStore, transitionEvents), stateUpdater, planner, processor,
             eventFactory, eventOutbox, observability,
-            correlationAccessor, new KaleidoServiceOptions { ServiceName = "radiology" });
+            correlationAccessor, new KaleidoServiceOptions { ServiceName = "radiology" },
+            recoveryStore ?? Mock.Of<IProcessorRecoveryStore>());
 
     // The transition (its own fixture: ProcessorTransitionTests) saves through the store here and
     // records the event the runtime decided belongs to the save.
@@ -337,6 +340,39 @@ public sealed class ProcessorRuntimeTests
             execution.Verify(x => x.ExecutionRejected(failure, rejectionCode), Times.Once);
             execution.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
         }
+    }
+
+    // #537: while an earlier step's outcome is still being saved, nothing runs on the process (its
+    // handler is never run twice), and the store is not touched; a refusal, not a failure.
+    [Fact]
+    public async Task ExecuteAsync_WhileTheProcessIsRecovering_RefusesIt_BeforeTouchingTheStore()
+    {
+        var request = CreateRequest();
+        var processId = Assert.IsType<Guid>(request.ProcessId);
+        var recovery = new Mock<IProcessorRecoveryStore>();
+        recovery.Setup(x => x.IsPending(processId)).Returns(true);
+        var contextStore = new Mock<IKaleidoContextStore>(MockBehavior.Strict);
+        var execution = new Mock<IProcessorExecutionObservation>();
+        var observability = new Mock<IProcessorObservability>();
+        observability.Setup(x => x.BeginExecution(It.IsAny<ProcessorExecutionObservationDetails>())).Returns(execution.Object);
+
+        var runtime =
+            CreateSut(
+                contextStore.Object,
+                new Mock<IProcessorStateUpdater>(MockBehavior.Strict).Object,
+                new Mock<IProcessorPlanner>(MockBehavior.Strict).Object,
+                new Mock<IProcessorExecutor>(MockBehavior.Strict).Object,
+                CreateProcessEventFactory().Object,
+                new Mock<IKaleidoEventWriter>().Object,
+                observability.Object,
+                CreateCorrelationAccessor(),
+                recoveryStore: recovery.Object);
+
+        var exception = await Assert.ThrowsAsync<ProcessRecoveringException>(() => runtime.ExecuteAsync(request, TestContext.Current.CancellationToken));
+
+        Assert.Equal(processId, exception.ProcessId);
+        execution.Verify(x => x.ExecutionRejected(exception, ProcessorErrorCodes.ProcessRecovering), Times.Once);
+        execution.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
     }
 
     // The caller's cancellation is passed on unrecorded: the executor records it once (one signal).

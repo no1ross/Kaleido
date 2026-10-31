@@ -22,6 +22,7 @@ internal sealed class ProcessorContextEntityConfiguration
         builder.Property(x => x.Version).IsConcurrencyToken();
 
         builder.Property(x => x.State).HasConversion<string>().IsRequired();
+        builder.Property(x => x.TargetProcessorName).HasMaxLength(200);
         builder.Property(x => x.CreatedUtc).IsRequired();
         builder.Property(x => x.UpdatedUtc).IsRequired();
 

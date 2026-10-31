@@ -142,6 +142,25 @@ public static class ProcessorErrorCodes
     /// </summary>
     public const string ProcessEnded = "pro_process_ended";
 
+    /// <summary>
+    /// A step's handler ran, but the process could not be saved; its outcome is kept and saved when the
+    /// store is available again (503). Do not send the step again: read the process state later (#537).
+    /// </summary>
+    public const string OutcomePendingRecovery = "pro_outcome_pending_recovery";
+
+    /// <summary>
+    /// A step's handler ran, but its outcome was not saved and could not be kept for recovery (500), or
+    /// another request changed the process meanwhile (409). Do not send the step again: its own work may
+    /// have happened, and the process must be reconciled (#537).
+    /// </summary>
+    public const string OutcomeNotSaved = "pro_outcome_not_saved";
+
+    /// <summary>
+    /// The outcome of an earlier step of the process is still being saved: nothing was run (409). Try
+    /// again shortly (#537).
+    /// </summary>
+    public const string ProcessRecovering = "pro_process_recovering";
+
     /// <summary>A handler returned an information request that is not well-formed.</summary>
     public const string InformationRequestInvalid = "pro_information_request_invalid";
 

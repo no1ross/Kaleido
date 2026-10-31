@@ -53,6 +53,14 @@ internal sealed class ProcessorContextEntity
         set;
     }
 
+    // The service the process was handed off to, or that its required step belongs to; null while the
+    // process continues here (#513: kept apart from the required step, which a hand-off does not have).
+    public string? TargetProcessorName
+    {
+        get;
+        set;
+    }
+
     public DateTimeOffset CreatedUtc
     {
         get;

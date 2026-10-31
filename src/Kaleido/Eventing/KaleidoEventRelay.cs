@@ -167,11 +167,11 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         // failed attempt - except the host stopping, which is not the publisher's fault.
         catch (Exception exception) when (!(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
-            await WithGateAsync(storeGate, () => FailAsync(store, entry, exception));
+            await RecordAsync(store, storeGate, entry, exception);
             return;
         }
 
-        await WithGateAsync(storeGate, () => store.CompleteEventAsync(entry.EventId, CancellationToken.None));
+        await RecordAsync(store, storeGate, entry, failure: null);
         Published.Add(1, Tag(entry));
         LogPublished(_logger, entry.EventType, entry.EventId);
     }
@@ -237,13 +237,30 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
             .AddTimeout(resilience.AttemptTimeout)
             .Build();
 
-    private static async Task WithGateAsync(SemaphoreSlim gate, Func<Task> action)
+    // Records an entry's attempt in the outbox: published (no failure), or failed. The publish has
+    // happened (or failed) by now: a failure to record it is that entry's, never the batch's, so the
+    // other entries go on (KAL0022). The entry stays leased and is relayed again once its lease expires -
+    // a second publish is within at least once (ADR 0012). The store of this scope is not thread-safe:
+    // its calls take turns through the gate. The record runs on CancellationToken.None, so no
+    // cancellation reaches the catch.
+    private async Task RecordAsync(IKaleidoOutboxStore store, SemaphoreSlim gate, KaleidoOutboxEvent entry, Exception? failure)
     {
         await gate.WaitAsync(CancellationToken.None);
 
         try
         {
-            await action();
+            if (failure is null)
+            {
+                await store.CompleteEventAsync(entry.EventId, CancellationToken.None);
+            }
+            else
+            {
+                await FailAsync(store, entry, failure);
+            }
+        }
+        catch (Exception exception)
+        {
+            LogNotRecorded(_logger, exception, entry.EventType, entry.EventId);
         }
         finally
         {
@@ -270,6 +287,9 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Event publishing resumed.")]
     private static partial void LogCircuitClosed(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The attempt to publish event {EventType} ({EventId}) could not be recorded in the outbox; the event is relayed again once its lease expires.")]
+    private static partial void LogNotRecorded(ILogger logger, Exception exception, string eventType, Guid eventId);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The event relay could not read or update the outbox; it tries again.")]
     private static partial void LogRelayFailed(ILogger logger, Exception exception);

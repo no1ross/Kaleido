@@ -110,6 +110,39 @@ public sealed class KaleidoEventRelayTests
         store.Verify(x => x.CompleteEventAsync(second.EventId, It.IsAny<CancellationToken>()));
     }
 
+    // KAL0022: an entry's publish has happened (or failed) when its record fails. That failure is the
+    // entry's: the other entries of the batch go on, and the entry is relayed again after its lease.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RelayBatchAsync_WhenRecordingOneEntryFails_TheRestOfTheBatchGoesOn(bool published)
+    {
+        var first = Entry();
+        var second = Entry();
+        var store = StoreClaiming(first, second);
+        store.Setup(x => x.CompleteEventAsync(first.EventId, It.IsAny<CancellationToken>())).ThrowsAsync(new TimeoutException("store down"));
+        store.Setup(x => x.FailEventAsync(first.EventId, It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(new TimeoutException("store down"));
+        var logger = EnabledLogger();
+        var publisher = published ? Publisher() : FailingPublisher();
+
+        var claimed = await CreateSut(store.Object, publisher.Object, new KaleidoEventOptions { MaxConcurrentPublishes = 1 }, logger: logger.Object)
+            .RelayBatchAsync(CancellationToken.None);
+
+        Assert.Equal(2, claimed);
+
+        if (published)
+        {
+            store.Verify(x => x.CompleteEventAsync(second.EventId, It.IsAny<CancellationToken>()), Times.Once);
+        }
+        else
+        {
+            store.Verify(x => x.FailEventAsync(second.EventId, It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Error, $"({first.EventId}) could not be recorded in the outbox");
+        Assert.DoesNotContain(logger.Invocations, x => x.Arguments.Count > 2 && x.Arguments[2].ToString()!.Contains("could not read or update the outbox", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task RelayBatchAsync_ClaimsAtMostTheBatchSizeWithTheDerivedLease()
     {

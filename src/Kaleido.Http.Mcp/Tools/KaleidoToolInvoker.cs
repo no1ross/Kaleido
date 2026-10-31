@@ -91,6 +91,11 @@ internal sealed partial class KaleidoToolInvoker(
     {
         LogServiceAnswered(logger, tool.Definition.Name, (int)exception.StatusCode, exception.Code);
 
+        if (UnsavedOutcome(tool, exception) is { } unsaved)
+        {
+            return unsaved;
+        }
+
         if (string.Equals(exception.Code, HttpClientErrorCodes.Conflict, StringComparison.Ordinal))
         {
             return Error(
@@ -117,6 +122,32 @@ internal sealed partial class KaleidoToolInvoker(
             ServiceReasons(exception.Errors));
     }
 
+    // #537: the step ran, but the service could not save the process - repeating it could do its work
+    // twice. Or the process is being recovered, and nothing ran: try again shortly. Read from the
+    // service's own error code (409 and 5xx alone do not say which).
+    private static CallToolResult? UnsavedOutcome(KaleidoTool tool, KaleidoHttpClientException exception)
+    {
+        var code = exception.Errors.Count > 0 ? exception.Errors[0].Code : null;
+        var details = Serialize(new { status = (int)exception.StatusCode, errors = exception.Errors });
+
+        return code switch
+        {
+            ProcessorErrorCodes.OutcomePendingRecovery => Error(
+                McpErrorCodes.ServiceError,
+                $"{tool.Definition.Name}: the step ran, but the service could not save the process yet; it saves it when its store is available again. Do not repeat the call: tell the user, and read the process with {ToolCatalogBuilder.GetProcessStateTool} later.",
+                details),
+            ProcessorErrorCodes.OutcomeNotSaved => Error(
+                McpErrorCodes.ServiceError,
+                $"{tool.Definition.Name}: the step ran, but the service could not save the process, so it must be reconciled by an operator. Do not repeat the call: tell the user that the step's work may have happened.",
+                details),
+            ProcessorErrorCodes.ProcessRecovering => Error(
+                McpErrorCodes.ServiceUnavailable,
+                $"{tool.Definition.Name}: the process is being recovered after a storage failure, and nothing was run. Try the same call again in a moment; do not start a new process.",
+                details),
+            _ => null,
+        };
+    }
+
     public async Task<ToolOutcome> InvokeAsync(
         KaleidoTool tool,
         KaleidoToolCall call,
@@ -129,9 +160,9 @@ internal sealed partial class KaleidoToolInvoker(
 
         try
         {
-            if (await RetryAsync(call, catalog, cancellationToken) is { } retried)
+            if (IsRetry(call.RequestState))
             {
-                return retried;
+                return await RetryAsync(call, catalog, cancellationToken);
             }
 
             return tool.Kind switch
@@ -383,10 +414,17 @@ internal sealed partial class KaleidoToolInvoker(
             ? description.GetString()
             : null;
 
+    // The call carries one of the adapter's states: it is an MRTR retry of an earlier round, not an
+    // ordinary call.
+    private static bool IsRetry(string? state) =>
+        state is not null &&
+        (state.StartsWith(ConfirmStatePrefix, StringComparison.Ordinal) ||
+         state.StartsWith(McpLookupStateProtector.Prefix, StringComparison.Ordinal) ||
+         state.StartsWith(StatePrefix, StringComparison.Ordinal));
+
     // An MRTR retry, by the state the previous round returned: a confirmation (#439), a guided lookup
-    // (the user searched or picked), or answers to an information request's form. Null when the call
-    // carries none of the adapter's states: it is an ordinary call.
-    private async Task<ToolOutcome?> RetryAsync(
+    // (the user searched or picked), or answers to an information request's form.
+    private async Task<ToolOutcome> RetryAsync(
         KaleidoToolCall call,
         ToolCatalog catalog,
         CancellationToken cancellationToken) =>
@@ -394,8 +432,7 @@ internal sealed partial class KaleidoToolInvoker(
         {
             { } state when state.StartsWith(ConfirmStatePrefix, StringComparison.Ordinal) => await ContinueConfirmationAsync(state, call, catalog, cancellationToken),
             { } state when state.StartsWith(McpLookupStateProtector.Prefix, StringComparison.Ordinal) => await ContinueLookupAsync(call, catalog, cancellationToken),
-            { } state when state.StartsWith(StatePrefix, StringComparison.Ordinal) => await ContinueAsync(call, catalog, cancellationToken),
-            _ => null,
+            _ => await ContinueAsync(call, catalog, cancellationToken),
         };
 
     // ── Steps ────────────────────────────────────────────────────────────────
@@ -732,6 +769,22 @@ internal sealed partial class KaleidoToolInvoker(
         return Success(summary);
     }
 
+    // The state of the process on the service it was handed off to. The step has completed by now: a
+    // failure to read where it continues must not be reported as the step failing (#537).
+    private async Task<(ProcessStateResponse? State, string? Unread)> TargetStateAsync(string target, Guid processId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return (await Processor(target).GetProcessStateAsync(processId, cancellationToken), null);
+        }
+        catch (Exception exception) when (exception is KaleidoHttpClientException or HttpRequestException or MissingClientException)
+        {
+            LogTargetStateUnread(logger, exception, target, processId);
+
+            return (null, $"The step completed. The process continues on {target}, whose next steps could not be read; check them with {ToolCatalogBuilder.GetProcessStateTool}.");
+        }
+    }
+
     // After a step: follow a handoff to the target's state, put questions to the user while the
     // client can show forms, and summarize where the process stands.
     private async Task<ToolOutcome> FollowUpAsync(
@@ -755,8 +808,9 @@ internal sealed partial class KaleidoToolInvoker(
             {
                 pendingService = step.TargetProcessorName;
 
-                var targetState = await Processor(pendingService).GetProcessStateAsync(step.ProcessId, cancellationToken);
+                var (targetState, unread) = await TargetStateAsync(pendingService, step.ProcessId, cancellationToken);
 
+                note ??= unread;
                 required = targetState?.RequiredStep;
                 available = targetState?.AvailableSteps ?? [];
             }
@@ -778,24 +832,63 @@ internal sealed partial class KaleidoToolInvoker(
                 }
                 else
                 {
-                    var session = await ElicitEveryRoundAsync(call, pending, cancellationToken);
+                    var (next, unanswered) = await AnswerInSessionAsync(call, pendingService, required, pending, step.ProcessId, cancellationToken);
 
-                    if (session.Answers is { } given)
+                    if (next is not null)
                     {
                         answered.Add(pending.InformationRequestId);
                         service = pendingService;
-                        step = await SubmitAsync(pendingService, required, pending, pending.ExchangeId, Enabled(pending, given), step.ProcessId, cancellationToken);
+                        step = next;
 
                         continue;
                     }
 
-                    note = $"The user did not answer the questions ({session.Action}). Nothing was submitted; the process is still waiting for them.";
+                    note = unanswered;
                 }
             }
 
             return Success(
                 Summary(service, pendingService, step, required, available, answered, note, catalog),
                 step.BusinessMessages.Select(x => x.Message));
+        }
+    }
+
+    // Puts the questions to the user and submits the answers. The step before has completed by now: a
+    // failure to ask or to submit is a note on its summary, never the step failing (#537, KAL0022).
+    private async Task<(StepExecutionResponse<JsonElement>? Next, string? Note)> AnswerInSessionAsync(
+        KaleidoToolCall call,
+        string service,
+        ProcessRequiredStep required,
+        InformationRequest pending,
+        Guid processId,
+        CancellationToken cancellationToken)
+    {
+        SessionAnswers session;
+
+        try
+        {
+            session = await ElicitEveryRoundAsync(call, pending, cancellationToken);
+        }
+        catch (Exception exception) when (!(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
+        {
+            LogAnswersNotTaken(logger, exception, processId);
+            return (null, "The step completed, but its questions could not be put to the user. Ask the user the questions; the process is waiting for them.");
+        }
+
+        if (session.Answers is not { } given)
+        {
+            return (null, $"The user did not answer the questions ({session.Action}). Nothing was submitted; the process is still waiting for them.");
+        }
+
+        try
+        {
+            return (await SubmitAsync(service, required, pending, pending.ExchangeId, Enabled(pending, given), processId, cancellationToken), null);
+        }
+        catch (Exception exception) when (!(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
+        {
+            LogAnswersNotTaken(logger, exception, processId);
+            var reason = exception is KaleidoHttpClientException { Errors.Count: > 0 } refused ? $" ({string.Join("; ", refused.Errors.Select(x => x.Message))})" : string.Empty;
+            return (null, $"The step completed, but submitting the user's answers failed{reason}. Read the process with {ToolCatalogBuilder.GetProcessStateTool} before trying again.");
         }
     }
 
@@ -1439,6 +1532,12 @@ internal sealed partial class KaleidoToolInvoker(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP tool {Tool}: the service could not be reached.")]
     private static partial void LogServiceUnreachable(ILogger logger, Exception exception, string tool);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: after a completed step of process {ProcessId}, its questions could not be put to the user or the answers could not be submitted.")]
+    private static partial void LogAnswersNotTaken(ILogger logger, Exception exception, Guid processId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: the state of process {ProcessId} on {Target}, where a completed step handed it off, could not be read.")]
+    private static partial void LogTargetStateUnread(ILogger logger, Exception exception, string target, Guid processId);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Kaleido MCP tool {Tool} failed unexpectedly.")]
     private static partial void LogToolFailed(ILogger logger, Exception exception, string tool);

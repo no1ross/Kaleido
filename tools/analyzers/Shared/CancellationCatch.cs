@@ -14,7 +14,10 @@ namespace Kaleido.Analyzers.Shared;
 /// <remarks>
 /// The filter is evaluated over the compiler's operation tree, not its text. For the catch variable it
 /// understands type tests (<c>is T</c>, <c>is not T</c>, declaration, recursive, <c>and</c>/<c>or</c>/<c>not</c>
-/// patterns), <c>!</c>, <c>&amp;&amp;</c>, <c>||</c> and boolean constants; anything else (method calls,
+/// patterns), <c>!</c>, <c>&amp;&amp;</c>, <c>||</c>, boolean constants and a token's
+/// <c>IsCancellationRequested</c> (always true for a cancellation of the caller, either way for anything
+/// else, #517 - so <c>when (!(ex is OperationCanceledException &amp;&amp; token.IsCancellationRequested))</c>
+/// excludes the caller's cancellation and keeps a foreign one a failure); anything else (method calls,
 /// comparisons, <c>GetType()</c>, other variables) is treated as possibly true either way. The clause is safe
 /// when the filter is never true for a cancellation, or true only for cancellations (a cancellation handler,
 /// like <c>catch (OperationCanceledException)</c>), or when an earlier unfiltered clause catches every
@@ -63,10 +66,11 @@ internal static class CancellationCatch
                 Covers(type, cancellation));
 
     private static bool IsTokenCancelled(CatchFilterClauseSyntax filter, SemanticModel model, CancellationToken cancellationToken) =>
-        model.GetOperation(filter.FilterExpression, cancellationToken) is IPropertyReferenceOperation
-        {
-            Property: { Name: "IsCancellationRequested", ContainingType: { } token },
-        } &&
+        model.GetOperation(filter.FilterExpression, cancellationToken) is IPropertyReferenceOperation property &&
+        IsTokenCancelled(property);
+
+    private static bool IsTokenCancelled(IPropertyReferenceOperation property) =>
+        property.Property is { Name: "IsCancellationRequested", ContainingType: { } token } &&
         token.ToDisplayString() == "System.Threading.CancellationToken";
 
     private static Outcome Evaluate(IOperation? operation, ISymbol? local, INamedTypeSymbol cancellation)
@@ -85,6 +89,8 @@ internal static class CancellationCatch
                 return Evaluate(both.LeftOperand, local, cancellation).And(Evaluate(both.RightOperand, local, cancellation));
             case IBinaryOperation { OperatorKind: BinaryOperatorKind.ConditionalOr } either:
                 return Evaluate(either.LeftOperand, local, cancellation).Or(Evaluate(either.RightOperand, local, cancellation));
+            case IPropertyReferenceOperation property when IsTokenCancelled(property):
+                return Outcome.TokenCancelled;
             case IIsTypeOperation isType when IsCatchVariable(isType.ValueOperand, local):
                 var test = TypeTest(isType.TypeOperand, cancellation);
                 return isType.IsNegated ? test.Not() : test;
@@ -163,6 +169,10 @@ internal static class CancellationCatch
     {
         public static readonly Outcome Unknown = new(true, true, true, true);
         public static readonly Outcome Always = new(true, false, true, false);
+
+        // A token's IsCancellationRequested: true whenever the caller cancelled (that is what a
+        // cancellation is, #517); for any other exception, a foreign timeout included, either way.
+        public static readonly Outcome TokenCancelled = new(true, false, true, true);
 
         public bool CancellationTrue { get; } = cancellationTrue;
 
