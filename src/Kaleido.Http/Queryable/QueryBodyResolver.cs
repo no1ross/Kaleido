@@ -104,26 +104,29 @@ internal static class QueryBodyResolver
 
     // ── Enum parsing ─────────────────────────────────────────────────────────
 
+    // Each is one of the enum's named values: Enum.TryParse alone also accepts any number ("999"),
+    // which the runtime would read as an Or group or fail to sort by (#519).
     private static FilterOperator ParseFilterOperator(string raw) =>
-        Enum.TryParse<FilterOperator>(raw, ignoreCase: true, out var result)
-            ? result
-            : throw new KaleidoValidationException(
-                QueryableErrorCodes.InvalidFilterValue,
-                $"The filter operator is not valid. Expected one of: {Names<FilterOperator>()}.");
+        ParseDefined<FilterOperator>(raw)
+        ?? throw new KaleidoValidationException(
+            QueryableErrorCodes.UnsupportedOperator,
+            $"The filter operator is not valid. Expected one of: {Names<FilterOperator>()}.");
 
     private static LogicalOperator ParseLogicalOperator(string raw) =>
-        Enum.TryParse<LogicalOperator>(raw, ignoreCase: true, out var result)
-            ? result
-            : throw new KaleidoValidationException(
-                QueryableErrorCodes.InvalidFilterValue,
-                "The logical operator of a filter group is not valid. Expected 'and' or 'or'.");
+        ParseDefined<LogicalOperator>(raw)
+        ?? throw new KaleidoValidationException(
+            QueryableErrorCodes.InvalidLogicalOperator,
+            "The logical operator of a filter group is not valid. Expected 'and' or 'or'.");
 
     private static SortDirection ParseSortDirection(string raw) =>
-        Enum.TryParse<SortDirection>(raw, ignoreCase: true, out var result)
-            ? result
-            : throw new KaleidoValidationException(
-                QueryableErrorCodes.InvalidFilterValue,
-                "The sort direction is not valid. Expected 'ascending' or 'descending'.");
+        ParseDefined<SortDirection>(raw)
+        ?? throw new KaleidoValidationException(
+            QueryableErrorCodes.InvalidSortDirection,
+            "The sort direction is not valid. Expected 'ascending' or 'descending'.");
+
+    private static TEnum? ParseDefined<TEnum>(string raw)
+        where TEnum : struct, Enum =>
+        Enum.TryParse<TEnum>(raw, ignoreCase: true, out var result) && Enum.IsDefined(result) ? result : null;
 
     // The values a caller may send, as the wire writes them (camelCase).
     private static string Names<TEnum>()
@@ -149,7 +152,7 @@ internal static class QueryBodyResolver
         {
             JsonValueKind.True => true,
             JsonValueKind.False => false,
-            JsonValueKind.Number => ResolveNumber(element, targetType),
+            JsonValueKind.Number => ResolveNumber(element, targetType, field),
             JsonValueKind.String => ResolveString(
                 element.GetString()
                 ?? throw new KaleidoValidationException(
@@ -163,37 +166,51 @@ internal static class QueryBodyResolver
         };
     }
 
-    private static object ResolveNumber(JsonElement element, Type targetType)
+    // A number is read as the field's own type, so the whole range of an unsigned or wide type
+    // reaches the query, and a number the type cannot hold is the caller's mistake (400), never an
+    // exception of the reader (#519). An enum field takes a number as its underlying value; the runtime
+    // checks that it names a member.
+    private static object ResolveNumber(JsonElement element, Type targetType, string field)
     {
-        if (targetType == typeof(int) || targetType == typeof(uint) ||
-            targetType == typeof(short) || targetType == typeof(ushort) ||
-            targetType == typeof(byte) || targetType == typeof(sbyte))
+        if (targetType.IsEnum)
         {
-            return element.GetInt32();
+            return ReadNumber(element, Enum.GetUnderlyingType(targetType)) is { } underlying
+                ? Enum.ToObject(targetType, underlying)
+                : throw InvalidValue(field, $"a valid '{targetType.Name}' value");
         }
 
-        if (targetType == typeof(long) || targetType == typeof(ulong))
+        if (!IsNumber(targetType))
         {
-            return element.GetInt64();
+            // Not a number field: the raw text, which the runtime refuses for the field's type.
+            return element.GetRawText();
         }
 
-        if (targetType == typeof(float))
-        {
-            return element.GetSingle();
-        }
-
-        if (targetType == typeof(double))
-        {
-            return element.GetDouble();
-        }
-
-        if (targetType == typeof(decimal))
-        {
-            return element.GetDecimal();
-        }
-
-        return element.GetRawText();
+        return ReadNumber(element, targetType)
+            ?? throw InvalidValue(field, $"a number that fits '{targetType.Name}'");
     }
+
+    private static bool IsNumber(Type type) =>
+        Type.GetTypeCode(type) is TypeCode.Byte or TypeCode.SByte or TypeCode.Int16 or TypeCode.UInt16
+            or TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Int64 or TypeCode.UInt64
+            or TypeCode.Single or TypeCode.Double or TypeCode.Decimal;
+
+    // The number as exactly this type, or null when the type cannot hold it.
+    private static object? ReadNumber(JsonElement element, Type type) =>
+        Type.GetTypeCode(type) switch
+        {
+            TypeCode.Byte => element.TryGetByte(out var value) ? value : null,
+            TypeCode.SByte => element.TryGetSByte(out var value) ? value : null,
+            TypeCode.Int16 => element.TryGetInt16(out var value) ? value : null,
+            TypeCode.UInt16 => element.TryGetUInt16(out var value) ? value : null,
+            TypeCode.Int32 => element.TryGetInt32(out var value) ? value : null,
+            TypeCode.UInt32 => element.TryGetUInt32(out var value) ? value : null,
+            TypeCode.Int64 => element.TryGetInt64(out var value) ? value : null,
+            TypeCode.UInt64 => element.TryGetUInt64(out var value) ? value : null,
+            TypeCode.Single => element.TryGetSingle(out var value) && float.IsFinite(value) ? value : null,
+            TypeCode.Double => element.TryGetDouble(out var value) && double.IsFinite(value) ? value : null,
+            TypeCode.Decimal => element.TryGetDecimal(out var value) ? value : null,
+            _ => null,
+        };
 
     private static object ResolveString(string raw, Type targetType, string field)
     {

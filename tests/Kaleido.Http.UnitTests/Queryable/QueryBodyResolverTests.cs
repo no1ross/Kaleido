@@ -291,7 +291,7 @@ public sealed class QueryBodyResolverTests
 
         var exception = Assert.Throws<KaleidoValidationException>(() => body.ToQueryBody(Fields));
 
-        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Equal(QueryableErrorCodes.InvalidSortDirection, exception.Code);
         Assert.Equal("The sort direction is not valid. Expected 'ascending' or 'descending'.", exception.Message);
     }
 
@@ -308,8 +308,34 @@ public sealed class QueryBodyResolverTests
 
         var exception = Assert.Throws<KaleidoValidationException>(() => body.ToQueryBody(Fields));
 
-        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Equal(QueryableErrorCodes.InvalidLogicalOperator, exception.Code);
         Assert.Equal("The logical operator of a filter group is not valid. Expected 'and' or 'or'.", exception.Message);
+    }
+
+    // #519: Enum.TryParse alone takes any number; each must name a member.
+    [Theory]
+    [InlineData("999")]
+    [InlineData("-1")]
+    [InlineData("1,2")]
+    public void ToQueryBody_AnUndefinedNumber_IsNotAnOperatorADirectionOrALogicalOperator(string raw)
+    {
+        Assert.Equal(
+            QueryableErrorCodes.UnsupportedOperator,
+            Assert.Throws<KaleidoValidationException>(() => ApiBody("Name", raw, StringValue("x")).ToQueryBody(Fields)).Code);
+        Assert.Equal(
+            QueryableErrorCodes.InvalidSortDirection,
+            Assert.Throws<KaleidoValidationException>(() => new QueryApiBody { Sort = [new QueryApiSort { Field = "Id", Direction = raw }] }.ToQueryBody(Fields)).Code);
+        Assert.Equal(
+            QueryableErrorCodes.InvalidLogicalOperator,
+            Assert.Throws<KaleidoValidationException>(() => new QueryApiBody { Filter = new QueryApiFilterNode { Group = new QueryApiFilterGroup { Operator = raw, Filters = [] } } }.ToQueryBody(Fields)).Code);
+    }
+
+    [Fact]
+    public void ToQueryBody_ADefinedNumber_IsAccepted_AsTheEnumsCanonicalValue()
+    {
+        var body = new QueryApiBody { Sort = [new QueryApiSort { Field = "Id", Direction = "1" }] }.ToQueryBody(Fields);
+
+        Assert.Equal(SortDirection.Descending, Assert.Single(body!.Sort!).Direction);
     }
 
     // #520: the refusal lists what is accepted, never the submitted text.
@@ -319,7 +345,7 @@ public sealed class QueryBodyResolverTests
         var exception = Assert.Throws<KaleidoValidationException>(() =>
             ApiBody("Name", "near", StringValue("x")).ToQueryBody(Fields));
 
-        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Equal(QueryableErrorCodes.UnsupportedOperator, exception.Code);
         Assert.StartsWith("The filter operator is not valid. Expected one of: equals, notEquals, ", exception.Message, StringComparison.Ordinal);
         Assert.Contains("startsWith", exception.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("near", exception.Message, StringComparison.Ordinal);
@@ -433,22 +459,56 @@ public sealed class QueryBodyResolverTests
             Resolve(typeof(bool), JsonSerializer.SerializeToElement(true), JsonSerializer.SerializeToElement(false)));
     }
 
-    public static TheoryData<Type> Int32FieldTypes { get; } =
-        [typeof(int), typeof(uint), typeof(short), typeof(ushort), typeof(byte), typeof(sbyte), typeof(int?)];
+    // #519: a number is read as the field's own type, over its whole range.
+    public static TheoryData<Type, string, object> ExactNumbers { get; } = new()
+    {
+        { typeof(int), "5", 5 },
+        { typeof(int?), "5", 5 },
+        { typeof(short), "-5", (short)-5 },
+        { typeof(ushort), "65535", ushort.MaxValue },
+        { typeof(byte), "255", byte.MaxValue },
+        { typeof(sbyte), "-128", sbyte.MinValue },
+        { typeof(uint), "4294967295", uint.MaxValue },
+        { typeof(long), "5000000000", 5_000_000_000L },
+        { typeof(ulong), "18446744073709551615", ulong.MaxValue },
+    };
 
     [Theory]
-    [MemberData(nameof(Int32FieldTypes))]
-    public void ToQueryBody_NumberForASmallIntegerField_ResolvesToInt32(Type fieldType)
+    [MemberData(nameof(ExactNumbers))]
+    public void ToQueryBody_ANumber_IsReadAsTheFieldsType(Type fieldType, string json, object expected)
     {
-        Assert.Equal([5], Resolve(fieldType, IntValue(5)));
+        Assert.Equal([expected], Resolve(fieldType, JsonDocument.Parse(json).RootElement));
     }
 
+    // #519: a number the field's type cannot hold is the caller's mistake (400), not a reader's
+    // FormatException (500).
     [Theory]
-    [InlineData(typeof(long))]
-    [InlineData(typeof(ulong))]
-    public void ToQueryBody_NumberForALongField_ResolvesToInt64(Type fieldType)
+    [InlineData(typeof(byte), "256")]
+    [InlineData(typeof(byte), "-1")]
+    [InlineData(typeof(int), "1.5")]
+    [InlineData(typeof(uint), "-1")]
+    [InlineData(typeof(ulong), "18446744073709551616")]
+    [InlineData(typeof(long), "9223372036854775808")]
+    [InlineData(typeof(float), "1e39")]
+    [InlineData(typeof(double), "1e309")]
+    public void ToQueryBody_ANumberTheFieldsTypeCannotHold_IsAnInvalidFilterValue(Type fieldType, string json)
     {
-        Assert.Equal([5_000_000_000L], Resolve(fieldType, JsonSerializer.SerializeToElement(5_000_000_000L)));
+        var exception = Assert.Throws<KaleidoValidationException>(() => Resolve(fieldType, JsonDocument.Parse(json).RootElement));
+
+        Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+        Assert.Equal($"A value for field 'field' is not a number that fits '{fieldType.Name}'.", exception.Message);
+    }
+
+    // #519: a number for an enum field is its underlying value (the runtime checks that it names a member);
+    // one the underlying type cannot hold is refused here.
+    [Fact]
+    public void ToQueryBody_ANumberForAnEnumField_IsItsUnderlyingValue()
+    {
+        Assert.Equal([TestStatus.Inactive], Resolve(typeof(TestStatus), IntValue(2)));
+        Assert.Equal([(TestStatus)999], Resolve(typeof(TestStatus), IntValue(999)));
+        Assert.Equal(
+            QueryableErrorCodes.InvalidFilterValue,
+            Assert.Throws<KaleidoValidationException>(() => Resolve(typeof(TestStatus), JsonDocument.Parse("1.5").RootElement)).Code);
     }
 
     [Fact]

@@ -13,9 +13,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.FunctionalTests.Queryable.Validation;
 
-// #520: a refused query names the field and what was expected, never what the caller sent. A filter
-// value may be a member's name or identifier: it must reach neither the 400 body nor the Warning log.
-public sealed class ValidationMessageTests : IAsyncLifetime
+// What a refused query answers, through a real host:
+// - #520: it names the field and what was expected, never what the caller sent. A filter value may be a
+//   member's name or identifier: it must reach neither the 400 body nor the Warning log.
+// - #519: every input the query cannot use is a stable 4xx with its code, never a 500 or a silent Or;
+//   and the whole range of an unsigned field reaches the query.
+public sealed class QueryValidationTests : IAsyncLifetime
 {
     private const string ServiceName = "validation";
     private const string Marker = "Zq7Marker-Ava-1987-03-14";
@@ -40,8 +43,8 @@ public sealed class ValidationMessageTests : IAsyncLifetime
                     {
                         ServiceName = ServiceName,
                         AuthorizationMode = KaleidoAuthorizationMode.None,
-                        Assemblies = [typeof(ValidationMessageTests).Assembly],
-                        TypeFilter = type => type.Namespace == typeof(ValidationMessageTests).Namespace,
+                        Assemblies = [typeof(QueryValidationTests).Assembly],
+                        TypeFilter = type => type.Namespace == typeof(QueryValidationTests).Namespace,
                     })
                         .AddInMemoryStores()
                         .AddHttp();
@@ -98,6 +101,69 @@ public sealed class ValidationMessageTests : IAsyncLifetime
         Assert.DoesNotContain(_logs, x => x.Text.Contains(Marker, StringComparison.Ordinal));
     }
 
+    public static TheoryData<string, string> Refused => new()
+    {
+        { """{ "field":"Status", "operator":"equals", "values":["Retired"] }""", "qry_invalid_filter_value" },
+        { """{ "field":"Status", "operator":"equals", "values":[999] }""", "qry_invalid_filter_value" },
+        { """{ "field":"Level", "operator":"equals", "values":[300] }""", "qry_invalid_filter_value" },
+        { """{ "field":"Big", "operator":"equals", "values":[18446744073709551616] }""", "qry_invalid_filter_value" },
+        { """{ "field":"Mid", "operator":"equals", "values":[-1] }""", "qry_invalid_filter_value" },
+        { """{ "field":"Level", "operator":"999", "values":[1] }""", "qry_unsupported_operator" },
+    };
+
+    [Theory]
+    [MemberData(nameof(Refused))]
+    public async Task AnInputTheQueryCannotUse_IsAStable400_WithItsCode(string condition, string code)
+    {
+        var (status, error) = await QueryAsync($$$"""{ "query": { "filter": { "condition": {{{condition}}} } } }""");
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Equal(code, error);
+    }
+
+    [Theory]
+    [InlineData("""{ "query": { "filter": { "group": { "operator":"999", "filters":[ { "condition": { "field":"Level", "operator":"equals", "values":[1] } } ] } } } }""", "qry_invalid_logical_operator")]
+    [InlineData("""{ "query": { "sort": [ { "field":"Name", "direction":"999" } ] } }""", "qry_invalid_sort_direction")]
+    public async Task AnUndefinedLogicalOperatorOrSortDirection_IsA400_NotASilentOrOrA500(string body, string code)
+    {
+        var (status, error) = await QueryAsync(body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Equal(code, error);
+    }
+
+    [Theory]
+    [InlineData("Mid", "4294967295")]
+    [InlineData("Big", "18446744073709551615")]
+    public async Task TheLargestUnsignedValue_ReachesTheQuery(string field, string value)
+    {
+        using var response = await _client.PostAsync(
+            QueryableContractUrls.QuerySourceQuery(ServiceName, nameof(VmMemberSource)),
+            new StringContent($$$"""{ "query": { "filter": { "condition": { "field":"{{{field}}}", "operator":"equals", "values":[{{{value}}}] } } } }""", Encoding.UTF8, "application/json"),
+            Cancel);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Cancel));
+        Assert.Equal(1, document.RootElement.GetProperty("totalCount").GetInt32());
+    }
+
+    private async Task<(HttpStatusCode Status, string? Code)> QueryAsync(string body)
+    {
+        using var response = await _client.PostAsync(
+            QueryableContractUrls.QuerySourceQuery(ServiceName, nameof(VmMemberSource)),
+            new StringContent(body, Encoding.UTF8, "application/json"),
+            Cancel);
+        var text = await response.Content.ReadAsStringAsync(Cancel);
+
+        if (response.StatusCode != HttpStatusCode.BadRequest)
+        {
+            return (response.StatusCode, text);
+        }
+
+        using var document = JsonDocument.Parse(text);
+        return (response.StatusCode, document.RootElement.GetProperty("errors")[0].GetProperty("code").GetString());
+    }
+
     private sealed class CapturingLoggerProvider(ConcurrentQueue<(LogLevel Level, string Text)> logs) : ILoggerProvider
     {
         public ILogger CreateLogger(string categoryName) => new CapturingLogger(logs);
@@ -119,6 +185,12 @@ public sealed class ValidationMessageTests : IAsyncLifetime
     }
 }
 
+public enum VmStatus
+{
+    Active,
+    Inactive,
+}
+
 public sealed class VmMember : IQueryContext
 {
     [Filterable(FilterOperator.Equals)]
@@ -126,10 +198,27 @@ public sealed class VmMember : IQueryContext
 
     [Sortable]
     public string Name { get; init; } = string.Empty;
+
+    [Filterable(FilterOperator.Equals)]
+    public VmStatus Status { get; init; }
+
+    [Filterable(FilterOperator.Equals)]
+    public byte Level { get; init; }
+
+    [Filterable(FilterOperator.Equals)]
+    public uint Mid { get; init; }
+
+    [Filterable(FilterOperator.Equals)]
+    public ulong Big { get; init; }
 }
 
-[QuerySource(DisplayName = "Members", Description = "Members, to refuse queries against.")]
+[QuerySource(DisplayName = "Members", Description = "Members, to query and to refuse queries against.")]
 public sealed class VmMemberSource : IQuerySource<VmMember>
 {
-    public IQueryable<VmMember> CreateQuery(QueryExecutionContext executionContext) => Array.Empty<VmMember>().AsQueryable();
+    public IQueryable<VmMember> CreateQuery(QueryExecutionContext executionContext) =>
+        new[]
+        {
+            new VmMember { Name = "Ava", Mid = uint.MaxValue, Big = ulong.MaxValue },
+            new VmMember { Name = "Ben", Mid = 1, Big = 1 },
+        }.AsQueryable();
 }

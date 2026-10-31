@@ -6,6 +6,62 @@ namespace Kaleido.Queryable.Metadata.UnitTests;
 public sealed class QueryMetadataExtensionsTests
     : Kaleido.UnitTests.SutFixture
 {
+    private static readonly QuerySourceAttribute SourceAttribute = new() { DisplayName = "Paged", Description = "Paged.", DefaultSortField = nameof(PagedContext.Id) };
+    private static readonly QueryViewAttribute ViewAttribute = new() { DisplayName = "Paged", Description = "Paged.", DefaultSortField = nameof(PagedContext.Id) };
+
+    // #519: both [Pageable] limits are required and consistent. A bare [Pageable] (0 and 0) returned
+    // empty pages with a non-zero TotalCount; a default above the maximum was silently clamped.
+    [Theory]
+    [InlineData(typeof(BarePaged), 0, 0)]
+    [InlineData(typeof(ZeroDefaultPaged), 0, 10)]
+    [InlineData(typeof(ZeroMaxPaged), 10, 0)]
+    [InlineData(typeof(NegativeDefaultPaged), -1, 10)]
+    [InlineData(typeof(DefaultAboveMaxPaged), 20, 10)]
+    public void ToSourceAndViewPageable_LimitsThatAreNotPositiveAndOrdered_FailStartup_NamingTheCapabilityAndBothLimits(Type capability, int defaultSize, int maxSize)
+    {
+        var source = Assert.Throws<KaleidoConfigurationException>(() => capability.ToSourcePageable(typeof(PagedContext), SourceAttribute, QuerySourceKind.Local));
+        var view = Assert.Throws<KaleidoConfigurationException>(() => capability.ToViewPageable(typeof(PagedContext), ViewAttribute));
+
+        foreach (var (exception, kind) in new[] { (source, "Query source"), (view, "Query view") })
+        {
+            Assert.Equal(QueryableErrorCodes.InvalidRegistration, exception.Code);
+            Assert.StartsWith($"{kind} '{capability.Name}' declares [Pageable(DefaultSize = {defaultSize}, MaxSize = {maxSize})]", exception.Message, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void ToSourcePageable_ValidLimits_AreKept_AndAnEqualDefaultAndMaximumIsValid()
+    {
+        var pageable = typeof(EqualLimitsPaged).ToSourcePageable(typeof(PagedContext), SourceAttribute, QuerySourceKind.Local);
+
+        Assert.Equal(new PageableMetadata(10, 10, nameof(PagedContext.Id)), pageable);
+        Assert.Null(typeof(PagedContext).ToSourcePageable(typeof(PagedContext), SourceAttribute, QuerySourceKind.Local));
+    }
+
+    private sealed class PagedContext
+    {
+        [Sortable]
+        public int Id { get; init; }
+    }
+
+    [Pageable]
+    private sealed class BarePaged;
+
+    [Pageable(DefaultSize = 0, MaxSize = 10)]
+    private sealed class ZeroDefaultPaged;
+
+    [Pageable(DefaultSize = 10, MaxSize = 0)]
+    private sealed class ZeroMaxPaged;
+
+    [Pageable(DefaultSize = -1, MaxSize = 10)]
+    private sealed class NegativeDefaultPaged;
+
+    [Pageable(DefaultSize = 20, MaxSize = 10)]
+    private sealed class DefaultAboveMaxPaged;
+
+    [Pageable(DefaultSize = 10, MaxSize = 10)]
+    private sealed class EqualLimitsPaged;
+
     [Theory]
     [InlineData(nameof(OperatorFitContext.RangeOnString), nameof(FilterOperator.GreaterThan))]
     [InlineData(nameof(OperatorFitContext.RangeOnEnum), nameof(FilterOperator.Between))]

@@ -214,6 +214,15 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         QuerySourceMetadata metadata,
         int depth)
     {
+        // A cast or a transport that skips the names can carry any number (#519); the runtime would
+        // read it as Or.
+        if (!Enum.IsDefined(group.Operator))
+        {
+            throw new KaleidoValidationException(
+                QueryableErrorCodes.InvalidLogicalOperator,
+                "The logical operator of a filter group is not valid. Expected 'and' or 'or'.");
+        }
+
         if (group.Filters.Count == 0)
         {
             throw new KaleidoValidationException(
@@ -308,6 +317,14 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
 
         foreach (var sort in sorts)
         {
+            // As for a group's operator (#519): an undefined direction would fail the sort with a 500.
+            if (!Enum.IsDefined(sort.Direction))
+            {
+                throw new KaleidoValidationException(
+                    QueryableErrorCodes.InvalidSortDirection,
+                    "The sort direction is not valid. Expected 'ascending' or 'descending'.");
+            }
+
             var field =
                 metadata.GetField(
                     sort.Field);

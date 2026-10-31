@@ -85,9 +85,11 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 "x");
 
         var body =
-            BuildFilter(
-                parameter,
-                filter);
+            ForProvider(
+                query,
+                BuildFilter(
+                    parameter,
+                    filter));
 
         return query.Where(
             Expression.Lambda<Func<TQueryContext, bool>>(
@@ -110,9 +112,11 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 "x");
 
         var body =
-            BuildSearch(
-                parameter,
-                search);
+            ForProvider(
+                query,
+                BuildSearch(
+                    parameter,
+                    search));
 
         return query.Where(
             Expression.Lambda<Func<TQueryContext, bool>>(
@@ -140,6 +144,14 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
 
         return query;
     }
+
+    // Case-insensitive matching lower-cases both sides. In memory the member side is lower-cased
+    // invariantly, like the constants, so the current culture cannot change a match (#519); a database
+    // provider keeps ToLower(), which it translates (EF Core).
+    private static Expression ForProvider(IQueryable<TQueryContext> query, Expression body) =>
+        query.Provider is EnumerableQuery
+            ? InvariantLowerCaseRewriter.Rewrite(body)
+            : body;
 
     private static Expression BuildFilter(
         ParameterExpression parameter,
@@ -608,27 +620,26 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
         var actualType =
             value.GetType();
 
+        // An enum value must name a member (#519): a cast or a parsed number can hold any value.
         if (expectedType.IsAssignableFrom(actualType))
         {
-            return value;
+            return !expectedType.IsEnum || IsMember(expectedType, value)
+                ? value
+                : throw NotAValid(expectedType);
         }
 
         if (expectedType.IsEnum &&
             value is string enumValue)
         {
-            return Enum.Parse(
-                expectedType,
-                enumValue,
-                ignoreCase: true);
+            return Enum.TryParse(expectedType, enumValue, ignoreCase: true, out var parsed) && IsMember(expectedType, parsed)
+                ? parsed
+                : throw NotAValid(expectedType);
         }
 
         if (IsNumericType(expectedType) &&
             IsNumericType(actualType))
         {
-            return Convert.ChangeType(
-                value,
-                expectedType,
-                CultureInfo.InvariantCulture);
+            return ConvertNumber(value, expectedType);
         }
 
         // The value itself is not named: it may be a member's name or identifier (#520).
@@ -636,6 +647,29 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
             QueryableErrorCodes.InvalidFilterValue,
             $"A filter value of type '{actualType.Name}' is not valid here. Expected a value of type '{expectedType.Name}'.");
     }
+
+    // A number the field's type cannot hold (300 for a byte) is the caller's mistake, not a 500 (#519).
+    private static object ConvertNumber(object value, Type expectedType)
+    {
+        try
+        {
+            return Convert.ChangeType(value, expectedType, CultureInfo.InvariantCulture);
+        }
+        catch (OverflowException exception)
+        {
+            throw new KaleidoValidationException(
+                QueryableErrorCodes.InvalidFilterValue,
+                $"A filter value is out of range. Expected a number that fits '{expectedType.Name}'.",
+                exception);
+        }
+    }
+
+    // A [Flags] enum's value may combine members, so any value is taken as it is.
+    private static bool IsMember(Type enumType, object? value) =>
+        value is not null && (Enum.IsDefined(enumType, value) || enumType.IsDefined(typeof(FlagsAttribute), inherit: false));
+
+    private static KaleidoValidationException NotAValid(Type enumType) =>
+        new(QueryableErrorCodes.InvalidFilterValue, $"A filter value is not a valid '{enumType.Name}' value.");
 
     private static MethodCallExpression ToLower(
         Expression expression)

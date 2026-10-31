@@ -78,6 +78,30 @@ public sealed class QueryRequestValidatorTests
         Assert.Equal(QueryableErrorCodes.FieldNotSortable, ex.Code);
     }
 
+    // #519: an in-process caller (or a cast) can send any number; the runtime would read it as an Or
+    // group, or fail the sort with a 500. Checked in core, not only at the transport.
+    [Fact]
+    public void Validate_WhenAGroupsLogicalOperatorIsUndefined_Throws()
+    {
+        var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateGroup(
+            (LogicalOperator)999,
+            QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, "A"))));
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
+        Assert.Equal(QueryableErrorCodes.InvalidLogicalOperator, ex.Code);
+        Assert.Equal("The logical operator of a filter group is not valid. Expected 'and' or 'or'.", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WhenASortDirectionIsUndefined_Throws()
+    {
+        var request = new QueryRequest(new QueryBody(Sort: [new QuerySort("Code", (SortDirection)999)]));
+
+        var ex = Assert.Throws<KaleidoValidationException>(() => Validate(request, CreateMetadata()));
+        Assert.Equal(QueryableErrorCodes.InvalidSortDirection, ex.Code);
+        Assert.Equal("The sort direction is not valid. Expected 'ascending' or 'descending'.", ex.Message);
+    }
+
     [Fact]
     public void Validate_WhenFilterGroupIsEmpty_Throws()
     {

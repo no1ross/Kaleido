@@ -13,6 +13,13 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **`[Pageable]` limits are required** (#519): `DefaultSize` and `MaxSize` must both be greater than zero, and
+  `DefaultSize` no greater than `MaxSize`; otherwise startup fails with `qry_invalid_registration`, naming the
+  capability and both limits. A bare `[Pageable]` returned empty pages with a non-zero `TotalCount` and refused
+  every explicit size; a default above the maximum was silently clamped.
+- **New query codes for operators that are not filter values** (#519): an unknown or undefined logical
+  operator is `qry_invalid_logical_operator` and sort direction `qry_invalid_sort_direction` (both were
+  `qry_invalid_filter_value`); an unknown filter operator is `qry_unsupported_operator`.
 - **11 public error codes that nothing raised are removed** (#518), so 1.0 promises no error that cannot
   occur. From ProcessorErrorCodes: PropertyNotFound (pro_property_not_found), ConversionFailed
   (pro_conversion_failed), ConsistencyViolation (pro_consistency_violation), DependencySatisfied
@@ -301,6 +308,16 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Query input the query cannot use is a 400, never a 500 or a silent Or** (#519):
+  - an enum value that names no member (an unknown name, or any number: `Enum.Parse` accepted both) is
+    `qry_invalid_filter_value`; a `[Flags]` enum value may combine members;
+  - a number the field's type cannot hold (`300` for a `byte`) is `qry_invalid_filter_value` (it was a 500);
+  - a number is read as the field's own type: `uint` and `ulong` fields take their whole range (they were
+    read as `int`/`long`, and a value beyond that was a 500);
+  - an undefined logical operator (`"999"`) is refused (it was read as Or), and an undefined sort direction
+    (it was a 500), at the transport and again in the runtime;
+  - in memory, case-insensitive matching uses the invariant culture on both sides, so `"INFO"` matches
+    `"info"` under `tr-TR` too; database providers keep `ToLower()` (EF Core's translation is unchanged).
 - **Query validation messages no longer echo what the caller sent** (#520). A refused filter value, filter
   operator, logical operator or sort direction was interpolated into the message, which is logged at
   Warning and returned in the 400 body; a filter value may be a member's name or identifier. The

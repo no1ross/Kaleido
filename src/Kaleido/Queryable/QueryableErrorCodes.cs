@@ -36,8 +36,23 @@ public static class QueryableErrorCodes
     /// <summary>A field referenced in a filter, sort, or parameter does not exist on the query context.</summary>
     public const string InvalidField = "qry_invalid_field";
 
-    /// <summary>A filter condition uses an operator not supported by the field.</summary>
+    /// <summary>
+    /// A filter condition uses an operator the field does not support, or one that is not a filter
+    /// operator at all (an unknown name, or an undefined number).
+    /// </summary>
     public const string UnsupportedOperator = "qry_unsupported_operator";
+
+    /// <summary>
+    /// A filter group's logical operator is not <c>and</c> or <c>or</c> (an unknown name, or an
+    /// undefined number) (#519).
+    /// </summary>
+    public const string InvalidLogicalOperator = "qry_invalid_logical_operator";
+
+    /// <summary>
+    /// A sort clause's direction is not <c>ascending</c> or <c>descending</c> (an unknown name, or an
+    /// undefined number) (#519).
+    /// </summary>
+    public const string InvalidSortDirection = "qry_invalid_sort_direction";
 
     /// <summary>A filter condition references a field that is not marked as filterable.</summary>
     public const string FieldNotFilterable = "qry_field_not_filterable";

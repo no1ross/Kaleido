@@ -32,9 +32,11 @@ One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup 
 | `MissingAttribute` | `qry_missing_attribute` | Query source or view missing `[QuerySource]`/`[QueryView]`, or with an empty `DisplayName`/`Description` (startup) |
 | `MissingSource` | `qry_missing_source` | Query view references a type that is not a registered local query source (startup) |
 | `DuplicateRegistration` | `qry_duplicate_registration` | Two sources share a type name, or two views of one source share a type name (startup) |
-| `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration, for example `[QuerySource]`/`[QueryView]` on a type that implements no source or view interface (also KAL2009), both sync and async shapes, more than one source/view interface, a type that is both a source and a view, a pageable view or local source without a valid sortable `DefaultSortField`, or a `[Filterable]` operator that does not apply to the field's type (also KAL2020) (startup) |
+| `InvalidRegistration` | `qry_invalid_registration` | Structurally invalid registration, for example `[QuerySource]`/`[QueryView]` on a type that implements no source or view interface (also KAL2009), both sync and async shapes, more than one source/view interface, a type that is both a source and a view, a pageable view or local source without a valid sortable `DefaultSortField`, `[Pageable]` limits that are not both greater than zero with `DefaultSize` no greater than `MaxSize` (#519), or a `[Filterable]` operator that does not apply to the field's type (also KAL2020) (startup) |
 | `InvalidField` | `qry_invalid_field` | Field referenced in a filter, sort, or parameter does not exist on the query context |
-| `UnsupportedOperator` | `qry_unsupported_operator` | Filter condition uses an operator not supported by the field |
+| `UnsupportedOperator` | `qry_unsupported_operator` | Filter condition uses an operator not supported by the field, or one that is not a filter operator at all (an unknown name or an undefined number, #519) |
+| `InvalidLogicalOperator` | `qry_invalid_logical_operator` | A filter group's logical operator is not `and` or `or` (an unknown name or an undefined number, #519) |
+| `InvalidSortDirection` | `qry_invalid_sort_direction` | A sort clause's direction is not `ascending` or `descending` (an unknown name or an undefined number, #519) |
 | `FieldNotFilterable` | `qry_field_not_filterable` | Filter condition references a field not marked as filterable |
 | `FieldNotSortable` | `qry_field_not_sortable` | Sort clause references a field not marked as sortable |
 | `InvalidPageSize` | `qry_invalid_page_size` | Requested page size is invalid or exceeds the maximum |
@@ -49,7 +51,7 @@ One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup 
 | `FilterDepthExceeded` | `qry_filter_depth_exceeded` | Filter expression exceeds the maximum nesting depth |
 | `UnsupportedRuntimeType` | `qry_unsupported_runtime_type` | Filter value has a CLR type not supported by the transport layer |
 | `MissingFilterField` | `qry_missing_filter_field` | Filter condition is missing its field name |
-| `InvalidFilterValue` | `qry_invalid_filter_value` | Filter value cannot be converted to the field's declared type |
+| `InvalidFilterValue` | `qry_invalid_filter_value` | Filter value cannot be converted to the field's declared type: not that type, an enum value that names no member, or a number the type cannot hold (#519) |
 | `InvalidParameterValue` | `qry_invalid_parameter_value` | A query parameter value cannot be converted, or fails one of its DataAnnotations (e.g. `[Range]`) |
 
 ---
