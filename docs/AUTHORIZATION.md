@@ -65,6 +65,12 @@ generic execute (`POST /processes/execute`) and registry/MCP discovery (#433).
 A host that wants case-insensitive roles normalizes them in its own authentication (for example
 an `IClaimsTransformation`), so every surface sees the same values.
 
+**Who is authenticated.** A caller is authenticated when the host's authentication says so:
+the principal's `Identity.IsAuthenticated`, carried as `KaleidoCorrelationContext.CallerIsAuthenticated`. It is set
+by the transport, never from a header. A principal without a name - a subject-only token, a
+client-credentials token for a service - is authenticated all the same, and its roles count (#515). An
+unauthenticated principal is anonymous whatever claims it carries.
+
 ## Capability authorization
 
 ```csharp
@@ -95,6 +101,29 @@ When enforcing (`Authenticated` or `ZeroTrust`), requirements are applied to:
 - discovery filtering: `/{service}/registry` (local and aggregate modes) returns only
   capabilities the caller may access; processors whose steps are all filtered out are
   omitted
+
+**A caller is never described a step or a query they may not use (#524).** The filtering goes
+past the capability lists:
+
+- **Relationships:** a kept step's `dependencies`, `availableAfter` and `availableUntil` keep
+  their shape and list only the steps the caller may run.
+- **Next steps:** the execute, per-step and process-state responses list only the`availableSteps`
+  the caller may run. A required step the caller may not run gives `requiredStep: null`, and
+  available steps none of which the caller may run give an empty list; either way the response
+  carries a `notice` (`pro_not_permitted`, "you do not have access to continue this process") that
+  names no step, whatever the transport's message options. A Warning names the step for the
+  operator: a caller who reached the process but may not continue it usually has the wrong roles.
+- **Lookups:** an input whose `[Lookup]` names a query the caller may not use keeps the input,
+  without `lookup`, with a `notice` (`pro_not_permitted`), and a Warning names the query. A query
+  of this host's registry (its own, or a downstream's on an aggregating host) is checked by the
+  rules it publishes. Another service's query is checked by the rules that service's registry
+  publishes to this host's Kaleido client (fetched with the service's own credential, cached),
+  evaluated here for the caller as a router evaluates its aggregate. A query found in neither is
+  not permitted. **Hosts that check each other's lookups must share policy names:** a policy is
+  evaluated by its name on the host that checks.
+- **Kept on purpose:** a source the caller may not query directly stays listed without its URL
+  while the caller may use one of its views. The process state's step history (`steps`) still
+  names every tracked step (#540).
 
 Denials follow standard ASP.NET Core behavior: the host's authentication scheme
 produces the response. Endpoint-metadata denials go through ASP.NET's default

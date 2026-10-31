@@ -35,4 +35,18 @@ public sealed class IdempotencyPerCallerTests(
         Assert.Equal(alice, await StartAsAsync("alice", key));
         Assert.Equal(bob, await StartAsAsync("bob", key));
     }
+
+    // #514: the scope's parts are framed, so a separator in a name cannot join two callers' keys - the
+    // caller "alice" with the key "tenant:K" and the caller "alice:tenant" with the key "K" were one
+    // admission when the scope was the string "caller:key".
+    [Fact]
+    public async Task ASeparatorInTheCallerOrTheKey_DoesNotJoinTwoCallersKeys()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+
+        var first = await StartAsAsync("alice", $"tenant:{suffix}");
+        var second = await StartAsAsync("alice:tenant", suffix);
+
+        Assert.NotEqual(first, second);
+    }
 }

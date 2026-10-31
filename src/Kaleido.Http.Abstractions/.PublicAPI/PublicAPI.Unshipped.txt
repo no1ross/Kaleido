@@ -36,6 +36,15 @@ Kaleido.Http.KaleidoErrorResponse.Errors.init -> void
 Kaleido.Http.KaleidoErrorResponse.KaleidoErrorResponse(System.Collections.Generic.IReadOnlyList<Kaleido.Http.KaleidoError!>! Errors) -> void
 Kaleido.Http.KaleidoIdempotencyHeaders
 Kaleido.Http.KaleidoJsonOptions
+Kaleido.Http.KaleidoNotice
+Kaleido.Http.KaleidoNotice.<Clone>$() -> Kaleido.Http.KaleidoNotice!
+Kaleido.Http.KaleidoNotice.Code.get -> string!
+Kaleido.Http.KaleidoNotice.Code.init -> void
+Kaleido.Http.KaleidoNotice.Deconstruct(out string! Code, out string! Message) -> void
+Kaleido.Http.KaleidoNotice.Equals(Kaleido.Http.KaleidoNotice? other) -> bool
+Kaleido.Http.KaleidoNotice.KaleidoNotice(string! Code, string! Message) -> void
+Kaleido.Http.KaleidoNotice.Message.get -> string!
+Kaleido.Http.KaleidoNotice.Message.init -> void
 Kaleido.Http.KaleidoRegistrySnapshotServiceCollectionExtensions
 Kaleido.Http.Processor.ExecuteProcessRequest
 Kaleido.Http.Processor.ExecuteProcessRequest.<Clone>$() -> Kaleido.Http.Processor.ExecuteProcessRequest!
@@ -65,6 +74,8 @@ Kaleido.Http.Processor.ProcessExecutionResponse.<Clone>$() -> Kaleido.Http.Proce
 Kaleido.Http.Processor.ProcessExecutionResponse.AvailableSteps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessStepSummary!>!
 Kaleido.Http.Processor.ProcessExecutionResponse.AvailableSteps.init -> void
 Kaleido.Http.Processor.ProcessExecutionResponse.Equals(Kaleido.Http.Processor.ProcessExecutionResponse? other) -> bool
+Kaleido.Http.Processor.ProcessExecutionResponse.Notice.get -> Kaleido.Http.KaleidoNotice?
+Kaleido.Http.Processor.ProcessExecutionResponse.Notice.init -> void
 Kaleido.Http.Processor.ProcessExecutionResponse.ProcessExecutionResponse() -> void
 Kaleido.Http.Processor.ProcessExecutionResponse.ProcessId.get -> System.Guid
 Kaleido.Http.Processor.ProcessExecutionResponse.ProcessId.init -> void
@@ -119,6 +130,8 @@ Kaleido.Http.Processor.ProcessFieldMetadata.Lookup.get -> Kaleido.Http.Processor
 Kaleido.Http.Processor.ProcessFieldMetadata.Lookup.init -> void
 Kaleido.Http.Processor.ProcessFieldMetadata.Name.get -> string!
 Kaleido.Http.Processor.ProcessFieldMetadata.Name.init -> void
+Kaleido.Http.Processor.ProcessFieldMetadata.Notice.get -> Kaleido.Http.KaleidoNotice?
+Kaleido.Http.Processor.ProcessFieldMetadata.Notice.init -> void
 Kaleido.Http.Processor.ProcessFieldMetadata.ProcessFieldMetadata() -> void
 Kaleido.Http.Processor.ProcessFieldMetadata.Prompt.get -> string?
 Kaleido.Http.Processor.ProcessFieldMetadata.Prompt.init -> void
@@ -168,6 +181,8 @@ Kaleido.Http.Processor.ProcessStateResponse.CreatedBy.init -> void
 Kaleido.Http.Processor.ProcessStateResponse.CreatedUtc.get -> System.DateTimeOffset
 Kaleido.Http.Processor.ProcessStateResponse.CreatedUtc.init -> void
 Kaleido.Http.Processor.ProcessStateResponse.Equals(Kaleido.Http.Processor.ProcessStateResponse? other) -> bool
+Kaleido.Http.Processor.ProcessStateResponse.Notice.get -> Kaleido.Http.KaleidoNotice?
+Kaleido.Http.Processor.ProcessStateResponse.Notice.init -> void
 Kaleido.Http.Processor.ProcessStateResponse.ProcessId.get -> System.Guid
 Kaleido.Http.Processor.ProcessStateResponse.ProcessId.init -> void
 Kaleido.Http.Processor.ProcessStateResponse.ProcessStateResponse() -> void
@@ -261,6 +276,8 @@ Kaleido.Http.Processor.StepExecutionResponse.BusinessMessages.get -> System.Coll
 Kaleido.Http.Processor.StepExecutionResponse.BusinessMessages.init -> void
 Kaleido.Http.Processor.StepExecutionResponse.FrameworkMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
 Kaleido.Http.Processor.StepExecutionResponse.FrameworkMessages.init -> void
+Kaleido.Http.Processor.StepExecutionResponse.Notice.get -> Kaleido.Http.KaleidoNotice?
+Kaleido.Http.Processor.StepExecutionResponse.Notice.init -> void
 Kaleido.Http.Processor.StepExecutionResponse.ProcessId.get -> System.Guid
 Kaleido.Http.Processor.StepExecutionResponse.ProcessId.init -> void
 Kaleido.Http.Processor.StepExecutionResponse.RequiredStep.get -> Kaleido.Http.Processor.ProcessRequiredStep?
@@ -546,6 +563,9 @@ override Kaleido.Http.KaleidoError.ToString() -> string!
 override Kaleido.Http.KaleidoErrorResponse.Equals(object? obj) -> bool
 override Kaleido.Http.KaleidoErrorResponse.GetHashCode() -> int
 override Kaleido.Http.KaleidoErrorResponse.ToString() -> string!
+override Kaleido.Http.KaleidoNotice.Equals(object? obj) -> bool
+override Kaleido.Http.KaleidoNotice.GetHashCode() -> int
+override Kaleido.Http.KaleidoNotice.ToString() -> string!
 override Kaleido.Http.Processor.ExecuteProcessRequest.Equals(object? obj) -> bool
 override Kaleido.Http.Processor.ExecuteProcessRequest.GetHashCode() -> int
 override Kaleido.Http.Processor.ExecuteProcessRequest.ToString() -> string!
@@ -672,6 +692,8 @@ static Kaleido.Http.KaleidoError.operator !=(Kaleido.Http.KaleidoError? left, Ka
 static Kaleido.Http.KaleidoError.operator ==(Kaleido.Http.KaleidoError? left, Kaleido.Http.KaleidoError? right) -> bool
 static Kaleido.Http.KaleidoErrorResponse.operator !=(Kaleido.Http.KaleidoErrorResponse? left, Kaleido.Http.KaleidoErrorResponse? right) -> bool
 static Kaleido.Http.KaleidoErrorResponse.operator ==(Kaleido.Http.KaleidoErrorResponse? left, Kaleido.Http.KaleidoErrorResponse? right) -> bool
+static Kaleido.Http.KaleidoNotice.operator !=(Kaleido.Http.KaleidoNotice? left, Kaleido.Http.KaleidoNotice? right) -> bool
+static Kaleido.Http.KaleidoNotice.operator ==(Kaleido.Http.KaleidoNotice? left, Kaleido.Http.KaleidoNotice? right) -> bool
 static Kaleido.Http.KaleidoRegistrySnapshotServiceCollectionExtensions.AddDistributedRegistrySnapshots(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Http.Processor.ExecuteProcessRequest.operator !=(Kaleido.Http.Processor.ExecuteProcessRequest? left, Kaleido.Http.Processor.ExecuteProcessRequest? right) -> bool
 static Kaleido.Http.Processor.ExecuteProcessRequest.operator ==(Kaleido.Http.Processor.ExecuteProcessRequest? left, Kaleido.Http.Processor.ExecuteProcessRequest? right) -> bool

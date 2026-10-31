@@ -63,6 +63,7 @@ public sealed class KaleidoCallerContextEndpointFilterTests
                 It.Is<KaleidoCorrelationContext>(c =>
                     c.RequestId == "req-1" &&
                     c.CallerName == "alice" &&
+                    c.CallerIsAuthenticated &&
                     c.CallerRoles.Count == 1 &&
                     c.CallerRoles.Contains("internal"))),
             Times.Once);
@@ -151,8 +152,10 @@ public sealed class KaleidoCallerContextEndpointFilterTests
         Assert.Empty(context.CallerRoles);
     }
 
+    // #515: authentication is the principal's, not the presence of a name - a subject-only token is
+    // authenticated and keeps its roles.
     [Fact]
-    public async Task InvokeAsync_WhenAuthenticatedWithoutAName_PublishesNoRoles()
+    public async Task InvokeAsync_WhenAuthenticatedWithoutAName_IsAuthenticated_WithItsRoles()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim("sub", "sub-42"), new Claim(ClaimTypes.Role, "clerk")],
@@ -162,6 +165,20 @@ public sealed class KaleidoCallerContextEndpointFilterTests
 
         Assert.Null(context.CallerName);
         Assert.Equal("sub-42", context.CallerId);
+        Assert.True(context.CallerIsAuthenticated);
+        Assert.Equal(["clerk"], context.CallerRoles);
+    }
+
+    // An unauthenticated principal carrying claims (roles included) is anonymous: no flag, no roles.
+    [Fact]
+    public async Task InvokeAsync_WhenUnauthenticatedWithClaims_IsNotAuthenticated_AndHasNoRoles()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "mallory"), new Claim(ClaimTypes.Role, "admin")]));
+
+        var context = await InitializedWith(user);
+
+        Assert.False(context.CallerIsAuthenticated);
+        Assert.Null(context.CallerName);
         Assert.Empty(context.CallerRoles);
     }
 

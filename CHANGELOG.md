@@ -13,6 +13,18 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **A caller is never described a step or a query they may not use** (#524, ZeroTrust and
+  Authenticated):
+  - the registry's relationship lists (`dependencies`, `availableAfter`, `availableUntil`) list only
+    the steps the caller may run;
+  - the execute, per-step and process-state responses list only the next steps the caller may run;
+    a required step they may not run gives `requiredStep: null`, and a list none of which they may
+    run is empty; either way a new `notice` (`KaleidoNotice`, code `pro_not_permitted`) says so
+    without naming a step;
+  - a step input whose lookup names a query the caller may not use keeps the input, without the
+    lookup, with a `notice`. A query on another service is checked by the rules its registry
+    publishes to this host's client: hosts that check each other's lookups share policy names.
+  - The MCP adapter passes the notice on and tells the agent not to guess another step.
 - **A step whose outcome cannot be saved is answered as having run, and is recovered** (#537, [ADR 0034](docs/decisions/0034-unsaved-step-outcomes.md)):
   when the save fails after the handler returned, the step is no longer recorded as a failed step
   (with a second save) or answered as a generic error.
@@ -280,6 +292,27 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **HTTP edges** (#521):
+  - `POST /{service}/processes/execute` binds its body with Kaleido's own JSON rules, like the per-step
+    routes: a malformed body gets Kaleido's 400 with an error body (not the host's page or a bare 400),
+    and a host's `HttpJsonOptions` naming no longer rewrites the endpoint's request contract.
+  - A client `BaseUrl` that is not an absolute `http`/`https` URL fails at startup with
+    `httpclient_invalid_options`, naming the client and the key, instead of a raw `UriFormatException`.
+- **Idempotency keys: an unambiguous scope, random keys for callers without an identity, the process id on a replay** (#514):
+  - The scope is the tuple {service, identity kind, identity, key}, length-framed and hashed (`v1:` +
+    SHA-256), so a separator in a name or a key can no longer join two callers' keys (`alice` +
+    `tenant:K` and `alice:tenant` + `K` were one admission). **Stored format change:** records admitted in
+    the earlier `service:caller:key` format no longer match; they expire by their retention.
+  - A caller without an identity shares one key space: its key must be random, and one shorter than 16
+    characters is refused with 400 `pro_invalid_idempotency_key` (a GUID qualifies).
+  - A replay sets `X-Kaleido-Process-Id` from the stored answer, as the first answer did.
+  - A conflict after the handler ran keeps the key as outcome unknown (#537); only refusals before
+    anything ran release it.
+- **A caller without a name is authenticated all the same** (#515). Authorization read authentication from
+  the caller's display name, so a subject-only or client-credentials token got no roles and counted as
+  anonymous in discovery, generic execute and the typed-route checks. The transport now carries the
+  principal's `Identity.IsAuthenticated` as `KaleidoCorrelationContext.CallerIsAuthenticated` (new), roles are
+  read for any authenticated principal, and authorization uses the flag.
 - **The SQLite context store keeps a hand-off's target, recovers from a rolled-back transition, and tells a duplicate process apart without reading the error message** (#513):
   - The target is in its own `ProcessContexts.TargetProcessorName` column, so a hand-off (no required step) keeps it across a reload; `ProcessRequiredSteps.ProcessorName` is removed. **Schema change:** recreate a development `*-process.db`.
   - A rolled-back transition no longer leaves the `DbContext` tracking the process at the version it was not saved at, so the next save in the same scope is not a phantom 409.

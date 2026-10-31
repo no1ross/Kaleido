@@ -16,7 +16,10 @@ namespace Kaleido.Http.Processor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The key is scoped per service and caller (the caller's stable subject id, else its name). Admission
+/// The key is scoped per service and caller (the caller's stable subject id, else its name), as a
+/// canonical, length-framed tuple hashed to a fixed length (#514). A caller without an identity shares
+/// its key space with every other such caller, so its key must be random: one shorter than 16
+/// characters is refused with 400 <c>pro_invalid_idempotency_key</c>. Admission
 /// is atomic in the store, so a request with a key that is still running does not run: 409
 /// <c>pro_idempotency_in_progress</c> with <c>Retry-After</c>. The same key with a different request is
 /// refused with 422 <c>pro_idempotency_key_reused</c>.
@@ -24,8 +27,10 @@ namespace Kaleido.Http.Processor;
 /// <para>
 /// Each admission has its own id (#441), and the attempt finalizes only that admission: a 2xx answer is
 /// stored (kept for <see cref="KaleidoHttpOptions.IdempotencyRetention"/>); a 4xx answer, or a refusal
-/// raised before anything ran (validation, authorization, a concurrent change), releases the key so it
-/// may be retried; anything else (a 5xx, an unexpected error, a cancellation) marks the outcome unknown,
+/// raised before anything ran (validation, authorization, a concurrent change before the handler),
+/// releases the key so it may be retried; anything else (a 5xx, an unexpected error, a cancellation, a
+/// step that ran but whose outcome was not saved - a conflict after the handler included, #537) marks
+/// the outcome unknown,
 /// because the step may have run. A key whose outcome is unknown - marked so, or still running after
 /// <see cref="KaleidoHttpOptions.IdempotencyLease"/> - is answered 409
 /// <c>pro_idempotency_outcome_unknown</c> and not run again until
@@ -50,6 +55,9 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
 {
     private const int MaxKeyLength = 200;
 
+    // A GUID's 32 hex digits pass; a counter or a word does not.
+    private const int MinAnonymousKeyLength = 16;
+
     public async ValueTask<object?> InvokeAsync(
         EndpointFilterInvocationContext context,
         EndpointFilterDelegate next)
@@ -67,10 +75,17 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
             return Error(StatusCodes.Status400BadRequest, ProcessorErrorCodes.InvalidIdempotencyKey, $"The {KaleidoIdempotencyHeaders.IdempotencyKey} header is longer than {MaxKeyLength} characters.");
         }
 
+        var caller = Identity(correlationAccessor.Current);
+
+        if (string.Equals(caller.Kind, AnonymousKind, StringComparison.Ordinal) && key.Length < MinAnonymousKeyLength)
+        {
+            return Error(StatusCodes.Status400BadRequest, ProcessorErrorCodes.InvalidIdempotencyKey, $"A caller without an identity shares its {KaleidoIdempotencyHeaders.IdempotencyKey} space with every other such caller: send a random key of at least {MinAnonymousKeyLength} characters (a GUID).");
+        }
+
         var now = time.GetUtcNow();
         var admission = new IdempotentResult
         {
-            Key = Scope(key),
+            Key = Scope(caller, key),
             AdmissionId = Guid.NewGuid(),
             RequestHash = Hash(context),
             State = IdempotentResultState.InProgress,
@@ -122,7 +137,9 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
         };
 
     // Raised before the step's work is committed, answered 4xx by the exception handler: the caller's
-    // request was refused, so the key may be retried. Anything else may have run.
+    // request was refused, so the key may be retried. Anything else may have run. A concurrency conflict
+    // reaches here only from before the handler (the process's creation); after the handler it is a
+    // StepOutcomeNotSavedException, an unknown outcome (#537, #514).
     private static bool IsRefusal(Exception exception) =>
         exception is KaleidoValidationException
             or KaleidoAuthorizationException
@@ -151,13 +168,13 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
         // an OperationCanceledException of the store's own (a timeout) included - is logged (#517).
         catch (Exception exception)
         {
-            LogFinalizationFailed(logger, exception, key, outcome);
+            LogFinalizationFailed(logger, exception, key, admission.Key, outcome);
             return;
         }
 
         if (!accepted)
         {
-            LogFinalizationNotAccepted(logger, key, outcome);
+            LogFinalizationNotAccepted(logger, key, admission.Key, outcome);
         }
     }
 
@@ -177,21 +194,39 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
             ExpiresUtc = time.GetUtcNow() + httpOptions.IdempotencyUnknownOutcomeRetention,
         };
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "The outcome ({Outcome}) of the request with Idempotency-Key '{IdempotencyKey}' could not be stored; the request's own answer is unchanged.")]
-    private static partial void LogFinalizationFailed(ILogger logger, Exception exception, string idempotencyKey, Outcome outcome);
+    // The stored record's key is a hash of the caller's scope: the log names both, so an operator finds
+    // the record.
+    [LoggerMessage(Level = LogLevel.Error, Message = "The outcome ({Outcome}) of the request with Idempotency-Key '{IdempotencyKey}' (record '{RecordKey}') could not be stored; the request's own answer is unchanged.")]
+    private static partial void LogFinalizationFailed(ILogger logger, Exception exception, string idempotencyKey, string recordKey, Outcome outcome);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "The outcome ({Outcome}) of the request with Idempotency-Key '{IdempotencyKey}' was not stored: its admission no longer holds the key (it expired, or the key was admitted again).")]
-    private static partial void LogFinalizationNotAccepted(ILogger logger, string idempotencyKey, Outcome outcome);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The outcome ({Outcome}) of the request with Idempotency-Key '{IdempotencyKey}' (record '{RecordKey}') was not stored: its admission no longer holds the key (it expired, or the key was admitted again).")]
+    private static partial void LogFinalizationNotAccepted(ILogger logger, string idempotencyKey, string recordKey, Outcome outcome);
+    private const string AnonymousKind = "anonymous";
+
     // Scoped per service and caller: two callers cannot see each other's answers. The caller is its
     // stable subject id when the principal has one (a renamed user keeps their keys; two users with the
-    // same display name stay apart), else its name; the prefix keeps an id and a name from colliding.
-    private string Scope(string key) =>
-        $"{serviceOptions.ServiceName}:{Caller(correlationAccessor.Current)}:{key}";
+    // same display name stay apart), else its name; its kind keeps an id and a name from colliding.
+    // Version 1 (#514): the tuple {service, identity kind, identity, key}, each part length-framed so no
+    // two tuples read the same whatever characters they contain, hashed to a fixed length. Records
+    // admitted in the earlier "service:caller:key" format no longer match; they expire by their
+    // retention.
+    private string Scope((string Kind, string Value) caller, string key) =>
+        RecordKey(serviceOptions.ServiceName, caller.Kind, caller.Value, key);
 
-    private static string Caller(KaleidoCorrelationContext caller) =>
-        caller.CallerId is { } id ? $"id:{id}"
-        : caller.CallerName is { } name ? $"name:{name}"
-        : "anonymous";
+    // The stored record's key for a scope: what an operator looks for, and what the tests expect.
+    internal static string RecordKey(string service, string identityKind, string identity, string key)
+    {
+        var framed = string.Concat(Frame(service), Frame(identityKind), Frame(identity), Frame(key));
+
+        return "v1:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(framed))).ToLowerInvariant();
+    }
+
+    private static string Frame(string part) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{part.Length}:{part}");
+
+    private static (string Kind, string Value) Identity(KaleidoCorrelationContext caller) =>
+        caller.CallerId is { } id ? ("id", id)
+        : caller.CallerName is { } name ? ("name", name)
+        : (AnonymousKind, string.Empty);
 
     // The request the key was used with: the route, the process it continues, and the bound body.
     private static string Hash(EndpointFilterInvocationContext context)
@@ -240,7 +275,38 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
 
         http.Response.Headers[KaleidoIdempotencyHeaders.Replayed] = "true";
 
+        // The process id travels in the header as on the first answer (#514): a new process's id is
+        // known only from the stored answer.
+        if (ProcessIdOf(existing.Response) is { } processId)
+        {
+            http.Response.Headers[KaleidoCorrelationHeaders.ProcessId] = processId;
+        }
+
         return Results.Text(existing.Response, "application/json", Encoding.UTF8, existing.StatusCode);
+    }
+
+    private static string? ProcessIdOf(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(response);
+
+            return document.RootElement.ValueKind == JsonValueKind.Object &&
+                document.RootElement.TryGetProperty("processId", out var processId) &&
+                processId.ValueKind == JsonValueKind.String &&
+                Guid.TryParse(processId.GetString(), out var id)
+                    ? id.ToString()
+                    : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     // How long a caller waits before retrying a key that is still running.

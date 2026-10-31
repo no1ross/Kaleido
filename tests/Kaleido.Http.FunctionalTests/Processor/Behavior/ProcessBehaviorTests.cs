@@ -326,6 +326,33 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.NotEqual("completed", StepStatus(state, BehaviorSteps.Slow));
     }
 
+    // #514: the same race with an Idempotency-Key. The slow step's handler ran before its save lost the
+    // race, so its key is kept as outcome unknown: a retry with it is refused, never a second run.
+    [Fact]
+    public async Task AKeyedRequestWhoseSaveConflictsAfterTheHandler_IsNotRunAgain_WithItsKey()
+    {
+        var processId = await StartAsync();
+        fixture.Gate.Reset();
+        var key = $"slow-{Guid.NewGuid():N}";
+        var body = $$$"""{"steps":[{"stepName":"{{{BehaviorSteps.Slow}}}","request":{}}]}""";
+
+        var slow = PostExecuteAsync(body, processId, key);
+        await fixture.Gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var (quickStatus, _) = await PostStepAsync(BehaviorSteps.Quick, processId: processId);
+        Assert.Equal(HttpStatusCode.OK, quickStatus);
+        fixture.Gate.Release.TrySetResult();
+        using var conflict = await slow;
+
+        Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+        Assert.Contains(ProcessorErrorCodes.OutcomeNotSaved, await conflict.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
+
+        using var retry = await PostExecuteAsync(body, processId, key);
+
+        Assert.Equal(HttpStatusCode.Conflict, retry.StatusCode);
+        Assert.Contains(ProcessorErrorCodes.IdempotencyOutcomeUnknown, await retry.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
+        Assert.Equal(1, fixture.Gate.Invocations);
+    }
+
     [Fact]
     public async Task SeveralStepsInOneExecute_RunInDependencyOrder_WhateverTheOrderSubmitted()
     {

@@ -30,6 +30,7 @@ internal sealed partial class ProcessExecutionService(
     IKaleidoCorrelationContextAccessor correlationAccessor,
     IProcessExecutionResponseFactory responseFactory,
     IKaleidoAuthorizer authorizer,
+    IProcessContinuationFilter continuations,
     ILogger<ProcessExecutionService> logger)
     : IProcessExecutionService
 {
@@ -87,10 +88,15 @@ internal sealed partial class ProcessExecutionService(
         WriteResponseHeaders(
             processResult.ProcessId);
 
-        return responseFactory.CreateExecutionResponse(
+        var response = responseFactory.CreateExecutionResponse(
             processResult,
             registry,
             serviceOptions.ServiceName);
+
+        // The caller is described only the steps they may run (#524).
+        var continuation = await continuations.FilterAsync(response.ProcessId, response.RequiredStep, response.AvailableSteps, cancellationToken);
+
+        return response with { RequiredStep = continuation.RequiredStep, AvailableSteps = continuation.AvailableSteps, Notice = continuation.Notice };
     }
 
     // The runtime takes the steps keyed by name: a step named twice is the caller's mistake.
@@ -148,11 +154,13 @@ internal sealed partial class ProcessExecutionService(
         var (processResult, stepResult) =
             await ExecuteStepCoreAsync(request, cancellationToken);
 
-        return responseFactory.CreateStepResponse<TResponse>(
-            processResult,
-            stepResult,
-            registry,
-            serviceOptions.ServiceName);
+        return await ForCallerAsync(
+            responseFactory.CreateStepResponse<TResponse>(
+                processResult,
+                stepResult,
+                registry,
+                serviceOptions.ServiceName),
+            cancellationToken);
     }
 
     public async Task<StepExecutionResponse> ExecuteAsync<TProcessStep>(ExecuteStepRequest<TProcessStep> request, CancellationToken cancellationToken)
@@ -160,11 +168,22 @@ internal sealed partial class ProcessExecutionService(
         var (processResult, stepResult) =
             await ExecuteStepCoreAsync(request, cancellationToken);
 
-        return responseFactory.CreateStepResponse(
-            processResult,
-            stepResult,
-            registry,
-            serviceOptions.ServiceName);
+        return await ForCallerAsync(
+            responseFactory.CreateStepResponse(
+                processResult,
+                stepResult,
+                registry,
+                serviceOptions.ServiceName),
+            cancellationToken);
+    }
+
+    // The caller is described only the steps they may run (#524).
+    private async Task<T> ForCallerAsync<T>(T response, CancellationToken cancellationToken)
+        where T : StepExecutionResponse
+    {
+        var continuation = await continuations.FilterAsync(response.ProcessId, response.RequiredStep, response.AvailableSteps, cancellationToken);
+
+        return response with { RequiredStep = continuation.RequiredStep, AvailableSteps = continuation.AvailableSteps, Notice = continuation.Notice };
     }
 
     private async Task<(ProcessResult ProcessResult, ProcessStepResult StepResult)>

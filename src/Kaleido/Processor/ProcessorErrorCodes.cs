@@ -43,7 +43,11 @@ public static class ProcessorErrorCodes
     /// </summary>
     public const string IdempotencyKeyReused = "pro_idempotency_key_reused";
 
-    /// <summary>The idempotency key is longer than 200 characters. HTTP 400.</summary>
+    /// <summary>
+    /// The idempotency key is longer than 200 characters, or shorter than 16 from a caller without an
+    /// identity (no subject id, no name), who shares the key space with every other such caller and must
+    /// send a random key such as a GUID. HTTP 400.
+    /// </summary>
     public const string InvalidIdempotencyKey = "pro_invalid_idempotency_key";
 
     /// <summary>
@@ -160,6 +164,14 @@ public static class ProcessorErrorCodes
     /// again shortly (#537).
     /// </summary>
     public const string ProcessRecovering = "pro_process_recovering";
+
+    /// <summary>
+    /// A notice, not an error (#524): the process continues with a step the caller may not run, or
+    /// offers only such steps; or a step input's lookup names a query the caller may not use. The
+    /// response leaves them out and does not name them: the caller learns only that something is
+    /// beyond their access.
+    /// </summary>
+    public const string NotPermitted = "pro_not_permitted";
 
     /// <summary>A handler returned an information request that is not well-formed.</summary>
     public const string InformationRequestInvalid = "pro_information_request_invalid";

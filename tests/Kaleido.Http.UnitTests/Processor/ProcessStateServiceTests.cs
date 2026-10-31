@@ -13,13 +13,25 @@ public sealed class ProcessStateServiceTests
         IKaleidoContextStore contextStore,
         IProcessorStepRegistry registry,
         IProcessorResponseFactory responseFactory,
-        Microsoft.Extensions.Logging.ILogger<ProcessStateService>? logger = null) =>
+        Microsoft.Extensions.Logging.ILogger<ProcessStateService>? logger = null,
+        IProcessContinuationFilter? continuations = null) =>
         new(
             contextStore,
             registry,
             new KaleidoServiceOptions { ServiceName = "test-processor" },
             responseFactory,
+            continuations ?? PassThrough(),
             logger ?? NullLogger<ProcessStateService>.Instance);
+
+    // The continuation filter (its own fixture) leaves the state as it is.
+    private static IProcessContinuationFilter PassThrough()
+    {
+        var filter = new Mock<IProcessContinuationFilter>();
+        filter
+            .Setup(x => x.FilterAsync(It.IsAny<Guid>(), It.IsAny<ProcessRequiredStep?>(), It.IsAny<IReadOnlyCollection<ProcessStepSummary>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, ProcessRequiredStep? required, IReadOnlyCollection<ProcessStepSummary> available, CancellationToken _) => new ProcessContinuation(required, available, Notice: null));
+        return filter.Object;
+    }
 
     [Fact]
     public async Task GetCurrentState_WhenContextDoesNotExist_LogsLoadingAndNotFoundAtDebug()
@@ -81,6 +93,28 @@ public sealed class ProcessStateServiceTests
         responseFactory.Verify(
             x => x.CreateRequiredStep(It.IsAny<ProcessorStepSummary>(), It.IsAny<InformationRequest?>(), It.IsAny<string>()),
             Times.Never);
+    }
+
+    // #524: the state describes the caller only what the continuation filter permits, with its notice.
+    [Fact]
+    public async Task GetCurrentState_DescribesTheCallerOnlyWhatTheFilterPermits()
+    {
+        var context = new ProcessorContext
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "test-processor",
+            State = ProcessExecutionState.Active,
+        };
+        var filter = new Mock<IProcessContinuationFilter>();
+        filter
+            .Setup(x => x.FilterAsync(context.ProcessId, null, It.IsAny<IReadOnlyCollection<ProcessStepSummary>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessContinuation(RequiredStep: null, AvailableSteps: [], ProcessContinuationFilter.NotPermitted));
+
+        var result = await CreateSut(StoreReturning(context), CreateRegistry(), Mock.Of<IProcessorResponseFactory>(), continuations: filter.Object)
+            .GetCurrentState(context.ProcessId, CancellationToken.None);
+
+        Assert.Equal(ProcessContinuationFilter.NotPermitted, result?.Notice);
+        Assert.Empty(result!.AvailableSteps);
     }
 
     [Fact]

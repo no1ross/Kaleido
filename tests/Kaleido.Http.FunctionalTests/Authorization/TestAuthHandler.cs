@@ -11,6 +11,7 @@ namespace Kaleido.Http.FunctionalTests.Authorization;
 /// comma-delimited <c>X-Test-Roles</c> (and an optional <c>X-Test-Subject</c>, the <c>sub</c> claim)
 /// produce an authenticated principal; an optional <c>X-Test-Role-Claim</c> makes the identity's
 /// <c>RoleClaimType</c> (and the roles' claim type) that value, as a JWT handler keeping "roles" does;
+/// <c>X-Test-Nameless</c> leaves the name claim out (a subject-only or client-credentials token);
 /// no <c>X-Test-User</c> → anonymous.
 /// </summary>
 internal sealed class TestAuthHandler(
@@ -27,6 +28,7 @@ internal sealed class TestAuthHandler(
     internal const string RolesHeader = "X-Test-Roles";
     internal const string SubjectHeader = "X-Test-Subject";
     internal const string RoleClaimHeader = "X-Test-Role-Claim";
+    internal const string NamelessHeader = "X-Test-Nameless";
     internal const string ChallengeHeaderValue = "Test realm=\"kaleido\"";
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
@@ -43,10 +45,9 @@ internal sealed class TestAuthHandler(
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.Name, user.ToString())
-        };
+        var claims = Request.Headers.ContainsKey(NamelessHeader)
+            ? new List<Claim>()
+            : [new(ClaimTypes.Name, user.ToString())];
 
         if (Request.Headers.TryGetValue(SubjectHeader, out var subject))
         {

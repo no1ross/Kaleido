@@ -50,6 +50,37 @@ public sealed class ClientDownstreamRegistriesTests
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
+    // One service's whole registry from its client, without fetching the others (#524: a lookup on that
+    // service); none when no client calls it, when it is this service, or when its registry cannot be read.
+    [Fact]
+    public async Task GetServiceAsync_ReturnsTheRegistryOfTheServicesClientOnly_OrNone()
+    {
+        Client("Self", "router");
+        Client("Member", "member");
+        Client("Intake", "intake");
+        Client("Broken", "broken", new HttpRequestException("down"));
+        var sut = CreateSut();
+
+        var member = await sut.GetServiceAsync("MEMBER", Cancel);
+
+        Assert.Equal(["member"], member!.Processes.Select(x => x.Name));
+        Assert.Equal(["member-source"], member.Queryables.Select(x => x.Name));
+        remoteRegistry.Verify(x => x.GetAsync(It.Is<KaleidoClientDefinition>(c => c.Name == "Intake"), stamper, It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Null(await sut.GetServiceAsync("unknown", Cancel));
+        Assert.Null(await sut.GetServiceAsync("router", Cancel));
+        Assert.Null(await sut.GetServiceAsync("broken", Cancel));
+    }
+
+    [Fact]
+    public async Task GetServiceAsync_WhenCanceled_PropagatesTheCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        Client("Member", "member", new OperationCanceledException(cancellation.Token));
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().GetServiceAsync("member", cancellation.Token));
+    }
+
     [Fact]
     public async Task GetAsync_ReturnsEveryClientsRegistry()
     {

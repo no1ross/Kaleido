@@ -101,6 +101,37 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
         Assert.Equal(TimeSpan.FromSeconds(30), member.RegistryTtl);
     }
 
+    // #521: a BaseUrl that is not an absolute http(s) URL fails at startup with the client's name and the
+    // key it came from, not a raw UriFormatException when the HTTP client is built.
+    [Theory]
+    [InlineData("Kaleido:Clients:Member:BaseUrl", "/member", "Kaleido:Clients:Member:BaseUrl")]
+    [InlineData("Kaleido:Clients:Member:BaseUrl", "member:8080", "Kaleido:Clients:Member:BaseUrl")]
+    [InlineData("Kaleido:Clients:Member:BaseUrl", "ftp://member", "Kaleido:Clients:Member:BaseUrl")]
+    [InlineData("Kaleido:Clients:Member:BaseUrl", "http://", "Kaleido:Clients:Member:BaseUrl")]
+    [InlineData("Kaleido:BaseUrl", "router", "Kaleido:BaseUrl")]
+    public void AddHttpClients_ABaseUrlThatIsNotAnAbsoluteHttpUrl_ThrowsAConfigurationError(string setting, string value, string key)
+    {
+        var builder = CreateBuilder(new() { [setting] = value, ["Kaleido:Clients:Member:RoutePrefix"] = "member" });
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.AddHttpClients);
+
+        Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
+        Assert.Contains("'Member'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("http://member:8080")]
+    [InlineData("https://member.example/")]
+    public void AddHttpClients_AnAbsoluteHttpBaseUrl_IsAccepted(string value)
+    {
+        var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:BaseUrl"] = value });
+
+        builder.AddHttpClients();
+
+        Assert.True(Definitions(builder.Services).ContainsKey("Member"));
+    }
+
     [Fact]
     public void AddHttpClients_AClientWithoutAnyBaseUrl_ThrowsAConfigurationError()
     {
