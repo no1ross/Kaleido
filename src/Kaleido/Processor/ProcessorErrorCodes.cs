@@ -67,12 +67,6 @@ public static class ProcessorErrorCodes
     /// <summary>The supplied step request is invalid.</summary>
     public const string InvalidRequest = "pro_invalid_request";
 
-    /// <summary>A requested property was not found.</summary>
-    public const string PropertyNotFound = "pro_property_not_found";
-
-    /// <summary>A request value could not be converted.</summary>
-    public const string ConversionFailed = "pro_conversion_failed";
-
     /// <summary>Step validation failed without a more specific built-in code.</summary>
     public const string ValidationFailed = "pro_validation_failed";
 
@@ -91,20 +85,8 @@ public static class ProcessorErrorCodes
     /// <summary>A previously completed step requires no additional processing.</summary>
     public const string AlreadyProcessed = "pro_already_processed";
 
-    /// <summary>A step violates an execution consistency rule.</summary>
-    public const string ConsistencyViolation = "pro_consistency_violation";
-
     /// <summary>A required dependency has not been completed.</summary>
     public const string DependencyNotSatisfied = "pro_dependency_not_satisfied";
-
-    /// <summary>A required dependency has been completed.</summary>
-    public const string DependencySatisfied = "pro_dependency_satisfied";
-
-    /// <summary>Step handler execution failed.</summary>
-    public const string HandlerExecutionFailed = "pro_handler_execution_failed";
-
-    /// <summary>An exception interrupted step processing.</summary>
-    public const string ExceptionThrown = "pro_exception_thrown";
 
     /// <summary>A required next step is invalid.</summary>
     public const string InvalidRequiredStep = "pro_invalid_required_step";
@@ -123,9 +105,6 @@ public static class ProcessorErrorCodes
 
     /// <summary>An unexpected framework error interrupted a step.</summary>
     public const string FrameworkException = "pro_framework_exception";
-
-    /// <summary>A Process message was produced.</summary>
-    public const string ProcessMessage = "pro_process_message";
 
     /// <summary>A repeatable step remains eligible after prior execution.</summary>
     public const string RepeatableStep = "pro_repeatable_step";

@@ -631,7 +631,7 @@ public sealed class ProcessorRuntimeTests
                 RuntimeMessages =
                 [
                     StepProcessingMessage.Information(
-                        ProcessorErrorCodes.ProcessMessage,
+                        "test_message",
                         "execution-message")
                 ]
             };

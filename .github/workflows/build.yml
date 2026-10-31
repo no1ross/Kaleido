@@ -64,6 +64,11 @@ jobs:
     - name: Check documentation symbols
       run: python3 tools/docs/check-doc-symbols.py
 
+    # Every public error code is raised somewhere in src/, and docs/ERROR_CODES.md lists exactly the
+    # declared codes (#518).
+    - name: Check error codes
+      run: python3 tools/docs/check-error-codes.py
+
     # Every C# example in the consumer guide equals a compiled region of docs/guide/examples (#409).
     - name: Check guide snippets
       run: python3 tools/docs/check-guide-snippets.py

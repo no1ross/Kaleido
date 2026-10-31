@@ -13,6 +13,15 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **11 public error codes that nothing raised are removed** (#518), so 1.0 promises no error that cannot
+  occur. From ProcessorErrorCodes: PropertyNotFound (pro_property_not_found), ConversionFailed
+  (pro_conversion_failed), ConsistencyViolation (pro_consistency_violation), DependencySatisfied
+  (pro_dependency_satisfied), HandlerExecutionFailed (pro_handler_execution_failed), ExceptionThrown
+  (pro_exception_thrown) and ProcessMessage (pro_process_message). From QueryableErrorCodes:
+  InvalidParameterType (qry_invalid_parameter_type; parameter failures are `qry_invalid_parameter_value`
+  and `qry_missing_parameter`), InvalidSearchNode, EmptySearchGroup and MissingSearchText (the query
+  model has no search nodes or groups). Code that names them no longer compiles. CI now fails on a public
+  error code that nothing raises, or one that ERROR_CODES.md does not list.
 - **A caller is never described a step or a query they may not use** (#524, ZeroTrust and
   Authenticated):
   - the registry's relationship lists (`dependencies`, `availableAfter`, `availableUntil`) list only

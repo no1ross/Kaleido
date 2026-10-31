@@ -57,9 +57,6 @@ public static class QueryableErrorCodes
     /// <summary>A required named query parameter is missing from the request.</summary>
     public const string MissingParameter = "qry_missing_parameter";
 
-    /// <summary>A named query parameter value has a type incompatible with the declared parameter type.</summary>
-    public const string InvalidParameterType = "qry_invalid_parameter_type";
-
     /// <summary>A search text was provided but no searchable fields are defined on the query context.</summary>
     public const string FieldNotSearchable = "qry_field_not_searchable";
 
@@ -72,26 +69,17 @@ public static class QueryableErrorCodes
     /// <summary>A filter node is structurally invalid (e.g. both Condition and Group set, or neither).</summary>
     public const string InvalidFilterNode = "qry_invalid_filter_node";
 
-    /// <summary>A search node is structurally invalid.</summary>
-    public const string InvalidSearchNode = "qry_invalid_search_node";
-
     /// <summary>A filter group contains no child expressions.</summary>
     public const string EmptyFilterGroup = "qry_empty_filter_group";
 
     /// <summary>The filter expression exceeds the maximum allowed nesting depth.</summary>
     public const string FilterDepthExceeded = "qry_filter_depth_exceeded";
 
-    /// <summary>A search group contains no child expressions.</summary>
-    public const string EmptySearchGroup = "qry_empty_search_group";
-
     /// <summary>A filter value has a CLR type not supported by the Queryable transport layer.</summary>
     public const string UnsupportedRuntimeType = "qry_unsupported_runtime_type";
 
     /// <summary>A filter condition is missing its field name.</summary>
     public const string MissingFilterField = "qry_missing_filter_field";
-
-    /// <summary>A search request is missing the required search text.</summary>
-    public const string MissingSearchText = "qry_missing_search_text";
 
     /// <summary>A filter value cannot be converted to the field's declared type.</summary>
     public const string InvalidFilterValue = "qry_invalid_filter_value";

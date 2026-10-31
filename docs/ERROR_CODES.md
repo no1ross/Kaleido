@@ -41,18 +41,14 @@ One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup 
 | `InvalidPageOffset` | `qry_invalid_page_offset` | Requested page offset is negative |
 | `UnsupportedMatchMode` | `qry_unsupported_match_mode` | Search field uses a match mode not supported by the field |
 | `MissingParameter` | `qry_missing_parameter` | A required query parameter is missing, or the parameters record is missing while it has a `[Required]` member (validated before the query runs, for views, local and delegated sources) |
-| `InvalidParameterType` | `qry_invalid_parameter_type` | Named query parameter value has an incompatible type |
 | `FieldNotSearchable` | `qry_field_not_searchable` | Search text provided but no searchable fields are defined |
 | `DuplicateSortField` | `qry_duplicate_sort_field` | Same field appears more than once in the sort clause |
 | `PagingNotSupported` | `qry_paging_not_supported` | Page request made on a context that does not support paging |
 | `InvalidFilterNode` | `qry_invalid_filter_node` | Filter node is structurally invalid |
-| `InvalidSearchNode` | `qry_invalid_search_node` | Search node is structurally invalid |
 | `EmptyFilterGroup` | `qry_empty_filter_group` | Filter group contains no child expressions |
 | `FilterDepthExceeded` | `qry_filter_depth_exceeded` | Filter expression exceeds the maximum nesting depth |
-| `EmptySearchGroup` | `qry_empty_search_group` | Search group contains no child expressions |
 | `UnsupportedRuntimeType` | `qry_unsupported_runtime_type` | Filter value has a CLR type not supported by the transport layer |
 | `MissingFilterField` | `qry_missing_filter_field` | Filter condition is missing its field name |
-| `MissingSearchText` | `qry_missing_search_text` | Search request is missing the required search text |
 | `InvalidFilterValue` | `qry_invalid_filter_value` | Filter value cannot be converted to the field's declared type |
 | `InvalidParameterValue` | `qry_invalid_parameter_value` | A query parameter value cannot be converted, or fails one of its DataAnnotations (e.g. `[Range]`) |
 
@@ -79,19 +75,13 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `IdempotencyInProgress` | `pro_idempotency_in_progress` | The first request with this `Idempotency-Key` is still running, so this one did not run; retry with the same key after `Retry-After` to get its answer (409) |
 | `IdempotencyOutcomeUnknown` | `pro_idempotency_outcome_unknown` | The first request with this `Idempotency-Key` did not finish with an answer - it never finished within its lease (e.g. the service stopped), or failed after its step may have run (a 5xx, an unexpected error, a cancellation) - so it may or may not have run and is not run again with this key until `IdempotencyUnknownOutcomeRetention` passes; read the process state and decide, or continue with a new key (409) |
 | `InvalidRequest` | `pro_invalid_request` | An execute request names a step more than once (400), or a step reached the runtime as something other than its step type |
-| `PropertyNotFound` | `pro_property_not_found` | Requested step property was not found |
-| `ConversionFailed` | `pro_conversion_failed` | Request value could not be converted |
 | `ValidationFailed` | `pro_validation_failed` | Generic, custom, or object-level step validation failed |
 | `Required` | `pro_required` | Required step field is missing |
 | `InvalidLength` | `pro_invalid_length` | Step field violates a length constraint |
 | `OutOfRange` | `pro_out_of_range` | Step field violates a range constraint |
 | `InvalidFormat` | `pro_invalid_format` | Step field violates a format constraint |
 | `AlreadyProcessed` | `pro_already_processed` | Previously completed step needs no further execution |
-| `ConsistencyViolation` | `pro_consistency_violation` | Candidate violates an execution consistency rule |
 | `DependencyNotSatisfied` | `pro_dependency_not_satisfied` | Required step dependency is incomplete |
-| `DependencySatisfied` | `pro_dependency_satisfied` | Required step dependency is complete |
-| `HandlerExecutionFailed` | `pro_handler_execution_failed` | Step handler execution failed |
-| `ExceptionThrown` | `pro_exception_thrown` | Exception interrupted step processing |
 | `InvalidRequiredStep` | `pro_invalid_required_step` | Required next step is invalid |
 | `RequiredStepNotAllowed` | `pro_required_step_not_allowed` | Required next step cannot be executed (not a legal next step, or not a registered step in this processor) |
 | `ProcessEnded` | `pro_process_ended` | The process has ended here (complete, business failure, handed off): no step of this service runs on it; a hand-back from the service holding it excepted ([ADR 0033](decisions/0033-process-lifecycle-and-admission.md)) |
@@ -102,7 +92,6 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `InvalidHandOff` | `pro_invalid_hand_off` | A handler handed the process off to the service it runs in; a process violation, so the process keeps its state |
 | `ExecutionCanceled` | `pro_execution_canceled` | Step execution was cancelled |
 | `FrameworkException` | `pro_framework_exception` | Unexpected framework error interrupted a step |
-| `ProcessMessage` | `pro_process_message` | Process diagnostic message was produced |
 | `RepeatableStep` | `pro_repeatable_step` | Repeatable step remains eligible after prior execution |
 | `MissingStepResult` | `pro_missing_step_result` | A process execution result had no entry for the executed step (raised as `KaleidoFrameworkException`) |
 | `StepNotAvailable` | `pro_step_not_available` | The submitted step is not a next step: not the pending required step, or not available under the process rules (the initial steps for a new process) |
@@ -197,6 +186,28 @@ The reference provider owns its own code; core knows nothing about it.
 | Constant | Code | Meaning |
 |---|---|---|
 | `InvalidOptions` | `otel_invalid_options` | A `Kaleido:OpenTelemetry` setting cannot be used (or read): a protocol other than `grpc`/`http/protobuf`, or a malformed `key=value` list (startup, `KaleidoConfigurationException`) |
+
+---
+
+## `McpErrorCodes` - MCP adapter (`Kaleido.Http.Mcp`)
+
+Startup codes surface through `KaleidoConfigurationException`. At request time a tool-call problem is a tool result with `isError: true` and one of these codes, never an HTTP or protocol error; what the agent does with each is in [the adapter's README](../src/Kaleido.Http.Mcp/README.md).
+
+| Constant | Code | Meaning |
+|---|---|---|
+| `MissingHttp` | `mcp_missing_http` | `AddMcp()` needs `AddHttp()` (the registry) on the same Kaleido builder (startup) |
+| `MissingClients` | `mcp_missing_clients` | `AddMcp()` needs Kaleido clients (`Kaleido:Clients` + `AddHttpClients()`) to call services (startup) |
+| `MissingCallCredentials` | `mcp_call_credentials_not_configured` | `AddMcp()` needs to know how tool calls are authorized: register `ForwardCallerToken()` or `AddCallCredentials<TProvider>()` before it (startup, ADR 0022) |
+| `MissingInstructionsFile` | `mcp_missing_instructions_file` | `Kaleido:Mcp:InstructionsFile` points at a file that does not exist (startup) |
+| `InvalidOptions` | `mcp_invalid_options` | A `Kaleido:Mcp` setting is blank, repeated, conflicting, out of range or unreadable (startup; nothing is clamped or replaced) |
+| `UnknownTool` | `mcp_unknown_tool` | The tool is not (or no longer) offered to this caller |
+| `InvalidArguments` | `mcp_invalid_arguments` | The tool arguments are missing a required value or have the wrong shape |
+| `ServiceError` | `mcp_service_error` | The Kaleido service refused or failed the call (its status and errors are included) |
+| `ProcessConflict` | `mcp_process_conflict` | The process was changed by another call (409); nothing was saved. Read the state again and decide with the user |
+| `ServiceUnavailable` | `mcp_service_unavailable` | The Kaleido service could not be reached, or no Kaleido client is configured for it |
+| `InternalError` | `mcp_internal_error` | The adapter failed unexpectedly while running a tool; the tool did not complete |
+| `NoPendingInformationRequest` | `mcp_no_pending_information_request` | An answer was submitted but the process has no pending information request |
+| `ConfirmationRequired` | `mcp_confirmation_required` | The step needs the user's confirmation and the client cannot show a form; nothing was run |
 
 ---
 
