@@ -280,6 +280,12 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **HTTP edges** (#521):
+  - `POST /{service}/processes/execute` binds its body with Kaleido's own JSON rules, like the per-step
+    routes: a malformed body gets Kaleido's 400 with an error body (not the host's page or a bare 400),
+    and a host's `HttpJsonOptions` naming no longer rewrites the endpoint's request contract.
+  - A client `BaseUrl` that is not an absolute `http`/`https` URL fails at startup with
+    `httpclient_invalid_options`, naming the client and the key, instead of a raw `UriFormatException`.
 - **Idempotency keys: an unambiguous scope, random keys for callers without an identity, the process id on a replay** (#514):
   - The scope is the tuple {service, identity kind, identity, key}, length-framed and hashed (`v1:` +
     SHA-256), so a separator in a name or a key can no longer join two callers' keys (`alice` +

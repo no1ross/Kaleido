@@ -105,6 +105,18 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
                 $"Set 'Kaleido:Clients:{name}:BaseUrl' or the shared 'Kaleido:BaseUrl' fallback.");
         }
 
+        // A relative or malformed URL (or another scheme) is refused here, naming the client and the key,
+        // instead of a raw UriFormatException when the HTTP client is built (#521).
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var address) ||
+            address.Scheme is not ("http" or "https"))
+        {
+            var key = !string.IsNullOrWhiteSpace(entry?.BaseUrl) ? $"Kaleido:Clients:{name}:BaseUrl" : "Kaleido:BaseUrl";
+
+            throw new KaleidoConfigurationException(
+                HttpClientErrorCodes.InvalidClientOptions,
+                $"Kaleido client '{name}' has BaseUrl '{baseUrl}' ({key}), which is not an absolute http or https URL, e.g. 'https://radiology:8080'.");
+        }
+
         var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
 
         // The prefix is the downstream service's ServiceName in every route; anything else can only

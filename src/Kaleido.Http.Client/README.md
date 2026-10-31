@@ -58,7 +58,7 @@ builder.Services.AddKaleido(builder.Configuration)
     .AddHttpClients();
 ```
 
-`AddHttpClients` binds the `Kaleido:Clients` section. Each entry is a named downstream service; `BaseUrl` falls back to the shared `Kaleido:BaseUrl`, and `RoutePrefix` defaults to the key lowercased:
+`AddHttpClients` binds the `Kaleido:Clients` section. Each entry is a named downstream service; `BaseUrl` falls back to the shared `Kaleido:BaseUrl`, and `RoutePrefix` defaults to the key lowercased. A `BaseUrl` must be an absolute `http` or `https` URL: anything else fails at startup with `httpclient_invalid_options`, naming the client and the key (#521).
 
 ```json
 {

@@ -91,14 +91,17 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
         // allows anonymous callers (and only when enforcing).
         var builder = endpoints.MapPost(
                 ProcessRoutePaths.Execute,
+                // Bound by Kaleido's own JSON rules, as the per-step routes are: a malformed body gets
+                // Kaleido's 400, never the host's answer, and the host's HttpJsonOptions do not rewrite
+                // this endpoint's contract (#521). The idempotency fingerprint reads its raw JSON.
                 async (
-                    ExecuteProcessRequest request,
+                    KaleidoJsonBody<ExecuteProcessRequest> request,
                     IProcessExecutionService execution,
                     CancellationToken cancellationToken) =>
                 {
                     var result =
                         await execution.ExecuteAsync(
-                            request,
+                            request.Value,
                             cancellationToken);
 
                     return Results.Ok(result);
