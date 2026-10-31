@@ -8,8 +8,9 @@ namespace Kaleido.Analyzers.Testing.Fixtures;
 /// <summary>
 /// KAL1010 — a class named {Type}Tests exists but contains no [Fact] or
 /// [Theory] test methods. An empty fixture stub does not satisfy the
-/// coverage requirement — add at least one test. Scoped to unit-test
-/// projects via .editorconfig.
+/// coverage requirement — add at least one test. Applies in every test
+/// project (unit, functional, integration): an empty {Type}Tests stub is
+/// no evidence of tests anywhere.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class FixtureEmptyAnalyzer : DiagnosticAnalyzer

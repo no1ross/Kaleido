@@ -24,7 +24,7 @@ Logic two projects share is linked from [`Shared/`](Shared/) rather than referen
 
 ## Rule inventory and release tracking
 
-The `AnalyzerReleases.*.md` files are the authoritative rule inventory: Roslyn release tracking (RS2000–RS2008) checks them against the compiled descriptors, and `tools/` builds with `TreatWarningsAsErrors`, so a descriptor without its row (or a row without its descriptor) fails the build. Today: 21 consumer (`KAL2xxx`), 20 source (`KAL0xxx`) and 12 test (`KAL1xxx`) rules, each family numbered without gaps. [`docs/ANALYZERS.md`](../../docs/ANALYZERS.md) documents each of them and how [rule IDs](../../docs/ANALYZERS.md#rule-ids) are assigned.
+The `AnalyzerReleases.*.md` files are the authoritative rule inventory: Roslyn release tracking (RS2000–RS2008) checks them against the compiled descriptors, and `tools/` builds with `TreatWarningsAsErrors`, so a descriptor without its row (or a row without its descriptor) fails the build. Today: 22 consumer (`KAL2xxx`), 22 source (`KAL0xxx`) and 12 test (`KAL1xxx`) rules, each family numbered without gaps. [`docs/ANALYZERS.md`](../../docs/ANALYZERS.md) documents each of them and how [rule IDs](../../docs/ANALYZERS.md#rule-ids) are assigned.
 
 - A new or changed rule goes in its project's `AnalyzerReleases.Unshipped.md`.
 - `Kaleido.Analyzers` also has an `AnalyzerReleases.Shipped.md`, empty during the preview. **At 1.0** the `KAL2xxx` rows move from `Unshipped.md` to `Shipped.md` under `## Release 1.0.0`; from then on, changing or removing a consumer rule is recorded there (`### Changed Rules` / `### Removed Rules`) in the release that does it.

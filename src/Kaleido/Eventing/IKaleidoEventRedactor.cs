@@ -16,9 +16,11 @@ namespace Kaleido.Eventing;
 /// <item><description>
 /// <strong>Data classification</strong> (the common case, no code): mark properties of your view,
 /// source and step types with your own <c>DataClassificationAttribute</c> subclasses (e.g.
-/// <c>[PHI]</c>, <c>[PII]</c>) and choose a redactor per classification with <c>AddRedaction</c>
-/// (Microsoft.Extensions.Compliance.Redaction): erase, HMAC (pseudonymize), or an own encrypting
-/// redactor. Without a registered redactor, classified values are erased.
+/// <c>[PHI]</c>, <c>[PII]</c>) and choose a redactor per classification with
+/// <c>AddEventRedaction</c> on the Kaleido builder (ADR 0025), which takes the standard
+/// Microsoft.Extensions.Compliance.Redaction builder: erase, HMAC (pseudonymize), or an own encrypting
+/// redactor. The host's <c>AddRedaction</c> is its log policy and does not apply to events. Without an
+/// event redaction policy, classified values are erased.
 /// </description></item>
 /// <item><description>
 /// <strong>This hook</strong> for everything else. It runs first, on the typed envelope; data

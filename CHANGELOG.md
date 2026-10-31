@@ -326,6 +326,13 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Documentation drift before 1.0** (#527):
+  - `IKaleidoEventRedactor` names `AddEventRedaction` (ADR 0025) for event payloads, not the host's log policy;
+  - the information-step payload example includes `exchangeId`;
+  - the step fields in the Http README no longer list `version` (ADR 0029);
+  - the analyzer counts and each test rule's scope are stated as they are (KAL1010 applies in every test project);
+  - `IKaleidoTransactions` and `IKaleidoOutboxStore` say what an outbox on another database means: a failed commit
+    still relays the transition's events.
 - **`SqliteTelemetry` holds constants only** (#525): its `ActivitySource`, `Meter` and failure counters moved into
   the SQLite context store, as the telemetry conventions require. The names are unchanged.
 - **MCP: information steps are confirmed like any step** (#516): with `RequireConfirmation` on, an information

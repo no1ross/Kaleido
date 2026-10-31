@@ -656,7 +656,8 @@ public sealed record ProcessRequiredStep : ProcessStepContract
 {
     /// <summary>
     /// The questions to answer, submitted as this step's payload
-    /// (<c>{ "informationRequestId": …, "items": [ … ] }</c>); null for an ordinary step.
+    /// (<c>{ "informationRequestId": …, "exchangeId": …, "items": [ … ] }</c>, the exchange id as
+    /// received here); null for an ordinary step.
     /// Question and display text is delivered verbatim: do not paraphrase it.
     /// </summary>
     public InformationRequest? InformationRequest { get; init; }

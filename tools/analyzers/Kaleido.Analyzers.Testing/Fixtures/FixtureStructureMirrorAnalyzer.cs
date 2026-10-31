@@ -10,7 +10,7 @@ namespace Kaleido.Analyzers.Testing.Fixtures;
 /// <summary>
 /// KAL1003 — the fixture's file location mirrors the SUT's location:
 /// src/{Project}/{path}/Sut.cs — tests/{TestProject}/{path}/SutTests.cs.
-/// Scoped to unit-test projects via .editorconfig. A SUT in a referenced
+/// Scoped to unit-test assemblies (*.UnitTests, FixtureConventions.IsUnitTestAssembly). A SUT in a referenced
 /// assembly (every src/ project, for a unit-test project) has no syntax in the
 /// compilation: its file is found among the src/ paths tests/Directory.Build.props
 /// passes as AdditionalFiles, by its convention name (#405). Generic twins use the

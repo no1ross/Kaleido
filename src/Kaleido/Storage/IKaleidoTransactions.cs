@@ -17,6 +17,9 @@ namespace Kaleido.Storage;
 /// <strong>Atomic only on one database.</strong> The transaction covers what the context store and
 /// the outbox write to the database it belongs to (e.g. one EF Core <c>DbContext</c>, a MongoDB
 /// session). An outbox in another database is not covered: no transaction spans two databases here.
+/// Its events are written when they are added, so if the commit then fails, they are still relayed
+/// for a state that was never saved; a rollback cannot remove them. Keep the outbox on the context
+/// store's database to avoid this.
 /// </para>
 /// </remarks>
 /// <example>

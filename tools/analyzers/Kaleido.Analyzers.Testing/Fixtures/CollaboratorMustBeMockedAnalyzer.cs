@@ -13,7 +13,7 @@ namespace Kaleido.Analyzers.Testing.Fixtures;
 /// framework interface, e.g. StepCandidate) is arrangement, not a collaborator.
 /// Exempt: the fixture's SUT (handled by KAL1008), non-testable types, types
 /// outside Kaleido.* production assemblies, and test-assembly doubles.
-/// Scoped to unit-test projects via .editorconfig.
+/// Applies to fixtures inheriting SutFixture&lt;TSut&gt;, which only unit tests declare.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class CollaboratorMustBeMockedAnalyzer : DiagnosticAnalyzer
