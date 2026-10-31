@@ -29,6 +29,11 @@ sections.
     recorded only once it is saved.
   - **MCP:** the agent is told the step ran and not to repeat it, and a failure to read where a
     completed step continues no longer reports the step as failed.
+  - **Contributors:** source rule KAL0022 reports one `try` whose `catch` handles the failure of an
+    operation with an effect and of a later operation on another dependency together. It found two more
+    instances, fixed: after a completed step, the MCP adapter no longer reports the step as failed when
+    the client cannot show its questions or the answers cannot be submitted (a note instead), and the
+    event relay no longer abandons the rest of a batch when recording one entry's attempt fails.
 - **A cancellation is the caller's token firing, not an exception type** (#517). An
   `OperationCanceledException` that no token of the caller raised (a downstream or database timeout,
   an `HttpClient` timeout) is now a failure everywhere:

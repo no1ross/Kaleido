@@ -23,3 +23,4 @@ KAL0018 | Kaleido.Design | Warning | Catch-all that records observability must e
 KAL0019 | Kaleido.Layout | Warning | A type with behavior must be declared in a file named after it
 KAL0020 | Kaleido.Layout | Warning | Do not exclude a type with behavior from code coverage
 KAL0021 | Kaleido.Design | Warning | A wall-clock read that decides behavior uses the injected TimeProvider
+KAL0022 | Kaleido.Design | Warning | One try covering an effect and a later operation must not handle their failure as one

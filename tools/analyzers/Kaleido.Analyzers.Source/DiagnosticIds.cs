@@ -66,4 +66,7 @@ internal static class DiagnosticIds
 
     /// <summary>A wall-clock read whose value decides behavior (compared, or used in date arithmetic) reads the injected TimeProvider; a recorded timestamp may read the wall clock.</summary>
     public const string WallClockDecision = "KAL0021";
+
+    /// <summary>One try covers two operations with effects on different collaborators, and its catch handles the failure as one: it cannot tell which failed (#537).</summary>
+    public const string OneTryTwoEffects = "KAL0022";
 }

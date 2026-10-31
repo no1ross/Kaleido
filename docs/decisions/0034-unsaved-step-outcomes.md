@@ -83,4 +83,7 @@ an email, another system), and it cannot be rolled back.
   back, and the process admits steps again.
 - An instance that restarts during an outage loses its pending outcomes. The Critical logs and the
   metrics are the operator's record.
-- Source rule KAL0022 reports code that catches a handler's failure and a save's failure in one `try`.
+- Source rule KAL0022 reports the shape behind this defect anywhere in the framework: one `try` whose
+  `catch` handles the failure of an operation with an effect and of a later operation on another
+  dependency together. Two more instances it found are fixed with this decision (the MCP adapter's
+  questions after a completed step, the event relay's per-entry bookkeeping).
