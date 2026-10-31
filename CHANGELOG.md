@@ -13,6 +13,22 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **A step whose outcome cannot be saved is answered as having run, and is recovered** (#537, [ADR 0034](docs/decisions/0034-unsaved-step-outcomes.md)):
+  when the save fails after the handler returned, the step is no longer recorded as a failed step
+  (with a second save) or answered as a generic error.
+  - **Answers:** `503 pro_outcome_pending_recovery` (the outcome is kept and saved when the store is
+    back), `500 pro_outcome_not_saved` (it could not be kept) or `409 pro_outcome_not_saved` (another
+    request changed the process meanwhile; this was `pro_process_conflict`). A keyed retry gets
+    `pro_idempotency_outcome_unknown`.
+  - **Recovery:** an in-memory recovery service saves kept outcomes once the store is back; until
+    then every step on the process is refused with `409 pro_process_recovering`, so the handler is
+    never run twice. A restart loses pending outcomes; each one that is not saved is logged at
+    Critical with what to reconcile.
+  - **Telemetry:** `kaleido.processor.step.outcome_unsaved`, `kaleido.processor.recover` and the
+    `outcomes_unsaved` / `outcomes_recovered` / `outcomes_parked` counters. A step's decision is
+    recorded only once it is saved.
+  - **MCP:** the agent is told the step ran and not to repeat it, and a failure to read where a
+    completed step continues no longer reports the step as failed.
 - **A cancellation is the caller's token firing, not an exception type** (#517). An
   `OperationCanceledException` that no token of the caller raised (a downstream or database timeout,
   an `HttpClient` timeout) is now a failure everywhere:

@@ -91,6 +91,11 @@ internal sealed partial class KaleidoToolInvoker(
     {
         LogServiceAnswered(logger, tool.Definition.Name, (int)exception.StatusCode, exception.Code);
 
+        if (UnsavedOutcome(tool, exception) is { } unsaved)
+        {
+            return unsaved;
+        }
+
         if (string.Equals(exception.Code, HttpClientErrorCodes.Conflict, StringComparison.Ordinal))
         {
             return Error(
@@ -115,6 +120,32 @@ internal sealed partial class KaleidoToolInvoker(
             $"{tool.Definition.Name}: {exception.Message}",
             Serialize(new { status = (int)exception.StatusCode, errors = exception.Errors }),
             ServiceReasons(exception.Errors));
+    }
+
+    // #537: the step ran, but the service could not save the process - repeating it could do its work
+    // twice. Or the process is being recovered, and nothing ran: try again shortly. Read from the
+    // service's own error code (409 and 5xx alone do not say which).
+    private static CallToolResult? UnsavedOutcome(KaleidoTool tool, KaleidoHttpClientException exception)
+    {
+        var code = exception.Errors.Count > 0 ? exception.Errors[0].Code : null;
+        var details = Serialize(new { status = (int)exception.StatusCode, errors = exception.Errors });
+
+        return code switch
+        {
+            ProcessorErrorCodes.OutcomePendingRecovery => Error(
+                McpErrorCodes.ServiceError,
+                $"{tool.Definition.Name}: the step ran, but the service could not save the process yet; it saves it when its store is available again. Do not repeat the call: tell the user, and read the process with {ToolCatalogBuilder.GetProcessStateTool} later.",
+                details),
+            ProcessorErrorCodes.OutcomeNotSaved => Error(
+                McpErrorCodes.ServiceError,
+                $"{tool.Definition.Name}: the step ran, but the service could not save the process, so it must be reconciled by an operator. Do not repeat the call: tell the user that the step's work may have happened.",
+                details),
+            ProcessorErrorCodes.ProcessRecovering => Error(
+                McpErrorCodes.ServiceUnavailable,
+                $"{tool.Definition.Name}: the process is being recovered after a storage failure, and nothing was run. Try the same call again in a moment; do not start a new process.",
+                details),
+            _ => null,
+        };
     }
 
     public async Task<ToolOutcome> InvokeAsync(
@@ -732,6 +763,22 @@ internal sealed partial class KaleidoToolInvoker(
         return Success(summary);
     }
 
+    // The state of the process on the service it was handed off to. The step has completed by now: a
+    // failure to read where it continues must not be reported as the step failing (#537).
+    private async Task<(ProcessStateResponse? State, string? Unread)> TargetStateAsync(string target, Guid processId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return (await Processor(target).GetProcessStateAsync(processId, cancellationToken), null);
+        }
+        catch (Exception exception) when (exception is KaleidoHttpClientException or HttpRequestException or MissingClientException)
+        {
+            LogTargetStateUnread(logger, exception, target, processId);
+
+            return (null, $"The step completed. The process continues on {target}, whose next steps could not be read; check them with {ToolCatalogBuilder.GetProcessStateTool}.");
+        }
+    }
+
     // After a step: follow a handoff to the target's state, put questions to the user while the
     // client can show forms, and summarize where the process stands.
     private async Task<ToolOutcome> FollowUpAsync(
@@ -755,8 +802,9 @@ internal sealed partial class KaleidoToolInvoker(
             {
                 pendingService = step.TargetProcessorName;
 
-                var targetState = await Processor(pendingService).GetProcessStateAsync(step.ProcessId, cancellationToken);
+                var (targetState, unread) = await TargetStateAsync(pendingService, step.ProcessId, cancellationToken);
 
+                note ??= unread;
                 required = targetState?.RequiredStep;
                 available = targetState?.AvailableSteps ?? [];
             }
@@ -1439,6 +1487,9 @@ internal sealed partial class KaleidoToolInvoker(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP tool {Tool}: the service could not be reached.")]
     private static partial void LogServiceUnreachable(ILogger logger, Exception exception, string tool);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: the state of process {ProcessId} on {Target}, where a completed step handed it off, could not be read.")]
+    private static partial void LogTargetStateUnread(ILogger logger, Exception exception, string target, Guid processId);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Kaleido MCP tool {Tool} failed unexpectedly.")]
     private static partial void LogToolFailed(ILogger logger, Exception exception, string tool);

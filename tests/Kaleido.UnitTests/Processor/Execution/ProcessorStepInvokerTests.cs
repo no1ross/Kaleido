@@ -678,6 +678,12 @@ public sealed class ProcessorStepInvokerTests
         {
             return new TestProcessHandlerObservation(failures);
         }
+
+        public IProcessorRecoveryObservation BeginRecovery(
+            ProcessorRecoveryObservationDetails details)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class TestProcessHandlerObservation(

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Kaleido.Processor.Recovery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,9 +55,8 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
                 await WriteErrorAsync(context, StatusCodes.Status400BadRequest, validation.Code, validation.Message, cancellationToken);
                 break;
 
-            case KaleidoConcurrencyException conflict:
-                LogConflict(logger, conflict.ProcessId);
-                await WriteErrorAsync(context, StatusCodes.Status409Conflict, conflict.Code, conflict.Message, cancellationToken);
+            case KaleidoConcurrencyException or ProcessRecoveringException or StepOutcomeNotSavedException:
+                await WriteProcessSaveErrorAsync(context, exception, cancellationToken);
                 break;
 
             // A malformed request, including a body that does not fit its type if one ever gets past
@@ -93,6 +93,40 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
                 break;
         }
     }
+
+    // The process state could not be saved. A conflict: another request changed the process before
+    // anything was saved. Recovering: an earlier step's outcome is still being saved and nothing ran, so
+    // the caller may retry (#537). Not saved: the step ran, and the answer says so, so that the caller
+    // does not send it again (the runtime already logged it with what to reconcile, #537).
+    private async Task WriteProcessSaveErrorAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
+    {
+        switch (exception)
+        {
+            case StepOutcomeNotSavedException notSaved:
+                MarkFailed(notSaved);
+                LogOutcomeNotSaved(logger, notSaved.ProcessId, notSaved.Code);
+                await WriteErrorAsync(context, StatusOf(notSaved.Outcome), notSaved.Code, notSaved.Message, cancellationToken);
+                break;
+
+            case ProcessRecoveringException recovering:
+                LogRecovering(logger, recovering.ProcessId);
+                await WriteErrorAsync(context, StatusCodes.Status409Conflict, Kaleido.Processor.ProcessorErrorCodes.ProcessRecovering, recovering.Message, cancellationToken);
+                break;
+
+            case KaleidoConcurrencyException conflict:
+                LogConflict(logger, conflict.ProcessId);
+                await WriteErrorAsync(context, StatusCodes.Status409Conflict, conflict.Code, conflict.Message, cancellationToken);
+                break;
+        }
+    }
+
+    private static int StatusOf(UnsavedOutcome outcome) =>
+        outcome switch
+        {
+            UnsavedOutcome.PendingRecovery => StatusCodes.Status503ServiceUnavailable,
+            UnsavedOutcome.Conflict => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status500InternalServerError,
+        };
 
     private static Task WriteMalformedAsync(HttpContext context, Exception exception, CancellationToken cancellationToken) =>
         exception is BadHttpRequestException badRequest
@@ -171,6 +205,12 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Process {ProcessId} was changed by another request; nothing was saved (409).")]
     private static partial void LogConflict(ILogger logger, Guid processId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Process {ProcessId} is being recovered; nothing was run (409).")]
+    private static partial void LogRecovering(ILogger logger, Guid processId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Process {ProcessId}: a step ran but its outcome was not saved [{Code}].")]
+    private static partial void LogOutcomeNotSaved(ILogger logger, Guid processId, string code);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Malformed request: {Message}")]
     private static partial void LogMalformedRequest(ILogger logger, Exception exception, string message);

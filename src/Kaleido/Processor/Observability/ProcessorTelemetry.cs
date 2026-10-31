@@ -53,6 +53,15 @@ public static class ProcessorTelemetry
     public const string StepHandlerActivityName =
         "kaleido.processor.step.handler";
 
+    /// <summary>
+    /// The activity for one attempt of the recovery service to save a step outcome that could not be
+    /// saved when the step ran (#537), tagged with <see cref="KaleidoTelemetryTags.ProcessId"/>,
+    /// <see cref="TagStepName"/> and <see cref="TagRecoveryAttempt"/>. Marked as an error when the attempt
+    /// fails.
+    /// </summary>
+    public const string RecoverActivityName =
+        "kaleido.processor.recover";
+
     // ── Activity event names ──────────────────────────────────────────────────
 
     /// <summary>
@@ -101,6 +110,13 @@ public static class ProcessorTelemetry
     /// </summary>
     public const string StepValidationFailedEventName =
         "kaleido.processor.step.validation_failed";
+
+    /// <summary>
+    /// Event on the step activity: the step's handler ran, but its outcome could not be saved (#537).
+    /// Tagged with <see cref="TagUnsavedOutcome"/>. The activity is marked as an error.
+    /// </summary>
+    public const string StepOutcomeUnsavedEventName =
+        "kaleido.processor.step.outcome_unsaved";
 
     // ── Tag key names (activity tags) ─────────────────────────────────────────
 
@@ -161,6 +177,27 @@ public static class ProcessorTelemetry
     /// </summary>
     public const string TagRejectionCode =
         "kaleido.processor.rejection_code";
+
+    /// <summary>
+    /// What became of a step outcome that could not be saved: <c>pending_recovery</c> (kept; the
+    /// recovery service applies it), <c>not_saved</c> (not kept; an operator reconciles it) or
+    /// <c>conflict</c> (the process changed meanwhile; an operator reconciles it). On
+    /// <see cref="StepOutcomeUnsavedEventName"/> and <see cref="OutcomesUnsavedCounterName"/>.
+    /// </summary>
+    public const string TagUnsavedOutcome =
+        "kaleido.processor.unsaved_outcome";
+
+    /// <summary>The recovery attempt, from 1, on <see cref="RecoverActivityName"/>.</summary>
+    public const string TagRecoveryAttempt =
+        "kaleido.processor.recovery_attempt";
+
+    /// <summary>
+    /// Why the recovery service gave a step outcome up: <c>conflict</c> (the process changed meanwhile)
+    /// or <c>expired</c> (it could not be saved within the recovery period). On
+    /// <see cref="OutcomesParkedCounterName"/>.
+    /// </summary>
+    public const string TagParkReason =
+        "kaleido.processor.park_reason";
 
     // ── Metric names ──────────────────────────────────────────────────────────
 
@@ -264,4 +301,25 @@ public static class ProcessorTelemetry
     /// </summary>
     public const string StepDurationHistogramName =
         "kaleido.processor.step.duration";
+
+    /// <summary>
+    /// Counter: step outcomes whose save failed after the handler ran (#537). Tagged like
+    /// <see cref="StepExecutionsCounterName"/> and with <see cref="TagUnsavedOutcome"/>.
+    /// </summary>
+    public const string OutcomesUnsavedCounterName =
+        "kaleido.processor.outcomes_unsaved";
+
+    /// <summary>
+    /// Counter: unsaved step outcomes the recovery service saved. Tagged like
+    /// <see cref="StepExecutionsCounterName"/>.
+    /// </summary>
+    public const string OutcomesRecoveredCounterName =
+        "kaleido.processor.outcomes_recovered";
+
+    /// <summary>
+    /// Counter: unsaved step outcomes the recovery service gave up, for an operator to reconcile.
+    /// Tagged like <see cref="StepExecutionsCounterName"/> and with <see cref="TagParkReason"/>.
+    /// </summary>
+    public const string OutcomesParkedCounterName =
+        "kaleido.processor.outcomes_parked";
 }

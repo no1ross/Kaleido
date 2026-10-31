@@ -281,6 +281,37 @@ public sealed class KaleidoExceptionHandlerTests
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
     }
 
+    // #537: a step ran but its outcome was not saved - the answer says so, with its status: kept for
+    // recovery (503), not kept (500), the process changed meanwhile (409).
+    [Theory]
+    [InlineData(nameof(Kaleido.Processor.Recovery.UnsavedOutcome.PendingRecovery), StatusCodes.Status503ServiceUnavailable, "pro_outcome_pending_recovery")]
+    [InlineData(nameof(Kaleido.Processor.Recovery.UnsavedOutcome.NotSaved), StatusCodes.Status500InternalServerError, "pro_outcome_not_saved")]
+    [InlineData(nameof(Kaleido.Processor.Recovery.UnsavedOutcome.Conflict), StatusCodes.Status409Conflict, "pro_outcome_not_saved")]
+    public async Task HandleAsync_AStepOutcomeNotSaved_SaysTheStepRan(string outcomeName, int status, string code)
+    {
+        var context = CreateContext();
+        var outcome = Enum.Parse<Kaleido.Processor.Recovery.UnsavedOutcome>(outcomeName);
+
+        await CreateSut().HandleAsync(context, new Kaleido.Processor.Recovery.StepOutcomeNotSavedException(Guid.NewGuid(), "Close", outcome, new TimeoutException("store down")), CancellationToken.None);
+
+        Assert.Equal(status, context.Response.StatusCode);
+        var error = JsonDocument.Parse(ReadBody(context)).RootElement.GetProperty("errors")[0];
+        Assert.Equal(code, error.GetProperty("code").GetString());
+        Assert.Contains("Step 'Close' ran", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("store down", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AProcessBeingRecovered_Is409_NothingRan()
+    {
+        var context = CreateContext();
+
+        await CreateSut().HandleAsync(context, new Kaleido.Processor.Recovery.ProcessRecoveringException(Guid.NewGuid()), CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status409Conflict, context.Response.StatusCode);
+        Assert.Equal("pro_process_recovering", JsonDocument.Parse(ReadBody(context)).RootElement.GetProperty("errors")[0].GetProperty("code").GetString());
+    }
+
     [Fact]
     public async Task HandleAsync_WhenTheClientWentAway_WritesNothing()
     {

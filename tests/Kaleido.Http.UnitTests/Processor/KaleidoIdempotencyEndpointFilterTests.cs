@@ -440,6 +440,22 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
         Assert.Equal(LogLevel.Error, Assert.Single(Logs()).Level);
     }
 
+    // #537: a step that ran but whose outcome was not saved may have done its work: the key is kept as
+    // outcome unknown, never released for a second run. A process being recovered ran nothing: released.
+    [Fact]
+    public async Task AStepOutcomeNotSaved_MarksTheOutcomeUnknown_AndARecoveringProcess_ReleasesTheKey()
+    {
+        await Assert.ThrowsAsync<Kaleido.Processor.Recovery.StepOutcomeNotSavedException>(() => CreateSut().InvokeAsync(
+            Context("k1"),
+            _ => throw new Kaleido.Processor.Recovery.StepOutcomeNotSavedException(Guid.NewGuid(), "Close", Kaleido.Processor.Recovery.UnsavedOutcome.PendingRecovery, new TimeoutException())).AsTask());
+        await Assert.ThrowsAsync<Kaleido.Processor.Recovery.ProcessRecoveringException>(() => CreateSut().InvokeAsync(
+            Context("k2"),
+            _ => throw new Kaleido.Processor.Recovery.ProcessRecoveringException(Guid.NewGuid())).AsTask());
+
+        Assert.Equal(IdempotentResultState.OutcomeUnknown, Assert.Single(saved).State);
+        Assert.Equal("svc:name:alice:k2", Assert.Single(released).Key);
+    }
+
     // Finalization runs on CancellationToken.None: an OperationCanceledException of the store's own (a
     // timeout) is a failure like any other, logged - it used to escape (#517).
     [Fact]

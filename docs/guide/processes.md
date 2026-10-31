@@ -176,6 +176,19 @@ stateDiagram-v2
     Active --> BusinessFailure: Failure
 ```
 
+## When a step's outcome cannot be saved
+
+A handler does its work, then Kaleido saves the process. If that save fails (the store is down, a timeout), the step **ran**, but the process does not show it yet ([ADR 0034](../decisions/0034-unsaved-step-outcomes.md)):
+
+| The answer | What it means | What the caller does |
+|---|---|---|
+| `503` `pro_outcome_pending_recovery` | the outcome is kept and saved when the store is back | do not send the step again; read the state later |
+| `500` `pro_outcome_not_saved` | it could not be kept | do not send it again; the process must be reconciled |
+| `409` `pro_outcome_not_saved` | another request changed the process meanwhile | do not send it again; the process must be reconciled |
+| `409` `pro_process_recovering` | an earlier step's outcome is still being saved; nothing ran | try again shortly |
+
+Kaleido never runs the handler a second time on its own: until the outcome is saved, no step runs on the process. Kaleido cannot undo what the handler did outside it, so make those effects safe to see twice (an idempotency key from `context.ProcessId` and the step), or run them after the commit, from the step's event. Kaleido keeps unsaved outcomes in memory: a restart loses them, and every outcome that is not saved is logged at Critical with what to reconcile.
+
 ## Across processors
 
 <!-- snippet: processes-handoff -->

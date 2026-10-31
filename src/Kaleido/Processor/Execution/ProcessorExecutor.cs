@@ -1,6 +1,7 @@
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
+using Kaleido.Processor.Recovery;
 
 namespace Kaleido.Processor.Execution;
 
@@ -21,7 +22,8 @@ internal sealed class ProcessorExecutor(
     IProcessorEventFactory eventFactory,
     IKaleidoEventWriter eventWriter,
     IProcessorObservability observability,
-    IKaleidoCorrelationContextAccessor correlationAccessor)
+    IKaleidoCorrelationContextAccessor correlationAccessor,
+    IProcessorOutcomeRecovery outcomeRecovery)
     : IProcessorExecutor
 {
 
@@ -64,30 +66,14 @@ internal sealed class ProcessorExecutor(
         CancellationToken cancellationToken)
     {
         using var stepObservation = BeginStep(candidate);
+        (StepInvocationResult Result, ExecutionDecision Decision) invoked;
 
+        // The handler phase only: what fails here is the step; a failed save is not (#537, SaveStepAsync).
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var (result, decision) =
-                await InvokeAsync(candidate, run, context, cancellationToken);
-
-            // A rejection leaves the process exactly as it was: nothing is saved, the step is
-            // not completed, and no later candidate of this request runs.
-            if (decision.Type == ExecutionDecisionType.Rejected)
-            {
-                stepObservation.DecisionRecorded(decision.Type.ToString(), nameof(StepExecutionStatus.Rejected));
-                run.Outcomes.Add(CreateOutcome(candidate, result, decision, StepExecutionStatus.Rejected));
-
-                return (context, null);
-            }
-
-            // The handler has returned: its outcome is final. Saving it (state and step-completed
-            // event together) is not cancellable, so a cancellation that arrives now neither discards
-            // the completion nor makes a retry run the handler's side effects again.
-            context = await SaveStepAsync(candidate, result, decision, run, context, stepObservation);
-
-            return (context, GetNextCandidate(decision));
+            invoked = await InvokeAsync(candidate, run, context, cancellationToken);
         }
         // Only the caller's token is a cancellation (#517); any other OperationCanceledException fails below.
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -122,10 +108,36 @@ internal sealed class ProcessorExecutor(
                     ProcessorErrorCodes.FrameworkException,
                     $"An unexpected error occurred while executing step '{candidate.StepName}'.")), null);
         }
+
+        return await FinishAsync(candidate, invoked.Result, invoked.Decision, run, context, stepObservation);
     }
 
-    // A step that ran: applies its decision, records its outcome, and saves the state together with
-    // the step-completed event - both or neither, without the request's cancellation token.
+    // The handler has returned: a rejection leaves the process as it was (nothing is saved, and no later
+    // candidate runs); any other outcome is final and saved. The save is not cancellable, so a late
+    // cancellation neither discards the outcome nor makes a retry run the handler's side effects again.
+    private async Task<(ProcessorContext Context, StepCandidate? Next)> FinishAsync(
+        StepCandidate candidate,
+        StepInvocationResult result,
+        ExecutionDecision decision,
+        ExecutionRun run,
+        ProcessorContext context,
+        IProcessorStepObservation stepObservation)
+    {
+        if (decision.Type == ExecutionDecisionType.Rejected)
+        {
+            stepObservation.DecisionRecorded(decision.Type.ToString(), nameof(StepExecutionStatus.Rejected));
+            run.Outcomes.Add(CreateOutcome(candidate, result, decision, StepExecutionStatus.Rejected));
+
+            return (context, null);
+        }
+
+        context = await SaveStepAsync(candidate, result, decision, run, context, stepObservation);
+
+        return (context, GetNextCandidate(decision));
+    }
+
+    // A step that ran: applies its decision and saves the state together with the step-completed
+    // event - both or neither, without the request's cancellation token - then records the decision.
     private async Task<ProcessorContext> SaveStepAsync(
         StepCandidate candidate,
         StepInvocationResult result,
@@ -136,10 +148,31 @@ internal sealed class ProcessorExecutor(
     {
         context = stateUpdater.ApplyExecution(context, candidate, decision);
 
-        var outcome = Complete(candidate, result, decision, stepObservation);
-        var stepCompleted = eventFactory.CreateStepCompleted(correlationAccessor.Current, context, candidate, outcome, decision.Type, result);
+        var outcome = CreateOutcome(candidate, result, decision, decision.StepStatus);
+        var transitionEvent = eventWriter.Prepare(
+            eventFactory.CreateStepCompleted(correlationAccessor.Current, context, candidate, outcome, decision.Type, result));
+        var saveToken = CancellationToken.None;
 
-        context = await transition.SaveAsync(context, eventWriter.Prepare(stepCompleted), CancellationToken.None);
+        try
+        {
+            context = await transition.SaveAsync(context, transitionEvent, saveToken);
+        }
+        // The save is not cancellable, so no cancellation reaches the catch-all below (#517).
+        catch (OperationCanceledException) when (saveToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        // The handler ran, but its outcome was not saved (#537): kept for recovery when it can be,
+        // and answered so that the caller knows the step ran and does not send it again.
+        catch (Exception exception)
+        {
+            var unsaved = outcomeRecovery.Keep(context, transitionEvent, candidate.StepName, exception);
+            stepObservation.OutcomeUnsaved(unsaved, context, transitionEvent, exception);
+
+            throw new StepOutcomeNotSavedException(context.ProcessId, candidate.StepName, unsaved, exception);
+        }
+
+        RecordDecision(decision, stepObservation);
         run.Outcomes.Add(outcome);
 
         return context;
@@ -203,10 +236,8 @@ internal sealed class ProcessorExecutor(
         return (result, decision);
     }
 
-    // A step about to be saved: records the decision and builds the outcome.
-    private static ProcessExecutionOutcome Complete(
-        StepCandidate candidate,
-        StepInvocationResult result,
+    // A step whose outcome was saved: records its decision (never before the save, #537).
+    private static void RecordDecision(
         ExecutionDecision decision,
         IProcessorStepObservation stepObservation)
     {
@@ -219,12 +250,6 @@ internal sealed class ProcessorExecutor(
             stepObservation.InformationRequested(
                 informationRequest.InformationRequestId);
         }
-
-        return CreateOutcome(
-            candidate,
-            result,
-            decision,
-            decision.StepStatus);
     }
 
     // A failed step's state is saved even when the request was cancelled.

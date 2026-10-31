@@ -4,6 +4,7 @@ using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
+using Kaleido.Processor.Recovery;
 using Kaleido.Processor.Registry;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
@@ -928,7 +929,8 @@ public sealed class ProcessorExecutorTests
         Mock<IProcessorEventFactory>? eventFactory = null,
         Mock<IKaleidoEventWriter>? eventOutbox = null,
         Mock<IKaleidoCorrelationContextAccessor>? correlationAccessor = null,
-        Mock<IProcessorStepObservation>? stepObservation = null)
+        Mock<IProcessorStepObservation>? stepObservation = null,
+        Mock<IProcessorOutcomeRecovery>? outcomeRecovery = null)
     {
         var observedStep =
             stepObservation?.Object ?? Mock.Of<IProcessorStepObservation>();
@@ -952,7 +954,8 @@ public sealed class ProcessorExecutorTests
             (eventFactory ?? new Mock<IProcessorEventFactory>()).Object,
             (eventOutbox ?? new Mock<IKaleidoEventWriter>()).Object,
             observability,
-            accessor.Object);
+            accessor.Object,
+            (outcomeRecovery ?? new Mock<IProcessorOutcomeRecovery>()).Object);
     }
 
     private static Mock<IKaleidoCorrelationContextAccessor> CreateCorrelationAccessor()
@@ -1095,33 +1098,46 @@ public sealed class ProcessorExecutorTests
     {
     }
 
-    // A conflict is not a step failure: nothing was saved, so no failure state is saved over it and
-    // the conflict reaches the caller (409).
-    [Fact]
-    public async Task ExecuteAsync_WhenTheSaveConflicts_LetsTheConflictThroughWithoutSavingAFailure()
+    // #537: the handler ran, so a save that fails is not a step failure: no second save, the outcome is
+    // decided (kept, not kept, a conflict), observed on the step, and answered as not saved.
+    [Theory]
+    [InlineData(nameof(UnsavedOutcome.Conflict), true)]
+    [InlineData(nameof(UnsavedOutcome.PendingRecovery), false)]
+    [InlineData(nameof(UnsavedOutcome.NotSaved), false)]
+    public async Task ExecuteAsync_WhenTheSaveFailsAfterTheHandlerRan_ReportsTheOutcomeAsNotSaved_WithoutASecondSave(string outcomeName, bool conflict)
     {
-        var registration = CreateRegistration<TestStepA>("step-a");
-        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var unsaved = Enum.Parse<UnsavedOutcome>(outcomeName);
+        var candidate = CreateCandidate<TestStepA>("step-a", CreateRegistration<TestStepA>("step-a"));
         var context = CreateContext("step-a");
-
         var invoker = new Mock<IProcessStepInvoker>();
         invoker
-            .Setup(x => x.ExecuteAsync(
-                It.IsAny<ProcessStepRegistration>(),
-                It.IsAny<object>(),
-                It.IsAny<ProcessStepContext>(),
-                It.IsAny<CancellationToken>()))
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateInvokerResult());
-
-        var store = new Mock<IProcessorTransition>();
-        store
+        Exception failure = conflict ? new KaleidoConcurrencyException(context.ProcessId) : new TimeoutException("store down");
+        var transition = new Mock<IProcessorTransition>();
+        transition
             .Setup(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<KaleidoOutboxEvent?>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new KaleidoConcurrencyException(context.ProcessId));
+            .ThrowsAsync(failure);
+        var stepEvent = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = "e", Payload = "{}", OccurredUtc = DateTimeOffset.UnixEpoch };
+        var eventWriter = new Mock<IKaleidoEventWriter>();
+        eventWriter.Setup(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>>())).Returns(stepEvent);
+        var recovery = new Mock<IProcessorOutcomeRecovery>();
+        recovery.Setup(x => x.Keep(It.IsAny<ProcessorContext>(), stepEvent, "step-a", failure)).Returns(unsaved);
+        var stepObservation = new Mock<IProcessorStepObservation>();
 
-        await Assert.ThrowsAsync<KaleidoConcurrencyException>(() =>
-            CreateSut(invoker, transition: store).ExecuteAsync([candidate], context, TestContext.Current.CancellationToken));
+        var thrown = await Assert.ThrowsAsync<StepOutcomeNotSavedException>(() =>
+            CreateSut(invoker, transition: transition, eventOutbox: eventWriter, stepObservation: stepObservation, outcomeRecovery: recovery)
+                .ExecuteAsync([candidate], context, TestContext.Current.CancellationToken));
 
-        store.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<KaleidoOutboxEvent?>(), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(unsaved, thrown.Outcome);
+        Assert.Equal("step-a", thrown.StepName);
+        Assert.Same(failure, thrown.InnerException);
+        transition.Verify(x => x.SaveAsync(It.IsAny<ProcessorContext>(), It.IsAny<KaleidoOutboxEvent?>(), It.IsAny<CancellationToken>()), Times.Once);
+        stepObservation.Verify(x => x.OutcomeUnsaved(unsaved, It.Is<ProcessorContext>(x => x.ProcessId == context.ProcessId), stepEvent, failure), Times.Once);
+        stepObservation.Verify(x => x.StepFailed(It.IsAny<Exception>()), Times.Never);
+
+        // The decision is recorded only once the outcome is saved.
+        stepObservation.Verify(x => x.DecisionRecorded(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
