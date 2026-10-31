@@ -346,6 +346,31 @@ public sealed class AuthorizationEndpointTests(
             registry!.Processes.SelectMany(p => p.Steps!).Any(s => s.Name == AuthorizationStepNames.InternalStep));
     }
 
+    // #515: a principal without a name (a subject-only or client-credentials token) is authenticated all
+    // the same: its roles authorize it on the typed route, through generic execute and in discovery.
+    [Fact]
+    public async Task ANamelessAuthenticatedCaller_IsAuthorizedByItsRoles_OnEverySurface()
+    {
+        static HttpRequestMessage Nameless(HttpRequestMessage request)
+        {
+            request.Headers.Add(TestAuthHandler.NamelessHeader, "1");
+            request.Headers.Add(TestAuthHandler.SubjectHeader, "client-42");
+            return request;
+        }
+
+        var typed = await fixture.Client.SendAsync(Nameless(
+            AuthorizationAspNetCoreFixture.AuthenticatedJson(InternalStepExecuteUrl, StepBody, "client", "internal")));
+        var generic = await fixture.Client.SendAsync(Nameless(
+            AuthorizationAspNetCoreFixture.AuthenticatedJson(ExecuteUrl, ExecuteBody(AuthorizationStepNames.InternalStep), "client", "internal")));
+        var registry = await (await fixture.Client.SendAsync(Nameless(
+                AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, RegistryUrl, "client", "internal"))))
+            .Content.ReadAsync<AggregatedRegistryResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, typed.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, generic.StatusCode);
+        Assert.Contains(registry!.Processes.SelectMany(p => p.Steps!), s => s.Name == AuthorizationStepNames.InternalStep);
+    }
+
     // -- no case-level guardrails (ADR 0010): only the step's roles/policies --
 
     private async Task<Guid> CreateProcessAsync(

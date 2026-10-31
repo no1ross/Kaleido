@@ -65,6 +65,12 @@ generic execute (`POST /processes/execute`) and registry/MCP discovery (#433).
 A host that wants case-insensitive roles normalizes them in its own authentication (for example
 an `IClaimsTransformation`), so every surface sees the same values.
 
+**Who is authenticated.** A caller is authenticated when the host's authentication says so:
+the principal's `Identity.IsAuthenticated`, carried as `KaleidoCorrelationContext.CallerIsAuthenticated`. It is set
+by the transport, never from a header. A principal without a name - a subject-only token, a
+client-credentials token for a service - is authenticated all the same, and its roles count (#515). An
+unauthenticated principal is anonymous whatever claims it carries.
+
 ## Capability authorization
 
 ```csharp

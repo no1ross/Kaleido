@@ -373,6 +373,8 @@ Kaleido.Observability.KaleidoCorrelationContext.CallerActor.get -> string?
 Kaleido.Observability.KaleidoCorrelationContext.CallerActor.init -> void
 Kaleido.Observability.KaleidoCorrelationContext.CallerId.get -> string?
 Kaleido.Observability.KaleidoCorrelationContext.CallerId.init -> void
+Kaleido.Observability.KaleidoCorrelationContext.CallerIsAuthenticated.get -> bool
+Kaleido.Observability.KaleidoCorrelationContext.CallerIsAuthenticated.init -> void
 Kaleido.Observability.KaleidoCorrelationContext.CallerName.get -> string?
 Kaleido.Observability.KaleidoCorrelationContext.CallerName.init -> void
 Kaleido.Observability.KaleidoCorrelationContext.CallerRoles.get -> System.Collections.Generic.IReadOnlyCollection<string!>!

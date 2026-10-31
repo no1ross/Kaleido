@@ -6,7 +6,7 @@ namespace Kaleido.Authorization;
 /// <summary>
 /// Evaluates the <see cref="AuthorizationMetadata"/> declared on a step or
 /// query source against the caller fields on <see cref="KaleidoCorrelationContext"/>
-/// (<see cref="KaleidoCorrelationContext.CallerName"/> /
+/// (<see cref="KaleidoCorrelationContext.CallerIsAuthenticated"/> /
 /// <see cref="KaleidoCorrelationContext.CallerRoles"/> — populated by the
 /// transport from the authenticated principal, never headers). An
 /// <see cref="KaleidoAuthorizationException"/> is thrown on denial.
@@ -65,7 +65,7 @@ internal sealed partial class KaleidoAuthorizationEvaluator(
     : IKaleidoAuthorizationEvaluator
 {
     private static bool IsAuthenticated(KaleidoCorrelationContext caller) =>
-        caller.CallerName is not null;
+        caller.CallerIsAuthenticated;
 
     public bool IsEnforced =>
         serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.None;

@@ -32,7 +32,7 @@ internal static class KaleidoCallerContextHttpContextExtensions
     private const string SubjectClaimType = "sub";
 
     /// <summary>
-    /// Sets the caller (name, subject id and roles) on the request's <see cref="KaleidoCorrelationContext"/>
+    /// Sets the caller (name, subject id, authentication and roles) on the request's <see cref="KaleidoCorrelationContext"/>
     /// from the authenticated <c>HttpContext.User</c>. Kaleido's endpoints do this through
     /// <see cref="KaleidoCallerContextEndpointFilter"/>; in-host consumers reached through other
     /// endpoints (e.g. the registry service called by the MCP adapter) do it before authorizing.
@@ -82,7 +82,10 @@ internal static class KaleidoCallerContextHttpContextExtensions
                 CallerName = callerName,
                 CallerId = callerId,
                 CallerActor = callerActor,
-                CallerRoles = callerName is null ? [] : RolesOf(user),
+
+                // Authentication is the principal's, not the presence of a display name (#515).
+                CallerIsAuthenticated = authenticated,
+                CallerRoles = authenticated ? RolesOf(user) : [],
             });
     }
 

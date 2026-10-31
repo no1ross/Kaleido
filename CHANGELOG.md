@@ -280,6 +280,11 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **A caller without a name is authenticated all the same** (#515). Authorization read authentication from
+  the caller's display name, so a subject-only or client-credentials token got no roles and counted as
+  anonymous in discovery, generic execute and the typed-route checks. The transport now carries the
+  principal's `Identity.IsAuthenticated` as `KaleidoCorrelationContext.CallerIsAuthenticated` (new), roles are
+  read for any authenticated principal, and authorization uses the flag.
 - **The SQLite context store keeps a hand-off's target, recovers from a rolled-back transition, and tells a duplicate process apart without reading the error message** (#513):
   - The target is in its own `ProcessContexts.TargetProcessorName` column, so a hand-off (no required step) keeps it across a reload; `ProcessRequiredSteps.ProcessorName` is removed. **Schema change:** recreate a development `*-process.db`.
   - A rolled-back transition no longer leaves the `DbContext` tracking the process at the version it was not saved at, so the next save in the same scope is not a phantom 409.

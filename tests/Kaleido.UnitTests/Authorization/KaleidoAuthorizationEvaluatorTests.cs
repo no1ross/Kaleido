@@ -20,17 +20,34 @@ public sealed class KaleidoAuthorizationEvaluatorTests
             },
             logger ?? NullLogger<KaleidoAuthorizationEvaluator>.Instance);
 
+    // A named caller is an authenticated one here; the flag alone decides (see the nameless case).
     private static KaleidoCorrelationContext Caller(
         string? name = null,
         params string[] roles) =>
         new()
         {
             CallerName = name,
+            CallerIsAuthenticated = name is not null,
             CallerRoles = roles
         };
 
     private static readonly AuthorizationMetadata Anonymous =
         new(null, []) { AllowAnonymous = true };
+
+    // #515: authentication is the flag the transport sets from the principal, not a display name. A
+    // nameless authenticated caller (a subject-only token) is authorized by its roles; a named caller
+    // without the flag (a name read from anywhere else) is not authenticated.
+    [Theory]
+    [InlineData(null, true, true)]
+    [InlineData("alice", false, false)]
+    public async Task CanAccessAsync_AuthenticationIsTheFlag_NotTheName(string? name, bool authenticated, bool allowed)
+    {
+        var caller = new KaleidoCorrelationContext { CallerName = name, CallerId = "sub-42", CallerIsAuthenticated = authenticated, CallerRoles = ["clerk"] };
+
+        Assert.Equal(
+            allowed,
+            await CreateSut(KaleidoAuthorizationMode.ZeroTrust).CanAccessAsync(new AuthorizationMetadata(null, ["clerk"]), caller, policyEvaluator: null, TestContext.Current.CancellationToken));
+    }
 
     // -- IsEnforced ----------------------------------------------------------
 
