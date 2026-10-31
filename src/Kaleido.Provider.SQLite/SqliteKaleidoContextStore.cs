@@ -4,7 +4,6 @@ using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
 using Kaleido.Storage;
-using Kaleido.Provider.SQLite.Configuration;
 using Kaleido.Provider.SQLite.Entities;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -75,47 +74,26 @@ internal sealed partial class SqliteKaleidoContextStore(
             .StartActivity(SqliteTelemetry.SaveActivityName, ActivityKind.Internal);
         activity?.SetTag(KaleidoTelemetryTags.ProcessId, context.ProcessId.ToString());
 
+        // Inside a transition, the transaction SqliteKaleidoTransactions opened on this DbContext covers
+        // the save (and the outbox's rows), and its rollback forgets the tracked changes; on its own, the
+        // save opens one, and forgets them itself when it fails (#513).
+        var ownTransaction = dbContext.Database.CurrentTransaction is null;
+        var saved = false;
+
         try
         {
-            // Inside a transition, the transaction SqliteKaleidoTransactions opened on this DbContext
-            // covers the save (and the outbox's rows); on its own, the save opens one.
-            await using var transaction =
-                dbContext.Database.CurrentTransaction is null
-                    ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
-                    : null;
-
-            var entity = await LoadOrAddEntityAsync(context.ProcessId, cancellationToken);
-            var storedVersion = dbContext.Entry(entity).State == EntityState.Added ? 0 : entity.Version;
-
-            if (storedVersion != context.Version)
-            {
-                throw new KaleidoConcurrencyException(context.ProcessId);
-            }
-
-            entity.Version = context.Version + 1;
-            entity.LatestRequestId = context.LatestRequestId;
-            entity.CreatedByName = context.CreatedBy?.Name;
-            entity.CreatedById = context.CreatedBy?.Id;
-            entity.UpdatedByName = context.UpdatedBy?.Name;
-            entity.UpdatedById = context.UpdatedBy?.Id;
-            entity.State = context.State;
-            entity.CreatedUtc = context.CreatedUtc == default ? DateTimeOffset.UtcNow : context.CreatedUtc;
-            entity.UpdatedUtc = context.UpdatedUtc == default ? DateTimeOffset.UtcNow : context.UpdatedUtc;
-
-            SyncSteps(entity, context);
-            SyncAvailableSteps(entity, context);
-            SyncRequiredStep(entity, context, serviceOptions.ServiceName);
-
-            await SaveChangesAsync(context, cancellationToken);
+            await using var transaction = ownTransaction ? await dbContext.Database.BeginTransactionAsync(cancellationToken) : null;
+            var result = await SaveTrackedAsync(context, cancellationToken);
 
             if (transaction is not null)
             {
                 await transaction.CommitAsync(cancellationToken);
             }
 
+            saved = true;
             LogSaved(logger, context.ProcessId, context.Steps.Count);
 
-            return context with { Version = entity.Version };
+            return result;
         }
         // A conflict is not a store failure: the request lost the race and the caller rereads (409).
         catch (Exception exception) when (exception is not KaleidoConcurrencyException && (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested))
@@ -125,12 +103,73 @@ internal sealed partial class SqliteKaleidoContextStore(
             LogSaveFailed(logger, exception, context.ProcessId);
             throw;
         }
+        finally
+        {
+            if (ownTransaction && !saved)
+            {
+                dbContext.ChangeTracker.Clear();
+            }
+        }
     }
 
-    // Another instance saved the row since it was read (the version no longer matches), or created
-    // the same process at the same time (duplicate process key): either way this save lost the race.
-    // Any other failure of a first save (a duplicate outbox event, another constraint, a missing
-    // table) is a store failure, not a conflict.
+    // Applies the context to its tracked entity and writes it; the caller's transaction commits it.
+    private async Task<ProcessorContext> SaveTrackedAsync(
+        ProcessorContext context,
+        CancellationToken cancellationToken)
+    {
+        var entity = await LoadOrAddEntityAsync(context.ProcessId, cancellationToken);
+        var storedVersion = dbContext.Entry(entity).State == EntityState.Added ? 0 : entity.Version;
+
+        if (storedVersion != context.Version)
+        {
+            throw new KaleidoConcurrencyException(context.ProcessId);
+        }
+
+        entity.Version = context.Version + 1;
+        entity.LatestRequestId = context.LatestRequestId;
+        entity.CreatedByName = context.CreatedBy?.Name;
+        entity.CreatedById = context.CreatedBy?.Id;
+        entity.UpdatedByName = context.UpdatedBy?.Name;
+        entity.UpdatedById = context.UpdatedBy?.Id;
+        entity.State = context.State;
+        entity.TargetProcessorName = context.TargetProcessorName;
+        entity.CreatedUtc = context.CreatedUtc == default ? DateTimeOffset.UtcNow : context.CreatedUtc;
+        entity.UpdatedUtc = context.UpdatedUtc == default ? DateTimeOffset.UtcNow : context.UpdatedUtc;
+
+        // A new process's row is inserted on its own first: a primary-key violation of that statement
+        // can only be the process id, so a process created concurrently is told apart from any other
+        // failure without reading the message (#513).
+        if (dbContext.Entry(entity).State == EntityState.Added)
+        {
+            await InsertProcessAsync(context, cancellationToken);
+        }
+
+        SyncSteps(entity, context);
+        SyncAvailableSteps(entity, context);
+        SyncRequiredStep(entity, context);
+
+        await SaveChangesAsync(context, cancellationToken);
+
+        return context with { Version = entity.Version };
+    }
+
+    private async Task InsertProcessAsync(ProcessorContext context, CancellationToken cancellationToken)
+    {
+        const int SqliteConstraintPrimaryKey = 1555;
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is SqliteException { SqliteExtendedErrorCode: SqliteConstraintPrimaryKey })
+        {
+            throw new KaleidoConcurrencyException(context.ProcessId, exception);
+        }
+    }
+
+    // Another instance saved the row since it was read (the version no longer matches): this save lost
+    // the race. Any other failure (a duplicate outbox event, another constraint, a missing table) is a
+    // store failure, not a conflict.
     private async Task SaveChangesAsync(ProcessorContext context, CancellationToken cancellationToken)
     {
         try
@@ -141,21 +180,6 @@ internal sealed partial class SqliteKaleidoContextStore(
         {
             throw new KaleidoConcurrencyException(context.ProcessId, exception);
         }
-        catch (DbUpdateException exception) when (context.Version == 0 && IsDuplicateProcess(exception))
-        {
-            throw new KaleidoConcurrencyException(context.ProcessId, exception);
-        }
-    }
-
-    // SQLite names the violated key in the message: "UNIQUE constraint failed: ProcessContexts.ProcessId".
-    private static bool IsDuplicateProcess(DbUpdateException exception)
-    {
-        const int SqliteConstraintPrimaryKey = 1555;
-        const int SqliteConstraintUnique = 2067;
-
-        return exception.InnerException is SqliteException sqlite
-            && sqlite.SqliteExtendedErrorCode is SqliteConstraintPrimaryKey or SqliteConstraintUnique
-            && sqlite.Message.Contains($" {ProcessorContextEntityConfiguration.TableName}.", StringComparison.Ordinal);
     }
 
     // The tracked entity with its children, or a new one added to the context.
@@ -275,8 +299,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 
     private static void SyncRequiredStep(
         ProcessorContextEntity entity,
-        ProcessorContext context,
-        string localProcessorName)
+        ProcessorContext context)
     {
         if (context.RequiredStep is null)
         {
@@ -288,11 +311,6 @@ internal sealed partial class SqliteKaleidoContextStore(
             return;
         }
 
-        // Store the target processor name when cross-processor,
-        // otherwise store the local processor name for backwards compatibility.
-        var processorName =
-            context.TargetProcessorName ?? localProcessorName;
-
         var informationRequestJson =
             context.RequiredInformationRequest is null
                 ? null
@@ -300,7 +318,6 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         if (entity.RequiredStep is not null)
         {
-            entity.RequiredStep.ProcessorName = processorName;
             entity.RequiredStep.StepName = context.RequiredStep;
             entity.RequiredStep.InformationRequestJson = informationRequestJson;
             return;
@@ -309,7 +326,6 @@ internal sealed partial class SqliteKaleidoContextStore(
         entity.RequiredStep = new ProcessorRequiredStepEntity
         {
             ProcessId = context.ProcessId,
-            ProcessorName = processorName,
             StepName = context.RequiredStep,
             InformationRequestJson = informationRequestJson,
         };
@@ -338,18 +354,7 @@ internal sealed partial class SqliteKaleidoContextStore(
                 entity.RequiredStep?.InformationRequestJson is { } json
                     ? JsonSerializer.Deserialize<InformationRequest>(json, JsonOptions)
                     : null,
-
-            // When the stored processor name differs from the local processor,
-            // this was a cross-processor handoff — surface it as TargetProcessorName.
-            TargetProcessorName =
-                entity.RequiredStep is null
-                    ? null
-                    : string.Equals(
-                        entity.RequiredStep.ProcessorName,
-                        localProcessorName,
-                        StringComparison.OrdinalIgnoreCase)
-                        ? null
-                        : entity.RequiredStep.ProcessorName,
+            TargetProcessorName = entity.TargetProcessorName,
 
             CreatedUtc = entity.CreatedUtc,
             UpdatedUtc = entity.UpdatedUtc,

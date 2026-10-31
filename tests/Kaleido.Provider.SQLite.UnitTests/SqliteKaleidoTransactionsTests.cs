@@ -75,4 +75,29 @@ public sealed class SqliteKaleidoTransactionsTests
         Assert.Equal(0, await CommittedRowsAsync());
         Assert.Null(db.Database.CurrentTransaction);
     }
+
+    // The rollback also forgets what the context tracked in it: an entity left at its rolled-back values
+    // would make a later save in the same scope a phantom conflict (#513).
+    [Fact]
+    public async Task DisposeAsync_WithoutACommit_ForgetsTheTrackedChanges_AndACommitKeepsThem()
+    {
+        await using var db = CreateDbContext();
+
+        await using (await CreateSut(db).BeginAsync(TestContext.Current.CancellationToken))
+        {
+            db.OutboxEvents.Add(new Entities.OutboxEventEntity { EventId = Guid.NewGuid(), EventType = "test", Payload = "payload" });
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        Assert.Empty(db.ChangeTracker.Entries());
+
+        await using (var transaction = await CreateSut(db).BeginAsync(TestContext.Current.CancellationToken))
+        {
+            db.OutboxEvents.Add(new Entities.OutboxEventEntity { EventId = Guid.NewGuid(), EventType = "test", Payload = "payload" });
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            await transaction.CommitAsync(TestContext.Current.CancellationToken);
+        }
+
+        Assert.Single(db.ChangeTracker.Entries());
+    }
 }

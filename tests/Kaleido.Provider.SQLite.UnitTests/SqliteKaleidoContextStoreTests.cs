@@ -86,6 +86,8 @@ public sealed class SqliteKaleidoContextStoreTests
         }
     }
 
+    // A process with a required step of its own processor (no target: a target comes with a hand-off or
+    // a cross-processor required step, see Continuations).
     private static ProcessorContext CreateContext(
         Guid processId,
         ProcessExecutionState state = ProcessExecutionState.Active) =>
@@ -96,7 +98,6 @@ public sealed class SqliteKaleidoContextStoreTests
             LatestRequestId = "req-1",
             State = state,
             RequiredStep = "NextStep",
-            TargetProcessorName = "target-svc",
             AvailableSteps = ["StepA", "StepB"],
             Steps =
             [
@@ -164,6 +165,50 @@ public sealed class SqliteKaleidoContextStoreTests
         Assert.Equal(expected.UpdatedUtc, loaded.UpdatedUtc);
         Assert.Equal(Alice, loaded.CreatedBy);
         Assert.Equal(SubjectOnly, loaded.UpdatedBy);
+    }
+
+    // The continuations the runtime saves (#513): a hand-off has a target and no required step; a
+    // cross-processor required step has both; a hand-back clears the target. Each survives a reload.
+    public static TheoryData<ProcessExecutionState, string?, string?> Continuations() =>
+        new()
+        {
+            { ProcessExecutionState.HandOff, null, "radiology" },
+            { ProcessExecutionState.AwaitingRequiredStep, "CaptureScan", "radiology" },
+            { ProcessExecutionState.AwaitingRequiredStep, "NextStep", null },
+            { ProcessExecutionState.Active, null, null },
+        };
+
+    [Theory]
+    [MemberData(nameof(Continuations))]
+    public async Task SaveAsync_ThenLoadAsync_RoundTripsTheContinuation(ProcessExecutionState state, string? requiredStep, string? target)
+    {
+        using var dbContext = CreateDbContext();
+        var context = CreateContext(Guid.NewGuid(), state) with { RequiredStep = requiredStep, TargetProcessorName = target, AvailableSteps = [] };
+
+        await CreateSut(dbContext).SaveAsync(context, TestContext.Current.CancellationToken);
+        dbContext.ChangeTracker.Clear();
+        var loaded = await CreateSut(dbContext).LoadAsync(context.ProcessId, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(state, loaded.State);
+        Assert.Equal(requiredStep, loaded.RequiredStep);
+        Assert.Equal(target, loaded.TargetProcessorName);
+    }
+
+    // A hand-back clears the target, and the cleared target is saved (#512, #513).
+    [Fact]
+    public async Task SaveAsync_AHandBack_ClearsTheStoredTarget()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var handedOff = await sut.SaveAsync(CreateContext(Guid.NewGuid(), ProcessExecutionState.HandOff) with { RequiredStep = null, TargetProcessorName = "radiology", AvailableSteps = [] }, TestContext.Current.CancellationToken);
+
+        await sut.SaveAsync(handedOff with { State = ProcessExecutionState.Active, TargetProcessorName = null }, TestContext.Current.CancellationToken);
+        dbContext.ChangeTracker.Clear();
+
+        var loaded = await sut.LoadAsync(handedOff.ProcessId, TestContext.Current.CancellationToken);
+        Assert.Equal(ProcessExecutionState.Active, loaded?.State);
+        Assert.Null(loaded?.TargetProcessorName);
     }
 
     [Fact]
@@ -532,6 +577,39 @@ public sealed class SqliteKaleidoContextStoreTests
         Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
         dbContext.ChangeTracker.Clear();
         Assert.Null(await sut.LoadAsync(newProcess.ProcessId, TestContext.Current.CancellationToken));
+    }
+
+    // Which key was violated is asked of the database, not read from the message (#513): another unique
+    // key of the process table is a store failure. (The message names "ProcessContexts." here too, which
+    // the earlier message check read as a duplicate process.)
+    [Fact]
+    public async Task SaveAsync_ANewProcessViolatingAnotherUniqueKey_IsAFailureNotAConflict()
+    {
+        using var dbContext = CreateDbContext();
+        await dbContext.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX test_unique_request ON ProcessContexts (LatestRequestId);", TestContext.Current.CancellationToken);
+        var sut = CreateSut(dbContext);
+        await sut.SaveAsync(CreateContext(Guid.NewGuid()), TestContext.Current.CancellationToken);
+
+        var exception = await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(CreateContext(Guid.NewGuid()), TestContext.Current.CancellationToken));
+
+        Assert.IsNotType<Kaleido.Exceptions.KaleidoConcurrencyException>(exception);
+    }
+
+    // A save on its own (no transition) that fails forgets what it tracked, so the next save of the same
+    // process is not refused as a conflict (#513).
+    [Fact]
+    public async Task SaveAsync_AFailedUpdateOnItsOwn_DoesNotMakeTheNextSaveAConflict()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var saved = await sut.SaveAsync(CreateContext(Guid.NewGuid()), TestContext.Current.CancellationToken);
+        await RejectAsync(dbContext, "UPDATE");
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => sut.SaveAsync(saved with { LatestRequestId = "req-2" }, TestContext.Current.CancellationToken));
+        await dbContext.Database.ExecuteSqlRawAsync("DROP TRIGGER reject_UPDATE;", TestContext.Current.CancellationToken);
+
+        var next = await sut.SaveAsync(saved with { LatestRequestId = "req-3" }, TestContext.Current.CancellationToken);
+        Assert.Equal(saved.Version + 1, next.Version);
     }
 
     [Fact]

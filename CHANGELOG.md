@@ -259,6 +259,10 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **The SQLite context store keeps a hand-off's target, recovers from a rolled-back transition, and tells a duplicate process apart without reading the error message** (#513):
+  - The target is in its own `ProcessContexts.TargetProcessorName` column, so a hand-off (no required step) keeps it across a reload; `ProcessRequiredSteps.ProcessorName` is removed. **Schema change:** recreate a development `*-process.db`.
+  - A rolled-back transition no longer leaves the `DbContext` tracking the process at the version it was not saved at, so the next save in the same scope is not a phantom 409.
+  - A new process's row is inserted on its own: a primary-key violation there is a concurrent creation (409); any other constraint failure is a store failure (it was a 409 whenever the message named the table).
 - **A step handler's or query source's scope is disposed asynchronously** (#523): a scoped dependency
   that implements only `IAsyncDisposable` (an async client, a pooled context) made the synchronous
   disposal throw after the handler or source had run. It is now disposed on success, failure and
