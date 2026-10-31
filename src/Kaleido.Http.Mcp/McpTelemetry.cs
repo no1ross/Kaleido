@@ -35,8 +35,13 @@ internal static class McpTelemetry
     /// <summary>Registry reads, by result: <c>hit</c> (the caller's registry revision was already translated into tools) or <c>fetched</c> (translated now).</summary>
     public const string RegistryReadsCounterName = "kaleido.mcp.registry_reads";
 
-    /// <summary>Guided-lookup states refused on a form retry, by reason (#452): <c>unknown_key</c> (the instances do not share a Data Protection key ring), <c>expired</c>, <c>another_caller</c> or <c>invalid</c>.</summary>
-    public const string LookupStatesRefusedCounterName = "kaleido.mcp.lookup_states_refused";
+    /// <summary>
+    /// States handed to the MCP client and refused when they came back (#452, #516), by kind
+    /// (<c>lookup</c>, <c>continuation</c>, <c>answers</c>, <c>confirmation</c>) and reason:
+    /// <c>unknown_key</c> (the instances do not share a Data Protection key ring), <c>expired</c>,
+    /// <c>another_caller</c> or <c>invalid</c>.
+    /// </summary>
+    public const string StatesRefusedCounterName = "kaleido.mcp.states_refused";
 
     // ── Tag names ────────────────────────────────────────────────────────────
 
@@ -63,8 +68,11 @@ internal static class McpTelemetry
 
     public const string TagRegistryPartial = "kaleido.mcp.registry.partial";
 
-    /// <summary>Why a guided-lookup state was refused; see <see cref="LookupStatesRefusedCounterName"/>.</summary>
-    public const string TagLookupStateRefusal = "kaleido.mcp.lookup_state.refusal";
+    /// <summary>Why a state was refused; see <see cref="StatesRefusedCounterName"/>.</summary>
+    public const string TagStateRefusal = "kaleido.mcp.state.refusal";
+
+    /// <summary>The kind of a refused state; see <see cref="StatesRefusedCounterName"/>.</summary>
+    public const string TagStateKind = "kaleido.mcp.state.kind";
 
     // ── Tag values ───────────────────────────────────────────────────────────
 
@@ -80,11 +88,19 @@ internal static class McpTelemetry
 
     public const string RegistryFetched = "fetched";
 
-    public const string LookupStateUnknownKey = "unknown_key";
+    public const string StateUnknownKey = "unknown_key";
 
-    public const string LookupStateExpired = "expired";
+    public const string StateExpired = "expired";
 
-    public const string LookupStateAnotherCaller = "another_caller";
+    public const string StateAnotherCaller = "another_caller";
 
-    public const string LookupStateInvalid = "invalid";
+    public const string StateInvalid = "invalid";
+
+    public const string StateKindLookup = "lookup";
+
+    public const string StateKindContinuation = "continuation";
+
+    public const string StateKindAnswers = "answers";
+
+    public const string StateKindConfirmation = "confirmation";
 }

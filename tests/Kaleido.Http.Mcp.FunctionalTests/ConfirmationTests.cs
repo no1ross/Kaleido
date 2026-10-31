@@ -115,6 +115,25 @@ public sealed class ConfirmationTests(ConfirmationFixture fixture)
         Assert.Equal("clinic_close_visit", await RequiredToolAsync(processId));
     }
 
+    // #516: the confirmation state the client carries is protected. A client that sends back its own
+    // state - here the same step with another note, readable and unsigned - is refused, and nothing runs.
+    [Fact]
+    public async Task AForgedConfirmationState_IsRefused_AndNothingRuns()
+    {
+        var processId = await VisitReadyToCloseAsync();
+        var forged = LookupStateRewriter.ConfirmationPrefix + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(new { tool = "clinic_close_visit", processId, arguments = """{"processId":"PID","note":"Not what the user saw."}""".Replace("PID", processId, StringComparison.Ordinal) })));
+        var states = new LookupStateRewriter(_ => forged, LookupStateRewriter.ConfirmationPrefix);
+        await using var client = await fixture.ConnectAsync(Nurse, User([], "accept", confirm: true), protocolVersion: Mrtr, outgoing: states);
+
+        var result = await CloseAsync(client, processId);
+
+        Assert.True(result.IsError);
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(result)["code"]?.GetValue<string>());
+        Assert.Single(states.Seen);
+        Assert.Equal("clinic_close_visit", await RequiredToolAsync(processId));
+    }
+
     [Fact]
     public async Task AClientWithoutForms_IsRefused_AndNothingRuns()
     {

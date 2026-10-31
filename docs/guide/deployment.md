@@ -30,14 +30,14 @@ flowchart LR
 | A retried call on another instance | the idempotency record is in the shared store, so the retry is answered from it |
 | Every instance runs the event relay | events are **claimed with a lease**: one instance publishes each; a crashed instance's claims expire and are taken over (at least once) |
 | In-memory stores | each instance sees only its own processes and events: **not** for several instances |
-| A guided-lookup form (MCP) answered on another instance | the form's state is protected with ASP.NET Data Protection: the instances must share one key ring ([below](#mcp-on-several-instances-one-key-ring)), or the form is refused and the user searches again |
+| An MCP form (a guided lookup, an answers or confirmation form) or an `answersToken` answered on another instance | the state is protected with ASP.NET Data Protection: the instances must share one key ring ([below](#mcp-on-several-instances-one-key-ring)), or the form is refused and the user searches again |
 | Registry snapshots on several router replicas | each replica keeps its own snapshot by default (correct, with one round of downstream checks per replica); `AddDistributedRegistrySnapshots()` shares them through the host's `IDistributedCache`, and an unreachable cache never fails a registry read ([Http README](../../src/Kaleido.Http/README.md#shared-snapshots-across-replicas)) |
 
 ### MCP on several instances: one key ring
 
 When the MCP adapter asks the user to search for a record and pick it (a guided lookup with forms),
 the search results travel to the client and back between the forms, encrypted and signed with ASP.NET
-Data Protection ([MCP README](../../src/Kaleido.Http.Mcp/README.md#lookups)). The answer to a form can
+Data Protection; so do the state of every answers or confirmation form and the `answersToken` (#516) ([MCP README](../../src/Kaleido.Http.Mcp/README.md#lookups)). The answer to a form can
 reach another instance than the one that showed it, so every instance needs the same keys - the same
 **application name** and the same **key storage**:
 
@@ -58,8 +58,8 @@ services.AddDataProtection()
 - **How you know it is wrong:** outside Development, a host that configured no key storage logs a
   Warning at startup ("no Data Protection key storage is configured"). When a form is answered on an
   instance that lacks its key, that instance logs a Warning ("the MCP instances ... do not share one
-  key ring"), counts it in `kaleido.mcp.lookup_states_refused` with reason `unknown_key`, and tells
-  the user to search again. Nothing runs.
+  key ring"), counts it in `kaleido.mcp.states_refused` with reason `unknown_key` and the state's kind,
+  and tells the user to start again. Nothing runs.
 
 ## The database schema
 
@@ -105,7 +105,7 @@ kaleido.AddOpenTelemetry();   // export target under Kaleido:OpenTelemetry in co
 | `Kaleido.Processor` | `kaleido.processor.execution_failures`, `kaleido.processor.step_failures`, `kaleido.processor.execution.duration` |
 | `Kaleido.Queryable` | `kaleido.queryable.execution_failures`, `kaleido.queryable.execution.duration` |
 | `Kaleido.Events` | `kaleido.events.failed` (publishing retries), `kaleido.events.parked` (gave up: needs a person), `kaleido.events.enqueue_failures` (events lost) |
-| `Kaleido.Http.Mcp` | `kaleido.mcp.tool_calls` by outcome, `kaleido.mcp.tool_call.duration`, `kaleido.mcp.lookup_states_refused` by reason (`unknown_key`: the instances do not share a key ring) |
+| `Kaleido.Http.Mcp` | `kaleido.mcp.tool_calls` by outcome, `kaleido.mcp.tool_call.duration`, `kaleido.mcp.states_refused` by kind and reason (`unknown_key`: the instances do not share a key ring) |
 
 Logs follow one rule: Information is a few lines per request; caller errors (400, 401, 403, 409) are
 Warnings, logged once; Errors are failures of the service. Every log, span and event carries the

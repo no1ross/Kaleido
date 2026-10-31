@@ -27,8 +27,7 @@ public sealed class KaleidoToolInvokerTests
     };
     private readonly Mock<IKaleidoQueryableClient> clinicQueries = new();
     private readonly Mock<IInformationRequestElicitor> elicitor = new();
-    private readonly Mock<IMcpLookupStateProtector> lookupState = new();
-    private bool refuseLookupStates;
+    private readonly PlainStates states = new();
     private readonly Mock<IKaleidoProcessForwarding> processForwarding = new();
     private readonly List<Guid?> forwardedProcessIds = [];
     private readonly Mock<McpServer> server = new();
@@ -149,28 +148,36 @@ public sealed class KaleidoToolInvokerTests
             .Callback((Guid? id) => forwardedProcessIds.Add(id))
             .Returns(Mock.Of<IDisposable>());
 
-        // Protection is McpLookupStateProtector's to test (#452); here a state round-trips as plain JSON,
-        // so tests can read and change it, and refuseLookupStates makes the protector refuse it.
-        lookupState.Setup(x => x.Protect(It.IsAny<McpLookupState>()))
-            .Returns((McpLookupState state) => McpLookupStateProtector.Prefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options)));
-        lookupState.Setup(x => x.Unprotect(It.IsAny<string?>()))
-            .Returns((string? value) => refuseLookupStates ? null : PlainLookupState(value));
     }
 
-    private static McpLookupState? PlainLookupState(string? value)
+    // Protection is McpStateProtector's to test (#452, #516); here a state round-trips as plain JSON
+    // under its kind's prefix, so tests can read and change it, and Refused makes a kind refused.
+    private sealed class PlainStates : IMcpStateProtector
     {
-        if (value?.StartsWith(McpLookupStateProtector.Prefix, StringComparison.Ordinal) != true)
-        {
-            return null;
-        }
+        public HashSet<McpStateKind> Refused { get; } = [];
 
-        try
+        public string Protect<T>(McpStateKind kind, T state)
+            where T : class =>
+            McpStateProtector.Prefix(kind) + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(state, KaleidoJsonOptions.Options));
+
+        public T? Unprotect<T>(McpStateKind kind, string? value)
+            where T : class
         {
-            return JsonSerializer.Deserialize<McpLookupState>(Convert.FromBase64String(value[McpLookupStateProtector.Prefix.Length..]), KaleidoJsonOptions.Options);
-        }
-        catch (Exception exception) when (exception is FormatException or JsonException)
-        {
-            return null;
+            var prefix = McpStateProtector.Prefix(kind);
+
+            if (Refused.Contains(kind) || value?.StartsWith(prefix, StringComparison.Ordinal) != true)
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<T>(Convert.FromBase64String(value[prefix.Length..]), KaleidoJsonOptions.Options);
+            }
+            catch (Exception exception) when (exception is FormatException or JsonException)
+            {
+                return null;
+            }
         }
     }
 
@@ -180,7 +187,7 @@ public sealed class KaleidoToolInvokerTests
             queryables.Object,
             processForwarding.Object,
             elicitor.Object,
-            lookupState.Object,
+            states,
             new KaleidoMcpOptions
             {
                 Instructions = "test",
@@ -850,7 +857,7 @@ public sealed class KaleidoToolInvokerTests
         Assert.Null(outcome.Result);
         var inputRequired = Assert.IsType<InputRequiredResult>(outcome.InputRequired);
         Assert.Equal("Visit intake", Assert.Single(inputRequired.InputRequests!).Value.ElicitationParams?.Message);
-        Assert.StartsWith("kaleido-mcp:", inputRequired.RequestState, StringComparison.Ordinal);
+        Assert.StartsWith("kaleido-mcp-state:", inputRequired.RequestState, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1072,7 +1079,7 @@ public sealed class KaleidoToolInvokerTests
         LookupForms();
         var searchState = (await CreateSut().InvokeAsync(PickPatient, Call(new { processId = ProcessId }), LookupCatalog, Cancel)).InputRequired?.RequestState
             ?? throw new Xunit.Sdk.XunitException("No state.");
-        refuseLookupStates = true;
+        states.Refused.Add(McpStateKind.Lookup);
 
         var outcome = Body(await CreateSut().InvokeAsync(PickPatient, Call(requestState: searchState, inputResponses: LookupAnswered()), LookupCatalog, Cancel));
 
@@ -1235,7 +1242,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AnUnreadableContinuationState_IsAnArgumentError()
     {
-        var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: "kaleido-mcp:%%%"), Catalog, Cancel);
+        var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: "kaleido-mcp-state:%%%"), Catalog, Cancel);
 
         Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
     }
@@ -1942,6 +1949,37 @@ public sealed class KaleidoToolInvokerTests
         Assert.Empty(posts);
     }
 
+    // #516: a confirmation or answers-form state the protector refuses (forged, expired, another
+    // caller's, or protected with a key this instance lacks) runs nothing, whatever the form's answer.
+    [Fact]
+    public async Task Confirmation_WithMrtr_AStateTheProtectorRefuses_RunsNothing()
+    {
+        var state = await ConfirmationStateAsync();
+        states.Refused.Add(McpStateKind.Confirmation);
+
+        var outcome = await CreateSut(requireConfirmation: true).InvokeAsync(
+            Discharge, Call(requestState: state, inputResponses: Confirmed(Confirmation("accept", confirm: true))), ConfirmCatalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(posts);
+    }
+
+    [Fact]
+    public async Task Questions_WithMrtr_AnAnswersFormStateTheProtectorRefuses_SubmitsNothing()
+    {
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+        StepReturns(StepResponse(required: QuestionsRequired));
+        var state = (await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel)).InputRequired?.RequestState;
+        posts.Clear();
+        states.Refused.Add(McpStateKind.Continuation);
+
+        var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(posts);
+    }
+
     // A step with no display name, no declared effects and no inputs: the form names the tool.
     [Fact]
     public async Task Confirmation_ForAnUntitledStepWithoutInputs_NamesTheTool()
@@ -2141,7 +2179,7 @@ public sealed class KaleidoToolInvokerTests
 
         var outcome = await CreateSut().InvokeAsync(Start, call, Catalog, Cancel);
 
-        Assert.StartsWith("kaleido-mcp:", outcome.InputRequired?.RequestState, StringComparison.Ordinal);
+        Assert.StartsWith("kaleido-mcp-state:", outcome.InputRequired?.RequestState, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -2179,7 +2217,7 @@ public sealed class KaleidoToolInvokerTests
         var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel);
 
         var next = outcome.InputRequired?.RequestState ?? throw new Xunit.Sdk.XunitException("No next round.");
-        var decoded = JsonNode.Parse(Decode(next, "kaleido-mcp:"));
+        var decoded = JsonNode.Parse(Decode(next, "kaleido-mcp-state:"));
         Assert.Equal("follow-up", decoded?["informationRequestId"]?.GetValue<string>());
         Assert.Equal(1, decoded?["round"]?.GetValue<int>());
         Assert.Equal(["visit-intake"], decoded?["answered"]?.AsArray().Select(x => x?.GetValue<string>()));
@@ -2377,7 +2415,7 @@ public sealed class KaleidoToolInvokerTests
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
-        Assert.StartsWith("kaleido-answers:", body["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.StartsWith("kaleido-mcp-answers:", body["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>(), StringComparison.Ordinal);
         Assert.Contains("answersToken unchanged", body["next"]?["instruction"]?.GetValue<string>(), StringComparison.Ordinal);
     }
 
@@ -2438,8 +2476,8 @@ public sealed class KaleidoToolInvokerTests
         var first = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
         var token = first["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
         var changed = kind == "unreadable"
-            ? "kaleido-answers:%%%"
-            : Recode(token, "kaleido-answers:", json => json["informationRequestId"] = "another");
+            ? "kaleido-mcp-answers:%%%"
+            : Recode(token, "kaleido-mcp-answers:", json => json["informationRequestId"] = "another");
 
         await CreateSut().InvokeAsync(Answer, AnswerCall("reason", "Chest pain", changed), Catalog, Cancel);
 
@@ -2477,8 +2515,8 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AContinuationStateThatIsNotItsShape_IsAnArgumentError()
     {
-        var notJson = "kaleido-mcp:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("not json"));
-        var nullState = "kaleido-mcp:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("null"));
+        var notJson = "kaleido-mcp-state:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("not json"));
+        var nullState = "kaleido-mcp-state:" + Convert.ToBase64String(Encoding.UTF8.GetBytes("null"));
 
         Assert.Equal(McpErrorCodes.InvalidArguments, Body(await CreateSut().InvokeAsync(Start, Call(requestState: notJson), Catalog, Cancel))["code"]?.GetValue<string>());
         Assert.Equal(McpErrorCodes.InvalidArguments, Body(await CreateSut().InvokeAsync(Start, Call(requestState: nullState), Catalog, Cancel))["code"]?.GetValue<string>());

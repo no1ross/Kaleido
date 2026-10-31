@@ -221,65 +221,67 @@ public sealed class McpObservabilityTests
     // #452: a lookup state signed with a key this instance lacks is a deployment problem: a Warning that
     // names the key and the fix, and a count by reason.
     [Fact]
-    public void ALookupStateRefusedForAnUnknownKey_WarnsWithTheFix_AndIsCounted()
+    public void AStateRefusedForAnUnknownKey_WarnsWithTheFix_AndIsCounted()
     {
         var logger = new RecordingLogger();
         var keyId = Guid.NewGuid();
 
-        CreateSut(logger).LookupStateRefused(McpTelemetry.LookupStateUnknownKey, keyId);
+        CreateSut(logger).StateRefused(McpTelemetry.StateKindLookup, McpTelemetry.StateUnknownKey, keyId);
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(LogLevel.Warning, entry.Level);
         Assert.Contains(keyId.ToString(), entry.Message, StringComparison.Ordinal);
         Assert.Contains("do not share one key ring", entry.Message, StringComparison.Ordinal);
         Assert.Contains(measurements, x =>
-            x.Instrument == McpTelemetry.LookupStatesRefusedCounterName &&
-            Equals(x.Tags[McpTelemetry.TagLookupStateRefusal], McpTelemetry.LookupStateUnknownKey));
+            x.Instrument == McpTelemetry.StatesRefusedCounterName &&
+            Equals(x.Tags[McpTelemetry.TagStateRefusal], McpTelemetry.StateUnknownKey) &&
+            Equals(x.Tags[McpTelemetry.TagStateKind], McpTelemetry.StateKindLookup));
     }
 
     // A refusal inside a tool call tags the call's span with the reason.
     [Fact]
-    public void ALookupStateRefusedDuringAToolCall_TagsTheSpanWithTheReason()
+    public void AStateRefusedDuringAToolCall_TagsTheSpanWithTheReason()
     {
         using (var call = CreateSut().BeginToolCall("clinic_assign_bed"))
         {
-            CreateSut().LookupStateRefused(McpTelemetry.LookupStateExpired, keyId: null);
+            CreateSut().StateRefused(McpTelemetry.StateKindAnswers, McpTelemetry.StateExpired, keyId: null);
             call.Completed(Result("""{"code":"mcp_invalid_arguments"}""", isError: true));
         }
 
-        Assert.Equal(McpTelemetry.LookupStateExpired, Span(McpTelemetry.ToolCallActivityName).GetTagItem(McpTelemetry.TagLookupStateRefusal));
+        Assert.Equal(McpTelemetry.StateExpired, Span(McpTelemetry.ToolCallActivityName).GetTagItem(McpTelemetry.TagStateRefusal));
+        Assert.Equal(McpTelemetry.StateKindAnswers, Span(McpTelemetry.ToolCallActivityName).GetTagItem(McpTelemetry.TagStateKind));
     }
 
     // Outside any span (no Activity.Current) the refusal is still counted and logged.
     [Fact]
-    public void ALookupStateRefusedOutsideASpan_IsStillCountedAndLogged()
+    public void AStateRefusedOutsideASpan_IsStillCountedAndLogged()
     {
         var logger = new RecordingLogger();
         Activity.Current = null;
 
-        CreateSut(logger).LookupStateRefused(McpTelemetry.LookupStateInvalid, keyId: null);
+        CreateSut(logger).StateRefused(McpTelemetry.StateKindContinuation, McpTelemetry.StateInvalid, keyId: null);
 
         Assert.Single(logger.Entries);
         Assert.Contains(measurements, x =>
-            x.Instrument == McpTelemetry.LookupStatesRefusedCounterName &&
-            Equals(x.Tags[McpTelemetry.TagLookupStateRefusal], McpTelemetry.LookupStateInvalid));
+            x.Instrument == McpTelemetry.StatesRefusedCounterName &&
+            Equals(x.Tags[McpTelemetry.TagStateRefusal], McpTelemetry.StateInvalid));
     }
 
     // The other reasons are the client's (a changed, expired or foreign state): Debug, and counted.
     [Theory]
-    [InlineData(McpTelemetry.LookupStateExpired)]
-    [InlineData(McpTelemetry.LookupStateAnotherCaller)]
-    [InlineData(McpTelemetry.LookupStateInvalid)]
-    public void ALookupStateRefusedForAnotherReason_IsLoggedAtDebug_AndCounted(string reason)
+    [InlineData(McpTelemetry.StateExpired)]
+    [InlineData(McpTelemetry.StateAnotherCaller)]
+    [InlineData(McpTelemetry.StateInvalid)]
+    public void AStateRefusedForAnotherReason_IsLoggedAtDebug_AndCounted(string reason)
     {
         var logger = new RecordingLogger();
 
-        CreateSut(logger).LookupStateRefused(reason, keyId: null);
+        CreateSut(logger).StateRefused(McpTelemetry.StateKindConfirmation, reason, keyId: null);
 
-        Assert.Equal((LogLevel.Debug, $"Kaleido MCP: a guided-lookup state was refused ({reason}); nothing was run."), Assert.Single(logger.Entries));
+        Assert.Equal((LogLevel.Debug, $"Kaleido MCP: a confirmation state was refused ({reason}); nothing was run."), Assert.Single(logger.Entries));
         Assert.Contains(measurements, x =>
-            x.Instrument == McpTelemetry.LookupStatesRefusedCounterName &&
-            Equals(x.Tags[McpTelemetry.TagLookupStateRefusal], reason));
+            x.Instrument == McpTelemetry.StatesRefusedCounterName &&
+            Equals(x.Tags[McpTelemetry.TagStateRefusal], reason));
     }
 
     [Theory]

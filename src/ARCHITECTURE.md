@@ -230,7 +230,7 @@ Public seams consumers are expected to implement or replace:
 - Tool catalog: `ToolCatalogProvider` (the caller's tools, from `IKaleidoRegistryService` — the same shared snapshot and per-caller filtering as the registry endpoint), `ToolCatalogBuilder` (registry to tools, incl. the front-door menu), `ToolCatalogCache` (translated catalogs by registry revision, per registration, #464), `ToolNameBuilder` (`{service}_{capability}`, independent of what the caller sees, #435), `ToolSchemaBuilder` (input metadata to JSON Schema)
 - `KaleidoToolInvoker` — one tool call: a query or a step through the Kaleido clients; its parts handle the confirmation round (#439), the front door (`search_tools`, `describe_tool`, `next`) and guided lookups
 - `InformationRequestElicitor` — information requests as MCP forms (elicitation, or an MRTR round) and the answers back
-- `McpLookupStateProtector` / `McpKeyRingCheck` — the guided-lookup state round-tripped through the client is protected with Data Protection; a startup warning when the key ring would not be shared across instances (#452, #484)
+- `McpStateProtector` / `McpKeyRingCheck` — every state round-tripped through the client (guided lookup, answers form, answersToken, confirmation) is protected with Data Protection, one purpose per kind (#516); a startup warning when the key ring would not be shared across instances (#452, #484)
 - `McpObservability` — the adapter's traces, metrics and boundary logs (`McpTelemetry` names)
 
 ### Key design invariants

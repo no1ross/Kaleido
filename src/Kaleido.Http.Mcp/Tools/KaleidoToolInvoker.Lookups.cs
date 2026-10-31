@@ -133,7 +133,7 @@ internal sealed partial class KaleidoToolInvoker
         ToolCatalog catalog,
         CancellationToken cancellationToken)
     {
-        if (lookupState.Unprotect(call.RequestState) is not { } state ||
+        if (states.Unprotect<McpLookupState>(McpStateKind.Lookup, call.RequestState) is not { } state ||
             catalog.Find(state.Tool) is not { Kind: KaleidoToolKind.Step } tool ||
             tool.Lookups.FirstOrDefault(x => string.Equals(x.Group, state.Group, StringComparison.Ordinal)) is not { } lookup)
         {
@@ -351,7 +351,7 @@ internal sealed partial class KaleidoToolInvoker
                 {
                     [LookupInputKey] = InputRequest.ForElicitation(elicitor.ToElicitation(request)),
                 },
-                RequestState = lookupState.Protect(state),
+                RequestState = states.Protect(McpStateKind.Lookup, state),
             },
         };
 

@@ -10,7 +10,7 @@ namespace Kaleido.Http.Mcp.Tools;
 // the host configured no key storage of its own, so Data Protection uses its default location, which
 // is this machine's or this container's (Azure App Service shares it between instances). Outside
 // Development that is reported once at startup; a form answered on an instance without the key is
-// reported when it happens (McpObservability.LookupStateRefused).
+// reported when it happens (McpObservability.StateRefused).
 internal sealed partial class McpKeyRingCheck(
     IHostEnvironment environment,
     IOptions<KeyManagementOptions> keyManagement,

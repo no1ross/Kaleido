@@ -12,7 +12,6 @@ namespace Kaleido.Http.Mcp.Tools;
 internal sealed partial class KaleidoToolInvoker
 {
     private const string ConfirmInputKey = "kaleido-confirm";
-    private const string ConfirmStatePrefix = "kaleido-mcp-confirm:";
     private const string ConfirmItemId = "confirm";
 
     // Null when the step may run now; otherwise what the caller gets instead (the form, a refusal,
@@ -45,9 +44,9 @@ internal sealed partial class KaleidoToolInvoker
                         {
                             [ConfirmInputKey] = InputRequest.ForElicitation(ConfirmationForm(tool, arguments)),
                         },
-                        RequestState = ConfirmStatePrefix + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(
-                            new ConfirmationState(tool.Definition.Name, processId, JsonSerializer.Serialize(arguments, KaleidoJsonOptions.Options)),
-                            KaleidoJsonOptions.Options)),
+                        RequestState = states.Protect(
+                            McpStateKind.Confirmation,
+                            new ConfirmationState(tool.Definition.Name, processId, JsonSerializer.Serialize(arguments, KaleidoJsonOptions.Options))),
                     },
                 };
 
@@ -70,7 +69,7 @@ internal sealed partial class KaleidoToolInvoker
         ToolCatalog catalog,
         CancellationToken cancellationToken)
     {
-        if (DecodeConfirmationState(requestState) is not { } state ||
+        if (states.Unprotect<ConfirmationState>(McpStateKind.Confirmation, requestState) is not { } state ||
             catalog.Find(state.Tool) is not { Kind: KaleidoToolKind.Step } tool)
         {
             return Error(McpErrorCodes.InvalidArguments, "The confirmation state is not readable; call the tool again.");
@@ -156,22 +155,7 @@ internal sealed partial class KaleidoToolInvoker
         };
     }
 
-    // The state the retry dispatch matched by its prefix; null when it is not readable.
-    private static ConfirmationState? DecodeConfirmationState(string value)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<ConfirmationState>(
-                Encoding.UTF8.GetString(Convert.FromBase64String(value[ConfirmStatePrefix.Length..])),
-                KaleidoJsonOptions.Options);
-        }
-        catch (Exception exception) when (exception is FormatException or JsonException)
-        {
-            return null;
-        }
-    }
-
-    // Opaque to the client but not trusted: it carries the call to run once confirmed; the step's
-    // service checks the values it receives, as for any call.
+    // Protected (#516): it carries exactly the call the user confirmed, so the client can neither change
+    // what runs nor replay it; the step's service still checks the values it receives, as for any call.
     private sealed record ConfirmationState(string Tool, Guid? ProcessId, string Arguments);
 }

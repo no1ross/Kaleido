@@ -13,6 +13,14 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Every state the MCP adapter hands to the client is protected** (#516): the state of an answers form,
+  the `answersToken` and the state of a confirmation form were plain base64 JSON, so a client could read,
+  change or replay them. They are now protected like the guided-lookup state (ASP.NET Data Protection:
+  encrypted, signed, bound to the caller, valid 30 minutes; one purpose per kind). Instances behind a load
+  balancer share one key ring for every form, not only lookups. **Telemetry renamed:**
+  `kaleido.mcp.lookup_states_refused` is `kaleido.mcp.states_refused`, and its tag
+  `kaleido.mcp.lookup_state.refusal` is `kaleido.mcp.state.refusal`, with a new `kaleido.mcp.state.kind` tag
+  (`lookup`, `continuation`, `answers`, `confirmation`).
 - **`[Pageable]` limits are required** (#519): `DefaultSize` and `MaxSize` must both be greater than zero, and
   `DefaultSize` no greater than `MaxSize`; otherwise startup fails with `qry_invalid_registration`, naming the
   capability and both limits. A bare `[Pageable]` returned empty pages with a non-zero `TotalCount` and refused
