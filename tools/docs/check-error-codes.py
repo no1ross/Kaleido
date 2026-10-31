@@ -15,9 +15,12 @@ import sys
 
 DOC = "docs/ERROR_CODES.md"
 
-PUBLIC_CLASS = re.compile(r"^\s*public\s+(?:static\s+)?(?:sealed\s+)?(?:partial\s+)?class\s+(\w+)")
-ANY_TYPE = re.compile(r"^\s*(?:public|internal|private|protected)?\s*(?:static\s+|sealed\s+|abstract\s+|partial\s+)*(?:class|record|struct|interface|enum)\s+(\w+)")
 CONSTANT = re.compile(r'^\s*public\s+const\s+string\s+(\w+)\s*=\s*"([^"]+)"\s*;')
+
+# A type declaration is read by its leading words, not by a regular expression: a line is split once
+# and walked, so the check stays linear whatever the line holds.
+MODIFIERS = {"public", "internal", "private", "protected", "static", "sealed", "abstract", "partial", "file"}
+TYPE_KEYWORDS = {"class", "record", "struct", "interface", "enum"}
 DOC_ROW = re.compile(r"^\|\s*`(\w+)`\s*\|\s*`([a-z0-9_]+)`\s*\|")
 
 
@@ -31,15 +34,30 @@ def read(path):
         return handle.read()
 
 
+def type_declaration(line):
+    """(is public, is class, name) when the line declares a type, else None."""
+    words = line.split()
+    modifiers = []
+    for index, word in enumerate(words):
+        if word in MODIFIERS:
+            modifiers.append(word)
+            continue
+        if word in TYPE_KEYWORDS and index + 1 < len(words):
+            name = re.match(r"\w+", words[index + 1])
+            return ("public" in modifiers, word == "class", name.group(0)) if name else None
+        return None
+    return None
+
+
 def declared_codes(sources):
     """(class, name, value, path, line number) of each constant of a public *ErrorCodes class."""
     for path, text in sources.items():
         current = None
         for number, line in enumerate(text.splitlines(), start=1):
-            declared_type = ANY_TYPE.match(line)
-            if declared_type:
-                public = PUBLIC_CLASS.match(line)
-                current = public.group(1) if public and public.group(1).endswith("ErrorCodes") else None
+            declared = type_declaration(line)
+            if declared:
+                public, is_class, name = declared
+                current = name if public and is_class and name.endswith("ErrorCodes") else None
                 continue
             constant = CONSTANT.match(line)
             if current and constant:
