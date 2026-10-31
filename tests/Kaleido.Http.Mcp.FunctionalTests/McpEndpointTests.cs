@@ -95,9 +95,11 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
 
         await using var client = await fixture.ConnectAsync(Nurse);
 
-        Assert.Equal("kaleido", client.ServerInfo.Name);
-        Assert.Equal(expected, client.ServerInfo.Version);
-        Assert.DoesNotContain('+', client.ServerInfo.Version);
+        // MCP SDK 2.3.0 declares ServerInfo nullable (#544): the server always sends it.
+        var server = Assert.IsType<ModelContextProtocol.Protocol.Implementation>(client.ServerInfo);
+        Assert.Equal("kaleido", server.Name);
+        Assert.Equal(expected, server.Version);
+        Assert.DoesNotContain('+', server.Version);
     }
 
     [Fact]
