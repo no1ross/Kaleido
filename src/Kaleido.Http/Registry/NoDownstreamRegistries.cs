@@ -15,4 +15,10 @@ internal sealed class NoDownstreamRegistries : IKaleidoDownstreamRegistries
     public Task InvalidateAsync(
         CancellationToken cancellationToken) =>
         Task.CompletedTask;
+
+    // No client calls any other service.
+    public Task<AggregatedRegistryResponse?> GetServiceAsync(
+        string serviceName,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<AggregatedRegistryResponse?>(null);
 }

@@ -560,6 +560,11 @@ internal sealed partial class ToolCatalogBuilder(
         {
             hints.Add($"Value: a {lookup.View ?? lookup.Source} result's {lookup.Inputs.First(x => string.Equals(x.Argument, argument, StringComparison.Ordinal)).Field} on {lookup.Service}, which you cannot search: ask the user.");
         }
+        else if (field.Notice is { } notice)
+        {
+            // The input has a lookup whose query the user may not use (#524): it is not named.
+            hints.Add($"Value: comes from a search the user does not have access to ({notice.Code}). Tell the user; never guess or invent it.");
+        }
 
         if (!string.IsNullOrWhiteSpace(field.DisplayName))
         {

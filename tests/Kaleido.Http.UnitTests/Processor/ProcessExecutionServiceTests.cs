@@ -16,7 +16,7 @@ public sealed class ProcessExecutionServiceTests
         CreateSut(
             Mock.Of<IProcessorStepRegistry>(),
             Mock.Of<IProcessorRuntime>(),
-            Mock.Of<IProcessExecutionResponseFactory>());
+            AnyResponses());
 
     private static ProcessExecutionService CreateSut(
         IProcessorStepRegistry registry,
@@ -25,7 +25,8 @@ public sealed class ProcessExecutionServiceTests
         Guid? contextProcessId = null,
         IKaleidoAuthorizer? authorizer = null,
         IHttpContextAccessor? httpContextAccessor = null,
-        ILogger<ProcessExecutionService>? logger = null)
+        ILogger<ProcessExecutionService>? logger = null,
+        IProcessContinuationFilter? continuations = null)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation
@@ -52,7 +53,67 @@ public sealed class ProcessExecutionServiceTests
             correlation.Object,
             responseFactory,
             authorizer ?? stepAuthorizer.Object,
+            continuations ?? PassThrough(),
             logger ?? NullLogger<ProcessExecutionService>.Instance);
+    }
+
+    // A response for any result: what the tests that do not look at it need.
+    private static IProcessExecutionResponseFactory AnyResponses()
+    {
+        var factory = new Mock<IProcessExecutionResponseFactory>();
+        factory
+            .Setup(x => x.CreateExecutionResponse(It.IsAny<ProcessResult>(), It.IsAny<IProcessorStepRegistry>(), It.IsAny<string>()))
+            .Returns((ProcessResult result, IProcessorStepRegistry _, string _) => new ProcessExecutionResponse { ProcessId = result.ProcessId });
+        factory
+            .Setup(x => x.CreateStepResponse(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>(), It.IsAny<string>()))
+            .Returns((ProcessResult result, ProcessStepResult step, IProcessorStepRegistry _, string _) => new StepExecutionResponse { ProcessId = result.ProcessId, StepName = step.StepName });
+        factory
+            .Setup(x => x.CreateStepResponse<TestResponse>(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>(), It.IsAny<string>()))
+            .Returns((ProcessResult result, ProcessStepResult step, IProcessorStepRegistry _, string _) => new StepExecutionResponse<TestResponse> { ProcessId = result.ProcessId, StepName = step.StepName });
+        return factory.Object;
+    }
+
+    // #524: what the caller is described is the continuation filter's decision, for the execute and
+    // the per-step responses alike.
+    [Fact]
+    public async Task TheResponses_DescribeTheCallerOnlyWhatTheFilterPermits()
+    {
+        var registration = CreateRegistration();
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateProcessResult(registration.Metadata.Name, new TestResponse()));
+        var sut = CreateSut(CreateRegistry(registration), runtime.Object, AnyResponses(), continuations: NothingPermitted());
+
+        var execute = await sut.ExecuteAsync(
+            new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = registration.Metadata.Name, Request = JsonSerializer.SerializeToElement(new { }) }] },
+            CancellationToken.None);
+        var step = await sut.ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+
+        Assert.Equal(ProcessContinuationFilter.NotPermitted, execute.Notice);
+        Assert.Equal(ProcessContinuationFilter.NotPermitted, step.Notice);
+        Assert.Null(step.RequiredStep);
+        Assert.Empty(step.AvailableSteps);
+    }
+
+    // The continuation filter (its own fixture) leaves the response as it is.
+    private static IProcessContinuationFilter PassThrough()
+    {
+        var filter = new Mock<IProcessContinuationFilter>();
+        filter
+            .Setup(x => x.FilterAsync(It.IsAny<Guid>(), It.IsAny<ProcessRequiredStep?>(), It.IsAny<IReadOnlyCollection<ProcessStepSummary>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, ProcessRequiredStep? required, IReadOnlyCollection<ProcessStepSummary> available, CancellationToken _) => new ProcessContinuation(required, available, Notice: null));
+        return filter.Object;
+    }
+
+    // The filter decides what the caller is described (#524): the service answers with its result.
+    private static IProcessContinuationFilter NothingPermitted()
+    {
+        var filter = new Mock<IProcessContinuationFilter>();
+        filter
+            .Setup(x => x.FilterAsync(It.IsAny<Guid>(), It.IsAny<ProcessRequiredStep?>(), It.IsAny<IReadOnlyCollection<ProcessStepSummary>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessContinuation(RequiredStep: null, AvailableSteps: [], ProcessContinuationFilter.NotPermitted));
+        return filter.Object;
     }
 
     [Fact]
@@ -70,7 +131,7 @@ public sealed class ProcessExecutionServiceTests
         await CreateSut(
                 CreateRegistry(registration),
                 runtime.Object,
-                Mock.Of<IProcessExecutionResponseFactory>(),
+                AnyResponses(),
                 httpContextAccessor: new HttpContextAccessor { HttpContext = httpContext },
                 logger: logger.Object)
             .ExecuteAsync(
@@ -99,7 +160,7 @@ public sealed class ProcessExecutionServiceTests
         await CreateSut(
                 CreateRegistry(registration),
                 runtime.Object,
-                Mock.Of<IProcessExecutionResponseFactory>(),
+                AnyResponses(),
                 httpContextAccessor: new HttpContextAccessor { HttpContext = httpContext },
                 logger: logger.Object)
             .ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
@@ -131,7 +192,7 @@ public sealed class ProcessExecutionServiceTests
                 httpContextAccessor: new HttpContextAccessor())
             .ExecuteAsync(new ExecuteProcessRequest { Steps = [] }, CancellationToken.None);
 
-        Assert.Same(expected, response);
+        Assert.Equal(expected, response);
     }
 
     [Fact]
@@ -144,7 +205,7 @@ public sealed class ProcessExecutionServiceTests
             .ReturnsAsync(CreateProcessResult("Other-Step", new TestResponse()));
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            CreateSut(CreateRegistry(registration), runtime.Object, Mock.Of<IProcessExecutionResponseFactory>())
+            CreateSut(CreateRegistry(registration), runtime.Object, AnyResponses())
                 .ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None));
 
         Assert.Equal(ProcessorErrorCodes.MissingStepResult, exception.Code);
@@ -245,7 +306,7 @@ public sealed class ProcessExecutionServiceTests
         Assert.Equal(contextProcessId, capturedRequest.ProcessId);
         Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
 
-        Assert.Same(expectedResponse, response);
+        Assert.Equal(expectedResponse, response);
         responseFactory.Verify(
             x => x.CreateExecutionResponse(
                 processResult,
@@ -294,7 +355,7 @@ public sealed class ProcessExecutionServiceTests
 
         Assert.NotNull(capturedRequest);
         Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
-        Assert.Same(expectedResponse, response);
+        Assert.Equal(expectedResponse, response);
     }
 
     [Fact]
@@ -333,7 +394,7 @@ public sealed class ProcessExecutionServiceTests
 
         var response = await service.ExecuteAsync(request, CancellationToken.None);
 
-        Assert.Same(expectedResponse, response);
+        Assert.Equal(expectedResponse, response);
     }
 
     [Fact]
@@ -357,7 +418,7 @@ public sealed class ProcessExecutionServiceTests
         var service = CreateSut(
             registry,
             runtime.Object,
-            Mock.Of<IProcessExecutionResponseFactory>(),
+            AnyResponses(),
             authorizer: authorizer.Object);
 
         var request = new ExecuteProcessRequest
@@ -387,7 +448,7 @@ public sealed class ProcessExecutionServiceTests
         var service = CreateSut(
             Mock.Of<IProcessorStepRegistry>(),
             runtime.Object,
-            Mock.Of<IProcessExecutionResponseFactory>());
+            AnyResponses());
 
         var request = new ExecuteProcessRequest
         {
@@ -437,7 +498,7 @@ public sealed class ProcessExecutionServiceTests
         var service = CreateSut(
             registry.Object,
             runtime.Object,
-            Mock.Of<IProcessExecutionResponseFactory>(),
+            AnyResponses(),
             authorizer: authorizer.Object);
 
         var request = new ExecuteProcessRequest
@@ -474,7 +535,7 @@ public sealed class ProcessExecutionServiceTests
         var service = CreateSut(
             registry.Object,
             CompletingRuntime(),
-            Mock.Of<IProcessExecutionResponseFactory>(),
+            AnyResponses(),
             authorizer: authorizer.Object);
 
         var exception = await Assert.ThrowsAsync<KaleidoValidationException>(() => service.ExecuteAsync(
@@ -512,7 +573,7 @@ public sealed class ProcessExecutionServiceTests
             .ReturnsAsync(CreateProcessResult(nameof(TypedInputStep), new TestResponse()));
         var itemId = Guid.NewGuid();
 
-        await CreateSut(registry, runtime.Object, Mock.Of<IProcessExecutionResponseFactory>()).ExecuteAsync(
+        await CreateSut(registry, runtime.Object, AnyResponses()).ExecuteAsync(
             new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = "typedinputstep", Request = JsonSerializer.SerializeToElement(new { itemId }) }] },
             TestContext.Current.CancellationToken);
 
@@ -531,7 +592,7 @@ public sealed class ProcessExecutionServiceTests
         using var json = JsonDocument.Parse(input);
 
         var exception = await Assert.ThrowsAsync<Microsoft.AspNetCore.Http.BadHttpRequestException>(() =>
-            CreateSut(TypedInputRegistry(), runtime.Object, Mock.Of<IProcessExecutionResponseFactory>()).ExecuteAsync(
+            CreateSut(TypedInputRegistry(), runtime.Object, AnyResponses()).ExecuteAsync(
                 new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = nameof(TypedInputStep), Request = json.RootElement.Clone() }] },
                 TestContext.Current.CancellationToken));
 
@@ -570,7 +631,7 @@ public sealed class ProcessExecutionServiceTests
         var service = CreateSut(
             Mock.Of<IProcessorStepRegistry>(),
             CompletingRuntime(),
-            Mock.Of<IProcessExecutionResponseFactory>(),
+            AnyResponses(),
             authorizer: authorizer.Object);
 
         await service.ExecuteAsync(

@@ -194,6 +194,89 @@ public sealed class KaleidoRegistryServiceTests
         Assert.Equal(filtered.Revision, (await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel)).Revision);
     }
 
+    private static ProcessFieldMetadata LookupField(string name, string service, string source, string? view = null) =>
+        new()
+        {
+            Name = name,
+            DataType = new DataTypeMetadata("string"),
+            Lookup = new ProcessFieldLookup { Service = service, Source = source, View = view, Field = "Id", Group = name },
+        };
+
+    // #524: a caller is never described a step or a query they may not use. A kept step's relationships
+    // list only the steps the caller may run; an input whose lookup names a query the caller may not use
+    // - by the rules this host's registry publishes, or another service's registry publishes to its
+    // client - keeps the input, without the lookup, with a notice; a query found nowhere is not permitted.
+    [Fact]
+    public async Task GetForCaller_WhenEnforced_DescribesAStepsRelationshipsAndLookups_OnlyAsTheCallerMayUseThem()
+    {
+        responses.Setup(x => x.CreateRegistryResponse(It.IsAny<ProcessorRegistryItem>(), It.IsAny<KaleidoServiceOptions>()))
+            .Returns((ProcessorRegistryItem _, KaleidoServiceOptions options) => new ProcessorRegistryResponse
+            {
+                Name = options.ServiceName,
+                ServiceName = options.ServiceName,
+                Steps =
+                [
+                    new ProcessStepResponse
+                    {
+                        Name = "CaptureMemberStep",
+                        Dependencies = [new ProcessStepSummary { Name = "StartStep" }, new ProcessStepSummary { Name = "ApproveStep", Authorization = Radiology }],
+                        AvailableAfter = [new ProcessStepSummary { Name = "ScanStep", Authorization = Radiology }],
+                        AvailableUntil = [new ProcessStepSummary { Name = "CloseStep" }],
+                        Fields =
+                        [
+                            LookupField("MemberId", "member", "MemberSource"),
+                            LookupField("ScanId", "radiology", "ScanSource", "ScanCard"),
+                            LookupField("ChartId", "clinic", "ChartSource"),
+                            LookupField("GhostId", "nowhere", "GhostSource"),
+                            new ProcessFieldMetadata { Name = "Note", DataType = new DataTypeMetadata("string") },
+                        ],
+                    },
+                ],
+            });
+        downstream.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DownstreamRegistries(
+                [],
+                [
+                    new QueryableSourceResponse { Name = "MemberSource", ServiceName = "member", QueryUrl = "/member/q" },
+                    new QueryableSourceResponse { Name = "ScanSource", ServiceName = "radiology", Views = [new QueryableViewResponse { Name = "ScanCard", QueryUrl = "/radiology/v", Authorization = Radiology }] },
+                ],
+                []));
+        downstream.Setup(x => x.GetServiceAsync("clinic", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AggregatedRegistryResponse { Queryables = [new QueryableSourceResponse { Name = "ChartSource", ServiceName = "clinic", QueryUrl = "/clinic/q" }] });
+        authorizer.Setup(x => x.IsEnforced).Returns(true);
+        authorizer.Setup(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AuthorizationMetadata? rule, CancellationToken _) => rule != Radiology);
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<ProcessStepSummary>>(), It.IsAny<Func<ProcessStepSummary, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<ProcessStepSummary> items, Func<ProcessStepSummary, AuthorizationMetadata?> rule, CancellationToken _) => items.Where(x => rule(x) != Radiology).ToArray());
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<ProcessStepResponse>>(), It.IsAny<Func<ProcessStepResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<ProcessStepResponse> items, Func<ProcessStepResponse, AuthorizationMetadata?> _, CancellationToken _) => items.ToArray());
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<QueryableViewResponse>>(), It.IsAny<Func<QueryableViewResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<QueryableViewResponse> items, Func<QueryableViewResponse, AuthorizationMetadata?> rule, CancellationToken _) => items.Where(x => rule(x) != Radiology).ToArray());
+        var logger = new Mock<ILogger<KaleidoRegistryService>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+
+        var registry = await CreateSut(logger: logger.Object).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
+
+        var step = Assert.Single(Assert.Single(registry.Processes, x => x.Name == "router").Steps!);
+        Assert.Equal(["StartStep"], step.Dependencies.Select(x => x.Name));
+        Assert.Empty(step.AvailableAfter);
+        Assert.Equal(["CloseStep"], step.AvailableUntil.Select(x => x.Name));
+
+        var fields = step.Fields.ToDictionary(x => x.Name);
+        Assert.NotNull(fields["MemberId"].Lookup);
+        Assert.NotNull(fields["ChartId"].Lookup);
+        Assert.Null(fields["Note"].Notice);
+
+        foreach (var denied in new[] { "ScanId", "GhostId" })
+        {
+            Assert.Null(fields[denied].Lookup);
+            Assert.Equal(ProcessorErrorCodes.NotPermitted, fields[denied].Notice?.Code);
+            Assert.DoesNotContain("Scan", fields[denied].Notice?.Message, StringComparison.Ordinal);
+        }
+
+        Assert.Equal(2, logger.Invocations.Count(x => x.Method.Name == nameof(ILogger.Log) && (LogLevel)x.Arguments[0] == LogLevel.Warning && x.Arguments[2].ToString()!.Contains("pro_not_permitted", StringComparison.Ordinal)));
+    }
+
     [Fact]
     public async Task GetForCaller_ASourceTheCallerMayNotQueryDirectly_KeepsItsAllowedViews_WithoutAQueryUrl()
     {

@@ -1299,6 +1299,26 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(McpErrorCodes.InvalidArguments, body["code"]?.GetValue<string>());
     }
 
+    private static readonly KaleidoNotice NotPermitted = new("pro_not_permitted", "You do not have access to continue this process.");
+
+    // #524: a process that continues with steps the user may not run: the step's summary and the state
+    // say so, and the agent is told not to guess another step.
+    [Fact]
+    public async Task AStepOrAStateWithTheNotPermittedNotice_PassesItOn_AndSaysNotToGuess()
+    {
+        StepReturns(StepResponse() with { Notice = NotPermitted });
+        StateIs("clinic", StateResponse(null) with { Notice = NotPermitted });
+
+        var step = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+        var state = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", processId = ProcessId }), Catalog, Cancel));
+
+        foreach (var body in new[] { step, state })
+        {
+            Assert.Equal("pro_not_permitted", body["notice"]?["code"]?.GetValue<string>());
+            Assert.Contains("do not have access to continue", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public async Task GetProcessState_SummarizesState_CompletedSteps_AndNext_FollowingAHandoff()
     {

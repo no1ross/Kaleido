@@ -17,6 +17,7 @@ internal sealed partial class ProcessStateService(
     IProcessorStepRegistry registry,
     KaleidoServiceOptions serviceOptions,
     IProcessorResponseFactory responseFactory,
+    IProcessContinuationFilter continuations,
     ILogger<ProcessStateService> logger)
     : IProcessStateService
 {
@@ -37,16 +38,22 @@ internal sealed partial class ProcessStateService(
         // endpoint may read the state; CreatedBy/UpdatedBy are returned as tags only.
         LogStateLoaded(logger, serviceOptions.ServiceName, processId, context.State);
 
+        // The caller is described only the steps they may run (#524). RequiredStep is null when
+        // TargetProcessorName is set: the consumer calls the target processor's state endpoint instead.
+        var continuation = await continuations.FilterAsync(
+            context.ProcessId,
+            CreateRequiredStep(context),
+            [.. context.AvailableSteps.Select(AvailableStep)],
+            cancellationToken);
+
         return new ProcessStateResponse
         {
             ProcessId = context.ProcessId,
             State = context.State,
-
-            // RequiredStep is null when TargetProcessorName is set —
-            // consumer must call the target processor's state endpoint instead.
-            RequiredStep = CreateRequiredStep(context),
+            RequiredStep = continuation.RequiredStep,
             TargetProcessorName = context.TargetProcessorName,
-            AvailableSteps = [.. context.AvailableSteps.Select(AvailableStep)],
+            AvailableSteps = continuation.AvailableSteps,
+            Notice = continuation.Notice,
             Steps =
             [
                 .. context.Steps

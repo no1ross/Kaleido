@@ -761,6 +761,12 @@ internal sealed partial class KaleidoToolInvoker(
             ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false, processId),
         };
 
+        if (state.Notice is not null)
+        {
+            summary["notice"] = Serialize(state.Notice);
+            note ??= NotPermittedNote;
+        }
+
         if (note is not null)
         {
             summary["note"] = note;
@@ -803,6 +809,7 @@ internal sealed partial class KaleidoToolInvoker(
             var pendingService = service;
             var required = step.RequiredStep;
             var available = step.AvailableSteps;
+            var notice = step.Notice;
 
             if (!string.IsNullOrWhiteSpace(step.TargetProcessorName))
             {
@@ -813,6 +820,7 @@ internal sealed partial class KaleidoToolInvoker(
                 note ??= unread;
                 required = targetState?.RequiredStep;
                 available = targetState?.AvailableSteps ?? [];
+                notice = targetState?.Notice;
             }
 
             var mode = ElicitationMode(call);
@@ -848,7 +856,7 @@ internal sealed partial class KaleidoToolInvoker(
             }
 
             return Success(
-                Summary(service, pendingService, step, required, available, answered, note, catalog),
+                Summary(service, pendingService, step, new Continuation(required, available, notice), answered, note, catalog),
                 step.BusinessMessages.Select(x => x.Message));
         }
     }
@@ -1049,16 +1057,26 @@ internal sealed partial class KaleidoToolInvoker(
 
     // ── Summaries ────────────────────────────────────────────────────────────
 
+    // Where the process goes next as the user may see it: the steps they may run, and the notice when
+    // it continues with steps they may not (#524).
+    private sealed record Continuation(
+        ProcessRequiredStep? Required,
+        IReadOnlyCollection<ProcessStepSummary> Available,
+        KaleidoNotice? Notice);
+
+    private const string NotPermittedNote =
+        "The process continues with a step this user may not run. Tell them they do not have access to continue it; do not guess or name another step.";
+
     private static JsonObject Summary(
         string service,
         string pendingService,
         StepExecutionResponse<JsonElement> step,
-        ProcessRequiredStep? required,
-        IReadOnlyCollection<ProcessStepSummary> available,
+        Continuation continuation,
         JsonArray answered,
         string? note,
         ToolCatalog catalog)
     {
+        var (required, available, notice) = continuation;
         var summary = new JsonObject
         {
             ["processId"] = step.ProcessId.ToString(),
@@ -1101,16 +1119,13 @@ internal sealed partial class KaleidoToolInvoker(
 
         summary["next"] = Next(pendingService, required, available, catalog, elicited: answered.Count > 0, step.ProcessId);
 
-        // A rejected or unfinished step (invalid input, a defect, a cancellation) changed nothing: the
-        // user can correct the input and retry, or choose another step.
-        note ??= step.Status switch
+        if (notice is not null)
         {
-            StepExecutionStatus.Rejected =>
-                "The step was rejected and nothing was changed. Tell the user why (messages verbatim; explain diagnostics); they can correct it and try again, or choose another step.",
-            StepExecutionStatus.ValidationFailed or StepExecutionStatus.Exception or StepExecutionStatus.Canceled when required is not null || available.Count > 0 =>
-                "The step did not complete and nothing was recorded; the process is where it was. The user can try again or choose another step.",
-            _ => null,
-        };
+            summary["notice"] = Serialize(notice);
+            note ??= NotPermittedNote;
+        }
+
+        note ??= UnfinishedNote(step.Status, canContinue: required is not null || available.Count > 0);
 
         if (note is not null)
         {
@@ -1119,6 +1134,18 @@ internal sealed partial class KaleidoToolInvoker(
 
         return summary;
     }
+
+    // A rejected or unfinished step (invalid input, a defect, a cancellation) changed nothing: the user
+    // can correct the input and retry, or choose another step.
+    private static string? UnfinishedNote(StepExecutionStatus status, bool canContinue) =>
+        status switch
+        {
+            StepExecutionStatus.Rejected =>
+                "The step was rejected and nothing was changed. Tell the user why (messages verbatim; explain diagnostics); they can correct it and try again, or choose another step.",
+            StepExecutionStatus.ValidationFailed or StepExecutionStatus.Exception or StepExecutionStatus.Canceled when canContinue =>
+                "The step did not complete and nothing was recorded; the process is where it was. The user can try again or choose another step.",
+            _ => null,
+        };
 
     // The form of the round the answers so far decide; the state carries those answers to the next call.
     private ToolOutcome AskForAnswers(

@@ -13,6 +13,18 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **A caller is never described a step or a query they may not use** (#524, ZeroTrust and
+  Authenticated):
+  - the registry's relationship lists (`dependencies`, `availableAfter`, `availableUntil`) list only
+    the steps the caller may run;
+  - the execute, per-step and process-state responses list only the next steps the caller may run;
+    a required step they may not run gives `requiredStep: null`, and a list none of which they may
+    run is empty; either way a new `notice` (`KaleidoNotice`, code `pro_not_permitted`) says so
+    without naming a step;
+  - a step input whose lookup names a query the caller may not use keeps the input, without the
+    lookup, with a `notice`. A query on another service is checked by the rules its registry
+    publishes to this host's client: hosts that check each other's lookups share policy names.
+  - The MCP adapter passes the notice on and tells the agent not to guess another step.
 - **A step whose outcome cannot be saved is answered as having run, and is recovered** (#537, [ADR 0034](docs/decisions/0034-unsaved-step-outcomes.md)):
   when the save fails after the handler returned, the step is no longer recorded as a failed step
   (with a second save) or answered as a generic error.

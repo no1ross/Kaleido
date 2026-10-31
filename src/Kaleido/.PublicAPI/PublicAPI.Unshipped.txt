@@ -124,6 +124,7 @@ const Kaleido.Processor.ProcessorErrorCodes.InvalidRequiredStep = "pro_invalid_r
 const Kaleido.Processor.ProcessorErrorCodes.MissingAttribute = "pro_missing_attribute" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.MissingHandler = "pro_missing_handler" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.MissingStepResult = "pro_missing_step_result" -> string!
+const Kaleido.Processor.ProcessorErrorCodes.NotPermitted = "pro_not_permitted" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.OutcomeNotSaved = "pro_outcome_not_saved" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.OutcomePendingRecovery = "pro_outcome_pending_recovery" -> string!
 const Kaleido.Processor.ProcessorErrorCodes.OutOfRange = "pro_out_of_range" -> string!

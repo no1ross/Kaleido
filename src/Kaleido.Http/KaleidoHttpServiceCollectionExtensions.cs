@@ -66,6 +66,7 @@ public static class KaleidoHttpServiceCollectionExtensions
         {
             builder.Services.TryAddScoped<IProcessExecutionService, ProcessExecutionService>();
             builder.Services.TryAddScoped<IProcessStateService, ProcessStateService>();
+            builder.Services.TryAddScoped<IProcessContinuationFilter, ProcessContinuationFilter>();
         }
 
         builder.Services.TryAddSingleton<Registry.IRegistrySnapshotStore, Registry.InMemoryRegistrySnapshotStore>();

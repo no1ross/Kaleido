@@ -24,4 +24,10 @@ public sealed class NoDownstreamRegistriesTests
         Assert.True(invalidation.IsCompletedSuccessfully);
         await invalidation;
     }
+
+    [Fact]
+    public async Task GetServiceAsync_FindsNoOtherService()
+    {
+        Assert.Null(await CreateSut().GetServiceAsync("member", TestContext.Current.CancellationToken));
+    }
 }

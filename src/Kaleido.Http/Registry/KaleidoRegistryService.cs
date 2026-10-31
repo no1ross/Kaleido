@@ -160,13 +160,14 @@ internal sealed partial class KaleidoRegistryService(
     {
         return response with
         {
-            Processes = await FilterProcessesAsync(response.Processes, cancellationToken),
+            Processes = await FilterProcessesAsync(response.Processes, response.Queryables, cancellationToken),
             Queryables = await FilterQueryablesAsync(response.Queryables, cancellationToken),
         };
     }
 
     private async Task<List<ProcessorRegistryResponse>> FilterProcessesAsync(
         IEnumerable<ProcessorRegistryResponse> processors,
+        IReadOnlyCollection<QueryableSourceResponse> queryables,
         CancellationToken cancellationToken)
     {
         var processes = new List<ProcessorRegistryResponse>();
@@ -202,12 +203,84 @@ internal sealed partial class KaleidoRegistryService(
                 processor with
                 {
                     InitialSteps = initialSteps,
-                    Steps = steps,
+                    Steps = steps is null ? null : await DescribeForCallerAsync(steps, queryables, cancellationToken),
                 });
         }
 
         return processes;
     }
+
+    // A caller is never described a step or a query they may not use (#524): a kept step's
+    // relationships keep their shape with only the steps the caller may run, and an input whose
+    // lookup names a query the caller may not use keeps the input without the lookup, with a notice.
+    private async Task<List<ProcessStepResponse>> DescribeForCallerAsync(
+        IReadOnlyList<ProcessStepResponse> steps,
+        IReadOnlyCollection<QueryableSourceResponse> queryables,
+        CancellationToken cancellationToken)
+    {
+        var described = new List<ProcessStepResponse>(steps.Count);
+
+        foreach (var step in steps)
+        {
+            var fields = new List<ProcessFieldMetadata>(step.Fields.Count);
+
+            foreach (var field in step.Fields)
+            {
+                fields.Add(field.Lookup is { } lookup && !await CanUseAsync(lookup, queryables, cancellationToken)
+                    ? NotPermittedLookup(step, field, lookup)
+                    : field);
+            }
+
+            described.Add(step with
+            {
+                Dependencies = await authorizer.FilterAsync(step.Dependencies, x => x.Authorization, cancellationToken),
+                AvailableAfter = await authorizer.FilterAsync(step.AvailableAfter, x => x.Authorization, cancellationToken),
+                AvailableUntil = await authorizer.FilterAsync(step.AvailableUntil, x => x.Authorization, cancellationToken),
+                Fields = fields,
+            });
+        }
+
+        return described;
+    }
+
+    private ProcessFieldMetadata NotPermittedLookup(ProcessStepResponse step, ProcessFieldMetadata field, ProcessFieldLookup lookup)
+    {
+        LogLookupNotPermitted(logger, step.Name, field.Name, lookup.Service, lookup.Source, lookup.View);
+
+        return field with { Lookup = null, Notice = LookupNotPermitted };
+    }
+
+    internal static readonly KaleidoNotice LookupNotPermitted =
+        new(ProcessorErrorCodes.NotPermitted, "You do not have access to the query that fills this input.");
+
+    // The lookup's query as the caller may use it: a query of this host's registry (its own, or a
+    // downstream's on an aggregating host) by the rules it publishes; another service's by the rules its
+    // registry publishes to this host's client (GetServiceAsync), evaluated here for the caller as a
+    // router does. A query
+    // found in neither is not permitted. Hosts that check each other's lookups share policy names.
+    private async Task<bool> CanUseAsync(ProcessFieldLookup lookup, IReadOnlyCollection<QueryableSourceResponse> queryables, CancellationToken cancellationToken)
+    {
+        var source = Find(queryables, lookup) ?? Find((await downstream.GetServiceAsync(lookup.Service, cancellationToken))?.Queryables, lookup);
+
+        if (source is null)
+        {
+            return false;
+        }
+
+        if (lookup.View is not { } viewName)
+        {
+            return await authorizer.CanAccessAsync(source.Authorization, cancellationToken);
+        }
+
+        var view = source.Views.FirstOrDefault(x => string.Equals(x.Name, viewName, StringComparison.OrdinalIgnoreCase));
+
+        return view is not null && await authorizer.CanAccessAsync(view.Authorization, cancellationToken);
+    }
+
+    private static QueryableSourceResponse? Find(IReadOnlyCollection<QueryableSourceResponse>? queryables, ProcessFieldLookup lookup) =>
+        queryables?.FirstOrDefault(x =>
+            string.Equals(x.ServiceName, lookup.Service, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Name, lookup.Source, StringComparison.OrdinalIgnoreCase));
 
     // A source the caller may not query directly stays listed (without its URL) while it has
     // views the caller may use.
@@ -255,6 +328,9 @@ internal sealed partial class KaleidoRegistryService(
         return Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(payload)).ToLowerInvariant();
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Step {StepName} input {FieldName} looks up {Service}/{Source}/{View}, which the caller may not use (or which is not published to this host); the lookup is left out (pro_not_permitted). Check the caller's roles, and that the hosts share policy names.")]
+    private static partial void LogLookupNotPermitted(ILogger logger, string stepName, string fieldName, string service, string source, string? view);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Registry rebuilt via force refresh.")]
     private static partial void LogRegistryRebuilt(ILogger logger);

@@ -114,6 +114,33 @@ internal sealed partial class ClientDownstreamRegistries(
         }
     }
 
+    public async Task<AggregatedRegistryResponse?> GetServiceAsync(
+        string serviceName,
+        CancellationToken cancellationToken)
+    {
+        var client = Clients().FirstOrDefault(x => string.Equals(x.RoutePrefix, serviceName, StringComparison.OrdinalIgnoreCase));
+
+        if (client is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await remoteRegistry.GetAsync(client, headerStamper, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        // A registry that cannot be read describes nothing (for a lookup: not permitted).
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            LogRegistryClientFailed(logger, ex, client.Name, ex.Message);
+            return null;
+        }
+    }
+
     private KaleidoClientDefinition[] Clients() =>
         catalog.Clients
             .Where(x => !string.Equals(x.RoutePrefix, serviceOptions.ServiceName, StringComparison.OrdinalIgnoreCase))

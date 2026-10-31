@@ -28,6 +28,19 @@ internal interface IKaleidoDownstreamRegistries
     /// <returns>A task that completes once every downstream snapshot has been dropped.</returns>
     Task InvalidateAsync(
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// One downstream service's registry - its processors and query sources - as this host's client
+    /// for it caches it (fetched with the service's own credential), without fetching the others. For
+    /// example, a step input's lookup on another service is checked against its query sources (#524).
+    /// Null when no client calls that service (or it is this service), or its registry cannot be read
+    /// (logged).
+    /// </summary>
+    /// <param name="serviceName">The downstream service's name (its client's route prefix).</param>
+    /// <param name="cancellationToken">Cancels the fetch.</param>
+    Task<AggregatedRegistryResponse?> GetServiceAsync(
+        string serviceName,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>The downstream registries, and the clients that could not be read.</summary>

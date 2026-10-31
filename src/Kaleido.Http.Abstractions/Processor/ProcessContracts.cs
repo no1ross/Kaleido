@@ -133,7 +133,7 @@ public sealed record ProcessExecutionResponse
 
     /// <summary>
     /// The steps on the local processor that the caller may run next, each with its execute URL.
-    /// Empty when no step is available.
+    /// Empty when no step is available. Only the steps this caller may run are listed (#524).
     /// </summary>
     public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
     {
@@ -141,6 +141,18 @@ public sealed record ProcessExecutionResponse
         init;
     }
         = [];
+
+    /// <summary>
+    /// Set, whatever the transport's message options, when the process continues with steps this
+    /// caller may not run: its required step (then <c>RequiredStep</c> is null), or every available
+    /// step (then <c>AvailableSteps</c> is empty). Its code is <c>pro_not_permitted</c>; the steps are
+    /// not named. Null otherwise (#524).
+    /// </summary>
+    public KaleidoNotice? Notice
+    {
+        get;
+        init;
+    }
 
     /// <summary>
     /// One entry for each step of the run that is no longer pending or that produced business
@@ -259,7 +271,7 @@ public record StepExecutionResponse
 
     /// <summary>
     /// The steps on the local processor that the caller may run next, each with its execute URL.
-    /// Empty when no step is available.
+    /// Empty when no step is available. Only the steps this caller may run are listed (#524).
     /// </summary>
     public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
     {
@@ -267,6 +279,18 @@ public record StepExecutionResponse
         init;
     }
         = [];
+
+    /// <summary>
+    /// Set, whatever the transport's message options, when the process continues with steps this
+    /// caller may not run: its required step (then <c>RequiredStep</c> is null), or every available
+    /// step (then <c>AvailableSteps</c> is empty). Its code is <c>pro_not_permitted</c>; the steps are
+    /// not named. Null otherwise (#524).
+    /// </summary>
+    public KaleidoNotice? Notice
+    {
+        get;
+        init;
+    }
 
     /// <summary>Handler-authored messages for consumers, independent of framework diagnostics.</summary>
     public IReadOnlyCollection<ProcessMessage> BusinessMessages
@@ -362,7 +386,7 @@ public sealed record ProcessStateResponse
 
     /// <summary>
     /// The steps on the local processor that the caller may run next, each with its execute URL.
-    /// Empty when no step is available.
+    /// Empty when no step is available. Only the steps this caller may run are listed (#524).
     /// </summary>
     public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
     {
@@ -370,6 +394,18 @@ public sealed record ProcessStateResponse
         init;
     }
         = [];
+
+    /// <summary>
+    /// Set, whatever the transport's message options, when the process continues with steps this
+    /// caller may not run: its required step (then <c>RequiredStep</c> is null), or every available
+    /// step (then <c>AvailableSteps</c> is empty). Its code is <c>pro_not_permitted</c>; the steps are
+    /// not named. Null otherwise (#524).
+    /// </summary>
+    public KaleidoNotice? Notice
+    {
+        get;
+        init;
+    }
 
     /// <summary>
     /// The recorded state of each step tracked by the process, ordered by step name
@@ -644,9 +680,16 @@ public sealed record ProcessFieldMetadata
 
     /// <summary>
     /// Where the input's value comes from, from <c>[Lookup]</c>: a field of one result of a query.
-    /// Null when the user supplies the value directly.
+    /// Null when the user supplies the value directly, or when the caller may not use the query (then
+    /// <see cref="Notice"/> says so).
     /// </summary>
     public ProcessFieldLookup? Lookup { get; init; }
+
+    /// <summary>
+    /// Set when the input has a lookup whose query this caller may not use: the lookup is left out and
+    /// the notice's code is <c>pro_not_permitted</c>; the query is not named. Null otherwise (#524).
+    /// </summary>
+    public KaleidoNotice? Notice { get; init; }
 
     /// <summary>The input's validation constraints, one per validation attribute; empty when it declares none.</summary>
     public IReadOnlyCollection<ConstraintMetadata> Constraints { get; init; } = [];

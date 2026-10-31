@@ -1026,6 +1026,43 @@ public sealed class ToolCatalogBuilderTests
         Assert.Contains(" patientId come from PatientSource on clinic, which you cannot search: ask the user.", tool.Definition.Description, StringComparison.Ordinal);
     }
 
+    // #524: a lookup whose query the caller may not use is left out of the registry with a notice; the
+    // argument says the user lacks access, without naming the query.
+    [Fact]
+    public void StepTool_AnInputWhoseLookupTheCallerMayNotUse_SaysSo_WithoutNamingTheQuery()
+    {
+        var referrals = Referrals() with
+        {
+            Steps =
+            [
+                new ProcessStepResponse
+                {
+                    Name = "ReferPatientStep",
+                    Description = "Refers a patient",
+                    IsInitial = true,
+                    ExecuteUrl = "/referrals/processes/steps/ReferPatientStep",
+                    Fields =
+                    [
+                        new ProcessFieldMetadata
+                        {
+                            Name = "PatientId",
+                            Description = "The patient.",
+                            DataType = Text,
+                            Notice = new KaleidoNotice("pro_not_permitted", "You do not have access to the query that fills this input."),
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits(), referrals] }), "referrals_referpatientstep");
+
+        Assert.Empty(tool.Lookups);
+        Assert.Equal(
+            "The patient. Value: comes from a search the user does not have access to (pro_not_permitted). Tell the user; never guess or invent it.",
+            ArgumentDescription(tool, "patientId"));
+    }
+
     [Fact]
     public void StepTool_ALookupThroughAViewTheCallerCannotSearch_NamesTheView()
     {

@@ -165,6 +165,14 @@ public static class ProcessorErrorCodes
     /// </summary>
     public const string ProcessRecovering = "pro_process_recovering";
 
+    /// <summary>
+    /// A notice, not an error (#524): the process continues with a step the caller may not run, or
+    /// offers only such steps; or a step input's lookup names a query the caller may not use. The
+    /// response leaves them out and does not name them: the caller learns only that something is
+    /// beyond their access.
+    /// </summary>
+    public const string NotPermitted = "pro_not_permitted";
+
     /// <summary>A handler returned an information request that is not well-formed.</summary>
     public const string InformationRequestInvalid = "pro_information_request_invalid";
 
