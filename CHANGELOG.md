@@ -13,6 +13,10 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **MCP: `answer_information_request` requires its `answersToken`** (#516). A missing, unreadable or
+  forged token, or one for another process or request, is refused with `mcp_invalid_arguments` and the current
+  questions with a fresh token; the answers were submitted under the current exchange before, which let
+  answers to earlier questions pass for answers to these.
 - **Every state the MCP adapter hands to the client is protected** (#516): the state of an answers form,
   the `answersToken` and the state of a confirmation form were plain base64 JSON, so a client could read,
   change or replay them. They are now protected like the guided-lookup state (ASP.NET Data Protection:
@@ -316,6 +320,13 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **MCP: information steps are confirmed like any step** (#516): with `RequireConfirmation` on, an information
+  step declared `RequiresConfirmation` was submitted without asking (agent answers, MRTR forms and session forms
+  all skipped the confirmation). Its answers are now confirmed in the same form before they are submitted;
+  a client without forms is refused with `mcp_confirmation_required`. Both switches stay opt-in.
+- **MCP: a process is no longer called complete when the caller sees no next step** (#516): `next.note` says
+  "No further steps here.", or "No step here is available to you (pro_not_permitted)" when the remaining
+  steps are not the caller's to run.
 - **Query input the query cannot use is a 400, never a 500 or a silent Or** (#519):
   - an enum value that names no member (an unknown name, or any number: `Enum.Parse` accepted both) is
     `qry_invalid_filter_value`; a `[Flags]` enum value may combine members;

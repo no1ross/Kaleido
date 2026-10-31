@@ -113,7 +113,11 @@ description, once per property (`service.Source.Field`), not once per tool.
 `[ProcessStep(RequiresConfirmation = true)]` is a hint by default. With
 `Kaleido:Mcp:RequireConfirmation` (`KaleidoMcpOptions.RequireConfirmation`, off by default) the
 adapter asks the user itself before running such a step, whichever way it is reached (its own tool,
-`call_tool`, or a guided lookup), and runs it only when the user accepts (#439):
+`call_tool`, or a guided lookup), and runs it only when the user accepts (#439). An **information
+step** declared `RequiresConfirmation` is confirmed the same way after its last answers and before
+they are submitted (the form names the step and lists the answers), whether the agent submits them
+with `answer_information_request` or the user answers in forms (#516). Both switches are opt-in;
+without either, nothing is asked:
 
 | Client | What happens |
 |---|---|
@@ -199,12 +203,18 @@ the agent never sees them and only asks what it is handed:
   `answer_information_request` again with the new answers and the token. When nothing more applies,
   everything is submitted and the service validates it as always. An answer to a question that does
   not apply is not sent.
-- The questions always come with an `answersToken` (#442): it ties the answers to the exchange the
-  questions were shown for, and holds the earlier answers for that process and request only; a token
-  for anything else is ignored. If the same questions were asked again since (a repeatable step asking
-  them anew), a token from the earlier time is refused and nothing is submitted. It is not a security
-  boundary: the service validates the complete submission, and refuses answers to an earlier exchange
-  itself (`pro_information_response_stale`).
+- The questions always come with an `answersToken` (#442), and `answer_information_request`
+  **requires** it (#516): it ties the answers to the exchange the questions were shown for, and holds
+  the earlier answers for that process and request only. A missing, unreadable or forged token, or one
+  for another process or request, is refused with `mcp_invalid_arguments` and nothing is submitted;
+  the refusal carries the current questions with a fresh token. If the same questions were asked again
+  since (a repeatable step asking them anew), a token from the earlier time is refused too. The answers
+  are never submitted under the current exchange by default. The service still validates the complete
+  submission, and refuses answers to an earlier exchange itself (`pro_information_response_stale`).
+- When nothing can be done next, `next.note` says so without claiming the process is complete: "No
+  further steps here." when the service offers nothing (`get_process_state` names the state), and
+  "No step here is available to you (`pro_not_permitted`)" when the remaining steps are not the caller's
+  to run (#516).
 - Forms carry the exchange in the continuation state the same way: a form shown for an earlier time
   the questions were asked is not submitted, and the current state is returned instead.
 
