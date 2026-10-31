@@ -292,7 +292,7 @@ public sealed class QueryBodyResolverTests
         var exception = Assert.Throws<KaleidoValidationException>(() => body.ToQueryBody(Fields));
 
         Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
-        Assert.Contains("'sideways'", exception.Message, StringComparison.Ordinal);
+        Assert.Equal("The sort direction is not valid. Expected 'ascending' or 'descending'.", exception.Message);
     }
 
     [Fact]
@@ -309,17 +309,20 @@ public sealed class QueryBodyResolverTests
         var exception = Assert.Throws<KaleidoValidationException>(() => body.ToQueryBody(Fields));
 
         Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
-        Assert.Contains("'xor'", exception.Message, StringComparison.Ordinal);
+        Assert.Equal("The logical operator of a filter group is not valid. Expected 'and' or 'or'.", exception.Message);
     }
 
+    // #520: the refusal lists what is accepted, never the submitted text.
     [Fact]
-    public void ToQueryBody_WhenFilterOperatorIsInvalid_ReportsTheOperator()
+    public void ToQueryBody_WhenFilterOperatorIsInvalid_ListsTheOperators_WithoutTheSubmittedText()
     {
         var exception = Assert.Throws<KaleidoValidationException>(() =>
             ApiBody("Name", "near", StringValue("x")).ToQueryBody(Fields));
 
         Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
-        Assert.Equal("Filter operator 'near' is not valid.", exception.Message);
+        Assert.StartsWith("The filter operator is not valid. Expected one of: equals, notEquals, ", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("startsWith", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("near", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -479,7 +482,7 @@ public sealed class QueryBodyResolverTests
             Resolve(typeof(int), JsonDocument.Parse("[1]").RootElement));
 
         Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
-        Assert.Equal("Unsupported JSON value kind 'Array' for field type 'Int32'.", exception.Message);
+        Assert.Equal("A value for field 'field' is a JSON array; expected a value of type 'Int32'.", exception.Message);
     }
 
     [Fact]
@@ -511,15 +514,16 @@ public sealed class QueryBodyResolverTests
         var exception = Assert.Throws<KaleidoValidationException>(() => Resolve(fieldType, StringValue("nope")));
 
         Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
-        Assert.Equal($"Value 'nope' is not {expected}.", exception.Message);
+        Assert.Equal($"A value for field 'field' is not {expected}.", exception.Message);
     }
 
+    // #520: the field and the expected type are named, never the value (a name or identifier).
     [Fact]
-    public void ToQueryBody_InvalidEnumString_NamesTheEnum()
+    public void ToQueryBody_InvalidEnumString_NamesTheFieldAndTheEnum_NotTheValue()
     {
         var exception = Assert.Throws<KaleidoValidationException>(() => Resolve(typeof(TestStatus), StringValue("nope")));
 
-        Assert.Equal("Value 'nope' is not a valid 'TestStatus' value.", exception.Message);
+        Assert.Equal("A value for field 'field' is not a valid 'TestStatus' value.", exception.Message);
     }
 
     private static object?[] Resolve(Type fieldType, params JsonElement[] values)

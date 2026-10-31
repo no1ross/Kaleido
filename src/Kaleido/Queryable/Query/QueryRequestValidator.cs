@@ -154,7 +154,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
 
         throw new KaleidoValidationException(
             QueryableErrorCodes.UnsupportedRuntimeType,
-            $"Value '{name}' contains unsupported runtime type '{actualType.FullName}'. " +
+            $"A value for field '{name}' has unsupported runtime type '{actualType.FullName}'. " +
             "Transport layers must normalize values before invoking Queryable.");
     }
 

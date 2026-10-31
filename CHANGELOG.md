@@ -301,6 +301,11 @@ sections.
   per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
 
 ### Fixed
+- **Query validation messages no longer echo what the caller sent** (#520). A refused filter value, filter
+  operator, logical operator or sort direction was interpolated into the message, which is logged at
+  Warning and returned in the 400 body; a filter value may be a member's name or identifier. The
+  messages now name the field and what was expected (the type, or the accepted values), and keep their
+  codes.
 - **HTTP edges** (#521):
   - `POST /{service}/processes/execute` binds its body with Kaleido's own JSON rules, like the per-step
     routes: a malformed body gets Kaleido's 400 with an error body (not the host's page or a bare 400),

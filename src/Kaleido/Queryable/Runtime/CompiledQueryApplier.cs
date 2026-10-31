@@ -595,7 +595,7 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
             {
                 throw new KaleidoValidationException(
                     QueryableErrorCodes.InvalidFilterValue,
-                    $"Value 'null' is not valid for field '{targetType.Name}'. Expected a value of type '{targetType.Name}'.");
+                    $"A null filter value is not valid here. Expected a value of type '{targetType.Name}'.");
             }
 
             return null;
@@ -631,9 +631,10 @@ internal sealed class CompiledQueryApplier<TQueryContext> : ICompiledQueryApplie
                 CultureInfo.InvariantCulture);
         }
 
+        // The value itself is not named: it may be a member's name or identifier (#520).
         throw new KaleidoValidationException(
             QueryableErrorCodes.InvalidFilterValue,
-            $"Value '{value}' is not valid for field '{expectedType.Name}'. Expected a value of type '{expectedType.Name}'.");
+            $"A filter value of type '{actualType.Name}' is not valid here. Expected a value of type '{expectedType.Name}'.");
     }
 
     private static MethodCallExpression ToLower(

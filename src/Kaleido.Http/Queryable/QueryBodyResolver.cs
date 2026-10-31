@@ -9,6 +9,10 @@ namespace Kaleido.Http.Queryable;
 /// This is the HTTP transport's responsibility — core expects filter values to be
 /// plain CLR scalars or enums.
 /// </summary>
+/// <remarks>
+/// A refusal names the field and what was expected, never the submitted value: a filter value may be
+/// a member's name or identifier, and the message is logged and returned (#520).
+/// </remarks>
 internal static class QueryBodyResolver
 {
     /// <summary>
@@ -61,7 +65,7 @@ internal static class QueryBodyResolver
 
         var values =
             condition.Values?
-                .Select(v => ResolveValue(v, targetType))
+                .Select(v => ResolveValue(v, targetType, condition.Field))
                 .Cast<object?>()
                 .ToArray()
             ?? [];
@@ -105,25 +109,30 @@ internal static class QueryBodyResolver
             ? result
             : throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidFilterValue,
-                $"Filter operator '{raw}' is not valid.");
+                $"The filter operator is not valid. Expected one of: {Names<FilterOperator>()}.");
 
     private static LogicalOperator ParseLogicalOperator(string raw) =>
         Enum.TryParse<LogicalOperator>(raw, ignoreCase: true, out var result)
             ? result
             : throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidFilterValue,
-                $"Logical operator '{raw}' is not valid. Expected 'and' or 'or'.");
+                "The logical operator of a filter group is not valid. Expected 'and' or 'or'.");
 
     private static SortDirection ParseSortDirection(string raw) =>
         Enum.TryParse<SortDirection>(raw, ignoreCase: true, out var result)
             ? result
             : throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidFilterValue,
-                $"Sort direction '{raw}' is not valid. Expected 'ascending' or 'descending'.");
+                "The sort direction is not valid. Expected 'ascending' or 'descending'.");
+
+    // The values a caller may send, as the wire writes them (camelCase).
+    private static string Names<TEnum>()
+        where TEnum : struct, Enum =>
+        string.Join(", ", Enum.GetNames<TEnum>().Select(JsonNamingPolicy.CamelCase.ConvertName));
 
     // ── JsonElement value resolution ──────────────────────────────────────────
 
-    private static object? ResolveValue(JsonElement element, Type? targetType)
+    private static object? ResolveValue(JsonElement element, Type? targetType, string field)
     {
         if (element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
         {
@@ -146,10 +155,11 @@ internal static class QueryBodyResolver
                 ?? throw new KaleidoValidationException(
                     QueryableErrorCodes.InvalidFilterValue,
                     "String JSON element has a null value."),
-                targetType),
+                targetType,
+                field),
             _ => throw new KaleidoValidationException(
                 QueryableErrorCodes.InvalidFilterValue,
-                $"Unsupported JSON value kind '{element.ValueKind}' for field type '{targetType.Name}'."),
+                $"A value for field '{field}' is a JSON {element.ValueKind.ToString().ToLowerInvariant()}; expected a value of type '{targetType.Name}'."),
         };
     }
 
@@ -185,7 +195,7 @@ internal static class QueryBodyResolver
         return element.GetRawText();
     }
 
-    private static object ResolveString(string raw, Type targetType)
+    private static object ResolveString(string raw, Type targetType, string field)
     {
         if (targetType == typeof(string))
         {
@@ -196,55 +206,55 @@ internal static class QueryBodyResolver
         {
             return Guid.TryParse(raw, CultureInfo.InvariantCulture, out var guid)
                 ? guid
-                : throw InvalidValue(raw, "a valid Guid");
+                : throw InvalidValue(field, "a valid Guid");
         }
 
         if (targetType == typeof(DateOnly))
         {
             return DateOnly.TryParse(raw, CultureInfo.InvariantCulture, out var d)
                 ? d
-                : throw InvalidValue(raw, "a valid date (yyyy-MM-dd)");
+                : throw InvalidValue(field, "a valid date (yyyy-MM-dd)");
         }
 
         if (targetType == typeof(TimeOnly))
         {
             return TimeOnly.TryParse(raw, CultureInfo.InvariantCulture, out var t)
                 ? t
-                : throw InvalidValue(raw, "a valid time");
+                : throw InvalidValue(field, "a valid time");
         }
 
         if (targetType == typeof(DateTime))
         {
             return DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt)
                 ? dt
-                : throw InvalidValue(raw, "a valid date-time");
+                : throw InvalidValue(field, "a valid date-time");
         }
 
         if (targetType == typeof(DateTimeOffset))
         {
             return DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dto)
                 ? dto
-                : throw InvalidValue(raw, "a valid date-time-offset");
+                : throw InvalidValue(field, "a valid date-time-offset");
         }
 
         if (targetType == typeof(TimeSpan))
         {
             return TimeSpan.TryParse(raw, CultureInfo.InvariantCulture, out var ts)
                 ? ts
-                : throw InvalidValue(raw, "a valid duration");
+                : throw InvalidValue(field, "a valid duration");
         }
 
         if (targetType.IsEnum)
         {
             return Enum.TryParse(targetType, raw, ignoreCase: true, out var enumVal)
                 ? enumVal
-                : throw InvalidValue(raw, $"a valid '{targetType.Name}' value");
+                : throw InvalidValue(field, $"a valid '{targetType.Name}' value");
         }
 
         // Unknown type — return raw; QueryRequestValidator will reject with a useful error
         return raw;
     }
 
-    private static KaleidoValidationException InvalidValue(string raw, string expected) =>
-        new(QueryableErrorCodes.InvalidFilterValue, $"Value '{raw}' is not {expected}.");
+    private static KaleidoValidationException InvalidValue(string field, string expected) =>
+        new(QueryableErrorCodes.InvalidFilterValue, $"A value for field '{field}' is not {expected}.");
 }

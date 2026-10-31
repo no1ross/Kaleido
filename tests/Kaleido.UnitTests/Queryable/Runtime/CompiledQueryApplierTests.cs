@@ -179,6 +179,10 @@ public sealed class CompiledQueryApplierTests
             () => Filter(Condition(nameof(FakeRecord.CreatedOn), FilterOperator.Equals, "2024-01-01")));
 
         Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
+
+        // #520: the expected type is named, the value never is.
+        Assert.Contains("'String'", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("2024-01-01", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -188,7 +192,7 @@ public sealed class CompiledQueryApplierTests
             () => Filter(Condition(nameof(FakeRecord.Age), FilterOperator.Equals, [null])));
 
         Assert.Equal(QueryableErrorCodes.InvalidFilterValue, exception.Code);
-        Assert.Contains("'null'", exception.Message);
+        Assert.Equal("A null filter value is not valid here. Expected a value of type 'Int32'.", exception.Message);
     }
 
     [Fact]
