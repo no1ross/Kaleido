@@ -96,8 +96,9 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 [AvailableAfter<ShipOrderStep>]
 public sealed record ReturnOrderStep : IProcessStep;
 
-// HandOff only tells the caller where the process continues; the handler starts it there. Called
-// from this step, the returns service starts its process under this process's id (a handoff).
+// The handler starts the process on the returns service - called from this step, it starts under
+// this process's id - and hands off with that service's answer, so the caller gets the returns
+// service's next steps (and messages) straight away and continues there.
 public sealed class ReturnOrderHandler(IKaleidoProcessorClientFactory processors) : IProcessStepHandler<ReturnOrderStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
@@ -105,9 +106,15 @@ public sealed class ReturnOrderHandler(IKaleidoProcessorClientFactory processors
         ProcessStepContext context,
         CancellationToken cancellationToken)
     {
-        await processors.GetClient("returns").ExecuteStepAsync(new OpenReturnStep(), cancellationToken);
+        var answer = await processors.GetClient("returns").ExecuteStepAsync(new OpenReturnStep(), cancellationToken);
 
-        return ProcessStepHandlerResult.HandOff("returns");
+        // The returns service did not take the process over: the return cannot start, as it said.
+        if (answer.Status != StepExecutionStatus.Completed)
+        {
+            return ProcessStepHandlerResult.Reject([.. answer.BusinessMessages]);
+        }
+
+        return ProcessStepHandlerResult.HandOff("returns", answer);
     }
 }
 

@@ -7,7 +7,7 @@ namespace Kaleido.Processor.Execution;
 /// Created with <see cref="ProcessStepHandlerResult.Success{TProcessStepResult}(TProcessStepResult, ProcessMessage[])"/>
 /// or <see cref="ProcessStepHandlerResult.Failure{TProcessStepResult}(TProcessStepResult, ProcessMessage[])"/>;
 /// results without a response (<see cref="ProcessStepHandlerResult.Reject"/>,
-/// <see cref="ProcessStepHandlerResult.HandOff"/>) convert to it implicitly.
+/// <see cref="ProcessStepHandlerResult.HandOff(string, IHandOffContinuationSource)"/>) convert to it implicitly.
 /// </remarks>
 /// <example>
 /// <code>
@@ -33,7 +33,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
     public InformationRequest? InformationRequest { get; internal init; }
 
     /// <inheritdoc />
-    public string? TargetProcessorName { get; internal init; }
+    public HandOffContinuation? HandOffContinuation { get; internal init; }
 
     /// <inheritdoc />
     public bool CompletesProcess { get; internal init; }
@@ -105,7 +105,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 
     /// <summary>
     /// Uses a result without a response - <see cref="ProcessStepHandlerResult.Reject"/>,
-    /// <see cref="ProcessStepHandlerResult.HandOff"/>, or an untyped success or failure - where a
+    /// <see cref="ProcessStepHandlerResult.HandOff(string, IHandOffContinuationSource)"/>, or an untyped success or failure - where a
     /// typed result is returned.
     /// </summary>
     /// <param name="result">The untyped result.</param>
@@ -122,7 +122,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
             Rejected = result.Rejected,
             RequiredStep = result.RequiredStep,
             InformationRequest = result.InformationRequest,
-            TargetProcessorName = result.TargetProcessorName,
+            HandOffContinuation = result.HandOffContinuation,
             CompletesProcess = result.CompletesProcess,
             Messages = result.Messages,
             Response = result.Response switch
@@ -138,7 +138,7 @@ public sealed record ProcessStepHandlerResult<TProcessStepResult> : IProcessStep
 
     private void EnsureCanRequireNextStep(Type next)
     {
-        if (!Succeeded || Rejected || TargetProcessorName is not null || CompletesProcess)
+        if (!Succeeded || Rejected || HandOffContinuation is not null || CompletesProcess)
         {
             throw new KaleidoFrameworkException(
                 ProcessorErrorCodes.InvalidRequiredStep,

@@ -56,8 +56,10 @@ internal sealed class ProcessExecutionResponseFactory(
             TargetProcessorName =
                 processResult.TargetProcessorName,
 
+            // After a hand-off the next steps are the target's names, resolved against the target's
+            // registry by the caller of this factory (#198); local ones are this registry's.
             AvailableSteps =
-                processResult.AvailableSteps
+                LocalSteps(processResult)
                     .Select(stepName =>
                         {
                             var registration = registry.Find(stepName)
@@ -108,8 +110,10 @@ internal sealed class ProcessExecutionResponseFactory(
 
             Status = stepResult.ExecutionStatus,
 
+            // After a hand-off the next steps are the target's names, resolved against the target's
+            // registry by the caller of this factory (#198); local ones are this registry's.
             AvailableSteps =
-                processResult.AvailableSteps
+                LocalSteps(processResult)
                     .Select(stepName =>
                         {
                             var registration = registry.Find(stepName)
@@ -185,6 +189,12 @@ internal sealed class ProcessExecutionResponseFactory(
             FrameworkMessages = ToFrameworkMessages(stepResult),
         };
     }
+
+    // The next steps that are this processor's: none after a hand-off, whose steps are the target's.
+    private static IReadOnlyCollection<string> LocalSteps(ProcessResult processResult) =>
+        processResult.TargetProcessorName is null
+            ? processResult.AvailableSteps
+            : [];
 
     private ProcessRequiredStep? CreateRequiredStep(
         ProcessResult processResult,

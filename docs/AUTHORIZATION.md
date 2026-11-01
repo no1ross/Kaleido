@@ -113,6 +113,10 @@ past the capability lists:
   carries a `notice` (`pro_not_permitted`, "you do not have access to continue this process") that
   names no step, whatever the transport's message options. A Warning names the step for the
   operator: a caller who reached the process but may not continue it usually has the wrong roles.
+  After a hand-off the next steps are the target's, as its registry publishes them to this host's
+  client (#198), and they are checked here for the caller the same way, so hosts that hand off to
+  each other share policy names. A step that registry does not have, or a registry this host cannot
+  read, is left out with the same `notice`, and a Warning names it.
 - **Lookups:** an input whose `[Lookup]` names a query the caller may not use keeps the input,
   without `lookup`, with a `notice` (`pro_not_permitted`), and a Warning names the query. A query
   of this host's registry (its own, or a downstream's on an aggregating host) is checked by the

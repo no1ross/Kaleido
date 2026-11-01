@@ -27,7 +27,9 @@ internal sealed record ExecutionDecision
         init;
     }
 
-    public string? TargetProcessorName
+    // The hand-off (#198): the target, whose name the state keeps, and its answer, which the request
+    // answers with and which is never saved.
+    public HandOffContinuation? HandOff
     {
         get;
         init;
@@ -93,13 +95,11 @@ internal sealed record ExecutionDecision
         };
 
     public static ExecutionDecision AwaitingRequiredStep(
-        string requiredStep,
-        string? targetProcessorName = null)
+        string requiredStep)
         => new()
         {
             Type = ExecutionDecisionType.AwaitingRequiredStep,
             RequiredStep = requiredStep,
-            TargetProcessorName = targetProcessorName,
         };
 
     public static ExecutionDecision AwaitingStepSelection(
@@ -120,10 +120,21 @@ internal sealed record ExecutionDecision
             InformationRequest = informationRequest,
         };
 
-    public static ExecutionDecision HandOff(string targetProcessorName)
+    // The target's framework messages become the step's runtime messages, so the transport's
+    // framework-message option applies to them as to the origin's own (#198).
+    public static ExecutionDecision HandOffTo(HandOffContinuation handOff)
         => new()
         {
             Type = ExecutionDecisionType.HandOff,
-            TargetProcessorName = targetProcessorName,
+            HandOff = handOff,
+            Messages =
+            [
+                .. handOff.FrameworkMessages.Select(x => new StepProcessingMessage
+                {
+                    Type = x.Type,
+                    Code = x.Code,
+                    Message = x.Message,
+                }),
+            ],
         };
 }

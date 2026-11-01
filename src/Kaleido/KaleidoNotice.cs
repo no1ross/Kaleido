@@ -1,4 +1,4 @@
-namespace Kaleido.Http;
+namespace Kaleido;
 
 /// <summary>
 /// Something the caller should know about a response that is not an error: the response is

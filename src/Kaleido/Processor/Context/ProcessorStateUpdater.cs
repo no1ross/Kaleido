@@ -152,7 +152,7 @@ internal sealed class ProcessorStateUpdater(
                 decision.InformationRequest,
 
             TargetProcessorName =
-                decision.TargetProcessorName,
+                decision.HandOff?.TargetProcessorName,
 
             AvailableSteps =
                 decision.AvailableSteps,

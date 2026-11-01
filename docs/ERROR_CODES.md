@@ -91,7 +91,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `OutcomeNotSaved` | `pro_outcome_not_saved` | 500: the step ran, but its outcome was not saved and could not be kept; or 409: another request changed the process meanwhile. Do not send the step again; the process must be reconciled ([ADR 0034](decisions/0034-unsaved-step-outcomes.md)) |
 | `NotPermitted` | `pro_not_permitted` | A **notice**, not an error: the process continues with steps the caller may not run (`requiredStep` null or `availableSteps` empty), or a step input's lookup names a query the caller may not use (`lookup` left out). Nothing is named ([AUTHORIZATION.md](AUTHORIZATION.md), #524) |
 | `ProcessRecovering` | `pro_process_recovering` | 409: an earlier step's outcome is still being saved; nothing was run. Try again shortly ([ADR 0034](decisions/0034-unsaved-step-outcomes.md)) |
-| `InvalidHandOff` | `pro_invalid_hand_off` | A handler handed the process off to the service it runs in; a process violation, so the process keeps its state |
+| `InvalidHandOff` | `pro_invalid_hand_off` | A handler handed the process off to the service it runs in, or with a target answer whose step did not complete or that both requires and offers a step (#198); a process violation, so the process keeps its state |
 | `ExecutionCanceled` | `pro_execution_canceled` | Step execution was cancelled |
 | `FrameworkException` | `pro_framework_exception` | Unexpected framework error interrupted a step |
 | `RepeatableStep` | `pro_repeatable_step` | Repeatable step remains eligible after prior execution |

@@ -109,10 +109,11 @@ public sealed record ProcessExecutionResponse
     }
 
     /// <summary>
-    /// The next required step on the local processor, including its pending information
-    /// request when the process is <see cref="ProcessExecutionState.AwaitingInformation"/>.
-    /// Null when <see cref="TargetProcessorName"/> is set — call the target processor's
-    /// state endpoint instead to get the authoritative required step.
+    /// The step the process requires next, including its pending information request when the
+    /// process is <see cref="ProcessExecutionState.AwaitingInformation"/>. When this request handed the
+    /// process off (<see cref="TargetProcessorName"/> is set), the target's required step as the target
+    /// publishes it - its execute URL, its questions and their exchange id (#198); null when the target
+    /// requires none.
     /// </summary>
     public ProcessRequiredStep? RequiredStep
     {
@@ -121,9 +122,10 @@ public sealed record ProcessExecutionResponse
     }
 
     /// <summary>
-    /// When set, the process has been handed off to this processor.
-    /// The consumer must call GET /{TargetProcessorName}/processes/{ProcessId} to continue.
-    /// <see cref="RequiredStep"/> will be null in this case.
+    /// When set, this request handed the process off to this processor: <see cref="RequiredStep"/>,
+    /// <see cref="AvailableSteps"/> and <see cref="Notice"/> are its answer, with its execute URLs, and
+    /// the step's business messages are its messages (#198). The process continues there; its state is
+    /// read with GET /{TargetProcessorName}/processes/{ProcessId}.
     /// </summary>
     public string? TargetProcessorName
     {
@@ -132,8 +134,9 @@ public sealed record ProcessExecutionResponse
     }
 
     /// <summary>
-    /// The steps on the local processor that the caller may run next, each with its execute URL.
-    /// Empty when no step is available. Only the steps this caller may run are listed (#524).
+    /// The steps the caller may run next, each with its execute URL: this processor's, or after a hand-off
+    /// the target's (<see cref="TargetProcessorName"/>, #198). Empty when no step is available. Only the
+    /// steps this caller may run are listed (#524).
     /// </summary>
     public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
     {
@@ -146,7 +149,8 @@ public sealed record ProcessExecutionResponse
     /// Set, whatever the transport's message options, when the process continues with steps this
     /// caller may not run: its required step (then <c>RequiredStep</c> is null), or every available
     /// step (then <c>AvailableSteps</c> is empty). Its code is <c>pro_not_permitted</c>; the steps are
-    /// not named. Null otherwise (#524).
+    /// not named. After a hand-off it is the target's notice, unless the check for this caller sets one
+    /// (#198). Null otherwise (#524).
     /// </summary>
     public KaleidoNotice? Notice
     {
@@ -202,111 +206,6 @@ public sealed record ProcessExecutionStepResponse
         get;
         init;
     }
-}
-
-/// <summary>
-/// The response of a per-step execute endpoint (<see cref="ExecuteStepRequest{TProcessStep}"/>) for
-/// a step without a typed result; the base of <see cref="StepExecutionResponse{TResponse}"/>.
-/// </summary>
-/// <remarks>
-/// An HTTP 200 does not mean the step completed: inspect <see cref="Status"/>.
-/// </remarks>
-[ExcludeFromCodeCoverage]
-public record StepExecutionResponse
-{
-    /// <summary>
-    /// The id of the process that was created or continued; also returned in the
-    /// <c>X-Kaleido-Process-Id</c> response header.
-    /// </summary>
-    public required Guid ProcessId
-    {
-        get;
-        init;
-    }
-
-    /// <summary>The executed step's registered name (its type name).</summary>
-    public required string StepName
-    {
-        get;
-        init;
-    }
-
-    /// <summary>
-    /// The next required step on the local processor, including its pending information
-    /// request when the process is <see cref="ProcessExecutionState.AwaitingInformation"/>.
-    /// Null when <see cref="TargetProcessorName"/> is set — call the target processor's
-    /// state endpoint instead to get the authoritative required step.
-    /// </summary>
-    public ProcessRequiredStep? RequiredStep
-    {
-        get;
-        init;
-    }
-
-    /// <summary>
-    /// When set, the process has been handed off to this processor.
-    /// The consumer must call GET /{TargetProcessorName}/processes/{ProcessId} to continue.
-    /// <see cref="RequiredStep"/> will be null in this case.
-    /// </summary>
-    public string? TargetProcessorName
-    {
-        get;
-        init;
-    }
-
-    /// <summary>
-    /// What happened to the executed step: <see cref="StepExecutionStatus.Completed"/>,
-    /// <see cref="StepExecutionStatus.Rejected"/> or <see cref="StepExecutionStatus.ValidationFailed"/>
-    /// (correct the input), <see cref="StepExecutionStatus.Failed"/> (a business failure),
-    /// <see cref="StepExecutionStatus.Exception"/> (a defect; retry later),
-    /// <see cref="StepExecutionStatus.Canceled"/>, or <see cref="StepExecutionStatus.Pending"/> when it
-    /// did not run (the framework messages say why). The step's status, not the HTTP status, says
-    /// whether it completed.
-    /// </summary>
-    public StepExecutionStatus Status
-    {
-        get;
-        init;
-    }
-
-    /// <summary>
-    /// The steps on the local processor that the caller may run next, each with its execute URL.
-    /// Empty when no step is available. Only the steps this caller may run are listed (#524).
-    /// </summary>
-    public IReadOnlyCollection<ProcessStepSummary> AvailableSteps
-    {
-        get;
-        init;
-    }
-        = [];
-
-    /// <summary>
-    /// Set, whatever the transport's message options, when the process continues with steps this
-    /// caller may not run: its required step (then <c>RequiredStep</c> is null), or every available
-    /// step (then <c>AvailableSteps</c> is empty). Its code is <c>pro_not_permitted</c>; the steps are
-    /// not named. Null otherwise (#524).
-    /// </summary>
-    public KaleidoNotice? Notice
-    {
-        get;
-        init;
-    }
-
-    /// <summary>Handler-authored messages for consumers, independent of framework diagnostics.</summary>
-    public IReadOnlyCollection<ProcessMessage> BusinessMessages
-    {
-        get;
-        init;
-    }
-        = [];
-
-    /// <summary>Framework diagnostics, empty unless the transport explicitly enables them.</summary>
-    public IReadOnlyCollection<ProcessMessage> FrameworkMessages
-    {
-        get;
-        init;
-    }
-        = [];
 }
 
 /// <summary>

@@ -341,7 +341,7 @@ public sealed class ProcessorStateUpdaterTests
         var result = Sut.ApplyExecution(
             context,
             new StepCandidate { StepName = "test-step" },
-            new ExecutionDecision { Type = ExecutionDecisionType.ProcessViolation, RequiredStep = "ignored", TargetProcessorName = "ignored" });
+            new ExecutionDecision { Type = ExecutionDecisionType.ProcessViolation, RequiredStep = "ignored", HandOff = new HandOffContinuation { TargetProcessorName = "ignored" } });
 
         Assert.Equal(ProcessExecutionState.AwaitingStepSelection, result.State);
         Assert.Equal(["test-step", "other-step"], result.AvailableSteps);
@@ -380,7 +380,7 @@ public sealed class ProcessorStateUpdaterTests
         {
             Type = ExecutionDecisionType.AwaitingRequiredStep,
             RequiredStep = "required-step",
-            TargetProcessorName = "target-processor",
+            HandOff = new HandOffContinuation { TargetProcessorName = "target-processor" },
             AvailableSteps = ["step1", "step2"]
         };
 

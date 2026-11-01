@@ -39,10 +39,10 @@ public interface IProcessStepHandlerResult
     InformationRequest? InformationRequest { get; }
 
     /// <summary>
-    /// The processor this step hands off to, or <see langword="null"/> when the
-    /// process stays in the current processor.
+    /// The hand-off this step made - the service that takes the process over and its answer - or
+    /// <see langword="null"/> when the process stays in the current processor (#198).
     /// </summary>
-    string? TargetProcessorName { get; }
+    HandOffContinuation? HandOffContinuation { get; }
 
     /// <summary>
     /// <see langword="true"/> when the step completes the whole process (<c>Complete(...)</c>): the
@@ -81,7 +81,7 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     public InformationRequest? InformationRequest { get; internal init; }
 
     /// <inheritdoc />
-    public string? TargetProcessorName { get; internal init; }
+    public HandOffContinuation? HandOffContinuation { get; internal init; }
 
     /// <inheritdoc />
     public bool CompletesProcess { get; internal init; }
@@ -215,29 +215,90 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     }
 
     /// <summary>
-    /// Signals a successful step that hands off to a different processor.
-    /// The framework will propagate <paramref name="targetProcessorName"/> to the
-    /// HTTP response so the consumer can fetch authoritative state from the target.
+    /// Signals a successful step that hands the process off to another service, with that service's
+    /// answer: the handler called the target's step (through the Kaleido client) and passes the response
+    /// it got. On this request the caller is answered with the target's next steps and messages, so
+    /// it continues on the target with no second call; the process then belongs to the target (#198).
     /// </summary>
+    /// <remarks>
+    /// Hand off only when the target's step completed: a target answer that did not (rejected, failed)
+    /// means the target did not take the process over, and is reported as a process violation - reject
+    /// the step instead, with the target's messages. The step's business and framework messages are the target's.
+    /// </remarks>
     /// <param name="targetProcessorName">
     /// The service that takes the process over; another service's name. Handing off to this
     /// service itself is reported as a process violation.
     /// </param>
-    /// <param name="messages">Business messages returned to the caller.</param>
+    /// <param name="targetResponse">The target's answer to the handler's call, as the Kaleido client returned it.</param>
     /// <exception cref="ArgumentException"><paramref name="targetProcessorName"/> is null, empty or whitespace.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="targetResponse"/> is null.</exception>
+    /// <example>
+    /// <code>
+    /// var answer = await clients.GetClient("radiology").ExecuteStepAsync(new StartRadiologyIntake { ... }, cancellationToken);
+    /// return ProcessStepHandlerResult.HandOff("radiology", answer);
+    /// </code>
+    /// </example>
     public static ProcessStepHandlerResult HandOff(
         string targetProcessorName,
-        params ProcessMessage[] messages)
+        IHandOffContinuationSource targetResponse)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(targetProcessorName);
+        ArgumentNullException.ThrowIfNull(targetResponse);
+
+        // The name the handler handed off to, whatever the answer says.
+        var continuation = targetResponse.ToHandOffContinuation(targetProcessorName) with
+        {
+            TargetProcessorName = targetProcessorName,
+        };
 
         return new()
         {
             Succeeded = true,
-            TargetProcessorName = targetProcessorName,
-            Messages = messages,
+            HandOffContinuation = continuation,
+            Messages = continuation.BusinessMessages,
         };
     }
+
+    /// <summary>
+    /// Signals a successful step with a typed response that hands the process off to another service,
+    /// with that service's answer (see <see cref="HandOff(string, IHandOffContinuationSource)"/>). The
+    /// handler builds the response from what the target returned - read it with the client's typed
+    /// <c>ExecuteStepAsync&lt;TStep, TResponse&gt;</c> - as it would for
+    /// <see cref="Success{TProcessStepResult}(TProcessStepResult, ProcessMessage[])"/>: the caller gets
+    /// this service's response, and the target's next steps and messages (#198).
+    /// </summary>
+    /// <remarks>
+    /// The target's own result is not passed on: the caller ran this service's step, so this
+    /// service's response type is its contract. Copy into it what the caller should know.
+    /// </remarks>
+    /// <typeparam name="TProcessStepResult">The typed response, inferred from <paramref name="response"/>.</typeparam>
+    /// <param name="targetProcessorName">
+    /// The service that takes the process over; another service's name. Handing off to this
+    /// service itself is reported as a process violation.
+    /// </param>
+    /// <param name="targetResponse">The target's answer to the handler's call, as the Kaleido client returned it.</param>
+    /// <param name="response">This step's typed response.</param>
+    /// <exception cref="ArgumentException"><paramref name="targetProcessorName"/> is null, empty or whitespace.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="targetResponse"/> is null.</exception>
+    /// <example>
+    /// <code>
+    /// var answer = await clients.GetClient("radiology")
+    ///     .ExecuteStepAsync&lt;StartRadiologyIntake, StartRadiologyIntakeResult&gt;(new StartRadiologyIntake { ... }, cancellationToken);
+    /// return ProcessStepHandlerResult.HandOff("radiology", answer, new CaptureServiceResult { CaseNumber = answer.Result?.CaseNumber });
+    /// </code>
+    /// </example>
+    public static ProcessStepHandlerResult<TProcessStepResult> HandOff<TProcessStepResult>(
+        string targetProcessorName,
+        IHandOffContinuationSource targetResponse,
+        TProcessStepResult response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+
+        ProcessStepHandlerResult<TProcessStepResult> handOff = HandOff(targetProcessorName, targetResponse);
+
+        return handOff with { Response = response };
+    }
+
     /// <summary>
     /// Signals a successful step with a typed response and no specific next step required; the
     /// runtime continues with the steps the process rules make available. Chain

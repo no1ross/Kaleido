@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Kaleido.Http.Processor;
 
 namespace Kaleido.Http.FunctionalTests.Processor.Behavior;
 
@@ -35,6 +36,10 @@ internal static class BehaviorSteps
     public const string RejectionCode = "BEHAVIOR_NOTE_REJECTED";
     public const string ExplosionDetail = "internal detail 4711";
     public const string HandOffTarget = "radiology";
+
+    // The target's answer a handler hands off with (#198): its step completed, nothing next to offer.
+    public static StepExecutionResponse TargetAnswer(Guid processId) =>
+        new() { ProcessId = processId, StepName = "StartRadiologyIntake", Status = StepExecutionStatus.Completed };
 }
 
 [ProcessStep(DisplayName = "Start", Description = "Starts the case.")]
@@ -176,16 +181,18 @@ public sealed class BehaviorExplodeHandler(BehaviorSwitches switches) : IProcess
             : Task.FromResult(ProcessStepHandlerResult.Success());
 }
 
+// The target is not hosted here: these hand off with a completed answer of their own, with no next
+// steps, so only the hand-off itself is under test.
 public sealed class BehaviorHandOffHandler : IProcessStepHandler<BehaviorHandOffStep>
 {
     public Task<ProcessStepHandlerResult> ExecuteAsync(BehaviorHandOffStep processStep, ProcessStepContext context, CancellationToken cancellationToken = default) =>
-        Task.FromResult(ProcessStepHandlerResult.HandOff(BehaviorSteps.HandOffTarget));
+        Task.FromResult(ProcessStepHandlerResult.HandOff(BehaviorSteps.HandOffTarget, BehaviorSteps.TargetAnswer(context.ProcessId)));
 }
 
 public sealed class BehaviorHandOffHereHandler : IProcessStepHandler<BehaviorHandOffHereStep>
 {
     public Task<ProcessStepHandlerResult> ExecuteAsync(BehaviorHandOffHereStep processStep, ProcessStepContext context, CancellationToken cancellationToken = default) =>
-        Task.FromResult(ProcessStepHandlerResult.HandOff(BehaviorFixture.ServiceName));
+        Task.FromResult(ProcessStepHandlerResult.HandOff(BehaviorFixture.ServiceName, BehaviorSteps.TargetAnswer(context.ProcessId)));
 }
 
 public sealed class BehaviorFailHandler : IProcessStepHandler<BehaviorFailStep>

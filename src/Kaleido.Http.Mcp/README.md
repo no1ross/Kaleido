@@ -167,7 +167,7 @@ and the instructions tell the model to relay messages verbatim.
 - **`next.available`**: the steps the user may choose from, each with what it **closes** (its
   `availableUntil`), so the user decides the order knowing what each choice ends. The agent offers
   them; it does not pick.
-- **After a handoff** the target service's state is read, so `next` names that service's tools.
+- **After a handoff** the step's answer already carries the target service's next steps (#198), so `next` names that service's tools; only an answer without them (an older service) has the target's state read.
 - **A rejected step** (`outcome: rejected`) changed nothing: the note says so and `next` lists the
   unchanged next steps (ADR 0008). A step that failed unexpectedly while the process still has next
   steps is reported the same way.

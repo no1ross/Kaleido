@@ -149,7 +149,7 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 |---|---|---|
 | `Success()`, `Success<TNext>()`, `Success(result).Next<TNext>()` | `completed` | moves on; `requiredStep` / `availableSteps` say what is next |
 | `RequireInformation<TNext>(request)` | `completed` | waits for answers ([Information requests](information-requests.md)) |
-| `HandOff(processor)` | `completed` | continues on another processor (`targetProcessorName`); this one runs none of its steps on it, unless that processor hands it back |
+| `HandOff(processor, answer)` | `completed` | continues on another processor (`targetProcessorName`), whose next steps and messages are the answer's; this one runs none of its steps on it, unless that processor hands it back |
 | `Complete(messages)` | `completed` | **ends**: its state is `complete`, even when its rules still offer steps |
 | `Reject(messages)` | `rejected` | **unchanged**: the caller corrects the input or retries ([ADR 0008](../decisions/0008-rejected-outcome-and-retryable-exceptions.md)) |
 | `Failure(messages)` | `failed` | **ends**: its state is `businessFailure`; to try again, start a new process |
@@ -200,8 +200,9 @@ Kaleido never runs the handler a second time on its own: until the outcome is sa
 [AvailableAfter<ShipOrderStep>]
 public sealed record ReturnOrderStep : IProcessStep;
 
-// HandOff only tells the caller where the process continues; the handler starts it there. Called
-// from this step, the returns service starts its process under this process's id (a handoff).
+// The handler starts the process on the returns service - called from this step, it starts under
+// this process's id - and hands off with that service's answer, so the caller gets the returns
+// service's next steps (and messages) straight away and continues there.
 public sealed class ReturnOrderHandler(IKaleidoProcessorClientFactory processors) : IProcessStepHandler<ReturnOrderStep>
 {
     public async Task<ProcessStepHandlerResult> ExecuteAsync(
@@ -209,9 +210,15 @@ public sealed class ReturnOrderHandler(IKaleidoProcessorClientFactory processors
         ProcessStepContext context,
         CancellationToken cancellationToken)
     {
-        await processors.GetClient("returns").ExecuteStepAsync(new OpenReturnStep(), cancellationToken);
+        var answer = await processors.GetClient("returns").ExecuteStepAsync(new OpenReturnStep(), cancellationToken);
 
-        return ProcessStepHandlerResult.HandOff("returns");
+        // The returns service did not take the process over: the return cannot start, as it said.
+        if (answer.Status != StepExecutionStatus.Completed)
+        {
+            return ProcessStepHandlerResult.Reject([.. answer.BusinessMessages]);
+        }
+
+        return ProcessStepHandlerResult.HandOff("returns", answer);
     }
 }
 
@@ -219,14 +226,31 @@ public sealed class ReturnOrderHandler(IKaleidoProcessorClientFactory processors
 public sealed record OpenReturnStep;
 ```
 
-`HandOff` is a signal, not a call: it names the processor that continues
-(`targetProcessorName: "returns"`), and nothing is sent to it. The handler starts the process there
-itself, with a Kaleido client (`AddHttpClients()` and a `returns` client under `Kaleido:Clients`).
-The client sends this process's id and the calling processor, so the returns service starts its
-process under the **same id**, which an unknown id only does for such a call from another
-processor's step ([ADR 0009](../decisions/0009-unknown-process-id-only-on-handoff.md)). The caller
-then continues there with that `processId`. Each processor keeps its own state
-([Callers and correlation](callers-and-correlation.md)).
+`HandOff` sends nothing: the handler starts the process on the other service itself, with a
+Kaleido client (`AddHttpClients()` and a `returns` client under `Kaleido:Clients`). The client sends
+this process's id and the calling processor, so the returns service starts its process under the
+**same id**, which an unknown id only does for such a call from another processor's step
+([ADR 0009](../decisions/0009-unknown-process-id-only-on-handoff.md)).
+
+The handler passes that service's answer to `HandOff`, and this step's answer is that service's
+(#198):
+
+- `targetProcessorName` is `"returns"`;
+- `requiredStep` (with its questions, when it asks some) and `availableSteps` are the returns
+  service's next steps, as its registry publishes them, with its execute URLs, and only the ones
+  this caller may run ([Authorization](../AUTHORIZATION.md));
+- `notice` is its notice, and the step's `businessMessages` are its messages.
+
+So a caller follows the URLs and continues on the returns service with the same `processId`, with no
+second call; behind a router it never needs to know the process moved. A step with a typed result
+hands off with its own result too: `HandOff("returns", answer, new ReturnOrderResult { ... })`, built
+from what the returns service returned (`ExecuteStepAsync<TStep, TResponse>`). The other service's
+result is not passed on: your step's result type is your caller's contract.
+
+Hand off only when the other service's step completed: an answer that did not is a process
+violation (the step's status is `exception`). This process keeps only the other service's name, so
+a later call here is refused with `pro_process_ended`, and its state names `targetProcessorName`.
+Each processor keeps its own state ([Callers and correlation](callers-and-correlation.md)).
 
 ## Concurrent and repeated calls
 

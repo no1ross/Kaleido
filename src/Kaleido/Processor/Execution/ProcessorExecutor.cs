@@ -54,7 +54,7 @@ internal sealed class ProcessorExecutor(
                 await RunAsync(candidate, run, context, cancellationToken);
         }
 
-        return ToResult(context, run.Outcomes);
+        return ToResult(context, run);
     }
 
     // Runs one candidate and records its outcome. Returns the process state afterwards and the
@@ -132,6 +132,12 @@ internal sealed class ProcessorExecutor(
         }
 
         context = await SaveStepAsync(candidate, result, decision, run, context, stepObservation);
+
+        // The target's answer is what this request answers with; the saved state keeps only its name.
+        if (decision.HandOff is { } handOff)
+        {
+            run.HandOff = handOff;
+        }
 
         return (context, GetNextCandidate(decision));
     }
@@ -289,7 +295,7 @@ internal sealed class ProcessorExecutor(
         };
     private static ProcessExecutionResult ToResult(
         ProcessorContext context,
-        List<ProcessExecutionOutcome> outcomes) =>
+        ExecutionRun run) =>
         new()
         {
             ProcessId =
@@ -310,8 +316,11 @@ internal sealed class ProcessorExecutor(
             AvailableSteps =
                 context.AvailableSteps,
 
+            HandOff =
+                run.HandOff,
+
             Outcomes =
-                outcomes,
+                run.Outcomes,
         };
 
     private static StepCandidate? GetNextCandidate(
@@ -360,5 +369,8 @@ internal sealed class ProcessorExecutor(
         public List<StepCandidate> RemainingCandidates { get; } = [.. candidates];
 
         public List<ProcessExecutionOutcome> Outcomes { get; } = [];
+
+        // The target's answer when a step of this request handed the process off (#198).
+        public HandOffContinuation? HandOff { get; set; }
     }
 }
