@@ -24,7 +24,7 @@ internal sealed record StepInvocationResult
 
     public InformationRequest? InformationRequest { get; init; }
 
-    public string? TargetProcessorName { get; init; }
+    public HandOffContinuation? HandOff { get; init; }
 
     public bool CompletesProcess { get; init; }
 
@@ -148,7 +148,7 @@ internal sealed class ProcessorStepInvoker(
             Rejected = handlerResult.Rejected,
             RequiredStep = handlerResult.RequiredStep,
             InformationRequest = handlerResult.InformationRequest,
-            TargetProcessorName = handlerResult.TargetProcessorName,
+            HandOff = handlerResult.HandOffContinuation,
             CompletesProcess = handlerResult.CompletesProcess,
             Response = handlerResult.Response,
             Messages = handlerResult.Messages,

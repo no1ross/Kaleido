@@ -13,6 +13,26 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **A hand-off answers with the target's next steps** (#198). The step that hands off now passes the
+  target's answer: `ProcessStepHandlerResult.HandOff(targetProcessorName, targetResponse)`, where
+  `targetResponse` is the Kaleido client's response from the target's step (it implements the new
+  `IHandOffContinuationSource`). A typed step adds its own result:
+  `HandOff(targetProcessorName, targetResponse, response)`.
+  - **What the caller gets:** on that request, `requiredStep` (with the target's questions and
+    exchange id), `availableSteps` and `notice` are the target's, with its execute URLs. They are
+    resolved against the target's registry as this host's client reads it, and checked for the caller
+    (#524). The step's business messages are the target's, and its framework messages are carried as
+    the step's runtime messages. A caller continues on the target with no second call.
+  - **What is refused:** handing off with an answer whose step did not complete is a process
+    violation (`pro_invalid_hand_off`).
+  - **What is unchanged:** the saved state, the events, the origin's state endpoint and later
+    requests keep only the target's name.
+  - **Breaking:**
+    - `HandOff(string, params ProcessMessage[])` is removed;
+    - `IProcessStepHandlerResult.TargetProcessorName` is replaced by `HandOffContinuation`;
+    - `KaleidoNotice` moved from `Kaleido.Http.Abstractions` (namespace `Kaleido.Http`) into core
+      (namespace `Kaleido`); its JSON is unchanged.
+  - **MCP:** the adapter uses the steps in the response instead of reading the target's state.
 - **MCP telemetry: a refused tool call is not an error** (#525). `kaleido.mcp.outcome` has a new value,
   `refused`, for the caller's request refused (invalid arguments, an unknown tool, a conflict, a confirmation
   the client cannot ask for, no pending questions, or `mcp_service_error` with a 4xx): its span is no longer

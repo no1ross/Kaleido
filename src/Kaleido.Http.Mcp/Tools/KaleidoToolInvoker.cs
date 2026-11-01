@@ -842,8 +842,33 @@ internal sealed partial class KaleidoToolInvoker(
         }
     }
 
-    // After a step: follow a handoff to the target's state, put questions to the user while the
-    // client can show forms, and summarize where the process stands.
+    // Where the process goes next after a step: the step's own answer, which after a handoff already
+    // carries the target's next steps (#198). Only a handoff answer without them (an older service)
+    // needs the target's state read.
+    private async Task<(string Service, ProcessRequiredStep? Required, IReadOnlyCollection<ProcessStepSummary> Available, KaleidoNotice? Notice, string? Unread)> NextStepsAsync(
+        string service,
+        StepExecutionResponse step,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(step.TargetProcessorName))
+        {
+            return (service, step.RequiredStep, step.AvailableSteps, step.Notice, null);
+        }
+
+        var target = step.TargetProcessorName;
+
+        if (step.RequiredStep is not null || step.AvailableSteps.Count > 0 || step.Notice is not null)
+        {
+            return (target, step.RequiredStep, step.AvailableSteps, step.Notice, null);
+        }
+
+        var (targetState, unread) = await TargetStateAsync(target, step.ProcessId, cancellationToken);
+
+        return (target, targetState?.RequiredStep, targetState?.AvailableSteps ?? [], targetState?.Notice, unread);
+    }
+
+    // After a step: follow a handoff to the target, put questions to the user while the client can
+    // show forms, and summarize where the process stands.
     private async Task<ToolOutcome> FollowUpAsync(
         string service,
         StepExecutionResponse<JsonElement> step,
@@ -857,22 +882,9 @@ internal sealed partial class KaleidoToolInvoker(
 
         for (; ; round++)
         {
-            var pendingService = service;
-            var required = step.RequiredStep;
-            var available = step.AvailableSteps;
-            var notice = step.Notice;
+            var (pendingService, required, available, notice, unread) = await NextStepsAsync(service, step, cancellationToken);
 
-            if (!string.IsNullOrWhiteSpace(step.TargetProcessorName))
-            {
-                pendingService = step.TargetProcessorName;
-
-                var (targetState, unread) = await TargetStateAsync(pendingService, step.ProcessId, cancellationToken);
-
-                note ??= unread;
-                required = targetState?.RequiredStep;
-                available = targetState?.AvailableSteps ?? [];
-                notice = targetState?.Notice;
-            }
+            note ??= unread;
 
             var mode = ElicitationMode(call);
 

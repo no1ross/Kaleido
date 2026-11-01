@@ -763,6 +763,20 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal("radiology_capture_scan", body["next"]?["required"]?["tool"]?.GetValue<string>());
     }
 
+    // #198: a hand-off's answer carries the target's next steps, so they are offered as they are and
+    // the target's state is not read.
+    [Fact]
+    public async Task AHandoffThatCarriesTheTargetsSteps_OffersThem_WithoutReadingTheTargetsState()
+    {
+        StepReturns(StepResponse(new ProcessRequiredStep { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }, target: "radiology"));
+
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+
+        Assert.Equal("radiology", body["next"]?["service"]?.GetValue<string>());
+        Assert.Equal("radiology_capture_scan", body["next"]?["required"]?["tool"]?.GetValue<string>());
+        services["radiology"].Verify(x => x.GetProcessStateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never());
+    }
+
     [Fact]
     public async Task AStepThatFailedAtTheService_IsAServiceError()
     {
@@ -1776,7 +1790,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AHandoff_ToATargetWhoseStateCannotBeRead_HasNothingNext()
     {
-        StepReturns(StepResponse(required: CloseRequired, target: "radiology"));
+        StepReturns(StepResponse(target: "radiology"));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 

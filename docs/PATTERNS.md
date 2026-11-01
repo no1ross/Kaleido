@@ -49,8 +49,10 @@ Rules:
 - **The next step is named by type**: `Success<TNext>()`, or with a typed response
   `ProcessStepHandlerResult.Success(response).Next<TNext>()` (the response type is inferred);
   `Success()` / `Success(response)` let the process rules decide. Cross-processor routing uses
-  `HandOff(targetProcessorName)`. `Reject`, `HandOff` and untyped results are returned as they
-  are from a typed handler (they convert to `ProcessStepHandlerResult<T>`).
+  `HandOff(targetProcessorName, targetResponse)` with the other service's answer, whose next steps and
+  messages the caller gets (#198); a typed step adds its own result,
+  `HandOff(targetProcessorName, targetResponse, response)`. `Reject`, `HandOff` and untyped results are
+  returned as they are from a typed handler (they convert to `ProcessStepHandlerResult<T>`).
 - **Saying no** ([ADR 0008](./decisions/0008-rejected-outcome-and-retryable-exceptions.md)):
   `Reject(messages)` for input the caller can correct, or a call that can be retried
   (unknown code, ineligible date, downstream unavailable). The step is not completed and the

@@ -53,6 +53,9 @@ public class McpClinicFixture : IAsyncLifetime
     /// <summary>The Authorization header of every request the clinic service received (path, header).</summary>
     public System.Collections.Concurrent.ConcurrentQueue<(string Path, string Authorization)> ServiceRequests { get; } = new();
 
+    /// <summary>Every request the ward service received (method, path), when the fixture hosts it.</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<(string Method, string Path)> WardRequests { get; } = new();
+
     /// <summary>The X-Kaleido-Process-Id header of every request the clinic service received (path, header).</summary>
     public System.Collections.Concurrent.ConcurrentQueue<(string Path, string ProcessId)> ServiceProcessIds { get; } = new();
 
@@ -287,7 +290,7 @@ public class McpClinicFixture : IAsyncLifetime
 
     // The ward: a second Kaleido service on its own TestServer, with only the ward's steps. It does not
     // authenticate (the clinic host and its tools do); it is reached through the clinic's ward client.
-    private static Task<IHost> StartWardAsync() =>
+    private Task<IHost> StartWardAsync() =>
         new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -307,6 +310,11 @@ public class McpClinicFixture : IAsyncLifetime
                 });
                 web.Configure(app =>
                 {
+                    app.Use(async (context, next) =>
+                    {
+                        WardRequests.Enqueue((context.Request.Method, context.Request.Path));
+                        await next(context);
+                    });
                     app.UseRouting();
                     app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp());
                 });

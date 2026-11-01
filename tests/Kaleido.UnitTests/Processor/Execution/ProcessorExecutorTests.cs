@@ -350,6 +350,52 @@ public sealed class ProcessorExecutorTests
             outcome.Response);
     }
 
+    // #198: the target's answer is what the request answers with: the result carries it, and the
+    // target's framework messages are the step's runtime messages. It is not part of the saved state.
+    [Fact]
+    public async Task ExecuteAsync_WhenTheStepHandsOff_TheResultCarriesTheTargetsAnswer()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var handOff = new HandOffContinuation
+        {
+            TargetProcessorName = "radiology",
+            Succeeded = true,
+            AvailableSteps = ["ValidateMemberStep"],
+            FrameworkMessages = [new ProcessMessage { Code = "pro_trace", Type = MessageType.Warning, Message = "Slow lookup." }],
+        };
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateInvokerResult() with { HandOff = handOff });
+        var evaluator = new Mock<IStepExecutionEvaluator>();
+        evaluator
+            .Setup(x => x.Evaluate(It.IsAny<StepCandidate>(), It.IsAny<StepInvocationResult>(), It.IsAny<IReadOnlyCollection<StepCandidate>>(), It.IsAny<ProcessorContext>()))
+            .Returns(ExecutionDecision.HandOffTo(handOff));
+
+        var result = await CreateSut(invoker, evaluator: evaluator)
+            .ExecuteAsync([candidate], CreateContext("step-a"), TestContext.Current.CancellationToken);
+
+        Assert.Same(handOff, result.HandOff);
+        var runtimeMessage = Assert.Single(Assert.Single(result.Outcomes).RuntimeMessages);
+        Assert.Equal("pro_trace", runtimeMessage.Code);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithoutAHandOff_TheResultCarriesNoAnswer()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var invoker = new Mock<IProcessStepInvoker>();
+        invoker
+            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessStepRegistration>(), It.IsAny<object>(), It.IsAny<ProcessStepContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateInvokerResult());
+
+        var result = await CreateSut(invoker)
+            .ExecuteAsync([CreateCandidate<TestStepA>("step-a", registration)], CreateContext("step-a"), TestContext.Current.CancellationToken);
+
+        Assert.Null(result.HandOff);
+    }
+
     [Fact]
     public async Task ExecuteAsync_WhenDecisionIsContinue_ExecutesNextCandidate()
     {

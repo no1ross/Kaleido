@@ -101,7 +101,7 @@ public sealed class StepExecutionEvaluatorTests
             decision.RequiredStep);
 
         Assert.Null(
-            decision.TargetProcessorName);
+            decision.HandOff);
     }
 
     [Fact]
@@ -304,7 +304,7 @@ public sealed class StepExecutionEvaluatorTests
                 {
                     Succeeded = true,
                     RequiredStep = typeof(StepC),
-                    TargetProcessorName = "radiology"
+                    HandOff = HandOffTo("radiology")
                 },
                 [],
                 CreateContext());
@@ -315,7 +315,7 @@ public sealed class StepExecutionEvaluatorTests
 
         Assert.Equal(
             "radiology",
-            decision.TargetProcessorName);
+            decision.HandOff?.TargetProcessorName);
     }
 
     [Fact]
@@ -333,7 +333,7 @@ public sealed class StepExecutionEvaluatorTests
                 {
                     Succeeded = true,
                     RequiredStep = typeof(StepC),
-                    TargetProcessorName = "radiology"
+                    HandOff = HandOffTo("radiology")
                 },
                 [],
                 CreateContext());
@@ -365,13 +365,63 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             CreateSut(["step-b"]).Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new StepInvocationResult { Succeeded = true, TargetProcessorName = "radiology" },
+                new StepInvocationResult { Succeeded = true, HandOff = HandOffTo("radiology") },
                 [],
                 CreateContext());
 
         Assert.Equal(ExecutionDecisionType.HandOff, decision.Type);
-        Assert.Equal("radiology", decision.TargetProcessorName);
+        Assert.Equal("radiology", decision.HandOff?.TargetProcessorName);
         Assert.Empty(decision.AvailableSteps);
+    }
+
+    // The target's answer, as a handler hands off with it (#198).
+    private static HandOffContinuation HandOffTo(string target) =>
+        new() { TargetProcessorName = target, Succeeded = true, AvailableSteps = ["ValidateMemberStep"] };
+
+    [Fact]
+    public void Evaluate_AHandOff_CarriesTheTargetsAnswer()
+    {
+        var answer = HandOffTo("radiology");
+
+        var decision =
+            CreateSut(["step-b"]).Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, HandOff = answer },
+                [],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.HandOff, decision.Type);
+        Assert.Same(answer, decision.HandOff);
+    }
+
+    // #198: a target answer whose step did not complete means the target did not take the process
+    // over; handing off with it is the handler's defect, as is an answer that both requires and offers
+    // the same step.
+    public static TheoryData<string> DefectiveAnswers => ["failed", "rejected", "required and available"];
+
+    [Theory]
+    [MemberData(nameof(DefectiveAnswers))]
+    public void Evaluate_AHandOffWithADefectiveAnswer_IsAProcessViolation(string defect)
+    {
+        var answer = defect switch
+        {
+            "failed" => HandOffTo("radiology") with { Succeeded = false },
+            "rejected" => HandOffTo("radiology") with { Rejected = true },
+            _ => HandOffTo("radiology") with { RequiredStep = "ValidateMemberStep" },
+        };
+
+        var decision =
+            CreateSut(["step-b"]).Evaluate(
+                CreateCandidate<StepA>("step-a"),
+                new StepInvocationResult { Succeeded = true, HandOff = answer },
+                [],
+                CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.ProcessViolation, decision.Type);
+        var message = Assert.Single(decision.Messages);
+        Assert.Equal(ProcessorErrorCodes.InvalidHandOff, message.Code);
+        Assert.Contains("radiology", message.Message);
+        Assert.Null(decision.HandOff);
     }
 
     // A handoff to the service itself used to fall through to a local continuation (#522): it is the
@@ -384,7 +434,7 @@ public sealed class StepExecutionEvaluatorTests
         var decision =
             CreateSut(["step-b"]).Evaluate(
                 CreateCandidate<StepA>("step-a"),
-                new StepInvocationResult { Succeeded = true, TargetProcessorName = target },
+                new StepInvocationResult { Succeeded = true, HandOff = HandOffTo(target) },
                 [],
                 CreateContext());
 
@@ -392,7 +442,7 @@ public sealed class StepExecutionEvaluatorTests
         var message = Assert.Single(decision.Messages);
         Assert.Equal(ProcessorErrorCodes.InvalidHandOff, message.Code);
         Assert.Contains("step-a", message.Message);
-        Assert.Null(decision.TargetProcessorName);
+        Assert.Null(decision.HandOff);
     }
 
     [Fact]

@@ -13,14 +13,14 @@ namespace Kaleido.Http.Mcp.FunctionalTests.Infrastructure.HandOff
     {
         public async Task<ProcessStepHandlerResult> ExecuteAsync(TransferToWardStep processStep, ProcessStepContext context, CancellationToken cancellationToken = default)
         {
-            await clients.GetClient(McpClinicFixture.WardService).ExecuteStepAsync(
+            var admitted = await clients.GetClient(McpClinicFixture.WardService).ExecuteStepAsync(
                 nameof(Ward.AdmitStep),
                 JsonSerializer.SerializeToElement(new { }),
                 context.ProcessId,
                 idempotencyKey: null,
                 cancellationToken);
 
-            return ProcessStepHandlerResult.HandOff(McpClinicFixture.WardService);
+            return ProcessStepHandlerResult.HandOff(McpClinicFixture.WardService, admitted);
         }
     }
 }

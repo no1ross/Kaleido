@@ -31,6 +31,7 @@ internal sealed partial class ProcessExecutionService(
     IProcessExecutionResponseFactory responseFactory,
     IKaleidoAuthorizer authorizer,
     IProcessContinuationFilter continuations,
+    IHandOffStepResolver handOffSteps,
     ILogger<ProcessExecutionService> logger)
     : IProcessExecutionService
 {
@@ -93,10 +94,27 @@ internal sealed partial class ProcessExecutionService(
             registry,
             serviceOptions.ServiceName);
 
-        // The caller is described only the steps they may run (#524).
-        var continuation = await continuations.FilterAsync(response.ProcessId, response.RequiredStep, response.AvailableSteps, cancellationToken);
+        var continuation = await ContinuationAsync(processResult, response.RequiredStep, response.AvailableSteps, cancellationToken);
 
         return response with { RequiredStep = continuation.RequiredStep, AvailableSteps = continuation.AvailableSteps, Notice = continuation.Notice };
+    }
+
+    // How the process continues, as the caller may see it: the local next steps or, after a hand-off,
+    // the target's (#198), resolved against its registry; either way only the steps the caller may
+    // run (#524). The target's own notice stays unless the caller check sets one.
+    private async Task<ProcessContinuation> ContinuationAsync(
+        ProcessResult processResult,
+        ProcessRequiredStep? requiredStep,
+        IReadOnlyCollection<ProcessStepSummary> availableSteps,
+        CancellationToken cancellationToken)
+    {
+        var next = processResult.TargetProcessorName is null
+            ? new ProcessContinuation(requiredStep, availableSteps, Notice: null)
+            : await handOffSteps.ResolveAsync(processResult, cancellationToken);
+
+        var permitted = await continuations.FilterAsync(processResult.ProcessId, next.RequiredStep, next.AvailableSteps, cancellationToken);
+
+        return permitted with { Notice = permitted.Notice ?? next.Notice };
     }
 
     // The runtime takes the steps keyed by name: a step named twice is the caller's mistake.
@@ -155,6 +173,7 @@ internal sealed partial class ProcessExecutionService(
             await ExecuteStepCoreAsync(request, cancellationToken);
 
         return await ForCallerAsync(
+            processResult,
             responseFactory.CreateStepResponse<TResponse>(
                 processResult,
                 stepResult,
@@ -169,6 +188,7 @@ internal sealed partial class ProcessExecutionService(
             await ExecuteStepCoreAsync(request, cancellationToken);
 
         return await ForCallerAsync(
+            processResult,
             responseFactory.CreateStepResponse(
                 processResult,
                 stepResult,
@@ -177,11 +197,10 @@ internal sealed partial class ProcessExecutionService(
             cancellationToken);
     }
 
-    // The caller is described only the steps they may run (#524).
-    private async Task<T> ForCallerAsync<T>(T response, CancellationToken cancellationToken)
+    private async Task<T> ForCallerAsync<T>(ProcessResult processResult, T response, CancellationToken cancellationToken)
         where T : StepExecutionResponse
     {
-        var continuation = await continuations.FilterAsync(response.ProcessId, response.RequiredStep, response.AvailableSteps, cancellationToken);
+        var continuation = await ContinuationAsync(processResult, response.RequiredStep, response.AvailableSteps, cancellationToken);
 
         return response with { RequiredStep = continuation.RequiredStep, AvailableSteps = continuation.AvailableSteps, Notice = continuation.Notice };
     }

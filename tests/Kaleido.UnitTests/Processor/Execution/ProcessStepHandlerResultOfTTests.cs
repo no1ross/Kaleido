@@ -13,10 +13,13 @@ public sealed class ProcessStepHandlerResultOfTTests
         new() { InformationRequestId = "questions" };
 
     private static ProcessStepHandlerResult<Response> CreateSut(bool succeeded = true, bool rejected = false, string? target = null) =>
-        new() { Succeeded = succeeded, Rejected = rejected, TargetProcessorName = target, Response = new Response("ok"), Messages = [Note] };
+        new() { Succeeded = succeeded, Rejected = rejected, HandOffContinuation = HandOff(target), Response = new Response("ok"), Messages = [Note] };
 
     private static ProcessStepHandlerResult Untyped(bool succeeded = true, bool rejected = false, string? target = null, object? response = null) =>
-        new() { Succeeded = succeeded, Rejected = rejected, TargetProcessorName = target, Response = response, Messages = [Note] };
+        new() { Succeeded = succeeded, Rejected = rejected, HandOffContinuation = HandOff(target), Response = response, Messages = [Note] };
+
+    private static HandOffContinuation? HandOff(string? target) =>
+        target is null ? null : new HandOffContinuation { TargetProcessorName = target, Succeeded = true, AvailableSteps = ["SendInvoiceStep"] };
 
     [Fact]
     public void Next_OnASuccess_RequiresTheStepAndKeepsTheRest()
@@ -94,7 +97,7 @@ public sealed class ProcessStepHandlerResultOfTTests
 
         Assert.True(result.Succeeded);
         Assert.True(result.Rejected);
-        Assert.Equal("billing", result.TargetProcessorName);
+        Assert.Same(untyped.HandOffContinuation, result.HandOffContinuation);
         Assert.Equal(typeof(AnswerStep), result.RequiredStep);
         Assert.Same(Request, result.InformationRequest);
         Assert.Equal([Note], result.Messages);

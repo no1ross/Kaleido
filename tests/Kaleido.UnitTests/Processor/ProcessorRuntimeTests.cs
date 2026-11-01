@@ -232,6 +232,57 @@ public sealed class ProcessorRuntimeTests
             Times.Never);
     }
 
+    // #198: on the request that hands off, the result's next steps are the target's answer, by name,
+    // while the saved state (the executor's own result) keeps none; the target is the state's.
+    [Fact]
+    public async Task ExecuteAsync_OnTheRequestThatHandsOff_AnswersWithTheTargetsNextSteps()
+    {
+        var request = CreateRequest();
+        var processId = Assert.IsType<Guid>(request.ProcessId);
+        var notice = new KaleidoNotice("pro_not_permitted", "Left out.");
+        var questions = new InformationRequest { InformationRequestId = "mri-intake" };
+        var handOff = new HandOffContinuation
+        {
+            TargetProcessorName = "radiology",
+            Succeeded = true,
+            RequiredStep = "CaptureMriInfoStep",
+            InformationRequest = questions,
+            AvailableSteps = ["ValidateMemberStep"],
+            Notice = notice,
+        };
+
+        var contextStore = new Mock<IKaleidoContextStore>();
+        SetupSave(contextStore);
+        contextStore.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateContext(processId, "REQ-001"));
+        var stateUpdater = new Mock<IProcessorStateUpdater>();
+        stateUpdater.Setup(x => x.Reconcile(It.IsAny<ProcessorContext>())).Returns((ProcessorContext context) => context);
+        var planner = new Mock<IProcessorPlanner>();
+        planner.Setup(x => x.BuildPlan(request.Processor, It.IsAny<ProcessorContext>())).Returns(new ExecutionPlanResult { Candidates = [] });
+        var processor = new Mock<IProcessorExecutor>();
+        processor
+            .Setup(x => x.ExecuteAsync(It.IsAny<IReadOnlyCollection<StepCandidate>>(), It.IsAny<ProcessorContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateExecutionResult(processId) with { State = ProcessExecutionState.HandOff, TargetProcessorName = "radiology", HandOff = handOff });
+
+        var runtime =
+            CreateSut(
+                contextStore.Object,
+                stateUpdater.Object,
+                planner.Object,
+                processor.Object,
+                CreateProcessEventFactory().Object,
+                new Mock<IKaleidoEventWriter>().Object,
+                CreateObservability().Object,
+                CreateCorrelationAccessor("REQ-002"));
+
+        var result = await runtime.ExecuteAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal("radiology", result.TargetProcessorName);
+        Assert.Equal("CaptureMriInfoStep", result.RequiredStep);
+        Assert.Same(questions, result.RequiredInformationRequest);
+        Assert.Equal(["ValidateMemberStep"], result.AvailableSteps);
+        Assert.Same(notice, result.Notice);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("radiology")]

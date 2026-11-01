@@ -37,6 +37,14 @@ internal sealed record ProcessExecutionResult
     }
         = [];
 
+    // The target's answer when a step of this request handed the process off (#198); the other
+    // properties stay the saved state, which the execution-completed event describes.
+    public HandOffContinuation? HandOff
+    {
+        get;
+        init;
+    }
+
     public IReadOnlyList<ProcessExecutionOutcome> Outcomes
     {
         get;

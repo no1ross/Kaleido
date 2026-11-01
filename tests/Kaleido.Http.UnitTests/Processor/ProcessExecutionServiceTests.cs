@@ -26,7 +26,8 @@ public sealed class ProcessExecutionServiceTests
         IKaleidoAuthorizer? authorizer = null,
         IHttpContextAccessor? httpContextAccessor = null,
         ILogger<ProcessExecutionService>? logger = null,
-        IProcessContinuationFilter? continuations = null)
+        IProcessContinuationFilter? continuations = null,
+        IHandOffStepResolver? handOffSteps = null)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation
@@ -54,6 +55,7 @@ public sealed class ProcessExecutionServiceTests
             responseFactory,
             authorizer ?? stepAuthorizer.Object,
             continuations ?? PassThrough(),
+            handOffSteps ?? Mock.Of<IHandOffStepResolver>(MockBehavior.Strict),
             logger ?? NullLogger<ProcessExecutionService>.Instance);
     }
 
@@ -94,6 +96,59 @@ public sealed class ProcessExecutionServiceTests
         Assert.Equal(ProcessContinuationFilter.NotPermitted, step.Notice);
         Assert.Null(step.RequiredStep);
         Assert.Empty(step.AvailableSteps);
+    }
+
+    private static readonly ProcessStepSummary TargetStep =
+        new() { Name = "ValidateMemberStep", ExecuteUrl = "/radiology/processes/steps/validatememberstep" };
+
+    private static readonly KaleidoNotice TargetNotice = new("target_notice", "The target left something out.");
+
+    // #198: after a hand-off the caller is answered with the target's next steps, as the resolver
+    // finds them in the target's registry, then checked for the caller like local steps - on the
+    // execute and the per-step responses alike. Nothing local is offered.
+    [Fact]
+    public async Task AfterAHandOff_TheResponsesOfferTheTargetsSteps_CheckedForTheCaller()
+    {
+        var registration = CreateRegistration();
+        var handOff = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with { TargetProcessorName = "radiology", AvailableSteps = [TargetStep.Name] };
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(handOff);
+        var resolver = new Mock<IHandOffStepResolver>();
+        resolver.Setup(x => x.ResolveAsync(handOff, It.IsAny<CancellationToken>())).ReturnsAsync(new ProcessContinuation(RequiredStep: null, [TargetStep], Notice: null));
+        var filter = new Mock<IProcessContinuationFilter>();
+        filter
+            .Setup(x => x.FilterAsync(handOff.ProcessId, null, It.Is<IReadOnlyCollection<ProcessStepSummary>>(s => s.SequenceEqual(new[] { TargetStep })), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessContinuation(RequiredStep: null, [TargetStep], Notice: null));
+        var sut = CreateSut(CreateRegistry(registration), runtime.Object, AnyResponses(), continuations: filter.Object, handOffSteps: resolver.Object);
+
+        var execute = await sut.ExecuteAsync(
+            new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = registration.Metadata.Name, Request = JsonSerializer.SerializeToElement(new { }) }] },
+            CancellationToken.None);
+        var step = await sut.ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+
+        Assert.Equal([TargetStep], execute.AvailableSteps);
+        Assert.Equal([TargetStep], step.AvailableSteps);
+        filter.Verify(x => x.FilterAsync(handOff.ProcessId, null, It.Is<IReadOnlyCollection<ProcessStepSummary>>(s => s.SequenceEqual(new[] { TargetStep })), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    // The target's notice reaches the caller; the caller check's own notice takes its place when it
+    // leaves steps out.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AfterAHandOff_TheNotice_IsTheTargetsUnlessTheCallerCheckSetsOne(bool callerCheckLeavesStepsOut)
+    {
+        var registration = CreateRegistration();
+        var handOff = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with { TargetProcessorName = "radiology" };
+        var runtime = new Mock<IProcessorRuntime>();
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(handOff);
+        var resolver = new Mock<IHandOffStepResolver>();
+        resolver.Setup(x => x.ResolveAsync(handOff, It.IsAny<CancellationToken>())).ReturnsAsync(new ProcessContinuation(RequiredStep: null, [TargetStep], TargetNotice));
+        var sut = CreateSut(CreateRegistry(registration), runtime.Object, AnyResponses(), continuations: callerCheckLeavesStepsOut ? NothingPermitted() : PassThrough(), handOffSteps: resolver.Object);
+
+        var step = await sut.ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+
+        Assert.Equal(callerCheckLeavesStepsOut ? ProcessContinuationFilter.NotPermitted : TargetNotice, step.Notice);
     }
 
     // The continuation filter (its own fixture) leaves the response as it is.

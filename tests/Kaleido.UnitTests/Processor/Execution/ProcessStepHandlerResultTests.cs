@@ -11,7 +11,28 @@ public sealed class ProcessStepHandlerResultTests
     private static readonly InformationRequest Request =
         new() { InformationRequestId = "questions" };
 
+    private static readonly ProcessMessage Diagnostic =
+        new() { Code = "trace", Type = MessageType.Warning, Message = "A diagnostic." };
+
     private static ProcessStepHandlerResult CreateSut() => ProcessStepHandlerResult.Success(Note);
+
+    // The target's answer as the Kaleido client would hand it over (#198).
+    private static IHandOffContinuationSource Answer(HandOffContinuation continuation)
+    {
+        var answer = new Mock<IHandOffContinuationSource>();
+        answer.Setup(x => x.ToHandOffContinuation(It.IsAny<string>())).Returns(continuation);
+        return answer.Object;
+    }
+
+    private static readonly HandOffContinuation BillingAnswer =
+        new()
+        {
+            TargetProcessorName = "billing",
+            Succeeded = true,
+            BusinessMessages = [Note],
+            FrameworkMessages = [Diagnostic],
+            AvailableSteps = ["SendInvoiceStep"],
+        };
 
     [Fact]
     public void Success_IsASuccessWithoutARequiredStep()
@@ -21,7 +42,7 @@ public sealed class ProcessStepHandlerResultTests
         Assert.True(result.Succeeded);
         Assert.False(result.Rejected);
         Assert.Null(result.RequiredStep);
-        Assert.Null(result.TargetProcessorName);
+        Assert.Null(result.HandOffContinuation);
         Assert.Equal([Note], result.Messages);
     }
 
@@ -73,7 +94,7 @@ public sealed class ProcessStepHandlerResultTests
         Assert.True(result.CompletesProcess);
         Assert.False(result.Rejected);
         Assert.Null(result.RequiredStep);
-        Assert.Null(result.TargetProcessorName);
+        Assert.Null(result.HandOffContinuation);
         Assert.Equal([Note], result.Messages);
     }
 
@@ -92,7 +113,7 @@ public sealed class ProcessStepHandlerResultTests
     public void OtherResults_DoNotCompleteTheProcess()
     {
         Assert.All(
-            [CreateSut(), ProcessStepHandlerResult.Success<NextStep>(), ProcessStepHandlerResult.Failure(), ProcessStepHandlerResult.Reject(), ProcessStepHandlerResult.HandOff("billing")],
+            [CreateSut(), ProcessStepHandlerResult.Success<NextStep>(), ProcessStepHandlerResult.Failure(), ProcessStepHandlerResult.Reject(), ProcessStepHandlerResult.HandOff("billing", Answer(BillingAnswer))],
             result => Assert.False(result.CompletesProcess));
     }
 
@@ -106,15 +127,73 @@ public sealed class ProcessStepHandlerResultTests
         Assert.Equal([Note], result.Messages);
     }
 
+    // #198: a hand-off carries the target's answer; the step's business messages are the target's,
+    // and the local required step stays unset (the target's next steps are by name, in the answer).
     [Fact]
-    public void HandOff_IsASuccessForTheTargetProcessor()
+    public void HandOff_IsASuccessCarryingTheTargetsAnswer()
     {
-        var result = ProcessStepHandlerResult.HandOff("billing", Note);
+        var result = ProcessStepHandlerResult.HandOff("billing", Answer(BillingAnswer));
 
         Assert.True(result.Succeeded);
-        Assert.Equal("billing", result.TargetProcessorName);
+        Assert.Equal(BillingAnswer, result.HandOffContinuation);
         Assert.Null(result.RequiredStep);
         Assert.Equal([Note], result.Messages);
+    }
+
+    // The target is the one the handler named, whatever its answer calls itself.
+    [Fact]
+    public void HandOff_NamesTheTargetTheHandlerHandedOffTo()
+    {
+        var result = ProcessStepHandlerResult.HandOff("billing", Answer(BillingAnswer with { TargetProcessorName = "elsewhere" }));
+
+        Assert.Equal("billing", result.HandOffContinuation?.TargetProcessorName);
+    }
+
+    // A typed step hands off with its own response, built by the handler, next to the target's answer.
+    [Fact]
+    public void HandOffWithResponse_IsATypedSuccess_CarryingItsResponseAndTheTargetsAnswer()
+    {
+        var result = ProcessStepHandlerResult.HandOff("billing", Answer(BillingAnswer), new Response("case-1"));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("case-1", result.Response?.Value);
+        Assert.Equal(BillingAnswer, result.HandOffContinuation);
+        Assert.Equal([Note], result.Messages);
+    }
+
+    // A handoff decides what comes next: the target's steps, not a local one.
+    [Fact]
+    public void HandOffWithResponse_CannotRequireALocalStepNext()
+    {
+        var result = ProcessStepHandlerResult.HandOff("billing", Answer(BillingAnswer), new Response("case-1"));
+
+        Assert.Throws<Kaleido.Exceptions.KaleidoFrameworkException>(result.Next<NextStep>);
+    }
+
+    [Fact]
+    public void HandOffWithResponse_WithoutAResponse_IsRefused()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => ProcessStepHandlerResult.HandOff<Response>("billing", Answer(BillingAnswer), null!));
+
+        Assert.Equal("response", exception.ParamName);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void HandOffWithResponse_ToAnEmptyOrBlankTarget_IsRefused(string target)
+    {
+        var exception = Assert.Throws<ArgumentException>(() => ProcessStepHandlerResult.HandOff(target, Answer(BillingAnswer), new Response("case-1")));
+
+        Assert.Equal("targetProcessorName", exception.ParamName);
+    }
+
+    [Fact]
+    public void HandOff_WithoutTheTargetsAnswer_IsRefused()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => ProcessStepHandlerResult.HandOff("billing", null!));
+
+        Assert.Equal("targetResponse", exception.ParamName);
     }
 
     // A handoff names a service: an empty or blank target used to degrade silently into a local
@@ -124,7 +203,7 @@ public sealed class ProcessStepHandlerResultTests
     [InlineData("   ")]
     public void HandOff_ToAnEmptyOrBlankTarget_IsRefused(string target)
     {
-        var exception = Assert.Throws<ArgumentException>(() => ProcessStepHandlerResult.HandOff(target));
+        var exception = Assert.Throws<ArgumentException>(() => ProcessStepHandlerResult.HandOff(target, Answer(BillingAnswer)));
 
         Assert.Equal("targetProcessorName", exception.ParamName);
     }
@@ -132,7 +211,7 @@ public sealed class ProcessStepHandlerResultTests
     [Fact]
     public void HandOff_ToANullTarget_IsRefused()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => ProcessStepHandlerResult.HandOff(null!));
+        var exception = Assert.Throws<ArgumentNullException>(() => ProcessStepHandlerResult.HandOff(null!, Answer(BillingAnswer)));
 
         Assert.Equal("targetProcessorName", exception.ParamName);
     }

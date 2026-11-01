@@ -6,9 +6,9 @@ namespace Kaleido.Http.Mcp.FunctionalTests;
 
 /// <summary>
 /// A hand-off through the MCP adapter (#503): a clinic step moves the visit to the ward service, and
-/// the tool result's <c>next</c> names the ward's tools - read from the ward's state - so the agent
-/// continues there with the same process id. Catches a follow-up that stays on the originating
-/// service (nothing would be next).
+/// the tool result's <c>next</c> names the ward's tools - carried by the hand-off's answer (#198), so
+/// the ward's state is not read - and the agent continues there with the same process id. Catches a
+/// follow-up that stays on the originating service (nothing would be next).
 /// </summary>
 public sealed class McpHandOffTests(HandOffFixture fixture)
     : IClassFixture<HandOffFixture>
@@ -28,6 +28,7 @@ public sealed class McpHandOffTests(HandOffFixture fixture)
         Assert.Equal(
             ["ward_discharge"],
             moved["next"]!["available"]!.AsArray().Select(x => x!["tool"]!.GetValue<string>()));
+        Assert.DoesNotContain(fixture.WardRequests, x => string.Equals(x.Method, HttpMethod.Get.Method, StringComparison.Ordinal) && x.Path.Contains("/processes/", StringComparison.Ordinal));
 
         var discharged = Body(await client.CallToolAsync(
             "ward_discharge",

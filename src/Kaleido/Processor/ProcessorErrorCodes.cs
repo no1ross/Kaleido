@@ -95,8 +95,10 @@ public static class ProcessorErrorCodes
     public const string RequiredStepNotAllowed = "pro_required_step_not_allowed";
 
     /// <summary>
-    /// A handler handed the process off to the service it runs in; a handoff names another
-    /// service. Reported as a process violation: the process keeps its state.
+    /// A handler handed the process off wrongly: to the service it runs in (a handoff names another
+    /// service), or with a target answer whose step did not complete (the target did not take the
+    /// process over) or that both requires and offers the same step (#198). Reported as a process
+    /// violation: the process keeps its state.
     /// </summary>
     public const string InvalidHandOff = "pro_invalid_hand_off";
 

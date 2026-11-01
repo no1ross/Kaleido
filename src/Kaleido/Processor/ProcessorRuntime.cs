@@ -84,9 +84,22 @@ internal sealed record ProcessResult
 
     /// <summary>
     /// The processor the process was handed off to, or <see langword="null"/> when it stays in this
-    /// processor. Set when <see cref="State"/> is <see cref="ProcessExecutionState.HandOff"/>.
+    /// processor. Set when <see cref="State"/> is <see cref="ProcessExecutionState.HandOff"/>. On the
+    /// request that hands off, <see cref="RequiredStep"/>, <see cref="RequiredInformationRequest"/>,
+    /// <see cref="AvailableSteps"/> and <see cref="Notice"/> are that processor's answer, by name (#198);
+    /// on a later request they are empty.
     /// </summary>
     public string? TargetProcessorName
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The handed-off-to processor's notice on the request that hands off (for example
+    /// <c>pro_not_permitted</c>), unchanged; <see langword="null"/> otherwise.
+    /// </summary>
+    public KaleidoNotice? Notice
     {
         get;
         init;
@@ -420,14 +433,19 @@ internal sealed class ProcessorRuntime(
                     x => x,
                     StringComparer.OrdinalIgnoreCase);
 
+        // On the request that hands off, the next steps are the target's answer (#198), by name: the
+        // transport resolves them against the target's registry. The saved state keeps only the name.
+        var handOff = executionResult.HandOff;
+
         return new ProcessResult
         {
             ProcessId = executionResult.ProcessId,
             State = executionResult.State,
-            RequiredStep = executionResult.RequiredStep,
-            RequiredInformationRequest = executionResult.RequiredInformationRequest,
+            RequiredStep = handOff is null ? executionResult.RequiredStep : handOff.RequiredStep,
+            RequiredInformationRequest = handOff is null ? executionResult.RequiredInformationRequest : handOff.InformationRequest,
             TargetProcessorName = executionResult.TargetProcessorName,
-            AvailableSteps = executionResult.AvailableSteps,
+            AvailableSteps = handOff is null ? executionResult.AvailableSteps : handOff.AvailableSteps,
+            Notice = handOff?.Notice,
             Steps = [.. plan.Candidates.Select(candidate => StepResult(candidate, outcomes))],
         };
     }
