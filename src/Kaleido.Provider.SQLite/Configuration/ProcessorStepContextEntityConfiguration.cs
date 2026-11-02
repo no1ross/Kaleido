@@ -17,6 +17,8 @@ internal sealed class ProcessorStepContextEntityConfiguration
         builder.HasKey(
             x => new
             {
+                x.ProcessorName,
+                x.ProcessorVersion,
                 x.ProcessId,
                 x.StepName,
             });

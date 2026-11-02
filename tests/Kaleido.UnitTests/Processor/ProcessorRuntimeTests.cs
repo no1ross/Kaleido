@@ -13,6 +13,11 @@ namespace Kaleido.Processor.UnitTests;
 public sealed class ProcessorRuntimeTests
     : SutFixture
 {
+    private const string Processor = "radiology";
+
+    // The key the runtime loads a process under: this fixture's processor, unversioned.
+    private static ProcessKey Key(Guid processId) => new(Processor, null, processId);
+
     private static ProcessorRuntime CreateSut(
         IKaleidoContextStore contextStore,
         IProcessorStateUpdater stateUpdater,
@@ -23,10 +28,11 @@ public sealed class ProcessorRuntimeTests
         IProcessorObservability observability,
         IKaleidoCorrelationContextAccessor correlationAccessor,
         List<KaleidoOutboxEvent?>? transitionEvents = null,
-        IProcessorRecoveryStore? recoveryStore = null) =>
+        IProcessorRecoveryStore? recoveryStore = null,
+        string? serviceVersion = null) =>
         new(contextStore, Transition(contextStore, transitionEvents), stateUpdater, planner, processor,
             eventFactory, eventOutbox, observability,
-            correlationAccessor, new KaleidoServiceOptions { ServiceName = "radiology" },
+            correlationAccessor, new KaleidoServiceOptions { ServiceName = Processor, ServiceVersion = serviceVersion },
             recoveryStore ?? Mock.Of<IProcessorRecoveryStore>());
 
     // The transition (its own fixture: ProcessorTransitionTests) saves through the store here and
@@ -136,7 +142,7 @@ public sealed class ProcessorRuntimeTests
         contextStore.Verify(
             x =>
                 x.LoadAsync(
-                    It.IsAny<Guid>(),
+                    It.IsAny<ProcessKey>(),
                     It.IsAny<CancellationToken>()),
             Times.Never);
 
@@ -169,7 +175,7 @@ public sealed class ProcessorRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    processId,
+                    Key(processId),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync((ProcessorContext?)null);
 
@@ -253,7 +259,7 @@ public sealed class ProcessorRuntimeTests
 
         var contextStore = new Mock<IKaleidoContextStore>();
         SetupSave(contextStore);
-        contextStore.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateContext(processId, "REQ-001"));
+        contextStore.Setup(x => x.LoadAsync(Key(processId), It.IsAny<CancellationToken>())).ReturnsAsync(CreateContext(processId, "REQ-001"));
         var stateUpdater = new Mock<IProcessorStateUpdater>();
         stateUpdater.Setup(x => x.Reconcile(It.IsAny<ProcessorContext>())).Returns((ProcessorContext context) => context);
         var planner = new Mock<IProcessorPlanner>();
@@ -292,7 +298,7 @@ public sealed class ProcessorRuntimeTests
         var processId = Assert.IsType<Guid>(request.ProcessId);
 
         var contextStore = new Mock<IKaleidoContextStore>();
-        contextStore.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(default(ProcessorContext));
+        contextStore.Setup(x => x.LoadAsync(Key(processId), It.IsAny<CancellationToken>())).ReturnsAsync(default(ProcessorContext));
 
         var stateUpdater = new Mock<IProcessorStateUpdater>(MockBehavior.Strict);
         var processor = new Mock<IProcessorExecutor>(MockBehavior.Strict);
@@ -321,7 +327,7 @@ public sealed class ProcessorRuntimeTests
         var processId = Assert.IsType<Guid>(request.ProcessId);
 
         var contextStore = new Mock<IKaleidoContextStore>();
-        contextStore.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(default(ProcessorContext));
+        contextStore.Setup(x => x.LoadAsync(Key(processId), It.IsAny<CancellationToken>())).ReturnsAsync(default(ProcessorContext));
 
         var execution = new Mock<IProcessorExecutionObservation>();
         var observability = new Mock<IProcessorObservability>();
@@ -361,7 +367,7 @@ public sealed class ProcessorRuntimeTests
     {
         var request = CreateRequest();
         var contextStore = new Mock<IKaleidoContextStore>();
-        contextStore.Setup(x => x.LoadAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ThrowsAsync(failure);
+        contextStore.Setup(x => x.LoadAsync(It.IsAny<ProcessKey>(), It.IsAny<CancellationToken>())).ThrowsAsync(failure);
         var execution = new Mock<IProcessorExecutionObservation>();
         var observability = new Mock<IProcessorObservability>();
         observability.Setup(x => x.BeginExecution(It.IsAny<ProcessorExecutionObservationDetails>())).Returns(execution.Object);
@@ -433,7 +439,7 @@ public sealed class ProcessorRuntimeTests
         var request = CreateRequest();
         var canceled = new CancellationToken(canceled: true);
         var contextStore = new Mock<IKaleidoContextStore>();
-        contextStore.Setup(x => x.LoadAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(canceled));
+        contextStore.Setup(x => x.LoadAsync(It.IsAny<ProcessKey>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(canceled));
         var execution = new Mock<IProcessorExecutionObservation>();
         var observability = new Mock<IProcessorObservability>();
         observability.Setup(x => x.BeginExecution(It.IsAny<ProcessorExecutionObservationDetails>())).Returns(execution.Object);
@@ -481,7 +487,7 @@ public sealed class ProcessorRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    processId,
+                    Key(processId),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingContext);
 
@@ -578,7 +584,7 @@ public sealed class ProcessorRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    processId,
+                    Key(processId),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -704,7 +710,7 @@ public sealed class ProcessorRuntimeTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    processId,
+                    Key(processId),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -802,7 +808,7 @@ public sealed class ProcessorRuntimeTests
             .InSequence(sequence)
             .Setup(x =>
                 x.LoadAsync(
-                    processId,
+                    Key(processId),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -943,7 +949,7 @@ public sealed class ProcessorRuntimeTests
         var bob = new KaleidoCaller { Name = "bob" };
         var existing = CreateContext(processId, "old-request") with { CreatedBy = bob, UpdatedBy = bob };
         var store = new Mock<IKaleidoContextStore>();
-        store.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        store.Setup(x => x.LoadAsync(Key(processId), It.IsAny<CancellationToken>())).ReturnsAsync(existing);
         var stateUpdater = new Mock<IProcessorStateUpdater>();
         stateUpdater.Setup(x => x.Reconcile(existing)).Returns(existing);
         var planner = new Mock<IProcessorPlanner>();
@@ -989,7 +995,7 @@ public sealed class ProcessorRuntimeTests
         informationCandidate.AddError(ProcessorErrorCodes.Required, "The Items field is required.");
 
         var store = new Mock<IKaleidoContextStore>();
-        store.Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>())).ReturnsAsync(context);
+        store.Setup(x => x.LoadAsync(Key(processId), It.IsAny<CancellationToken>())).ReturnsAsync(context);
         var stateUpdater = new Mock<IProcessorStateUpdater>();
         stateUpdater.Setup(x => x.Reconcile(context)).Returns(context);
         var planner = new Mock<IProcessorPlanner>();
@@ -1218,5 +1224,34 @@ public sealed class ProcessorRuntimeTests
         public string ExchangeId { get; init; } = string.Empty;
 
         public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
+    }
+
+    // A process is loaded under this service's name and version (#552): a process of another version
+    // is not this one's, so it is not found.
+    [Fact]
+    public async Task ExecuteAsync_LoadsTheProcessUnderThisServicesVersion()
+    {
+        const string version = "2";
+        var request = CreateRequest();
+        var processId = Assert.IsType<Guid>(request.ProcessId);
+        var contextStore = new Mock<IKaleidoContextStore>();
+
+        var runtime =
+            CreateSut(
+                contextStore.Object,
+                new Mock<IProcessorStateUpdater>(MockBehavior.Strict).Object,
+                new Mock<IProcessorPlanner>(MockBehavior.Strict).Object,
+                new Mock<IProcessorExecutor>(MockBehavior.Strict).Object,
+                CreateProcessEventFactory().Object,
+                new Mock<IKaleidoEventWriter>().Object,
+                CreateObservability().Object,
+                CreateCorrelationAccessor(),
+                serviceVersion: version);
+
+        var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoValidationException>(() => runtime.ExecuteAsync(request, TestContext.Current.CancellationToken));
+
+        Assert.Equal(ProcessorErrorCodes.ProcessNotFound, exception.Code);
+        contextStore.Verify(x => x.LoadAsync(new ProcessKey(Processor, version, processId), It.IsAny<CancellationToken>()), Times.Once);
+        contextStore.VerifyNoOtherCalls();
     }
 }

@@ -11,6 +11,8 @@ internal static class OutboxEventEntityExtensions
         {
             EventId = @event.EventId,
             EventType = @event.EventType,
+            ServiceName = @event.ServiceName,
+            ServiceVersion = @event.ServiceVersion,
             Payload = @event.Payload,
             OccurredUtc = @event.OccurredUtc.UtcTicks,
             Attempts = @event.Attempts,
@@ -24,6 +26,8 @@ internal static class OutboxEventEntityExtensions
         {
             EventId = entity.EventId,
             EventType = entity.EventType,
+            ServiceName = entity.ServiceName,
+            ServiceVersion = entity.ServiceVersion,
             Payload = entity.Payload,
             OccurredUtc = new DateTimeOffset(entity.OccurredUtc, TimeSpan.Zero),
             Attempts = entity.Attempts,

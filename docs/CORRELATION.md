@@ -181,7 +181,9 @@ step handler / consumer code
   are tagged with the processor name only (#453); filter traces or events by the calling processor.
 - Emitted events carry the correlation (`RequestId`, `ProcessId`, `CallingProcessorName`,
   `CallingStepName`, `Origin`, `OriginTool`), the caller (`Caller`, `CallerActor`) and the
-  emitting service's own `ProcessorInstanceId`.
+  emitting service's own `ServiceName`, `ServiceVersion` and `ProcessorInstanceId`. Process events
+  also carry `ProcessVersion`, the version of the process state they describe (#552): events arrive
+  at least once and in no guaranteed order, so consumers order a process's events by it.
 
 ### Which front door, which application (ADR 0022)
 

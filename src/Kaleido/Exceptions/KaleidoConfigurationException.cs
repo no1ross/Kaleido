@@ -61,6 +61,9 @@ public static class ConfigurationErrorCodes
     /// <summary>KaleidoServiceOptions.ServiceName is null, empty, or contains invalid characters.</summary>
     public const string InvalidServiceName = "invalid_service_name";
 
+    /// <summary>KaleidoServiceOptions.ServiceVersion is set but empty, too long, or contains invalid characters.</summary>
+    public const string InvalidServiceVersion = "invalid_service_version";
+
     /// <summary>AddKaleido requires a non-empty explicit assembly list before registering services.</summary>
     public const string MissingAssembly = "missing_assembly";
 
@@ -97,9 +100,8 @@ public static class ConfigurationErrorCodes
     public const string DuplicateRegistration = "duplicate_registration";
 
     /// <summary>
-    /// Two outbox choices were registered: a service has one - Kaleido's built-in outbox (with its
-    /// storage, <c>AddOutboxStore</c>), the host's own (<c>AddOutbox</c>) or direct publication
-    /// (<c>AddDirectPublication</c>) - and one storage for the built-in outbox (ADR 0023).
+    /// Two outbox stores were registered (<c>AddOutboxStore</c>), or two relays with different publishers
+    /// (<c>AddOutboxRelay</c>): a service has one outbox store, and a host runs one relay (ADR 0036).
     /// </summary>
     public const string ConflictingOutbox = "conflicting_outbox";
 

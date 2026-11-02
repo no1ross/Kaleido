@@ -301,6 +301,9 @@ internal sealed class ProcessorExecutor(
             ProcessId =
                 context.ProcessId,
 
+            Version =
+                context.Version,
+
             State =
                 context.State,
 

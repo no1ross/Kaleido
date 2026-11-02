@@ -10,6 +10,11 @@ public sealed class InMemoryKaleidoContextStoreTests
     private InMemoryKaleidoContextStore CreateSut(ILogger<InMemoryKaleidoContextStore>? logger = null) =>
         new(logger ?? new Mock<ILogger<InMemoryKaleidoContextStore>>().Object);
 
+    private const string Processor = "test-processor";
+    private const string OtherProcessor = "other-processor";
+    private const string Version1 = "1";
+    private const string Version2 = "2";
+
     [Fact]
     public async Task SaveAsync_WhenContextIsNull_Throws()
     {
@@ -26,17 +31,17 @@ public sealed class InMemoryKaleidoContextStoreTests
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
-            ProcessorName = "test-processor",
+            ProcessorName = Processor,
             State = ProcessExecutionState.Active
         };
 
         await store.SaveAsync(context, CancellationToken.None);
 
-        var loaded = await store.LoadAsync(context.ProcessId, CancellationToken.None);
+        var loaded = await store.LoadAsync(context.Key, CancellationToken.None);
 
         Assert.NotNull(loaded);
         Assert.Equal(context.ProcessId, loaded.ProcessId);
-        Assert.Equal("test-processor", loaded.ProcessorName);
+        Assert.Equal(Processor, loaded.ProcessorName);
         Assert.Equal(ProcessExecutionState.Active, loaded.State);
     }
 
@@ -46,7 +51,7 @@ public sealed class InMemoryKaleidoContextStoreTests
         var store = CreateSut();
         var processId = Guid.NewGuid();
 
-        var loaded = await store.LoadAsync(processId, CancellationToken.None);
+        var loaded = await store.LoadAsync(new ProcessKey(Processor, null, processId), CancellationToken.None);
 
         Assert.Null(loaded);
     }
@@ -58,7 +63,7 @@ public sealed class InMemoryKaleidoContextStoreTests
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
-            ProcessorName = "test-processor",
+            ProcessorName = Processor,
             State = ProcessExecutionState.Complete,
             Steps =
             [
@@ -71,7 +76,7 @@ public sealed class InMemoryKaleidoContextStoreTests
         };
 
         await store.SaveAsync(context, CancellationToken.None);
-        var loaded = await store.LoadAsync(context.ProcessId, CancellationToken.None);
+        var loaded = await store.LoadAsync(context.Key, CancellationToken.None);
 
         Assert.NotNull(loaded);
         Assert.Equal(context.ProcessId, loaded.ProcessId);
@@ -88,21 +93,21 @@ public sealed class InMemoryKaleidoContextStoreTests
         var context1 = new ProcessorContext
         {
             ProcessId = processId,
-            ProcessorName = "test-processor",
+            ProcessorName = Processor,
             State = ProcessExecutionState.Active
         };
 
         var context2 = new ProcessorContext
         {
             ProcessId = processId,
-            ProcessorName = "test-processor",
+            ProcessorName = Processor,
             State = ProcessExecutionState.Complete
         };
 
         var saved = await store.SaveAsync(context1, CancellationToken.None);
         await store.SaveAsync(context2 with { Version = saved.Version }, CancellationToken.None);
 
-        var loaded = await store.LoadAsync(processId, CancellationToken.None);
+        var loaded = await store.LoadAsync(new ProcessKey(Processor, null, processId), CancellationToken.None);
 
         Assert.NotNull(loaded);
         Assert.Equal(ProcessExecutionState.Complete, loaded.State);
@@ -115,7 +120,7 @@ public sealed class InMemoryKaleidoContextStoreTests
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
-            ProcessorName = "test-processor"
+            ProcessorName = Processor
         };
 
         var cts = new CancellationTokenSource();
@@ -133,21 +138,21 @@ public sealed class InMemoryKaleidoContextStoreTests
         cts.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            store.LoadAsync(Guid.NewGuid(), cts.Token));
+            store.LoadAsync(new ProcessKey(Processor, null, Guid.NewGuid()), cts.Token));
     }
 
     [Fact]
     public async Task SaveAsync_ReturnsTheContextWithTheNextVersion()
     {
         var store = CreateSut();
-        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = Processor };
 
         var first = await store.SaveAsync(context, CancellationToken.None);
         var second = await store.SaveAsync(first, CancellationToken.None);
 
         Assert.Equal(1, first.Version);
         Assert.Equal(2, second.Version);
-        Assert.Equal(2, (await store.LoadAsync(context.ProcessId, CancellationToken.None))!.Version);
+        Assert.Equal(2, (await store.LoadAsync(context.Key, CancellationToken.None))!.Version);
     }
 
     [Fact]
@@ -155,7 +160,7 @@ public sealed class InMemoryKaleidoContextStoreTests
     {
         var store = CreateSut();
         var loaded = await store.SaveAsync(
-            new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor", State = ProcessExecutionState.Active },
+            new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = Processor, State = ProcessExecutionState.Active },
             CancellationToken.None);
 
         await store.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, CancellationToken.None);
@@ -165,14 +170,14 @@ public sealed class InMemoryKaleidoContextStoreTests
 
         Assert.Equal(loaded.ProcessId, exception.ProcessId);
         Assert.Equal(ProcessorErrorCodes.ProcessConflict, exception.Code);
-        Assert.Equal(ProcessExecutionState.Complete, (await store.LoadAsync(loaded.ProcessId, CancellationToken.None))!.State);
+        Assert.Equal(ProcessExecutionState.Complete, (await store.LoadAsync(loaded.Key, CancellationToken.None))!.State);
     }
 
     [Fact]
     public async Task SaveAsync_ANewProcessWhoseIdAlreadyExists_ThrowsAConflict()
     {
         var store = CreateSut();
-        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
+        var context = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = Processor };
         await store.SaveAsync(context, CancellationToken.None);
 
         await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
@@ -194,5 +199,34 @@ public sealed class InMemoryKaleidoContextStoreTests
     }
 
     private static ProcessorContext NewProcess() =>
-        new() { ProcessId = Guid.NewGuid(), ProcessorName = "test-processor" };
+        new() { ProcessId = Guid.NewGuid(), ProcessorName = Processor };
+
+    // A hand-off keeps the process id: another processor's process under it is another process (#552).
+    [Fact]
+    public async Task AnotherProcessorsProcessUnderTheSameId_IsAnotherProcess()
+    {
+        var store = CreateSut();
+        var origin = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = Processor };
+        var target = origin with { ProcessorName = OtherProcessor, State = ProcessExecutionState.Complete };
+
+        await store.SaveAsync(origin, CancellationToken.None);
+        await store.SaveAsync(target, CancellationToken.None);
+
+        Assert.Equal(ProcessExecutionState.Active, (await store.LoadAsync(origin.Key, CancellationToken.None))!.State);
+        Assert.Equal(ProcessExecutionState.Complete, (await store.LoadAsync(target.Key, CancellationToken.None))!.State);
+    }
+
+    // A process of one version is not found by another (#552).
+    [Fact]
+    public async Task AProcessOfOneVersion_IsNotFoundByAnother()
+    {
+        var store = CreateSut();
+        var v1 = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = Processor, ProcessorVersion = Version1 };
+
+        await store.SaveAsync(v1, CancellationToken.None);
+
+        Assert.Null(await store.LoadAsync(v1.Key with { ProcessorVersion = Version2 }, CancellationToken.None));
+        Assert.Null(await store.LoadAsync(v1.Key with { ProcessorVersion = null }, CancellationToken.None));
+        Assert.NotNull(await store.LoadAsync(v1.Key, CancellationToken.None));
+    }
 }

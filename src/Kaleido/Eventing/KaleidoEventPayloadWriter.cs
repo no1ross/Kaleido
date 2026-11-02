@@ -22,6 +22,7 @@ internal sealed partial class KaleidoEventPayloadWriter : IKaleidoEventPayloadWr
 
     private readonly IKaleidoEventRedactor[] _redactors;
     private readonly IKaleidoEventRedactorProvider _redactorProvider;
+    private readonly KaleidoServiceOptions _serviceOptions;
     private readonly ILogger<KaleidoEventPayloadWriter> _logger;
     private readonly JsonSerializerOptions _options;
     private int _erasureLogged;
@@ -31,10 +32,12 @@ internal sealed partial class KaleidoEventPayloadWriter : IKaleidoEventPayloadWr
     public KaleidoEventPayloadWriter(
         IEnumerable<IKaleidoEventRedactor> redactors,
         IKaleidoEventRedactorProvider redactorProvider,
+        KaleidoServiceOptions serviceOptions,
         ILogger<KaleidoEventPayloadWriter> logger)
     {
         _redactors = [.. redactors];
         _redactorProvider = redactorProvider;
+        _serviceOptions = serviceOptions;
         _logger = logger;
         _options = new DefaultJsonTypeInfoResolver { Modifiers = { RedactClassifiedProperties } }.ToOutboxJsonOptions();
     }
@@ -52,7 +55,8 @@ internal sealed partial class KaleidoEventPayloadWriter : IKaleidoEventPayloadWr
                     $"Event redactor '{redactor.GetType().FullName}' returned no envelope for event '{envelope.EventType}'.");
         }
 
-        return envelope.ToOutboxEvent(_options);
+        // Tagged with the writing service and version: several may share the outbox database (#552).
+        return envelope.ToOutboxEvent(_options) with { ServiceName = _serviceOptions.ServiceName, ServiceVersion = _serviceOptions.ServiceVersion };
     }
 
     // Runs once per type (the resolver caches the contract): every classified property is replaced by

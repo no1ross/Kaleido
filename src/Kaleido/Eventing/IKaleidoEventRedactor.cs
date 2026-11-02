@@ -46,8 +46,7 @@ namespace Kaleido.Eventing;
 /// }
 ///
 /// builder.Services.AddKaleido(builder.Configuration)
-///     .AddEventPublisher&lt;MyEventPublisher&gt;()
-///     .AddEventRedactor&lt;AnswersRedactor&gt;();
+///     .AddEventRedactor&lt;AnswersRedactor&gt;();   // runs where the events are written, before the outbox
 /// </code>
 /// </example>
 public interface IKaleidoEventRedactor

@@ -15,6 +15,19 @@ internal sealed class OutboxEventEntity
         set;
     } = string.Empty;
 
+    // The writing service and version (#552): several may share the database; the relay claims them all.
+    public string ServiceName
+    {
+        get;
+        set;
+    } = string.Empty;
+
+    public string? ServiceVersion
+    {
+        get;
+        set;
+    }
+
     public string Payload
     {
         get;

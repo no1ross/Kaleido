@@ -59,7 +59,7 @@ public sealed class StoreSelectionTests : IDisposable
     public async Task DurableStores_Start_WithoutTheInMemoryChoice()
     {
         var connection = $"Data Source={_databasePath}";
-        using var host = Host(kaleido => kaleido.AddSqliteContextStore(connection).AddSqliteIdempotencyStore(connection));
+        using var host = Host(kaleido => kaleido.AddSqliteContextStore(connection).AddSqliteIdempotencyStore(connection).AddSqliteOutboxStore(connection));
 
         await host.StartAsync(Cancel);
         await host.StopAsync(Cancel);

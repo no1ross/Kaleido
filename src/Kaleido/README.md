@@ -13,10 +13,10 @@ For the full repository model, see:
 ## What lives here
 
 ### Bootstrap
-- `KaleidoServiceCollectionExtensions` — `AddKaleido()` entry point (assemblies supplied via `KaleidoServiceOptions.Assemblies`), `AddEventPublisher<T>()`, `AddEventRedactor<T>()`
+- `KaleidoServiceCollectionExtensions` — `AddKaleido()` entry point (assemblies supplied via `KaleidoServiceOptions.Assemblies`), `AddOutboxRelay<TPublisher>()`, `AddEventRedactor<T>()`
 - `IKaleidoBuilder` / `KaleidoBuilder` — shared builder abstraction carrying `Services`, `Assemblies`, `Configuration` and `ServiceOptions`
 - `IKaleidoCorrelationContextAccessor` — scoped correlation accessor registered by bootstrap (a pre-existing registration wins)
-- a default no-op `IEventPublisher` (internal) — events are discarded, with a Warning log, until the host calls `AddEventPublisher<T>()`
+- no `IEventPublisher`: every service writes its events to its outbox store, and the host that publishes adds `AddOutboxRelay<TPublisher>()` (ADR 0036)
 
 ### Shared abstractions
 - `ITypeDescriber` / `TypeDescriber` (internal) — converts CLR types and properties into `DataTypeDescriptor` values (internal; the HTTP transport maps them to the wire's `DataTypeMetadata`)
@@ -46,7 +46,7 @@ For the full repository model, see:
 - `ProcessorObservability` (internal) — logs, traces and metrics of the runtime
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
 - `IInformationStep` / `InformationRequest` / `RequireInformation<TNext>` — information requests: runtime-decided questions answered by an information step (see [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md))
-- `IKaleidoContextStore` - the process-state store (state only); `IKaleidoOutbox` - the outbox integration that receives every event: Kaleido's built-in outbox over `IKaleidoOutboxStore` and its relay (default), the host's own (`AddOutbox<T>()`), or direct publication; `IKaleidoTransactions` - optional, makes a process-state transition (state + its event) atomic on one database; `IKaleidoIdempotencyStore` - requests sent with an idempotency key (ADR 0020, ADR 0023). The in-memory defaults (internal) are for development; each logs a Warning that its data is lost on restart
+- `IKaleidoContextStore` - the process-state store (state only, keyed by `ProcessKey`: processor, version, process id); `IKaleidoOutboxStore` - every event the service writes, tagged with the writer, until the relay (`AddOutboxRelay<TPublisher>()`, on one host per outbox database) publishes it; `IKaleidoTransactions` - optional, makes a process-state transition (state + its event) atomic on one database; `IKaleidoIdempotencyStore` - requests sent with an idempotency key (ADR 0020, ADR 0023, ADR 0036). Every record is scoped by the service and its version, so services may share one database. The in-memory defaults (internal) are for development; each logs a Warning that its data is lost on restart
 
 ---
 
@@ -95,7 +95,7 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 `AddKaleido()`:
 - validates the `IServiceCollection`
 - registers the scoped correlation accessor (using `TryAddScoped` so a pre-existing registration wins)
-- registers the default no-op event publisher, the in-memory stores (`IKaleidoContextStore`, `IKaleidoIdempotencyStore`), Kaleido's built-in outbox (`IKaleidoOutbox`) on an in-memory `IKaleidoOutboxStore` with its relay (a hosted background service that hands outbox entries to the publisher - see `KaleidoEventOptions`, `Kaleido:Events`), and no transactions; the builder replaces them (`AddContextStore`, `AddIdempotencyStore`, `AddOutboxStore`, `AddOutbox`, `AddDirectPublication`, `AddTransactions`; one outbox choice per service)
+- registers the in-memory stores (`IKaleidoContextStore`, `IKaleidoIdempotencyStore`, `IKaleidoOutboxStore`) and no transactions; the builder replaces them (`AddContextStore`, `AddIdempotencyStore`, `AddOutboxStore`, `AddTransactions`; one of each per service). It registers no publisher and no relay: `AddOutboxRelay<TPublisher>()` adds the relay (a hosted background service that hands every outbox entry of its database to the publisher - see `KaleidoEventOptions`, `Kaleido:Events`) on the host that publishes
 - refuses to start a host that leaves a store it uses at the in-memory default (`stores_not_chosen`, ADR 0028): the context and idempotency stores when the service has process steps, the outbox store when it publishes through Kaleido's outbox. `AddInMemoryStores()` chooses memory explicitly (development, tests)
 - automatically invokes `AddQueryable()` and `AddProcessor()` to register both runtimes
 - returns an `IKaleidoBuilder`

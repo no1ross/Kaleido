@@ -53,7 +53,7 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
 
         // One process (the step ran once) and one stored answer, keyed per service and caller.
         Assert.Equal(1L, await ScalarAsync("SELECT COUNT(*) FROM ProcessContexts"));
-        Assert.Equal(KaleidoIdempotencyEndpointFilter.RecordKey("kaleido", "anonymous", string.Empty, "key-1-0a1b2c3d4e5f"), await ScalarAsync("SELECT Key FROM IdempotentResults"));
+        Assert.Equal(KaleidoIdempotencyEndpointFilter.RecordKey("kaleido", null, "anonymous", string.Empty, "key-1-0a1b2c3d4e5f"), await ScalarAsync("SELECT Key FROM IdempotentResults"));
         Assert.Equal(ProcessIdOf(firstBody), ProcessIdOf((string)(await ScalarAsync("SELECT Response FROM IdempotentResults"))!));
 
         // #514: the replay of a new process's answer carries its id in the header too, as the first did.
@@ -117,7 +117,7 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
 
         using var first = await PostAsync(client, "key-scope-0a1b2c3d4e5f");
 
-        await ExecuteAsync($"UPDATE IdempotentResults SET Key = '{KaleidoIdempotencyEndpointFilter.RecordKey("other-service", "anonymous", string.Empty, "key-scope-0a1b2c3d4e5f")}'");
+        await ExecuteAsync($"UPDATE IdempotentResults SET Key = '{KaleidoIdempotencyEndpointFilter.RecordKey("other-service", null, "anonymous", string.Empty, "key-scope-0a1b2c3d4e5f")}'");
 
         using var second = await PostAsync(client, "key-scope-0a1b2c3d4e5f");
 

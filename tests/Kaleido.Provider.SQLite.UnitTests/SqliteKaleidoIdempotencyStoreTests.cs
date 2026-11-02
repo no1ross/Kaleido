@@ -253,4 +253,20 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.CompleteAsync(null!, TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.ReleaseAsync(null!, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
+
+    // #552: the record names its processor and version as given, for operators of a shared database.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("2")]
+    public async Task TheProcessorAndItsVersion_AreKeptAsGiven(string? version)
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+
+        await sut.AdmitAsync(Admission("svc:alice:k-version") with { ProcessorName = "svc", ProcessorVersion = version }, TestContext.Current.CancellationToken);
+        var existing = await sut.AdmitAsync(Admission("svc:alice:k-version"), TestContext.Current.CancellationToken);
+
+        Assert.Equal("svc", existing?.ProcessorName);
+        Assert.Equal(version, existing?.ProcessorVersion);
+    }
 }

@@ -5,8 +5,8 @@ public sealed class RegistrySnapshotTests
 {
     private readonly Mock<IHttpRegistryCache> cache = new();
 
-    private RegistrySnapshot CreateSut(string serviceName = "router") =>
-        new(cache.Object, new KaleidoServiceOptions { ServiceName = serviceName });
+    private RegistrySnapshot CreateSut(string serviceName = "router", string? serviceVersion = null) =>
+        new(cache.Object, new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = serviceVersion });
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -56,6 +56,21 @@ public sealed class RegistrySnapshotTests
             .ReturnsAsync(built);
 
         var result = await sut.GetOrBuildAsync(refresh: true, _ => Task.FromResult(new AggregatedRegistryResponse()), Cancel);
+
+        Assert.Same(built, result);
+    }
+
+    // #552: versions of one service sharing a cache keep their own snapshot.
+    [Fact]
+    public async Task GetOrBuild_ForAVersionedService_UsesTheVersionsOwnKey()
+    {
+        var sut = CreateSut("router", serviceVersion: "2");
+        sut.Configure(new KaleidoHttpMapOptions());
+        var built = new AggregatedRegistryResponse();
+        cache.Setup(c => c.GetOrBuildAsync("kaleido:router@2", It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan>(), false, It.IsAny<Func<CancellationToken, Task<AggregatedRegistryResponse>>>(), Cancel))
+            .ReturnsAsync(built);
+
+        var result = await sut.GetOrBuildAsync(refresh: false, _ => Task.FromResult(new AggregatedRegistryResponse()), Cancel);
 
         Assert.Same(built, result);
     }

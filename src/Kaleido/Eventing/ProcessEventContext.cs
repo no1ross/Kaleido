@@ -18,8 +18,26 @@ public sealed record ProcessEventContext
     /// <summary>The service that emitted this event, from <see cref="KaleidoServiceOptions.ServiceName"/>.</summary>
     public required string ServiceName { get; init; }
 
+    /// <summary>
+    /// The version of <see cref="ServiceName"/> (<see cref="KaleidoServiceOptions.ServiceVersion"/>); <see langword="null"/>
+    /// when the service is unversioned. With several versions publishing to one stream, it tells them apart (#552).
+    /// </summary>
+    public string? ServiceVersion { get; init; }
+
     /// <summary>The process instance this event belongs to.</summary>
     public required Guid ProcessId { get; init; }
+
+    /// <summary>
+    /// The version of the process state this event describes, per process and processor (#552): a
+    /// transition's event (process created, step completed) carries the version its save wrote, plan built
+    /// the version it read, and execution completed the version the request ended with.
+    /// </summary>
+    /// <remarks>
+    /// Events are delivered at least once and in no guaranteed order: consumers order a process's events by
+    /// this version (events of one request may share it), and a gap in the versions of a process's
+    /// transitions means a transition's event has not arrived yet.
+    /// </remarks>
+    public long ProcessVersion { get; init; }
 
     /// <summary>The step that was executing when this event was emitted.</summary>
     public required string StepName { get; init; }

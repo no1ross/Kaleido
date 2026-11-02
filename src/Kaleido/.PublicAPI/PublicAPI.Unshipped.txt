@@ -1053,15 +1053,11 @@ Kaleido.Storage.IdempotentResultState.Completed = 1 -> Kaleido.Storage.Idempoten
 Kaleido.Storage.IdempotentResultState.InProgress = 0 -> Kaleido.Storage.IdempotentResultState
 Kaleido.Storage.IdempotentResultState.OutcomeUnknown = 2 -> Kaleido.Storage.IdempotentResultState
 Kaleido.Storage.IKaleidoContextStore
-Kaleido.Storage.IKaleidoContextStore.LoadAsync(System.Guid processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.ProcessorContext?>!
 Kaleido.Storage.IKaleidoContextStore.SaveAsync(Kaleido.Processor.Context.ProcessorContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.ProcessorContext!>!
 Kaleido.Storage.IKaleidoIdempotencyStore
 Kaleido.Storage.IKaleidoIdempotencyStore.AdmitAsync(Kaleido.Storage.IdempotentResult! admission, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Storage.IdempotentResult?>!
 Kaleido.Storage.IKaleidoIdempotencyStore.CompleteAsync(Kaleido.Storage.IdempotentResult! result, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
 Kaleido.Storage.IKaleidoIdempotencyStore.ReleaseAsync(string! key, System.Guid admissionId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
-Kaleido.Storage.IKaleidoOutbox
-Kaleido.Storage.IKaleidoOutbox.AddAsync(System.Collections.Generic.IReadOnlyCollection<Kaleido.Storage.KaleidoOutboxEvent!>! events, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
-Kaleido.Storage.IKaleidoOutbox.CommittedAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Kaleido.Storage.IKaleidoOutboxStore
 Kaleido.Storage.IKaleidoOutboxStore.AddAsync(System.Collections.Generic.IReadOnlyCollection<Kaleido.Storage.KaleidoOutboxEvent!>! events, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Kaleido.Storage.IKaleidoOutboxStore.ClaimEventsAsync(int maxCount, System.TimeSpan lease, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Kaleido.Storage.KaleidoOutboxEvent!>!>!
@@ -1241,14 +1237,11 @@ static Kaleido.Eventing.QueryableEventContext.operator ==(Kaleido.Eventing.Query
 static Kaleido.KaleidoResilienceSettings.operator !=(Kaleido.KaleidoResilienceSettings? left, Kaleido.KaleidoResilienceSettings? right) -> bool
 static Kaleido.KaleidoResilienceSettings.operator ==(Kaleido.KaleidoResilienceSettings? left, Kaleido.KaleidoResilienceSettings? right) -> bool
 static Kaleido.KaleidoServiceCollectionExtensions.AddContextStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
-static Kaleido.KaleidoServiceCollectionExtensions.AddDirectPublication(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
-static Kaleido.KaleidoServiceCollectionExtensions.AddEventPublisher<TPublisher>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddEventRedaction(this Kaleido.IKaleidoBuilder! builder, System.Action<Microsoft.Extensions.Compliance.Redaction.IRedactionBuilder!>! configure) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddEventRedactor<TRedactor>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddIdempotencyStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddInMemoryStores(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddKaleido(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, Kaleido.KaleidoServiceOptions? options = null) -> Kaleido.IKaleidoBuilder!
-static Kaleido.KaleidoServiceCollectionExtensions.AddOutbox<TOutbox>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddOutboxStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceCollectionExtensions.AddTransactions<TTransactions>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.KaleidoServiceOptions.operator !=(Kaleido.KaleidoServiceOptions? left, Kaleido.KaleidoServiceOptions? right) -> bool
@@ -1396,3 +1389,86 @@ Kaleido.Processor.Execution.HandOffContinuation.BusinessMessages.init -> void
 Kaleido.Processor.Execution.HandOffContinuation.FrameworkMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
 Kaleido.Processor.Execution.HandOffContinuation.FrameworkMessages.init -> void
 static Kaleido.Processor.Execution.ProcessStepHandlerResult.HandOff<TProcessStepResult>(string! targetProcessorName, Kaleido.Processor.Execution.IHandOffContinuationSource! targetResponse, TProcessStepResult response) -> Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>!
+const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceVersion = "invalid_service_version" -> string!
+const Kaleido.KaleidoServiceOptions.MaxServiceVersionLength = 64 -> int
+Kaleido.Storage.ProcessKey.ProcessorName.get -> string!
+Kaleido.Storage.ProcessKey.ProcessorVersion.get -> string?
+Kaleido.Storage.ProcessKey.ProcessorName.init -> void
+Kaleido.Storage.ProcessKey.ProcessorVersion.init -> void
+Kaleido.Storage.ProcessKey.ProcessId.get -> System.Guid
+Kaleido.Storage.ProcessKey.ProcessId.init -> void
+Kaleido.Storage.ProcessKey
+Kaleido.Storage.ProcessKey.ProcessKey() -> void
+~override Kaleido.Storage.ProcessKey.ToString() -> string
+static Kaleido.Storage.ProcessKey.operator !=(Kaleido.Storage.ProcessKey left, Kaleido.Storage.ProcessKey right) -> bool
+static Kaleido.Storage.ProcessKey.operator ==(Kaleido.Storage.ProcessKey left, Kaleido.Storage.ProcessKey right) -> bool
+override Kaleido.Storage.ProcessKey.GetHashCode() -> int
+~override Kaleido.Storage.ProcessKey.Equals(object obj) -> bool
+Kaleido.Storage.ProcessKey.Equals(Kaleido.Storage.ProcessKey other) -> bool
+Kaleido.Storage.ProcessKey.Deconstruct(out string! ProcessorName, out string? ProcessorVersion, out System.Guid ProcessId) -> void
+Kaleido.KaleidoServiceOptions.ServiceVersion.get -> string?
+Kaleido.KaleidoServiceOptions.ServiceVersion.init -> void
+Kaleido.Processor.Context.ProcessorContext.ProcessorVersion.get -> string?
+Kaleido.Processor.Context.ProcessorContext.ProcessorVersion.init -> void
+Kaleido.Processor.Context.ProcessorContext.Key.get -> Kaleido.Storage.ProcessKey
+Kaleido.Storage.ProcessKey.ProcessKey(string! ProcessorName, string? ProcessorVersion, System.Guid ProcessId) -> void
+Kaleido.Storage.IKaleidoContextStore.LoadAsync(Kaleido.Storage.ProcessKey key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.ProcessorContext?>!
+Kaleido.Eventing.QueryableEventContext.ServiceVersion.get -> string?
+Kaleido.Eventing.QueryableEventContext.ServiceVersion.init -> void
+Kaleido.Eventing.ProcessEventContext.ServiceVersion.init -> void
+Kaleido.Eventing.ProcessEventContext.ServiceVersion.get -> string?
+Kaleido.Eventing.ProcessEventContext.ProcessVersion.init -> void
+Kaleido.Eventing.ProcessEventContext.ProcessVersion.get -> long
+Kaleido.Storage.IdempotentResult.ProcessorName.get -> string!
+Kaleido.Storage.IdempotentResult.ProcessorVersion.get -> string?
+Kaleido.Storage.IdempotentResult.ProcessorName.init -> void
+Kaleido.Storage.IdempotentResult.ProcessorVersion.init -> void
+static Kaleido.KaleidoServiceCollectionExtensions.AddOutboxRelay<TPublisher>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+Kaleido.Storage.KaleidoOutboxEvent.ServiceName.get -> string!
+Kaleido.Storage.KaleidoOutboxEvent.ServiceVersion.get -> string?
+Kaleido.Storage.KaleidoOutboxEvent.ServiceName.init -> void
+Kaleido.Storage.KaleidoOutboxEvent.ServiceVersion.init -> void
+Kaleido.Storage.KaleidoOutboxStatus
+override Kaleido.Storage.KaleidoOutboxStatus.ToString() -> string!
+Kaleido.Storage.KaleidoOutboxRelay
+static Kaleido.Storage.KaleidoOutboxStatus.operator !=(Kaleido.Storage.KaleidoOutboxStatus? left, Kaleido.Storage.KaleidoOutboxStatus? right) -> bool
+override Kaleido.Storage.KaleidoOutboxRelay.ToString() -> string!
+static Kaleido.Storage.KaleidoOutboxStatus.operator ==(Kaleido.Storage.KaleidoOutboxStatus? left, Kaleido.Storage.KaleidoOutboxStatus? right) -> bool
+static Kaleido.Storage.KaleidoOutboxRelay.operator !=(Kaleido.Storage.KaleidoOutboxRelay? left, Kaleido.Storage.KaleidoOutboxRelay? right) -> bool
+override Kaleido.Storage.KaleidoOutboxStatus.GetHashCode() -> int
+static Kaleido.Storage.KaleidoOutboxRelay.operator ==(Kaleido.Storage.KaleidoOutboxRelay? left, Kaleido.Storage.KaleidoOutboxRelay? right) -> bool
+override Kaleido.Storage.KaleidoOutboxStatus.Equals(object? obj) -> bool
+override Kaleido.Storage.KaleidoOutboxRelay.GetHashCode() -> int
+Kaleido.Storage.KaleidoOutboxStatus.Equals(Kaleido.Storage.KaleidoOutboxStatus? other) -> bool
+Kaleido.Storage.KaleidoOutboxStatus.<Clone>$() -> Kaleido.Storage.KaleidoOutboxStatus!
+override Kaleido.Storage.KaleidoOutboxRelay.Equals(object? obj) -> bool
+Kaleido.Storage.KaleidoOutboxStatus.KaleidoOutboxStatus() -> void
+Kaleido.Storage.KaleidoOutboxRelay.Equals(Kaleido.Storage.KaleidoOutboxRelay? other) -> bool
+Kaleido.Storage.KaleidoOutboxRelay.<Clone>$() -> Kaleido.Storage.KaleidoOutboxRelay!
+Kaleido.Storage.KaleidoOutboxRelay.KaleidoOutboxRelay() -> void
+Kaleido.Eventing.KaleidoEventOptions.RelayHeartbeatInterval.get -> System.TimeSpan
+Kaleido.Eventing.KaleidoEventOptions.RelaySeenWithin.get -> System.TimeSpan
+Kaleido.Eventing.KaleidoEventOptions.RelayHeartbeatInterval.init -> void
+Kaleido.Eventing.KaleidoEventOptions.RelaySeenWithin.init -> void
+Kaleido.Eventing.KaleidoEventOptions.BacklogMaxAge.get -> System.TimeSpan
+Kaleido.Eventing.KaleidoEventOptions.BacklogMaxCount.get -> int
+Kaleido.Eventing.KaleidoEventOptions.BacklogMaxCount.init -> void
+Kaleido.Eventing.KaleidoEventOptions.BacklogMaxAge.init -> void
+Kaleido.Eventing.KaleidoEventOptions.OutboxHealthFailureStatus.init -> void
+Kaleido.Eventing.KaleidoEventOptions.OutboxHealthFailureStatus.get -> Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus
+Kaleido.Storage.KaleidoOutboxStatus.LastRelaySeenUtc.init -> void
+Kaleido.Storage.KaleidoOutboxStatus.LastRelaySeenUtc.get -> System.DateTimeOffset?
+Kaleido.Storage.KaleidoOutboxStatus.DueCount.init -> void
+Kaleido.Storage.KaleidoOutboxStatus.DueCount.get -> long
+Kaleido.Storage.KaleidoOutboxStatus.OldestDueUtc.get -> System.DateTimeOffset?
+Kaleido.Storage.KaleidoOutboxStatus.OldestDueUtc.init -> void
+Kaleido.Storage.KaleidoOutboxRelay.InstanceId.init -> void
+Kaleido.Storage.KaleidoOutboxRelay.InstanceId.get -> System.Guid
+Kaleido.Storage.KaleidoOutboxRelay.ServiceName.get -> string!
+Kaleido.Storage.KaleidoOutboxRelay.ServiceName.init -> void
+Kaleido.Storage.KaleidoOutboxRelay.Publisher.get -> string!
+Kaleido.Storage.KaleidoOutboxRelay.Publisher.init -> void
+Kaleido.Storage.KaleidoOutboxRelay.SeenUtc.get -> System.DateTimeOffset
+Kaleido.Storage.KaleidoOutboxRelay.SeenUtc.init -> void
+Kaleido.Storage.IKaleidoOutboxStore.RecordRelayAsync(Kaleido.Storage.KaleidoOutboxRelay! relay, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Storage.IKaleidoOutboxStore.GetStatusAsync(System.DateTimeOffset now, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Storage.KaleidoOutboxStatus!>!

@@ -56,7 +56,7 @@ The core project is organized into two main namespaces:
 - `TypeDescriber` (internal) — CLR type → `DataTypeDescriptor` projection and `IsSupportedType` check
 - `ConstraintMapper` (internal) — `ValidationAttribute` → `ConstraintContract` projection
 - `KaleidoCorrelationContext` — shared ambient identity
-- `IEventPublisher` — infrastructure-agnostic event seam; `AddKaleido()` registers an internal no-op publisher (with a Warning log) until the host calls `AddEventPublisher<T>()`
+- `IEventPublisher` — infrastructure-agnostic event seam; registered only by `AddOutboxRelay<TPublisher>()`, on the host that runs the relay (ADR 0036)
 
 **`Kaleido.Queryable`**
 - Registration: `QueryableServiceCollectionExtensions` (internal, invoked by `AddKaleido()`)
@@ -70,7 +70,7 @@ The core project is organized into two main namespaces:
 - Registration: `ProcessorServiceCollectionExtensions` (internal, invoked by `AddKaleido()`)
 - Runtime: `IProcessorRuntime` (internal, called by the HTTP transport), `ProcessorExecutor` (the step execution loop)
 - Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`, `StepCandidateNextStepChecker` (only next steps run; answers checked against the pending information request)
-- State: `IKaleidoContextStore` (in `Kaleido.Storage`, next to `IKaleidoOutbox`, `IKaleidoOutboxStore`, `IKaleidoTransactions` and `IKaleidoIdempotencyStore`), the internal in-memory defaults, `ProcessorContext`; `ProcessorTransition` (internal) runs every process-state save: begin, save the state, add its event to the outbox, commit, committed (ADR 0023)
+- State: `IKaleidoContextStore` (in `Kaleido.Storage`, next to `IKaleidoOutboxStore`, `IKaleidoTransactions` and `IKaleidoIdempotencyStore`; every record scoped by the service and its version, `ProcessKey`), the internal in-memory defaults, `ProcessorContext`; `ProcessorTransition` (internal) runs every process-state save: begin, save the state, add its event to the outbox, commit, committed (ADR 0023, ADR 0036)
 - Registries: `IProcessorStepRegistry`, `IProcessorRegistry` (both internal, shared with `Kaleido.Http`)
 - Observability: `ProcessorObservability`
 
@@ -81,8 +81,8 @@ Public seams consumers are expected to implement or replace:
 | Seam | Register via | Notes |
 |------|--------------|-------|
 | `IKaleidoContextStore`, `IKaleidoIdempotencyStore`, `IKaleidoTransactions` | `AddContextStore<T>()`, `AddIdempotencyStore<T>()`, `AddTransactions<T>()` (or `AddSqliteContextStore`/`AddSqliteIdempotencyStore`) - one implementation each | Production deployments implement against their own durable store; SQLite provider is a reference impl |
-| `IKaleidoOutbox` / `IKaleidoOutboxStore` | one per service: Kaleido's built-in outbox (default; its storage via `AddOutboxStore<T>()`/`AddSqliteOutboxStore`), the host's own `AddOutbox<T>()`, or `AddDirectPublication()` | Atomic with the state only on the database `IKaleidoTransactions` covers (ADR 0023) |
-| `IEventPublisher` | `AddEventPublisher<TPublisher>()` on the builder | Default is an internal no-op publisher (nothing is written to the outbox; a Warning says events are discarded); replace for real event delivery - the relay hands it every event at least once |
+| `IKaleidoOutboxStore` | one per service (`AddOutboxStore<T>()`/`AddSqliteOutboxStore`): every event it writes, tagged with the writer; several services may share its database | Atomic with the state only on the database `IKaleidoTransactions` covers (ADR 0023, ADR 0036) |
+| `IEventPublisher` | `AddOutboxRelay<TPublisher>()` on the host that publishes (one per outbox database) | No default: services only write; the relay hands every event in its database to it at least once (ADR 0036) |
 | `IQueryContextExecutor<TView>` | `services.AddSingleton(typeof(IQueryContextExecutor<>), typeof(MyExecutor<>))` (the default is added with `TryAdd`) | Provider-native execution (e.g. EF Core `CountAsync`/`ToListAsync`): the default counts an async query by reading every matching row; see `docs/PATTERNS.md` |
 | Observability provider | `AddOpenTelemetry()` (Kaleido.Observability.OpenTelemetry) or custom `AddKaleidoInstrumentation()` calls | Core stays provider-agnostic on BCL `ActivitySource`/`Meter` |
 | Delegated query sources | implement `IDelegatedQuerySource<TQueryContext, TResult[, TParameters]>` and add `[QuerySource]` | A facade: translates the consumer's query (validated against `TQueryContext`), calls a downstream source or view, and maps to `TResult` |
@@ -130,7 +130,7 @@ Public seams consumers are expected to implement or replace:
 - `GET /{prefix}/registry` — unified discovery envelope (`AggregatedRegistryResponse`: `Processes`, `Queryables`, `ClientErrors`)
 - Leaf mode returns this service's local registrations; `MapKaleidoHttp(new() { AggregateRegistry = true })` also fans out to every `AddHttpClients()` client — one `GET /{svc}/registry` fetch per client, shared via `KaleidoRemoteRegistry`
 - Freshness: `GeneratedAt`, `Revision` (SHA-256 of the filtered payload), `IsPartial`; `ETag`/`Cache-Control` headers, `If-None-Match` → 304; `?strict` → 502 when partial (body still included); `?refresh` forces rebuild, throttled by `KaleidoHttpMapOptions.RegistryRefreshCooldown`
-- Snapshots live in `IRegistrySnapshotStore` (in-memory default; `AddDistributedRegistrySnapshots()` puts them in the host's `IDistributedCache`, mirrored in memory so an unreachable cache never fails a read) under canonical key `kaleido:{ServiceName}` (the unfiltered union, filtered per caller on every request); consumers' client copies use their own `kaleido-client:{ServiceName}:{clientName}` keys, so a shared store never mixes them; only clean snapshots are committed, so degraded states are re-probed per request
+- Snapshots live in `IRegistrySnapshotStore` (in-memory default; `AddDistributedRegistrySnapshots()` puts them in the host's `IDistributedCache`, mirrored in memory so an unreachable cache never fails a read) under canonical key `kaleido:{ServiceName}` (`kaleido:{ServiceName}@{ServiceVersion}` for a versioned service, #552) (the unfiltered union, filtered per caller on every request); consumers' client copies use their own `kaleido-client:{ServiceName}:{clientName}` keys, so a shared store never mixes them; only clean snapshots are committed, so degraded states are re-probed per request
 - Always returns HTTP 200 unless `?strict` is requested; unreachable downstream clients populate `ClientErrors`
 
 **URL generation**
@@ -292,10 +292,10 @@ Both Queryable and Process publish observability through activity sources and me
 - Process: `Kaleido.Processor` activity source and meter (names defined in `ProcessorTelemetry`)
 
 ### Event publishing
-`IEventPublisher` is registered by `AddKaleido()` as a no-op publisher by default. Replace it with `AddEventPublisher<TPublisher>()` to install real event infrastructure.
+`IEventPublisher` belongs to the relay: `AddOutboxRelay<TPublisher>()` registers it with the relay, on one host per outbox database (a service, or a host with nothing else). Services register none (ADR 0036).
 
 Events are handed to `IEventPublisher` **at least once, never on the request path** ([ADR 0012](../docs/decisions/0012-events-at-least-once-through-the-store.md)):
-- **Kaleido owns when, the outbox integration owns how** (ADR 0023). The runtime hands every event to `IKaleidoOutbox`. A transition's event goes inside its transaction (`ProcessorTransition`: begin, save the state, add the event, commit, committed): `ProcessCreated` (a new process is saved right away) and `StepCompleted`. `PlanBuilt`, `ExecutionCompleted` and `QueryExecuted` are added right after, without a transaction; a failure is logged and counted, never fails the request. The built-in outbox and direct publication produce no event without a registered publisher; a host's own outbox always receives them.
+- **Kaleido owns when; services write, a relay publishes** (ADR 0023, ADR 0036). The runtime hands every event to the outbox (internal `IKaleidoOutbox` over `IKaleidoOutboxStore`), tagged with the writing service and version. A transition's event goes inside its transaction (`ProcessorTransition`: begin, save the state, add the event, commit, committed): `ProcessCreated` (a new process is saved right away) and `StepCompleted`. `PlanBuilt`, `ExecutionCompleted` and `QueryExecuted` are added right after, without a transaction; a failure is logged and counted, never fails the request. Every service writes every event; publishing is the relay's (`AddOutboxRelay`), which drains every entry of its outbox store's database.
 - **Relay.** `KaleidoEventRelay`, a hosted background service registered by `AddKaleido()` (one per instance), claims a batch (`Kaleido:Events:BatchSize`), publishes each entry through a Polly pipeline (timeout + circuit breaker, no Polly retries; `Kaleido:Events:Resilience`) and removes it on success. A failure is retried with exponential backoff (the durable schedule lives in the outbox, so it survives restarts); after `MaxRetryAttempts` the entry is parked. A write wakes the local relay at once; otherwise it polls, backing off to 10 s while the outbox is empty. Claims are leases, so an entry is in one instance's hands at a time; when an instance stops, its leases expire and another takes over.
 - **Privacy.** Payloads are complete (the audit trail); before the outbox write, the registered `IKaleidoEventRedactor`s run and properties marked with a `DataClassificationAttribute` are redacted per the event policy (`AddEventRedaction`; the host's `AddRedaction` stays the log policy), or erased without one (`KaleidoEventPayloadWriter`, ADR 0013, ADR 0025). A crash between a successful publish and its removal publishes the event again - consumers drop duplicates by `IKaleidoEvent.EventId`.
 

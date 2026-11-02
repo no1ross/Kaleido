@@ -7,8 +7,10 @@ using Polly.CircuitBreaker;
 
 namespace Kaleido.Eventing;
 
-// Hands outbox entries to the event publisher, one relay per instance. It claims a batch (the claim
-// is the lock between instances), publishes each entry through a timeout and a circuit breaker, and
+// Hands outbox entries to the event publisher: registered by AddOutboxRelay on the host that drains the
+// outbox, which may be a writer service or a host with nothing else (#552). It drains every service's
+// entries in its outbox store's database. It claims a batch (the claim is the lock between relay
+// instances), publishes each entry through a timeout and a circuit breaker, and
 // removes it on success; a failure is retried later with backoff (the durable schedule lives in the
 // outbox) and parked after the last retry.
 internal sealed partial class KaleidoEventRelay : BackgroundService
@@ -28,6 +30,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     private readonly IKaleidoEventSignal _signal;
     private readonly ILogger<KaleidoEventRelay> _logger;
     private readonly KaleidoEventOptions _options;
+    private readonly KaleidoServiceOptions _serviceOptions;
     private readonly TimeProvider _time;
     private readonly CircuitBreakerStateProvider _circuit = new();
     private readonly ResiliencePipeline _pipeline;
@@ -49,6 +52,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         _publisher = publisher;
         _signal = signal;
         _logger = logger;
+        _serviceOptions = serviceOptions;
         _options = serviceOptions.Events;
 
         // Long enough for a whole batch at the configured parallelism, plus a margin.
@@ -62,12 +66,6 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Without a publisher nothing is ever written to the outbox.
-        if (_publisher is INoOpEventPublisher)
-        {
-            return;
-        }
-
         try
         {
             await RunAsync(stoppingToken);
@@ -81,9 +79,16 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     private async Task RunAsync(CancellationToken stoppingToken)
     {
         var wait = RelayInterval;
+        DateTimeOffset? lastHeartbeat = null;
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            // The writers' health check reads the heartbeat from the outbox's database (#552).
+            if (lastHeartbeat is not { } heartbeat || _time.GetUtcNow() - heartbeat >= _options.RelayHeartbeatInterval)
+            {
+                lastHeartbeat = await RecordHeartbeatAsync(stoppingToken);
+            }
+
             // While the circuit is open nothing is claimed: the entries stay untouched in the outbox.
             if (CircuitIsOpen)
             {
@@ -103,6 +108,35 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
             wait = claimed > 0 ? RelayInterval : Min(wait * 2, IdleInterval);
             await _signal.WaitAsync(wait, stoppingToken);
         }
+    }
+
+    // Records this relay instance as draining the outbox; returns when. A failure is logged and retried at
+    // the next interval: the heartbeat must never stop the relay.
+    internal async Task<DateTimeOffset> RecordHeartbeatAsync(CancellationToken cancellationToken)
+    {
+        var now = _time.GetUtcNow();
+
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<IKaleidoOutboxStore>().RecordRelayAsync(
+                new KaleidoOutboxRelay
+                {
+                    InstanceId = _serviceOptions.InstanceId,
+                    ServiceName = _serviceOptions.ServiceName,
+                    Publisher = _publisher.GetType().Name,
+                    SeenUtc = now,
+                },
+                cancellationToken);
+        }
+        // Any store failure (a provider's own exception types included) is logged; only the host stopping
+        // is passed on.
+        catch (Exception exception) when (!(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
+        {
+            LogHeartbeatFailed(_logger, exception);
+        }
+
+        return now;
     }
 
     // Claims one batch and publishes it; returns the number of entries claimed.
@@ -293,4 +327,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The event relay could not read or update the outbox; it tries again.")]
     private static partial void LogRelayFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The outbox relay could not record its heartbeat; it keeps relaying, and the writers' outbox health check may report that no relay runs.")]
+    private static partial void LogHeartbeatFailed(ILogger logger, Exception exception);
 }

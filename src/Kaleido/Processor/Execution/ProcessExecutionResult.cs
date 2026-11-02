@@ -5,6 +5,9 @@ internal sealed record ProcessExecutionResult
 {
     public required Guid ProcessId { get; init; }
 
+    // The version of the process state the request ended with: the last save's (#552).
+    public long Version { get; init; }
+
     public required ProcessExecutionState State
     {
         get;

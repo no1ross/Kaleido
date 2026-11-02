@@ -389,27 +389,69 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         Assert.Equal(ConfigurationErrorCodes.MissingAssembly, exception.Code);
     }
 
+    // #552: no publisher and no relay by default - every service only writes its events.
     [Fact]
-    public void AddEventPublisher_ReplacesTheDefaultPublisherWithASingleton()
+    public void AddKaleido_RegistersNoPublisherAndNoRelay()
     {
-        var services = new ServiceCollection();
+        var services = NewBuilder().Services;
 
-        services.AddKaleido(EmptyConfig(), DefaultServiceOptions())
-            .AddEventPublisher<RecordingPublisher>();
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(Kaleido.Eventing.IEventPublisher));
+        Assert.False(RelayRegistered(services));
+    }
 
-        var registration = Assert.Single(services, x => x.ServiceType == typeof(Kaleido.Eventing.IEventPublisher));
-        Assert.Equal(typeof(RecordingPublisher), registration.ImplementationType);
-        Assert.Equal(ServiceLifetime.Singleton, registration.Lifetime);
+    // The relay owns the publisher: registered as a singleton, unless the host registered it itself.
+    [Fact]
+    public void AddOutboxRelay_RegistersTheRelay_AndItsPublisherAsASingleton()
+    {
+        var services = NewBuilder().AddOutboxRelay<RecordingPublisher>().Services;
+
+        Assert.True(RelayRegistered(services));
+        Assert.Equal(ServiceLifetime.Singleton, Single<RecordingPublisher>(services).Lifetime);
+        Assert.Equal(ServiceLifetime.Singleton, Single<Kaleido.Eventing.IEventPublisher>(services).Lifetime);
+        using var provider = services.BuildServiceProvider();
+        Assert.Same(provider.GetRequiredService<RecordingPublisher>(), provider.GetRequiredService<Kaleido.Eventing.IEventPublisher>());
     }
 
     [Fact]
-    public void AddEventPublisher_ShouldThrow_WhenBuilderIsNull()
+    public void AddOutboxRelay_WithAPublisherTheHostRegistered_UsesThatOne()
+    {
+        var services = new ServiceCollection();
+        var publisher = new RecordingPublisher();
+        services.AddSingleton(publisher);
+
+        NewBuilder(services).AddOutboxRelay<RecordingPublisher>();
+
+        using var provider = services.BuildServiceProvider();
+        Assert.Same(publisher, provider.GetRequiredService<Kaleido.Eventing.IEventPublisher>());
+    }
+
+    [Fact]
+    public void AddOutboxRelay_Twice_WithTheSamePublisher_RegistersOneRelay()
+    {
+        var services = NewBuilder().AddOutboxRelay<RecordingPublisher>().AddOutboxRelay<RecordingPublisher>().Services;
+
+        Assert.Single(services, x => x.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService) && x.ImplementationType == typeof(Kaleido.Eventing.KaleidoEventRelay));
+        Assert.Single(services, x => x.ServiceType == typeof(Kaleido.Eventing.IEventPublisher));
+    }
+
+    // A host runs one relay, with one publisher.
+    [Fact]
+    public void AddOutboxRelay_WithAnotherPublisher_IsAConfigurationError()
+    {
+        var builder = NewBuilder().AddOutboxRelay<RecordingPublisher>();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.AddOutboxRelay<OtherPublisher>);
+
+        Assert.Equal(ConfigurationErrorCodes.ConflictingOutbox, exception.Code);
+    }
+
+    [Fact]
+    public void AddOutboxRelay_ShouldThrow_WhenBuilderIsNull()
     {
         IKaleidoBuilder? builder = null;
 
-        Assert.Throws<ArgumentNullException>(() => builder!.AddEventPublisher<RecordingPublisher>());
+        Assert.Throws<ArgumentNullException>(() => builder!.AddOutboxRelay<RecordingPublisher>());
     }
-
     // ---------------------------------------------------------------------------
     // Event classification redaction (ADR 0025)
 
@@ -478,16 +520,14 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         services.Any(x => x.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService) && x.ImplementationType == typeof(Kaleido.Eventing.KaleidoEventRelay));
 
     [Fact]
-    public void AddKaleido_ByDefault_UsesKaleidosOutboxInMemory_WithItsRelay_AndNoTransactions()
+    public void AddKaleido_ByDefault_UsesKaleidosOutboxInMemory_AndNoTransactions()
     {
         var services = NewBuilder().Services;
 
         Assert.Equal(typeof(Kaleido.Eventing.KaleidoStoreOutbox), Registered<Kaleido.Storage.IKaleidoOutbox>(services));
         Assert.Equal(typeof(Kaleido.Storage.InMemoryKaleidoOutboxStore), Registered<Kaleido.Storage.IKaleidoOutboxStore>(services));
         Assert.Equal(typeof(Kaleido.Storage.NoKaleidoTransactions), Registered<Kaleido.Storage.IKaleidoTransactions>(services));
-        Assert.True(RelayRegistered(services));
     }
-
     [Fact]
     public void AddContextStore_IdempotencyStore_AndTransactions_ReplaceTheDefaults_AsScoped()
     {
@@ -521,73 +561,39 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddOutboxStore_StoresKaleidosOutbox_AndKeepsTheRelay()
+    public void AddOutboxStore_StoresTheOutbox()
     {
         var services = NewBuilder().AddOutboxStore<OwnOutboxStore>().Services;
 
         Assert.Equal(typeof(OwnOutboxStore), Single<Kaleido.Storage.IKaleidoOutboxStore>(services).ImplementationType);
         Assert.Equal(typeof(Kaleido.Eventing.KaleidoStoreOutbox), Registered<Kaleido.Storage.IKaleidoOutbox>(services));
-        Assert.True(RelayRegistered(services));
+    }
+
+    // One outbox store per service.
+    [Fact]
+    public void TwoOutboxStores_AreAConfigurationError()
+    {
+        var builder = NewBuilder().AddOutboxStore<OwnOutboxStore>();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.AddOutboxStore<OtherOutboxStore>);
+
+        Assert.Equal(ConfigurationErrorCodes.ConflictingOutbox, exception.Code);
     }
 
     [Fact]
-    public void AddOutbox_ReplacesKaleidosOutbox_AndRemovesItsStoreAndRelay()
-    {
-        var services = NewBuilder().AddOutbox<OwnOutbox>().Services;
-
-        Assert.Equal(typeof(OwnOutbox), Single<Kaleido.Storage.IKaleidoOutbox>(services).ImplementationType);
-        Assert.DoesNotContain(services, x => x.ServiceType == typeof(Kaleido.Storage.IKaleidoOutboxStore));
-        Assert.False(RelayRegistered(services));
-    }
-
-    [Fact]
-    public void AddDirectPublication_ReplacesKaleidosOutbox_AndRemovesItsStoreAndRelay()
-    {
-        var services = NewBuilder().AddDirectPublication().Services;
-
-        Assert.Equal(typeof(Kaleido.Eventing.KaleidoDirectPublicationOutbox), Single<Kaleido.Storage.IKaleidoOutbox>(services).ImplementationType);
-        Assert.DoesNotContain(services, x => x.ServiceType == typeof(Kaleido.Storage.IKaleidoOutboxStore));
-        Assert.False(RelayRegistered(services));
-    }
-
-    // One outbox choice per service.
-    public static TheoryData<string> ConflictingOutboxChoices() =>
-        ["store then own", "own then store", "own then direct", "direct then own", "two stores"];
-
-    [Theory]
-    [MemberData(nameof(ConflictingOutboxChoices))]
-    public void TwoOutboxChoices_AreAConfigurationError(string choices)
-    {
-        var builder = NewBuilder();
-        Action second = choices switch
-        {
-            "store then own" => () => builder.AddOutboxStore<OwnOutboxStore>().AddOutbox<OwnOutbox>(),
-            "own then store" => () => builder.AddOutbox<OwnOutbox>().AddOutboxStore<OwnOutboxStore>(),
-            "own then direct" => () => builder.AddOutbox<OwnOutbox>().AddDirectPublication(),
-            "direct then own" => () => builder.AddDirectPublication().AddOutbox<OwnOutbox>(),
-            _ => () => builder.AddOutboxStore<OwnOutboxStore>().AddOutboxStore<OtherOutboxStore>(),
-        };
-
-        Assert.Equal(ConfigurationErrorCodes.ConflictingOutbox, Assert.Throws<KaleidoConfigurationException>(second).Code);
-    }
-
-    [Fact]
-    public void TheStoreAndOutboxMethods_ShouldThrow_WhenBuilderIsNull()
+    public void TheStoreMethods_ShouldThrow_WhenBuilderIsNull()
     {
         IKaleidoBuilder? builder = null;
 
         Assert.Throws<ArgumentNullException>(() => builder!.AddContextStore<OwnContextStore>());
         Assert.Throws<ArgumentNullException>(() => builder!.AddOutboxStore<OwnOutboxStore>());
-        Assert.Throws<ArgumentNullException>(() => builder!.AddOutbox<OwnOutbox>());
-        Assert.Throws<ArgumentNullException>(() => builder!.AddDirectPublication());
     }
-
     // ---------------------------------------------------------------------------
     // Test doubles
 
     private sealed class OwnContextStore : Kaleido.Storage.IKaleidoContextStore
     {
-        public Task<Kaleido.Processor.Context.ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Kaleido.Processor.Context.ProcessorContext?> LoadAsync(Kaleido.Storage.ProcessKey key, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<Kaleido.Processor.Context.ProcessorContext> SaveAsync(Kaleido.Processor.Context.ProcessorContext context, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
@@ -615,20 +621,21 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         public Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task RecordRelayAsync(Kaleido.Storage.KaleidoOutboxRelay relay, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Kaleido.Storage.KaleidoOutboxStatus> GetStatusAsync(DateTimeOffset now, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class OtherOutboxStore : OwnOutboxStore;
 
-    private sealed class OwnOutbox : Kaleido.Storage.IKaleidoOutbox
-    {
-        public Task AddAsync(IReadOnlyCollection<Kaleido.Storage.KaleidoOutboxEvent> events, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    }
-
-    private sealed class RecordingPublisher : Kaleido.Eventing.IEventPublisher
+    private class RecordingPublisher : Kaleido.Eventing.IEventPublisher
     {
         public Task PublishAsync<TEvent, TContext>(Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> envelope, CancellationToken cancellationToken = default)
             where TEvent : Kaleido.Eventing.IKaleidoEvent => Task.CompletedTask;
     }
+
+    private sealed class OtherPublisher : RecordingPublisher;
     // ---------------------------------------------------------------------------
 
     private sealed class CustomCorrelationContextAccessor : IKaleidoCorrelationContextAccessor
@@ -651,5 +658,20 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     {
         public Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> Redact<TEvent, TContext>(Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> envelope)
             where TEvent : Kaleido.Eventing.IKaleidoEvent => envelope;
+    }
+
+    // #552: every service watches its outbox.
+    [Fact]
+    public void AddKaleido_RegistersTheOutboxHealthCheck_Once()
+    {
+        var services = new ServiceCollection();
+        NewBuilder(services);
+        services.AddHealthChecks();
+
+        using var provider = services.BuildServiceProvider();
+        var registrations = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckServiceOptions>>().Value.Registrations;
+
+        var outbox = Assert.Single(registrations, x => x.Name == "kaleido-outbox");
+        Assert.Contains("outbox", outbox.Tags);
     }
 }

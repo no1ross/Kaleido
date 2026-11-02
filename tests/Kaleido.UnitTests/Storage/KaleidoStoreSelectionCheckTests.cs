@@ -13,12 +13,11 @@ public sealed class KaleidoStoreSelectionCheckTests
 {
     private static KaleidoStoreSelectionCheck CreateSut(IServiceCollection services) => new(services);
 
-    // What AddKaleido registers: the in-memory defaults, the built-in outbox and the no-op publisher;
-    // with process steps, the step registry.
+    // What AddKaleido registers: the in-memory defaults and the outbox; with process steps, the step
+    // registry.
     private static ServiceCollection Defaults(bool withProcesses = true)
     {
         var services = new ServiceCollection();
-        services.AddSingleton<IEventPublisher, EventPublisher>();
         services.AddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
         services.AddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
         services.AddScoped<IKaleidoOutbox, KaleidoStoreOutbox>();
@@ -43,7 +42,7 @@ public sealed class KaleidoStoreSelectionCheckTests
         Assert.Equal(ConfigurationErrorCodes.StoresNotChosen, exception.Code);
         Assert.Contains("process state (IKaleidoContextStore)", exception.Message, StringComparison.Ordinal);
         Assert.Contains("idempotency records (IKaleidoIdempotencyStore)", exception.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("event outbox", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("event outbox (IKaleidoOutboxStore)", exception.Message, StringComparison.Ordinal);
         Assert.Contains("AddInMemoryStores()", exception.Message, StringComparison.Ordinal);
     }
 
@@ -63,6 +62,7 @@ public sealed class KaleidoStoreSelectionCheckTests
         var services = Defaults();
         services.AddScoped(_ => Mock.Of<IKaleidoContextStore>());
         services.AddScoped<IKaleidoIdempotencyStore, FakeIdempotencyStore>();
+        services.AddScoped(_ => Mock.Of<IKaleidoOutboxStore>());
 
         await StartAsync(services);
     }
@@ -79,47 +79,23 @@ public sealed class KaleidoStoreSelectionCheckTests
         Assert.DoesNotContain("idempotency records", exception.Message, StringComparison.Ordinal);
     }
 
-    // A query-only service keeps neither process state nor idempotency records.
+    // A query-only service keeps neither process state nor idempotency records, but it writes its events
+    // (#552): its outbox store must be chosen too.
     [Fact]
-    public void AQueryOnlyService_UsesNoContextOrIdempotencyStore()
+    public void AQueryOnlyService_UsesOnlyTheOutboxStore()
     {
-        Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(Defaults(withProcesses: false)));
+        Assert.Equal(["event outbox (IKaleidoOutboxStore)"], KaleidoStoreSelectionCheck.InMemoryStoresInUse(Defaults(withProcesses: false)));
     }
 
+    // Whether or not this host publishes: every service writes its events (#552).
     [Fact]
-    public void WithoutAnyPublisherRegistration_NoOutboxStoreIsInUse()
-    {
-        var services = Defaults(withProcesses: false);
-        services.RemoveAll<IEventPublisher>();
-
-        Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(services));
-    }
-
-    // The built-in outbox writes events only when a publisher is registered.
-    [Fact]
-    public void WithAPublisher_TheBuiltInOutboxStoreIsInUse()
-    {
-        var services = Defaults(withProcesses: false);
-        services.AddSingleton(Mock.Of<IEventPublisher>());
-
-        Assert.Equal(["event outbox (IKaleidoOutboxStore)"], KaleidoStoreSelectionCheck.InMemoryStoresInUse(services));
-    }
-
-    [Fact]
-    public void WithAPublisher_ADurableOutboxStore_OrAnotherOutbox_NeedsNoChoice()
+    public void ADurableOutboxStore_NeedsNoChoice()
     {
         var durable = Defaults(withProcesses: false);
-        durable.AddSingleton(Mock.Of<IEventPublisher>());
         durable.AddScoped(_ => Mock.Of<IKaleidoOutboxStore>());
 
-        var direct = Defaults(withProcesses: false);
-        direct.AddSingleton(Mock.Of<IEventPublisher>());
-        direct.AddScoped<IKaleidoOutbox, KaleidoDirectPublicationOutbox>();
-
         Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(durable));
-        Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(direct));
     }
-
     private sealed class FakeIdempotencyStore : IKaleidoIdempotencyStore
     {
         public Task<IdempotentResult?> AdmitAsync(IdempotentResult result, CancellationToken cancellationToken) => Task.FromResult<IdempotentResult?>(null);

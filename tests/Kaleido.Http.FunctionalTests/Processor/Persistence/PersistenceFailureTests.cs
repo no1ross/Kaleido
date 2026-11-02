@@ -14,7 +14,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace Kaleido.Http.FunctionalTests.Processor.Persistence;
@@ -161,8 +160,9 @@ public sealed class PersistenceFailureTests : IAsyncLifetime
                     RefuseSavesOnDemand(services);
 
                     // A publisher, so steps write their events to the outbox.
-                    services.RemoveAll<IEventPublisher>();
-                    services.AddSingleton<IEventPublisher>(_publisher);
+                    // This host writes its events and runs the relay that publishes them (#552).
+                    services.AddSingleton(_publisher);
+                    kaleido.AddOutboxRelay<RecordingPublisher>();
                 });
                 web.Configure(app =>
                 {
@@ -277,8 +277,8 @@ public sealed class PersistenceFailureTests : IAsyncLifetime
 
     private sealed class RefusingContextStore(IKaleidoContextStore inner, RefusedSaves refused) : IKaleidoContextStore
     {
-        public Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken) =>
-            inner.LoadAsync(processId, cancellationToken);
+        public Task<ProcessorContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken) =>
+            inner.LoadAsync(key, cancellationToken);
 
         public Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken) =>
             refused.On

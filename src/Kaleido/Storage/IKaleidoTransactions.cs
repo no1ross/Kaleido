@@ -3,7 +3,7 @@ namespace Kaleido.Storage;
 /// <summary>
 /// Makes a process-state transition atomic: Kaleido saves the state
 /// (<see cref="IKaleidoContextStore.SaveAsync"/>) and adds the transition's events
-/// (<see cref="IKaleidoOutbox.AddAsync"/>) inside one transaction from this factory, then commits it.
+/// to the outbox (<see cref="IKaleidoOutboxStore.AddAsync"/>) inside one transaction from this factory, then commits it.
 /// Provided by persistence-specific packages (e.g. <c>AddSqliteContextStore</c>) or by the host for
 /// its own persistence (<c>AddTransactions&lt;T&gt;()</c>); optional (ADR 0023).
 /// </summary>

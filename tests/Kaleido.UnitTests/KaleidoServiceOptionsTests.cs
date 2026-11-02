@@ -183,4 +183,61 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
 
         Assert.Equal(ConfigurationErrorCodes.MissingAssembly, exception.Code);
     }
+
+    // The version is an opaque label in every store key, and a route segment later (#552, #553).
+    [Theory]
+    [InlineData("1")]
+    [InlineData("v2")]
+    [InlineData("2026.11-beta_1")]
+    [InlineData("Lorem")]
+    public void Validate_ValidServiceVersion_DoesNotThrow(string serviceVersion)
+    {
+        KaleidoServiceOptions.Validate(CreateSut("svc") with { ServiceVersion = serviceVersion });
+    }
+
+    [Fact]
+    public void Validate_NoServiceVersion_DoesNotThrow()
+    {
+        KaleidoServiceOptions.Validate(CreateSut("svc") with { ServiceVersion = null });
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("-1")]
+    [InlineData(".1")]
+    [InlineData("v 2")]
+    [InlineData("v/2")]
+    [InlineData("vé")]
+    public void Validate_InvalidServiceVersion_ThrowsInvalidServiceVersion(string serviceVersion)
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(
+            () => KaleidoServiceOptions.Validate(CreateSut("svc") with { ServiceVersion = serviceVersion }));
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidServiceVersion, exception.Code);
+    }
+
+    [Fact]
+    public void Validate_ServiceVersionAtTheMaximumLength_DoesNotThrow()
+    {
+        KaleidoServiceOptions.Validate(CreateSut("svc") with { ServiceVersion = new string('1', KaleidoServiceOptions.MaxServiceVersionLength) });
+    }
+
+    [Fact]
+    public void Validate_ServiceVersionOverTheMaximumLength_ThrowsInvalidServiceVersion()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(
+            () => KaleidoServiceOptions.Validate(CreateSut("svc") with { ServiceVersion = new string('1', KaleidoServiceOptions.MaxServiceVersionLength + 1) }));
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidServiceVersion, exception.Code);
+    }
+
+    // The scope name keys stores shared by services and versions (#552); '@' is in neither a name nor a version.
+    [Theory]
+    [InlineData(null, "svc")]
+    [InlineData("2", "svc@2")]
+    public void ScopeName_IsTheServiceAndItsVersion(string? version, string expected)
+    {
+        Assert.Equal(expected, (CreateSut("svc") with { ServiceVersion = version }).ScopeName);
+    }
 }

@@ -92,6 +92,44 @@ internal sealed class SqliteKaleidoOutboxStore(
                 cancellationToken);
     }
 
+    // One row per relay instance, replaced at each heartbeat; rows of relays not seen for a week (stopped
+    // instances: a restart is a new one) are removed.
+    public async Task RecordRelayAsync(KaleidoOutboxRelay relay, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(relay);
+
+        var seen = relay.SeenUtc.UtcTicks;
+        var instance = relay.InstanceId.ToString("N");
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO OutboxRelays (InstanceId, ServiceName, Publisher, SeenUtc)
+            VALUES ({instance}, {relay.ServiceName}, {relay.Publisher}, {seen})
+            ON CONFLICT(InstanceId) DO UPDATE SET ServiceName = excluded.ServiceName, Publisher = excluded.Publisher, SeenUtc = excluded.SeenUtc
+            """,
+            cancellationToken);
+
+        var forgotten = seen - RelayRetention.Ticks;
+        await dbContext.OutboxRelays.Where(x => x.SeenUtc < forgotten).ExecuteDeleteAsync(cancellationToken);
+    }
+
+    public async Task<KaleidoOutboxStatus> GetStatusAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var at = now.UtcTicks;
+        var due = dbContext.OutboxEvents.AsNoTracking().Where(x => !x.IsParked && x.NextAttemptUtc <= at);
+        var lastSeen = await dbContext.OutboxRelays.AsNoTracking().MaxAsync(x => (long?)x.SeenUtc, cancellationToken);
+        var oldest = await due.MinAsync(x => (long?)x.OccurredUtc, cancellationToken);
+
+        return new KaleidoOutboxStatus
+        {
+            LastRelaySeenUtc = lastSeen is { } seen ? new DateTimeOffset(seen, TimeSpan.Zero) : null,
+            DueCount = await due.LongCountAsync(cancellationToken),
+            OldestDueUtc = oldest is { } occurred ? new DateTimeOffset(occurred, TimeSpan.Zero) : null,
+        };
+    }
+
+    internal static readonly TimeSpan RelayRetention = TimeSpan.FromDays(7);
+
     // This instance's identity as lease owner.
     private string Owner => serviceOptions.InstanceId.ToString("N");
 }

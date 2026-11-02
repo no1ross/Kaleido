@@ -5,11 +5,12 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Storage;
 
 // The default process-state store: in memory, for development and tests. State only: a transition's
-// events are added by the outbox integration (no transaction in memory; neither write can fail).
+// events are added by the outbox integration (no transaction in memory; neither write can fail). Each
+// process is kept under its key - processor, version and id (#552).
 internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
 {
     private readonly ILogger<InMemoryKaleidoContextStore> _logger;
-    private readonly ConcurrentDictionary<Guid, ProcessorContext> _contexts = new();
+    private readonly ConcurrentDictionary<ProcessKey, ProcessorContext> _contexts = new();
     private readonly object _lock = new();
 
     public InMemoryKaleidoContextStore(ILogger<InMemoryKaleidoContextStore> logger)
@@ -19,11 +20,11 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
         LogInMemoryStoreActive(logger);
     }
 
-    public Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken)
+    public Task<ProcessorContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        _contexts.TryGetValue(processId, out var context);
+        _contexts.TryGetValue(key, out var context);
         return Task.FromResult(context);
     }
 
@@ -40,7 +41,7 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
         // Compare and write as one step: two saves for the same process must not both pass the check.
         lock (_lock)
         {
-            var storedVersion = _contexts.TryGetValue(context.ProcessId, out var stored) ? stored.Version : 0;
+            var storedVersion = _contexts.TryGetValue(context.Key, out var stored) ? stored.Version : 0;
 
             if (storedVersion != context.Version)
             {
@@ -48,7 +49,7 @@ internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore
             }
 
             saved = context with { Version = context.Version + 1 };
-            _contexts[context.ProcessId] = saved;
+            _contexts[context.Key] = saved;
         }
 
         LogSaved(_logger, context.ProcessId, context.Steps.Count);

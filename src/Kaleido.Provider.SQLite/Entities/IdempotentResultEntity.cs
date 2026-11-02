@@ -9,6 +9,19 @@ internal sealed class IdempotentResultEntity
         set;
     } = string.Empty;
 
+    // The processor and version the key ran on (#552): stored for operators, not part of the key.
+    public string ProcessorName
+    {
+        get;
+        set;
+    } = string.Empty;
+
+    public string? ProcessorVersion
+    {
+        get;
+        set;
+    }
+
     // The admission's id as text (Guid "D" format), the same form the store writes with raw SQL.
     public string AdmissionId
     {

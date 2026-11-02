@@ -37,7 +37,7 @@ namespace Kaleido.Provider.SQLite;
 ///     .AddSqliteContextStore(connectionString)
 ///     .AddSqliteOutboxStore(connectionString)
 ///     .AddSqliteIdempotencyStore(connectionString)
-///     .AddEventPublisher&lt;HttpEventPublisher&gt;();
+///     .AddOutboxRelay&lt;HttpEventPublisher&gt;();   // this host also publishes the database's events
 /// </code>
 /// </example>
 public static class SqliteKaleidoServiceCollectionExtensions
@@ -45,8 +45,8 @@ public static class SqliteKaleidoServiceCollectionExtensions
     /// <summary>
     /// Stores process state in SQLite (tables <c>ProcessContexts</c>, ...) and makes process-state
     /// transitions SQLite transactions: the state and its events commit together when the outbox writes
-    /// to the same database (<see cref="AddSqliteOutboxStore"/>, or the host's own outbox joining
-    /// <see cref="ISqliteKaleidoTransaction"/>).
+    /// to the same database (<see cref="AddSqliteOutboxStore"/>, or an outbox store of the host's own
+    /// joining <see cref="ISqliteKaleidoTransaction"/>).
     /// </summary>
     /// <param name="builder">The Kaleido builder.</param>
     /// <param name="connectionString">The SQLite connection string, e.g. <c>Data Source=kaleido.db</c>.</param>
@@ -67,16 +67,18 @@ public static class SqliteKaleidoServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Stores Kaleido's built-in outbox in SQLite (table <c>OutboxEvents</c>); Kaleido's relay claims the
-    /// entries and hands them to the registered <c>IEventPublisher</c>, retrying across restarts.
-    /// Atomic with the process state when the context store is SQLite too (<see cref="AddSqliteContextStore"/>).
+    /// Stores the service's outbox in SQLite (table <c>OutboxEvents</c>): every event it writes, tagged
+    /// with the service and its version. The relay (<c>AddOutboxRelay&lt;TPublisher&gt;()</c>, on this host
+    /// or another on the same database) claims the entries of every service in it and hands them to its
+    /// publisher, retrying across restarts. Atomic with the process state when the context store is SQLite
+    /// too (<see cref="AddSqliteContextStore"/>).
     /// </summary>
     /// <param name="builder">The Kaleido builder.</param>
     /// <param name="connectionString">The SQLite connection string; the same as the other SQLite stores'.</param>
     /// <returns>The builder, for chaining.</returns>
     /// <exception cref="KaleidoConfigurationException">
-    /// The connection string is invalid or differs from another SQLite store's; the service uses its own
-    /// outbox or direct publication, or another outbox store (<c>conflicting_outbox</c>).
+    /// The connection string is invalid or differs from another SQLite store's; another outbox store is
+    /// registered (<c>conflicting_outbox</c>).
     /// </exception>
     public static IKaleidoBuilder AddSqliteOutboxStore(this IKaleidoBuilder builder, string connectionString)
     {

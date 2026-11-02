@@ -12,7 +12,7 @@ namespace Kaleido.IntegrationTests.Transitions;
 
 // A process-state transition end to end on SQLite (ADR 0023): the context store and the outbox are
 // separate implementations, and they are atomic because both write inside the transaction the SQLite
-// provider opens on the request's database - Kaleido's own outbox store, or the host's own outbox
+// provider opens on the request's database - Kaleido's own outbox store, or an outbox store of the host's own
 // joining that transaction.
 public sealed class SqliteTransitionTests : IDisposable
 {
@@ -113,9 +113,9 @@ public sealed class SqliteTransitionTests : IDisposable
     }
 
     [Fact]
-    public async Task TheHostsOwnOutbox_JoiningTheSqliteTransaction_StoresItsRowWithTheState()
+    public async Task AHostsOwnOutboxStore_JoiningTheSqliteTransaction_StoresItsRowWithTheState()
     {
-        await using var provider = await BuildAsync(kaleido => kaleido.AddOutbox<HostOutbox>());
+        await using var provider = await BuildAsync(kaleido => kaleido.AddOutboxStore<HostOutboxStore>());
 
         await TransitionAsync(provider, NewProcess(), Event());
 
@@ -125,9 +125,9 @@ public sealed class SqliteTransitionTests : IDisposable
     }
 
     [Fact]
-    public async Task TheHostsOwnOutbox_AConflictingSave_StoresNoRow()
+    public async Task AHostsOwnOutboxStore_AConflictingSave_StoresNoRow()
     {
-        await using var provider = await BuildAsync(kaleido => kaleido.AddOutbox<HostOutbox>());
+        await using var provider = await BuildAsync(kaleido => kaleido.AddOutboxStore<HostOutboxStore>());
         var process = NewProcess();
         await TransitionAsync(provider, process, Event());
 
@@ -155,8 +155,19 @@ public sealed class SqliteTransitionTests : IDisposable
     }
 
     // As docs/ISqliteKaleidoTransaction describe: inside a transition, join the provider's transaction.
-    private sealed class HostOutbox(HostOutboxDbContext db, ISqliteKaleidoTransaction transaction) : IKaleidoOutbox
+    // Only the write matters here; the relay's side is the outbox store contract's (SQLite reference).
+    private sealed class HostOutboxStore(HostOutboxDbContext db, ISqliteKaleidoTransaction transaction) : IKaleidoOutboxStore
     {
+        public Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task RecordRelayAsync(KaleidoOutboxRelay relay, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<KaleidoOutboxStatus> GetStatusAsync(DateTimeOffset now, CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken = default)
         {
             if (transaction.Current is { } current)

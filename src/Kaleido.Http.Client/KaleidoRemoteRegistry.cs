@@ -44,20 +44,21 @@ internal sealed partial class KaleidoRemoteRegistry(
         ICorrelationHeaderStamper stamper,
         CancellationToken cancellationToken) =>
         cache.GetOrRevalidateAsync(
-            CacheKey(serviceOptions.ServiceName, client.Name),
+            CacheKey(serviceOptions.ScopeName, client.Name),
             client.RegistryTtl,
             (revision, ct) => FetchAsync(client.Name, client.RoutePrefix, stamper, revision, ct),
             cancellationToken);
 
-    // The client's own key, scoped to this (consuming) service: in a shared store a caller-filtered
+    // The client's own key, scoped to this (consuming) service and its version (ScopeName, #552): in a
+    // shared store a caller-filtered
     // copy must never replace the remote service's unfiltered snapshot (kaleido:{ServiceName}), nor
     // be read by another service, whose copy is filtered for a different caller.
-    internal static string CacheKey(string serviceName, string clientName) => $"kaleido-client:{serviceName}:{clientName}";
+    internal static string CacheKey(string scopeName, string clientName) => $"kaleido-client:{scopeName}:{clientName}";
 
     public async Task InvalidateAsync(
         string clientName,
         CancellationToken cancellationToken) =>
-        await cache.ResetAsync(CacheKey(serviceOptions.ServiceName, clientName), cancellationToken);
+        await cache.ResetAsync(CacheKey(serviceOptions.ScopeName, clientName), cancellationToken);
 
     // The remote's registry, or null when it answers that the known revision is still current (304).
     private async Task<AggregatedRegistryResponse?> FetchAsync(

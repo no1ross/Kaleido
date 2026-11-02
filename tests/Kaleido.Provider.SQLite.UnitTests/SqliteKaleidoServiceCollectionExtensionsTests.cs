@@ -126,7 +126,7 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void WhenResolved_TheStoresAndTransactionsShareTheRequestsDbContext_WithoutAHealthCheck()
+    public void WhenResolved_TheStoresAndTransactionsShareTheRequestsDbContext_WithoutADatabaseHealthCheck()
     {
         var services = new ServiceCollection();
         services.AddKaleido(new ConfigurationBuilder().Build(), new()
@@ -150,6 +150,9 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
         Assert.IsType<SqliteKaleidoOutboxStore>(scope.ServiceProvider.GetRequiredService<IKaleidoOutboxStore>());
         Assert.IsType<SqliteKaleidoIdempotencyStore>(scope.ServiceProvider.GetRequiredService<IKaleidoIdempotencyStore>());
         Assert.IsType<SqliteKaleidoTransactions>(scope.ServiceProvider.GetRequiredService<IKaleidoTransactions>());
-        Assert.DoesNotContain(services, x => x.ServiceType.Namespace == "Microsoft.Extensions.Diagnostics.HealthChecks");
+
+        // The provider adds no database check of its own; the only check is Kaleido's outbox check (#552).
+        var checks = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckServiceOptions>>().Value.Registrations;
+        Assert.Equal(["kaleido-outbox"], checks.Select(x => x.Name));
     }
 }

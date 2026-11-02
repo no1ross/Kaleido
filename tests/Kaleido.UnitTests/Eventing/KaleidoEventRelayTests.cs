@@ -310,18 +310,6 @@ public sealed class KaleidoEventRelayTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithoutAPublisher_ClaimsNothing()
-    {
-        var store = new Mock<IKaleidoOutboxStore>();
-        using var sut = CreateSut(store.Object, Mock.Of<INoOpEventPublisher>());
-
-        await sut.StartAsync(CancellationToken.None);
-        await sut.ExecuteTask!;
-
-        store.VerifyNoOtherCalls();
-    }
-
-    [Fact]
     public async Task ExecuteAsync_WhileTheOutboxIsEmpty_BacksOffUpToTheIdleInterval()
     {
         var waits = new List<TimeSpan>();
@@ -624,5 +612,44 @@ public sealed class KaleidoEventRelayTests
         while ((current = Volatile.Read(ref target)) < value && Interlocked.CompareExchange(ref target, value, current) != current)
         {
         }
+    }
+
+    // #552: the relay records that it drains the outbox, where the writers' health check reads it.
+    [Fact]
+    public async Task RecordHeartbeatAsync_RecordsThisInstanceItsServiceAndPublisher_Now()
+    {
+        var store = new Mock<IKaleidoOutboxStore>();
+        var publisher = Mock.Of<IEventPublisher>();
+
+        var recorded = await CreateSut(store.Object, publisher).RecordHeartbeatAsync(CancellationToken.None);
+
+        Assert.Equal(time.GetUtcNow(), recorded);
+        store.Verify(x => x.RecordRelayAsync(
+            It.Is<KaleidoOutboxRelay>(r => r.ServiceName == "svc" && r.Publisher == publisher.GetType().Name && r.SeenUtc == time.GetUtcNow() && r.InstanceId != Guid.Empty),
+            CancellationToken.None), Times.Once);
+    }
+
+    // The heartbeat never stops the relay: a failure is logged and tried again at the next interval.
+    [Fact]
+    public async Task RecordHeartbeatAsync_WhenTheStoreFails_LogsAWarning_AndReturns()
+    {
+        var store = new Mock<IKaleidoOutboxStore>();
+        store.Setup(x => x.RecordRelayAsync(It.IsAny<KaleidoOutboxRelay>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("database down"));
+        var logger = EnabledLogger();
+
+        var recorded = await CreateSut(store.Object, Mock.Of<IEventPublisher>(), logger: logger.Object).RecordHeartbeatAsync(CancellationToken.None);
+
+        Assert.Equal(time.GetUtcNow(), recorded);
+        AssertLogged(logger, Microsoft.Extensions.Logging.LogLevel.Warning, "heartbeat");
+    }
+
+    [Fact]
+    public async Task RecordHeartbeatAsync_WhenTheHostStops_Propagates()
+    {
+        var canceled = new CancellationToken(canceled: true);
+        var store = new Mock<IKaleidoOutboxStore>();
+        store.Setup(x => x.RecordRelayAsync(It.IsAny<KaleidoOutboxRelay>(), canceled)).ThrowsAsync(new OperationCanceledException(canceled));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut(store.Object, Mock.Of<IEventPublisher>()).RecordHeartbeatAsync(canceled));
     }
 }

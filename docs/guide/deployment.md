@@ -71,6 +71,7 @@ is never migrated ([provider README](../../src/Kaleido.Provider.SQLite/README.md
 
 | Check | Registered by |
 |---|---|
+| The outbox (`kaleido-outbox`): a relay was seen draining it within `Kaleido:Events:RelaySeenWithin`, and no backlog (oldest due event within `BacklogMaxAge`, at most `BacklogMaxCount` due); `Degraded` otherwise (`OutboxHealthFailureStatus`) | `AddKaleido()`, every service ([Events and the outbox](events-and-outbox.md#is-a-relay-running)) |
 | Each downstream Kaleido service (`kaleido-{name}`, probes its registry) | `AddHttpClients()` ([client README](../../src/Kaleido.Http.Client/README.md)) |
 | Your database | you (the SQLite provider registers none) |
 
@@ -114,7 +115,7 @@ request id and process id ([Callers and correlation](callers-and-correlation.md)
 ## Before production
 
 - Durable stores for state, outbox and idempotency ([Persistence](persistence.md)).
-- An `IEventPublisher`, or your own outbox ([Events and the outbox](events-and-outbox.md)).
+- A relay for every outbox database: `AddOutboxRelay<TPublisher>()` with your `IEventPublisher`, on one of the services or a host with nothing else ([Events and the outbox](events-and-outbox.md)).
 - Authentication, and `Authenticated` or `ZeroTrust` ([Callers and correlation](callers-and-correlation.md)).
 - An event redaction policy for classified fields.
 - Alerts on parked events and enqueue failures.

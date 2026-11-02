@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
 namespace Kaleido.Eventing;
 
 /// <summary>
@@ -26,7 +28,8 @@ namespace Kaleido.Eventing;
 ///   "Events": {
 ///     "BatchSize": 20,
 ///     "MaxConcurrentPublishes": 1,
-///     "Resilience": { "AttemptTimeout": "00:00:30", "MaxRetryAttempts": 9 }
+///     "Resilience": { "AttemptTimeout": "00:00:30", "MaxRetryAttempts": 9 },
+///     "RelaySeenWithin": "00:02:00", "BacklogMaxAge": "00:05:00"
 ///   }
 /// }
 /// </code>
@@ -55,6 +58,34 @@ public sealed record KaleidoEventOptions
         CircuitBreakerBreakDuration = TimeSpan.FromSeconds(30),
     };
 
+    /// <summary>
+    /// How often a relay records its heartbeat in the outbox it drains (#552). Default 30 seconds.
+    /// </summary>
+    public TimeSpan RelayHeartbeatInterval { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// The outbox health check (every service) fails when no relay was seen within this window: nothing
+    /// publishes the events, and the outbox keeps growing. Default 2 minutes; longer than
+    /// <see cref="RelayHeartbeatInterval"/>.
+    /// </summary>
+    public TimeSpan RelaySeenWithin { get; init; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// The outbox health check fails when the oldest due entry is older than this: a relay runs but does
+    /// not keep up, or its publisher keeps failing. Default 5 minutes.
+    /// </summary>
+    public TimeSpan BacklogMaxAge { get; init; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>The outbox health check fails when more entries than this are due. Default 10,000.</summary>
+    public int BacklogMaxCount { get; init; } = 10_000;
+
+    /// <summary>
+    /// What the outbox health check reports when it fails. Default <see cref="HealthStatus.Degraded"/>: the
+    /// service still works and its events wait, so it is a signal for operators rather than a reason to stop
+    /// sending it traffic. Set <see cref="HealthStatus.Unhealthy"/> to fail readiness on it.
+    /// </summary>
+    public HealthStatus OutboxHealthFailureStatus { get; init; } = HealthStatus.Degraded;
+
     internal static void Validate(KaleidoEventOptions? options)
     {
         if (options is null)
@@ -64,6 +95,11 @@ public sealed record KaleidoEventOptions
 
         Require(options.BatchSize > 0, nameof(BatchSize), "must be positive");
         Require(options.MaxConcurrentPublishes > 0, nameof(MaxConcurrentPublishes), "must be positive");
+        Require(options.RelayHeartbeatInterval > TimeSpan.Zero, nameof(RelayHeartbeatInterval), "must be positive");
+        Require(options.RelaySeenWithin > options.RelayHeartbeatInterval, nameof(RelaySeenWithin), "must be longer than RelayHeartbeatInterval");
+        Require(options.BacklogMaxAge > TimeSpan.Zero, nameof(BacklogMaxAge), "must be positive");
+        Require(options.BacklogMaxCount > 0, nameof(BacklogMaxCount), "must be positive");
+        Require(Enum.IsDefined(options.OutboxHealthFailureStatus) && options.OutboxHealthFailureStatus != HealthStatus.Healthy, nameof(OutboxHealthFailureStatus), "must be Degraded or Unhealthy");
         KaleidoResilienceSettings.Validate(options.Resilience, "Kaleido:Events:Resilience", ConfigurationErrorCodes.InvalidEventOptions);
     }
 

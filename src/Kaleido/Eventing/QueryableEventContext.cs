@@ -19,6 +19,12 @@ public sealed record QueryableEventContext
     public required string ServiceName { get; init; }
 
     /// <summary>
+    /// The version of <see cref="ServiceName"/> (<see cref="KaleidoServiceOptions.ServiceVersion"/>); <see langword="null"/>
+    /// when the service is unversioned. With several versions publishing to one stream, it tells them apart (#552).
+    /// </summary>
+    public string? ServiceVersion { get; init; }
+
+    /// <summary>
     /// The process instance associated with this query, if the caller had an active process
     /// and propagated <c>X-Kaleido-Process-Id</c>. Null for queries made outside a process context.
     /// </summary>

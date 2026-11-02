@@ -322,7 +322,7 @@ internal sealed class ProcessorRuntime(
 
         var context =
             await contextStore.LoadAsync(
-                request.ProcessId.Value,
+                new ProcessKey(serviceOptions.ServiceName, serviceOptions.ServiceVersion, request.ProcessId.Value),
                 cancellationToken);
 
         // An unknown process id starts a process only on a handoff: a step of another processor

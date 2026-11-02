@@ -32,6 +32,22 @@ public sealed record ProcessorContext
     }
 
     /// <summary>
+    /// The version of the processor that owns this process instance
+    /// (<see cref="KaleidoServiceOptions.ServiceVersion"/>); <see langword="null"/> when it is unversioned.
+    /// </summary>
+    public string? ProcessorVersion
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The key the process is stored under: <see cref="ProcessorName"/>, <see cref="ProcessorVersion"/> and
+    /// <see cref="ProcessId"/> (#552).
+    /// </summary>
+    public Storage.ProcessKey Key => new(ProcessorName, ProcessorVersion, ProcessId);
+
+    /// <summary>
     /// The correlation request id (<see cref="KaleidoCorrelationContext.RequestId"/>) of the latest
     /// request that created or loaded this process. The runtime copies it to the
     /// <see cref="StepContext.LatestRequestId"/> of each step whose execution that request records

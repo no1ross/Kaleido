@@ -115,6 +115,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | Constant | Code | Meaning |
 |---|---|---|
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
+| `InvalidServiceVersion` | `invalid_service_version` | `ServiceVersion` is set but empty, longer than `MaxServiceVersionLength`, or not an ASCII letter or digit followed by letters, digits, `.`, `-` and `_` (#552) |
 | `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
 | `ConflictingAuthorization` | `conflicting_authorization` | `[KaleidoAuthorization]` declares `AllowAnonymous` together with `Roles`/`Policy` |
 | `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization (`Authenticated` is the default) but no authentication scheme is registered: add host authentication, or set `AuthorizationMode = None` explicitly |
@@ -123,7 +124,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `InvalidOptions` | `invalid_options` | A configured value in the `Kaleido` section cannot be read as its setting's type (e.g. text where a number or a duration is expected, or an unknown enum name); startup, ADR 0030 |
 | `InvalidHttpOptions` | `invalid_http_options` | An HTTP transport setting (`Kaleido:Http`, `Kaleido:Http:Map`, or the options passed to `AddHttp`/`MapKaleidoHttp`) is out of range or cannot be read, e.g. a non-positive idempotency lease (startup) |
 | `DuplicateRegistration` | `duplicate_registration` | `AddKaleido()` or `AddHttp()` was called a second time on the same service collection; a host runs one Kaleido service, configured in one call of each |
-| `ConflictingOutbox` | `conflicting_outbox` | Two outbox choices were registered: a service has one - Kaleido's built-in outbox (with one `AddOutboxStore` storage), the host's own (`AddOutbox`) or `AddDirectPublication` ([ADR 0023](decisions/0023-outbox-integration.md)) |
+| `ConflictingOutbox` | `conflicting_outbox` | Two outbox stores were registered, or two relays with different publishers (`AddOutboxRelay<TPublisher>()`): a service has one outbox store, and a host runs one relay ([ADR 0036](decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)) |
 | `ConflictingStore` | `conflicting_store` | Two different implementations of one store or of the transactions were registered (e.g. `AddSqliteContextStore` and `AddContextStore<T>()`) |
 | `StoresNotChosen` | `stores_not_chosen` | When the host starts: a store the service uses is still the in-memory default (process state or idempotency records with process steps; the outbox store with a publisher on Kaleido's outbox). Register durable stores, or call `AddInMemoryStores()` ([ADR 0028](decisions/0028-stores-are-chosen-explicitly.md)) |
 

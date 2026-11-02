@@ -51,6 +51,7 @@ internal sealed class QueryEventFactory(
         {
             RequestId = correlation.RequestId,
             ServiceName = serviceOptions.ServiceName,
+            ServiceVersion = serviceOptions.ServiceVersion,
             ProcessId = correlation.ProcessId,
             CallingStepName = correlation.CallingStepName,
             QuerySourceName = details.QuerySourceName,

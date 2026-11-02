@@ -244,4 +244,119 @@ public sealed class SqliteKaleidoOutboxStoreTests
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut(dbContext).AddAsync(null!, TestContext.Current.CancellationToken));
     }
+
+    // #552: services and versions share the outbox database; a relay claims every one's entries, each
+    // with the writer it names, kept as given.
+    [Fact]
+    public async Task ClaimEventsAsync_ClaimsEveryServicesEntries_WithTheirWriter()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var orders = Event() with { ServiceName = "orders" };
+        var returns = Event() with { ServiceName = "returns", ServiceVersion = "2" };
+        await sut.AddAsync([orders, returns], TestContext.Current.CancellationToken);
+
+        var claimed = await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            [("orders", (string?)null), ("returns", "2")],
+            claimed.Select(x => (x.ServiceName, x.ServiceVersion)).Order());
+    }
+
+    private KaleidoOutboxRelay Relay(Guid instanceId, DateTimeOffset seen) =>
+        new() { InstanceId = instanceId, ServiceName = "outbox-relay", Publisher = "WarehousePublisher", SeenUtc = seen };
+
+    // #552: one heartbeat row per relay instance, replaced each time; the latest is what the writers read.
+    [Fact]
+    public async Task RecordRelayAsync_ReplacesTheInstancesHeartbeat_AndGetStatusAsyncReportsTheLatest()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var instance = Guid.NewGuid();
+        var now = time.GetUtcNow();
+
+        await sut.RecordRelayAsync(Relay(instance, now.AddMinutes(-2)), TestContext.Current.CancellationToken);
+        await sut.RecordRelayAsync(Relay(instance, now), TestContext.Current.CancellationToken);
+
+        var row = await dbContext.OutboxRelays.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal((instance.ToString("N"), "outbox-relay", "WarehousePublisher"), (row.InstanceId, row.ServiceName, row.Publisher));
+        Assert.Equal(now, (await sut.GetStatusAsync(now, TestContext.Current.CancellationToken)).LastRelaySeenUtc);
+    }
+
+    // A stopped instance never records again; its row is dropped once it is a week old.
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1, 0)]
+    public async Task RecordRelayAsync_ForgetsRelaysNotSeenForTheRetention(long ticksBeyond, int kept)
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var now = time.GetUtcNow();
+
+        await sut.RecordRelayAsync(Relay(Guid.NewGuid(), now - SqliteKaleidoOutboxStore.RelayRetention - TimeSpan.FromTicks(ticksBeyond)), TestContext.Current.CancellationToken);
+        await sut.RecordRelayAsync(Relay(Guid.NewGuid(), now), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1 + kept, await dbContext.OutboxRelays.CountAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_CountsTheDueEntries_AndTheOldest_NotTheParkedOrTheFuture()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var now = time.GetUtcNow();
+        var oldest = Event(now.AddMinutes(-3));
+        var future = Event(now.AddMinutes(-4)) with { NextAttemptUtc = now.AddMinutes(1) };
+        var parked = Event(now.AddMinutes(-5));
+        await sut.AddAsync([parked], TestContext.Current.CancellationToken);
+        Assert.Single(await sut.ClaimEventsAsync(1, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
+        await sut.FailEventAsync(parked.EventId, retryAtUtc: null, "gave up", TestContext.Current.CancellationToken);
+        await sut.AddAsync([oldest, Event(now.AddMinutes(-1)), future], TestContext.Current.CancellationToken);
+
+        var status = await sut.GetStatusAsync(now, TestContext.Current.CancellationToken);
+
+        Assert.Null(status.LastRelaySeenUtc);
+        Assert.Equal(2, status.DueCount);
+        Assert.Equal(oldest.OccurredUtc, status.OldestDueUtc);
+    }
+
+    // #552, several relays on one database, deterministically: instance A selects the due entries, and
+    // before its UPDATE runs instance B leases the same ones. A's UPDATE re-checks the lease and A reads
+    // back only what it leased itself, so it gets none of B's - the claim is a compare-and-set.
+    [Fact]
+    public async Task ClaimEventsAsync_WhenAnotherInstanceLeasesTheSameEntriesFirst_ReturnsNoneOfThem()
+    {
+        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
+        using var keepAlive = CreateSharedDbContext(connectionString);
+        using var other = CreateSharedDbContext(connectionString);
+        var b = CreateSut(other, Guid.NewGuid());
+        IReadOnlyList<KaleidoOutboxEvent> claimedByB = [];
+        var race = new BeforeTheLeaseUpdate(async () => claimedByB = await b.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), CancellationToken.None));
+        var options = new DbContextOptionsBuilder<SqliteKaleidoContextDbContext>().UseSqlite(connectionString).AddInterceptors(race).Options;
+        using var first = new SqliteKaleidoContextDbContext(options);
+        first.Database.OpenConnection();
+        var a = CreateSut(first, Guid.NewGuid());
+        await a.AddAsync([Event(), Event()], TestContext.Current.CancellationToken);
+
+        var claimedByA = await a.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, claimedByB.Count);
+        Assert.Empty(claimedByA);
+    }
+
+    // Runs an action once, just before the claim's lease UPDATE executes.
+    private sealed class BeforeTheLeaseUpdate(Func<Task> action) : DbCommandInterceptor
+    {
+        private int _fired;
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(System.Data.Common.DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("\"LeaseOwner\" =", StringComparison.Ordinal) && Interlocked.Exchange(ref _fired, 1) == 0)
+            {
+                await action();
+            }
+
+            return result;
+        }
+    }
 }

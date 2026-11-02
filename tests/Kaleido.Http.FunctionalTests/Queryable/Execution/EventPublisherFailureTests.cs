@@ -38,7 +38,7 @@ public sealed class EventPublisherFailureTests
                         Assemblies = [typeof(FunctionalRecordContext).Assembly],
                     })
                         .AddInMemoryStores()
-                        .AddEventPublisher<TPublisher>()
+                        .AddOutboxRelay<TPublisher>()
                         .AddHttp();
                 });
                 webBuilder.Configure(app =>

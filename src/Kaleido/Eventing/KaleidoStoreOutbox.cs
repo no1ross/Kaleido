@@ -1,9 +1,9 @@
 namespace Kaleido.Eventing;
 
-// Kaleido's built-in outbox integration (the default): events are added to the outbox store - inside
-// the transition's transaction when the store's persistence opened one - and the relay, woken once
-// they are committed, hands them to the publisher.
-internal sealed class KaleidoStoreOutbox(IKaleidoOutboxStore store, IKaleidoEventSignal signal) : IKaleidoPublisherOutbox
+// Kaleido's outbox integration: events are added to the outbox store - inside the transition's
+// transaction when the store's persistence opened one, so a rollback removes them - and this host's
+// relay, if it runs one, is woken once they are committed. A relay elsewhere finds them by polling.
+internal sealed class KaleidoStoreOutbox(IKaleidoOutboxStore store, IKaleidoEventSignal signal) : IKaleidoOutbox
 {
     public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken) =>
         store.AddAsync(events, cancellationToken);
@@ -12,11 +12,5 @@ internal sealed class KaleidoStoreOutbox(IKaleidoOutboxStore store, IKaleidoEven
     {
         signal.Notify();
         return Task.CompletedTask;
-    }
-
-    // The events were written inside the transaction, so its rollback already removed them; one the
-    // store wrote outside a transaction (no persistence transaction) stays, as the store documents.
-    public void Discard()
-    {
     }
 }

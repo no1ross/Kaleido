@@ -13,8 +13,8 @@ internal sealed class KaleidoInMemoryStoresChoice;
 // Add* calls does not matter, and it covers only the stores in use:
 // - the context and idempotency stores, when the service has process steps (a query-only service
 //   uses neither);
-// - the outbox store, when Kaleido's built-in outbox will write events (an event publisher is
-//   registered); the host's own outbox and direct publication use no outbox store.
+// - the outbox store, always: every service writes its events, a query-only service included, and
+//   publishing is the relay's (#552).
 // Not inferred from the environment name: a production host that forgot is refused the same way.
 internal sealed class KaleidoStoreSelectionCheck(IServiceCollection services) : IHostedService
 {
@@ -28,7 +28,7 @@ internal sealed class KaleidoStoreSelectionCheck(IServiceCollection services) : 
                 ConfigurationErrorCodes.StoresNotChosen,
                 $"The service would keep its {string.Join(", ", unchosen)} in memory, which is lost on restart and not shared between instances. " +
                 "Register durable stores (e.g. AddSqliteContextStore/AddSqliteIdempotencyStore/AddSqliteOutboxStore, or AddContextStore<T>(), " +
-                "AddIdempotencyStore<T>(), AddOutboxStore<T>(), AddOutbox<T>(), AddDirectPublication()), " +
+                "AddIdempotencyStore<T>(), AddOutboxStore<T>()), " +
                 "or choose memory explicitly with AddInMemoryStores() (development and tests).");
         }
 
@@ -55,11 +55,7 @@ internal sealed class KaleidoStoreSelectionCheck(IServiceCollection services) : 
             }
         }
 
-        var writesEvents = Implementation<IEventPublisher>(services) is { } publisher && !typeof(INoOpEventPublisher).IsAssignableFrom(publisher);
-
-        if (writesEvents
-            && Implementation<IKaleidoOutbox>(services) == typeof(KaleidoStoreOutbox)
-            && Implementation<IKaleidoOutboxStore>(services) == typeof(InMemoryKaleidoOutboxStore))
+        if (Implementation<IKaleidoOutboxStore>(services) == typeof(InMemoryKaleidoOutboxStore))
         {
             inMemory.Add("event outbox (IKaleidoOutboxStore)");
         }

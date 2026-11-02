@@ -7,7 +7,7 @@ namespace Kaleido;
 /// <summary>
 /// The builder returned by <c>AddKaleido</c>: the shared registration state that Kaleido
 /// subsystems and providers extend through extension methods (e.g. <c>AddHttp</c>,
-/// <c>AddEventPublisher</c>).
+/// <c>AddOutboxRelay</c>).
 /// </summary>
 public interface IKaleidoBuilder
 {

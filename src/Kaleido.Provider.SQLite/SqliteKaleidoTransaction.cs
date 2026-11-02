@@ -5,8 +5,9 @@ namespace Kaleido.Provider.SQLite;
 
 /// <summary>
 /// The SQLite transaction of the current process-state transition, for another writer on the same
-/// database to join - typically the host's own outbox (<c>AddOutbox&lt;T&gt;()</c>) writing its rows
-/// in the transaction the SQLite context store saves the state in, so both commit together (ADR 0023).
+/// database to join - typically an outbox store of the host's own (<c>AddOutboxStore&lt;T&gt;()</c>) writing
+/// its rows in the transaction the SQLite context store saves the state in, so both commit together
+/// (ADR 0023, ADR 0036).
 /// Registered by <c>AddSqliteContextStore</c> (scoped).
 /// </summary>
 /// <remarks>
@@ -15,7 +16,7 @@ namespace Kaleido.Provider.SQLite;
 /// </remarks>
 /// <example>
 /// <code>
-/// public sealed class IntakeOutbox(IntakeDbContext db, ISqliteKaleidoTransaction transaction) : IKaleidoOutbox
+/// public sealed class IntakeOutboxStore(IntakeDbContext db, ISqliteKaleidoTransaction transaction) : IKaleidoOutboxStore
 /// {
 ///     public async Task AddAsync(IReadOnlyCollection&lt;KaleidoOutboxEvent&gt; events, CancellationToken cancellationToken)
 ///     {
@@ -28,6 +29,8 @@ namespace Kaleido.Provider.SQLite;
 ///         db.OutboxMessages.AddRange(events.Select(e => new OutboxMessage(e.EventId, e.EventType, e.Payload, e.OccurredUtc)));
 ///         await db.SaveChangesAsync(cancellationToken);                 // committed with the state
 ///     }
+///
+///     // ClaimEventsAsync, CompleteEventAsync, FailEventAsync: the relay's leased claims.
 /// }
 /// </code>
 /// </example>

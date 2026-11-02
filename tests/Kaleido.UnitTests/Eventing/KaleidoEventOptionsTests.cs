@@ -59,4 +59,38 @@ public sealed class KaleidoEventOptionsTests
         Assert.Equal(ConfigurationErrorCodes.InvalidEventOptions, exception.Code);
         Assert.Equal(message, exception.Message);
     }
+
+    // #552: the outbox health check's windows.
+    [Fact]
+    public void TheOutboxHealthDefaults_AreValid()
+    {
+        var sut = Sut;
+
+        Assert.Equal(TimeSpan.FromSeconds(30), sut.RelayHeartbeatInterval);
+        Assert.Equal(TimeSpan.FromMinutes(2), sut.RelaySeenWithin);
+        Assert.Equal(TimeSpan.FromMinutes(5), sut.BacklogMaxAge);
+        Assert.Equal(10_000, sut.BacklogMaxCount);
+        Assert.Equal(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, sut.OutboxHealthFailureStatus);
+    }
+
+    public static TheoryData<string> InvalidOutboxHealthSettings() =>
+        ["heartbeat zero", "seen within the heartbeat", "backlog age zero", "backlog count zero", "healthy failure", "undefined failure"];
+
+    [Theory]
+    [MemberData(nameof(InvalidOutboxHealthSettings))]
+    public void Validate_AnInvalidOutboxHealthSetting_ThrowsInvalidEventOptions(string setting)
+    {
+        var sut = Sut;
+        var options = setting switch
+        {
+            "heartbeat zero" => sut with { RelayHeartbeatInterval = TimeSpan.Zero },
+            "seen within the heartbeat" => sut with { RelaySeenWithin = sut.RelayHeartbeatInterval },
+            "backlog age zero" => sut with { BacklogMaxAge = TimeSpan.Zero },
+            "backlog count zero" => sut with { BacklogMaxCount = 0 },
+            "healthy failure" => sut with { OutboxHealthFailureStatus = Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy },
+            _ => sut with { OutboxHealthFailureStatus = (Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus)42 },
+        };
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidEventOptions, Assert.Throws<KaleidoConfigurationException>(() => KaleidoEventOptions.Validate(options)).Code);
+    }
 }
