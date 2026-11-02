@@ -13,6 +13,34 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Services may share one database; services write events, one relay publishes them** (#552,
+  [ADR 0036](docs/decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)).
+  - **Every record is scoped by the service and its version:**
+    - `KaleidoServiceOptions.ServiceVersion` is new: optional and opaque, it starts with an ASCII
+      letter or digit, then letters, digits, `.`, `-` and `_` (`invalid_service_version` otherwise).
+    - Process state is keyed by `ProcessKey(ProcessorName, ProcessorVersion, ProcessId)`: the origin and
+      the target of a hand-off keep their own process under one id, and a process of one version is not
+      found by another (`pro_process_not_found`).
+    - Idempotency records are scoped by the version (the record key is now `v2:`, so keys recorded
+      before do not replay) and name their `ProcessorName`/`ProcessorVersion`.
+    - Events carry `ServiceVersion`, and process events carry `ProcessVersion`, the version of the state
+      they describe. There is no ordering guarantee: order a process's events by it.
+    - Registry snapshot keys include the version.
+  - **Every service writes every event** to its outbox store (entries tagged `ServiceName`/`ServiceVersion`)
+    and needs no publisher. `AddOutboxRelay<TPublisher>()` runs the relay on one host per outbox database
+    (a service, or a host with nothing else), which drains every service's entries.
+  - **The `kaleido-outbox` health check** (every service) reports `Degraded` when no relay heartbeat was
+    seen within `Kaleido:Events:RelaySeenWithin`, or when there is a backlog (`BacklogMaxAge`,
+    `BacklogMaxCount`).
+  - **Breaking:**
+    - `IKaleidoContextStore.LoadAsync` takes a `ProcessKey`, and stores must keep the scope.
+    - `IKaleidoOutboxStore` gains `RecordRelayAsync` and `GetStatusAsync`.
+    - `AddEventPublisher<T>` is replaced by `AddOutboxRelay<TPublisher>()`, and there is no default
+      publisher.
+    - The host's own outbox (`AddOutbox<T>`, a public `IKaleidoOutbox`) and direct publication
+      (`AddDirectPublication`) are removed.
+    - An outbox store is chosen by every service, a query-only one included.
+    - SQLite databases must be recreated (new key columns, service columns, `OutboxRelays`).
 - **A hand-off answers with the target's next steps** (#198). The step that hands off now passes the
   target's answer: `ProcessStepHandlerResult.HandOff(targetProcessorName, targetResponse)`, where
   `targetResponse` is the Kaleido client's response from the target's step (it implements the new
