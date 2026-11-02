@@ -26,8 +26,8 @@ internal sealed class SqliteKaleidoIdempotencyStore(
         // One atomic insert-if-absent on the primary key: of two admissions of the same key, exactly one inserts.
         var inserted = await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
-            INSERT INTO IdempotentResults (Key, AdmissionId, RequestHash, State, LeaseUntilUtc, StatusCode, Response, ExpiresUtc)
-            VALUES ({admission.Key}, {Text(admission.AdmissionId)}, {admission.RequestHash}, {(int)admission.State}, {admission.LeaseUntilUtc.UtcTicks}, {admission.StatusCode}, {admission.Response}, {admission.ExpiresUtc.UtcTicks})
+            INSERT INTO IdempotentResults (Key, ProcessorName, ProcessorVersion, AdmissionId, RequestHash, State, LeaseUntilUtc, StatusCode, Response, ExpiresUtc)
+            VALUES ({admission.Key}, {admission.ProcessorName}, {admission.ProcessorVersion}, {Text(admission.AdmissionId)}, {admission.RequestHash}, {(int)admission.State}, {admission.LeaseUntilUtc.UtcTicks}, {admission.StatusCode}, {admission.Response}, {admission.ExpiresUtc.UtcTicks})
             ON CONFLICT(Key) DO NOTHING
             """,
             cancellationToken);
@@ -84,6 +84,8 @@ internal sealed class SqliteKaleidoIdempotencyStore(
         new()
         {
             Key = entity.Key,
+            ProcessorName = entity.ProcessorName,
+            ProcessorVersion = entity.ProcessorVersion,
             AdmissionId = Guid.Parse(entity.AdmissionId, CultureInfo.InvariantCulture),
             RequestHash = entity.RequestHash,
             State = entity.State,

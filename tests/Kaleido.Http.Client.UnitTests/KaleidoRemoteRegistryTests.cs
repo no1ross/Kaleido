@@ -10,7 +10,8 @@ public sealed class KaleidoRemoteRegistryTests
     private static KaleidoRemoteRegistry CreateSut(
         IHttpClientFactory httpClientFactory,
         ILogger<KaleidoRemoteRegistry>? logger = null,
-        System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? data = null)
+        System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? data = null,
+        string? serviceVersion = null)
     {
         // The cache keeps what it is given, serves it while the check interval allows, and otherwise
         // revalidates with the held revision (its own rules are tested in HttpClientRegistryCacheTests).
@@ -43,7 +44,7 @@ public sealed class KaleidoRemoteRegistryTests
         return new KaleidoRemoteRegistry(
             httpClientFactory,
             cache.Object,
-            new KaleidoServiceOptions { ServiceName = "consumer" },
+            new KaleidoServiceOptions { ServiceName = "consumer", ServiceVersion = serviceVersion },
             logger ?? NullLogger<KaleidoRemoteRegistry>.Instance);
     }
 
@@ -74,7 +75,8 @@ public sealed class KaleidoRemoteRegistryTests
     private static (KaleidoRemoteRegistry sut, Mock<HttpMessageHandler> handler) CreateSutWithHandler(
         Func<HttpRequestMessage, HttpResponseMessage>? respond = null,
         ILogger<KaleidoRemoteRegistry>? logger = null,
-        System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? data = null)
+        System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? data = null,
+        string? serviceVersion = null)
     {
         var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handler.Protected()
@@ -95,7 +97,7 @@ public sealed class KaleidoRemoteRegistryTests
             .Setup(f => f.CreateClient(It.IsAny<string>()))
             .Returns(httpClient);
 
-        return (CreateSut(factory.Object, logger, data), handler);
+        return (CreateSut(factory.Object, logger, data, serviceVersion), handler);
     }
 
     [Theory]
@@ -336,5 +338,25 @@ public sealed class KaleidoRemoteRegistryTests
             sut.GetAsync(Client("remote", "remote-svc", TimeSpan.FromSeconds(30)), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None));
 
         Assert.Equal(HttpStatusCode.NotModified, exception.StatusCode);
+    }
+
+    // #552: versions of one consuming service hold their own copy (their scope name includes the version).
+    [Fact]
+    public void CacheKey_IsScopedToTheConsumingServicesVersion()
+    {
+        Assert.Equal("kaleido-client:orders@2:member", KaleidoRemoteRegistry.CacheKey(new KaleidoServiceOptions { ServiceName = "orders", ServiceVersion = "2" }.ScopeName, "member"));
+        Assert.NotEqual(KaleidoRemoteRegistry.CacheKey("orders@1", "member"), KaleidoRemoteRegistry.CacheKey("orders@2", "member"));
+    }
+
+    // #552: a versioned consuming service keeps its copy under its own version's key.
+    [Fact]
+    public async Task GetAsync_ForAVersionedConsumer_UsesTheVersionsKey()
+    {
+        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
+        var (sut, _) = CreateSutWithHandler(data: data, serviceVersion: "2");
+
+        await sut.GetAsync(Client("remote", "remote-svc", null), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);
+
+        Assert.Equal(["kaleido-client:consumer@2:remote"], data.Keys);
     }
 }

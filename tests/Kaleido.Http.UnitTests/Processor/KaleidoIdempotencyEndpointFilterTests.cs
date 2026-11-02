@@ -42,13 +42,13 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
             .ReturnsAsync(existing);
 
     // The record key of alice's (a named caller's) key in service "svc".
-    private static string Alice(string key) => KaleidoIdempotencyEndpointFilter.RecordKey("svc", "name", "alice", key);
+    private static string Alice(string key) => KaleidoIdempotencyEndpointFilter.RecordKey("svc", null, "name", "alice", key);
 
-    private KaleidoIdempotencyEndpointFilter CreateSut() =>
+    private KaleidoIdempotencyEndpointFilter CreateSut(string? serviceVersion = null) =>
         new(
             store.Object,
             new KaleidoHttpOptions { IdempotencyRetention = TimeSpan.FromHours(2), IdempotencyUnknownOutcomeRetention = TimeSpan.FromDays(3) },
-            new KaleidoServiceOptions { ServiceName = "svc" },
+            new KaleidoServiceOptions { ServiceName = "svc", ServiceVersion = serviceVersion },
             correlation.Object,
             time,
             logger.Object);
@@ -112,7 +112,7 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
 
         await CreateSut().InvokeAsync(Context(RandomKey), Endpoint);
 
-        Assert.Equal(KaleidoIdempotencyEndpointFilter.RecordKey("svc", kind, identity, RandomKey), Assert.Single(saved).Key);
+        Assert.Equal(KaleidoIdempotencyEndpointFilter.RecordKey("svc", null, kind, identity, RandomKey), Assert.Single(saved).Key);
     }
 
     // #514: the parts are length-framed, so a separator inside one part cannot make two scopes meet
@@ -121,15 +121,15 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
     [Fact]
     public void RecordKey_FramesEachPart_SoNoTwoScopesMeet_AndIsVersionedAndFixedLength()
     {
-        var first = KaleidoIdempotencyEndpointFilter.RecordKey("svc", "id", "alice", "tenant:K");
-        var second = KaleidoIdempotencyEndpointFilter.RecordKey("svc", "id", "alice:tenant", "K");
+        var first = KaleidoIdempotencyEndpointFilter.RecordKey("svc", null, "id", "alice", "tenant:K");
+        var second = KaleidoIdempotencyEndpointFilter.RecordKey("svc", null, "id", "alice:tenant", "K");
 
         Assert.NotEqual(first, second);
-        Assert.NotEqual(KaleidoIdempotencyEndpointFilter.RecordKey("svc", "id", "x", "k"), KaleidoIdempotencyEndpointFilter.RecordKey("svc", "name", "x", "k"));
-        Assert.Equal(first, KaleidoIdempotencyEndpointFilter.RecordKey("svc", "id", "alice", "tenant:K"));
-        Assert.StartsWith("v1:", first, StringComparison.Ordinal);
+        Assert.NotEqual(KaleidoIdempotencyEndpointFilter.RecordKey("svc", null, "id", "x", "k"), KaleidoIdempotencyEndpointFilter.RecordKey("svc", null, "name", "x", "k"));
+        Assert.Equal(first, KaleidoIdempotencyEndpointFilter.RecordKey("svc", null, "id", "alice", "tenant:K"));
+        Assert.StartsWith("v2:", first, StringComparison.Ordinal);
         Assert.Equal(67, first.Length);
-        Assert.Equal(67, KaleidoIdempotencyEndpointFilter.RecordKey("svc", "id", new string('a', 500), new string('k', 200)).Length);
+        Assert.Equal(67, KaleidoIdempotencyEndpointFilter.RecordKey("svc", null, "id", new string('a', 500), new string('k', 200)).Length);
     }
 
     // #514: a caller without an identity shares one key space with every other such caller, so its key
@@ -600,4 +600,30 @@ public sealed class KaleidoIdempotencyEndpointFilterTests
             LeaseUntilUtc = leaseUntilUtc,
             ExpiresUtc = time.GetUtcNow().AddHours(1),
         };
+
+    // #552: the service version is part of the scope, so a key never replays across versions sharing a
+    // database; an unversioned service is a scope of its own.
+    [Fact]
+    public void RecordKey_IsScopedByTheServiceVersion()
+    {
+        var unversioned = KaleidoIdempotencyEndpointFilter.RecordKey("svc", null, "id", "alice", "K");
+        var v1 = KaleidoIdempotencyEndpointFilter.RecordKey("svc", "1", "id", "alice", "K");
+        var v2 = KaleidoIdempotencyEndpointFilter.RecordKey("svc", "2", "id", "alice", "K");
+
+        Assert.Equal(3, new[] { unversioned, v1, v2 }.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    // #552: an admission names the processor and its version for operators, and its key carries the version.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("2")]
+    public async Task AnAdmission_RecordsTheProcessorAndItsVersion(string? version)
+    {
+        await CreateSut(version).InvokeAsync(Context(RandomKey), Endpoint);
+
+        var admission = Assert.Single(admitted);
+        Assert.Equal("svc", admission.ProcessorName);
+        Assert.Equal(version, admission.ProcessorVersion);
+        Assert.Equal(KaleidoIdempotencyEndpointFilter.RecordKey("svc", version, "name", "alice", RandomKey), admission.Key);
+    }
 }

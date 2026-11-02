@@ -13,8 +13,8 @@ public sealed class ProcessorEventFactoryTests
 
     private ProcessorEventFactory Sut => CreateSut();
 
-    private ProcessorEventFactory CreateSut() =>
-        new(_options);
+    private ProcessorEventFactory CreateSut(KaleidoServiceOptions? options = null) =>
+        new(options ?? _options);
 
     [Fact]
     public void CreateProcessCreated_WhenContextIsNull_Throws()
@@ -357,5 +357,57 @@ public sealed class ProcessorEventFactoryTests
         Assert.NotNull(envelope.Event);
         Assert.Equal(ProcessExecutionState.Complete, envelope.Event.State);
         Assert.Equal(executionResult.ProcessId, envelope.Context.ProcessId);
+    }
+
+    private const long LoadedVersion = 4;
+    private const string ServiceVersion = "2";
+
+    private static ProcessorContext Loaded() =>
+        new() { ProcessId = Guid.NewGuid(), ProcessorName = "test", Version = LoadedVersion };
+
+    private static ProcessRequest NoSteps() =>
+        new() { Processor = new ProcessorRequest { Steps = new Dictionary<string, object?>() } };
+
+    // #552: a transition's event carries the version its save writes - the save stores the context
+    // with its version incremented by one - and the service's version.
+    [Fact]
+    public void CreateProcessCreated_CarriesTheVersionItsSaveWrites_AndTheServiceVersion()
+    {
+        var result = CreateSut(_options with { ServiceVersion = ServiceVersion }).CreateProcessCreated(new KaleidoCorrelationContext(), Loaded(), NoSteps());
+
+        Assert.Equal(LoadedVersion + 1, result.Context.ProcessVersion);
+        Assert.Equal(ServiceVersion, result.Context.ServiceVersion);
+    }
+
+    [Fact]
+    public void CreateStepCompleted_CarriesTheVersionItsSaveWrites()
+    {
+        var outcome = new ProcessExecutionOutcome { StepName = "test", Status = StepExecutionStatus.Completed };
+
+        var result = Sut.CreateStepCompleted(new KaleidoCorrelationContext(), Loaded(), new StepCandidate { StepName = "test" }, outcome, ExecutionDecisionType.Continue, new StepInvocationResult());
+
+        Assert.Equal(LoadedVersion + 1, result.Context.ProcessVersion);
+        Assert.Null(result.Context.ServiceVersion);
+    }
+
+    // Plan built reads the state; it writes none.
+    [Fact]
+    public void CreatePlanBuilt_CarriesTheVersionItRead()
+    {
+        var result = Sut.CreatePlanBuilt(new KaleidoCorrelationContext(), Loaded(), NoSteps(), new ExecutionPlanResult { Candidates = [] }, 0);
+
+        Assert.Equal(LoadedVersion, result.Context.ProcessVersion);
+    }
+
+    // Execution completed carries the version the request ended with: the last save's.
+    [Fact]
+    public void CreateExecutionCompleted_CarriesTheVersionTheRequestEndedWith()
+    {
+        const long ended = LoadedVersion + 2;
+        var executionResult = new ProcessExecutionResult { ProcessId = Guid.NewGuid(), State = ProcessExecutionState.Active, Version = ended };
+
+        var result = Sut.CreateExecutionCompleted(new KaleidoCorrelationContext(), Loaded(), executionResult);
+
+        Assert.Equal(ended, result.Context.ProcessVersion);
     }
 }

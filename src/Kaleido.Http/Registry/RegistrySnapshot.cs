@@ -2,7 +2,7 @@ namespace Kaleido.Http.Registry;
 
 /// <summary>
 /// The host's shared registry snapshot: the unfiltered union of local and downstream registrations,
-/// cached once for all callers (canonical key <c>kaleido:{ServiceName}</c>), plus the settings that
+/// cached once for all callers (canonical key <c>kaleido:{ServiceName}</c>, <c>kaleido:{ServiceName}@{ServiceVersion}</c> for a versioned service), plus the settings that
 /// <c>MapKaleidoHttp</c> decides for it (aggregation, staleness, refresh throttling, fan-out bound).
 /// </summary>
 /// <remarks>
@@ -13,7 +13,7 @@ internal sealed class RegistrySnapshot(
     IHttpRegistryCache cache,
     KaleidoServiceOptions serviceOptions)
 {
-    private readonly string _key = $"kaleido:{serviceOptions.ServiceName}";
+    private readonly string _key = $"kaleido:{serviceOptions.ScopeName}";
 
     /// <summary>True once the registry endpoint is mapped (and the settings decided).</summary>
     public bool IsMapped { get; private set; }

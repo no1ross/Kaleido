@@ -1419,3 +1419,13 @@ Kaleido.Processor.Context.ProcessorContext.ProcessorVersion.init -> void
 Kaleido.Processor.Context.ProcessorContext.Key.get -> Kaleido.Storage.ProcessKey
 Kaleido.Storage.ProcessKey.ProcessKey(string! ProcessorName, string? ProcessorVersion, System.Guid ProcessId) -> void
 Kaleido.Storage.IKaleidoContextStore.LoadAsync(Kaleido.Storage.ProcessKey key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.ProcessorContext?>!
+Kaleido.Eventing.QueryableEventContext.ServiceVersion.get -> string?
+Kaleido.Eventing.QueryableEventContext.ServiceVersion.init -> void
+Kaleido.Eventing.ProcessEventContext.ServiceVersion.init -> void
+Kaleido.Eventing.ProcessEventContext.ServiceVersion.get -> string?
+Kaleido.Eventing.ProcessEventContext.ProcessVersion.init -> void
+Kaleido.Eventing.ProcessEventContext.ProcessVersion.get -> long
+Kaleido.Storage.IdempotentResult.ProcessorName.get -> string!
+Kaleido.Storage.IdempotentResult.ProcessorVersion.get -> string?
+Kaleido.Storage.IdempotentResult.ProcessorName.init -> void
+Kaleido.Storage.IdempotentResult.ProcessorVersion.init -> void

@@ -36,8 +36,21 @@ namespace Kaleido.Storage;
 [ExcludeFromCodeCoverage]
 public sealed record IdempotentResult
 {
-    /// <summary>The scoped idempotency key (unique per service and caller).</summary>
+    /// <summary>The scoped idempotency key (unique per service, service version and caller).</summary>
     public required string Key { get; init; }
+
+    /// <summary>
+    /// The processor whose step the key ran (<see cref="KaleidoServiceOptions.ServiceName"/>). Stored as given,
+    /// so an operator can find a service's records in a database shared by several services (#552); the
+    /// scope itself is already part of <see cref="Key"/>.
+    /// </summary>
+    public string ProcessorName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The version of <see cref="ProcessorName"/> (<see cref="KaleidoServiceOptions.ServiceVersion"/>);
+    /// <see langword="null"/> when it is unversioned. Stored as given, like <see cref="ProcessorName"/>.
+    /// </summary>
+    public string? ProcessorVersion { get; init; }
 
     /// <summary>
     /// Identifies one admission of <see cref="Key"/> (a fencing token): set when the key is admitted, and

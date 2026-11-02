@@ -34,12 +34,16 @@ internal sealed class ProcessorEventFactory(
     KaleidoServiceOptions serviceOptions)
     : IProcessorEventFactory
 {
-    private ProcessEventContext CreateContext(KaleidoCorrelationContext correlation, string stepName, Guid processId) =>
+    // processVersion: the version of the state the event describes (#552). A transition's event is
+    // prepared before its save, which stores the context with its version incremented by one.
+    private ProcessEventContext CreateContext(KaleidoCorrelationContext correlation, string stepName, Guid processId, long processVersion) =>
         new()
         {
             RequestId = correlation.RequestId,
             ServiceName = serviceOptions.ServiceName,
+            ServiceVersion = serviceOptions.ServiceVersion,
             ProcessId = processId,
+            ProcessVersion = processVersion,
             StepName = stepName,
             ProcessorInstanceId = serviceOptions.InstanceId.ToString(),
             CallingProcessorName = correlation.CallingProcessorName,
@@ -74,7 +78,7 @@ internal sealed class ProcessorEventFactory(
         return new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
         {
             EventType = KaleidoEventTypes.ProcessCreated,
-            Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId),
+            Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId, context.Version + 1),
             Event = @event,
         };
     }
@@ -130,7 +134,7 @@ internal sealed class ProcessorEventFactory(
         return new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
         {
             EventType = KaleidoEventTypes.ProcessPlanBuilt,
-            Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId),
+            Context = CreateContext(correlation, submittedStepNames.FirstOrDefault() ?? string.Empty, context.ProcessId, context.Version),
             Event = @event,
         };
     }
@@ -173,7 +177,7 @@ internal sealed class ProcessorEventFactory(
         return new KaleidoEventEnvelope<StepCompleted, ProcessEventContext>
         {
             EventType = KaleidoEventTypes.ProcessStepCompleted,
-            Context = CreateContext(correlation, candidate.StepName, context.ProcessId),
+            Context = CreateContext(correlation, candidate.StepName, context.ProcessId, context.Version + 1),
             Event = @event,
         };
     }
@@ -200,7 +204,7 @@ internal sealed class ProcessorEventFactory(
         return new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
         {
             EventType = KaleidoEventTypes.ProcessExecutionCompleted,
-            Context = CreateContext(correlation, string.Empty, executionResult.ProcessId),
+            Context = CreateContext(correlation, string.Empty, executionResult.ProcessId, executionResult.Version),
             Event = @event,
         };
     }

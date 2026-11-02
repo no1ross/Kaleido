@@ -1443,4 +1443,19 @@ public sealed class ProcessorExecutorTests
 
         Assert.Empty(Assert.Single(savedEvents));
     }
+
+    // #552: the result carries the version of the state the request ended with - the last save's - for
+    // the execution-completed event.
+    [Fact]
+    public async Task ExecuteAsync_TheResultCarriesTheVersionOfTheLastSave()
+    {
+        var registration = CreateRegistration<TestStepA>("step-a");
+        var candidate = CreateCandidate<TestStepA>("step-a", registration);
+        var context = CreateContext("step-a");
+
+        var result = await CreateSut(SucceedingInvoker(), transition: RecordingTransition([]))
+            .ExecuteAsync([candidate], context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(context.Version + 1, result.Version);
+    }
 }

@@ -231,4 +231,13 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
 
         Assert.Equal(ConfigurationErrorCodes.InvalidServiceVersion, exception.Code);
     }
+
+    // The scope name keys stores shared by services and versions (#552); '@' is in neither a name nor a version.
+    [Theory]
+    [InlineData(null, "svc")]
+    [InlineData("2", "svc@2")]
+    public void ScopeName_IsTheServiceAndItsVersion(string? version, string expected)
+    {
+        Assert.Equal(expected, (CreateSut("svc") with { ServiceVersion = version }).ScopeName);
+    }
 }

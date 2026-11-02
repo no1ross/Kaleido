@@ -86,6 +86,8 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
         var admission = new IdempotentResult
         {
             Key = Scope(caller, key),
+            ProcessorName = serviceOptions.ServiceName,
+            ProcessorVersion = serviceOptions.ServiceVersion,
             AdmissionId = Guid.NewGuid(),
             RequestHash = Hash(context),
             State = IdempotentResultState.InProgress,
@@ -203,22 +205,23 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
     private static partial void LogFinalizationNotAccepted(ILogger logger, string idempotencyKey, string recordKey, Outcome outcome);
     private const string AnonymousKind = "anonymous";
 
-    // Scoped per service and caller: two callers cannot see each other's answers. The caller is its
-    // stable subject id when the principal has one (a renamed user keeps their keys; two users with the
-    // same display name stay apart), else its name; its kind keeps an id and a name from colliding.
-    // Version 1 (#514): the tuple {service, identity kind, identity, key}, each part length-framed so no
-    // two tuples read the same whatever characters they contain, hashed to a fixed length. Records
-    // admitted in the earlier "service:caller:key" format no longer match; they expire by their
-    // retention.
+    // Scoped per service, service version and caller: two callers cannot see each other's answers, and a
+    // key never replays across versions sharing a database (#552). The caller is its stable subject id
+    // when the principal has one (a renamed user keeps their keys; two users with the same display name
+    // stay apart), else its name; its kind keeps an id and a name from colliding.
+    // Version 2 (#552): the tuple {service, service version, identity kind, identity, key}, each part
+    // length-framed so no two tuples read the same whatever characters they contain (an unversioned
+    // service frames an empty version, which no version can be), hashed to a fixed length. Records
+    // admitted in the earlier formats no longer match; they expire by their retention.
     private string Scope((string Kind, string Value) caller, string key) =>
-        RecordKey(serviceOptions.ServiceName, caller.Kind, caller.Value, key);
+        RecordKey(serviceOptions.ServiceName, serviceOptions.ServiceVersion, caller.Kind, caller.Value, key);
 
     // The stored record's key for a scope: what an operator looks for, and what the tests expect.
-    internal static string RecordKey(string service, string identityKind, string identity, string key)
+    internal static string RecordKey(string service, string? serviceVersion, string identityKind, string identity, string key)
     {
-        var framed = string.Concat(Frame(service), Frame(identityKind), Frame(identity), Frame(key));
+        var framed = string.Concat(Frame(service), Frame(serviceVersion ?? string.Empty), Frame(identityKind), Frame(identity), Frame(key));
 
-        return "v1:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(framed))).ToLowerInvariant();
+        return "v2:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(framed))).ToLowerInvariant();
     }
 
     private static string Frame(string part) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{part.Length}:{part}");

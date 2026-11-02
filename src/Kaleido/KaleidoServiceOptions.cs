@@ -52,6 +52,11 @@ public sealed record KaleidoServiceOptions
     /// <summary>The longest <see cref="ServiceVersion"/> accepted.</summary>
     public const int MaxServiceVersionLength = 64;
 
+    // The service and its version as one name, for keys of stores shared by services and versions (the
+    // registry snapshots, #552): "orders", or "orders@2". Neither a service name nor a version can
+    // contain '@', so no two read the same.
+    internal string ScopeName => ServiceVersion is null ? ServiceName : $"{ServiceName}@{ServiceVersion}";
+
     /// <summary>
     /// A human-readable display name for this service (e.g. <c>"Prior Auth Intake"</c>).
     /// Optional. Surfaced in registry responses.

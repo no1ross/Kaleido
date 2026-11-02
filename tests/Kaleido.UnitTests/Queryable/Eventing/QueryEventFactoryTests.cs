@@ -11,8 +11,8 @@ public sealed class QueryEventFactoryTests
 
     private QueryEventFactory Sut => CreateSut();
 
-    private QueryEventFactory CreateSut() =>
-        new(_options);
+    private QueryEventFactory CreateSut(KaleidoServiceOptions? options = null) =>
+        new(options ?? _options);
 
     [Fact]
     public void CreateQueryExecuted_WhenCorrelationIsNull_Throws()
@@ -197,5 +197,19 @@ public sealed class QueryEventFactoryTests
     {
         public int Id { get; init; }
         public string Name { get; init; } = string.Empty;
+    }
+
+    // #552: a query event names the service's version, so versions publishing to one stream stay apart.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("2")]
+    public void CreateQueryExecuted_CarriesTheServiceVersion(string? version)
+    {
+        var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
+
+        var envelope = CreateSut(_options with { ServiceVersion = version })
+            .CreateQueryExecuted(new KaleidoCorrelationContext(), details, new QueryRequest(), new QueryResult<TestView>(0, 0, 10, []));
+
+        Assert.Equal(version, envelope.Context.ServiceVersion);
     }
 }

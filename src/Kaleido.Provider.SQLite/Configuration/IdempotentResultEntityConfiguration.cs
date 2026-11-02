@@ -15,6 +15,8 @@ internal sealed class IdempotentResultEntityConfiguration
         builder.ToTable("IdempotentResults");
         builder.HasKey(x => x.Key);
         builder.Property(x => x.Key).HasMaxLength(400);
+        builder.Property(x => x.ProcessorName).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.ProcessorVersion).HasMaxLength(KaleidoServiceOptions.MaxServiceVersionLength);
         builder.Property(x => x.AdmissionId).HasMaxLength(36).IsRequired();
         builder.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
         builder.Property(x => x.Response).IsRequired();
@@ -28,5 +30,6 @@ internal sealed class IdempotentResultEntityConfiguration
         builder.Property(x => x.State).HasConversion<int>();
 
         builder.HasIndex(x => x.ExpiresUtc);
+        builder.HasIndex(x => new { x.ProcessorName, x.ProcessorVersion });
     }
 }
