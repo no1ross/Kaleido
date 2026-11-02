@@ -37,9 +37,9 @@ internal sealed class KaleidoOutboxHealthCheck(
         status.LastRelaySeenUtc switch
         {
             null => "No relay has ever drained this outbox: the events are not published, and the outbox keeps growing. Add AddOutboxRelay<TPublisher>() to one host on this database.",
-            { } seen when now - seen > options.RelaySeenWithin => string.Create(CultureInfo.InvariantCulture, $"No relay was seen within {options.RelaySeenWithin} (last at {seen:O}): the events are not published, and the outbox keeps growing."),
+            { } seen when now - seen > options.RelaySeenWithin => $"No relay was seen within {options.RelaySeenWithin} (last at {seen:O}): the events are not published, and the outbox keeps growing.",
             _ when status.DueCount > options.BacklogMaxCount => string.Create(CultureInfo.InvariantCulture, $"{status.DueCount} events are due, more than {options.BacklogMaxCount}: the relay does not keep up, or its publisher keeps failing."),
-            _ when status.OldestDueUtc is { } oldest && now - oldest > options.BacklogMaxAge => string.Create(CultureInfo.InvariantCulture, $"The oldest due event occurred at {oldest:O}, longer ago than {options.BacklogMaxAge}: the relay does not keep up, or its publisher keeps failing."),
+            _ when status.OldestDueUtc is { } oldest && now - oldest > options.BacklogMaxAge => $"The oldest due event occurred at {oldest:O}, longer ago than {options.BacklogMaxAge}: the relay does not keep up, or its publisher keeps failing.",
             _ => null,
         };
 }
