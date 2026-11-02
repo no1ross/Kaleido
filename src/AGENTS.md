@@ -138,14 +138,14 @@ When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` a
 ---
 
 ## Eventing rules
-`IEventPublisher` is intentionally infrastructure-agnostic. The default no-op publisher (internal `EventPublisher`, which logs a Warning that events are discarded) makes eventing optional. Do not remove that default.
+`IEventPublisher` is infrastructure-agnostic and belongs to the relay (`AddOutboxRelay`, ADR 0036); every service writes its events, and there is no default publisher.
 
 ---
 
 ## What not to change casually
 - the minimal shape of `IKaleidoBuilder`
 - `KaleidoBuilder` assembly deduplication behavior
-- the default no-op event publisher
+- services writing every event, the relay owning the publisher
 - `TypeDescriber` scalar/format conventions
 - `ConstraintMapper` constraint naming and parameter conventions
 - Queryable registration invariants (interface identity, type-name naming, one capability per type)

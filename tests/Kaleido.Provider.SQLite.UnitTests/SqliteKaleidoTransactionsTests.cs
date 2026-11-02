@@ -27,7 +27,7 @@ public sealed class SqliteKaleidoTransactionsTests
     // A write on the DbContext, as a store makes it.
     private static Task<int> WriteAsync(SqliteKaleidoContextDbContext db) =>
         db.Database.ExecuteSqlRawAsync(
-            "INSERT INTO OutboxEvents (EventId, EventType, Payload, OccurredUtc, Attempts, NextAttemptUtc, LeaseUntil, IsParked) VALUES ('" + Guid.NewGuid() + "', 'test', 'payload', 0, 0, 0, 0, 0)",
+            "INSERT INTO OutboxEvents (EventId, EventType, ServiceName, Payload, OccurredUtc, Attempts, NextAttemptUtc, LeaseUntil, IsParked) VALUES ('" + Guid.NewGuid() + "', 'test', 'svc', 'payload', 0, 0, 0, 0, 0)",
             TestContext.Current.CancellationToken);
 
     private async Task<int> CommittedRowsAsync()

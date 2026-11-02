@@ -2,7 +2,7 @@
 
 > **This project is a reference implementation, not a production provider.**
 >
-> - `IKaleidoContextStore`, `IKaleidoOutboxStore` (or your own `IKaleidoOutbox`), `IKaleidoIdempotencyStore` and `IKaleidoTransactions` are the **contracts** your deployment implements.
+> - `IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore` and `IKaleidoTransactions` are the **contracts** your deployment implements.
 > - `SqliteKaleidoContextStore`, `SqliteKaleidoOutboxStore`, `SqliteKaleidoIdempotencyStore` and `SqliteKaleidoTransactions` are a **worked example** of those contracts on one database — a single-file embedded database that demonstrates correct `ProcessorContext` round-trip fidelity.
 > - **Production deployments are expected to write their own implementation** against their real infrastructure (SQL Server, Postgres, Redis, document store, whatever the process actually needs).
 > - SQLite's single-writer file model is deliberately unsuitable for the multi-node, multi-instance scenarios durable process state is designed for. Shipping it to production is an anti-pattern.
@@ -22,7 +22,7 @@ See also:
 - `SqliteKaleidoOutboxStore` — example `IKaleidoOutboxStore` implementation (the storage of Kaleido's built-in outbox, same database)
 - `SqliteKaleidoIdempotencyStore` — example `IKaleidoIdempotencyStore` implementation (idempotent requests, same database)
 - `SqliteKaleidoTransactions` — `IKaleidoTransactions`: one transaction on the shared `DbContext` per process-state transition, so state and events commit together
-- `ISqliteKaleidoTransaction` — the open transaction of the current transition, for the host's own outbox on the same database to join
+- `ISqliteKaleidoTransaction` - the open transaction of the current transition, for an outbox store of the host's own on the same database to join
 - `SqliteKaleidoContextDbContext` — the one EF Core context all of them share (scoped: one per request)
 - `SqliteKaleidoServiceCollectionExtensions` — `AddSqliteContextStore`, `AddSqliteOutboxStore`, `AddSqliteIdempotencyStore`
 
@@ -30,7 +30,7 @@ See also:
 
 ## Implementing your own store
 
-Each concern is its own contract ([ADR 0020](../../docs/decisions/0020-three-store-contracts.md), [ADR 0023](../../docs/decisions/0023-outbox-integration.md)). `AddKaleido()` registers an in-memory default for each (every service gets them, so a queryable-only service uses the outbox too, for its query events), but a host that leaves a store it uses at that default does not start (`stores_not_chosen`) unless it calls `AddInMemoryStores()` ([ADR 0028](../../docs/decisions/0028-stores-are-chosen-explicitly.md)); replace them on the builder: `AddContextStore<T>()`, `AddIdempotencyStore<T>()`, `AddOutboxStore<T>()` (storage for Kaleido's outbox) or `AddOutbox<T>()` (your own outbox), and `AddTransactions<T>()`.
+Each concern is its own contract ([ADR 0020](../../docs/decisions/0020-three-store-contracts.md), [ADR 0023](../../docs/decisions/0023-outbox-integration.md), [ADR 0036](../../docs/decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)). `AddKaleido()` registers an in-memory default for each (every service gets them, and every service writes its events to the outbox, a queryable-only one included), but a host that leaves a store it uses at that default does not start (`stores_not_chosen`) unless it calls `AddInMemoryStores()` ([ADR 0028](../../docs/decisions/0028-stores-are-chosen-explicitly.md)); replace them on the builder: `AddContextStore<T>()`, `AddIdempotencyStore<T>()`, `AddOutboxStore<T>()` and `AddTransactions<T>()`. Every record is scoped by the service and its version, so several services, and versions of one, may share one database.
 
 **How state and events stay together.** The context store saves state only; Kaleido adds a transition's event (a new process's `ProcessCreated`, a step's `ProcessStepCompleted`) to the outbox itself. Both happen inside one transaction from `IKaleidoTransactions`: begin, `SaveAsync`, `AddAsync`, commit. A failure before the commit keeps neither. That is atomic when your context store and your outbox write to the database the transaction covers (e.g. one scoped `DbContext`: write in the open transaction when there is one, on your own otherwise). Without `IKaleidoTransactions` each write stands alone. The idempotency store needs no shared transaction.
 
@@ -103,14 +103,14 @@ The SQLite store keeps them in its own `IdempotentResults` table (`Key` primary 
 
 ### Event outbox
 
-With Kaleido's built-in outbox (the default), events are added to the outbox store, and a background relay in every instance hands them to `IEventPublisher`, retrying until it succeeds (at least once - [ADR 0012](../../docs/decisions/0012-events-at-least-once-through-the-store.md)). `IKaleidoOutboxStore` keeps the entries and makes sure **an entry is in one instance's hands at a time**. (A host that already runs an outbox registers its own `IKaleidoOutbox` instead and needs none of this - see [Your own outbox on the same database](#your-own-outbox-on-the-same-database).)
+Every service adds its events to its outbox store, and the relay (`AddOutboxRelay<TPublisher>()`, on one host per outbox database: one of the services, or a host with nothing else) hands every entry in that database to `IEventPublisher`, retrying until it succeeds (at least once - [ADR 0012](../../docs/decisions/0012-events-at-least-once-through-the-store.md), [ADR 0036](../../docs/decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)). `IKaleidoOutboxStore` keeps the entries, each with the `ServiceName` and `ServiceVersion` of its writer as given, and makes sure **an entry is in one relay instance's hands at a time**.
 
 - `AddAsync` adds entries: a transition's event inside its transaction (write in the open transaction when there is one on your database), others (`PlanBuilt`, `ExecutionCompleted`, `QueryExecuted`) on their own.
-- `ClaimEventsAsync(maxCount, lease)` leases up to `maxCount` entries that are due (not parked, `NextAttemptUtc` reached) and not leased, to **this instance** (the store knows its identity, e.g. `KaleidoServiceOptions.InstanceId`) until now + `lease`, oldest first, and returns exactly those. It must be an **atomic compare-and-set** - two instances claiming at once never get the same entry (a write transaction, a row lock, `UPDATE ... WHERE lease expired`, a conditional put). An entry whose lease expired (its instance stopped) can be claimed again: that is the failover.
+- `ClaimEventsAsync(maxCount, lease)` leases up to `maxCount` entries - of any service writing to the database - that are due (not parked, `NextAttemptUtc` reached) and not leased, to **this instance** (the store knows its identity, e.g. `KaleidoServiceOptions.InstanceId`) until now + `lease`, oldest first, and returns exactly those. It must be an **atomic compare-and-set** - two instances claiming at once never get the same entry (a write transaction, a row lock, `UPDATE ... WHERE lease expired`, a conditional put). An entry whose lease expired (its instance stopped) can be claimed again: that is the failover.
 - `CompleteEventAsync` removes a published entry and `FailEventAsync` records a failed attempt (`Attempts` + 1, `LastError`, `NextAttemptUtc` = `retryAtUtc`; `null` parks it - kept, never claimed again) and releases the lease. **Both only while this instance still holds the lease**, so an instance whose lease expired cannot touch an entry another instance has taken over.
 - Keep every `KaleidoOutboxEvent` member as given and treat `Payload` as opaque text (it includes a step's request and response - plan for several KB). Classified values are already redacted when the payload reaches the store ([ADR 0013](../../docs/decisions/0013-event-payloads-classified-and-redacted.md)).
 
-The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, times as UTC ticks, `LeaseOwner`/`LeaseUntil` columns). A claim selects due entries and leases them with one `UPDATE` that re-checks the lease (SQLite serializes writers, so two claims cannot overlap); complete and fail are `DELETE`/`UPDATE ... WHERE LeaseOwner = @me AND LeaseUntil > @now`. Parked entries stay in the table: inspect them, fix the cause, and set `IsParked = 0, NextAttemptUtc = 0` to retry them.
+The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, `ServiceName`/`ServiceVersion` columns with an index, times as UTC ticks, `LeaseOwner`/`LeaseUntil` columns). A claim selects due entries and leases them with one `UPDATE` that re-checks the lease (SQLite serializes writers, so two claims cannot overlap); complete and fail are `DELETE`/`UPDATE ... WHERE LeaseOwner = @me AND LeaseUntil > @now`. Parked entries stay in the table: inspect them, fix the cause, and set `IsParked = 0, NextAttemptUtc = 0` to retry them.
 
 ### Schema changes
 
@@ -137,25 +137,25 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 ```
 
-Each call registers one store, scoped, on one `SqliteKaleidoContextDbContext`, replacing its in-memory default; take only the ones you want (e.g. SQLite state with your own outbox). `AddSqliteContextStore` also registers `SqliteKaleidoTransactions`: with `AddSqliteOutboxStore` on the same database, a step's state and its event commit together. Registration does not touch the database: without the `EnsureCreatedAsync()` call the first save fails because the tables do not exist. (This exact sequence is tested against a fresh database file: `tests/Kaleido.IntegrationTests/SqliteReadmeTests.cs`.)
+Each call registers one store, scoped, on one `SqliteKaleidoContextDbContext`, replacing its in-memory default; take only the ones you want (e.g. SQLite state with an outbox store of your own). `AddSqliteContextStore` also registers `SqliteKaleidoTransactions`: with `AddSqliteOutboxStore` on the same database, a step's state and its event commit together. Registration does not touch the database: without the `EnsureCreatedAsync()` call the first save fails because the tables do not exist. (This exact sequence is tested against a fresh database file: `tests/Kaleido.IntegrationTests/SqliteReadmeTests.cs`.)
 
 **How a step's state and event commit together.** The stores never call each other: they share the request's `DbContext`, and the transaction Kaleido begins through `SqliteKaleidoTransactions` covers both writes. The sequence diagram is in [ADR 0023](../../docs/decisions/0023-outbox-integration.md#a-step-completes-sqlite-state-kaleidos-outbox-on-sqlite); `tests/Kaleido.IntegrationTests/Transitions/SqliteTransitionTests.cs` proves it (a conflict or a failed event write keeps neither).
 
 Registration fails at startup with `KaleidoConfigurationException`:
 - a malformed, non-blank connection string: `SqliteErrorCodes.InvalidConnectionString` (`invalid_connection_string`), before anything is registered (syntax only: no database is opened);
 - a different connection string than another SQLite store's: `SqliteErrorCodes.ConnectionStringMismatch` (`connection_string_mismatch`) - they share one database;
-- another context store, idempotency store or transactions already registered (`conflicting_store`), or a SQLite outbox store next to `AddOutbox`/`AddDirectPublication` (`conflicting_outbox`).
+- another context store, idempotency store or transactions already registered (`conflicting_store`), or another outbox store (`conflicting_outbox`).
 
-### Your own outbox on the same database
+### Your own outbox store on the same database
 
-A host that already has an outbox (its own table and dispatcher, MassTransit's EF outbox, ...) keeps SQLite for the state and plugs its outbox in with `AddOutbox<T>()`; to commit with the state, it joins the SQLite transaction through `ISqliteKaleidoTransaction`:
+A host that keeps its outbox in its own table keeps SQLite for the state and registers its own `IKaleidoOutboxStore` with `AddOutboxStore<T>()`; to commit with the state, its writes join the SQLite transaction through `ISqliteKaleidoTransaction` (the claims are the relay's, as the contract above describes):
 
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, new())
     .AddSqliteContextStore(connectionString)       // state + the SQLite transaction
-    .AddOutbox<IntakeOutbox>();                    // the host's outbox, same database file
+    .AddOutboxStore<IntakeOutboxStore>();          // the host's outbox table, same database file
 
-public sealed class IntakeOutbox(IntakeDbContext db, ISqliteKaleidoTransaction transaction) : IKaleidoOutbox
+public sealed class IntakeOutboxStore(IntakeDbContext db, ISqliteKaleidoTransaction transaction) : IKaleidoOutboxStore
 {
     public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
@@ -168,6 +168,8 @@ public sealed class IntakeOutbox(IntakeDbContext db, ISqliteKaleidoTransaction t
         db.OutboxMessages.AddRange(events.Select(e => new OutboxMessage(e.EventId, e.EventType, e.Payload, e.OccurredUtc)));
         await db.SaveChangesAsync(cancellationToken);                  // committed with the state
     }
+
+    // ClaimEventsAsync, CompleteEventAsync, FailEventAsync: leased claims for the relay (see above).
 }
 ```
 
@@ -200,6 +202,6 @@ The default in-memory stores are sufficient for tests and single-request process
 ## Where to look
 
 - `SqliteKaleidoContextStore.cs`, `SqliteKaleidoOutboxStore.cs`, `SqliteKaleidoIdempotencyStore.cs`, `SqliteKaleidoTransactions.cs` — the reference implementations of the contracts
-- `SqliteKaleidoTransaction.cs` — `ISqliteKaleidoTransaction`, for a host's own outbox to join
+- `SqliteKaleidoTransaction.cs` - `ISqliteKaleidoTransaction`, for an outbox store of the host's own to join
 - `SqliteKaleidoServiceCollectionExtensions.cs` — the three registrations
 - `tests/Kaleido.Provider.SQLite.UnitTests` — the executable contract specification to mirror for your own store

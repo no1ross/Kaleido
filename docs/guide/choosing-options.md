@@ -25,9 +25,9 @@ other.
 
 | Situation | Register | Guarantee |
 |---|---|---|
-| Kaleido delivers, durably | `AddOutboxStore<T>()` (or `AddSqliteOutboxStore`) + `AddEventPublisher<T>()` | at least once, retried, parked after the last attempt |
-| You already run an outbox | `AddOutbox<T>()` | your dispatcher's |
-| Best effort is enough | `AddDirectPublication()` + `AddEventPublisher<T>()` | at most once, no retry |
+| Every service | `AddOutboxStore<T>()` (or `AddSqliteOutboxStore`), on the context store's database | its events are written with its state |
+| The host that publishes (one per outbox database: a service, or a host with nothing else) | `AddOutboxRelay<TPublisher>()` | at least once, retried, parked after the last attempt |
+| You run your own bus or dispatcher | your `IEventPublisher`, on the relay host | the relay's, then your bus's |
 | State and event atomic | `AddTransactions<T>()`, with the store and the outbox on the same database | both or neither |
 
 See [Events and the outbox](events-and-outbox.md).

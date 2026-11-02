@@ -6,7 +6,7 @@ Kaleido stores three things, each behind its own contract (`Kaleido.Storage`,
 | Contract | Holds | Needed when |
 |---|---|---|
 | `IKaleidoContextStore` | the state of each process (one row per process, saved conditionally on its version) | the service has steps |
-| the outbox: `IKaleidoOutbox`, or `IKaleidoOutboxStore` for Kaleido's built-in outbox | events waiting to be delivered ([Events and the outbox](events-and-outbox.md)) | events are published |
+| `IKaleidoOutboxStore` | every event the service writes, until the relay publishes it ([Events and the outbox](events-and-outbox.md)) | always: every service writes its events |
 | `IKaleidoIdempotencyStore` | the answers to requests sent with an `Idempotency-Key`, for replays | callers retry (the Kaleido clients always send a key) |
 
 Optional: `IKaleidoTransactions`, one transaction around a state change and its event.
@@ -22,7 +22,7 @@ only its own. Fine for tests and local evaluation; choose real stores before pro
 | Choice | Registration | For |
 |---|---|---|
 | SQLite reference provider | `AddSqliteContextStore`, `AddSqliteOutboxStore`, `AddSqliteIdempotencyStore` (one database) | samples, local development, a reference to copy ([README](../../src/Kaleido.Provider.SQLite/README.md)) |
-| Your own stores | `AddContextStore<T>()`, `AddOutboxStore<T>()` or `AddOutbox<T>()`, `AddIdempotencyStore<T>()`, `AddTransactions<T>()` | production, on your database |
+| Your own stores | `AddContextStore<T>()`, `AddOutboxStore<T>()`, `AddIdempotencyStore<T>()`, `AddTransactions<T>()` | production, on your database |
 | In memory (default) | nothing | tests, local evaluation |
 
 The SQLite provider does not create its schema: the host does, once at startup
@@ -32,7 +32,7 @@ The SQLite provider does not create its schema: the host does, once at startup
 
 When a step completes, Kaleido saves the process state and writes the transition's event
 (`ProcessCreated`, `StepCompleted`) in **one sequence**: begin, save the state, add the event,
-commit, then tell the outbox it committed. A failure before the commit keeps **neither**.
+commit, then wake the relay if this host runs it. A failure before the commit keeps **neither**.
 
 ```mermaid
 sequenceDiagram
@@ -40,7 +40,7 @@ sequenceDiagram
     participant K as Kaleido (one state transition)
     participant T as IKaleidoTransactions
     participant S as IKaleidoContextStore
-    participant O as IKaleidoOutbox
+    participant O as IKaleidoOutboxStore
     participant D as Your database
 
     rect rgba(70, 130, 180, 0.25)
@@ -52,11 +52,11 @@ sequenceDiagram
         O->>D: write the event
         K->>T: CommitAsync
     end
-    K->>O: CommittedAsync (wake the dispatcher)
+    Note over K: committed: wake this host's relay (if it runs one)
 ```
 
 This holds **only when the context store and the outbox write to the database the transaction
-covers**: one EF Core `DbContext`, a MongoDB session, or a provider's transaction your outbox joins.
+covers**: one EF Core `DbContext`, a MongoDB session, or a provider's transaction your outbox store joins.
 Across two databases each write stands alone; Kaleido never attempts a distributed transaction.
 Events that are not part of a state transition (a plan built, a query executed, a failure) are
 written without a transaction, and a failure to write them never fails the request.
@@ -70,7 +70,7 @@ the shared, scoped `DbContext` and the conditional save.
 <!-- snippet: persistence-dbcontext -->
 ```csharp
 // One DbContext for the process state and the outbox: registered scoped, one per request, so the
-// context store, the outbox and the transaction share it.
+// context store, the outbox store and the transaction share it.
 public sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) : DbContext(options)
 {
     public DbSet<ProcessRow> Processes => Set<ProcessRow>();
@@ -99,15 +99,32 @@ public sealed class ProcessRow
     public string State { get; set; } = string.Empty;
 }
 
+// Times as UTC ticks, so due and expired entries are found with plain comparisons.
 public sealed class OutboxMessage
 {
     public Guid EventId { get; set; }
 
     public string EventType { get; set; } = string.Empty;
 
+    public string ServiceName { get; set; } = string.Empty;
+
+    public string? ServiceVersion { get; set; }
+
     public string Payload { get; set; } = string.Empty;
 
-    public DateTimeOffset OccurredUtc { get; set; }
+    public long OccurredUtc { get; set; }
+
+    public int Attempts { get; set; }
+
+    public long NextAttemptUtc { get; set; }
+
+    public string? LastError { get; set; }
+
+    public bool IsParked { get; set; }
+
+    public string? LeaseOwner { get; set; }
+
+    public long LeaseUntil { get; set; }
 }
 ```
 
@@ -168,24 +185,82 @@ public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStor
 
 <!-- snippet: persistence-outbox -->
 ```csharp
-// Your outbox: Kaleido hands it every event; a state transition's event inside the transaction.
-public sealed class OrdersOutbox(OrdersDbContext db) : IKaleidoOutbox
+// The outbox on the same DbContext: every event the service writes - a state transition's inside its
+// transaction - and the relay's claims, each leased to one relay instance at a time.
+public sealed class OrdersOutboxStore(OrdersDbContext db, KaleidoServiceOptions service, TimeProvider time) : IKaleidoOutboxStore
 {
+    private string Owner => service.InstanceId.ToString("N");
+
     public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
         db.OutboxMessages.AddRange(events.Select(x => new OutboxMessage
         {
             EventId = x.EventId,
             EventType = x.EventType,
+            ServiceName = x.ServiceName,
+            ServiceVersion = x.ServiceVersion,
             Payload = x.Payload,
-            OccurredUtc = x.OccurredUtc,
+            OccurredUtc = x.OccurredUtc.UtcTicks,
+            NextAttemptUtc = x.NextAttemptUtc.UtcTicks,
         }));
 
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    // Optional: after the commit, wake your dispatcher instead of waiting for its next poll.
-    public Task CommittedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    // A compare-and-set: the UPDATE re-checks that each entry is still unleased, so two relays claiming
+    // at once never get the same one; each reads back only what it leased.
+    public async Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow().UtcTicks;
+        var until = now + lease.Ticks;
+        var due = await db.OutboxMessages.AsNoTracking()
+            .Where(x => !x.IsParked && x.NextAttemptUtc <= now && x.LeaseUntil <= now)
+            .OrderBy(x => x.OccurredUtc).Select(x => x.EventId).Take(maxCount)
+            .ToListAsync(cancellationToken);
+
+        await db.OutboxMessages
+            .Where(x => due.Contains(x.EventId) && !x.IsParked && x.LeaseUntil <= now)
+            .ExecuteUpdateAsync(x => x.SetProperty(m => m.LeaseOwner, Owner).SetProperty(m => m.LeaseUntil, until), cancellationToken);
+
+        var claimed = await db.OutboxMessages.AsNoTracking()
+            .Where(x => due.Contains(x.EventId) && x.LeaseOwner == Owner && x.LeaseUntil == until)
+            .OrderBy(x => x.OccurredUtc)
+            .ToListAsync(cancellationToken);
+
+        return [.. claimed.Select(x => new KaleidoOutboxEvent
+        {
+            EventId = x.EventId,
+            EventType = x.EventType,
+            ServiceName = x.ServiceName,
+            ServiceVersion = x.ServiceVersion,
+            Payload = x.Payload,
+            OccurredUtc = new DateTimeOffset(x.OccurredUtc, TimeSpan.Zero),
+            Attempts = x.Attempts,
+            NextAttemptUtc = new DateTimeOffset(x.NextAttemptUtc, TimeSpan.Zero),
+            LastError = x.LastError,
+        })];
+    }
+
+    // Both only while this instance still holds the lease.
+    public Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken) =>
+        Leased(eventId).ExecuteDeleteAsync(cancellationToken);
+
+    public Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken) =>
+        Leased(eventId).ExecuteUpdateAsync(
+            x => x.SetProperty(m => m.Attempts, m => m.Attempts + 1)
+                .SetProperty(m => m.LastError, errorMessage)
+                .SetProperty(m => m.NextAttemptUtc, (retryAtUtc ?? time.GetUtcNow()).UtcTicks)
+                .SetProperty(m => m.IsParked, retryAtUtc == null)
+                .SetProperty(m => m.LeaseOwner, (string?)null)
+                .SetProperty(m => m.LeaseUntil, 0L),
+            cancellationToken);
+
+    private IQueryable<OutboxMessage> Leased(Guid eventId)
+    {
+        var now = time.GetUtcNow().UtcTicks;
+
+        return db.OutboxMessages.Where(x => x.EventId == eventId && x.LeaseOwner == Owner && x.LeaseUntil > now);
+    }
 }
 ```
 
@@ -213,7 +288,7 @@ services.AddDbContext<OrdersDbContext>(o => o.UseSqlite(connectionString));   //
 
 return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(OrdersContextStore).Assembly] })
     .AddContextStore<OrdersContextStore>()
-    .AddOutbox<OrdersOutbox>()
+    .AddOutboxStore<OrdersOutboxStore>()
     .AddTransactions<OrdersTransactions>()
     // This example keeps its idempotency records in memory; a production host registers a
     // durable IKaleidoIdempotencyStore (AddIdempotencyStore<T>(), AddSqliteIdempotencyStore).
@@ -221,20 +296,25 @@ return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemb
 ```
 
 Every store a service uses is chosen at registration: a durable one, or memory explicitly with
-`AddInMemoryStores()`. A service with process steps uses the context and idempotency stores; one that
-publishes events through Kaleido's built-in outbox also uses an outbox store (your own outbox and
-direct publication need none). A store left at its in-memory default stops the host at startup with
-`stores_not_chosen`, naming the store ([ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md)).
+`AddInMemoryStores()`. A service with process steps uses the context and idempotency stores, and every
+service uses an outbox store, since every service writes its events. A store left at its in-memory
+default stops the host at startup with `stores_not_chosen`, naming the store
+([ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md), [ADR 0036](../decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)).
 
-With your own outbox, Kaleido's outbox store and relay are not used: your dispatcher delivers the
-events (it needs no `IEventPublisher`). To use **Kaleido's** outbox on your database instead,
-implement `IKaleidoOutboxStore` (claims with leases, retries, parking) and register it with
-`AddOutboxStore<T>()`; the SQLite provider's store is the reference.
+The outbox store above also serves the relay (`AddOutboxRelay<TPublisher>()`, on this service or on
+another host reading the same database): its claims are leased compare-and-sets, so several relay
+instances never publish one entry twice. The SQLite provider's store is the reference.
+
+**Several services on one database.** Every record is scoped by the service and its version: the
+context store's key is `ProcessKey` (processor, version, process id), and every query must match all
+three, so services and versions may share the database. A document store (MongoDB) keys a process by
+the three, for example a compound `_id`.
 
 ## Which store for which concern
 
 - **One store per contract** per service: two implementations fail at startup
-  (`conflicting_store`), as do two outbox choices (`conflicting_outbox`).
+  (`conflicting_store`), as do two outbox stores or two relays with different publishers
+  (`conflicting_outbox`).
 - **Idempotency records** can live elsewhere (a cache with expiry is fine): they are not part of the
   transaction.
 - **Several instances** share the stores: the conditional save is what makes concurrent calls for

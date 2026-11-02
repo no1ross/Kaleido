@@ -5,7 +5,7 @@ namespace Kaleido.Provider.SQLite;
 
 // The transactions of process-state transitions on SQLite (registered by AddSqliteContextStore): one
 // database transaction on the shared SqliteKaleidoContextDbContext, so the context store and the
-// outbox store - and a host's own outbox that joins it (ISqliteKaleidoTransaction) - commit together.
+// outbox store - or an outbox store of the host's own that joins it (ISqliteKaleidoTransaction) - commit together.
 internal sealed class SqliteKaleidoTransactions(SqliteKaleidoContextDbContext dbContext) : IKaleidoTransactions
 {
     public async Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken) =>

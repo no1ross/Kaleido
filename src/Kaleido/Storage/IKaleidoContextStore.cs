@@ -8,7 +8,7 @@ namespace Kaleido.Storage;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Process state only. Events are the outbox integration's (<see cref="IKaleidoOutbox"/>), and the
+/// Process state only. Events are the outbox's (<see cref="IKaleidoOutboxStore"/>), and the
 /// idempotent requests are <see cref="IKaleidoIdempotencyStore"/>'s. The default keeps state in
 /// memory, suitable for development and testing only: nothing survives a restart, and state grows
 /// without bound in long-running services. Register a durable implementation before deploying to

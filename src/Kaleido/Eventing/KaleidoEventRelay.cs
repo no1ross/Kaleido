@@ -7,8 +7,10 @@ using Polly.CircuitBreaker;
 
 namespace Kaleido.Eventing;
 
-// Hands outbox entries to the event publisher, one relay per instance. It claims a batch (the claim
-// is the lock between instances), publishes each entry through a timeout and a circuit breaker, and
+// Hands outbox entries to the event publisher: registered by AddOutboxRelay on the host that drains the
+// outbox, which may be a writer service or a host with nothing else (#552). It drains every service's
+// entries in its outbox store's database. It claims a batch (the claim is the lock between relay
+// instances), publishes each entry through a timeout and a circuit breaker, and
 // removes it on success; a failure is retried later with backoff (the durable schedule lives in the
 // outbox) and parked after the last retry.
 internal sealed partial class KaleidoEventRelay : BackgroundService
@@ -62,12 +64,6 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Without a publisher nothing is ever written to the outbox.
-        if (_publisher is INoOpEventPublisher)
-        {
-            return;
-        }
-
         try
         {
             await RunAsync(stoppingToken);

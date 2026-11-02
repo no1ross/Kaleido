@@ -11,10 +11,9 @@ public sealed class KaleidoEventWriterTests
 {
     private static KaleidoEventWriter CreateSut(
         IKaleidoOutbox outbox,
-        IEventPublisher publisher,
         IKaleidoEventPayloadWriter? payloadWriter = null,
         ILogger<KaleidoEventWriter>? logger = null) =>
-        new(outbox, publisher, payloadWriter ?? PlainWriter().Object, logger ?? NullLogger<KaleidoEventWriter>.Instance);
+        new(outbox, payloadWriter ?? PlainWriter().Object, logger ?? NullLogger<KaleidoEventWriter>.Instance);
 
     // Writes the plain (unredacted) form; redaction is the payload writer's own concern.
     private static Mock<IKaleidoEventPayloadWriter> PlainWriter()
@@ -27,13 +26,9 @@ public sealed class KaleidoEventWriterTests
         return writer;
     }
 
-    // Kaleido's built-in outbox (or direct publication): delivers through the publisher.
-    private static Mock<IKaleidoPublisherOutbox> BuiltInOutbox() => Outbox<IKaleidoPublisherOutbox>();
-
-    private static Mock<TOutbox> Outbox<TOutbox>()
-        where TOutbox : class, IKaleidoOutbox
+    private static Mock<IKaleidoOutbox> BuiltInOutbox()
     {
-        var outbox = new Mock<TOutbox>();
+        var outbox = new Mock<IKaleidoOutbox>();
         outbox.Setup(x => x.AddAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         outbox.Setup(x => x.CommittedAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
@@ -55,7 +50,7 @@ public sealed class KaleidoEventWriterTests
         var writer = new Mock<IKaleidoEventPayloadWriter>();
         writer.Setup(x => x.Write(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>())).Returns(written);
         var outbox = BuiltInOutbox();
-        var sut = CreateSut(outbox.Object, Mock.Of<IEventPublisher>(), writer.Object);
+        var sut = CreateSut(outbox.Object, writer.Object);
 
         var prepared = sut.Prepare(Envelope());
         await sut.WriteAsync(Envelope(), CancellationToken.None);
@@ -64,67 +59,19 @@ public sealed class KaleidoEventWriterTests
         outbox.Verify(x => x.AddAsync(It.Is<IReadOnlyCollection<KaleidoOutboxEvent>>(events => events.Single() == written), CancellationToken.None));
     }
 
-    // #451: a rolled-back transition's event is forgotten by Kaleido's own outbox integrations.
+    // #552: every service writes every event; no publisher is needed here (the relay owns it).
     [Fact]
-    public void RolledBack_WithKaleidosOutbox_DiscardsItsPendingEvents()
-    {
-        var outbox = BuiltInOutbox();
-
-        CreateSut(outbox.Object, Mock.Of<IEventPublisher>()).RolledBack();
-
-        outbox.Verify(x => x.Discard(), Times.Once);
-    }
-
-    // The host's own outbox wrote inside the transaction: the rollback is its own.
-    [Fact]
-    public void RolledBack_WithTheHostsOwnOutbox_DoesNothing()
-    {
-        var outbox = Outbox<IKaleidoOutbox>();
-
-        CreateSut(outbox.Object, Mock.Of<IEventPublisher>()).RolledBack();
-
-        outbox.VerifyNoOtherCalls();
-    }
-
-    [Fact]
-    public void Prepare_WithAPublisher_ReturnsTheOutboxEntry()
+    public async Task WithoutAPublisher_EveryEventIsWritten()
     {
         var envelope = Envelope();
-
-        var entry = CreateSut(BuiltInOutbox().Object, Mock.Of<IEventPublisher>()).Prepare(envelope);
-
-        Assert.NotNull(entry);
-        Assert.Equal(envelope.Event.EventId, entry.EventId);
-    }
-
-    // Nothing to deliver to: the built-in outbox and direct publication need a publisher.
-    [Fact]
-    public async Task WithTheBuiltInOutbox_AndNoPublisher_NoEventIsProduced()
-    {
-        var writer = new Mock<IKaleidoEventPayloadWriter>();
         var outbox = BuiltInOutbox();
-        var sut = CreateSut(outbox.Object, Mock.Of<INoOpEventPublisher>(), writer.Object);
+        var sut = CreateSut(outbox.Object);
 
-        Assert.Null(sut.Prepare(Envelope()));
-        await sut.WriteAsync(Envelope(), CancellationToken.None);
-
-        writer.VerifyNoOtherCalls();
-        outbox.Verify(x => x.AddAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    // The host's own outbox delivers itself: events are produced without a publisher.
-    [Fact]
-    public async Task WithTheHostsOwnOutbox_EventsAreProducedWithoutAPublisher()
-    {
-        var outbox = Outbox<IKaleidoOutbox>();
-        var sut = CreateSut(outbox.Object, Mock.Of<INoOpEventPublisher>());
-
-        Assert.NotNull(sut.Prepare(Envelope()));
-        await sut.WriteAsync(Envelope(), CancellationToken.None);
+        Assert.Equal(envelope.Event.EventId, sut.Prepare(envelope).EventId);
+        await sut.WriteAsync(envelope, CancellationToken.None);
 
         outbox.Verify(x => x.AddAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), CancellationToken.None), Times.Once);
     }
-
     [Fact]
     public async Task WriteAsync_AddsTheEvent_ThenLetsTheOutboxDeliver()
     {
@@ -134,7 +81,7 @@ public sealed class KaleidoEventWriterTests
         outbox.Setup(x => x.AddAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), It.IsAny<CancellationToken>())).Callback(() => calls.Add("add")).Returns(Task.CompletedTask);
         outbox.Setup(x => x.CommittedAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("committed")).Returns(Task.CompletedTask);
 
-        await CreateSut(outbox.Object, Mock.Of<IEventPublisher>()).WriteAsync(envelope, CancellationToken.None);
+        await CreateSut(outbox.Object).WriteAsync(envelope, CancellationToken.None);
 
         Assert.Equal(["add", "committed"], calls);
         outbox.Verify(x => x.AddAsync(It.Is<IReadOnlyCollection<KaleidoOutboxEvent>>(events => events.Single().EventId == envelope.Event.EventId), CancellationToken.None));
@@ -150,7 +97,7 @@ public sealed class KaleidoEventWriterTests
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
         var envelope = Envelope();
 
-        await CreateSut(outbox.Object, Mock.Of<IEventPublisher>(), logger: logger.Object).WriteAsync(envelope, CancellationToken.None);
+        await CreateSut(outbox.Object, logger: logger.Object).WriteAsync(envelope, CancellationToken.None);
 
         var logged = Assert.Single(logger.Invocations, x => x.Method.Name == nameof(ILogger.Log));
         Assert.Equal(LogLevel.Error, logged.Arguments[0]);
@@ -168,7 +115,7 @@ public sealed class KaleidoEventWriterTests
         var logger = new Mock<ILogger<KaleidoEventWriter>>();
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
-        await CreateSut(outbox.Object, Mock.Of<IEventPublisher>(), logger: logger.Object).CommittedAsync(CancellationToken.None);
+        await CreateSut(outbox.Object, logger: logger.Object).CommittedAsync(CancellationToken.None);
 
         Assert.Equal(LogLevel.Error, Assert.Single(logger.Invocations, x => x.Method.Name == nameof(ILogger.Log)).Arguments[0]);
     }
@@ -183,7 +130,7 @@ public sealed class KaleidoEventWriterTests
         outbox.Setup(x => x.CommittedAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new TaskCanceledException("timeout"));
         var logger = new Mock<ILogger<KaleidoEventWriter>>();
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-        var sut = CreateSut(outbox.Object, Mock.Of<IEventPublisher>(), logger: logger.Object);
+        var sut = CreateSut(outbox.Object, logger: logger.Object);
 
         await sut.WriteAsync(Envelope(), CancellationToken.None);
         await sut.CommittedAsync(CancellationToken.None);
@@ -200,6 +147,6 @@ public sealed class KaleidoEventWriterTests
         var outbox = BuiltInOutbox();
         outbox.Setup(x => x.CommittedAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(canceled));
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut(outbox.Object, Mock.Of<IEventPublisher>()).CommittedAsync(canceled));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut(outbox.Object).CommittedAsync(canceled));
     }
 }

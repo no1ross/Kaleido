@@ -39,8 +39,10 @@ public static class ShopEvents
     public static void AddShopEvents(IKaleidoBuilder kaleido)
     {
         // snippet: events-registration
+        // This service writes its events and also runs the relay that publishes them; with services
+        // sharing an outbox database, one host runs the relay for all of them.
         kaleido
-            .AddEventPublisher<WarehousePublisher>()
+            .AddOutboxRelay<WarehousePublisher>()
             .AddEventRedaction(r =>
                 r.SetRedactor<ErasingRedactor>(new DataClassificationSet(ShopClassifications.Personal)));
         // end snippet

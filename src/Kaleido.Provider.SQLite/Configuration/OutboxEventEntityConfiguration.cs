@@ -15,6 +15,8 @@ internal sealed class OutboxEventEntityConfiguration
         builder.ToTable("OutboxEvents");
         builder.HasKey(x => x.EventId);
         builder.Property(x => x.EventType).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.ServiceName).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.ServiceVersion).HasMaxLength(KaleidoServiceOptions.MaxServiceVersionLength);
         builder.Property(x => x.Payload).IsRequired();
         builder.Property(x => x.LastError).HasMaxLength(SqliteKaleidoOutboxStore.MaxErrorLength);
         builder.Property(x => x.LeaseOwner).HasMaxLength(64);
@@ -22,5 +24,6 @@ internal sealed class OutboxEventEntityConfiguration
         // Claims look for due, unparked, unleased entries, oldest first.
         builder.HasIndex(x => new { x.IsParked, x.NextAttemptUtc });
         builder.HasIndex(x => x.LeaseUntil);
+        builder.HasIndex(x => new { x.ServiceName, x.ServiceVersion });
     }
 }

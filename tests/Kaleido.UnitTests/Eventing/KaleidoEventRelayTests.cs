@@ -310,18 +310,6 @@ public sealed class KaleidoEventRelayTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithoutAPublisher_ClaimsNothing()
-    {
-        var store = new Mock<IKaleidoOutboxStore>();
-        using var sut = CreateSut(store.Object, Mock.Of<INoOpEventPublisher>());
-
-        await sut.StartAsync(CancellationToken.None);
-        await sut.ExecuteTask!;
-
-        store.VerifyNoOtherCalls();
-    }
-
-    [Fact]
     public async Task ExecuteAsync_WhileTheOutboxIsEmpty_BacksOffUpToTheIdleInterval()
     {
         var waits = new List<TimeSpan>();

@@ -100,6 +100,6 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
         public DateTimeOffset LeaseUntil { get; set; } = DateTimeOffset.MinValue;
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoOutboxStore is active. Events waiting to be published are kept in memory only: lost on restart, and each instance relays only its own. Register a durable outbox store on the database of the process state (e.g. AddSqliteOutboxStore, or AddOutboxStore<T>()), or your own outbox (AddOutbox<T>()), before deploying to production.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoOutboxStore is active. Events waiting to be published are kept in memory only: lost on restart, and published only by a relay in this process (AddOutboxRelay). Register a durable outbox store on the database of the process state (e.g. AddSqliteOutboxStore, or AddOutboxStore<T>()) before deploying to production.")]
     private static partial void LogInMemoryStoreActive(ILogger logger);
 }

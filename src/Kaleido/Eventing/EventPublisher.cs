@@ -1,11 +1,10 @@
-using Microsoft.Extensions.Logging;
-
 namespace Kaleido.Eventing;
 
 /// <summary>
-/// Publishes Kaleido domain events to any registered event infrastructure.
-/// The default implementation is <see cref="EventPublisher"/>, which discards all events.
-/// Replace with a real implementation before calling <c>AddKaleido()</c>.
+/// Publishes Kaleido domain events to your event infrastructure (a bus, a warehouse feed, an HTTP
+/// collector). It belongs to the host that runs Kaleido's outbox relay
+/// (<c>AddOutboxRelay&lt;TPublisher&gt;()</c>): every service only writes its events to the outbox, and the
+/// relay hands them to this publisher (#552).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,14 +25,14 @@ namespace Kaleido.Eventing;
 /// </para>
 /// <para>
 /// The process state stored in the database contains only what is required to resume
-/// execution — it is not a history. Without a real <see cref="IEventPublisher"/>,
-/// you will have no data warehouse feed, no audit trail, no analytics, and no replay capability.
+/// execution — it is not a history. The events are: without a relay publishing them there is no data
+/// warehouse feed, audit trail, analytics or replay, and the outbox keeps growing.
 /// </para>
 /// <para>
-/// <strong>At least once, never on the request path:</strong> Kaleido writes every event to the
+/// <strong>At least once, never on the request path:</strong> every service writes every event to its
 /// outbox (<see cref="Storage.IKaleidoOutboxStore"/>; process events that describe a save in the
-/// same transaction as the state) and a background relay calls <see cref="PublishAsync"/>, awaiting
-/// it. A call that throws or times out is retried later with backoff; after the configured maximum
+/// same transaction as the state), and the relay - in that service or in another host on the same
+/// database - claims the entries and calls <see cref="PublishAsync"/>, awaiting it. A call that throws or times out is retried later with backoff; after the configured maximum
 /// attempts the event is parked (kept, logged at Error), never dropped. A publisher never slows down
 /// or fails a request. Kaleido guarantees the hand-off to this publisher, not the receipt by the
 /// final receiver - that, and any broker-side retries, are owned by the implementation.
@@ -41,7 +40,8 @@ namespace Kaleido.Eventing;
 /// <para>
 /// <strong>Duplicates and order:</strong> after a crash between a successful publish and its
 /// bookkeeping the same event is published again; use <see cref="IKaleidoEvent.EventId"/> to drop
-/// duplicates. Retries can reorder events; use <see cref="IKaleidoEvent.OccurredOn"/>.
+/// duplicates. There is no ordering guarantee: batches are published in parallel and retries reorder
+/// events. Order a process's events by <see cref="ProcessEventContext.ProcessVersion"/>.
 /// </para>
 /// <para>
 /// <strong>Payload shape:</strong> the relay publishes the stored (JSON) form of the envelope, so
@@ -50,11 +50,12 @@ namespace Kaleido.Eventing;
 /// request scope; it must not depend on request-scoped services.
 /// </para>
 /// <para>
-/// Register a real publisher before calling <c>AddKaleido()</c>, or use
-/// <c>AddEventPublisher&lt;TPublisher&gt;()</c> on the builder:
+/// Register it with the relay, on the host that drains the outbox (a service, or a host with nothing
+/// else):
 /// <code>
-/// builder.Services.AddKaleido(builder.Configuration)
-///     .AddEventPublisher&lt;MyEventPublisher&gt;();
+/// builder.Services.AddKaleido(builder.Configuration, new() { ServiceName = "outbox-relay", /* ... */ })
+///     .AddSqliteOutboxStore(connectionString)   // the database the services write their events to
+///     .AddOutboxRelay&lt;MyEventPublisher&gt;();
 /// </code>
 /// </para>
 /// </remarks>
@@ -81,30 +82,4 @@ public interface IKaleidoEvent
 
     /// <summary>When the event occurred (UTC).</summary>
     DateTimeOffset OccurredOn { get; }
-}
-
-// Marks a publisher that discards every event (the default when none is registered): Kaleido then
-// writes nothing to the outbox and the relay stays idle.
-internal interface INoOpEventPublisher : IEventPublisher;
-
-/// <summary>
-/// Default no-op event publisher registered by <c>AddKaleido()</c>.
-/// Discards all events and logs a warning at startup. Replace with a real
-/// implementation — see <see cref="IEventPublisher"/> remarks.
-/// </summary>
-internal sealed partial class EventPublisher : INoOpEventPublisher
-{
-    public EventPublisher(ILogger<EventPublisher> logger)
-    {
-        LogNoPublisher(logger);
-    }
-
-    public Task PublishAsync<TEvent, TContext>(
-        KaleidoEventEnvelope<TEvent, TContext> envelope,
-        CancellationToken cancellationToken)
-        where TEvent : IKaleidoEvent
-        => Task.CompletedTask;
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "No IEventPublisher has been registered. Kaleido events are being silently discarded. Events carry the complete audit trail of process and query activity — without a real publisher you will have no data warehouse feed, audit trail, analytics, or replay capability. Call AddEventPublisher<TPublisher>() on the IKaleidoBuilder to register a real implementation.")]
-    private static partial void LogNoPublisher(ILogger logger);
 }

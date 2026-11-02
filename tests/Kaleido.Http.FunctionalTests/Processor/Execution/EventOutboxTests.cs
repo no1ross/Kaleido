@@ -247,8 +247,63 @@ public sealed class EventOutboxTests : IAsyncLifetime
     private static List<string?> RecordNames(JsonNode queryExecuted) =>
         [.. queryExecuted["records"]!.AsArray().Select(x => x!["name"]?.GetValue<string>())];
 
-    // Like the PriorAuth services: the host creates the store's schema at startup.
-    private async Task<IHost> StartHostAsync(IEventPublisher publisher, TimeSpan? retryDelay = null, Action<IKaleidoBuilder>? configureKaleido = null)
+    // #552: services only write their events; a host that does nothing but relay (no web server, no
+    // steps or queries) drains the database they share, publishing every service's events once, each
+    // tagged with the service that wrote it. Until it runs, the events wait in the outbox.
+    [Fact]
+    public async Task ServicesThatOnlyWrite_AreDrainedByAHostThatOnlyRelays()
+    {
+        var orders = await StartHostAsync(publisher: null, serviceName: OrdersService);
+        var returns = await StartHostAsync(publisher: null, serviceName: ReturnsService);
+        using (var first = await PostStepAsync(orders.GetTestClient(), OrdersService))
+        using (var second = await PostStepAsync(returns.GetTestClient(), ReturnsService))
+        {
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        }
+
+        var written = await OutboxCountAsync();
+        Assert.Null(orders.Services.GetService<IEventPublisher>());
+        Assert.True(written > 0);
+
+        var publisher = new RecordingPublisher();
+        await StartRelayHostAsync(publisher);
+        await WaitUntilAsync(async () => await OutboxCountAsync() == 0);
+
+        Assert.Equal(written, publisher.Published.Count);
+        Assert.Equal(written, publisher.Published.Select(x => x.EventId).Distinct().Count());
+        Assert.Equal([OrdersService, ReturnsService], publisher.Services.Distinct().Order(StringComparer.Ordinal));
+    }
+
+    private const string OrdersService = "orders";
+    private const string ReturnsService = "returns";
+
+    // A host with nothing but the relay, on the database the services share: a generic host, no web server.
+    private async Task StartRelayHostAsync(IEventPublisher publisher)
+    {
+        var host = await new HostBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddSingleton(new TestPublisher(publisher));
+                services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                {
+                    ServiceName = "outbox-relay",
+                    AuthorizationMode = KaleidoAuthorizationMode.None,
+                    Assemblies = [typeof(RuntimeRootStep).Assembly],
+                    TypeFilter = _ => false,
+                    Events = new() { Resilience = new() { RetryDelay = TimeSpan.FromMilliseconds(50) } },
+                })
+                    .AddSqliteOutboxStore($"Data Source={_databasePath}")
+                    .AddOutboxRelay<TestPublisher>();
+            })
+            .StartAsync(Cancel);
+
+        _hosts.Add(host);
+    }
+
+    // Like the PriorAuth services: the host creates the store's schema at startup. Without a publisher it
+    // only writes its events (#552).
+    private async Task<IHost> StartHostAsync(IEventPublisher? publisher, TimeSpan? retryDelay = null, Action<IKaleidoBuilder>? configureKaleido = null, string serviceName = FunctionalProcessorNames.TestProcessor)
     {
         var host = await new HostBuilder()
             .ConfigureWebHost(webBuilder =>
@@ -260,7 +315,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
                     services.AddSingleton<FunctionalRecordData>();
                     var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), new()
                     {
-                        ServiceName = FunctionalProcessorNames.TestProcessor,
+                        ServiceName = serviceName,
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(RuntimeRootStep).Assembly],
                         Events = new() { Resilience = new() { RetryDelay = retryDelay ?? TimeSpan.FromMilliseconds(50) } },
@@ -268,8 +323,13 @@ public sealed class EventOutboxTests : IAsyncLifetime
                         .AddInMemoryStores()
                         .AddHttp()
                         .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
-                    services.RemoveAll<IEventPublisher>();
-                    services.AddSingleton<IEventPublisher>(publisher);
+                    // This host writes its events, and with a publisher runs the relay that publishes them (#552).
+                    if (publisher is not null)
+                    {
+                        services.AddSingleton(new TestPublisher(publisher));
+                        kaleido.AddOutboxRelay<TestPublisher>();
+                    }
+
                     configureKaleido?.Invoke(kaleido);
                 });
                 webBuilder.Configure(app =>
@@ -288,10 +348,10 @@ public sealed class EventOutboxTests : IAsyncLifetime
         return host;
     }
 
-    private static async Task<HttpResponseMessage> PostStepAsync(HttpClient client)
+    private static async Task<HttpResponseMessage> PostStepAsync(HttpClient client, string serviceName = FunctionalProcessorNames.TestProcessor)
     {
         using var content = new StringContent("""{"processStep":{}}""", Encoding.UTF8, "application/json");
-        return await client.PostAsync(RootStepUrl, content, Cancel);
+        return await client.PostAsync(RootStepUrl.Replace($"/{FunctionalProcessorNames.TestProcessor}/", $"/{serviceName}/", StringComparison.Ordinal), content, Cancel);
     }
 
     private static async Task WaitUntilAsync(Func<Task<bool>> condition)
@@ -335,6 +395,9 @@ public sealed class EventOutboxTests : IAsyncLifetime
 
         public ConcurrentQueue<(string EventType, JsonNode Event)> Events { get; } = new();
 
+        // The service each published event names as its writer.
+        public ConcurrentQueue<string> Services { get; } = new();
+
         public int Calls => Volatile.Read(ref _calls);
 
         public Task PublishAsync<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope, CancellationToken cancellationToken = default)
@@ -348,6 +411,12 @@ public sealed class EventOutboxTests : IAsyncLifetime
             }
 
             Published.Enqueue((envelope.Event.EventId, envelope.EventType));
+            Services.Enqueue(envelope.Context switch
+            {
+                ProcessEventContext process => process.ServiceName,
+                QueryableEventContext query => query.ServiceName,
+                _ => string.Empty,
+            });
             Events.Enqueue((envelope.EventType, JsonSerializer.SerializeToNode(envelope.Event, JsonOptions)!));
             return Task.CompletedTask;
         }
@@ -420,5 +489,13 @@ public sealed class EventOutboxTests : IAsyncLifetime
             "***".AsSpan().CopyTo(destination);
             return 3;
         }
+    }
+
+    // The test's publisher behind the relay's own registration (AddOutboxRelay takes a type).
+    private sealed class TestPublisher(IEventPublisher inner) : IEventPublisher
+    {
+        public Task PublishAsync<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope, CancellationToken cancellationToken)
+            where TEvent : IKaleidoEvent =>
+            inner.PublishAsync(envelope, cancellationToken);
     }
 }

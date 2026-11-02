@@ -11,7 +11,7 @@ namespace Kaleido.Guide.Examples.Persistence;
 
 // snippet: persistence-dbcontext
 // One DbContext for the process state and the outbox: registered scoped, one per request, so the
-// context store, the outbox and the transaction share it.
+// context store, the outbox store and the transaction share it.
 public sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) : DbContext(options)
 {
     public DbSet<ProcessRow> Processes => Set<ProcessRow>();
@@ -40,15 +40,32 @@ public sealed class ProcessRow
     public string State { get; set; } = string.Empty;
 }
 
+// Times as UTC ticks, so due and expired entries are found with plain comparisons.
 public sealed class OutboxMessage
 {
     public Guid EventId { get; set; }
 
     public string EventType { get; set; } = string.Empty;
 
+    public string ServiceName { get; set; } = string.Empty;
+
+    public string? ServiceVersion { get; set; }
+
     public string Payload { get; set; } = string.Empty;
 
-    public DateTimeOffset OccurredUtc { get; set; }
+    public long OccurredUtc { get; set; }
+
+    public int Attempts { get; set; }
+
+    public long NextAttemptUtc { get; set; }
+
+    public string? LastError { get; set; }
+
+    public bool IsParked { get; set; }
+
+    public string? LeaseOwner { get; set; }
+
+    public long LeaseUntil { get; set; }
 }
 // end snippet
 
@@ -104,24 +121,82 @@ public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStor
 // end snippet
 
 // snippet: persistence-outbox
-// Your outbox: Kaleido hands it every event; a state transition's event inside the transaction.
-public sealed class OrdersOutbox(OrdersDbContext db) : IKaleidoOutbox
+// The outbox on the same DbContext: every event the service writes - a state transition's inside its
+// transaction - and the relay's claims, each leased to one relay instance at a time.
+public sealed class OrdersOutboxStore(OrdersDbContext db, KaleidoServiceOptions service, TimeProvider time) : IKaleidoOutboxStore
 {
+    private string Owner => service.InstanceId.ToString("N");
+
     public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
         db.OutboxMessages.AddRange(events.Select(x => new OutboxMessage
         {
             EventId = x.EventId,
             EventType = x.EventType,
+            ServiceName = x.ServiceName,
+            ServiceVersion = x.ServiceVersion,
             Payload = x.Payload,
-            OccurredUtc = x.OccurredUtc,
+            OccurredUtc = x.OccurredUtc.UtcTicks,
+            NextAttemptUtc = x.NextAttemptUtc.UtcTicks,
         }));
 
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    // Optional: after the commit, wake your dispatcher instead of waiting for its next poll.
-    public Task CommittedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    // A compare-and-set: the UPDATE re-checks that each entry is still unleased, so two relays claiming
+    // at once never get the same one; each reads back only what it leased.
+    public async Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow().UtcTicks;
+        var until = now + lease.Ticks;
+        var due = await db.OutboxMessages.AsNoTracking()
+            .Where(x => !x.IsParked && x.NextAttemptUtc <= now && x.LeaseUntil <= now)
+            .OrderBy(x => x.OccurredUtc).Select(x => x.EventId).Take(maxCount)
+            .ToListAsync(cancellationToken);
+
+        await db.OutboxMessages
+            .Where(x => due.Contains(x.EventId) && !x.IsParked && x.LeaseUntil <= now)
+            .ExecuteUpdateAsync(x => x.SetProperty(m => m.LeaseOwner, Owner).SetProperty(m => m.LeaseUntil, until), cancellationToken);
+
+        var claimed = await db.OutboxMessages.AsNoTracking()
+            .Where(x => due.Contains(x.EventId) && x.LeaseOwner == Owner && x.LeaseUntil == until)
+            .OrderBy(x => x.OccurredUtc)
+            .ToListAsync(cancellationToken);
+
+        return [.. claimed.Select(x => new KaleidoOutboxEvent
+        {
+            EventId = x.EventId,
+            EventType = x.EventType,
+            ServiceName = x.ServiceName,
+            ServiceVersion = x.ServiceVersion,
+            Payload = x.Payload,
+            OccurredUtc = new DateTimeOffset(x.OccurredUtc, TimeSpan.Zero),
+            Attempts = x.Attempts,
+            NextAttemptUtc = new DateTimeOffset(x.NextAttemptUtc, TimeSpan.Zero),
+            LastError = x.LastError,
+        })];
+    }
+
+    // Both only while this instance still holds the lease.
+    public Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken) =>
+        Leased(eventId).ExecuteDeleteAsync(cancellationToken);
+
+    public Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken) =>
+        Leased(eventId).ExecuteUpdateAsync(
+            x => x.SetProperty(m => m.Attempts, m => m.Attempts + 1)
+                .SetProperty(m => m.LastError, errorMessage)
+                .SetProperty(m => m.NextAttemptUtc, (retryAtUtc ?? time.GetUtcNow()).UtcTicks)
+                .SetProperty(m => m.IsParked, retryAtUtc == null)
+                .SetProperty(m => m.LeaseOwner, (string?)null)
+                .SetProperty(m => m.LeaseUntil, 0L),
+            cancellationToken);
+
+    private IQueryable<OutboxMessage> Leased(Guid eventId)
+    {
+        var now = time.GetUtcNow().UtcTicks;
+
+        return db.OutboxMessages.Where(x => x.EventId == eventId && x.LeaseOwner == Owner && x.LeaseUntil > now);
+    }
 }
 // end snippet
 
@@ -151,7 +226,7 @@ public static class OrdersPersistence
 
         return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(OrdersContextStore).Assembly] })
             .AddContextStore<OrdersContextStore>()
-            .AddOutbox<OrdersOutbox>()
+            .AddOutboxStore<OrdersOutboxStore>()
             .AddTransactions<OrdersTransactions>()
             // This example keeps its idempotency records in memory; a production host registers a
             // durable IKaleidoIdempotencyStore (AddIdempotencyStore<T>(), AddSqliteIdempotencyStore).

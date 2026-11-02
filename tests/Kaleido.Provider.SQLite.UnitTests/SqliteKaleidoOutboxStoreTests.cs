@@ -244,4 +244,22 @@ public sealed class SqliteKaleidoOutboxStoreTests
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut(dbContext).AddAsync(null!, TestContext.Current.CancellationToken));
     }
+
+    // #552: services and versions share the outbox database; a relay claims every one's entries, each
+    // with the writer it names, kept as given.
+    [Fact]
+    public async Task ClaimEventsAsync_ClaimsEveryServicesEntries_WithTheirWriter()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var orders = Event() with { ServiceName = "orders" };
+        var returns = Event() with { ServiceName = "returns", ServiceVersion = "2" };
+        await sut.AddAsync([orders, returns], TestContext.Current.CancellationToken);
+
+        var claimed = await sut.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            [("orders", (string?)null), ("returns", "2")],
+            claimed.Select(x => (x.ServiceName, x.ServiceVersion)).Order());
+    }
 }

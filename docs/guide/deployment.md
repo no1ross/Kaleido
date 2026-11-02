@@ -114,7 +114,7 @@ request id and process id ([Callers and correlation](callers-and-correlation.md)
 ## Before production
 
 - Durable stores for state, outbox and idempotency ([Persistence](persistence.md)).
-- An `IEventPublisher`, or your own outbox ([Events and the outbox](events-and-outbox.md)).
+- A relay for every outbox database: `AddOutboxRelay<TPublisher>()` with your `IEventPublisher`, on one of the services or a host with nothing else ([Events and the outbox](events-and-outbox.md)).
 - Authentication, and `Authenticated` or `ZeroTrust` ([Callers and correlation](callers-and-correlation.md)).
 - An event redaction policy for classified fields.
 - Alerts on parked events and enqueue failures.

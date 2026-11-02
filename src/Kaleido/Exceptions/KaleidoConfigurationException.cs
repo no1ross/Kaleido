@@ -100,9 +100,8 @@ public static class ConfigurationErrorCodes
     public const string DuplicateRegistration = "duplicate_registration";
 
     /// <summary>
-    /// Two outbox choices were registered: a service has one - Kaleido's built-in outbox (with its
-    /// storage, <c>AddOutboxStore</c>), the host's own (<c>AddOutbox</c>) or direct publication
-    /// (<c>AddDirectPublication</c>) - and one storage for the built-in outbox (ADR 0023).
+    /// Two outbox stores were registered (<c>AddOutboxStore</c>), or two relays with different publishers
+    /// (<c>AddOutboxRelay</c>): a service has one outbox store, and a host runs one relay (ADR 0036).
     /// </summary>
     public const string ConflictingOutbox = "conflicting_outbox";
 

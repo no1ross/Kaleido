@@ -1,25 +1,30 @@
 namespace Kaleido.Storage;
 
 /// <summary>
-/// The storage of Kaleido's built-in outbox: events waiting to be handed to
-/// <see cref="IEventPublisher"/>, with their delivery state. In memory by default; durable with a
-/// provider (e.g. <c>AddSqliteOutboxStore</c>) or your own (<c>AddOutboxStore&lt;T&gt;()</c>). Not used
-/// when the host brings its own outbox (<see cref="IKaleidoOutbox"/>, <c>AddOutbox&lt;T&gt;()</c>) or
-/// publishes directly (ADR 0023).
+/// The storage of Kaleido's outbox: every event a service writes, waiting for the relay to hand it to
+/// <see cref="IEventPublisher"/>, with its delivery state. In memory by default; durable with a provider
+/// (e.g. <c>AddSqliteOutboxStore</c>) or your own (<c>AddOutboxStore&lt;T&gt;()</c>). Every service writes to
+/// it; the relay (<c>AddOutboxRelay&lt;TPublisher&gt;()</c>) runs in one host on its database (ADR 0023, #552).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <strong>At least once:</strong> the built-in outbox adds Kaleido's events here
-/// (<see cref="AddAsync"/>) - a transition's events inside its transaction - and a background relay
-/// claims each one and hands it to <see cref="IEventPublisher"/>, retrying until it succeeds, across
-/// restarts when the storage is durable.
+/// <strong>At least once:</strong> every service adds its events here (<see cref="AddAsync"/>) - a
+/// transition's events inside its transaction - and the relay claims each one and hands it to
+/// <see cref="IEventPublisher"/>, retrying until it succeeds, across restarts when the storage is durable.
+/// </para>
+/// <para>
+/// <strong>Shared by services (#552):</strong> several services, and versions of one, may write to one
+/// outbox database; each entry names its <see cref="KaleidoOutboxEvent.ServiceName"/> and
+/// <see cref="KaleidoOutboxEvent.ServiceVersion"/>. A relay drains everything in the database it reads:
+/// <see cref="ClaimEventsAsync"/> claims any service's entries.
 /// </para>
 /// <para>
 /// <strong>Atomic with the process state</strong> when both are on one database and
 /// <see cref="IKaleidoTransactions"/> covers it (e.g. <c>AddSqliteContextStore</c> and
 /// <c>AddSqliteOutboxStore</c> on one SQLite database): write in the open transaction when there is
-/// one, on your own otherwise. An outbox on another database writes its events on their own: if the
-/// transition's commit then fails, they are still relayed, describing a state that was never saved.
+/// one, on your own otherwise. Keep the outbox on the context store's database: an outbox on another
+/// database writes its events on their own, and if the transition's commit then fails, they are still
+/// relayed, describing a state that was never saved.
 /// </para>
 /// <para>
 /// <strong>Several instances:</strong> with several instances on one shared store, each relay claims
@@ -83,6 +88,18 @@ public sealed record KaleidoOutboxEvent
 
     /// <summary>The event type (<see cref="KaleidoEventTypes"/>).</summary>
     public required string EventType { get; init; }
+
+    /// <summary>
+    /// The service that wrote the event (<see cref="KaleidoServiceOptions.ServiceName"/>): with several
+    /// services on one outbox database, whose it is (#552). Set by Kaleido; a store keeps it as given.
+    /// </summary>
+    public string ServiceName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The version of <see cref="ServiceName"/> (<see cref="KaleidoServiceOptions.ServiceVersion"/>);
+    /// <see langword="null"/> when it is unversioned. A store keeps it as given.
+    /// </summary>
+    public string? ServiceVersion { get; init; }
 
     /// <summary>The serialized <c>KaleidoEventEnvelope</c> (JSON).</summary>
     public required string Payload { get; init; }

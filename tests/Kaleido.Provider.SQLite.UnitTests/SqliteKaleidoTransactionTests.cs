@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Provider.SQLite.UnitTests;
 
-// What a host's own outbox on the same database joins to commit with the state (ADR 0023).
+// What an outbox store of the host's own on the same database joins to commit with the state (ADR 0023).
 public sealed class SqliteKaleidoTransactionTests
     : Kaleido.UnitTests.SutFixture, IDisposable
 {

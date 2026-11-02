@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace Kaleido.Http.FunctionalTests.Processor.Cancellation;
@@ -129,8 +128,9 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
                         kaleido.AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
                     }
 
-                    services.RemoveAll<IEventPublisher>();
-                    services.AddSingleton<IEventPublisher>(_publisher);
+                    // This host writes its events and runs the relay that publishes them (#552).
+                    services.AddSingleton(_publisher);
+                    kaleido.AddOutboxRelay<RecordingPublisher>();
                 });
                 web.Configure(app =>
                 {
