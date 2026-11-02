@@ -30,6 +30,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     private readonly IKaleidoEventSignal _signal;
     private readonly ILogger<KaleidoEventRelay> _logger;
     private readonly KaleidoEventOptions _options;
+    private readonly KaleidoServiceOptions _serviceOptions;
     private readonly TimeProvider _time;
     private readonly CircuitBreakerStateProvider _circuit = new();
     private readonly ResiliencePipeline _pipeline;
@@ -51,6 +52,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         _publisher = publisher;
         _signal = signal;
         _logger = logger;
+        _serviceOptions = serviceOptions;
         _options = serviceOptions.Events;
 
         // Long enough for a whole batch at the configured parallelism, plus a margin.
@@ -77,9 +79,16 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     private async Task RunAsync(CancellationToken stoppingToken)
     {
         var wait = RelayInterval;
+        DateTimeOffset? lastHeartbeat = null;
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            // The writers' health check reads the heartbeat from the outbox's database (#552).
+            if (lastHeartbeat is not { } heartbeat || _time.GetUtcNow() - heartbeat >= _options.RelayHeartbeatInterval)
+            {
+                lastHeartbeat = await RecordHeartbeatAsync(stoppingToken);
+            }
+
             // While the circuit is open nothing is claimed: the entries stay untouched in the outbox.
             if (CircuitIsOpen)
             {
@@ -99,6 +108,37 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
             wait = claimed > 0 ? RelayInterval : Min(wait * 2, IdleInterval);
             await _signal.WaitAsync(wait, stoppingToken);
         }
+    }
+
+    // Records this relay instance as draining the outbox; returns when. A failure is logged and retried at
+    // the next interval: the heartbeat must never stop the relay.
+    internal async Task<DateTimeOffset> RecordHeartbeatAsync(CancellationToken cancellationToken)
+    {
+        var now = _time.GetUtcNow();
+
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<IKaleidoOutboxStore>().RecordRelayAsync(
+                new KaleidoOutboxRelay
+                {
+                    InstanceId = _serviceOptions.InstanceId,
+                    ServiceName = _serviceOptions.ServiceName,
+                    Publisher = _publisher.GetType().Name,
+                    SeenUtc = now,
+                },
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            LogHeartbeatFailed(_logger, exception);
+        }
+
+        return now;
     }
 
     // Claims one batch and publishes it; returns the number of entries claimed.
@@ -289,4 +329,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The event relay could not read or update the outbox; it tries again.")]
     private static partial void LogRelayFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The outbox relay could not record its heartbeat; it keeps relaying, and the writers' outbox health check may report that no relay runs.")]
+    private static partial void LogHeartbeatFailed(ILogger logger, Exception exception);
 }

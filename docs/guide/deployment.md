@@ -71,6 +71,7 @@ is never migrated ([provider README](../../src/Kaleido.Provider.SQLite/README.md
 
 | Check | Registered by |
 |---|---|
+| The outbox (`kaleido-outbox`): a relay was seen draining it within `Kaleido:Events:RelaySeenWithin`, and no backlog (oldest due event within `BacklogMaxAge`, at most `BacklogMaxCount` due); `Degraded` otherwise (`OutboxHealthFailureStatus`) | `AddKaleido()`, every service ([Events and the outbox](events-and-outbox.md#is-a-relay-running)) |
 | Each downstream Kaleido service (`kaleido-{name}`, probes its registry) | `AddHttpClients()` ([client README](../../src/Kaleido.Http.Client/README.md)) |
 | Your database | you (the SQLite provider registers none) |
 

@@ -1428,3 +1428,47 @@ Kaleido.Storage.KaleidoOutboxEvent.ServiceName.get -> string!
 Kaleido.Storage.KaleidoOutboxEvent.ServiceVersion.get -> string?
 Kaleido.Storage.KaleidoOutboxEvent.ServiceName.init -> void
 Kaleido.Storage.KaleidoOutboxEvent.ServiceVersion.init -> void
+Kaleido.Storage.KaleidoOutboxStatus
+override Kaleido.Storage.KaleidoOutboxStatus.ToString() -> string!
+Kaleido.Storage.KaleidoOutboxRelay
+static Kaleido.Storage.KaleidoOutboxStatus.operator !=(Kaleido.Storage.KaleidoOutboxStatus? left, Kaleido.Storage.KaleidoOutboxStatus? right) -> bool
+override Kaleido.Storage.KaleidoOutboxRelay.ToString() -> string!
+static Kaleido.Storage.KaleidoOutboxStatus.operator ==(Kaleido.Storage.KaleidoOutboxStatus? left, Kaleido.Storage.KaleidoOutboxStatus? right) -> bool
+static Kaleido.Storage.KaleidoOutboxRelay.operator !=(Kaleido.Storage.KaleidoOutboxRelay? left, Kaleido.Storage.KaleidoOutboxRelay? right) -> bool
+override Kaleido.Storage.KaleidoOutboxStatus.GetHashCode() -> int
+static Kaleido.Storage.KaleidoOutboxRelay.operator ==(Kaleido.Storage.KaleidoOutboxRelay? left, Kaleido.Storage.KaleidoOutboxRelay? right) -> bool
+override Kaleido.Storage.KaleidoOutboxStatus.Equals(object? obj) -> bool
+override Kaleido.Storage.KaleidoOutboxRelay.GetHashCode() -> int
+Kaleido.Storage.KaleidoOutboxStatus.Equals(Kaleido.Storage.KaleidoOutboxStatus? other) -> bool
+Kaleido.Storage.KaleidoOutboxStatus.<Clone>$() -> Kaleido.Storage.KaleidoOutboxStatus!
+override Kaleido.Storage.KaleidoOutboxRelay.Equals(object? obj) -> bool
+Kaleido.Storage.KaleidoOutboxStatus.KaleidoOutboxStatus() -> void
+Kaleido.Storage.KaleidoOutboxRelay.Equals(Kaleido.Storage.KaleidoOutboxRelay? other) -> bool
+Kaleido.Storage.KaleidoOutboxRelay.<Clone>$() -> Kaleido.Storage.KaleidoOutboxRelay!
+Kaleido.Storage.KaleidoOutboxRelay.KaleidoOutboxRelay() -> void
+Kaleido.Eventing.KaleidoEventOptions.RelayHeartbeatInterval.get -> System.TimeSpan
+Kaleido.Eventing.KaleidoEventOptions.RelaySeenWithin.get -> System.TimeSpan
+Kaleido.Eventing.KaleidoEventOptions.RelayHeartbeatInterval.init -> void
+Kaleido.Eventing.KaleidoEventOptions.RelaySeenWithin.init -> void
+Kaleido.Eventing.KaleidoEventOptions.BacklogMaxAge.get -> System.TimeSpan
+Kaleido.Eventing.KaleidoEventOptions.BacklogMaxCount.get -> int
+Kaleido.Eventing.KaleidoEventOptions.BacklogMaxCount.init -> void
+Kaleido.Eventing.KaleidoEventOptions.BacklogMaxAge.init -> void
+Kaleido.Eventing.KaleidoEventOptions.OutboxHealthFailureStatus.init -> void
+Kaleido.Eventing.KaleidoEventOptions.OutboxHealthFailureStatus.get -> Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus
+Kaleido.Storage.KaleidoOutboxStatus.LastRelaySeenUtc.init -> void
+Kaleido.Storage.KaleidoOutboxStatus.LastRelaySeenUtc.get -> System.DateTimeOffset?
+Kaleido.Storage.KaleidoOutboxStatus.DueCount.init -> void
+Kaleido.Storage.KaleidoOutboxStatus.DueCount.get -> long
+Kaleido.Storage.KaleidoOutboxStatus.OldestDueUtc.get -> System.DateTimeOffset?
+Kaleido.Storage.KaleidoOutboxStatus.OldestDueUtc.init -> void
+Kaleido.Storage.KaleidoOutboxRelay.InstanceId.init -> void
+Kaleido.Storage.KaleidoOutboxRelay.InstanceId.get -> System.Guid
+Kaleido.Storage.KaleidoOutboxRelay.ServiceName.get -> string!
+Kaleido.Storage.KaleidoOutboxRelay.ServiceName.init -> void
+Kaleido.Storage.KaleidoOutboxRelay.Publisher.get -> string!
+Kaleido.Storage.KaleidoOutboxRelay.Publisher.init -> void
+Kaleido.Storage.KaleidoOutboxRelay.SeenUtc.get -> System.DateTimeOffset
+Kaleido.Storage.KaleidoOutboxRelay.SeenUtc.init -> void
+Kaleido.Storage.IKaleidoOutboxStore.RecordRelayAsync(Kaleido.Storage.KaleidoOutboxRelay! relay, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Storage.IKaleidoOutboxStore.GetStatusAsync(System.DateTimeOffset now, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Storage.KaleidoOutboxStatus!>!

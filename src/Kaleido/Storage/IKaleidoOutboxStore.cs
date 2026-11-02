@@ -69,6 +69,60 @@ public interface IKaleidoOutboxStore
     /// parks the entry (kept, never claimed again).
     /// </summary>
     Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Records that a relay instance is draining this outbox (its heartbeat): stores
+    /// <paramref name="relay"/> under its <see cref="KaleidoOutboxRelay.InstanceId"/>, replacing that
+    /// instance's earlier record. Called by the relay every <see cref="KaleidoEventOptions.RelayHeartbeatInterval"/>.
+    /// </summary>
+    /// <remarks>
+    /// The writers' health check reads the latest heartbeat from the same database (<see cref="GetStatusAsync"/>),
+    /// so a missing relay is seen without any call between services (#552). A store may remove the records of
+    /// relays not seen for a long time (a stopped instance never records again; a restart is a new instance).
+    /// </remarks>
+    Task RecordRelayAsync(KaleidoOutboxRelay relay, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// What the outbox health check needs, at <paramref name="now"/>: when a relay was last seen, how many
+    /// entries are due (not parked, <see cref="KaleidoOutboxEvent.NextAttemptUtc"/> reached), and when the
+    /// oldest due one occurred.
+    /// </summary>
+    Task<KaleidoOutboxStatus> GetStatusAsync(DateTimeOffset now, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// A relay instance's heartbeat in the outbox it drains (<see cref="IKaleidoOutboxStore.RecordRelayAsync"/>).
+/// </summary>
+[ExcludeFromCodeCoverage]
+public sealed record KaleidoOutboxRelay
+{
+    /// <summary>The relay host's instance (<see cref="KaleidoServiceOptions.InstanceId"/>); one record per instance.</summary>
+    public required Guid InstanceId { get; init; }
+
+    /// <summary>The relay host's service name (<see cref="KaleidoServiceOptions.ServiceName"/>), for operators.</summary>
+    public required string ServiceName { get; init; }
+
+    /// <summary>The publisher it hands the entries to (its type name), for operators.</summary>
+    public required string Publisher { get; init; }
+
+    /// <summary>When the relay was seen (UTC).</summary>
+    public required DateTimeOffset SeenUtc { get; init; }
+}
+
+/// <summary>
+/// The outbox's state for its health check (<see cref="IKaleidoOutboxStore.GetStatusAsync"/>).
+/// </summary>
+[ExcludeFromCodeCoverage]
+public sealed record KaleidoOutboxStatus
+{
+    /// <summary>When any relay was last seen draining this outbox; <see langword="null"/> when none ever was.</summary>
+    public DateTimeOffset? LastRelaySeenUtc { get; init; }
+
+    /// <summary>The entries that are due: not parked, and their next attempt reached.</summary>
+    public long DueCount { get; init; }
+
+    /// <summary>When the oldest due entry occurred; <see langword="null"/> when none is due.</summary>
+    public DateTimeOffset? OldestDueUtc { get; init; }
 }
 
 /// <summary>

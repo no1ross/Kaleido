@@ -17,6 +17,7 @@ using Microsoft.Extensions.Compliance.Redaction;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 
 namespace Kaleido.Http.FunctionalTests.Processor.Execution;
@@ -265,15 +266,23 @@ public sealed class EventOutboxTests : IAsyncLifetime
         var written = await OutboxCountAsync();
         Assert.Null(orders.Services.GetService<IEventPublisher>());
         Assert.True(written > 0);
+        Assert.Equal(HealthStatus.Degraded, await OutboxHealthAsync(orders));
 
         var publisher = new RecordingPublisher();
         await StartRelayHostAsync(publisher);
         await WaitUntilAsync(async () => await OutboxCountAsync() == 0);
 
+        // The relay's heartbeat is in the database the writers share: their outbox check sees it.
+        Assert.Equal(HealthStatus.Healthy, await OutboxHealthAsync(orders));
+        Assert.Equal(HealthStatus.Healthy, await OutboxHealthAsync(returns));
+
         Assert.Equal(written, publisher.Published.Count);
         Assert.Equal(written, publisher.Published.Select(x => x.EventId).Distinct().Count());
         Assert.Equal([OrdersService, ReturnsService], publisher.Services.Distinct().Order(StringComparer.Ordinal));
     }
+
+    private static async Task<HealthStatus> OutboxHealthAsync(IHost host) =>
+        (await host.Services.GetRequiredService<HealthCheckService>().CheckHealthAsync(x => x.Name == "kaleido-outbox", Cancel)).Status;
 
     private const string OrdersService = "orders";
     private const string ReturnsService = "returns";

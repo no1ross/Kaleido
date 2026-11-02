@@ -213,4 +213,33 @@ public sealed class InMemoryKaleidoOutboxStoreTests
         Assert.Equal(LogLevel.Warning, (LogLevel)log.Arguments[0]);
         Assert.Contains("InMemoryKaleidoOutboxStore is active", log.Arguments[2].ToString());
     }
+
+    // #552: the heartbeat and the backlog the outbox health check reads.
+    [Fact]
+    public async Task GetStatusAsync_ReportsTheLatestHeartbeat_AndTheDueEntries()
+    {
+        var store = CreateSut();
+        var now = time.GetUtcNow();
+        await store.RecordRelayAsync(new KaleidoOutboxRelay { InstanceId = Guid.NewGuid(), ServiceName = "relay", Publisher = "P", SeenUtc = now.AddMinutes(-3) }, CancellationToken.None);
+        await store.RecordRelayAsync(new KaleidoOutboxRelay { InstanceId = Guid.NewGuid(), ServiceName = "relay", Publisher = "P", SeenUtc = now.AddMinutes(-1) }, CancellationToken.None);
+        var oldest = Event() with { OccurredUtc = now.AddMinutes(-2), NextAttemptUtc = now.AddMinutes(-2) };
+        var notDue = Event() with { OccurredUtc = now.AddMinutes(-4), NextAttemptUtc = now.AddMinutes(1) };
+        await store.AddAsync([oldest, Event(), notDue], CancellationToken.None);
+
+        var status = await store.GetStatusAsync(now, CancellationToken.None);
+
+        Assert.Equal(now.AddMinutes(-1), status.LastRelaySeenUtc);
+        Assert.Equal(2, status.DueCount);
+        Assert.Equal(oldest.OccurredUtc, status.OldestDueUtc);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_WithNoRelayAndNothingDue_ReportsNone()
+    {
+        var status = await CreateSut().GetStatusAsync(time.GetUtcNow(), CancellationToken.None);
+
+        Assert.Null(status.LastRelaySeenUtc);
+        Assert.Equal(0, status.DueCount);
+        Assert.Null(status.OldestDueUtc);
+    }
 }

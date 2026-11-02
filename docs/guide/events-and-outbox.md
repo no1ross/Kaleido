@@ -90,6 +90,23 @@ Placing, confirming and shipping an order publishes `process.created.v1`, three
 | No relay runs for the database | the events wait and the database grows |
 | In-memory store (`AddInMemoryStores()`) | lost on restart; drained only by a relay in the same process |
 
+## Is a relay running?
+
+Nothing at startup can tell whether some other host relays a service's outbox, so every service checks
+it at run time, in its own database ([ADR 0036](../decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)):
+
+- **Every relay instance keeps a heartbeat** in the outbox it drains (`IKaleidoOutboxStore.RecordRelayAsync`,
+  every `Kaleido:Events:RelayHeartbeatInterval`, default 30 s).
+- **Every service's health check `kaleido-outbox`** (registered by `AddKaleido()`) reads it there, with the
+  backlog. It fails when:
+  - no relay was seen within `RelaySeenWithin` (default 2 minutes), including when none ever ran;
+  - the oldest due event is older than `BacklogMaxAge` (default 5 minutes);
+  - more than `BacklogMaxCount` events are due (default 10,000).
+- **It reports `Degraded`** (`OutboxHealthFailureStatus`): the service still works and its events wait.
+  Set `Unhealthy` to fail readiness on it.
+
+It calls no other service, so no check depends on another service's health.
+
 ## Redaction
 
 Events go to stores that keep them for years, so classified fields are redacted **before** an event

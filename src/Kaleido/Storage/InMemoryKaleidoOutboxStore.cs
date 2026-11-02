@@ -7,6 +7,7 @@ namespace Kaleido.Storage;
 internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
 {
     private readonly Dictionary<Guid, OutboxEntry> _outbox = [];
+    private readonly Dictionary<Guid, KaleidoOutboxRelay> _relays = [];
     private readonly object _lock = new();
     private readonly TimeProvider _time;
 
@@ -87,6 +88,33 @@ internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
         }
 
         return Task.CompletedTask;
+    }
+
+    public Task RecordRelayAsync(KaleidoOutboxRelay relay, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(relay);
+
+        lock (_lock)
+        {
+            _relays[relay.InstanceId] = relay;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<KaleidoOutboxStatus> GetStatusAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var due = _outbox.Values.Where(x => !x.Event.IsParked && x.Event.NextAttemptUtc <= now).ToList();
+
+            return Task.FromResult(new KaleidoOutboxStatus
+            {
+                LastRelaySeenUtc = _relays.Count == 0 ? null : _relays.Values.Max(x => x.SeenUtc),
+                DueCount = due.Count,
+                OldestDueUtc = due.Count == 0 ? null : due.Min(x => x.Event.OccurredUtc),
+            });
+        }
     }
 
     // A completed or failed attempt counts only while the lease is still held.

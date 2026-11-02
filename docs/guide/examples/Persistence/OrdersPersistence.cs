@@ -18,11 +18,14 @@ public sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) :
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
+    public DbSet<OutboxRelayRow> OutboxRelays => Set<OutboxRelayRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // A process is stored under its processor, version and id: services and versions may share it.
         modelBuilder.Entity<ProcessRow>().HasKey(x => new { x.ProcessorName, x.ProcessorVersion, x.ProcessId });
         modelBuilder.Entity<OutboxMessage>().HasKey(x => x.EventId);
+        modelBuilder.Entity<OutboxRelayRow>().HasKey(x => x.InstanceId);
     }
 }
 
@@ -66,6 +69,18 @@ public sealed class OutboxMessage
     public string? LeaseOwner { get; set; }
 
     public long LeaseUntil { get; set; }
+}
+
+// A relay instance's heartbeat: the writers' health check reads it to know a relay drains the outbox.
+public sealed class OutboxRelayRow
+{
+    public Guid InstanceId { get; set; }
+
+    public string ServiceName { get; set; } = string.Empty;
+
+    public string Publisher { get; set; } = string.Empty;
+
+    public long SeenUtc { get; set; }
 }
 // end snippet
 
@@ -190,6 +205,35 @@ public sealed class OrdersOutboxStore(OrdersDbContext db, KaleidoServiceOptions 
                 .SetProperty(m => m.LeaseOwner, (string?)null)
                 .SetProperty(m => m.LeaseUntil, 0L),
             cancellationToken);
+
+    // The relay's heartbeat, one row per relay instance.
+    public async Task RecordRelayAsync(KaleidoOutboxRelay relay, CancellationToken cancellationToken)
+    {
+        var row = await db.OutboxRelays.FindAsync([relay.InstanceId], cancellationToken);
+
+        if (row is null)
+        {
+            db.OutboxRelays.Add(row = new OutboxRelayRow { InstanceId = relay.InstanceId });
+        }
+
+        (row.ServiceName, row.Publisher, row.SeenUtc) = (relay.ServiceName, relay.Publisher, relay.SeenUtc.UtcTicks);
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    // What the outbox health check reads: the last heartbeat and the due entries.
+    public async Task<KaleidoOutboxStatus> GetStatusAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var due = db.OutboxMessages.AsNoTracking().Where(x => !x.IsParked && x.NextAttemptUtc <= now.UtcTicks);
+        var seen = await db.OutboxRelays.AsNoTracking().MaxAsync(x => (long?)x.SeenUtc, cancellationToken);
+        var oldest = await due.MinAsync(x => (long?)x.OccurredUtc, cancellationToken);
+
+        return new KaleidoOutboxStatus
+        {
+            LastRelaySeenUtc = seen is { } ticks ? new DateTimeOffset(ticks, TimeSpan.Zero) : null,
+            DueCount = await due.LongCountAsync(cancellationToken),
+            OldestDueUtc = oldest is { } occurred ? new DateTimeOffset(occurred, TimeSpan.Zero) : null,
+        };
+    }
 
     private IQueryable<OutboxMessage> Leased(Guid eventId)
     {

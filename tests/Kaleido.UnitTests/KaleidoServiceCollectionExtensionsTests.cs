@@ -621,6 +621,10 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         public Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task RecordRelayAsync(Kaleido.Storage.KaleidoOutboxRelay relay, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Kaleido.Storage.KaleidoOutboxStatus> GetStatusAsync(DateTimeOffset now, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class OtherOutboxStore : OwnOutboxStore;
@@ -654,5 +658,20 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     {
         public Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> Redact<TEvent, TContext>(Kaleido.Eventing.KaleidoEventEnvelope<TEvent, TContext> envelope)
             where TEvent : Kaleido.Eventing.IKaleidoEvent => envelope;
+    }
+
+    // #552: every service watches its outbox.
+    [Fact]
+    public void AddKaleido_RegistersTheOutboxHealthCheck_Once()
+    {
+        var services = new ServiceCollection();
+        NewBuilder(services);
+        services.AddHealthChecks();
+
+        using var provider = services.BuildServiceProvider();
+        var registrations = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckServiceOptions>>().Value.Registrations;
+
+        var outbox = Assert.Single(registrations, x => x.Name == "kaleido-outbox");
+        Assert.Contains("outbox", outbox.Tags);
     }
 }

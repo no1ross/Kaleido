@@ -262,4 +262,60 @@ public sealed class SqliteKaleidoOutboxStoreTests
             [("orders", (string?)null), ("returns", "2")],
             claimed.Select(x => (x.ServiceName, x.ServiceVersion)).Order());
     }
+
+    private KaleidoOutboxRelay Relay(Guid instanceId, DateTimeOffset seen) =>
+        new() { InstanceId = instanceId, ServiceName = "outbox-relay", Publisher = "WarehousePublisher", SeenUtc = seen };
+
+    // #552: one heartbeat row per relay instance, replaced each time; the latest is what the writers read.
+    [Fact]
+    public async Task RecordRelayAsync_ReplacesTheInstancesHeartbeat_AndGetStatusAsyncReportsTheLatest()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var instance = Guid.NewGuid();
+        var now = time.GetUtcNow();
+
+        await sut.RecordRelayAsync(Relay(instance, now.AddMinutes(-2)), TestContext.Current.CancellationToken);
+        await sut.RecordRelayAsync(Relay(instance, now), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, await dbContext.OutboxRelays.CountAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(now, (await sut.GetStatusAsync(now, TestContext.Current.CancellationToken)).LastRelaySeenUtc);
+    }
+
+    // A stopped instance never records again; its row is dropped once it is a week old.
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1, 0)]
+    public async Task RecordRelayAsync_ForgetsRelaysNotSeenForTheRetention(long ticksBeyond, int kept)
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var now = time.GetUtcNow();
+
+        await sut.RecordRelayAsync(Relay(Guid.NewGuid(), now - SqliteKaleidoOutboxStore.RelayRetention - TimeSpan.FromTicks(ticksBeyond)), TestContext.Current.CancellationToken);
+        await sut.RecordRelayAsync(Relay(Guid.NewGuid(), now), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1 + kept, await dbContext.OutboxRelays.CountAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_CountsTheDueEntries_AndTheOldest_NotTheParkedOrTheFuture()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var now = time.GetUtcNow();
+        var oldest = Event(now.AddMinutes(-3));
+        var future = Event(now.AddMinutes(-4)) with { NextAttemptUtc = now.AddMinutes(1) };
+        var parked = Event(now.AddMinutes(-5));
+        await sut.AddAsync([parked], TestContext.Current.CancellationToken);
+        Assert.Single(await sut.ClaimEventsAsync(1, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken));
+        await sut.FailEventAsync(parked.EventId, retryAtUtc: null, "gave up", TestContext.Current.CancellationToken);
+        await sut.AddAsync([oldest, Event(now.AddMinutes(-1)), future], TestContext.Current.CancellationToken);
+
+        var status = await sut.GetStatusAsync(now, TestContext.Current.CancellationToken);
+
+        Assert.Null(status.LastRelaySeenUtc);
+        Assert.Equal(2, status.DueCount);
+        Assert.Equal(oldest.OccurredUtc, status.OldestDueUtc);
+    }
 }

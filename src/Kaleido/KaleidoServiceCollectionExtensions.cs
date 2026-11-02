@@ -3,6 +3,7 @@ using Microsoft.Extensions.Compliance.Redaction;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Kaleido;
 
@@ -144,6 +145,27 @@ public static class KaleidoServiceCollectionExtensions
         services.TryAddSingleton<IKaleidoEventRedactorProvider, KaleidoEventRedactorProvider>();
         services.TryAddSingleton<IKaleidoEventPayloadWriter, KaleidoEventPayloadWriter>();
         services.TryAddScoped<IKaleidoEventWriter, KaleidoEventWriter>();
+        AddOutboxHealthCheck(services);
+    }
+
+    // Every service writes events, so every service watches its outbox: a relay seen recently, and no
+    // backlog (#552). It is resolved in the health check's scope (the store may be scoped).
+    private static void AddOutboxHealthCheck(IServiceCollection services)
+    {
+        services.AddHealthChecks();
+        services.Configure<HealthCheckServiceOptions>(o =>
+        {
+            if (o.Registrations.Any(r => string.Equals(r.Name, KaleidoOutboxHealthCheck.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            o.Registrations.Add(new HealthCheckRegistration(
+                name: KaleidoOutboxHealthCheck.Name,
+                factory: sp => ActivatorUtilities.CreateInstance<KaleidoOutboxHealthCheck>(sp),
+                failureStatus: null,
+                tags: ["kaleido", "outbox"]));
+        });
     }
 
     /// <summary>
