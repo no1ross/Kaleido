@@ -115,8 +115,10 @@ internal sealed partial class KaleidoRegistryService(
             .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
+        // Versions of one service are one processor here: each may be marked (#553).
         var entryProcessors = processes
             .Where(p => p.IsEntryProcessor)
+            .DistinctBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         if (entryProcessors.Length > 1)
@@ -135,6 +137,8 @@ internal sealed partial class KaleidoRegistryService(
                 .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             ClientErrors = remote.Errors,
+            Services = remote.Services,
+            Missing = remote.Missing,
         };
 
         if (refresh)
@@ -142,9 +146,9 @@ internal sealed partial class KaleidoRegistryService(
             LogRegistryRebuilt(logger);
         }
 
-        if (result.ClientErrors.Count > 0)
+        if (result.ClientErrors.Count > 0 || result.Missing.Count > 0)
         {
-            LogRegistryPartial(logger, result.ClientErrors.Count, string.Join(", ", result.ClientErrors.Select(e => e.ClientName)));
+            LogRegistryPartial(logger, result.ClientErrors.Count + result.Missing.Count, string.Join(", ", result.ClientErrors.Select(e => e.ClientName).Concat(result.Missing.Select(m => m.ServiceName))));
         }
         else
         {
@@ -158,10 +162,17 @@ internal sealed partial class KaleidoRegistryService(
         AggregatedRegistryResponse response,
         CancellationToken cancellationToken)
     {
+        var processes = await FilterProcessesAsync(response.Processes, response.Queryables, cancellationToken);
+        var queryables = await FilterQueryablesAsync(response.Queryables, cancellationToken);
+
+        // A caller is told the status of the services it can see, no others (#553).
+        var visible = processes.Select(x => x.ServiceName).Concat(queryables.Select(x => x.ServiceName)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         return response with
         {
-            Processes = await FilterProcessesAsync(response.Processes, response.Queryables, cancellationToken),
-            Queryables = await FilterQueryablesAsync(response.Queryables, cancellationToken),
+            Processes = processes,
+            Queryables = queryables,
+            Services = [.. response.Services.Where(x => visible.Contains(x.ServiceName))],
         };
     }
 
@@ -335,7 +346,7 @@ internal sealed partial class KaleidoRegistryService(
     [LoggerMessage(Level = LogLevel.Debug, Message = "Registry rebuilt via force refresh.")]
     private static partial void LogRegistryRebuilt(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Registry response is partial — {ErrorCount} downstream client(s) failed: {ClientNames}.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Registry response is partial — {ErrorCount} downstream client(s) failed or expected service(s) are missing: {ClientNames}.")]
     private static partial void LogRegistryPartial(ILogger logger, int errorCount, string clientNames);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Registry response built: {ProcessCount} process(es), {QueryableCount} queryable(s).")]

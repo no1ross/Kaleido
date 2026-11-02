@@ -122,7 +122,7 @@ internal static class RegistryEndpointRouteBuilderExtensions
 
         // ?strict — agents/gateways get a real failure signal when
         // the aggregate is partial; the full body is still included.
-        if (strict && response.ClientErrors.Count > 0)
+        if (strict && response.IsPartial)
         {
             return Results.Json(
                 response,

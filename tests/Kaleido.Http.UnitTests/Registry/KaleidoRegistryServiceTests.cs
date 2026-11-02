@@ -69,9 +69,9 @@ public sealed class KaleidoRegistryServiceTests
                 }
 
                 var built = await build(cancellationToken) with { GeneratedAt = time.GetUtcNow() };
-                built = built with { IsPartial = built.ClientErrors.Count > 0 };
+                built = built with { IsPartial = built.ClientErrors.Count > 0 || built.Missing.Count > 0 };
 
-                if (!built.IsPartial)
+                if (built.ClientErrors.Count == 0)
                 {
                     stored[key] = built;
                 }
@@ -327,14 +327,33 @@ public sealed class KaleidoRegistryServiceTests
         authorizer.Verify(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    [Fact]
-    public async Task GetForCaller_MoreThanOneEntryProcessor_IsAConfigurationError()
+    private void EntryProcessors(params ProcessorRegistryResponse[] downstreamProcessors)
     {
         responses.Setup(x => x.CreateRegistryResponse(It.IsAny<ProcessorRegistryItem>(), It.IsAny<KaleidoServiceOptions>()))
             .Returns((ProcessorRegistryItem _, KaleidoServiceOptions options) => new ProcessorRegistryResponse { Name = options.ServiceName, IsEntryProcessor = true });
-        localProcessors.Add(new ProcessorRegistryItem());
+        downstream.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DownstreamRegistries(downstreamProcessors, [], []));
+    }
 
-        await Assert.ThrowsAsync<KaleidoConfigurationException>(() => CreateSut(aggregate: false).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel));
+    [Fact]
+    public async Task GetForCaller_MoreThanOneEntryProcessor_IsAConfigurationError()
+    {
+        EntryProcessors(new ProcessorRegistryResponse { Name = "radiology", IsEntryProcessor = true });
+
+        await Assert.ThrowsAsync<KaleidoConfigurationException>(() => CreateSut().Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel));
+    }
+
+    // #553: the control registry lists each version of a service; the versions are one processor.
+    [Fact]
+    public async Task GetForCaller_VersionsOfTheEntryProcessor_AreOneEntryProcessor()
+    {
+        EntryProcessors(
+            new ProcessorRegistryResponse { Name = "router", ServiceVersion = "1", IsEntryProcessor = true },
+            new ProcessorRegistryResponse { Name = "ROUTER", ServiceVersion = "2", IsEntryProcessor = true });
+
+        var registry = await CreateSut().Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
+
+        Assert.Equal(3, registry.Processes.Count);
     }
 
     [Fact]
@@ -384,7 +403,7 @@ public sealed class KaleidoRegistryServiceTests
 
         var log = Assert.Single(Logs(logger));
         Assert.Equal(LogLevel.Warning, log.Level);
-        Assert.Equal("Registry response is partial — 2 downstream client(s) failed: radiology, member.", log.Message);
+        Assert.Equal("Registry response is partial — 2 downstream client(s) failed or expected service(s) are missing: radiology, member.", log.Message);
     }
 
     [Fact]
@@ -499,4 +518,49 @@ public sealed class KaleidoRegistryServiceTests
             .Where(x => string.Equals(x.Method.Name, "Log", StringComparison.Ordinal))
             .Select(x => ((LogLevel)x.Arguments[0], x.Arguments[2]?.ToString()))
             .ToArray();
+
+    private static readonly RegistryServiceStatus RadiologyStatus = new() { ServiceName = "radiology", ServiceVersion = "1", IsCurrent = true, ReadyInstances = 2, Instances = 2, Available = true };
+    private static readonly RegistryServiceStatus MemberStatus = new() { ServiceName = "member", ServiceVersion = "1", IsCurrent = true, ReadyInstances = 1, Instances = 1, Available = true };
+    private static readonly RegistryMissingService MissingClinic = new() { ServiceName = "clinic", Reason = "lookup" };
+
+    private void WithStatuses() =>
+        downstream.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DownstreamRegistries(
+                [new ProcessorRegistryResponse { Name = "radiology", ServiceName = "radiology", Steps = [new ProcessStepResponse { Name = "CaptureScanStep", Authorization = Radiology }] }],
+                [new QueryableSourceResponse { Name = "MemberSource", ServiceName = "member", QueryUrl = "/member/q" }],
+                [])
+            {
+                Services = [RadiologyStatus, MemberStatus],
+                Missing = [MissingClinic],
+            });
+
+    // #553: a control registry's view - each version's status and what is missing - reaches the response,
+    // and something missing makes it partial (and is logged with the rest).
+    [Fact]
+    public async Task GetForCaller_CarriesTheControlRegistrysStatuses_AndWhatIsMissing()
+    {
+        WithStatuses();
+        var logger = CreateLogger();
+
+        var registry = await CreateSut(logger: logger.Object).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
+
+        Assert.Equal([RadiologyStatus, MemberStatus], registry.Services);
+        Assert.Equal([MissingClinic], registry.Missing);
+        Assert.True(registry.IsPartial);
+        Assert.Contains(Logs(logger), x => x.Level == LogLevel.Warning && x.Message!.EndsWith("clinic.", StringComparison.Ordinal));
+    }
+
+    // A caller is told the status of the services it can see, no others.
+    [Fact]
+    public async Task GetForCaller_WhenEnforced_TellsTheStatusOfVisibleServicesOnly()
+    {
+        WithStatuses();
+        AllowEverything();
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<ProcessStepResponse>>(), It.IsAny<Func<ProcessStepResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<ProcessStepResponse> items, Func<ProcessStepResponse, AuthorizationMetadata?> rule, CancellationToken _) => items.Where(x => rule(x) != Radiology).ToArray());
+
+        var registry = await CreateSut().Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
+
+        Assert.Equal([MemberStatus], registry.Services);
+    }
 }

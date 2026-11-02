@@ -5,7 +5,7 @@ namespace Kaleido.Http.Registry.UnitTests;
 public sealed class LocalRegistrationsTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static readonly KaleidoServiceOptions ServiceOptions = new() { ServiceName = "intake" };
+    private static readonly KaleidoServiceOptions ServiceOptions = new() { ServiceName = "intake", ServiceVersion = "2" };
 
     // No Process or Queryable registry at all: a host that only aggregates.
     private static LocalRegistrations CreateSut() =>
@@ -55,6 +55,7 @@ public sealed class LocalRegistrationsTests
 
         Assert.Equal("MemberSource", queryable.Name);
         Assert.Equal("intake", queryable.ServiceName);
+        Assert.Equal("2", queryable.ServiceVersion);
     }
 
     [Fact]

@@ -52,4 +52,10 @@ internal sealed record DownstreamRegistries(
 {
     /// <summary>No downstream services.</summary>
     public static DownstreamRegistries None { get; } = new([], [], []);
+
+    /// <summary>Each service version's status, when the registries come from a control registry (#553).</summary>
+    public IReadOnlyCollection<RegistryServiceStatus> Services { get; init; } = [];
+
+    /// <summary>What a control registry expects and has no registration for (#553).</summary>
+    public IReadOnlyCollection<RegistryMissingService> Missing { get; init; } = [];
 }

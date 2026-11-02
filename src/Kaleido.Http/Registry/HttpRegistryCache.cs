@@ -81,7 +81,9 @@ internal sealed class HttpRegistryCache(IRegistrySnapshotStore store, TimeProvid
             result = result with
             {
                 GeneratedAt = time.GetUtcNow(),
-                IsPartial = result.ClientErrors.Count > 0,
+                // Missing services (a control registry's view, #553) make it partial too, but they are the
+                // store's truth, not a failed read: such a result is still kept.
+                IsPartial = result.ClientErrors.Count > 0 || result.Missing.Count > 0,
             };
 
             if (result.ClientErrors.Count == 0)

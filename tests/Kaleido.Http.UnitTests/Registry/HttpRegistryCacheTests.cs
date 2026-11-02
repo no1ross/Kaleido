@@ -397,4 +397,26 @@ public sealed class HttpRegistryCacheTests
 
         store.Verify(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    // #553: what a control registry is missing makes the result partial, but it is the store's truth,
+    // not a failed read, so the result is still kept.
+    [Fact]
+    public async Task GetOrBuildAsync_AResultWithMissingServices_IsPartial_ButKept()
+    {
+        using var sut = CreateSut();
+        var builds = 0;
+
+        Task<AggregatedRegistryResponse> Build()
+        {
+            builds++;
+            return Task.FromResult(new AggregatedRegistryResponse { Missing = [new RegistryMissingService { ServiceName = "clinic", Reason = "expected" }] });
+        }
+
+        var first = await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => Build(), default);
+        var second = await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => Build(), default);
+
+        Assert.True(first.IsPartial);
+        Assert.Same(first, second);
+        Assert.Equal(1, builds);
+    }
 }

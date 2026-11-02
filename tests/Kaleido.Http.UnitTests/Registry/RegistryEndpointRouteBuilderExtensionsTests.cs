@@ -220,6 +220,28 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
         Assert.True(ReadJson(context).GetProperty("isPartial").GetBoolean());
     }
 
+    // #553: a control registry's response is partial when an expected service is missing; ?strict reports
+    // that too, not only a failed downstream read.
+    [Fact]
+    public async Task RegistryEndpoint_Strict_WithAMissingService_AnswersBadGateway()
+    {
+        registry
+            .Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AggregatedRegistryResponse
+            {
+                Revision = Revision,
+                IsPartial = true,
+                Missing = [new RegistryMissingService { ServiceName = "clinic", Reason = "expected" }],
+            });
+        var endpoints = CreateEndpoints();
+        endpoints.MapRegistry(new KaleidoHttpMapOptions());
+
+        var context = await InvokeAsync(endpoints, query: "?strict");
+
+        Assert.Equal(StatusCodes.Status502BadGateway, context.Response.StatusCode);
+        Assert.Equal("clinic", Assert.Single(ReadJson(context).GetProperty("missing").EnumerateArray()).GetProperty("serviceName").GetString());
+    }
+
     [Fact]
     public async Task RegistryEndpoint_Strict_WithoutClientErrors_AnswersOk()
     {

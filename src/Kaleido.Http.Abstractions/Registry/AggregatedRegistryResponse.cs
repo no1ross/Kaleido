@@ -36,10 +36,25 @@ public sealed record AggregatedRegistryResponse
         = [];
 
     /// <summary>
-    /// Convenience flag — <see langword="true"/> when <see cref="ClientErrors"/> is non-empty,
-    /// i.e. one or more downstream services failed during aggregation and their
-    /// registrations are absent. Lets agents detect degradation without parsing
-    /// the error list.
+    /// Each service version the control registry knows, with its instances' status (#553): which version
+    /// is the current one, how many instances are ready, and whether it is available at all. Empty on a
+    /// host that does not read a control registry.
+    /// </summary>
+    public IReadOnlyCollection<RegistryServiceStatus> Services { get; init; }
+        = [];
+
+    /// <summary>
+    /// What the control registry expects and does not have (#553): a configured processor version, or a
+    /// service a registered step looks up, with no registration. A non-empty collection makes the
+    /// response partial.
+    /// </summary>
+    public IReadOnlyCollection<RegistryMissingService> Missing { get; init; }
+        = [];
+
+    /// <summary>
+    /// Convenience flag — <see langword="true"/> when <see cref="ClientErrors"/> or
+    /// <see cref="Missing"/> is non-empty: a downstream registry could not be read, or an expected service
+    /// is absent. Lets agents detect degradation without parsing the lists.
     /// </summary>
     public bool IsPartial { get; init; }
 

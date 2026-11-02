@@ -174,6 +174,12 @@ public sealed record QueryableSourceResponse
     /// </summary>
     public required string ServiceName { get; init; }
 
+    /// <summary>
+    /// The service's version (<see cref="KaleidoServiceOptions.ServiceVersion"/>); <see langword="null"/>
+    /// when the service is unversioned. The control registry keeps one entry per service and version (#553).
+    /// </summary>
+    public string? ServiceVersion { get; init; }
+
     /// <summary>The source's public name (its type name). Pass it to the client to query the source.</summary>
     public required string Name { get; init; }
 
