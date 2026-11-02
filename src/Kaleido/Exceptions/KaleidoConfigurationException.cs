@@ -61,6 +61,9 @@ public static class ConfigurationErrorCodes
     /// <summary>KaleidoServiceOptions.ServiceName is null, empty, or contains invalid characters.</summary>
     public const string InvalidServiceName = "invalid_service_name";
 
+    /// <summary>KaleidoServiceOptions.ServiceVersion is set but empty, too long, or contains invalid characters.</summary>
+    public const string InvalidServiceVersion = "invalid_service_version";
+
     /// <summary>AddKaleido requires a non-empty explicit assembly list before registering services.</summary>
     public const string MissingAssembly = "missing_assembly";
 

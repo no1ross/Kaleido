@@ -34,6 +34,25 @@ public sealed record KaleidoServiceOptions
     public string ServiceName { get; init; } = string.Empty;
 
     /// <summary>
+    /// The version of this service, when versions of it run side by side (for example <c>"2"</c> or
+    /// <c>"2026-11"</c>): an opaque label Kaleido never compares or orders. <see langword="null"/> (the
+    /// default) means the service is unversioned.
+    /// </summary>
+    /// <remarks>
+    /// Every record Kaleido stores is scoped by the service and this version (#552): a process belongs to
+    /// the version that created it, so a process of version <c>1</c> is not found by version <c>2</c>, and
+    /// services and versions may share one database. It must start with an ASCII letter or digit, contain
+    /// only ASCII letters, digits, <c>.</c>, <c>-</c> and <c>_</c>, and be at most
+    /// <see cref="MaxServiceVersionLength"/> characters; <c>AddKaleido</c> rejects any other value
+    /// (<c>invalid_service_version</c>). Set it in code or with the <c>Kaleido:ServiceVersion</c>
+    /// configuration key.
+    /// </remarks>
+    public string? ServiceVersion { get; init; }
+
+    /// <summary>The longest <see cref="ServiceVersion"/> accepted.</summary>
+    public const int MaxServiceVersionLength = 64;
+
+    /// <summary>
     /// A human-readable display name for this service (e.g. <c>"Prior Auth Intake"</c>).
     /// Optional. Surfaced in registry responses.
     /// </summary>
@@ -122,6 +141,7 @@ public sealed record KaleidoServiceOptions
 
         ValidateAuthorization(options);
         ValidateServiceName(options.ServiceName);
+        ValidateServiceVersion(options.ServiceVersion);
         KaleidoEventOptions.Validate(options.Events);
 
         if (options.Assemblies is null || options.Assemblies.Count == 0)
@@ -182,6 +202,27 @@ public sealed record KaleidoServiceOptions
                 $"KaleidoServiceOptions.ServiceName '{serviceName}' must start with a lowercase letter or digit " +
                 "and contain only lowercase letters (a-z), digits, '-' and '_': it is the route prefix and the MCP tool-name prefix." +
                 (suggestion.Length > 0 ? $" Use '{suggestion}' instead." : string.Empty));
+        }
+    }
+
+    // The version is part of every store key and will be a route segment (#553): an ASCII letter or digit
+    // first, then letters, digits, '.', '-' and '_'.
+    private static void ValidateServiceVersion(string? serviceVersion)
+    {
+        if (serviceVersion is null)
+        {
+            return;
+        }
+
+        if (serviceVersion.Length == 0
+            || serviceVersion.Length > MaxServiceVersionLength
+            || !char.IsAsciiLetterOrDigit(serviceVersion[0])
+            || !serviceVersion.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_'))
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.InvalidServiceVersion,
+                $"KaleidoServiceOptions.ServiceVersion '{serviceVersion}' must be 1 to {MaxServiceVersionLength} characters, start with an ASCII letter or digit " +
+                "and contain only ASCII letters, digits, '.', '-' and '_'. Leave it unset for an unversioned service.");
         }
     }
 

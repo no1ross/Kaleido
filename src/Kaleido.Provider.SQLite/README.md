@@ -37,7 +37,7 @@ Each concern is its own contract ([ADR 0020](../../docs/decisions/0020-three-sto
 ```csharp
 public interface IKaleidoContextStore
 {
-    Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken);
+    Task<ProcessorContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken);   // processor, version, process id
     Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken);
 }
 
@@ -64,9 +64,11 @@ public interface IKaleidoOutboxStore
 
 ### Process state
 
+**Every process is stored under its key** (`ProcessKey`: `ProcessorName`, `ProcessorVersion`, `ProcessId`; a context's own is `context.Key`), and every read and write must match all three parts (#552). Several services, and several versions of one, may then share one database: a hand-off keeps the process id, so the origin and the target each keep their own process under it, and a process of one version is not found by another. The SQLite store makes the three its composite primary key on `ProcessContexts` and on every child table, and stores an unversioned processor's version as an empty string (key columns are never null).
+
 Your implementation must preserve, with full fidelity:
 
-- `ProcessId`, `ProcessorName`, `LatestRequestId`, `CreatedBy`, `UpdatedBy` (caller tags: `KaleidoCaller` name and id; the SQLite store keeps them as `...Name`/`...Id` columns)
+- `ProcessId`, `ProcessorName`, `ProcessorVersion`, `LatestRequestId`, `CreatedBy`, `UpdatedBy` (caller tags: `KaleidoCaller` name and id; the SQLite store keeps them as `...Name`/`...Id` columns)
 - `Version` - the optimistic-concurrency version (see below)
 - `State` (`ProcessExecutionState` enum, stored by name - Active, Complete, BusinessFailure, HandOff, AwaitingRequiredStep, AwaitingStepSelection, AwaitingInformation; a store created before #536 may hold `ProcessViolation`, `Exception` or `Canceled`, which no longer load: recreate it)
 - `RequiredStep` and `TargetProcessorName`, each on its own: a hand-off has a target and no required step, a cross-processor required step has both, and a hand-back clears the target (the SQLite store keeps the target in its own `TargetProcessorName` column on `ProcessContexts`, #513)
@@ -75,13 +77,13 @@ Your implementation must preserve, with full fidelity:
 - `Steps` - every `StepContext` including `StepName`, `Status`, `LatestRequestId`, `FirstExecuted`, `StartedBy`, `LastExecuted`, `LastUpdatedBy`
 - `CreatedUtc` / `UpdatedUtc` timestamps
 
-`LoadAsync` returns `null` when no process exists - never throws for a missing instance.
+`LoadAsync` returns `null` when no process exists under that key - never throws for a missing instance.
 
 ### Saving: optimistic concurrency
 
 `SaveAsync` is **conditional**, so two concurrent requests for the same process can never overwrite each other:
 
-- Save only when the stored version still equals `context.Version`. A `Version` of `0` means a new process: save only when no process with that id exists.
+- Save only when the stored version still equals `context.Version`. A `Version` of `0` means a new process: save only when no process with that key exists.
 - Store the context with `Version + 1` and **return the saved context** (with the new version) - the runtime continues with it.
 - Otherwise throw `KaleidoConcurrencyException(context.ProcessId)` and save nothing. Kaleido then adds no event and rolls the transition back. The caller gets **409** `pro_process_conflict`.
 
@@ -112,7 +114,7 @@ The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, t
 
 ### Schema changes
 
-The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, or with the step `Version` column in `ProcessStepContexts` (removed, #474), the `IdempotentResults` and `OutboxEvents` tables, the `IdempotentResults` `State`/`LeaseUntilUtc` columns (#285) or its `AdmissionId` column (#441), the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed, or before the `ProcessContexts.TargetProcessorName` column (`ProcessRequiredSteps.ProcessorName` removed, #513) (delete the file; the host's `EnsureCreated` call recreates it at startup). A production store manages its own schema migrations.
+The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, or with the step `Version` column in `ProcessStepContexts` (removed, #474), the `IdempotentResults` and `OutboxEvents` tables, the `IdempotentResults` `State`/`LeaseUntilUtc` columns (#285) or its `AdmissionId` column (#441), the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed, before the `ProcessContexts.TargetProcessorName` column (`ProcessRequiredSteps.ProcessorName` removed, #513), or before the process tables were keyed by `ProcessorName`, `ProcessorVersion` and `ProcessId` (#552) (delete the file; the host's `EnsureCreated` call recreates it at startup). A production store manages its own schema migrations.
 
 ---
 

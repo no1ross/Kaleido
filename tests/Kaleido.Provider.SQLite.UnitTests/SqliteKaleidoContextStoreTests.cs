@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using Kaleido.Observability;
 using Kaleido.Processor.Context;
+using Kaleido.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -32,13 +33,20 @@ public sealed class SqliteKaleidoContextStoreTests
         return context;
     }
 
+    private const string Processor = "test-svc";
+    private const string OtherProcessor = "other-svc";
+    private const string OtherStep = "OtherStep";
+    private const string Version1 = "1";
+    private const string Version2 = "2";
+
     private static SqliteKaleidoContextStore CreateSut(
         SqliteKaleidoContextDbContext dbContext,
-        Guid? instanceId = null,
         ILogger<SqliteKaleidoContextStore>? logger = null) =>
         new(dbContext,
-            new KaleidoServiceOptions { ServiceName = "test-svc", InstanceId = instanceId ?? Guid.NewGuid() },
             logger ?? NullLogger<SqliteKaleidoContextStore>.Instance);
+
+    // The key of the fixture's processor (unversioned), as CreateContext stores it.
+    private static ProcessKey Key(Guid processId) => new(Processor, null, processId);
 
     private static Mock<ILogger<SqliteKaleidoContextStore>> CreateLogger()
     {
@@ -94,7 +102,7 @@ public sealed class SqliteKaleidoContextStoreTests
         new()
         {
             ProcessId = processId,
-            ProcessorName = "test-svc",
+            ProcessorName = Processor,
             LatestRequestId = "req-1",
             State = state,
             RequiredStep = "NextStep",
@@ -137,7 +145,7 @@ public sealed class SqliteKaleidoContextStoreTests
         using var dbContext = CreateDbContext();
         var sut = CreateSut(dbContext);
 
-        var result = await sut.LoadAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var result = await sut.LoadAsync(Key(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -151,7 +159,7 @@ public sealed class SqliteKaleidoContextStoreTests
 
         await sut.SaveAsync(expected, TestContext.Current.CancellationToken);
 
-        var loaded = await sut.LoadAsync(expected.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(expected.Key, TestContext.Current.CancellationToken);
 
         Assert.NotNull(loaded);
         Assert.Equal(expected.ProcessId, loaded.ProcessId);
@@ -187,7 +195,7 @@ public sealed class SqliteKaleidoContextStoreTests
 
         await CreateSut(dbContext).SaveAsync(context, TestContext.Current.CancellationToken);
         dbContext.ChangeTracker.Clear();
-        var loaded = await CreateSut(dbContext).LoadAsync(context.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await CreateSut(dbContext).LoadAsync(context.Key, TestContext.Current.CancellationToken);
 
         Assert.NotNull(loaded);
         Assert.Equal(state, loaded.State);
@@ -206,7 +214,7 @@ public sealed class SqliteKaleidoContextStoreTests
         await sut.SaveAsync(handedOff with { State = ProcessExecutionState.Active, TargetProcessorName = null }, TestContext.Current.CancellationToken);
         dbContext.ChangeTracker.Clear();
 
-        var loaded = await sut.LoadAsync(handedOff.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(handedOff.Key, TestContext.Current.CancellationToken);
         Assert.Equal(ProcessExecutionState.Active, loaded?.State);
         Assert.Null(loaded?.TargetProcessorName);
     }
@@ -220,7 +228,7 @@ public sealed class SqliteKaleidoContextStoreTests
 
         await sut.SaveAsync(expected, TestContext.Current.CancellationToken);
 
-        var loaded = await sut.LoadAsync(expected.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(expected.Key, TestContext.Current.CancellationToken);
 
         Assert.NotNull(loaded);
         Assert.Equal(2, loaded.Steps.Count);
@@ -257,7 +265,7 @@ public sealed class SqliteKaleidoContextStoreTests
         };
 
         await sut.SaveAsync(updated, TestContext.Current.CancellationToken);
-        var loaded = await sut.LoadAsync(saved.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(saved.Key, TestContext.Current.CancellationToken);
 
         Assert.Equal(bob, loaded!.UpdatedBy);
         Assert.Equal(Alice, loaded.CreatedBy);
@@ -302,7 +310,7 @@ public sealed class SqliteKaleidoContextStoreTests
 
         await sut.SaveAsync(expected, TestContext.Current.CancellationToken);
 
-        var loaded = await sut.LoadAsync(expected.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(expected.Key, TestContext.Current.CancellationToken);
 
         Assert.NotNull(loaded?.RequiredInformationRequest);
         var request = loaded.RequiredInformationRequest;
@@ -342,7 +350,7 @@ public sealed class SqliteKaleidoContextStoreTests
                 RequiredInformationRequest = null
             }, TestContext.Current.CancellationToken);
 
-        var loaded = await sut.LoadAsync(processId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(Key(processId), TestContext.Current.CancellationToken);
 
         Assert.NotNull(loaded);
         Assert.Equal("StepB", loaded.RequiredStep);
@@ -368,7 +376,7 @@ public sealed class SqliteKaleidoContextStoreTests
 
         await sut.SaveAsync(updated, TestContext.Current.CancellationToken);
 
-        var loaded = await sut.LoadAsync(processId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(Key(processId), TestContext.Current.CancellationToken);
 
         Assert.NotNull(loaded);
         Assert.Equal(ProcessExecutionState.Complete, loaded.State);
@@ -388,7 +396,7 @@ public sealed class SqliteKaleidoContextStoreTests
         await sut.SaveAsync(first, TestContext.Current.CancellationToken);
         await sut.SaveAsync(second, TestContext.Current.CancellationToken);
 
-        var loaded = await sut.LoadAsync(first.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(first.Key, TestContext.Current.CancellationToken);
 
         Assert.NotNull(loaded);
         Assert.Equal(first.ProcessId, loaded.ProcessId);
@@ -407,7 +415,7 @@ public sealed class SqliteKaleidoContextStoreTests
 
         Assert.Equal(1, first.Version);
         Assert.Equal(2, second.Version);
-        Assert.Equal(2, (await sut.LoadAsync(processId, TestContext.Current.CancellationToken))!.Version);
+        Assert.Equal(2, (await sut.LoadAsync(Key(processId), TestContext.Current.CancellationToken))!.Version);
     }
 
     [Fact]
@@ -423,7 +431,7 @@ public sealed class SqliteKaleidoContextStoreTests
             sut.SaveAsync(loaded with { State = ProcessExecutionState.BusinessFailure }, TestContext.Current.CancellationToken));
 
         Assert.Equal(loaded.ProcessId, exception.ProcessId);
-        Assert.Equal(ProcessExecutionState.Complete, (await sut.LoadAsync(loaded.ProcessId, TestContext.Current.CancellationToken))!.State);
+        Assert.Equal(ProcessExecutionState.Complete, (await sut.LoadAsync(loaded.Key, TestContext.Current.CancellationToken))!.State);
     }
 
     [Fact]
@@ -448,8 +456,8 @@ public sealed class SqliteKaleidoContextStoreTests
         var processId = Guid.NewGuid();
 
         await CreateSut(first).SaveAsync(CreateContext(processId), TestContext.Current.CancellationToken);
-        var loadedByFirst = await CreateSut(first).LoadAsync(processId, TestContext.Current.CancellationToken);
-        var loadedBySecond = await CreateSut(second).LoadAsync(processId, TestContext.Current.CancellationToken);
+        var loadedByFirst = await CreateSut(first).LoadAsync(Key(processId), TestContext.Current.CancellationToken);
+        var loadedBySecond = await CreateSut(second).LoadAsync(Key(processId), TestContext.Current.CancellationToken);
 
         await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete }, TestContext.Current.CancellationToken);
 
@@ -479,7 +487,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var context = CreateContext(Guid.NewGuid());
 
         await sut.SaveAsync(context, TestContext.Current.CancellationToken);
-        await sut.LoadAsync(context.ProcessId, TestContext.Current.CancellationToken);
+        await sut.LoadAsync(context.Key, TestContext.Current.CancellationToken);
 
         Assert.Equal(ActivityStatusCode.Unset, StoppedActivity(stopped, SqliteTelemetry.SaveActivityName, context.ProcessId).Status);
         Assert.Equal(ActivityStatusCode.Unset, StoppedActivity(stopped, SqliteTelemetry.LoadActivityName, context.ProcessId).Status);
@@ -496,7 +504,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var processId = Guid.NewGuid();
         await dbContext.Database.ExecuteSqlRawAsync("DROP TABLE ProcessContexts");
 
-        await Assert.ThrowsAnyAsync<DbException>(() => sut.LoadAsync(processId, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAnyAsync<DbException>(() => sut.LoadAsync(Key(processId), TestContext.Current.CancellationToken));
 
         Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
         Assert.Equal(ActivityStatusCode.Error, StoppedActivity(stopped, SqliteTelemetry.LoadActivityName, processId).Status);
@@ -510,7 +518,7 @@ public sealed class SqliteKaleidoContextStoreTests
         var logger = CreateLogger();
         var sut = CreateSut(dbContext, logger: logger.Object);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.LoadAsync(Guid.NewGuid(), cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.LoadAsync(Key(Guid.NewGuid()), cancellation.Token));
 
         Assert.Equal(0, LoggedCount(logger, LogLevel.Error));
     }
@@ -522,9 +530,9 @@ public sealed class SqliteKaleidoContextStoreTests
         var sut = CreateSut(dbContext);
         var context = CreateContext(Guid.NewGuid());
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.LoadAsync(context.ProcessId, new CancellationToken(true)));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.LoadAsync(context.Key, new CancellationToken(true)));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.SaveAsync(context, new CancellationToken(true)));
-        Assert.Null(await sut.LoadAsync(context.ProcessId, TestContext.Current.CancellationToken));
+        Assert.Null(await sut.LoadAsync(context.Key, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -556,7 +564,7 @@ public sealed class SqliteKaleidoContextStoreTests
 
         Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
         Assert.Contains(stopped, x => x.OperationName == SqliteTelemetry.SaveActivityName && x.Status == ActivityStatusCode.Error);
-        var loaded = await sut.LoadAsync(saved.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(saved.Key, TestContext.Current.CancellationToken);
         Assert.NotNull(loaded);
         Assert.Equal(1, loaded.Version);
         Assert.Equal(ProcessExecutionState.Active, loaded.State);
@@ -576,7 +584,7 @@ public sealed class SqliteKaleidoContextStoreTests
         Assert.IsNotType<Kaleido.Exceptions.KaleidoConcurrencyException>(exception);
         Assert.Equal(1, LoggedCount(logger, LogLevel.Error));
         dbContext.ChangeTracker.Clear();
-        Assert.Null(await sut.LoadAsync(newProcess.ProcessId, TestContext.Current.CancellationToken));
+        Assert.Null(await sut.LoadAsync(newProcess.Key, TestContext.Current.CancellationToken));
     }
 
     // Which key was violated is asked of the database, not read from the message (#513): another unique
@@ -663,14 +671,14 @@ public sealed class SqliteKaleidoContextStoreTests
         using var second = CreateSharedDbContext(connectionString);
         var processId = Guid.NewGuid();
         var savedBySecond = await CreateSut(second).SaveAsync(CreateContext(processId), TestContext.Current.CancellationToken);
-        var loadedByFirst = await CreateSut(first).LoadAsync(processId, TestContext.Current.CancellationToken);
+        var loadedByFirst = await CreateSut(first).LoadAsync(Key(processId), TestContext.Current.CancellationToken);
         await CreateSut(first).SaveAsync(loadedByFirst! with { State = ProcessExecutionState.Complete }, TestContext.Current.CancellationToken);
 
         var exception = await Assert.ThrowsAsync<Kaleido.Exceptions.KaleidoConcurrencyException>(() =>
             CreateSut(second).SaveAsync(savedBySecond with { State = ProcessExecutionState.BusinessFailure }, TestContext.Current.CancellationToken));
 
         Assert.IsType<DbUpdateConcurrencyException>(exception.InnerException);
-        Assert.Equal(ProcessExecutionState.Complete, (await CreateSut(first).LoadAsync(processId, TestContext.Current.CancellationToken))!.State);
+        Assert.Equal(ProcessExecutionState.Complete, (await CreateSut(first).LoadAsync(Key(processId), TestContext.Current.CancellationToken))!.State);
     }
 
     [Fact]
@@ -684,7 +692,7 @@ public sealed class SqliteKaleidoContextStoreTests
         await sut.SaveAsync(context, TestContext.Current.CancellationToken);
 
         var after = DateTimeOffset.UtcNow;
-        var loaded = await sut.LoadAsync(context.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(context.Key, TestContext.Current.CancellationToken);
         Assert.NotNull(loaded);
         Assert.InRange(loaded.CreatedUtc, before, after);
         Assert.InRange(loaded.UpdatedUtc, before, after);
@@ -705,7 +713,7 @@ public sealed class SqliteKaleidoContextStoreTests
 
         await sut.SaveAsync(context, TestContext.Current.CancellationToken);
 
-        var loaded = await sut.LoadAsync(context.ProcessId, TestContext.Current.CancellationToken);
+        var loaded = await sut.LoadAsync(context.Key, TestContext.Current.CancellationToken);
         Assert.NotNull(loaded);
         Assert.Null(loaded.CreatedBy);
         Assert.Null(loaded.UpdatedBy);
@@ -734,5 +742,67 @@ public sealed class SqliteKaleidoContextStoreTests
         var sut = CreateSut(dbContext);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(null!, TestContext.Current.CancellationToken));
+    }
+
+    // A hand-off keeps the process id: the target's process under it is its own row, children
+    // included, and neither overwrites the other (#552).
+    [Fact]
+    public async Task AnotherProcessorsProcessUnderTheSameId_IsItsOwnRow()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var origin = CreateContext(Guid.NewGuid(), ProcessExecutionState.HandOff) with { RequiredStep = null, TargetProcessorName = OtherProcessor };
+        var target = CreateContext(origin.ProcessId) with { ProcessorName = OtherProcessor, AvailableSteps = [OtherStep] };
+
+        await sut.SaveAsync(origin, TestContext.Current.CancellationToken);
+        await sut.SaveAsync(target, TestContext.Current.CancellationToken);
+
+        var loadedOrigin = await CreateSut(dbContext).LoadAsync(origin.Key, TestContext.Current.CancellationToken);
+        var loadedTarget = await CreateSut(dbContext).LoadAsync(target.Key, TestContext.Current.CancellationToken);
+        Assert.Equal(ProcessExecutionState.HandOff, loadedOrigin?.State);
+        Assert.Equal(origin.AvailableSteps, loadedOrigin?.AvailableSteps);
+        Assert.Equal(OtherProcessor, loadedTarget?.ProcessorName);
+        Assert.Equal([OtherStep], loadedTarget?.AvailableSteps);
+        Assert.Equal(target.RequiredStep, loadedTarget?.RequiredStep);
+    }
+
+    // The version is part of the key and read back as saved; an unversioned process has none (#552).
+    [Theory]
+    [InlineData(null)]
+    [InlineData(Version1)]
+    public async Task TheVersion_IsReadBackAsSaved(string? version)
+    {
+        using var dbContext = CreateDbContext();
+        var saved = CreateContext(Guid.NewGuid()) with { ProcessorVersion = version };
+
+        await CreateSut(dbContext).SaveAsync(saved, TestContext.Current.CancellationToken);
+
+        Assert.Equal(version, (await CreateSut(dbContext).LoadAsync(saved.Key, TestContext.Current.CancellationToken))?.ProcessorVersion);
+    }
+
+    // A process of one version is not found by another, nor by the unversioned processor (#552).
+    [Fact]
+    public async Task AProcessOfOneVersion_IsNotFoundByAnother()
+    {
+        using var dbContext = CreateDbContext();
+        var v1 = CreateContext(Guid.NewGuid()) with { ProcessorVersion = Version1 };
+
+        await CreateSut(dbContext).SaveAsync(v1, TestContext.Current.CancellationToken);
+
+        Assert.Null(await CreateSut(dbContext).LoadAsync(v1.Key with { ProcessorVersion = Version2 }, TestContext.Current.CancellationToken));
+        Assert.Null(await CreateSut(dbContext).LoadAsync(v1.Key with { ProcessorVersion = null }, TestContext.Current.CancellationToken));
+    }
+
+    // The same id may be created once per version: each is a new process (#552).
+    [Fact]
+    public async Task TheSameIdUnderAnotherVersion_IsCreatedAsANewProcess()
+    {
+        using var dbContext = CreateDbContext();
+        var v1 = CreateContext(Guid.NewGuid()) with { ProcessorVersion = Version1 };
+
+        await CreateSut(dbContext).SaveAsync(v1, TestContext.Current.CancellationToken);
+        var v2 = await CreateSut(dbContext).SaveAsync(v1 with { ProcessorVersion = Version2 }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, v2.Version);
     }
 }

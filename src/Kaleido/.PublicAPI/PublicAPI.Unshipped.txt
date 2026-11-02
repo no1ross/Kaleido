@@ -1053,7 +1053,6 @@ Kaleido.Storage.IdempotentResultState.Completed = 1 -> Kaleido.Storage.Idempoten
 Kaleido.Storage.IdempotentResultState.InProgress = 0 -> Kaleido.Storage.IdempotentResultState
 Kaleido.Storage.IdempotentResultState.OutcomeUnknown = 2 -> Kaleido.Storage.IdempotentResultState
 Kaleido.Storage.IKaleidoContextStore
-Kaleido.Storage.IKaleidoContextStore.LoadAsync(System.Guid processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.ProcessorContext?>!
 Kaleido.Storage.IKaleidoContextStore.SaveAsync(Kaleido.Processor.Context.ProcessorContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.ProcessorContext!>!
 Kaleido.Storage.IKaleidoIdempotencyStore
 Kaleido.Storage.IKaleidoIdempotencyStore.AdmitAsync(Kaleido.Storage.IdempotentResult! admission, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Storage.IdempotentResult?>!
@@ -1396,3 +1395,27 @@ Kaleido.Processor.Execution.HandOffContinuation.BusinessMessages.init -> void
 Kaleido.Processor.Execution.HandOffContinuation.FrameworkMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Processor.ProcessMessage!>!
 Kaleido.Processor.Execution.HandOffContinuation.FrameworkMessages.init -> void
 static Kaleido.Processor.Execution.ProcessStepHandlerResult.HandOff<TProcessStepResult>(string! targetProcessorName, Kaleido.Processor.Execution.IHandOffContinuationSource! targetResponse, TProcessStepResult response) -> Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>!
+const Kaleido.Exceptions.ConfigurationErrorCodes.InvalidServiceVersion = "invalid_service_version" -> string!
+const Kaleido.KaleidoServiceOptions.MaxServiceVersionLength = 64 -> int
+Kaleido.Storage.ProcessKey.ProcessorName.get -> string!
+Kaleido.Storage.ProcessKey.ProcessorVersion.get -> string?
+Kaleido.Storage.ProcessKey.ProcessorName.init -> void
+Kaleido.Storage.ProcessKey.ProcessorVersion.init -> void
+Kaleido.Storage.ProcessKey.ProcessId.get -> System.Guid
+Kaleido.Storage.ProcessKey.ProcessId.init -> void
+Kaleido.Storage.ProcessKey
+Kaleido.Storage.ProcessKey.ProcessKey() -> void
+~override Kaleido.Storage.ProcessKey.ToString() -> string
+static Kaleido.Storage.ProcessKey.operator !=(Kaleido.Storage.ProcessKey left, Kaleido.Storage.ProcessKey right) -> bool
+static Kaleido.Storage.ProcessKey.operator ==(Kaleido.Storage.ProcessKey left, Kaleido.Storage.ProcessKey right) -> bool
+override Kaleido.Storage.ProcessKey.GetHashCode() -> int
+~override Kaleido.Storage.ProcessKey.Equals(object obj) -> bool
+Kaleido.Storage.ProcessKey.Equals(Kaleido.Storage.ProcessKey other) -> bool
+Kaleido.Storage.ProcessKey.Deconstruct(out string! ProcessorName, out string? ProcessorVersion, out System.Guid ProcessId) -> void
+Kaleido.KaleidoServiceOptions.ServiceVersion.get -> string?
+Kaleido.KaleidoServiceOptions.ServiceVersion.init -> void
+Kaleido.Processor.Context.ProcessorContext.ProcessorVersion.get -> string?
+Kaleido.Processor.Context.ProcessorContext.ProcessorVersion.init -> void
+Kaleido.Processor.Context.ProcessorContext.Key.get -> Kaleido.Storage.ProcessKey
+Kaleido.Storage.ProcessKey.ProcessKey(string! ProcessorName, string? ProcessorVersion, System.Guid ProcessId) -> void
+Kaleido.Storage.IKaleidoContextStore.LoadAsync(Kaleido.Storage.ProcessKey key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Processor.Context.ProcessorContext?>!

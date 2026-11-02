@@ -50,4 +50,15 @@ public sealed class ProcessorContextTests
     {
         Assert.False(CreateSut(Step("CaptureMember", StepExecutionStatus.Completed)).HasCompletedStep("CaptureService"));
     }
+
+    // The key a store keeps the process under (#552): its processor, version and id.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("2")]
+    public void Key_IsTheProcessorTheVersionAndTheProcessId(string? version)
+    {
+        var context = CreateSut() with { ProcessorVersion = version };
+
+        Assert.Equal(new Kaleido.Storage.ProcessKey(context.ProcessorName, version, context.ProcessId), context.Key);
+    }
 }

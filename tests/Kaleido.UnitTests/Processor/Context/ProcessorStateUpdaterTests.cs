@@ -14,8 +14,8 @@ public sealed class ProcessorStateUpdaterTests
 
     private ProcessorStateUpdater Sut => CreateSut();
 
-    private ProcessorStateUpdater CreateSut() =>
-        new(_registry.Object, _options);
+    private ProcessorStateUpdater CreateSut(KaleidoServiceOptions? options = null) =>
+        new(_registry.Object, options ?? _options);
 
     [Fact]
     public void Initialize_CreatesContextWithCorrectProperties()
@@ -650,5 +650,18 @@ public sealed class ProcessorStateUpdaterTests
 
         Assert.Equal(Kaleido.Exceptions.FrameworkErrorCodes.TypeMismatch, exception.Code);
         Assert.Contains(status.ToString(), exception.Message);
+    }
+
+    // A new process belongs to this service's version (#552), and an unversioned service's to none.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("2")]
+    public void Initialize_RecordsTheServiceVersion(string? version)
+    {
+        _registry.Setup(r => r.Registrations).Returns([]);
+
+        var result = CreateSut(_options with { ServiceVersion = version }).Initialize(Guid.NewGuid());
+
+        Assert.Equal(version, result.ProcessorVersion);
     }
 }

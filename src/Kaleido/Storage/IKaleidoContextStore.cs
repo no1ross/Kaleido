@@ -21,6 +21,12 @@ namespace Kaleido.Storage;
 /// one is open on its database (e.g. the shared <c>DbContext</c>), and on its own otherwise.
 /// </para>
 /// <para>
+/// <strong>Scope (#552):</strong> a process is stored under its <see cref="ProcessKey"/> - the owning
+/// processor, its version and the process id. Several processors, and several versions of one, may share
+/// a store: every read and write must match all three parts, and the same process id under another
+/// processor or version is another process (the origin and the target of a hand-off).
+/// </para>
+/// <para>
 /// <strong>Concurrency (optimistic):</strong> every save is conditional on
 /// <see cref="ProcessorContext.Version"/>. Two concurrent requests for the same process cannot
 /// overwrite each other: the second save is refused with <see cref="KaleidoConcurrencyException"/>
@@ -29,19 +35,24 @@ namespace Kaleido.Storage;
 /// </remarks>
 public interface IKaleidoContextStore
 {
-    /// <summary>The process state, or null when no process with that id exists (never throws for a missing one).</summary>
-    Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken);
+    /// <summary>
+    /// The process state stored under <paramref name="key"/>, or null when there is none (never throws for
+    /// a missing one).
+    /// </summary>
+    /// <param name="key">The owning processor, its version and the process id; all three must match.</param>
+    /// <param name="cancellationToken">Cancels the load.</param>
+    Task<ProcessorContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Saves <paramref name="context"/> when the stored version still equals
-    /// <see cref="ProcessorContext.Version"/> (0: the process must not exist yet), stores it with the
-    /// version incremented, and returns the saved context (with the new version).
+    /// Saves <paramref name="context"/> under its <see cref="ProcessorContext.Key"/> when the stored version
+    /// still equals <see cref="ProcessorContext.Version"/> (0: the process must not exist yet), stores it
+    /// with the version incremented, and returns the saved context (with the new version).
     /// </summary>
     /// <param name="context">The process state to save.</param>
     /// <param name="cancellationToken">Cancels the save.</param>
     /// <exception cref="KaleidoConcurrencyException">
     /// The stored version differs - another request saved the process since it was loaded, or a process
-    /// with that id already exists for a context with version 0. Nothing is saved, and Kaleido adds none
+    /// with that key already exists for a context with version 0. Nothing is saved, and Kaleido adds none
     /// of the transition's events.
     /// </exception>
     Task<ProcessorContext> SaveAsync(

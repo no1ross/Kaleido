@@ -37,6 +37,9 @@ internal sealed class ProcessorStateUpdater(
             ProcessorName =
                 serviceOptions.ServiceName,
 
+            ProcessorVersion =
+                serviceOptions.ServiceVersion,
+
             State = ProcessExecutionState.Active,
 
             CreatedUtc = DateTimeOffset.UtcNow,

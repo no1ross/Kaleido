@@ -115,6 +115,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | Constant | Code | Meaning |
 |---|---|---|
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
+| `InvalidServiceVersion` | `invalid_service_version` | `ServiceVersion` is set but empty, longer than `MaxServiceVersionLength`, or not an ASCII letter or digit followed by letters, digits, `.`, `-` and `_` (#552) |
 | `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
 | `ConflictingAuthorization` | `conflicting_authorization` | `[KaleidoAuthorization]` declares `AllowAnonymous` together with `Roles`/`Policy` |
 | `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization (`Authenticated` is the default) but no authentication scheme is registered: add host authentication, or set `AuthorizationMode = None` explicitly |

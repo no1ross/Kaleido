@@ -14,7 +14,6 @@ namespace Kaleido.Provider.SQLite;
 
 internal sealed partial class SqliteKaleidoContextStore(
     SqliteKaleidoContextDbContext dbContext,
-    KaleidoServiceOptions serviceOptions,
     ILogger<SqliteKaleidoContextStore> logger)
     : IKaleidoContextStore
 {
@@ -35,11 +34,12 @@ internal sealed partial class SqliteKaleidoContextStore(
             description: "Number of failed process context save operations.");
 
     public async Task<ProcessorContext?> LoadAsync(
-        Guid processId,
+        ProcessKey key,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var processId = key.ProcessId;
         using var activity = ActivitySource
             .StartActivity(SqliteTelemetry.LoadActivityName, ActivityKind.Internal);
         activity?.SetTag(KaleidoTelemetryTags.ProcessId, processId.ToString());
@@ -47,25 +47,14 @@ internal sealed partial class SqliteKaleidoContextStore(
         try
         {
             var entity =
-                await dbContext.ProcessContexts
-                    .AsNoTracking()
+                await ByKey(dbContext.ProcessContexts.AsNoTracking(), key)
                     .Include(x => x.Steps)
                     .Include(x => x.AvailableSteps)
                     .Include(x => x.RequiredStep)
                     .AsSplitQuery()
-                    .FirstOrDefaultAsync(
-                        x => x.ProcessId ==
-                             processId,
-                        cancellationToken);
+                    .FirstOrDefaultAsync(cancellationToken);
 
-            if (entity is null)
-            {
-                return null;
-            }
-
-            return ToProcessorContext(
-                entity,
-                serviceOptions.ServiceName);
+            return entity is null ? null : ToProcessorContext(entity);
         }
         // Only the caller's cancellation is not a load failure (#517).
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
@@ -134,7 +123,7 @@ internal sealed partial class SqliteKaleidoContextStore(
         ProcessorContext context,
         CancellationToken cancellationToken)
     {
-        var entity = await LoadOrAddEntityAsync(context.ProcessId, cancellationToken);
+        var entity = await LoadOrAddEntityAsync(context.Key, cancellationToken);
         var storedVersion = dbContext.Entry(entity).State == EntityState.Added ? 0 : entity.Version;
 
         if (storedVersion != context.Version)
@@ -201,28 +190,43 @@ internal sealed partial class SqliteKaleidoContextStore(
 
     // The tracked entity with its children, or a new one added to the context.
     private async Task<ProcessorContextEntity> LoadOrAddEntityAsync(
-        Guid processId,
+        ProcessKey key,
         CancellationToken cancellationToken)
     {
         var entity =
-            await dbContext.ProcessContexts
+            await ByKey(dbContext.ProcessContexts, key)
                 .Include(x => x.Steps)
                 .Include(x => x.AvailableSteps)
                 .Include(x => x.RequiredStep)
                 .AsSplitQuery()
-                .FirstOrDefaultAsync(
-                    x => x.ProcessId ==
-                         processId,
-                    cancellationToken);
+                .FirstOrDefaultAsync(cancellationToken);
 
         if (entity is null)
         {
-            entity = new ProcessorContextEntity { ProcessId = processId };
+            entity = new ProcessorContextEntity
+            {
+                ProcessorName = key.ProcessorName,
+                ProcessorVersion = StoredVersion(key.ProcessorVersion),
+                ProcessId = key.ProcessId,
+            };
             dbContext.ProcessContexts.Add(entity);
         }
 
         return entity;
     }
+
+    // All three parts of the key (#552): another processor's or version's row is another process.
+    private static IQueryable<ProcessorContextEntity> ByKey(IQueryable<ProcessorContextEntity> contexts, ProcessKey key)
+    {
+        var version = StoredVersion(key.ProcessorVersion);
+
+        return contexts.Where(x => x.ProcessorName == key.ProcessorName && x.ProcessorVersion == version && x.ProcessId == key.ProcessId);
+    }
+
+    // Key columns are never null: an unversioned processor's version is stored empty.
+    private static string StoredVersion(string? version) => version ?? string.Empty;
+
+    private static string? LoadedVersion(string version) => version.Length == 0 ? null : version;
 
     // Update children in place so EF generates only the delta — no
     // delete-all/reinsert-all write amplification per save.
@@ -265,6 +269,8 @@ internal sealed partial class SqliteKaleidoContextStore(
             entity.Steps.Add(
                 new ProcessorStepContextEntity
                 {
+                    ProcessorName = entity.ProcessorName,
+                    ProcessorVersion = entity.ProcessorVersion,
                     ProcessId = context.ProcessId,
                     StepName = step.StepName,
                     Status = step.Status,
@@ -307,6 +313,8 @@ internal sealed partial class SqliteKaleidoContextStore(
             entity.AvailableSteps.Add(
                 new ProcessorAvailableStepEntity
                 {
+                    ProcessorName = entity.ProcessorName,
+                    ProcessorVersion = entity.ProcessorVersion,
                     ProcessId = context.ProcessId,
                     StepName = stepName,
                     Sequence = index,
@@ -342,6 +350,8 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         entity.RequiredStep = new ProcessorRequiredStepEntity
         {
+            ProcessorName = entity.ProcessorName,
+            ProcessorVersion = entity.ProcessorVersion,
             ProcessId = context.ProcessId,
             StepName = context.RequiredStep,
             InformationRequestJson = informationRequestJson,
@@ -354,13 +364,13 @@ internal sealed partial class SqliteKaleidoContextStore(
     };
 
     private static ProcessorContext ToProcessorContext(
-        ProcessorContextEntity entity,
-        string localProcessorName)
+        ProcessorContextEntity entity)
     {
         return new ProcessorContext
         {
             ProcessId = entity.ProcessId,
-            ProcessorName = localProcessorName,
+            ProcessorName = entity.ProcessorName,
+            ProcessorVersion = LoadedVersion(entity.ProcessorVersion),
             Version = entity.Version,
             LatestRequestId = entity.LatestRequestId,
             CreatedBy = Caller(entity.CreatedByName, entity.CreatedById),

@@ -33,17 +33,17 @@ public sealed class SqliteReadmeTests : IDisposable
             await scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>().Database.EnsureCreatedAsync(Cancel);
         }
 
-        var processId = Guid.NewGuid();
+        var created = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "myservice" };
         await using (var scope = provider.CreateAsyncScope())
         {
             var saved = await scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>()
-                .SaveAsync(new ProcessorContext { ProcessId = processId, ProcessorName = "myservice" }, Cancel);
+                .SaveAsync(created, Cancel);
             Assert.Equal(1, saved.Version);
         }
 
         await using (var scope = provider.CreateAsyncScope())
         {
-            var loaded = await scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>().LoadAsync(processId, Cancel);
+            var loaded = await scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>().LoadAsync(created.Key, Cancel);
             Assert.NotNull(loaded);
             Assert.Equal(1, loaded.Version);
         }

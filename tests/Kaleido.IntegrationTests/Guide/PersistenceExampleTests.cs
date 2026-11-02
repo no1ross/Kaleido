@@ -87,12 +87,12 @@ public sealed class PersistenceExampleTests : IDisposable
     public async Task TheContextStore_LoadsWhatItSaved_AndUpdatesByVersion()
     {
         await using var provider = await BuildAsync();
-        var processId = Guid.NewGuid();
-        await TransitionAsync(provider, new ProcessorContext { ProcessId = processId, ProcessorName = "orders" });
+        var created = new ProcessorContext { ProcessId = Guid.NewGuid(), ProcessorName = "orders" };
+        await TransitionAsync(provider, created);
 
         await using var scope = provider.CreateAsyncScope();
         var store = scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>();
-        var loaded = await store.LoadAsync(processId, Cancel) ?? throw new InvalidOperationException("Not saved.");
+        var loaded = await store.LoadAsync(created.Key, Cancel) ?? throw new InvalidOperationException("Not saved.");
         var updated = await store.SaveAsync(loaded with { State = ProcessExecutionState.Complete }, Cancel);
 
         Assert.Equal(1, loaded.Version);

@@ -25,7 +25,7 @@ internal sealed partial class ProcessStateService(
     {
         LogLoadingState(logger, serviceOptions.ServiceName, processId);
 
-        var context = await contextStore.LoadAsync(processId, cancellationToken);
+        var context = await contextStore.LoadAsync(new ProcessKey(serviceOptions.ServiceName, serviceOptions.ServiceVersion, processId), cancellationToken);
 
         if (context == null)
         {

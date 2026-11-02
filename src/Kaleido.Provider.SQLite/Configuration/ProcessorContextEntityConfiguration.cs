@@ -14,7 +14,11 @@ internal sealed class ProcessorContextEntityConfiguration
         EntityTypeBuilder<ProcessorContextEntity> builder)
     {
         builder.ToTable(TableName);
-        builder.HasKey(x => x.ProcessId);
+        // Scoped by the owning processor and its version (#552): processors and versions may share the
+        // database, and the origin and target of a hand-off each keep their row under the process id.
+        builder.HasKey(x => new { x.ProcessorName, x.ProcessorVersion, x.ProcessId });
+        builder.Property(x => x.ProcessorName).HasMaxLength(200);
+        builder.Property(x => x.ProcessorVersion).HasMaxLength(KaleidoServiceOptions.MaxServiceVersionLength);
         builder.Property(x => x.LatestRequestId).HasMaxLength(100);
 
         // The UPDATE is conditional on the version the row was read with, so a concurrent save by
@@ -28,17 +32,17 @@ internal sealed class ProcessorContextEntityConfiguration
 
         builder.HasMany(x => x.Steps)
             .WithOne(x => x.Context)
-            .HasForeignKey(x => x.ProcessId)
+            .HasForeignKey(x => new { x.ProcessorName, x.ProcessorVersion, x.ProcessId })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(x => x.AvailableSteps)
             .WithOne(x => x.Context)
-            .HasForeignKey(x => x.ProcessId)
+            .HasForeignKey(x => new { x.ProcessorName, x.ProcessorVersion, x.ProcessId })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(x => x.RequiredStep)
             .WithOne(x => x.Context)
-            .HasForeignKey<ProcessorRequiredStepEntity>(x => x.ProcessId)
+            .HasForeignKey<ProcessorRequiredStepEntity>(x => new { x.ProcessorName, x.ProcessorVersion, x.ProcessId })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => x.State);

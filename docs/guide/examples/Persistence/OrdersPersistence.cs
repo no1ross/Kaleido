@@ -20,13 +20,19 @@ public sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) :
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<ProcessRow>().HasKey(x => x.ProcessId);
+        // A process is stored under its processor, version and id: services and versions may share it.
+        modelBuilder.Entity<ProcessRow>().HasKey(x => new { x.ProcessorName, x.ProcessorVersion, x.ProcessId });
         modelBuilder.Entity<OutboxMessage>().HasKey(x => x.EventId);
     }
 }
 
 public sealed class ProcessRow
 {
+    public string ProcessorName { get; set; } = string.Empty;
+
+    // Empty when the processor is unversioned: a key column is never null.
+    public string ProcessorVersion { get; set; } = string.Empty;
+
     public Guid ProcessId { get; set; }
 
     public long Version { get; set; }
@@ -48,10 +54,12 @@ public sealed class OutboxMessage
 
 // snippet: persistence-context-store
 // Process state only, saved conditionally: a stale version is a conflict (409), never an overwrite.
+// Every query matches the whole key - processor, version and id - so another service's or version's
+// process under the same id (a hand-off) is never read or overwritten.
 public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStore
 {
-    public async Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken) =>
-        await db.Processes.AsNoTracking().SingleOrDefaultAsync(x => x.ProcessId == processId, cancellationToken) is { } row
+    public async Task<ProcessorContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken) =>
+        await ByKey(db.Processes.AsNoTracking(), key).SingleOrDefaultAsync(cancellationToken) is { } row
             ? JsonSerializer.Deserialize<ProcessorContext>(row.State)
             : null;
 
@@ -62,21 +70,35 @@ public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStor
 
         if (context.Version == 0)
         {
-            if (await db.Processes.AnyAsync(x => x.ProcessId == context.ProcessId, cancellationToken))
+            if (await ByKey(db.Processes, context.Key).AnyAsync(cancellationToken))
             {
                 throw new KaleidoConcurrencyException(context.ProcessId);
             }
 
-            db.Processes.Add(new ProcessRow { ProcessId = context.ProcessId, Version = saved.Version, State = state });
+            db.Processes.Add(new ProcessRow
+            {
+                ProcessorName = context.ProcessorName,
+                ProcessorVersion = context.ProcessorVersion ?? string.Empty,
+                ProcessId = context.ProcessId,
+                Version = saved.Version,
+                State = state,
+            });
             await db.SaveChangesAsync(cancellationToken);
             return saved;
         }
 
-        var updated = await db.Processes
-            .Where(x => x.ProcessId == context.ProcessId && x.Version == context.Version)
+        var updated = await ByKey(db.Processes, context.Key)
+            .Where(x => x.Version == context.Version)
             .ExecuteUpdateAsync(x => x.SetProperty(p => p.Version, saved.Version).SetProperty(p => p.State, state), cancellationToken);
 
         return updated == 1 ? saved : throw new KaleidoConcurrencyException(context.ProcessId);
+    }
+
+    private static IQueryable<ProcessRow> ByKey(IQueryable<ProcessRow> rows, ProcessKey key)
+    {
+        var version = key.ProcessorVersion ?? string.Empty;
+
+        return rows.Where(x => x.ProcessorName == key.ProcessorName && x.ProcessorVersion == version && x.ProcessId == key.ProcessId);
     }
 }
 // end snippet

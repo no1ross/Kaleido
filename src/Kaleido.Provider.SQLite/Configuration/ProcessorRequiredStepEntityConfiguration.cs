@@ -15,7 +15,12 @@ internal sealed class ProcessorRequiredStepEntityConfiguration
             "ProcessRequiredSteps");
 
         builder.HasKey(
-            x => x.ProcessId);
+            x => new
+            {
+                x.ProcessorName,
+                x.ProcessorVersion,
+                x.ProcessId,
+            });
 
         builder.Property(
                 x => x.StepName)

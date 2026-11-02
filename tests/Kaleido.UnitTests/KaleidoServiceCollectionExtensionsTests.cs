@@ -587,7 +587,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
 
     private sealed class OwnContextStore : Kaleido.Storage.IKaleidoContextStore
     {
-        public Task<Kaleido.Processor.Context.ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Kaleido.Processor.Context.ProcessorContext?> LoadAsync(Kaleido.Storage.ProcessKey key, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<Kaleido.Processor.Context.ProcessorContext> SaveAsync(Kaleido.Processor.Context.ProcessorContext context, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }

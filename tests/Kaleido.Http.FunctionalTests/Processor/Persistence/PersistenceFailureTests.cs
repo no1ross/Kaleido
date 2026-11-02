@@ -277,8 +277,8 @@ public sealed class PersistenceFailureTests : IAsyncLifetime
 
     private sealed class RefusingContextStore(IKaleidoContextStore inner, RefusedSaves refused) : IKaleidoContextStore
     {
-        public Task<ProcessorContext?> LoadAsync(Guid processId, CancellationToken cancellationToken) =>
-            inner.LoadAsync(processId, cancellationToken);
+        public Task<ProcessorContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken) =>
+            inner.LoadAsync(key, cancellationToken);
 
         public Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken) =>
             refused.On

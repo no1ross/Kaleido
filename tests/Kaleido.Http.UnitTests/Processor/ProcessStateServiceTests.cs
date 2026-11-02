@@ -9,16 +9,19 @@ namespace Kaleido.Http.Processor.UnitTests;
 public sealed class ProcessStateServiceTests
     : SutFixture
 {
+    private const string Processor = "test-processor";
+
     private static ProcessStateService CreateSut(
         IKaleidoContextStore contextStore,
         IProcessorStepRegistry registry,
         IProcessorResponseFactory responseFactory,
         Microsoft.Extensions.Logging.ILogger<ProcessStateService>? logger = null,
-        IProcessContinuationFilter? continuations = null) =>
+        IProcessContinuationFilter? continuations = null,
+        string? serviceVersion = null) =>
         new(
             contextStore,
             registry,
-            new KaleidoServiceOptions { ServiceName = "test-processor" },
+            new KaleidoServiceOptions { ServiceName = Processor, ServiceVersion = serviceVersion },
             responseFactory,
             continuations ?? PassThrough(),
             logger ?? NullLogger<ProcessStateService>.Instance);
@@ -57,8 +60,8 @@ public sealed class ProcessStateServiceTests
         var logger = CreateLogger();
         var contextStore = new Mock<IKaleidoContextStore>();
         contextStore
-            .Setup(x => x.LoadAsync(processId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ProcessorContext { ProcessId = processId, ProcessorName = "test-processor", State = ProcessExecutionState.Complete });
+            .Setup(x => x.LoadAsync(new ProcessKey(Processor, null, processId), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessorContext { ProcessId = processId, ProcessorName = Processor, State = ProcessExecutionState.Complete });
 
         await CreateSut(contextStore.Object, CreateRegistry(), Mock.Of<IProcessorResponseFactory>(), logger.Object)
             .GetCurrentState(processId, CancellationToken.None);
@@ -78,7 +81,7 @@ public sealed class ProcessStateServiceTests
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
-            ProcessorName = "test-processor",
+            ProcessorName = Processor,
             State = ProcessExecutionState.AwaitingStepSelection,
             RequiredStep = "Step-B",
             TargetProcessorName = "radiology",
@@ -102,7 +105,7 @@ public sealed class ProcessStateServiceTests
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
-            ProcessorName = "test-processor",
+            ProcessorName = Processor,
             State = ProcessExecutionState.Active,
         };
         var filter = new Mock<IProcessContinuationFilter>();
@@ -123,7 +126,7 @@ public sealed class ProcessStateServiceTests
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
-            ProcessorName = "test-processor",
+            ProcessorName = Processor,
             State = ProcessExecutionState.Complete,
         };
 
@@ -142,7 +145,7 @@ public sealed class ProcessStateServiceTests
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
-            ProcessorName = "test-processor",
+            ProcessorName = Processor,
             RequiredStep = "Ghost-Step",
         };
 
@@ -160,7 +163,7 @@ public sealed class ProcessStateServiceTests
         var context = new ProcessorContext
         {
             ProcessId = Guid.NewGuid(),
-            ProcessorName = "test-processor",
+            ProcessorName = Processor,
             AvailableSteps = ["Ghost-Step"],
         };
 
@@ -175,7 +178,7 @@ public sealed class ProcessStateServiceTests
     private static IKaleidoContextStore StoreReturning(ProcessorContext context)
     {
         var store = new Mock<IKaleidoContextStore>();
-        store.Setup(x => x.LoadAsync(context.ProcessId, It.IsAny<CancellationToken>())).ReturnsAsync(context);
+        store.Setup(x => x.LoadAsync(context.Key, It.IsAny<CancellationToken>())).ReturnsAsync(context);
         return store.Object;
     }
 
@@ -203,7 +206,7 @@ public sealed class ProcessStateServiceTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    It.IsAny<Guid>(),
+                    It.IsAny<ProcessKey>(),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync((ProcessorContext?)null);
 
@@ -231,7 +234,7 @@ public sealed class ProcessStateServiceTests
             new ProcessorContext
             {
                 ProcessId = processId,
-                ProcessorName = "test-processor",
+                ProcessorName = Processor,
                 State = ProcessExecutionState.AwaitingStepSelection,
                 RequiredStep = "Step-B",
                 RequiredInformationRequest = PendingRequest,
@@ -265,7 +268,7 @@ public sealed class ProcessStateServiceTests
         contextStore
             .Setup(x =>
                 x.LoadAsync(
-                    processId,
+                    new ProcessKey(Processor, null, processId),
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(context);
 
@@ -278,7 +281,7 @@ public sealed class ProcessStateServiceTests
         responseFactory
             .Setup(x => x.CreateStepSummary(
                 It.IsAny<ProcessorStepSummary>(),
-                "test-processor"))
+                Processor))
             .Returns(expectedSummary);
 
         var expectedRequired = new ProcessRequiredStep
@@ -291,7 +294,7 @@ public sealed class ProcessStateServiceTests
             .Setup(x => x.CreateRequiredStep(
                 It.Is<ProcessorStepSummary>(s => s.Name == "Step-B"),
                 PendingRequest,
-                "test-processor"))
+                Processor))
             .Returns(expectedRequired);
 
         var service =
@@ -364,5 +367,21 @@ public sealed class ProcessStateServiceTests
         }
 
         return mock.Object;
+    }
+
+    // The state is read under this service's name and version (#552): another version's process is
+    // not found here.
+    [Fact]
+    public async Task GetCurrentState_ReadsTheProcessUnderThisServicesVersion()
+    {
+        const string version = "2";
+        var processId = Guid.NewGuid();
+        var contextStore = new Mock<IKaleidoContextStore>();
+
+        var state = await CreateSut(contextStore.Object, CreateRegistry(), Mock.Of<IProcessorResponseFactory>(), serviceVersion: version)
+            .GetCurrentState(processId, TestContext.Current.CancellationToken);
+
+        Assert.Null(state);
+        contextStore.Verify(x => x.LoadAsync(new ProcessKey(Processor, version, processId), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
