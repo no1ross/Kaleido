@@ -29,7 +29,7 @@ What each project owns and must not own is stated once, in the root [project bou
 `AddKaleido()` should remain responsible for:
 - shared DI baseline setup
 - scoped correlation accessor registration (`TryAddScoped` so pre-existing registrations win)
-- default event publisher registration
+- the store defaults (no publisher: see Eventing rules)
 - returning the builder for higher-level frameworks
 
 `AddKaleido()` also registers both runtimes (the internal `AddProcessor()` and `AddQueryable()`), which scan the assemblies in `KaleidoServiceOptions.Assemblies`; the registration model is described once, in [`../ARCHITECTURE.md`](../ARCHITECTURE.md#4-registration-model).

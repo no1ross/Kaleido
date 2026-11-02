@@ -278,7 +278,8 @@ public sealed class SqliteKaleidoOutboxStoreTests
         await sut.RecordRelayAsync(Relay(instance, now.AddMinutes(-2)), TestContext.Current.CancellationToken);
         await sut.RecordRelayAsync(Relay(instance, now), TestContext.Current.CancellationToken);
 
-        Assert.Equal(1, await dbContext.OutboxRelays.CountAsync(TestContext.Current.CancellationToken));
+        var row = await dbContext.OutboxRelays.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal((instance.ToString("N"), "outbox-relay", "WarehousePublisher"), (row.InstanceId, row.ServiceName, row.Publisher));
         Assert.Equal(now, (await sut.GetStatusAsync(now, TestContext.Current.CancellationToken)).LastRelaySeenUtc);
     }
 

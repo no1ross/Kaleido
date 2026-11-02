@@ -129,11 +129,9 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
                 },
                 cancellationToken);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
+        // Any store failure (a provider's own exception types included) is logged; only the host stopping
+        // is passed on.
+        catch (Exception exception) when (!(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
             LogHeartbeatFailed(_logger, exception);
         }
