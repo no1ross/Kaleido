@@ -219,10 +219,7 @@ public sealed record KaleidoServiceOptions
             return;
         }
 
-        if (serviceVersion.Length == 0
-            || serviceVersion.Length > MaxServiceVersionLength
-            || !char.IsAsciiLetterOrDigit(serviceVersion[0])
-            || !serviceVersion.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_'))
+        if (!IsValidServiceVersion(serviceVersion))
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceVersion,
@@ -230,6 +227,13 @@ public sealed record KaleidoServiceOptions
                 "and contain only ASCII letters, digits, '.', '-' and '_'. Leave it unset for an unversioned service.");
         }
     }
+
+    // The service-version rule, shared with the control registry, which checks each registration (#553).
+    internal static bool IsValidServiceVersion(string? value) =>
+        !string.IsNullOrEmpty(value)
+        && value.Length <= MaxServiceVersionLength
+        && char.IsAsciiLetterOrDigit(value[0])
+        && value.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_');
 
     // The service-name rule, shared with the transports: a client's route prefix must equal a service
     // name, so Kaleido.Http.Client validates RoutePrefix with it (#434).

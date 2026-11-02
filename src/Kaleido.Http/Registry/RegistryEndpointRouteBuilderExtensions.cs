@@ -99,9 +99,20 @@ internal static class RegistryEndpointRouteBuilderExtensions
                 "Registry filtering requires AddHttp() to register the Kaleido HTTP authorizer.");
 
         var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
-        var strict = httpContext.Request.Query.ContainsKey("strict");
 
         var response = await registry.GetForCallerAsync(forceRefresh, cancellationToken);
+
+        return httpContext.RegistryResult(response, mapOptions.RegistryCacheTtl);
+    }
+
+    /// <summary>
+    /// The registry's HTTP answer, shared with the control registry (#553): the ETag (the revision) and
+    /// <c>Cache-Control</c>, 304 when <c>If-None-Match</c> matches, and 502 with the body for a partial
+    /// response under <c>?strict</c>.
+    /// </summary>
+    internal static IResult RegistryResult(this HttpContext httpContext, AggregatedRegistryResponse response, TimeSpan? cacheTtl)
+    {
+        var strict = httpContext.Request.Query.ContainsKey("strict");
 
         // Freshness contract: Revision hashes the per-caller filtered payload (same
         // content → same ETag); Cache-Control advertises the configured staleness window. Private:
@@ -109,7 +120,7 @@ internal static class RegistryEndpointRouteBuilderExtensions
         var etag = $"\"{response.Revision}\"";
         httpContext.Response.Headers.ETag = etag;
         httpContext.Response.Headers.CacheControl =
-            mapOptions.RegistryCacheTtl is { } ttl
+            cacheTtl is { } ttl
                 ? string.Create(CultureInfo.InvariantCulture, $"private, max-age={(int)ttl.TotalSeconds}")
                 : "private, no-cache";
 

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido control registry: the central registry every Kaleido service registers with and heartbeats to, serving the merged registry of every service version and its instances' status (#553).</Description>
+		<PackageTags>kaleido;registry;discovery;aspnetcore</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Http\Kaleido.Http.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Provider.SQLite.UnitTests" />
+	</ItemGroup>
+</Project>

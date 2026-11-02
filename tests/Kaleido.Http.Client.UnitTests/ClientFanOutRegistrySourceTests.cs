@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Client.UnitTests;
 
-public sealed class ClientDownstreamRegistriesTests
+public sealed class ClientFanOutRegistrySourceTests
     : Kaleido.UnitTests.SutFixture
 {
     private readonly List<KaleidoClientDefinition> clients = [];
@@ -33,53 +33,22 @@ public sealed class ClientDownstreamRegistriesTests
         }
     }
 
-    private ClientDownstreamRegistries CreateSut(
+    private ClientFanOutRegistrySource CreateSut(
         string serviceName = "router",
-        ILogger<ClientDownstreamRegistries>? logger = null)
+        ILogger<ClientFanOutRegistrySource>? logger = null)
     {
         var catalog = new Mock<IKaleidoClientCatalog>();
         catalog.Setup(x => x.Clients).Returns(clients);
 
-        return new ClientDownstreamRegistries(
+        return new ClientFanOutRegistrySource(
             catalog.Object,
             remoteRegistry.Object,
             stamper,
             new KaleidoServiceOptions { ServiceName = serviceName },
-            logger ?? NullLogger<ClientDownstreamRegistries>.Instance);
+            logger ?? NullLogger<ClientFanOutRegistrySource>.Instance);
     }
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
-
-    // One service's whole registry from its client, without fetching the others (#524: a lookup on that
-    // service); none when no client calls it, when it is this service, or when its registry cannot be read.
-    [Fact]
-    public async Task GetServiceAsync_ReturnsTheRegistryOfTheServicesClientOnly_OrNone()
-    {
-        Client("Self", "router");
-        Client("Member", "member");
-        Client("Intake", "intake");
-        Client("Broken", "broken", new HttpRequestException("down"));
-        var sut = CreateSut();
-
-        var member = await sut.GetServiceAsync("MEMBER", Cancel);
-
-        Assert.Equal(["member"], member!.Processes.Select(x => x.Name));
-        Assert.Equal(["member-source"], member.Queryables.Select(x => x.Name));
-        remoteRegistry.Verify(x => x.GetAsync(It.Is<KaleidoClientDefinition>(c => c.Name == "Intake"), stamper, It.IsAny<CancellationToken>()), Times.Never);
-        Assert.Null(await sut.GetServiceAsync("unknown", Cancel));
-        Assert.Null(await sut.GetServiceAsync("router", Cancel));
-        Assert.Null(await sut.GetServiceAsync("broken", Cancel));
-    }
-
-    [Fact]
-    public async Task GetServiceAsync_WhenCanceled_PropagatesTheCancellation()
-    {
-        using var cancellation = new CancellationTokenSource();
-        Client("Member", "member", new OperationCanceledException(cancellation.Token));
-        await cancellation.CancelAsync();
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().GetServiceAsync("member", cancellation.Token));
-    }
 
     [Fact]
     public async Task GetAsync_ReturnsEveryClientsRegistry()
@@ -163,32 +132,32 @@ public sealed class ClientDownstreamRegistriesTests
     }
 
     [Fact]
-    public async Task InvalidateAsync_DropsEachClientsCachedRegistry_ExceptThisServices()
+    public async Task RefreshAsync_DropsEachClientsCachedRegistry_ExceptThisServices()
     {
         Client("Self", "router");
         Client("Intake", "intake");
 
-        await CreateSut("router").InvalidateAsync(Cancel);
+        await CreateSut("router").RefreshAsync(Cancel);
 
         remoteRegistry.Verify(x => x.InvalidateAsync("Intake", Cancel), Times.Once);
         remoteRegistry.Verify(x => x.InvalidateAsync("Self", It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task InvalidateAsync_AFailingClient_DoesNotStopTheOthers()
+    public async Task RefreshAsync_AFailingClient_DoesNotStopTheOthers()
     {
         Client("Intake", "intake");
         Client("Radiology", "radiology");
         remoteRegistry.Setup(x => x.InvalidateAsync("Intake", It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("store down"));
 
-        await CreateSut().InvalidateAsync(Cancel);
+        await CreateSut().RefreshAsync(Cancel);
 
         remoteRegistry.Verify(x => x.InvalidateAsync("Radiology", Cancel), Times.Once);
     }
 
     [Fact]
-    public async Task InvalidateAsync_AFailingClient_IsLoggedAsAWarning()
+    public async Task RefreshAsync_AFailingClient_IsLoggedAsAWarning()
     {
         var logger = new RecordingLogger();
         Client("Intake", "intake");
@@ -196,7 +165,7 @@ public sealed class ClientDownstreamRegistriesTests
         remoteRegistry.Setup(x => x.InvalidateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("store down"));
 
-        await CreateSut(logger: logger).InvalidateAsync(Cancel);
+        await CreateSut(logger: logger).RefreshAsync(Cancel);
 
         Assert.Equal(
             ["Failed to invalidate registry cache for client Intake.", "Failed to invalidate registry cache for client Radiology."],
@@ -205,7 +174,7 @@ public sealed class ClientDownstreamRegistriesTests
     }
 
     [Fact]
-    public async Task InvalidateAsync_TheCallersCancellation_Propagates()
+    public async Task RefreshAsync_TheCallersCancellation_Propagates()
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -213,10 +182,10 @@ public sealed class ClientDownstreamRegistriesTests
         remoteRegistry.Setup(x => x.InvalidateAsync("Intake", It.IsAny<CancellationToken>()))
             .ThrowsAsync(new OperationCanceledException(cancellation.Token));
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().InvalidateAsync(cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().RefreshAsync(cancellation.Token));
     }
 
-    private sealed class RecordingLogger : ILogger<ClientDownstreamRegistries>
+    private sealed class RecordingLogger : ILogger<ClientFanOutRegistrySource>
     {
         public System.Collections.Concurrent.ConcurrentQueue<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
 

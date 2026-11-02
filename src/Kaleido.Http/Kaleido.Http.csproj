@@ -16,8 +16,11 @@
 	<ItemGroup>
 		<!-- The MCP adapter is a front door built into the solution: it sets up the request's correlation for its own endpoint (not a Kaleido route group) with the transport's internal helper, and names its tools from the unfiltered registry (IKaleidoUnfilteredRegistry, #435). -->
 		<InternalsVisibleTo Include="Kaleido.Http.Mcp" />
+		<!-- The control registry (#553) is a Kaleido host whose registry is fed from its store: it configures the shared snapshot, serves it with the registry endpoint's HTTP rules, and sets up each request's caller with the transport's filters. -->
+		<InternalsVisibleTo Include="Kaleido.Http.Registry" />
 		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). The MCP adapter's unit tests mock IKaleidoUnfilteredRegistry (#435). -->
 		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Registry.UnitTests" />
 	</ItemGroup>
 </Project>

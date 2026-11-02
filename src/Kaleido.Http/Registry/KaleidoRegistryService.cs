@@ -46,13 +46,13 @@ internal interface IKaleidoUnfilteredRegistry
 }
 
 /// <summary>
-/// Builds the registry (local + downstream when aggregating), serves it from the shared snapshot,
-/// and filters it for the caller.
+/// Builds the registry (this host's own registrations, plus the full registry of its source when
+/// aggregating), serves it from the shared snapshot, and filters it for the caller.
 /// </summary>
 internal sealed partial class KaleidoRegistryService(
     RegistrySnapshot snapshot,
     LocalRegistrations local,
-    IKaleidoDownstreamRegistries downstream,
+    IKaleidoRegistrySource source,
     IKaleidoAuthorizer authorizer,
     IHttpContextAccessor httpContextAccessor,
     ILogger<KaleidoRegistryService> logger)
@@ -60,15 +60,13 @@ internal sealed partial class KaleidoRegistryService(
 {
     public bool IsMapped => snapshot.IsMapped;
 
-    public async Task<AggregatedRegistryResponse> GetUnfilteredAsync(CancellationToken cancellationToken)
-    {
-        var response = await snapshot.GetOrBuildAsync(
+    // The snapshot carries its revision, computed once when it was built (#553): readers are served it
+    // as it is, however many check it.
+    public Task<AggregatedRegistryResponse> GetUnfilteredAsync(CancellationToken cancellationToken) =>
+        snapshot.GetOrBuildAsync(
             refresh: false,
             ct => BuildAsync(refresh: false, ct),
             cancellationToken);
-
-        return response with { Revision = ComputeRevision(response) };
-    }
 
     public async Task<AggregatedRegistryResponse> GetForCallerAsync(
         bool refresh,
@@ -81,14 +79,16 @@ internal sealed partial class KaleidoRegistryService(
 
         // Scope the aggregate to the inbound caller's persona — capabilities the caller may not
         // invoke are omitted. The snapshot holds the unfiltered union; filtering is per-request.
-        if (authorizer.IsEnforced)
+        if (!authorizer.IsEnforced)
         {
-            // "For the caller" whoever asks: Kaleido's endpoints have set the caller already;
-            // in-host consumers reached through other endpoints (e.g. MCP) have not.
-            httpContextAccessor.HttpContext?.InitializeKaleidoCaller();
-
-            response = await FilterForCallerAsync(response, cancellationToken);
+            return response;
         }
+
+        // "For the caller" whoever asks: Kaleido's endpoints have set the caller already;
+        // in-host consumers reached through other endpoints (e.g. MCP) have not.
+        httpContextAccessor.HttpContext?.InitializeKaleidoCaller();
+
+        response = await FilterForCallerAsync(response, cancellationToken);
 
         // Freshness contract: Revision hashes the per-caller filtered payload (same content →
         // same revision), so it is valid as an ETag per caller persona.
@@ -99,16 +99,16 @@ internal sealed partial class KaleidoRegistryService(
         bool refresh,
         CancellationToken cancellationToken)
     {
-        // Honored refreshes invalidate downstream client caches first — the rebuild re-fetches,
-        // not replays stale per-client snapshots.
+        // Honored refreshes drop the source's copies first — the rebuild reads afresh, not replays
+        // stale snapshots.
         if (refresh && snapshot.Aggregate)
         {
-            await downstream.InvalidateAsync(cancellationToken);
+            await source.RefreshAsync(cancellationToken);
         }
 
         var remote = snapshot.Aggregate
-            ? await downstream.GetAsync(snapshot.DownstreamMaxParallelism, cancellationToken)
-            : DownstreamRegistries.None;
+            ? await source.GetAsync(snapshot.DownstreamMaxParallelism, cancellationToken)
+            : RegistrySourceContents.None;
 
         var processes = local.Processes()
             .Concat(remote.Processes)
@@ -137,7 +137,6 @@ internal sealed partial class KaleidoRegistryService(
                 .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             ClientErrors = remote.Errors,
-            Services = remote.Services,
             Missing = remote.Missing,
         };
 
@@ -155,30 +154,25 @@ internal sealed partial class KaleidoRegistryService(
             LogRegistryBuilt(logger, result.Processes.Count, result.Queryables.Count);
         }
 
-        return result;
+        return result with { Revision = ComputeRevision(result) };
     }
 
     private async Task<AggregatedRegistryResponse> FilterForCallerAsync(
         AggregatedRegistryResponse response,
         CancellationToken cancellationToken)
     {
-        var processes = await FilterProcessesAsync(response.Processes, response.Queryables, cancellationToken);
-        var queryables = await FilterQueryablesAsync(response.Queryables, cancellationToken);
-
-        // A caller is told the status of the services it can see, no others (#553).
-        var visible = processes.Select(x => x.ServiceName).Concat(queryables.Select(x => x.ServiceName)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var lookups = new LookupSources(response.Queryables, snapshot.Aggregate, source, snapshot.DownstreamMaxParallelism);
 
         return response with
         {
-            Processes = processes,
-            Queryables = queryables,
-            Services = [.. response.Services.Where(x => visible.Contains(x.ServiceName))],
+            Processes = await FilterProcessesAsync(response.Processes, lookups, cancellationToken),
+            Queryables = await FilterQueryablesAsync(response.Queryables, cancellationToken),
         };
     }
 
     private async Task<List<ProcessorRegistryResponse>> FilterProcessesAsync(
         IEnumerable<ProcessorRegistryResponse> processors,
-        IReadOnlyCollection<QueryableSourceResponse> queryables,
+        LookupSources lookups,
         CancellationToken cancellationToken)
     {
         var processes = new List<ProcessorRegistryResponse>();
@@ -214,7 +208,7 @@ internal sealed partial class KaleidoRegistryService(
                 processor with
                 {
                     InitialSteps = initialSteps,
-                    Steps = steps is null ? null : await DescribeForCallerAsync(steps, queryables, cancellationToken),
+                    Steps = steps is null ? null : await DescribeForCallerAsync(steps, lookups, cancellationToken),
                 });
         }
 
@@ -226,7 +220,7 @@ internal sealed partial class KaleidoRegistryService(
     // lookup names a query the caller may not use keeps the input without the lookup, with a notice.
     private async Task<List<ProcessStepResponse>> DescribeForCallerAsync(
         IReadOnlyList<ProcessStepResponse> steps,
-        IReadOnlyCollection<QueryableSourceResponse> queryables,
+        LookupSources lookups,
         CancellationToken cancellationToken)
     {
         var described = new List<ProcessStepResponse>(steps.Count);
@@ -237,7 +231,7 @@ internal sealed partial class KaleidoRegistryService(
 
             foreach (var field in step.Fields)
             {
-                fields.Add(field.Lookup is { } lookup && !await CanUseAsync(lookup, queryables, cancellationToken)
+                fields.Add(field.Lookup is { } lookup && !await CanUseAsync(lookup, lookups, cancellationToken)
                     ? NotPermittedLookup(step, field, lookup)
                     : field);
             }
@@ -264,34 +258,27 @@ internal sealed partial class KaleidoRegistryService(
     internal static readonly KaleidoNotice LookupNotPermitted =
         new(ProcessorErrorCodes.NotPermitted, "You do not have access to the query that fills this input.");
 
-    // The lookup's query as the caller may use it: a query of this host's registry (its own, or a
-    // downstream's on an aggregating host) by the rules it publishes; another service's by the rules its
-    // registry publishes to this host's client (GetServiceAsync), evaluated here for the caller as a
-    // router does. A query
-    // found in neither is not permitted. Hosts that check each other's lookups share policy names.
-    private async Task<bool> CanUseAsync(ProcessFieldLookup lookup, IReadOnlyCollection<QueryableSourceResponse> queryables, CancellationToken cancellationToken)
+    // The lookup's query as the caller may use it, by the rules the full registry publishes for it,
+    // evaluated here for the caller as a router does. A query found nowhere is not permitted. Hosts that
+    // check each other's lookups share policy names.
+    private async Task<bool> CanUseAsync(ProcessFieldLookup lookup, LookupSources lookups, CancellationToken cancellationToken)
     {
-        var source = Find(queryables, lookup) ?? Find((await downstream.GetServiceAsync(lookup.Service, cancellationToken))?.Queryables, lookup);
+        var queried = await lookups.FindAsync(lookup, cancellationToken);
 
-        if (source is null)
+        if (queried is null)
         {
             return false;
         }
 
         if (lookup.View is not { } viewName)
         {
-            return await authorizer.CanAccessAsync(source.Authorization, cancellationToken);
+            return await authorizer.CanAccessAsync(queried.Authorization, cancellationToken);
         }
 
-        var view = source.Views.FirstOrDefault(x => string.Equals(x.Name, viewName, StringComparison.OrdinalIgnoreCase));
+        var view = queried.Views.FirstOrDefault(x => string.Equals(x.Name, viewName, StringComparison.OrdinalIgnoreCase));
 
         return view is not null && await authorizer.CanAccessAsync(view.Authorization, cancellationToken);
     }
-
-    private static QueryableSourceResponse? Find(IReadOnlyCollection<QueryableSourceResponse>? queryables, ProcessFieldLookup lookup) =>
-        queryables?.FirstOrDefault(x =>
-            string.Equals(x.ServiceName, lookup.Service, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(x.Name, lookup.Source, StringComparison.OrdinalIgnoreCase));
 
     // A source the caller may not query directly stays listed (without its URL) while it has
     // views the caller may use.

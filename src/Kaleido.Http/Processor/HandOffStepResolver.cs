@@ -5,10 +5,11 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Http.Processor;
 
 // On the request that hands off, the runtime answers with the target's next steps by name (#198):
-// they are resolved here against the target's published registry - its client's cached copy, the
-// same read that checks a cross-service lookup (#524) - so each keeps the target's description,
-// authorization and execute URL. A step the copy does not have, or a copy that cannot be read, is
-// left out with the pro_not_permitted notice, and a Warning says which.
+// they are resolved here against the target's processor in the full registry (the registry source's,
+// the same one a cross-service lookup is checked against, #524) - its current version when the registry
+// knows versions - so each keeps the target's description, authorization and execute URL. A step the
+// registry does not have, or a target it does not have, is left out with the pro_not_permitted notice,
+// and a Warning says which.
 internal interface IHandOffStepResolver
 {
     Task<ProcessContinuation> ResolveAsync(
@@ -17,7 +18,7 @@ internal interface IHandOffStepResolver
 }
 
 internal sealed partial class HandOffStepResolver(
-    IKaleidoDownstreamRegistries downstream,
+    IKaleidoRegistrySource source,
     ILogger<HandOffStepResolver> logger)
     : IHandOffStepResolver
 {
@@ -34,17 +35,12 @@ internal sealed partial class HandOffStepResolver(
             return new ProcessContinuation(RequiredStep: null, AvailableSteps: [], processResult.Notice);
         }
 
-        if (await downstream.GetServiceAsync(target, cancellationToken) is not { } registry)
+        if (PublishedSteps(await source.GetAsync(maxParallelism: null, cancellationToken), target) is not { } published)
         {
             LogTargetRegistryUnread(logger, processResult.ProcessId, target);
 
             return new ProcessContinuation(RequiredStep: null, AvailableSteps: [], ProcessContinuationFilter.NotPermitted);
         }
-
-        var published = registry.Processes
-            .SelectMany(x => x.Steps ?? [])
-            .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
 
         var missing = new List<string>();
         ProcessRequiredStep? required = null;
@@ -86,6 +82,26 @@ internal sealed partial class HandOffStepResolver(
             missing.Count > 0 ? ProcessContinuationFilter.NotPermitted : processResult.Notice);
     }
 
+    // The target's published steps by name - of its current version when the registry knows the
+    // target's versions; null when the registry has no processor for the target.
+    private static Dictionary<string, ProcessStepResponse>? PublishedSteps(RegistrySourceContents registry, string target)
+    {
+        var current = registry.Services
+            .FirstOrDefault(x => x.IsCurrent && string.Equals(x.ServiceName, target, StringComparison.OrdinalIgnoreCase))?
+            .ServiceVersion;
+        var processors = registry.Processes
+            .Where(x => string.Equals(x.ServiceName, target, StringComparison.OrdinalIgnoreCase)
+                && (current is null || string.Equals(x.ServiceVersion, current, StringComparison.Ordinal)))
+            .ToList();
+
+        return processors.Count == 0
+            ? null
+            : processors
+                .SelectMany(x => x.Steps ?? [])
+                .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+    }
+
     private static ProcessStepSummary Summary(ProcessStepContract step) =>
         new()
         {
@@ -117,9 +133,9 @@ internal sealed partial class HandOffStepResolver(
             InformationRequest = informationRequest,
         };
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Process {ProcessId} was handed off to {Target}, whose registry could not be read through this host's client; its next steps are left out of the response (pro_not_permitted). Check the client for {Target}.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Process {ProcessId} was handed off to {Target}, which this host's registry does not have (not registered, or its registry could not be read); its next steps are left out of the response (pro_not_permitted). Check that {Target} is registered, or the client for {Target}.")]
     private static partial void LogTargetRegistryUnread(ILogger logger, Guid processId, string target);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Process {ProcessId} was handed off to {Target}, whose registry, as this host's client reads it, does not publish steps {StepNames}; they are left out of the response (pro_not_permitted). Check that this service's credential may see them.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Process {ProcessId} was handed off to {Target}, whose registry, as this host reads it, does not publish steps {StepNames}; they are left out of the response (pro_not_permitted). Check that this service's credential may see them.")]
     private static partial void LogTargetStepsNotPublished(ILogger logger, Guid processId, string target, string stepNames);
 }

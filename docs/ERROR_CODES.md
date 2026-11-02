@@ -192,6 +192,17 @@ The reference provider owns its own code; core knows nothing about it.
 
 ---
 
+## `RegistryErrorCodes` - control registry (`Kaleido.Http.Registry`)
+
+Answered by the control registry's endpoints in a `KaleidoErrorResponse` (#553); see [the package README](../src/Kaleido.Http.Registry/README.md).
+
+| Constant | Code | Meaning |
+|---|---|---|
+| `RegistrantNotAllowed` | `registry_registrant_not_allowed` | 403: the caller may not register, renew or remove an instance of that service (`Kaleido:Registry:Registrants`) |
+| `ReaderNotAllowed` | `registry_reader_not_allowed` | 403: only Kaleido hosts (`Kaleido:Registry:ReaderPolicy`) read the control registry; users read a router's or orchestrator's own registry |
+| `InstanceUnknown` | `registry_instance_unknown` | 404: the registry does not know the instance (it restarted, failed over or removed it); the instance registers again |
+| `InvalidRegistration` | `registry_invalid_registration` | 400: no service version, an invalid service name or version, an empty instance id, or a capability of another service |
+
 ## `McpErrorCodes` - MCP adapter (`Kaleido.Http.Mcp`)
 
 Startup codes surface through `KaleidoConfigurationException`. At request time a tool-call problem is a tool result with `isError: true` and one of these codes, never an HTTP or protocol error; what the agent does with each is in [the adapter's README](../src/Kaleido.Http.Mcp/README.md).

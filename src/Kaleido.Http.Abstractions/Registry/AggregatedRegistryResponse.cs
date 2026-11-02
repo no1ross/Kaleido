@@ -36,14 +36,6 @@ public sealed record AggregatedRegistryResponse
         = [];
 
     /// <summary>
-    /// Each service version the control registry knows, with its instances' status (#553): which version
-    /// is the current one, how many instances are ready, and whether it is available at all. Empty on a
-    /// host that does not read a control registry.
-    /// </summary>
-    public IReadOnlyCollection<RegistryServiceStatus> Services { get; init; }
-        = [];
-
-    /// <summary>
     /// What the control registry expects and does not have (#553): a configured processor version, or a
     /// service a registered step looks up, with no registration. A non-empty collection makes the
     /// response partial.

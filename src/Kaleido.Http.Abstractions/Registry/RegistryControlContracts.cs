@@ -66,6 +66,26 @@ public sealed record RegistryHeartbeat
     public bool Healthy { get; init; } = true;
 }
 
+/// <summary>
+/// Each service version's status (<c>GET /registry/status</c>, #553), apart from the capabilities: it
+/// changes whenever an instance starts, stops or fails, while the capabilities change only with a deployment.
+/// </summary>
+[ExcludeFromCodeCoverage]
+public sealed record RegistryStatusResponse
+{
+    /// <summary>Every service version the registry knows.</summary>
+    public IReadOnlyCollection<RegistryServiceStatus> Services { get; init; } = [];
+
+    /// <summary>When the statuses were worked out (UTC).</summary>
+    public DateTimeOffset GeneratedAt { get; init; }
+
+    /// <summary>
+    /// A hash of <see cref="Services"/> (SHA-256, lowercase hex), mirrored by the <c>ETag</c> header: send it
+    /// back as <c>If-None-Match</c> to get 304 while nothing changed.
+    /// </summary>
+    public string? Revision { get; init; }
+}
+
 /// <summary>A service version the control registry knows, and its instances' status (#553).</summary>
 [ExcludeFromCodeCoverage]
 public sealed record RegistryServiceStatus

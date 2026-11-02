@@ -10,6 +10,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
 | `Kaleido.Http.Mcp.UnitTests` | `src/Kaleido.Http.Mcp` (tool catalog and naming, schemas, the tool invoker) |
 | `Kaleido.Http.Mcp.FunctionalTests` | `src/Kaleido.Http.Mcp` through a real host and the SDK's MCP client |
+| `Kaleido.Http.Registry.UnitTests` | `src/Kaleido.Http.Registry` (registration and its trust, leases, the rolling-deployment rule, completeness, the in-memory store, the endpoints' mapping) |
 | `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (the internal `HttpHeaderSanitizerExtensions` and contract types) |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (the store contracts, the SQLite transactions and SQLite fidelity) |
 | `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Kaleido.Observability.OpenTelemetry` (registration of every Kaleido source/meter, `AddOpenTelemetry` options, copied telemetry names equal the owning constants) |
