@@ -318,4 +318,44 @@ public sealed class SqliteKaleidoOutboxStoreTests
         Assert.Equal(2, status.DueCount);
         Assert.Equal(oldest.OccurredUtc, status.OldestDueUtc);
     }
+
+    // #552, several relays on one database, deterministically: instance A selects the due entries, and
+    // before its UPDATE runs instance B leases the same ones. A's UPDATE re-checks the lease and A reads
+    // back only what it leased itself, so it gets none of B's - the claim is a compare-and-set.
+    [Fact]
+    public async Task ClaimEventsAsync_WhenAnotherInstanceLeasesTheSameEntriesFirst_ReturnsNoneOfThem()
+    {
+        var connectionString = $"DataSource=file:{Guid.NewGuid():N}?mode=memory&cache=shared";
+        using var keepAlive = CreateSharedDbContext(connectionString);
+        using var other = CreateSharedDbContext(connectionString);
+        var b = CreateSut(other, Guid.NewGuid());
+        IReadOnlyList<KaleidoOutboxEvent> claimedByB = [];
+        var race = new BeforeTheLeaseUpdate(async () => claimedByB = await b.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), CancellationToken.None));
+        var options = new DbContextOptionsBuilder<SqliteKaleidoContextDbContext>().UseSqlite(connectionString).AddInterceptors(race).Options;
+        using var first = new SqliteKaleidoContextDbContext(options);
+        first.Database.OpenConnection();
+        var a = CreateSut(first, Guid.NewGuid());
+        await a.AddAsync([Event(), Event()], TestContext.Current.CancellationToken);
+
+        var claimedByA = await a.ClaimEventsAsync(10, TimeSpan.FromMinutes(1), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, claimedByB.Count);
+        Assert.Empty(claimedByA);
+    }
+
+    // Runs an action once, just before the claim's lease UPDATE executes.
+    private sealed class BeforeTheLeaseUpdate(Func<Task> action) : DbCommandInterceptor
+    {
+        private int _fired;
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(System.Data.Common.DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("\"LeaseOwner\" =", StringComparison.Ordinal) && Interlocked.Exchange(ref _fired, 1) == 0)
+            {
+                await action();
+            }
+
+            return result;
+        }
+    }
 }
