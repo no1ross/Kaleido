@@ -42,6 +42,10 @@ app.MapKaleidoControlRegistry();
 | `GET /registry/capabilities` | a Kaleido host keeping its copy fresh | the capabilities alone (no statuses), with an ETag that changes only with a deployment; 403 for anyone else |
 | `GET /registry/status` | operations, the registry's UI, a host keeping its copy fresh | each service version's status in detail, its instances included (`KaleidoRegistryStatus`), with its own ETag (heartbeat times alone do not change it); 403 for anyone else |
 
+Every endpoint is described for OpenAPI (tag `Control registry`, summary, description, what it accepts,
+its success type and each error it can answer, as a `KaleidoErrorResponse`), as the process endpoints
+are (#564 brings every Kaleido endpoint to the same).
+
 - **Pushed, never polled.** Instances send registrations and heartbeats; the registry never calls an
   instance. An instance whose heartbeats stop is no longer ready once its lease runs out
   (`HeartbeatInterval` x `MissedHeartbeats`, default 30 s), and it is removed after `Retention`

@@ -59,6 +59,8 @@ internal static class RegistryEndpointRouteBuilderExtensions
             .WithName(RegistryEndpointNames.RegistryEndpointName)
             .WithTags("Registry")
             .Produces<KaleidoRegistry>()
+            .Produces(StatusCodes.Status304NotModified)
+            .ProducesKaleidoErrors()
             .WithSummary("Get unified registry.")
             .WithDescription(Description(aggregate));
 

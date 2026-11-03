@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -80,5 +81,41 @@ public sealed class ControlRegistryEndpointRouteBuilderExtensionsTests
     public void Map_WhenEndpointsIsNull_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => ControlRegistryEndpointRouteBuilderExtensions.MapKaleidoControlRegistry(null!));
+    }
+
+    public static TheoryData<string, Type?, string> Descriptions() => new()
+    {
+        { ControlRegistryEndpointNames.Register, typeof(RegistryInstanceRegistration), "200 RegistryLease, 400, 403, 415, 500" },
+        { ControlRegistryEndpointNames.Heartbeat, typeof(RegistryHeartbeat), "200 RegistryLease, 400, 403, 404, 415, 500" },
+        { ControlRegistryEndpointNames.Deregister, null, "204, 403, 404, 500" },
+        { ControlRegistryEndpointNames.Read, null, "200 KaleidoRegistry, 304, 403, 500, 502 KaleidoRegistry" },
+        { ControlRegistryEndpointNames.Status, null, "200 KaleidoRegistryStatus, 304, 403, 500" },
+        { ControlRegistryEndpointNames.Capabilities, null, "200 KaleidoRegistry, 304, 403, 500" },
+    };
+
+    // #553, #564: each endpoint is described for OpenAPI as the process endpoints are - tag, summary,
+    // description, what it accepts, and every answer: its success type, and each error a KaleidoErrorResponse.
+    [Theory]
+    [MemberData(nameof(Descriptions))]
+    public void Map_DescribesEachEndpoint_WithEveryAnswer(string name, Type? accepts, string answers)
+    {
+        var app = CreateEndpoints();
+        app.MapKaleidoControlRegistry();
+
+        var endpoint = Assert.Single(((IEndpointRouteBuilder)app).DataSources.SelectMany(x => x.Endpoints), x => x.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName == name);
+
+        Assert.Equal(["Control registry"], endpoint.Metadata.GetMetadata<ITagsMetadata>()!.Tags);
+        Assert.False(string.IsNullOrWhiteSpace(endpoint.Metadata.GetMetadata<IEndpointSummaryMetadata>()?.Summary));
+        Assert.False(string.IsNullOrWhiteSpace(endpoint.Metadata.GetMetadata<IEndpointDescriptionMetadata>()?.Description));
+        Assert.Equal(accepts, endpoint.Metadata.GetMetadata<IAcceptsMetadata>()?.RequestType);
+        var produced = endpoint.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>()
+            .Where(x => x.Type != typeof(void) || x.StatusCode != 200)
+            .DistinctBy(x => x.StatusCode)
+            .OrderBy(x => x.StatusCode)
+            .Select(x => x.Type is null || x.Type == typeof(void) || x.Type == typeof(KaleidoErrorResponse) ? $"{x.StatusCode}" : $"{x.StatusCode} {x.Type.Name}");
+        Assert.Equal(answers, string.Join(", ", produced));
+        Assert.All(
+            endpoint.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>().Where(x => x.StatusCode is >= 400 and not 502),
+            x => Assert.Equal(typeof(KaleidoErrorResponse), x.Type));
     }
 }

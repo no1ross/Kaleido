@@ -69,14 +69,78 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
             .AddEndpointFilter<Observability.KaleidoCallerContextEndpointFilter>()
             .WithTags("Control registry");
 
-        group.MapPost(ControlRegistryRoutePaths.Instances, RegisterAsync).WithName(ControlRegistryEndpointNames.Register).WithSummary("Register an instance.");
-        group.MapPut(ControlRegistryRoutePaths.Heartbeat, HeartbeatAsync).WithName(ControlRegistryEndpointNames.Heartbeat).WithSummary("Renew an instance's lease.");
-        group.MapDelete(ControlRegistryRoutePaths.Instance, DeregisterAsync).WithName(ControlRegistryEndpointNames.Deregister).WithSummary("Deregister an instance.");
-        group.MapGet(ControlRegistryRoutePaths.Read, ReadAsync).WithName(ControlRegistryEndpointNames.Read).WithSummary("The full registry of every service version, for other Kaleido hosts.");
-        group.MapGet(ControlRegistryRoutePaths.Status, StatusAsync).WithName(ControlRegistryEndpointNames.Status).WithSummary("Each service version's status and instances, for other Kaleido hosts.");
-        group.MapGet(ControlRegistryRoutePaths.Capabilities, CapabilitiesAsync).WithName(ControlRegistryEndpointNames.Capabilities).WithSummary("The capabilities alone, for Kaleido hosts keeping their copy fresh.");
+        MapInstanceEndpoints(group);
+        MapReadEndpoints(group);
 
         return group;
+    }
+
+    // Registration, heartbeat and deregistration: an instance of a service, with its service's own token.
+    private static void MapInstanceEndpoints(RouteGroupBuilder group)
+    {
+        group.MapPost(ControlRegistryRoutePaths.Instances, RegisterAsync)
+            .WithName(ControlRegistryEndpointNames.Register)
+            .WithSummary("Register an instance.")
+            .WithDescription(
+                "Registers an instance of a service version with the capabilities it publishes, and leases it. " +
+                "The caller must be allowed to register the service (Kaleido:Registry:Registrants). " +
+                "The answer is the lease: renew it every heartbeat interval it names.")
+            .Accepts<RegistryInstanceRegistration>("application/json")
+            .Produces<RegistryLease>()
+            .ProducesKaleidoErrors(StatusCodes.Status400BadRequest, StatusCodes.Status403Forbidden, StatusCodes.Status415UnsupportedMediaType);
+
+        group.MapPut(ControlRegistryRoutePaths.Heartbeat, HeartbeatAsync)
+            .WithName(ControlRegistryEndpointNames.Heartbeat)
+            .WithSummary("Renew an instance's lease.")
+            .WithDescription(
+                "Renews the lease of a registered instance and records its local health. " +
+                "404 registry_instance_unknown means the registry does not know the instance (it restarted, failed over or removed it): register again.")
+            .Accepts<RegistryHeartbeat>("application/json")
+            .Produces<RegistryLease>()
+            .ProducesKaleidoErrors(StatusCodes.Status400BadRequest, StatusCodes.Status403Forbidden, StatusCodes.Status404NotFound, StatusCodes.Status415UnsupportedMediaType);
+
+        group.MapDelete(ControlRegistryRoutePaths.Instance, DeregisterAsync)
+            .WithName(ControlRegistryEndpointNames.Deregister)
+            .WithSummary("Deregister an instance.")
+            .WithDescription("Removes an instance at its shutdown, so it is no longer counted at once.")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesKaleidoErrors(StatusCodes.Status403Forbidden, StatusCodes.Status404NotFound);
+    }
+
+    // The reads: only Kaleido hosts (Kaleido:Registry:ReaderPolicy), each with an ETag.
+    private static void MapReadEndpoints(RouteGroupBuilder group)
+    {
+        group.MapGet(ControlRegistryRoutePaths.Read, ReadAsync)
+            .WithName(ControlRegistryEndpointNames.Read)
+            .WithSummary("The registry of every service version.")
+            .WithDescription(
+                "Returns the registry in one call: every processor and query source of every service version, each with its overall status, and what is missing. " +
+                "Only Kaleido hosts read it (Kaleido:Registry:ReaderPolicy); it is not filtered for the caller. " +
+                "Send the ETag back as If-None-Match to get 304 while nothing changed; ?strict answers 502 when the registry is partial.")
+            .Produces<KaleidoRegistry>()
+            .Produces(StatusCodes.Status304NotModified)
+            .Produces<KaleidoRegistry>(StatusCodes.Status502BadGateway)
+            .ProducesKaleidoErrors(StatusCodes.Status403Forbidden);
+
+        group.MapGet(ControlRegistryRoutePaths.Status, StatusAsync)
+            .WithName(ControlRegistryEndpointNames.Status)
+            .WithSummary("Each service version's status and instances.")
+            .WithDescription(
+                "Returns each service version's status in detail, its instances included, for operations and Kaleido hosts keeping their copy fresh. " +
+                "Its ETag changes with a state, not with a heartbeat alone.")
+            .Produces<KaleidoRegistryStatus>()
+            .Produces(StatusCodes.Status304NotModified)
+            .ProducesKaleidoErrors(StatusCodes.Status403Forbidden);
+
+        group.MapGet(ControlRegistryRoutePaths.Capabilities, CapabilitiesAsync)
+            .WithName(ControlRegistryEndpointNames.Capabilities)
+            .WithSummary("The capabilities alone.")
+            .WithDescription(
+                "Returns every processor and query source without their statuses, for Kaleido hosts keeping their copy fresh. " +
+                "Its ETag changes only with a deployment.")
+            .Produces<KaleidoRegistry>()
+            .Produces(StatusCodes.Status304NotModified)
+            .ProducesKaleidoErrors(StatusCodes.Status403Forbidden);
     }
 
     private static async Task<IResult> RegisterAsync(KaleidoJsonBody<RegistryInstanceRegistration> body, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
