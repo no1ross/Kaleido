@@ -58,24 +58,21 @@ internal sealed partial class KaleidoRegistryService(
     ILogger<KaleidoRegistryService> logger)
     : IKaleidoRegistryService, IKaleidoUnfilteredRegistry
 {
+    // The snapshot built from a full registry, and the source revision it was built from.
+    private (string SourceRevision, KaleidoRegistry Snapshot)? _fromFull;
+
     public bool IsMapped => snapshot.IsMapped;
 
     // The snapshot carries its revision, computed once when it was built (#553): readers are served it
     // as it is, however many check it.
     public Task<KaleidoRegistry> GetUnfilteredAsync(CancellationToken cancellationToken) =>
-        snapshot.GetOrBuildAsync(
-            refresh: false,
-            ct => BuildAsync(refresh: false, ct),
-            cancellationToken);
+        SnapshotAsync(refresh: false, cancellationToken);
 
     public async Task<KaleidoRegistry> GetForCallerAsync(
         bool refresh,
         CancellationToken cancellationToken)
     {
-        var response = await snapshot.GetOrBuildAsync(
-            refresh,
-            ct => BuildAsync(refresh, ct),
-            cancellationToken);
+        var response = await SnapshotAsync(refresh, cancellationToken);
 
         // Scope the aggregate to the inbound caller's persona — capabilities the caller may not
         // invoke are omitted. The snapshot holds the unfiltered union; filtering is per-request.
@@ -97,26 +94,64 @@ internal sealed partial class KaleidoRegistryService(
 
     private static readonly KaleidoRegistry Nothing = new();
 
-    private async Task<KaleidoRegistry> BuildAsync(
-        bool refresh,
-        CancellationToken cancellationToken)
+    // A full registry (the control registry's, or a participant's copy of it, #553) is kept by its source in
+    // memory, with a revision: the snapshot is rebuilt exactly when that revision changes - at once, whatever
+    // the snapshot cache's TTL - and served as it is meanwhile. A full registry without a revision (one
+    // that could not be read) is rebuilt on every read, so it recovers at once. Any other source is
+    // cached by the snapshot store.
+    private async Task<KaleidoRegistry> SnapshotAsync(bool refresh, CancellationToken cancellationToken)
     {
-        // The full registry (the control registry's, or a participant's copy of it) is read whatever the
-        // map options, and already holds this host's own registrations: it is served as it is (#553).
-        var full = source.IsFullRegistry;
-        var reads = full || snapshot.Aggregate;
+        if (!source.IsFullRegistry)
+        {
+            return await snapshot.GetOrBuildAsync(refresh, ct => BuildAsync(refresh, ct), cancellationToken);
+        }
 
-        // Honored refreshes drop the source's copies first — the rebuild reads afresh, not replays
-        // stale snapshots.
-        if (refresh && reads)
+        if (refresh)
         {
             await source.RefreshAsync(cancellationToken);
         }
 
-        var remote = reads
+        var full = await source.GetAsync(snapshot.DownstreamMaxParallelism, cancellationToken);
+
+        if (full.Revision is { } revision && _fromFull is { } held && string.Equals(held.SourceRevision, revision, StringComparison.Ordinal))
+        {
+            return held.Snapshot;
+        }
+
+        var composed = Compose(full, refresh);
+        var built = composed with { GeneratedAt = full.GeneratedAt, IsPartial = composed.Errors.Count > 0 || composed.Missing.Count > 0 };
+
+        if (full.Revision is { } current)
+        {
+            _fromFull = (current, built);
+        }
+
+        return built;
+    }
+
+    private async Task<KaleidoRegistry> BuildAsync(
+        bool refresh,
+        CancellationToken cancellationToken)
+    {
+        // Honored refreshes drop the source's copies first — the rebuild reads afresh, not replays
+        // stale snapshots.
+        if (refresh && snapshot.Aggregate)
+        {
+            await source.RefreshAsync(cancellationToken);
+        }
+
+        var remote = snapshot.Aggregate
             ? await source.GetAsync(snapshot.DownstreamMaxParallelism, cancellationToken)
             : Nothing;
 
+        return Compose(remote, refresh);
+    }
+
+    // This host's own registrations and the source's - only the source's when it is the full registry,
+    // which already holds them (#553) - with the revision computed once.
+    private KaleidoRegistry Compose(KaleidoRegistry remote, bool refresh)
+    {
+        var full = source.IsFullRegistry;
         var processes = (full ? [] : local.Processes())
             .Concat(remote.Processes)
             .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)

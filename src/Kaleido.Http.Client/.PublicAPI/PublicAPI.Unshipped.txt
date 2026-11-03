@@ -111,3 +111,25 @@ static Kaleido.Http.Client.KaleidoHttpClientsServiceCollectionExtensions.AddHttp
 static Kaleido.Http.Client.KaleidoHttpClientsServiceCollectionExtensions.ForwardCallerToken(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Http.Client.KaleidoResilienceOptions.operator !=(Kaleido.Http.Client.KaleidoResilienceOptions? left, Kaleido.Http.Client.KaleidoResilienceOptions? right) -> bool
 static Kaleido.Http.Client.KaleidoResilienceOptions.operator ==(Kaleido.Http.Client.KaleidoResilienceOptions? left, Kaleido.Http.Client.KaleidoResilienceOptions? right) -> bool
+Kaleido.Http.Client.KaleidoControlRegistryClientServiceCollectionExtensions
+const Kaleido.Http.Client.KaleidoRegistryClientOptions.SectionName = "Registry" -> string!
+Kaleido.Http.Client.KaleidoRegistryClientOptions
+override Kaleido.Http.Client.KaleidoRegistryClientOptions.ToString() -> string!
+static Kaleido.Http.Client.KaleidoRegistryClientOptions.operator !=(Kaleido.Http.Client.KaleidoRegistryClientOptions? left, Kaleido.Http.Client.KaleidoRegistryClientOptions? right) -> bool
+static Kaleido.Http.Client.KaleidoRegistryClientOptions.operator ==(Kaleido.Http.Client.KaleidoRegistryClientOptions? left, Kaleido.Http.Client.KaleidoRegistryClientOptions? right) -> bool
+override Kaleido.Http.Client.KaleidoRegistryClientOptions.GetHashCode() -> int
+override Kaleido.Http.Client.KaleidoRegistryClientOptions.Equals(object? obj) -> bool
+Kaleido.Http.Client.KaleidoRegistryClientOptions.Equals(Kaleido.Http.Client.KaleidoRegistryClientOptions? other) -> bool
+Kaleido.Http.Client.KaleidoRegistryClientOptions.<Clone>$() -> Kaleido.Http.Client.KaleidoRegistryClientOptions!
+Kaleido.Http.Client.KaleidoRegistryClientOptions.KaleidoRegistryClientOptions() -> void
+Kaleido.Http.Client.KaleidoRegistryClientOptions.Url.get -> string?
+Kaleido.Http.Client.KaleidoRegistryClientOptions.Url.init -> void
+Kaleido.Http.Client.KaleidoRegistryClientOptions.Address.get -> string?
+Kaleido.Http.Client.KaleidoRegistryClientOptions.Address.init -> void
+Kaleido.Http.Client.KaleidoRegistryClientOptions.ServiceName.get -> string!
+Kaleido.Http.Client.KaleidoRegistryClientOptions.ServiceName.init -> void
+Kaleido.Http.Client.KaleidoRegistryClientOptions.CapabilitiesInterval.get -> System.TimeSpan
+Kaleido.Http.Client.KaleidoRegistryClientOptions.AvailabilityInterval.get -> System.TimeSpan
+Kaleido.Http.Client.KaleidoRegistryClientOptions.AvailabilityInterval.init -> void
+Kaleido.Http.Client.KaleidoRegistryClientOptions.CapabilitiesInterval.init -> void
+static Kaleido.Http.Client.KaleidoControlRegistryClientServiceCollectionExtensions.AddControlRegistryClient(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

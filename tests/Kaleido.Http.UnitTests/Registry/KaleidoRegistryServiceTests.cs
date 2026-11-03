@@ -600,4 +600,42 @@ public sealed class KaleidoRegistryServiceTests
         Assert.Null(Assert.Single(step.Fields).Lookup);
         source.Verify(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    // #553: a full registry is held by its source with a revision - the snapshot is served while that
+    // revision holds, rebuilt the moment it changes (whatever the cache's TTL), and rebuilt on every read
+    // when the source has none (it could not read the registry).
+    [Theory]
+    [InlineData("r1", "r1", true)]
+    [InlineData("r1", "r2", false)]
+    [InlineData(null, null, false)]
+    public async Task FromAFullRegistry_TheSnapshotFollowsTheSourcesRevision(string? first, string? second, bool same)
+    {
+        source.Setup(x => x.IsFullRegistry).Returns(true);
+        var revisions = new Queue<string?>([first, second]);
+        source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Contents([new ProcessorRegistryResponse { Name = "radiology", ServiceName = "radiology" }], [], []) with { Revision = revisions.Dequeue(), GeneratedAt = time.GetUtcNow() });
+        var (sut, _) = CreateSut(aggregate: false);
+
+        var before = await sut.GetUnfilteredAsync(Cancel);
+        var after = await sut.GetUnfilteredAsync(Cancel);
+
+        Assert.Equal(same, ReferenceEquals(before, after));
+        Assert.False(string.IsNullOrEmpty(after.Revision));
+        Assert.Equal(time.GetUtcNow(), after.GeneratedAt);
+        Assert.Empty(stored);
+    }
+
+    // A full registry that could not be read is served partial, and a refresh asks the source to read now.
+    [Fact]
+    public async Task FromAFullRegistry_APartialRegistry_IsMarked_AndARefreshReadsAgain()
+    {
+        source.Setup(x => x.IsFullRegistry).Returns(true);
+        source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Contents([], [], [new RegistryReadError { Source = "registry", Reason = "down" }]));
+
+        var registry = await CreateSut(aggregate: false).Sut.GetForCallerAsync(refresh: true, cancellationToken: Cancel);
+
+        Assert.True(registry.IsPartial);
+        source.Verify(x => x.RefreshAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

@@ -10,7 +10,10 @@ public sealed class KaleidoCallCredentialHandlerTests
 {
     private static readonly ClaimsPrincipal Carol = new(new ClaimsIdentity([new Claim(ClaimTypes.Name, "carol")], "test"));
 
-    private static (HttpMessageInvoker Invoker, List<HttpRequestMessage> Sent) CreateSut(params IKaleidoCallCredentialProvider[] providers)
+    private static (HttpMessageInvoker Invoker, List<HttpRequestMessage> Sent) CreateSut(params IKaleidoCallCredentialProvider[] providers) =>
+        CreateSut("Member", registry: null, providers);
+
+    private static (HttpMessageInvoker Invoker, List<HttpRequestMessage> Sent) CreateSut(string clientName, KaleidoRegistryClientOptions? registry, params IKaleidoCallCredentialProvider[] providers)
     {
         var sent = new List<HttpRequestMessage>();
         var inner = new Mock<HttpMessageHandler>();
@@ -22,7 +25,7 @@ public sealed class KaleidoCallCredentialHandlerTests
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-        return (new HttpMessageInvoker(new KaleidoCallCredentialHandler("Member", providers, Catalog()) { InnerHandler = inner.Object }), sent);
+        return (new HttpMessageInvoker(new KaleidoCallCredentialHandler(clientName, providers, Catalog(), registry) { InnerHandler = inner.Object }), sent);
     }
 
     private static IKaleidoClientCatalog Catalog()
@@ -148,5 +151,21 @@ public sealed class KaleidoCallCredentialHandlerTests
         await Assert.ThrowsAsync<HttpRequestException>(() => invoker.SendAsync(request, Cancel));
 
         Assert.Empty(sent);
+    }
+
+    // #553: the control registry's client has no catalog entry; its service is the registry's, as configured.
+    [Fact]
+    public async Task TheControlRegistrysClient_AsksForTheRegistrysService()
+    {
+        var provider = Answering(KaleidoCallCredential.Header("Bearer svc-registry"));
+        var (invoker, _) = CreateSut(CentralRegistrySource.ClientName, new KaleidoRegistryClientOptions { Url = "https://registry.internal", ServiceName = "control-registry" }, provider.Object);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://registry.internal/registry/capabilities");
+        KaleidoCallContext.MarkServiceOwn(request);
+
+        using var response = await invoker.SendAsync(request, Cancel);
+        invoker.Dispose();
+
+        provider.Verify(x => x.GetCredentialAsync(It.Is<KaleidoCallCredentialRequest>(r => r.ServiceName == "control-registry" && r.ClientName == CentralRegistrySource.ClientName && r.Purpose == KaleidoCallPurpose.ServiceOwn), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal("Bearer svc-registry", request.Headers.Authorization!.ToString());
     }
 }

@@ -85,6 +85,37 @@ Failed fetches are never cached - the next call retries naturally.
 
 ---
 
+## Taking part in the control registry
+
+With a control registry (`Kaleido.Http.Registry`, #553), a host's registry is the control registry's, not
+one it builds:
+
+```csharp
+builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
+    .AddHttp()
+    .AddHttpClients()             // still how this host calls other services
+    .AddControlRegistryClient();  // Kaleido:Registry:Url = "https://registry.internal"
+```
+
+- **One registry, in memory.** `CentralRegistrySource` keeps the control registry's capabilities
+  (`GET /registry/capabilities`, checked every `CapabilitiesInterval`, 30 s) and each version's
+  availability (`GET /registry/availability`, every `AvailabilityInterval`, 10 s), each with its ETag, and
+  composes the one `KaleidoRegistry` every reader on this host gets: each capability with its overall
+  status, never an instance. Reads never call out.
+- **Served as it is.** It is the full registry: this host serves it, filtered per caller, and its lookups,
+  hand-offs and MCP read it; nothing is merged in. Its revision follows both documents, so the host
+  rebuilds what it serves the moment either changes, whatever `RegistryCacheTtl`. It replaces the
+  per-client fan-out of `AddHttpClients()`, in either order.
+- **When the registry cannot be read,** the last good copy is served, partial (a `RegistryReadError` for
+  `registry`), until a read succeeds.
+- **Its calls are the service's own** (named client `kaleido-registry`): with an
+  `IKaleidoCallCredentialProvider`, it decides their credential (purpose `ServiceOwn`, service
+  `KaleidoRegistryClientOptions.ServiceName`, `registry` by default), which must satisfy the registry's
+  reader policy.
+
+Settings (`Kaleido:Registry`, `KaleidoRegistryClientOptions`): `Url` (required), `Address` (this version's
+address, registered with each instance), `ServiceName`, `CapabilitiesInterval`, `AvailabilityInterval`.
+
 ## Resilience
 
 Every call a Kaleido client makes - registry reads, queries, process execution - runs through a resilience pipeline built on `Microsoft.Extensions.Http.Resilience` (Polly). **It is on by default**; nothing needs configuring.
@@ -324,6 +355,7 @@ This project does not contain:
 
 ## Where to look
 
+- `CentralRegistrySource.cs`, `CentralRegistrySync.cs` - the host's copy of the control registry, and keeping it fresh
 - `../Kaleido.Http.Abstractions/Processor/IKaleidoProcessorClient.cs` — process client interface
 - `Processor/KaleidoProcessorClient.cs` — process client implementation
 - `../Kaleido.Http.Abstractions/Queryable/IKaleidoQueryableClient.cs` — queryable client interface

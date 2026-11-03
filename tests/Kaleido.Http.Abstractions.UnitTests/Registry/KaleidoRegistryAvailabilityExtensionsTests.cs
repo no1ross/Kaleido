@@ -46,9 +46,29 @@ public sealed class KaleidoRegistryAvailabilityExtensionsTests
 
     // No statuses at all (a host that reads no control registry): nothing is reported.
     [Fact]
-    public void WithAvailability_WithoutAnyStatus_LeavesTheRegistryAsItIs()
+    public void WithAvailability_WithoutAnyStatus_LeavesTheCapabilitiesAsTheyAre()
     {
-        Assert.Same(Registry, Registry.WithAvailability(new KaleidoRegistryAvailability()));
+        var registry = Registry.WithAvailability(new KaleidoRegistryAvailability());
+
+        Assert.Equal(Registry.Processes, registry.Processes);
+        Assert.All(registry.Processes, x => Assert.Equal(RegistryCapabilityStatus.NotReported, x.Status));
+    }
+
+    // The composed revision follows both parts: the host rebuilds exactly when either changes.
+    [Fact]
+    public void WithAvailability_TheRevision_FollowsTheCapabilitiesAndTheAvailability()
+    {
+        var capabilities = Registry with { Revision = "caps-1" };
+        var availability = new KaleidoRegistryAvailability { Services = [Status("radiology", "1", RegistryCapabilityStatus.Available)], Revision = "avail-1", GeneratedAt = DateTimeOffset.UnixEpoch.AddDays(1) };
+
+        var composed = capabilities.WithAvailability(availability);
+
+        Assert.Matches("^[0-9a-f]{64}$", composed.Revision!);
+        Assert.Equal(composed.Revision, capabilities.WithAvailability(availability).Revision);
+        Assert.NotEqual(composed.Revision, (capabilities with { Revision = "caps-2" }).WithAvailability(availability).Revision);
+        Assert.NotEqual(composed.Revision, capabilities.WithAvailability(availability with { Revision = "avail-2" }).Revision);
+        Assert.Null(Registry.WithAvailability(availability).Revision);
+        Assert.Equal(availability.GeneratedAt, composed.GeneratedAt);
     }
 
     [Fact]

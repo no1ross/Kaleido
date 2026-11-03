@@ -13,13 +13,19 @@ namespace Kaleido.Http.Client;
 // The providers are taken as a collection so the registration is valid without one (a host without
 // call credentials, or one that registers its provider later); the filter adds the handler only when
 // one is registered, and the last registered decides, as for any single resolution.
+// The control registry's client (kaleido-registry, #553) has no catalog entry: its service is the
+// registry's, as configured.
 internal sealed class KaleidoCallCredentialHandler(
     [ServiceKey] string clientName,
     IEnumerable<IKaleidoCallCredentialProvider> providers,
-    IKaleidoClientCatalog catalog)
+    IKaleidoClientCatalog catalog,
+    KaleidoRegistryClientOptions? registry = null)
     : DelegatingHandler
 {
-    private readonly string _serviceName = catalog.Require(clientName).RoutePrefix;
+    private readonly string _serviceName =
+        registry is not null && string.Equals(clientName, CentralRegistrySource.ClientName, StringComparison.Ordinal)
+            ? registry.ServiceName
+            : catalog.Require(clientName).RoutePrefix;
 
     private readonly IKaleidoCallCredentialProvider _provider = providers.Last();
 
