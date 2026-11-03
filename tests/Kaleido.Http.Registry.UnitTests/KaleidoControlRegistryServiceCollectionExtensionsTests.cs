@@ -39,6 +39,7 @@ public sealed class KaleidoControlRegistryServiceCollectionExtensionsTests
         var source = Assert.IsType<StoreRegistrySource>(provider.GetRequiredService<IKaleidoRegistrySource>());
         Assert.Same(source, provider.GetRequiredService<IKaleidoRegistrySource>());
         Assert.Same(source, provider.GetRequiredService<StoreRegistrySource>());
+        Assert.Same(source, provider.GetRequiredService<IRegistryStatusReader>());
         var checks = provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations;
         Assert.Contains("ready", checks.Single(x => x.Name == "kaleido-registry-store").Tags);
         Assert.DoesNotContain("ready", checks.Single(x => x.Name == "kaleido-registry-completeness").Tags);

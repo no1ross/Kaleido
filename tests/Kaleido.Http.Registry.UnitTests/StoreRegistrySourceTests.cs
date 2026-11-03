@@ -402,4 +402,30 @@ public sealed class StoreRegistrySourceTests
         Assert.Matches("^[0-9a-f]{64}$", capabilities.Revision!);
         Assert.Equal(capabilities.Revision, afterAFailure.Revision);
     }
+
+    // The availability a host keeps fresh: each version's overall status, current version and address, no
+    // instances. An instance joining within the same status changes nothing; a status flip does.
+    [Fact]
+    public async Task TheAvailability_ChangesOnlyWithAVersionsStatus()
+    {
+        var sut = CreateSut();
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+        contents = new() { Registrations = [registration], Instances = [Instance(registration, Now, address: "https://radiology")], CurrentVersions = new Dictionary<string, string> { ["radiology"] = "1" } };
+
+        var first = await sut.GetAvailabilityAsync(Cancel);
+        time.Advance(StoreRegistrySource.ViewTtl);
+        contents = contents with { Instances = [.. contents.Instances, Instance(registration, Now, address: "https://radiology")] };
+        var anotherInstance = await sut.GetAvailabilityAsync(Cancel);
+        time.Advance(StoreRegistrySource.ViewTtl);
+        contents = contents with { Instances = [.. contents.Instances, Instance(registration, Now, healthy: false, address: "https://radiology")] };
+        var degraded = await sut.GetAvailabilityAsync(Cancel);
+
+        Assert.Equal(
+            new RegistryServiceAvailability { ServiceName = "radiology", ServiceVersion = "1", IsCurrent = true, Address = "https://radiology", Status = RegistryCapabilityStatus.Available },
+            Assert.Single(first.Services));
+        Assert.Equal(first.Revision, anotherInstance.Revision);
+        Assert.NotEqual(first.Revision, degraded.Revision);
+        Assert.Equal(RegistryCapabilityStatus.Degraded, Assert.Single(degraded.Services).Status);
+        Assert.Matches("^[0-9a-f]{64}$", first.Revision!);
+    }
 }

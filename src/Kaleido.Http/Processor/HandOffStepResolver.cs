@@ -37,7 +37,7 @@ internal sealed partial class HandOffStepResolver(
 
         var registry = await source.GetAsync(maxParallelism: null, cancellationToken);
 
-        if (PublishedSteps(registry, await source.GetStatusAsync(cancellationToken), target) is not { } published)
+        if (PublishedSteps(registry, await source.GetAvailabilityAsync(cancellationToken), target) is not { } published)
         {
             LogTargetRegistryUnread(logger, processResult.ProcessId, target);
 
@@ -86,9 +86,9 @@ internal sealed partial class HandOffStepResolver(
 
     // The target's published steps by name - of its current version when the registry knows the
     // target's versions; null when the registry has no processor for the target.
-    private static Dictionary<string, ProcessStepResponse>? PublishedSteps(KaleidoRegistry registry, KaleidoRegistryStatus status, string target)
+    private static Dictionary<string, ProcessStepResponse>? PublishedSteps(KaleidoRegistry registry, KaleidoRegistryAvailability availability, string target)
     {
-        var current = status.Services
+        var current = availability.Services
             .FirstOrDefault(x => x.IsCurrent && string.Equals(x.ServiceName, target, StringComparison.OrdinalIgnoreCase))?
             .ServiceVersion;
         var processors = registry.Processes

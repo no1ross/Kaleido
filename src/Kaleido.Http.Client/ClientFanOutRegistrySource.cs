@@ -18,13 +18,13 @@ internal sealed partial class ClientFanOutRegistrySource(
     ILogger<ClientFanOutRegistrySource> logger)
     : IKaleidoRegistrySource
 {
-    private static readonly KaleidoRegistryStatus NoStatus = new();
+    private static readonly KaleidoRegistryAvailability NoStatus = new();
 
     // The host merges these clients' registries with its own.
     public bool IsFullRegistry => false;
 
-    // The clients' services publish no versions' statuses.
-    public Task<KaleidoRegistryStatus> GetStatusAsync(CancellationToken cancellationToken) => Task.FromResult(NoStatus);
+    // The clients' services publish no versions' availability.
+    public Task<KaleidoRegistryAvailability> GetAvailabilityAsync(CancellationToken cancellationToken) => Task.FromResult(NoStatus);
 
     public async Task<KaleidoRegistry> GetAsync(
         int? maxParallelism,

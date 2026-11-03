@@ -14,7 +14,7 @@ public sealed class LocalRegistrySourceTests
         Assert.Empty(registry.Queryables);
         Assert.Empty(registry.Errors);
         Assert.Empty(registry.Missing);
-        Assert.Empty((await CreateSut().GetStatusAsync(TestContext.Current.CancellationToken)).Services);
+        Assert.Empty((await CreateSut().GetAvailabilityAsync(TestContext.Current.CancellationToken)).Services);
         Assert.False(CreateSut().IsFullRegistry);
     }
 

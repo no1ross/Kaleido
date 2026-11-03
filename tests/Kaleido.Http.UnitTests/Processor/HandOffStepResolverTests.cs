@@ -54,10 +54,10 @@ public sealed class HandOffStepResolverTests
             Steps = [],
         };
 
-    private void Registry(KaleidoRegistry contents, KaleidoRegistryStatus? status = null)
+    private void Registry(KaleidoRegistry contents, KaleidoRegistryAvailability? status = null)
     {
         source.Setup(x => x.GetAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(contents);
-        source.Setup(x => x.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(status ?? new KaleidoRegistryStatus());
+        source.Setup(x => x.GetAvailabilityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(status ?? new KaleidoRegistryAvailability());
     }
 
     private void Publishes(params ProcessStepResponse[] steps) =>
@@ -141,12 +141,12 @@ public sealed class HandOffStepResolverTests
             ],
             [],
             []),
-            new KaleidoRegistryStatus
+            new KaleidoRegistryAvailability
             {
                 Services =
                 [
-                    new RegistryServiceStatus { ServiceName = Target, ServiceVersion = "1", IsCurrent = true },
-                    new RegistryServiceStatus { ServiceName = Target, ServiceVersion = "2" },
+                    new RegistryServiceAvailability { ServiceName = Target, ServiceVersion = "1", IsCurrent = true },
+                    new RegistryServiceAvailability { ServiceName = Target, ServiceVersion = "2" },
                 ],
             });
 

@@ -20,11 +20,20 @@ namespace Kaleido.Http.Registry;
 //   capabilities, and its instances in detail;
 // - what is missing: an expected processor version, or a service a published step looks up, with no
 //   registration.
+// What only the registry itself has (#553): each version's status in detail, its instances included, and
+// the capabilities alone - for its status and capabilities endpoints and its health check.
+internal interface IRegistryStatusReader
+{
+    Task<KaleidoRegistryStatus> GetStatusAsync(CancellationToken cancellationToken);
+
+    Task<KaleidoRegistry> GetCapabilitiesAsync(CancellationToken cancellationToken);
+}
+
 internal sealed class StoreRegistrySource(
     IServiceScopeFactory scopeFactory,
     KaleidoRegistryOptions options,
     TimeProvider time)
-    : IKaleidoRegistrySource, IDisposable
+    : IKaleidoRegistrySource, IRegistryStatusReader, IDisposable
 {
     internal static readonly TimeSpan ViewTtl = TimeSpan.FromSeconds(1);
 
@@ -45,6 +54,10 @@ internal sealed class StoreRegistrySource(
 
     public async Task<KaleidoRegistryStatus> GetStatusAsync(CancellationToken cancellationToken) =>
         (await ViewAsync(cancellationToken)).Status;
+
+    // Each version's overall availability, for the hosts keeping their copy fresh: no instances.
+    public async Task<KaleidoRegistryAvailability> GetAvailabilityAsync(CancellationToken cancellationToken) =>
+        (await ViewAsync(cancellationToken)).Availability;
 
     public Task RefreshAsync(CancellationToken cancellationToken)
     {
@@ -85,11 +98,19 @@ internal sealed class StoreRegistrySource(
         var now = time.GetUtcNow();
         var (capabilities, statuses) = Build(contents, now);
         var status = new KaleidoRegistryStatus { Services = statuses, GeneratedAt = now, Revision = RevisionOf(statuses) };
+        List<RegistryServiceAvailability> versions = [.. statuses.Select(x => new RegistryServiceAvailability { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, IsCurrent = x.IsCurrent, Address = x.Address, Status = x.Status })];
+        var availability = new KaleidoRegistryAvailability
+        {
+            Services = versions,
+            GeneratedAt = now,
+            Revision = JsonSerializer.Serialize(versions, KaleidoJsonOptions.Options).ToRevision(),
+        };
 
         return new RegistryView(
             capabilities with { Revision = capabilities.ToEntryJson().ToRevision() },
-            capabilities.WithStatuses(status),
+            capabilities.WithAvailability(availability),
             status,
+            availability,
             now);
     }
 
@@ -250,5 +271,5 @@ internal sealed class StoreRegistrySource(
 
     private static bool SameName(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
-    private sealed record RegistryView(KaleidoRegistry Capabilities, KaleidoRegistry Contents, KaleidoRegistryStatus Status, DateTimeOffset BuiltUtc);
+    private sealed record RegistryView(KaleidoRegistry Capabilities, KaleidoRegistry Contents, KaleidoRegistryStatus Status, KaleidoRegistryAvailability Availability, DateTimeOffset BuiltUtc);
 }

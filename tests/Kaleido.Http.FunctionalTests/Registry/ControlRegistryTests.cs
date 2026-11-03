@@ -470,4 +470,26 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         Assert.Equal((HttpStatusCode.Forbidden, RegistryErrorCodes.RegistrantNotAllowed), (otherService.StatusCode, await CodeAsync(otherService)));
         Assert.Equal("CodeSetSource", Assert.Single((await ReadAsync()).Queryables).Name);
     }
+
+    // The availability, for hosts keeping their copy fresh: another instance of an available version keeps
+    // its ETag (304); only readers get it.
+    [Fact]
+    public async Task TheAvailability_IsUnchanged_WhileNoVersionsStatusChanges()
+    {
+        (await RegisterAsync(Radiology(), RadiologyClient)).Dispose();
+        using var first = await SendAsync(Request(HttpMethod.Get, "/registry/availability", "reader", ReaderRole));
+        var availability = await first.Content.ReadFromJsonAsync<KaleidoRegistryAvailability>(KaleidoJsonOptions.Options, Cancel);
+
+        (await RegisterAsync(Radiology(), RadiologyClient)).Dispose();
+        time.Advance(PastTheSnapshot);
+        var check = Request(HttpMethod.Get, "/registry/availability", "reader", ReaderRole);
+        check.Headers.IfNoneMatch.Add(first.Headers.ETag!);
+        using var unchanged = await SendAsync(check);
+        using var clerk = await SendAsync(Request(HttpMethod.Get, "/registry/availability", "clerk", "clerk"));
+
+        Assert.Equal(("radiology", "2026-11", RegistryCapabilityStatus.Available), (Assert.Single(availability!.Services).ServiceName, availability.Services.Single().ServiceVersion, availability.Services.Single().Status));
+        Assert.Equal(HttpStatusCode.NotModified, unchanged.StatusCode);
+        Assert.Equal(2, Assert.Single(await StatusAsync()).ReadyInstances);
+        Assert.Equal(HttpStatusCode.Forbidden, clerk.StatusCode);
+    }
 }

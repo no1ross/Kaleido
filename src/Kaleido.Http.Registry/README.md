@@ -40,7 +40,8 @@ app.MapKaleidoControlRegistry();
 | `DELETE /registry/instances/{instanceId}` | the instance, at shutdown | 204; 404 |
 | `GET /registry` | a Kaleido host (`ReaderPolicy`) | the registry, in one call (`KaleidoRegistry`): every processor and query source with its overall `Status`, and `Missing`; unfiltered, with an ETag, 304 and `?strict`; 403 `registry_reader_not_allowed` for anyone else |
 | `GET /registry/capabilities` | a Kaleido host keeping its copy fresh | the capabilities alone (no statuses), with an ETag that changes only with a deployment; 403 for anyone else |
-| `GET /registry/status` | operations, the registry's UI, a host keeping its copy fresh | each service version's status in detail, its instances included (`KaleidoRegistryStatus`), with its own ETag (heartbeat times alone do not change it); 403 for anyone else |
+| `GET /registry/availability` | a Kaleido host keeping its copy fresh | each service version's overall status, current version and address, no instances (`KaleidoRegistryAvailability`), with an ETag that changes only when one of those does; 403 for anyone else |
+| `GET /registry/status` | operations, the registry's UI | each service version's status in detail, its instances included (`KaleidoRegistryStatus`), with its own ETag (heartbeat times alone do not change it); 403 for anyone else |
 
 Every endpoint is described for OpenAPI (tag `Control registry`, summary, description, what it accepts,
 its success type and each error it can answer, as a `KaleidoErrorResponse`), as the process endpoints
@@ -78,11 +79,11 @@ are (#564 brings every Kaleido endpoint to the same).
   (`RegistryServiceStatus.IsCurrent`); a later version never takes over by registering.
 - **Who may register, and who reads.** See [Trust](#trust): service applications only, each as itself;
   Kaleido hosts only, unfiltered.
-- **One call to consume, two to sync.** A consumer reads `GET /registry`: everything in one call. The
-  statuses change whenever an instance starts, stops or fails, the capabilities only with a deployment,
-  so a Kaleido host keeping its copy fresh checks `/registry/capabilities` and `/registry/status`
-  apart, each with its own ETag, and composes the same registry from them: a few hundred hosts
-  download the capabilities again only when they change.
+- **One call to consume, two to sync.** A consumer reads `GET /registry`: everything in one call. A
+  Kaleido host keeping its copy fresh checks `/registry/capabilities` (changes with a deployment) and
+  `/registry/availability` (changes when a version's overall status does) apart, each with its own ETag,
+  and composes the same registry from them: a few hundred hosts download the capabilities again only
+  when they change, and never the instances.
 - **Completeness.** `Kaleido:Registry:Expected` lists the processor versions the environment needs; one
   not registered, or a service a published step looks up and nobody registered, is listed in `Missing`
   and makes the registry partial (`?strict` answers 502).

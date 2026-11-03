@@ -65,6 +65,7 @@ public static class KaleidoControlRegistryServiceCollectionExtensions
         // the completeness check share it.
         services.TryAddSingleton<StoreRegistrySource>();
         services.Replace(ServiceDescriptor.Singleton<IKaleidoRegistrySource>(x => x.GetRequiredService<StoreRegistrySource>()));
+        services.TryAddSingleton<IRegistryStatusReader>(x => x.GetRequiredService<StoreRegistrySource>());
 
         services.AddHostedService<RegistryHousekeeping>();
         services.AddHealthChecks()

@@ -132,6 +132,16 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
             .Produces(StatusCodes.Status304NotModified)
             .ProducesKaleidoErrors(StatusCodes.Status403Forbidden);
 
+        group.MapGet(ControlRegistryRoutePaths.Availability, AvailabilityAsync)
+            .WithName(ControlRegistryEndpointNames.Availability)
+            .WithSummary("Each service version's overall availability.")
+            .WithDescription(
+                "Returns each service version's overall status, current version and address, without its instances, for Kaleido hosts keeping their copy fresh. " +
+                "Its ETag changes only when one of those does, not when instances come and go within the same status.")
+            .Produces<KaleidoRegistryAvailability>()
+            .Produces(StatusCodes.Status304NotModified)
+            .ProducesKaleidoErrors(StatusCodes.Status403Forbidden);
+
         group.MapGet(ControlRegistryRoutePaths.Capabilities, CapabilitiesAsync)
             .WithName(ControlRegistryEndpointNames.Capabilities)
             .WithSummary("The capabilities alone.")
@@ -175,7 +185,7 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
         return httpContext.RegistryResult(registry, options.HeartbeatInterval);
     }
 
-    private static async Task<IResult> StatusAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, [FromServices] IKaleidoRegistrySource statuses, CancellationToken cancellationToken)
+    private static async Task<IResult> StatusAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, [FromServices] IRegistryStatusReader statuses, CancellationToken cancellationToken)
     {
         if (!await IsReaderAsync(httpContext, options))
         {
@@ -187,8 +197,21 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
         return Revisioned(httpContext, status.Revision, status);
     }
 
+    // Each version's overall availability, for the hosts keeping their copy fresh: no instances.
+    private static async Task<IResult> AvailabilityAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, [FromServices] IKaleidoRegistrySource registry, CancellationToken cancellationToken)
+    {
+        if (!await IsReaderAsync(httpContext, options))
+        {
+            return ReaderNotAllowed();
+        }
+
+        var availability = await registry.GetAvailabilityAsync(cancellationToken);
+
+        return Revisioned(httpContext, availability.Revision, availability);
+    }
+
     // The capabilities alone, for the hosts keeping their copy fresh: their revision changes only with a deployment.
-    private static async Task<IResult> CapabilitiesAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, [FromServices] StoreRegistrySource registry, CancellationToken cancellationToken)
+    private static async Task<IResult> CapabilitiesAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, [FromServices] IRegistryStatusReader registry, CancellationToken cancellationToken)
     {
         if (!await IsReaderAsync(httpContext, options))
         {

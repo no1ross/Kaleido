@@ -2,7 +2,8 @@ namespace Kaleido.Http.Registry;
 
 /// <summary>
 /// Where a host's registry comes from (#553), in the one shape every participant shares:
-/// <see cref="KaleidoRegistry"/> and its statuses, <see cref="KaleidoRegistryStatus"/>. One contract, filled
+/// <see cref="KaleidoRegistry"/> (each capability with its overall status) and each service version's
+/// availability, <see cref="KaleidoRegistryAvailability"/>. One contract, filled
 /// differently:
 /// <list type="bullet">
 /// <item>the control registry, from its store, and a participant, from the control registry: the full
@@ -32,9 +33,12 @@ internal interface IKaleidoRegistrySource
         int? maxParallelism,
         CancellationToken cancellationToken);
 
-    /// <summary>Each service version's status; empty from a source that knows no versions.</summary>
+    /// <summary>
+    /// Each service version's availability (current, address, overall status); empty from a source that
+    /// knows no versions.
+    /// </summary>
     /// <param name="cancellationToken">Cancels the read.</param>
-    Task<KaleidoRegistryStatus> GetStatusAsync(
+    Task<KaleidoRegistryAvailability> GetAvailabilityAsync(
         CancellationToken cancellationToken);
 
     /// <summary>

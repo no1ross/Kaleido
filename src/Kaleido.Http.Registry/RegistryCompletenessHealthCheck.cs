@@ -8,14 +8,14 @@ namespace Kaleido.Http.Registry;
 // is still unconfirmed after the registry resumed watching (every registry node was down). Built from the
 // store only - the registry never calls an instance - and Degraded, never Unhealthy: the registry keeps
 // serving what it has.
-internal sealed class RegistryCompletenessHealthCheck(IKaleidoRegistrySource registrations) : IHealthCheck
+internal sealed class RegistryCompletenessHealthCheck(IKaleidoRegistrySource registrations, IRegistryStatusReader statuses) : IHealthCheck
 {
     internal const string Name = "kaleido-registry-completeness";
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         var registry = await registrations.GetAsync(maxParallelism: null, cancellationToken);
-        var status = await registrations.GetStatusAsync(cancellationToken);
+        var status = await statuses.GetStatusAsync(cancellationToken);
         var unavailable = Versions(status, RegistryCapabilityStatus.Unavailable);
         var unknown = Versions(status, RegistryCapabilityStatus.Unknown);
         var unconfirmed = status.Services.Sum(x => x.UnknownInstances);

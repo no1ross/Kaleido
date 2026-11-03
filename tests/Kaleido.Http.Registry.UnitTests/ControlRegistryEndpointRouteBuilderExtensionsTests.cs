@@ -59,7 +59,7 @@ public sealed class ControlRegistryEndpointRouteBuilderExtensionsTests
             .Select(x => (x.RoutePattern.RawText, x.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.HttpMethodMetadata>()?.HttpMethods.Single()))
             .ToList();
         Assert.Equal(
-            [("/registry/instances", "POST"), ("/registry/instances/{instanceId:guid}/heartbeat", "PUT"), ("/registry/instances/{instanceId:guid}", "DELETE"), ("/registry/", "GET"), ("/registry/status", "GET"), ("/registry/capabilities", "GET")],
+            [("/registry/instances", "POST"), ("/registry/instances/{instanceId:guid}/heartbeat", "PUT"), ("/registry/instances/{instanceId:guid}", "DELETE"), ("/registry/", "GET"), ("/registry/status", "GET"), ("/registry/availability", "GET"), ("/registry/capabilities", "GET")],
             routes);
     }
 
@@ -90,6 +90,7 @@ public sealed class ControlRegistryEndpointRouteBuilderExtensionsTests
         { ControlRegistryEndpointNames.Deregister, null, "204, 403, 404, 500" },
         { ControlRegistryEndpointNames.Read, null, "200 KaleidoRegistry, 304, 403, 500, 502 KaleidoRegistry" },
         { ControlRegistryEndpointNames.Status, null, "200 KaleidoRegistryStatus, 304, 403, 500" },
+        { ControlRegistryEndpointNames.Availability, null, "200 KaleidoRegistryAvailability, 304, 403, 500" },
         { ControlRegistryEndpointNames.Capabilities, null, "200 KaleidoRegistry, 304, 403, 500" },
     };
 

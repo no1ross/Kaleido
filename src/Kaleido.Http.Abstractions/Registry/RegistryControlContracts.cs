@@ -122,6 +122,47 @@ public sealed record RegistryServiceStatus
     public IReadOnlyCollection<RegistryInstanceStatus> Instances { get; init; } = [];
 }
 
+/// <summary>
+/// Each service version's overall availability (<c>GET /registry/availability</c>, #553): what a Kaleido host
+/// keeping its copy of the registry fresh needs, without the instances. Its revision changes only when a
+/// version's status, current version or address does - not when instances come and go within the same status.
+/// </summary>
+[ExcludeFromCodeCoverage]
+public sealed record KaleidoRegistryAvailability
+{
+    /// <summary>Every service version the registry knows.</summary>
+    public IReadOnlyCollection<RegistryServiceAvailability> Services { get; init; } = [];
+
+    /// <summary>When the availability was worked out (UTC).</summary>
+    public DateTimeOffset GeneratedAt { get; init; }
+
+    /// <summary>
+    /// A hash of <see cref="Services"/> (SHA-256, lowercase hex), mirrored by the <c>ETag</c> header: send it
+    /// back as <c>If-None-Match</c> to get 304 while nothing changed.
+    /// </summary>
+    public string? Revision { get; init; }
+}
+
+/// <summary>A service version and its overall availability (#553).</summary>
+[ExcludeFromCodeCoverage]
+public sealed record RegistryServiceAvailability
+{
+    /// <summary>The service.</summary>
+    public required string ServiceName { get; init; }
+
+    /// <summary>The version.</summary>
+    public required string ServiceVersion { get; init; }
+
+    /// <summary>Whether this is the service's current version.</summary>
+    public bool IsCurrent { get; init; }
+
+    /// <summary>The address the version is reached at, when one was registered.</summary>
+    public string? Address { get; init; }
+
+    /// <summary>The version's overall status, as each of its capabilities carries it.</summary>
+    public RegistryCapabilityStatus Status { get; init; }
+}
+
 /// <summary>An instance of a service version, as the control registry last heard from it (#553).</summary>
 [ExcludeFromCodeCoverage]
 public sealed record RegistryInstanceStatus

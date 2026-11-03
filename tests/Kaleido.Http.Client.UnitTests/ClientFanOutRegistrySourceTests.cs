@@ -205,6 +205,6 @@ public sealed class ClientFanOutRegistrySourceTests
         var sut = CreateSut();
 
         Assert.False(sut.IsFullRegistry);
-        Assert.Empty((await sut.GetStatusAsync(Cancel)).Services);
+        Assert.Empty((await sut.GetAvailabilityAsync(Cancel)).Services);
     }
 }

@@ -6,8 +6,9 @@ public sealed class RegistryCompletenessHealthCheckTests
     : SutFixture
 {
     private readonly Mock<IKaleidoRegistrySource> registrations = new();
+    private readonly Mock<IRegistryStatusReader> statuses = new();
 
-    private RegistryCompletenessHealthCheck CreateSut() => new(registrations.Object);
+    private RegistryCompletenessHealthCheck CreateSut() => new(registrations.Object, statuses.Object);
 
     private static RegistryServiceStatus Status(string version, RegistryCapabilityStatus status, int unknown = 0) =>
         new() { ServiceName = "radiology", ServiceVersion = version, Status = status, UnknownInstances = unknown };
@@ -15,7 +16,7 @@ public sealed class RegistryCompletenessHealthCheckTests
     private void View(RegistryServiceStatus[] services, RegistryMissingService[] missing)
     {
         registrations.Setup(x => x.GetAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistry { Missing = missing });
-        registrations.Setup(x => x.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistryStatus { Services = services });
+        statuses.Setup(x => x.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistryStatus { Services = services });
     }
 
     private Task<HealthCheckResult> CheckAsync() => CreateSut().CheckHealthAsync(new HealthCheckContext(), TestContext.Current.CancellationToken);

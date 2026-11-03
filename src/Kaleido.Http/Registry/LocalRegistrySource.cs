@@ -7,7 +7,7 @@ namespace Kaleido.Http.Registry;
 internal sealed class LocalRegistrySource : IKaleidoRegistrySource
 {
     private static readonly KaleidoRegistry Nothing = new();
-    private static readonly KaleidoRegistryStatus NoStatus = new();
+    private static readonly KaleidoRegistryAvailability NoStatus = new();
 
     public bool IsFullRegistry => false;
 
@@ -16,7 +16,7 @@ internal sealed class LocalRegistrySource : IKaleidoRegistrySource
         CancellationToken cancellationToken) =>
         Task.FromResult(Nothing);
 
-    public Task<KaleidoRegistryStatus> GetStatusAsync(
+    public Task<KaleidoRegistryAvailability> GetAvailabilityAsync(
         CancellationToken cancellationToken) =>
         Task.FromResult(NoStatus);
 
