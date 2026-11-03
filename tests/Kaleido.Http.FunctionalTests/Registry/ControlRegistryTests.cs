@@ -28,6 +28,9 @@ public sealed class ControlRegistryTests : IAsyncLifetime
     private const string RadiologyClient = "radiology-client";
     private const string MemberClient = "member-client";
     private const string ReaderRole = "kaleido-reader";
+
+    // What only service applications' app-only tokens carry, here: the host's RegistrantPolicy requires it.
+    private const string ServiceRole = "kaleido-service";
     private static readonly AuthorizationMetadata RadiologyOnly = new(null, ["radiology"]);
     private static readonly TimeSpan PastTheSnapshot = TimeSpan.FromSeconds(10) + TimeSpan.FromTicks(1);
 
@@ -51,6 +54,7 @@ public sealed class ControlRegistryTests : IAsyncLifetime
             ["Kaleido:Registry:Registrants:radiology:0"] = RadiologyClient,
             ["Kaleido:Registry:Registrants:member:0"] = MemberClient,
             ["Kaleido:Registry:ReaderPolicy"] = "registry-reader",
+            ["Kaleido:Registry:RegistrantPolicy"] = "service-application",
         };
 
         foreach (var (key, value) in extra)
@@ -67,7 +71,11 @@ public sealed class ControlRegistryTests : IAsyncLifetime
                     services.AddSingleton<TimeProvider>(time);
                     services.AddRouting();
                     services.AddAuthentication(TestAuthHandler.SchemeName).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
-                    services.AddAuthorization(o => o.AddPolicy("registry-reader", p => p.RequireRole(ReaderRole)));
+                    services.AddAuthorization(o =>
+                    {
+                        o.AddPolicy("registry-reader", p => p.RequireRole(ReaderRole));
+                        o.AddPolicy("service-application", p => p.RequireRole(ServiceRole));
+                    });
                     var kaleido = services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new()
                     {
                         ServiceName = "registry",
@@ -132,6 +140,8 @@ public sealed class ControlRegistryTests : IAsyncLifetime
 
         if (subject is not null || roles is not null)
         {
+            // The services' own clients call with their app-only credential.
+            roles ??= subject is RadiologyClient or MemberClient ? ServiceRole : null;
             request.Headers.Add(TestAuthHandler.UserHeader, subject ?? "someone");
             request.Headers.Add(TestAuthHandler.SubjectHeader, subject ?? "someone");
             request.Headers.Add(TestAuthHandler.RolesHeader, roles ?? string.Empty);
@@ -153,8 +163,8 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         }
     }
 
-    private Task<HttpResponseMessage> RegisterAsync(RegistryInstanceRegistration registration, string? subject) =>
-        SendAsync(Request(HttpMethod.Post, "/registry/instances", subject, body: registration));
+    private Task<HttpResponseMessage> RegisterAsync(RegistryInstanceRegistration registration, string? subject, string? roles = null) =>
+        SendAsync(Request(HttpMethod.Post, "/registry/instances", subject, roles, registration));
 
     private async Task<KaleidoRegistry> ReadAsync()
     {
@@ -417,5 +427,47 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotModified, unchanged.StatusCode);
         Assert.Equal(RegistryCapabilityStatus.Unavailable, Assert.Single((await ReadAsync()).Processes).Status);
         Assert.Equal(HttpStatusCode.Forbidden, clerk.StatusCode);
+    }
+
+    // A user signed in through a service's own client id is not that service: without the service
+    // application's credential (RegistrantPolicy) it registers, renews and removes nothing.
+    [Fact]
+    public async Task AUserBehindAServicesClientId_IsRefused()
+    {
+        var registration = Radiology();
+        (await RegisterAsync(registration, RadiologyClient)).Dispose();
+
+        using var register = await SendAsync(Request(HttpMethod.Post, "/registry/instances", RadiologyClient, roles: "clerk", body: Radiology()));
+        using var heartbeat = await SendAsync(Request(HttpMethod.Put, $"/registry/instances/{registration.InstanceId}/heartbeat", RadiologyClient, roles: "clerk", body: new RegistryHeartbeat()));
+        using var removal = await SendAsync(Request(HttpMethod.Delete, $"/registry/instances/{registration.InstanceId}", RadiologyClient, roles: "clerk"));
+
+        Assert.Equal((HttpStatusCode.Forbidden, RegistryErrorCodes.RegistrantNotAllowed), (register.StatusCode, await CodeAsync(register)));
+        Assert.Equal(HttpStatusCode.Forbidden, heartbeat.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, removal.StatusCode);
+        Assert.Single(Assert.Single(await StatusAsync()).Instances);
+    }
+
+    // At 150+ shared services, the registry needs no list: each service's app registration carries the app
+    // role naming it, assigned in the IdP; a role naming another service grants nothing.
+    [Fact]
+    public async Task AServiceRegistersByTheAppRoleNamingIt_WithoutTheMap()
+    {
+        var codeSets = Radiology() with
+        {
+            ServiceName = "code-sets",
+            Processes = [],
+            Queryables = [new QueryableSourceResponse { ServiceName = "code-sets", Name = "CodeSetSource", QueryUrl = "/code-sets/queryable/codesetsource/query" }],
+        };
+
+        using var registered = await RegisterAsync(codeSets, "code-sets-app", $"{ServiceRole},Kaleido.Registrant.code-sets");
+        using var otherService = await RegisterAsync(codeSets, "provider-search-app", $"{ServiceRole},Kaleido.Registrant.provider-search");
+        using (var heartbeat = await SendAsync(Request(HttpMethod.Put, $"/registry/instances/{codeSets.InstanceId}/heartbeat", "code-sets-app", $"{ServiceRole},Kaleido.Registrant.code-sets", new RegistryHeartbeat())))
+        {
+            Assert.Equal(HttpStatusCode.OK, heartbeat.StatusCode);
+        }
+
+        Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
+        Assert.Equal((HttpStatusCode.Forbidden, RegistryErrorCodes.RegistrantNotAllowed), (otherService.StatusCode, await CodeAsync(otherService)));
+        Assert.Equal("CodeSetSource", Assert.Single((await ReadAsync()).Queryables).Name);
     }
 }

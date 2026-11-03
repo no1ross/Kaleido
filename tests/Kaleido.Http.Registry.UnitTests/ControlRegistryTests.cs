@@ -9,7 +9,9 @@ namespace Kaleido.Http.Registry.UnitTests;
 public sealed class ControlRegistryTests
     : SutFixture
 {
-    private const string RadiologyClient = "radiology-client";
+    private static readonly RegistryCaller RadiologyCaller = new("radiology-client", []);
+    private static readonly RegistryCaller MemberCaller = new("member-client", []);
+    private static readonly RegistryCaller Nobody = new(null, []);
     private static readonly string[] RadiologyOnly = ["radiology"];
 
     private readonly Mock<IKaleidoRegistryStore> store = new();
@@ -22,9 +24,9 @@ public sealed class ControlRegistryTests
     public ControlRegistryTests()
     {
         authorizer.Setup(x => x.IsEnforced).Returns(true);
-        registrants.Setup(x => x.MayRegister(RadiologyClient, "radiology")).Returns(true);
-        registrants.Setup(x => x.ServicesOf(It.IsAny<string?>())).Returns([]);
-        registrants.Setup(x => x.ServicesOf(RadiologyClient)).Returns(RadiologyOnly);
+        registrants.Setup(x => x.MayRegister(RadiologyCaller, "radiology")).Returns(true);
+        registrants.Setup(x => x.ServicesOf(It.IsAny<RegistryCaller>())).Returns([]);
+        registrants.Setup(x => x.ServicesOf(RadiologyCaller)).Returns(RadiologyOnly);
         store.Setup(x => x.GetOrSetCurrentVersionAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((string _, string version, CancellationToken _) => version);
     }
@@ -56,7 +58,7 @@ public sealed class ControlRegistryTests
         store.Setup(x => x.SaveInstanceAsync(It.IsAny<RegistryInstanceRecord>(), Cancel)).Callback((RegistryInstanceRecord r, CancellationToken _) => instance = r).Returns(Task.CompletedTask);
         var registration = Registration();
 
-        var answer = await CreateSut().RegisterAsync(registration, RadiologyClient, Cancel);
+        var answer = await CreateSut().RegisterAsync(registration, RadiologyCaller, Cancel);
 
         Assert.Equal(RegistryAnswerKind.Leased, answer.Kind);
         Assert.Equal(new RegistryLease { InstanceId = registration.InstanceId, HeartbeatInterval = Options.HeartbeatInterval, LeaseUntilUtc = Start + Options.Lease }, answer.Lease);
@@ -80,8 +82,8 @@ public sealed class ControlRegistryTests
             .Callback((RegistryRegistrationRecord r, string _, CancellationToken _) => revisions.Add(r.Revision))
             .Returns(Task.CompletedTask);
 
-        await CreateSut().RegisterAsync(Registration(), RadiologyClient, Cancel);
-        await CreateSut().RegisterAsync(Registration(), RadiologyClient, Cancel);
+        await CreateSut().RegisterAsync(Registration(), RadiologyCaller, Cancel);
+        await CreateSut().RegisterAsync(Registration(), RadiologyCaller, Cancel);
 
         Assert.Single(revisions.Distinct(StringComparer.Ordinal));
     }
@@ -101,18 +103,18 @@ public sealed class ControlRegistryTests
             _ => Registration() with { Queryables = [SourceWith("member", "MemberSource")] },
         };
 
-        var answer = await CreateSut().RegisterAsync(registration, RadiologyClient, Cancel);
+        var answer = await CreateSut().RegisterAsync(registration, RadiologyCaller, Cancel);
 
         Assert.Equal((RegistryAnswerKind.Invalid, RegistryErrorCodes.InvalidRegistration), (answer.Kind, answer.Code));
         store.VerifyNoOtherCalls();
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("member-client")]
-    public async Task Register_ByACallerNotMappedToTheService_IsRefused(string? registrant)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Register_ByACallerNotMappedToTheService_IsRefused(bool anonymous)
     {
-        var answer = await CreateSut().RegisterAsync(Registration(), registrant, Cancel);
+        var answer = await CreateSut().RegisterAsync(Registration(), anonymous ? Nobody : MemberCaller, Cancel);
 
         Assert.Equal((RegistryAnswerKind.NotAllowed, RegistryErrorCodes.RegistrantNotAllowed), (answer.Kind, answer.Code));
         store.VerifyNoOtherCalls();
@@ -127,9 +129,9 @@ public sealed class ControlRegistryTests
         store.Setup(x => x.RenewInstanceAsync(id, Start, true, null, Cancel)).ReturnsAsync(RegistryInstanceChange.Done);
         store.Setup(x => x.RemoveInstanceAsync(id, null, Cancel)).ReturnsAsync(RegistryInstanceChange.Done);
 
-        Assert.Equal(RegistryAnswerKind.Leased, (await CreateSut().RegisterAsync(Registration(), registrant: null, Cancel)).Kind);
-        Assert.Equal(RegistryAnswerKind.Leased, (await CreateSut().HeartbeatAsync(id, new RegistryHeartbeat(), registrant: null, Cancel)).Kind);
-        Assert.Equal(RegistryAnswerKind.Removed, (await CreateSut().DeregisterAsync(id, registrant: null, Cancel)).Kind);
+        Assert.Equal(RegistryAnswerKind.Leased, (await CreateSut().RegisterAsync(Registration(), registrant: Nobody, Cancel)).Kind);
+        Assert.Equal(RegistryAnswerKind.Leased, (await CreateSut().HeartbeatAsync(id, new RegistryHeartbeat(), registrant: Nobody, Cancel)).Kind);
+        Assert.Equal(RegistryAnswerKind.Removed, (await CreateSut().DeregisterAsync(id, registrant: Nobody, Cancel)).Kind);
     }
 
     // One conditional write, with the services the caller may register.
@@ -140,7 +142,7 @@ public sealed class ControlRegistryTests
         time.Advance(TimeSpan.FromSeconds(10));
         store.Setup(x => x.RenewInstanceAsync(id, time.GetUtcNow(), false, RadiologyOnly, Cancel)).ReturnsAsync(RegistryInstanceChange.Done);
 
-        var answer = await CreateSut().HeartbeatAsync(id, new RegistryHeartbeat { Healthy = false }, RadiologyClient, Cancel);
+        var answer = await CreateSut().HeartbeatAsync(id, new RegistryHeartbeat { Healthy = false }, RadiologyCaller, Cancel);
 
         Assert.Equal(new RegistryLease { InstanceId = id, HeartbeatInterval = Options.HeartbeatInterval, LeaseUntilUtc = time.GetUtcNow() + Options.Lease }, answer.Lease);
         store.Verify(x => x.RenewInstanceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<bool>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -155,8 +157,8 @@ public sealed class ControlRegistryTests
         store.Setup(x => x.RenewInstanceAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<bool>(), It.IsAny<IReadOnlyCollection<string>?>(), Cancel)).ReturnsAsync(change);
         store.Setup(x => x.RemoveInstanceAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<string>?>(), Cancel)).ReturnsAsync(change);
 
-        var heartbeat = await CreateSut().HeartbeatAsync(Guid.NewGuid(), new RegistryHeartbeat(), "member-client", Cancel);
-        var deregister = await CreateSut().DeregisterAsync(Guid.NewGuid(), "member-client", Cancel);
+        var heartbeat = await CreateSut().HeartbeatAsync(Guid.NewGuid(), new RegistryHeartbeat(), MemberCaller, Cancel);
+        var deregister = await CreateSut().DeregisterAsync(Guid.NewGuid(), MemberCaller, Cancel);
 
         Assert.Equal((kind, code), (heartbeat.Kind, heartbeat.Code));
         Assert.Equal((kind, code), (deregister.Kind, deregister.Code));
@@ -169,7 +171,7 @@ public sealed class ControlRegistryTests
         var id = Guid.NewGuid();
         store.Setup(x => x.RemoveInstanceAsync(id, RadiologyOnly, Cancel)).ReturnsAsync(RegistryInstanceChange.Done);
 
-        var answer = await CreateSut().DeregisterAsync(id, RadiologyClient, Cancel);
+        var answer = await CreateSut().DeregisterAsync(id, RadiologyCaller, Cancel);
 
         Assert.Same(RegistryAnswer.Removed, answer);
     }

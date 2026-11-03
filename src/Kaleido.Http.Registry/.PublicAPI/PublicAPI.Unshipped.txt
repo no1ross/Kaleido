@@ -113,3 +113,7 @@ Kaleido.Http.Registry.IKaleidoRegistryStore.GetCapabilitiesAsync(System.Collecti
 Kaleido.Http.Registry.IKaleidoRegistryStore.TouchWatchAsync(System.DateTimeOffset nowUtc, System.TimeSpan lease, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.DateTimeOffset>!
 Kaleido.Http.Registry.RegistryStoreContents.WatchResumedUtc.get -> System.DateTimeOffset?
 Kaleido.Http.Registry.RegistryStoreContents.WatchResumedUtc.init -> void
+Kaleido.Http.Registry.KaleidoRegistryOptions.RegistrantPolicy.get -> string?
+Kaleido.Http.Registry.KaleidoRegistryOptions.RegistrantPolicy.init -> void
+Kaleido.Http.Registry.KaleidoRegistryOptions.RegistrantRolePrefix.init -> void
+Kaleido.Http.Registry.KaleidoRegistryOptions.RegistrantRolePrefix.get -> string!

@@ -21,7 +21,7 @@ builder.Services.AddKaleido(builder.Configuration, new()
         AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
     })
     .AddInMemoryStores()        // a Kaleido host chooses its stores; the registry writes no process state
-    // Kaleido:Registry:ReaderPolicy names the policy the other hosts' service tokens satisfy (required)
+    // Kaleido:Registry:RegistrantPolicy and ReaderPolicy name the host's policies (required; see Trust)
     .AddHttp()
     .AddControlRegistry()
     .AddInMemoryRegistryStore(); // or a durable registry store (AddRegistryStore<T>())
@@ -76,13 +76,8 @@ are (#564 brings every Kaleido endpoint to the same).
   `Retention`, so an outage never removes the registry.
 - **Current version.** A service's first registered version is its current one
   (`RegistryServiceStatus.IsCurrent`); a later version never takes over by registering.
-- **Who may register.** `Kaleido:Registry:Registrants` maps each service to the client ids allowed to
-  register it, compared with the caller's actor (`act`, `azp` or `appid`), else its subject. Not checked
-  when `AuthorizationMode` is `None`.
-- **Who reads it.** Only callers satisfying `Kaleido:Registry:ReaderPolicy` - the other Kaleido hosts
-  (services, MCP, the gateway) - read it, and they get all of it, unfiltered: each keeps the full
-  registry in memory and filters it for its own callers. The policy is required unless
-  `AuthorizationMode` is `None`.
+- **Who may register, and who reads.** See [Trust](#trust): service applications only, each as itself;
+  Kaleido hosts only, unfiltered.
 - **One call to consume, two to sync.** A consumer reads `GET /registry`: everything in one call. The
   statuses change whenever an instance starts, stops or fails, the capabilities only with a deployment,
   so a Kaleido host keeping its copy fresh checks `/registry/capabilities` and `/registry/status`
@@ -92,9 +87,50 @@ are (#564 brings every Kaleido endpoint to the same).
   not registered, or a service a published step looks up and nobody registered, is listed in `Missing`
   and makes the registry partial (`?strict` answers 502).
 
+## Trust
+
+The registry trusts the identity provider, never what a caller says about itself: the host's
+authentication validates each token, and Kaleido reads who the caller is from it.
+
+| Question | Answered by |
+|---|---|
+| Is the caller a service application, not a user? | `Kaleido:Registry:RegistrantPolicy`, on every registration, heartbeat and deregistration: a host policy only app-only tokens satisfy |
+| Which service may it register? | its app roles naming the services, `{RegistrantRolePrefix}{service}` (`Kaleido.Registrant.code-sets`), assigned to each service's app registration in the IdP; and, as a fallback, the `Kaleido:Registry:Registrants` map (service -> client ids, compared with the token's actor `act`/`azp`/`appid`, else its subject) |
+| May it read the registry? | `Kaleido:Registry:ReaderPolicy`: the Kaleido hosts (services, MCP, the gateway), which get all of it unfiltered and filter it for their own callers |
+
+- A deployment that is not the service fails: it has neither the service's credential nor the app role
+  naming the service. A real service registering another one's name gets 403
+  `registry_registrant_not_allowed`, and a registration may only carry its own service's capabilities.
+- A user signed in through a service's client id is not that service: their token fails
+  `RegistrantPolicy`.
+- Both policies are required unless `AuthorizationMode` is `None` (development only).
+- With 150+ services, the registry needs no per-service configuration: the IdP admin gives each
+  service's app registration the role naming itself when creating it, and the reader role to the hosts
+  that read.
+- Which capabilities a caller may *use* is a separate matter: each source's, view's and step's
+  authorization is published in the registry and enforced by its service.
+
+An example with Entra ID: the registry's app registration defines the app roles (`allowedMemberTypes:
+Application`) `Kaleido.RegistryReader` and one `Kaleido.Registrant.{service}` per service, each assigned
+to that service's app; app-only tokens carry `idtyp: app`.
+
+```csharp
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy("KaleidoServiceApplication", p => p.RequireClaim("idtyp", "app"));
+    o.AddPolicy("KaleidoRegistryReader", p => p.RequireClaim("idtyp", "app").RequireRole("Kaleido.RegistryReader"));
+});
+// Kaleido:Registry:RegistrantPolicy = "KaleidoServiceApplication", Kaleido:Registry:ReaderPolicy = "KaleidoRegistryReader"
+```
+
+Validate the token's audience (the registry's own API) in the host's authentication, so a token issued
+for another API is not accepted. Which policies Kaleido needs overall, and their defaults, is #565;
+allowed addresses per service and a production guard are #566.
+
 ## Settings (`Kaleido:Registry`)
 
-`KaleidoRegistryOptions`: `Registrants`, `ReaderPolicy`, `Expected`, `HeartbeatInterval` (10 s),
+`KaleidoRegistryOptions`: `RegistrantPolicy`, `ReaderPolicy`, `RegistrantRolePrefix`
+(`Kaleido.Registrant.`), `Registrants` (optional), `Expected`, `HeartbeatInterval` (10 s),
 `MissedHeartbeats` (3), `Retention` (24 h). An invalid value stops startup (`invalid_options`).
 
 ## Health

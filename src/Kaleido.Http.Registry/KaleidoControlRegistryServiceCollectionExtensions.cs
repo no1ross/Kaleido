@@ -16,8 +16,8 @@ public static class KaleidoControlRegistryServiceCollectionExtensions
     /// </summary>
     /// <remarks>
     /// Settings come from <c>Kaleido:Registry</c> (<see cref="KaleidoRegistryOptions"/>);
-    /// <see cref="KaleidoRegistryOptions.ReaderPolicy"/> is required unless <c>AuthorizationMode</c> is
-    /// <c>None</c>. Call <c>AddHttp()</c>
+    /// <see cref="KaleidoRegistryOptions.RegistrantPolicy"/> and <see cref="KaleidoRegistryOptions.ReaderPolicy"/>
+    /// are required unless <c>AuthorizationMode</c> is <c>None</c>. Call <c>AddHttp()</c>
     /// too, and choose a store: <c>AddSqliteRegistryStore</c>, <see cref="AddRegistryStore{TStore}"/>, or
     /// <see cref="AddInMemoryRegistryStore"/>. Health checks: <c>kaleido-registry-store</c> (tagged
     /// <c>ready</c>: the registry's readiness depends only on its store) and
@@ -36,12 +36,23 @@ public static class KaleidoControlRegistryServiceCollectionExtensions
             .BindOver(new KaleidoRegistryOptions(), ConfigurationErrorCodes.InvalidOptions);
         KaleidoRegistryOptions.Validate(options);
 
-        // The registry is read by services only: under enforcement, the policy that admits them is required.
-        if (builder.ServiceOptions.AuthorizationMode != KaleidoAuthorizationMode.None && string.IsNullOrWhiteSpace(options.ReaderPolicy))
+        // Only service applications register, and only Kaleido hosts read: under enforcement, the policies
+        // that admit them are required.
+        if (builder.ServiceOptions.AuthorizationMode != KaleidoAuthorizationMode.None)
         {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.InvalidOptions,
-                "Kaleido:Registry:ReaderPolicy is required: only the Kaleido hosts it admits read the control registry. Name the authorization policy their service tokens satisfy.");
+            if (string.IsNullOrWhiteSpace(options.RegistrantPolicy))
+            {
+                throw new KaleidoConfigurationException(
+                    ConfigurationErrorCodes.InvalidOptions,
+                    "Kaleido:Registry:RegistrantPolicy is required: only the service applications it admits register, renew and remove instances. Name the authorization policy their app-only tokens satisfy (never a user's).");
+            }
+
+            if (string.IsNullOrWhiteSpace(options.ReaderPolicy))
+            {
+                throw new KaleidoConfigurationException(
+                    ConfigurationErrorCodes.InvalidOptions,
+                    "Kaleido:Registry:ReaderPolicy is required: only the Kaleido hosts it admits read the control registry. Name the authorization policy their service tokens satisfy.");
+            }
         }
 
         var services = builder.Services;

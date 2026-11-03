@@ -4,13 +4,13 @@ namespace Kaleido.Http.Registry;
 
 /// <summary>
 /// The control registry's settings (#553), bound from <c>Kaleido:Registry</c>; every value has a default
-/// except who may register.
+/// except the two policies.
 /// </summary>
 /// <remarks>
 /// <code>
 /// "Kaleido": {
 ///   "Registry": {
-///     "Registrants": { "radiology": [ "radiology-client-id" ], "member": [ "member-client-id" ] },
+///     "RegistrantPolicy": "KaleidoServiceApplication",
 ///     "ReaderPolicy": "KaleidoRegistryReader",
 ///     "Expected": [ { "ServiceName": "radiology", "Versions": [ "2026-11" ] } ],
 ///     "HeartbeatInterval": "00:00:10", "MissedHeartbeats": 3, "Retention": "1.00:00:00"
@@ -24,10 +24,26 @@ public sealed record KaleidoRegistryOptions
     public const string SectionName = "Registry";
 
     /// <summary>
-    /// Who may register each service: the service name, mapped to the client ids allowed to register it,
-    /// compared with the caller's actor (<c>act</c>, else <c>azp</c>, else <c>appid</c>; else its subject).
-    /// A service not listed may not be registered. Not checked when the host's <c>AuthorizationMode</c> is
+    /// The authorization policy every registration, heartbeat and deregistration must satisfy: the host's
+    /// proof that the caller is a service application, not a user (typically an app-only token with an app
+    /// role the IdP admin assigns to services). Required unless the host's <c>AuthorizationMode</c> is
     /// <c>None</c>.
+    /// </summary>
+    public string? RegistrantPolicy { get; init; }
+
+    /// <summary>
+    /// The prefix of the app roles naming the services a caller may register: a caller with the role
+    /// <c>Kaleido.Registrant.code-sets</c> may register <c>code-sets</c>. The IdP admin assigns each service's
+    /// app registration the role naming itself, so the registry needs no per-service configuration. Compared
+    /// without case. Default <c>Kaleido.Registrant.</c>.
+    /// </summary>
+    public string RegistrantRolePrefix { get; init; } = "Kaleido.Registrant.";
+
+    /// <summary>
+    /// A fallback for IdPs without app roles: each service name, mapped to the client ids allowed to register
+    /// it, compared with the caller's actor (<c>act</c>, else <c>azp</c>, else <c>appid</c>; else its
+    /// subject). A caller may register what its roles and this map allow together. Not checked when the
+    /// host's <c>AuthorizationMode</c> is <c>None</c>.
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Registrants { get; init; } =
         new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
@@ -62,6 +78,7 @@ public sealed record KaleidoRegistryOptions
         Require(options.HeartbeatInterval > TimeSpan.Zero, nameof(HeartbeatInterval), "must be positive");
         Require(options.MissedHeartbeats > 0, nameof(MissedHeartbeats), "must be positive");
         Require(options.Retention > options.Lease, nameof(Retention), "must be longer than HeartbeatInterval x MissedHeartbeats");
+        Require(!string.IsNullOrWhiteSpace(options.RegistrantRolePrefix), nameof(RegistrantRolePrefix), "must not be empty");
 
         foreach (var (service, clients) in options.Registrants)
         {

@@ -3,16 +3,17 @@ using Kaleido.Http.Authorization;
 namespace Kaleido.Http.Registry;
 
 // The control registry's writes (#553): an instance registers, heartbeats and deregisters. Each is checked
-// against who may register the service (the registrants map), unless the host's AuthorizationMode is None.
+// against the services the caller may register - its app roles naming them, and the optional registrants
+// map - unless the host's AuthorizationMode is None (the endpoints check RegistrantPolicy first).
 // A heartbeat and a deregistration are one conditional write each: the store checks the instance's
 // service against what the caller may register in the same statement.
 internal interface IControlRegistry
 {
-    Task<RegistryAnswer> RegisterAsync(RegistryInstanceRegistration registration, string? registrant, CancellationToken cancellationToken);
+    Task<RegistryAnswer> RegisterAsync(RegistryInstanceRegistration registration, RegistryCaller registrant, CancellationToken cancellationToken);
 
-    Task<RegistryAnswer> HeartbeatAsync(Guid instanceId, RegistryHeartbeat heartbeat, string? registrant, CancellationToken cancellationToken);
+    Task<RegistryAnswer> HeartbeatAsync(Guid instanceId, RegistryHeartbeat heartbeat, RegistryCaller registrant, CancellationToken cancellationToken);
 
-    Task<RegistryAnswer> DeregisterAsync(Guid instanceId, string? registrant, CancellationToken cancellationToken);
+    Task<RegistryAnswer> DeregisterAsync(Guid instanceId, RegistryCaller registrant, CancellationToken cancellationToken);
 }
 
 internal sealed class ControlRegistry(
@@ -23,7 +24,7 @@ internal sealed class ControlRegistry(
     TimeProvider time)
     : IControlRegistry
 {
-    public async Task<RegistryAnswer> RegisterAsync(RegistryInstanceRegistration registration, string? registrant, CancellationToken cancellationToken)
+    public async Task<RegistryAnswer> RegisterAsync(RegistryInstanceRegistration registration, RegistryCaller registrant, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(registration);
 
@@ -62,7 +63,7 @@ internal sealed class ControlRegistry(
         return RegistryAnswer.Leased(Lease(registration.InstanceId, now));
     }
 
-    public async Task<RegistryAnswer> HeartbeatAsync(Guid instanceId, RegistryHeartbeat heartbeat, string? registrant, CancellationToken cancellationToken)
+    public async Task<RegistryAnswer> HeartbeatAsync(Guid instanceId, RegistryHeartbeat heartbeat, RegistryCaller registrant, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(heartbeat);
 
@@ -72,7 +73,7 @@ internal sealed class ControlRegistry(
         return change == RegistryInstanceChange.Done ? RegistryAnswer.Leased(Lease(instanceId, now)) : Refused(change, instanceId);
     }
 
-    public async Task<RegistryAnswer> DeregisterAsync(Guid instanceId, string? registrant, CancellationToken cancellationToken)
+    public async Task<RegistryAnswer> DeregisterAsync(Guid instanceId, RegistryCaller registrant, CancellationToken cancellationToken)
     {
         var change = await store.RemoveInstanceAsync(instanceId, AllowedServices(registrant), cancellationToken);
 
@@ -80,7 +81,7 @@ internal sealed class ControlRegistry(
     }
 
     // Null (any service) when authorization is not enforced (development only).
-    private IReadOnlyCollection<string>? AllowedServices(string? registrant) =>
+    private IReadOnlyCollection<string>? AllowedServices(RegistryCaller registrant) =>
         authorizer.IsEnforced ? registrants.ServicesOf(registrant) : null;
 
     private RegistryLease Lease(Guid instanceId, DateTimeOffset now) =>
@@ -104,5 +105,5 @@ internal sealed class ControlRegistry(
             : RegistryAnswer.Failed(RegistryAnswerKind.Unknown, RegistryErrorCodes.InstanceUnknown, $"Instance {instanceId} is not registered; register it again.");
 
     private static RegistryAnswer NotAllowed() =>
-        RegistryAnswer.Failed(RegistryAnswerKind.NotAllowed, RegistryErrorCodes.RegistrantNotAllowed, "The caller may not register this service (Kaleido:Registry:Registrants).");
+        RegistryAnswer.Failed(RegistryAnswerKind.NotAllowed, RegistryErrorCodes.RegistrantNotAllowed, "The caller may not register this service: it has no app role naming it (Kaleido:Registry:RegistrantRolePrefix) and the Kaleido:Registry:Registrants map does not list it.");
 }

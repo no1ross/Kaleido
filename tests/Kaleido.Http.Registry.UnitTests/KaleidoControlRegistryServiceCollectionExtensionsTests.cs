@@ -9,7 +9,7 @@ namespace Kaleido.Http.Registry.UnitTests;
 public sealed class KaleidoControlRegistryServiceCollectionExtensionsTests
     : SutFixture
 {
-    private static readonly Dictionary<string, string?> Reader = new() { ["Kaleido:Registry:ReaderPolicy"] = "registry-reader" };
+    private static readonly Dictionary<string, string?> Reader = new() { ["Kaleido:Registry:ReaderPolicy"] = "registry-reader", ["Kaleido:Registry:RegistrantPolicy"] = "service-application" };
 
     private static IKaleidoBuilder Builder(ServiceCollection services, Dictionary<string, string?>? settings = null, KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.ZeroTrust)
     {
@@ -57,19 +57,23 @@ public sealed class KaleidoControlRegistryServiceCollectionExtensionsTests
         Assert.Equal((ServiceLifetime.Singleton, null), (source.Lifetime, source.ImplementationType));
     }
 
-    // Only services read the registry: under enforcement the policy admitting them is required.
+    // Only service applications register and only services read: under enforcement both policies are required.
     [Theory]
-    [InlineData(KaleidoAuthorizationMode.Authenticated, true)]
-    [InlineData(KaleidoAuthorizationMode.ZeroTrust, true)]
-    [InlineData(KaleidoAuthorizationMode.None, false)]
-    public void AddControlRegistry_WithoutAReaderPolicy_StopsRegistrationUnderEnforcement(KaleidoAuthorizationMode mode, bool throws)
+    [InlineData("ReaderPolicy", KaleidoAuthorizationMode.Authenticated, true)]
+    [InlineData("ReaderPolicy", KaleidoAuthorizationMode.ZeroTrust, true)]
+    [InlineData("ReaderPolicy", KaleidoAuthorizationMode.None, false)]
+    [InlineData("RegistrantPolicy", KaleidoAuthorizationMode.Authenticated, true)]
+    [InlineData("RegistrantPolicy", KaleidoAuthorizationMode.ZeroTrust, true)]
+    [InlineData("RegistrantPolicy", KaleidoAuthorizationMode.None, false)]
+    public void AddControlRegistry_WithoutAPolicy_StopsRegistrationUnderEnforcement(string policy, KaleidoAuthorizationMode mode, bool throws)
     {
-        var builder = Builder(new ServiceCollection(), new() { ["Kaleido:Registry:ReaderPolicy"] = " " }, mode);
+        var builder = Builder(new ServiceCollection(), new() { [$"Kaleido:Registry:{policy}"] = " " }, mode);
 
         var exception = Record.Exception(builder.AddControlRegistry);
 
         Assert.Equal(throws, exception is KaleidoConfigurationException { Code: ConfigurationErrorCodes.InvalidOptions });
         Assert.Equal(throws, exception is not null);
+        Assert.Equal(throws, exception?.Message.Contains(policy, StringComparison.Ordinal) == true);
     }
 
     [Fact]

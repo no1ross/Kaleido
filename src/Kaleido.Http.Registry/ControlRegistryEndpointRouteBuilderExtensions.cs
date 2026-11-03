@@ -143,14 +143,24 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
             .ProducesKaleidoErrors(StatusCodes.Status403Forbidden);
     }
 
-    private static async Task<IResult> RegisterAsync(KaleidoJsonBody<RegistryInstanceRegistration> body, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
-        Answer(await registry.RegisterAsync(body.Value, Registrant(caller), cancellationToken));
+    // Every write is a service application's (RegistrantPolicy), registering only what it may (ControlRegistry).
+    private static async Task<IResult> RegisterAsync(HttpContext httpContext, KaleidoJsonBody<RegistryInstanceRegistration> body, [FromServices] KaleidoRegistryOptions options, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
+        await SatisfiesAsync(httpContext, options.RegistrantPolicy)
+            ? Answer(await registry.RegisterAsync(body.Value, Registrant(caller), cancellationToken))
+            : Answer(RegistrantNotAllowed);
 
-    private static async Task<IResult> HeartbeatAsync(Guid instanceId, KaleidoJsonBody<RegistryHeartbeat> body, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
-        Answer(await registry.HeartbeatAsync(instanceId, body.Value, Registrant(caller), cancellationToken));
+    private static async Task<IResult> HeartbeatAsync(HttpContext httpContext, Guid instanceId, KaleidoJsonBody<RegistryHeartbeat> body, [FromServices] KaleidoRegistryOptions options, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
+        await SatisfiesAsync(httpContext, options.RegistrantPolicy)
+            ? Answer(await registry.HeartbeatAsync(instanceId, body.Value, Registrant(caller), cancellationToken))
+            : Answer(RegistrantNotAllowed);
 
-    private static async Task<IResult> DeregisterAsync(Guid instanceId, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
-        Answer(await registry.DeregisterAsync(instanceId, Registrant(caller), cancellationToken));
+    private static async Task<IResult> DeregisterAsync(HttpContext httpContext, Guid instanceId, [FromServices] KaleidoRegistryOptions options, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
+        await SatisfiesAsync(httpContext, options.RegistrantPolicy)
+            ? Answer(await registry.DeregisterAsync(instanceId, Registrant(caller), cancellationToken))
+            : Answer(RegistrantNotAllowed);
+
+    private static readonly RegistryAnswer RegistrantNotAllowed =
+        RegistryAnswer.Failed(RegistryAnswerKind.NotAllowed, RegistryErrorCodes.RegistrantNotAllowed, "Only service applications register with the control registry (Kaleido:Registry:RegistrantPolicy).");
 
     // Readers (the reader policy) get the full registry, unfiltered; they filter for their own callers.
     private static async Task<IResult> ReadAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, CancellationToken cancellationToken)
@@ -202,13 +212,16 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
             : Results.Ok(value);
     }
 
-    // Not enforced (AuthorizationMode None, development): anyone reads.
-    private static async Task<bool> IsReaderAsync(HttpContext httpContext, KaleidoRegistryOptions options)
+    private static Task<bool> IsReaderAsync(HttpContext httpContext, KaleidoRegistryOptions options) =>
+        SatisfiesAsync(httpContext, options.ReaderPolicy);
+
+    // The caller satisfies the host's policy. Not enforced (AuthorizationMode None, development): anyone does.
+    private static async Task<bool> SatisfiesAsync(HttpContext httpContext, string? policy)
     {
         var services = httpContext.RequestServices;
 
         return !services.GetRequiredService<IKaleidoAuthorizer>().IsEnforced
-            || (options.ReaderPolicy is { } policy
+            || (policy is not null
                 && (await services.GetRequiredService<IAuthorizationService>().AuthorizeAsync(httpContext.User, policy)).Succeeded);
     }
 
@@ -218,9 +231,10 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
             KaleidoJsonOptions.Options,
             statusCode: StatusCodes.Status403Forbidden);
 
-    // The registering service's identity: the actor of its token (act/azp/appid), else its subject.
-    private static string? Registrant(IKaleidoCorrelationContextAccessor caller) =>
-        caller.Current.CallerActor ?? caller.Current.CallerId;
+    // The registering service as its token describes it: its identity (the actor - act/azp/appid - else its
+    // subject) and its roles, read as IsInRole reads them.
+    private static RegistryCaller Registrant(IKaleidoCorrelationContextAccessor caller) =>
+        new(caller.Current.CallerActor ?? caller.Current.CallerId, caller.Current.CallerRoles);
 
     private static IResult Answer(RegistryAnswer answer) =>
         answer.Kind switch
