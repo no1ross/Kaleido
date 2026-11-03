@@ -87,8 +87,8 @@ Failed fetches are never cached - the next call retries naturally.
 
 ## Taking part in the control registry
 
-With a control registry (`Kaleido.Http.Registry`, #553), a host's registry is the control registry's, not
-one it builds:
+With a control registry (`Kaleido.Http.Registry`, #553), each instance registers itself, and a host's
+registry is the control registry's, not one it builds:
 
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
@@ -97,6 +97,15 @@ builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
     .AddControlRegistryClient();  // Kaleido:Registry:Url = "https://registry.internal"
 ```
 
+- **Registering.** At startup the instance registers (its `ServiceName`, `ServiceVersion` - required -,
+  `InstanceId`, `Kaleido:Registry:Address` and its own capabilities), retrying with jittered backoff
+  (1 s doubling, at most 30 s) until it succeeds, then reads the registry at once. It heartbeats at the
+  interval the registry hands out (+-10%, so a fleet spreads), with its health from local checks only
+  (never one tagged `remote`); answered 404 `registry_instance_unknown`, it registers again; at shutdown
+  it deregisters.
+- **Ready.** `kaleido-registration` (tagged `ready`) is unhealthy until the instance has registered and
+  read the registry once; a later failure (a heartbeat, a read) never makes it not ready, so a registry
+  outage never pulls services out of their load balancers.
 - **One registry, in memory.** `CentralRegistrySource` keeps the control registry's capabilities
   (`GET /registry/capabilities`, checked every `CapabilitiesInterval`, 30 s) and each version's
   availability (`GET /registry/availability`, every `AvailabilityInterval`, 10 s), each with its ETag, and
@@ -355,6 +364,7 @@ This project does not contain:
 
 ## Where to look
 
+- `ControlRegistryRegistrar.cs`, `RegistrationHealthCheck.cs` - registering, heartbeats, readiness
 - `CentralRegistrySource.cs`, `CentralRegistrySync.cs` - the host's copy of the control registry, and keeping it fresh
 - `../Kaleido.Http.Abstractions/Processor/IKaleidoProcessorClient.cs` — process client interface
 - `Processor/KaleidoProcessorClient.cs` — process client implementation

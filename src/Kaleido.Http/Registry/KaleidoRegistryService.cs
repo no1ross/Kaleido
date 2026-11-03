@@ -51,7 +51,7 @@ internal interface IKaleidoUnfilteredRegistry
 /// </summary>
 internal sealed partial class KaleidoRegistryService(
     RegistrySnapshot snapshot,
-    LocalRegistrations local,
+    IKaleidoLocalCapabilities local,
     IKaleidoRegistrySource source,
     IKaleidoAuthorizer authorizer,
     IHttpContextAccessor httpContextAccessor,
@@ -151,8 +151,8 @@ internal sealed partial class KaleidoRegistryService(
     // which already holds them (#553) - with the revision computed once.
     private KaleidoRegistry Compose(KaleidoRegistry remote, bool refresh)
     {
-        var full = source.IsFullRegistry;
-        var processes = (full ? [] : local.Processes())
+        var own = source.IsFullRegistry ? Nothing : local.Capabilities();
+        var processes = own.Processes
             .Concat(remote.Processes)
             .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -162,7 +162,7 @@ internal sealed partial class KaleidoRegistryService(
         var result = new KaleidoRegistry
         {
             Processes = processes,
-            Queryables = (full ? [] : local.Queryables())
+            Queryables = own.Queryables
                 .Concat(remote.Queryables)
                 .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),

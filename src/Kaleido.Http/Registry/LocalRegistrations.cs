@@ -16,7 +16,12 @@ internal sealed class LocalRegistrations(
     IEnumerable<IQueryableRegistry> queryableRegistries,
     IProcessorResponseFactory responseFactory,
     KaleidoServiceOptions serviceOptions)
+    : IKaleidoLocalCapabilities
 {
+    // What this host registers with the control registry (#553).
+    public KaleidoRegistry Capabilities() =>
+        new() { Processes = [.. Processes()], Queryables = [.. Queryables()] };
+
     public IEnumerable<ProcessorRegistryResponse> Processes() =>
         processorRegistries
             .Take(1)

@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Kaleido.Exceptions;
 using Kaleido.Http.Authorization;
 using Kaleido.Http.Queryable;
-using Kaleido.Queryable.Registry;
 using Kaleido.Registry;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,18 +86,18 @@ public sealed class KaleidoRegistryServiceTests
             RegistryRefreshCooldown = cooldown ?? TimeSpan.FromSeconds(30)
         });
 
-        var processors = new Mock<IProcessorRegistry>();
-        processors.Setup(x => x.Registrations).Returns(localProcessors);
-
-        var queryables = new Mock<IQueryableRegistry>();
-        queryables.Setup(x => x.Registrations).Returns(localSources);
-
-        var local = new LocalRegistrations([processors.Object], [queryables.Object], responses.Object, serviceOptions);
+        // This host's own capabilities, published as LocalRegistrations publishes them (its own tests).
+        var local = new Mock<IKaleidoLocalCapabilities>();
+        local.Setup(x => x.Capabilities()).Returns(() => new KaleidoRegistry
+        {
+            Processes = [.. localProcessors.Select(x => responses.Object.CreateRegistryResponse(x, serviceOptions))],
+            Queryables = [.. localSources.Select(x => x.ToResponse(serviceOptions))],
+        });
 
         return (
             new KaleidoRegistryService(
                 snapshot,
-                local,
+                local.Object,
                 source.Object,
                 authorizer.Object,
                 httpContextAccessor ?? Mock.Of<IHttpContextAccessor>(),

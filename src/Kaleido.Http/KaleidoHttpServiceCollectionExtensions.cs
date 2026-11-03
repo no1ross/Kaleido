@@ -81,6 +81,7 @@ public static class KaleidoHttpServiceCollectionExtensions
         builder.Services.TryAddSingleton<IHttpRegistryCache, HttpRegistryCache>();
         builder.Services.TryAddSingleton<RegistrySnapshot>();
         builder.Services.TryAddSingleton<LocalRegistrations>();
+        builder.Services.TryAddSingleton<IKaleidoLocalCapabilities>(x => x.GetRequiredService<LocalRegistrations>());
         builder.Services.TryAddScoped<IKaleidoRegistrySource, LocalRegistrySource>();
         builder.Services.TryAddScoped<IKaleidoRegistryService, KaleidoRegistryService>();
 

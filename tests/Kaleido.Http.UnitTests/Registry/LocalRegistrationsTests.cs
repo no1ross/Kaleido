@@ -75,4 +75,24 @@ public sealed class LocalRegistrationsTests
         Assert.Empty(sut.Processes());
         Assert.Empty(sut.Queryables());
     }
+
+    // #553: what this host registers with the control registry - its own processors and sources, no one else's.
+    [Fact]
+    public void Capabilities_AreThisServicesProcessorsAndSources()
+    {
+        var source = new QueryableSourceRegistryItem
+        {
+            SourceType = typeof(object),
+            QueryContextType = typeof(object),
+            ResultType = typeof(object),
+            ParametersType = typeof(object),
+            Name = "MemberSource",
+            DisplayName = "Members",
+        };
+
+        var capabilities = CreateSut([new ProcessorRegistryItem()], [source]).Capabilities();
+
+        Assert.Single(capabilities.Processes);
+        Assert.Equal("MemberSource", Assert.Single(capabilities.Queryables).Name);
+    }
 }
