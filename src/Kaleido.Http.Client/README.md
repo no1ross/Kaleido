@@ -100,7 +100,7 @@ builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
 - **Registering.** At startup the instance registers (its `ServiceName`, `ServiceVersion` - required -,
   `InstanceId` and its own capabilities; never where it runs), retrying with jittered backoff
   (1 s doubling, at most 30 s) until it succeeds - a registration counts only with a lease naming the
-  interval - then reads the registry at once. It heartbeats at the interval the lease names (+-10%, so a
+  interval - then reads the registry at once, so the host has it before its first check. It heartbeats at the interval the lease names (+-10%, so a
   fleet spreads), with its health from local checks only
   (never one tagged `remote`); answered 404 `registry_instance_unknown`, it registers again; at shutdown
   it deregisters.
@@ -112,9 +112,11 @@ builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
   its ETag, and composes the one `KaleidoRegistry` every reader on this host gets: each capability with its
   overall status, never an instance. Reads never call out.
 - **The registry sets the pace.** The host configures no interval: it heartbeats at the interval each lease
-  names, and checks the availability and the capabilities at the intervals the availability names (the
-  registry's `HeartbeatInterval` and `CapabilitiesInterval`), following a change at its next check. Until
-  it has read the registry, and after a failed call, it retries at 1 s doubling, at most 30 s.
+  names, and checks the availability at the interval the availability names (the registry's
+  `HeartbeatInterval`), following a change at its next check. The capabilities are read exactly when the
+  availability names other capabilities than those held (`CapabilitiesRevision`): a deployment shows on
+  every host, capabilities and status together, within one check, and otherwise they are never read
+  again. Until it has read the registry, and after a failed call, it retries at 1 s doubling, at most 30 s.
 - **Served as it is.** It is the full registry: this host serves it, filtered per caller, and its lookups,
   hand-offs and MCP read it; nothing is merged in. Its revision follows both documents, so the host
   rebuilds what it serves the moment either changes, whatever `RegistryCacheTtl`. It replaces the

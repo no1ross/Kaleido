@@ -39,7 +39,7 @@ app.MapKaleidoControlRegistry();
 | `PUT /registry/instances/{instanceId}/heartbeat` | the instance (`RegistryHeartbeat`: its local health) | `RegistryLease`; 404 `registry_instance_unknown` (register again) |
 | `DELETE /registry/instances/{instanceId}` | the instance, at shutdown | 204; 404 |
 | `GET /registry` | a Kaleido host (`ReaderPolicy`) | the registry, in one call (`KaleidoRegistry`): every processor and query source with its overall `Status`, and `Missing`; unfiltered, with an ETag, 304 and `?strict`; 403 `registry_reader_not_allowed` for anyone else |
-| `GET /registry/capabilities` | a Kaleido host keeping its copy fresh | the capabilities alone (no statuses), with an ETag that changes only with a deployment; 403 for anyone else |
+| `GET /registry/capabilities` | a Kaleido host keeping its copy fresh, when the availability names a new revision | the capabilities alone (no statuses), with an ETag that changes only with a deployment; 403 for anyone else |
 | `GET /registry/availability` | a Kaleido host keeping its copy fresh | each service version's overall status and current version, no instances (`KaleidoRegistryAvailability`), with an ETag that changes only when one of those does; 403 for anyone else |
 | `GET /registry/status` | operations, the registry's UI | each service version's status in detail, its instances included (`KaleidoRegistryStatus`), with its own ETag (heartbeat times alone do not change it); 403 for anyone else |
 
@@ -140,12 +140,13 @@ a production guard and the host-side docs are #566.
 
 `KaleidoRegistryOptions`: `RegistrantPolicy`, `ReaderPolicy`, `RegistrantRolePrefix`
 (`Kaleido.Registrant.`), `Registrants` (optional), `Expected`, `HeartbeatInterval` (10 s),
-`CapabilitiesInterval` (30 s), `MissedHeartbeats` (3), `Retention` (24 h). An invalid value stops startup
-(`invalid_options`).
+`MissedHeartbeats` (3), `Retention` (24 h). An invalid value stops startup (`invalid_options`).
 
-The registry sets every participant's pace: the heartbeat interval in each lease, and the intervals at
-which the hosts check the availability (`HeartbeatInterval`) and the capabilities
-(`CapabilitiesInterval`) with each availability. A change reaches every host at its next check.
+The registry sets every participant's pace: the heartbeat interval in each lease, and the interval at
+which the hosts check the availability (`HeartbeatInterval`) with each availability. The availability
+also names the capabilities' revision (`CapabilitiesRevision`): a host reads the capabilities exactly
+when they changed, so a deployment shows on every host within one check. A change reaches every host at
+its next check.
 
 ## Health
 

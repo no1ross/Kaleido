@@ -17,7 +17,7 @@ internal interface IControlRegistryRegistrar
 // - at startup it registers (POST /registry/instances: the service, version, instance and this
 //   host's own capabilities), retrying with jittered backoff (RegistryRetry, +-20%) until it succeeds - a
 //   registration counts only with a lease naming the heartbeat interval, the registry's, never one of this
-//   instance's - then reads the registry at once so its own entry shows;
+//   instance's - then reads the registry at once, so the host has it before its first check;
 // - then it heartbeats (PUT /registry/instances/{id}/heartbeat) every interval the lease hands out, +-10%
 //   so a fleet's heartbeats spread, reporting its health from local checks only (never a check calling
 //   another service, tagged "remote", nor the registration check);

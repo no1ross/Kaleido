@@ -13,7 +13,6 @@ public sealed class CentralRegistrySourceTests
     private static readonly DateTimeOffset Start = new(2026, 11, 2, 12, 0, 0, TimeSpan.Zero);
     // The pace the registry hands out with its availability.
     private static readonly TimeSpan AvailabilityEvery = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan CapabilitiesEvery = TimeSpan.FromSeconds(30);
 
     private static readonly KaleidoRegistry Capabilities = new()
     {
@@ -67,7 +66,7 @@ public sealed class CentralRegistrySourceTests
         {
             Services = [new RegistryServiceAvailability { ServiceName = "code-sets", ServiceVersion = "3", IsCurrent = true, Status = status }],
             AvailabilityInterval = AvailabilityEvery,
-            CapabilitiesInterval = CapabilitiesEvery,
+            CapabilitiesRevision = "caps-1",
             Revision = revision,
             GeneratedAt = Start,
         };
@@ -112,22 +111,53 @@ public sealed class CentralRegistrySourceTests
         Assert.All(requests, x => Assert.Equal(KaleidoCallPurpose.ServiceOwn, Assert.IsType<KaleidoCallContext>(x.Options.TryGetValue(KaleidoCallContext.Key, out var context) ? context : null).Purpose));
     }
 
-    // Each document on its own interval, one tick before and at it.
-    [Theory]
-    [InlineData(-1, 1)]
-    [InlineData(0, 2)]
-    public async Task TheCapabilities_AreCheckedOnTheirInterval(long ticksFromTheInterval, int reads)
+    // The capabilities held are the ones the availability names: never read again, however long.
+    [Fact]
+    public async Task CurrentCapabilities_AreNotReadAgain()
     {
         var sut = CreateSut();
         await sut.SyncAsync(force: true, Cancel);
 
-        time.Advance(CapabilitiesEvery + TimeSpan.FromTicks(ticksFromTheInterval));
-        answers["/registry/capabilities"] = _ => new HttpResponseMessage(HttpStatusCode.NotModified);
-        answers["/registry/availability"] = _ => new HttpResponseMessage(HttpStatusCode.NotModified);
+        for (var i = 0; i < 10; i++)
+        {
+            time.Advance(AvailabilityEvery);
+            await sut.SyncAsync(force: false, Cancel);
+        }
+
+        Assert.Equal((1, 11), (Reads("/registry/capabilities"), Reads("/registry/availability")));
+    }
+
+    // A deployment: the availability names other capabilities, which are read in the same check.
+    [Fact]
+    public async Task NewCapabilities_AreReadInTheSameCheck()
+    {
+        var sut = CreateSut();
+        await sut.SyncAsync(force: true, Cancel);
+        var deployed = Capabilities with { Processes = [.. Capabilities.Processes, new ProcessorRegistryResponse { Name = "member", ServiceName = "member", ServiceVersion = "1" }], Revision = "caps-2" };
+        answers["/registry/capabilities"] = _ => Ok(deployed, "caps-2");
+        answers["/registry/availability"] = _ => Ok(Available with { CapabilitiesRevision = "caps-2", Revision = "avail-2" }, "avail-2");
+
+        time.Advance(AvailabilityEvery);
         await sut.SyncAsync(force: false, Cancel);
 
-        Assert.Equal(reads, Reads("/registry/capabilities"));
-        Assert.Equal(2, Reads("/registry/availability"));
+        Assert.Equal(2, Reads("/registry/capabilities"));
+        Assert.Equal(["code-sets", "member"], (await sut.GetAsync(null, Cancel)).Processes.Select(x => x.ServiceName).Order());
+    }
+
+    // An availability naming no capabilities revision: they are checked each time, with their ETag.
+    [Fact]
+    public async Task WithoutACapabilitiesRevision_TheCapabilitiesAreCheckedEachTime()
+    {
+        answers["/registry/availability"] = _ => Ok(Available with { CapabilitiesRevision = null }, "avail-1");
+        var sut = CreateSut();
+        await sut.SyncAsync(force: true, Cancel);
+        answers["/registry/capabilities"] = _ => new HttpResponseMessage(HttpStatusCode.NotModified);
+
+        time.Advance(AvailabilityEvery);
+        await sut.SyncAsync(force: false, Cancel);
+
+        Assert.Equal(2, Reads("/registry/capabilities"));
+        Assert.Equal("\"caps-1\"", requests.Last(x => x.RequestUri!.AbsolutePath == "/registry/capabilities").Headers.IfNoneMatch.Single().ToString());
     }
 
     [Theory]
@@ -227,9 +257,9 @@ public sealed class CentralRegistrySourceTests
         Assert.False(sut.HasRead);
     }
 
-    // The registry sets the pace: the next check is when the earlier of its two intervals is due.
+    // The registry sets the pace: the next check is when its interval is due.
     [Fact]
-    public async Task TheNextCheck_FollowsTheRegistrysIntervals()
+    public async Task TheNextCheck_FollowsTheRegistrysInterval()
     {
         var sut = CreateSut();
         await sut.SyncAsync(force: true, Cancel);
@@ -238,10 +268,10 @@ public sealed class CentralRegistrySourceTests
         time.Advance(TimeSpan.FromSeconds(4));
         Assert.Equal(AvailabilityEvery - TimeSpan.FromSeconds(4), sut.NextCheck);
 
-        answers["/registry/availability"] = _ => Ok(Available with { AvailabilityInterval = TimeSpan.FromMinutes(5), CapabilitiesInterval = TimeSpan.FromMinutes(1), Revision = "avail-slow" }, "avail-slow");
+        answers["/registry/availability"] = _ => Ok(Available with { AvailabilityInterval = TimeSpan.FromMinutes(5), Revision = "avail-slow" }, "avail-slow");
         await sut.SyncAsync(force: true, Cancel);
 
-        Assert.Equal(TimeSpan.FromMinutes(1), sut.NextCheck);
+        Assert.Equal(TimeSpan.FromMinutes(5), sut.NextCheck);
     }
 
     // Nothing to follow yet, or a read that failed: the retry, 1 s doubling - never an interval of the host's.

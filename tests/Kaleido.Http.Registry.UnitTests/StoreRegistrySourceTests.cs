@@ -418,19 +418,42 @@ public sealed class StoreRegistrySourceTests
         Assert.Matches("^[0-9a-f]{64}$", first.Revision!);
     }
 
-    // The registry sets the hosts' pace: availability at its heartbeat interval, capabilities at their own;
-    // a change of pace is a new availability, so the hosts follow it.
+    // The registry sets the hosts' pace (its heartbeat interval), and names the capabilities as they are, so
+    // a host reads them exactly when a deployment changed them; either change is a new availability.
     [Fact]
-    public async Task TheAvailability_CarriesTheRegistrysPace()
+    public async Task TheAvailability_CarriesThePace_AndTheCapabilitiesRevision()
+    {
+        var sut = CreateSut();
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+        contents = new() { Registrations = [registration], Instances = [Instance(registration, Now)] };
+
+        var standard = await sut.GetAvailabilityAsync(Cancel);
+        var slower = await CreateSut(Defaults with { HeartbeatInterval = TimeSpan.FromSeconds(20) }).GetAvailabilityAsync(Cancel);
+        time.Advance(StoreRegistrySource.ViewTtl);
+        // A new build of the same version: the versions and their statuses are as they were, the capabilities are not.
+        var rebuilt = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep", "CancelScanStep")], []));
+        contents = contents with { Registrations = [rebuilt], Instances = [Instance(rebuilt, Now)] };
+        var afterDeployment = await sut.GetAvailabilityAsync(Cancel);
+
+        Assert.Equal(Defaults.HeartbeatInterval, standard.AvailabilityInterval);
+        Assert.Equal(TimeSpan.FromSeconds(20), slower.AvailabilityInterval);
+        Assert.Equal((await sut.GetCapabilitiesAsync(Cancel)).Revision, afterDeployment.CapabilitiesRevision);
+        Assert.NotEqual(standard.CapabilitiesRevision, afterDeployment.CapabilitiesRevision);
+        Assert.NotEqual(standard.Revision, slower.Revision);
+        Assert.Equal(standard.Services, afterDeployment.Services);
+        Assert.NotEqual(standard.Revision, afterDeployment.Revision);
+    }
+
+    // The composed registry has a revision following both parts, so a host rebuilds what it serves exactly
+    // when either changes, and serves it as it is meanwhile.
+    [Fact]
+    public async Task TheRegistry_HasARevision_FollowingTheCapabilitiesAndTheAvailability()
     {
         var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
         contents = new() { Registrations = [registration], Instances = [Instance(registration, Now)] };
 
-        var standard = await CreateSut().GetAvailabilityAsync(Cancel);
-        var slower = await CreateSut(Defaults with { HeartbeatInterval = TimeSpan.FromSeconds(20), CapabilitiesInterval = TimeSpan.FromMinutes(2) }).GetAvailabilityAsync(Cancel);
+        var registry = await CreateSut().GetAsync(maxParallelism: null, Cancel);
 
-        Assert.Equal((Defaults.HeartbeatInterval, Defaults.CapabilitiesInterval), (standard.AvailabilityInterval, standard.CapabilitiesInterval));
-        Assert.Equal((TimeSpan.FromSeconds(20), TimeSpan.FromMinutes(2)), (slower.AvailabilityInterval, slower.CapabilitiesInterval));
-        Assert.NotEqual(standard.Revision, slower.Revision);
+        Assert.Matches("^[0-9a-f]{64}$", registry.Revision!);
     }
 }

@@ -99,19 +99,23 @@ internal sealed class StoreRegistrySource(
         var (capabilities, statuses) = Build(contents, now);
         var status = new KaleidoRegistryStatus { Services = statuses, GeneratedAt = now, Revision = RevisionOf(statuses) };
         List<RegistryServiceAvailability> versions = [.. statuses.Select(x => new RegistryServiceAvailability { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, IsCurrent = x.IsCurrent, Status = x.Status })];
-        // The hosts check at the registry's pace: the heartbeat interval, and the capabilities' own.
+        var revisioned = capabilities with { Revision = capabilities.ToEntryJson().ToRevision() };
+
+        // The hosts check at the registry's pace (the heartbeat interval), and read the capabilities exactly
+        // when theirs are not these.
         var availability = new KaleidoRegistryAvailability
         {
             Services = versions,
             AvailabilityInterval = options.HeartbeatInterval,
-            CapabilitiesInterval = options.CapabilitiesInterval,
+            CapabilitiesRevision = revisioned.Revision,
             GeneratedAt = now,
-            Revision = JsonSerializer.Serialize(new { versions, options.HeartbeatInterval, options.CapabilitiesInterval }, KaleidoJsonOptions.Options).ToRevision(),
+            Revision = JsonSerializer.Serialize(new { versions, options.HeartbeatInterval, revisioned.Revision }, KaleidoJsonOptions.Options).ToRevision(),
         };
 
+        // The composed registry's revision follows both parts, so readers rebuild exactly when either changes.
         return new RegistryView(
-            capabilities with { Revision = capabilities.ToEntryJson().ToRevision() },
-            capabilities.WithAvailability(availability),
+            revisioned,
+            revisioned.WithAvailability(availability),
             status,
             availability,
             now);

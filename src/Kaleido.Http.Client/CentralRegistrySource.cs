@@ -7,9 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Http.Client;
 
 // A participant's full registry (#553): the control registry's, kept in memory and fresh. It holds two
-// documents, each with its ETag - the capabilities (they change with a deployment) and each version's
-// availability - checked at the intervals the registry hands out with the availability, never the host's
-// own; before the first read, and after a failed one, it tries again on RegistryRetry. It composes the one
+// documents, each with its ETag - each version's availability, checked at the interval the registry hands
+// out with it (never the host's own), and the capabilities, read exactly when the availability names other
+// capabilities than those held (a deployment); before the first read, and after a failed one, it tries
+// again on RegistryRetry. It composes the one
 // KaleidoRegistry every reader on this host gets: each capability with its overall status, never an
 // instance. Reads never call out; CentralRegistrySync does. When the registry cannot be read, the last
 // good copy is served, partial (a RegistryReadError for the registry) and without a revision, so readers
@@ -52,11 +53,9 @@ internal sealed partial class CentralRegistrySource(
     {
         get
         {
-            if (_failure is null
-                && _availability is { } availability && Pace(x => x.AvailabilityInterval) is { } availabilityEvery
-                && _capabilities is { } capabilities && Pace(x => x.CapabilitiesInterval) is { } capabilitiesEvery)
+            if (_failure is null && _capabilities is not null && _availability is { } availability && Pace(availability.Value) is { } every)
             {
-                var next = Min(availability.CheckedUtc + availabilityEvery, capabilities.CheckedUtc + capabilitiesEvery) - time.GetUtcNow();
+                var next = availability.CheckedUtc + every - time.GetUtcNow();
 
                 return next > TimeSpan.Zero ? next : TimeSpan.Zero;
             }
@@ -85,12 +84,12 @@ internal sealed partial class CentralRegistrySource(
             var now = time.GetUtcNow();
             var failure = default(string);
 
-            if (force || Due(_availability, Pace(x => x.AvailabilityInterval), now))
+            if (force || _availability is null || _availability.Value is not { } held || Pace(held) is not { } every || now - _availability.CheckedUtc >= every)
             {
                 (_availability, failure) = await FetchAsync(ControlRegistryContractUrls.Availability, _availability, now, cancellationToken);
             }
 
-            if (force || Due(_capabilities, Pace(x => x.CapabilitiesInterval), now))
+            if (force || Stale(_capabilities, _availability?.Value))
             {
                 var (capabilities, capabilitiesFailure) = await FetchAsync(ControlRegistryContractUrls.Capabilities, _capabilities, now, cancellationToken);
                 _capabilities = capabilities;
@@ -107,15 +106,16 @@ internal sealed partial class CentralRegistrySource(
         }
     }
 
-    // Due when never read, when the registry has not named its pace, or once its interval has passed.
-    private static bool Due<T>(Fetched<T>? fetched, TimeSpan? interval, DateTimeOffset now) =>
-        fetched is null || interval is not { } every || now - fetched.CheckedUtc >= every;
+    // The capabilities are read when never read, or when the availability names others than those held (a
+    // deployment); an availability naming none has them checked each time, with their ETag.
+    private static bool Stale(Fetched<KaleidoRegistry>? capabilities, KaleidoRegistryAvailability? availability) =>
+        capabilities is null
+        || availability?.CapabilitiesRevision is not { } current
+        || !string.Equals(current, capabilities.Value.Revision, StringComparison.Ordinal);
 
-    // An interval the registry handed out with the availability; none before it was read (or if it named none).
-    private TimeSpan? Pace(Func<KaleidoRegistryAvailability, TimeSpan> interval) =>
-        _availability?.Value is { } availability && interval(availability) is var every && every > TimeSpan.Zero ? every : null;
-
-    private static DateTimeOffset Min(DateTimeOffset a, DateTimeOffset b) => a < b ? a : b;
+    // The interval the registry handed out with the availability; none if it named none.
+    private static TimeSpan? Pace(KaleidoRegistryAvailability availability) =>
+        availability.AvailabilityInterval > TimeSpan.Zero ? availability.AvailabilityInterval : null;
 
     private KaleidoRegistry Compose()
     {

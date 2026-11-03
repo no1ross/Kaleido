@@ -131,16 +131,17 @@ public sealed record KaleidoRegistryAvailability
     public TimeSpan AvailabilityInterval { get; init; }
 
     /// <summary>
-    /// How often a Kaleido host checks the capabilities (<c>GET /registry/capabilities</c>) again, decided by
-    /// the registry.
+    /// The revision of the capabilities (<c>GET /registry/capabilities</c>) as they are now: a host holding
+    /// other capabilities reads them at once, so a deployment shows everywhere within one availability check,
+    /// and a host whose capabilities are current never reads them.
     /// </summary>
-    public TimeSpan CapabilitiesInterval { get; init; }
+    public string? CapabilitiesRevision { get; init; }
 
     /// <summary>When the availability was worked out (UTC).</summary>
     public DateTimeOffset GeneratedAt { get; init; }
 
     /// <summary>
-    /// A hash of <see cref="Services"/> and the two intervals (SHA-256, lowercase hex), mirrored by the
+    /// A hash of <see cref="Services"/>, the interval and the capabilities' revision (SHA-256, lowercase hex), mirrored by the
     /// <c>ETag</c> header: send it back as <c>If-None-Match</c> to get 304 while nothing changed.
     /// </summary>
     public string? Revision { get; init; }

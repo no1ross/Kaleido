@@ -940,6 +940,6 @@ Kaleido.Http.Registry.KaleidoRegistryAvailability.GeneratedAt.init -> void
 Kaleido.Http.Registry.KaleidoRegistryAvailability.Revision.get -> string?
 Kaleido.Http.Registry.KaleidoRegistryAvailability.Revision.init -> void
 Kaleido.Http.Registry.KaleidoRegistryAvailability.AvailabilityInterval.get -> System.TimeSpan
-Kaleido.Http.Registry.KaleidoRegistryAvailability.CapabilitiesInterval.get -> System.TimeSpan
 Kaleido.Http.Registry.KaleidoRegistryAvailability.AvailabilityInterval.init -> void
-Kaleido.Http.Registry.KaleidoRegistryAvailability.CapabilitiesInterval.init -> void
+Kaleido.Http.Registry.KaleidoRegistryAvailability.CapabilitiesRevision.init -> void
+Kaleido.Http.Registry.KaleidoRegistryAvailability.CapabilitiesRevision.get -> string?
