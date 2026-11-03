@@ -20,11 +20,11 @@ public sealed class ToolCatalogProviderTests
     {
         registry.Setup(x => x.IsMapped).Returns(true);
         registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => new AggregatedRegistryResponse { Revision = revision });
+            .ReturnsAsync(() => new KaleidoRegistry { Revision = revision });
         unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => new AggregatedRegistryResponse { Revision = unfilteredRevision });
-        builder.Setup(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()))
-            .Returns((AggregatedRegistryResponse response, AggregatedRegistryResponse _) => new ToolCatalog { Revision = response.Revision });
+            .ReturnsAsync(() => new KaleidoRegistry { Revision = unfilteredRevision });
+        builder.Setup(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()))
+            .Returns((KaleidoRegistry response, KaleidoRegistry _) => new ToolCatalog { Revision = response.Revision });
 
         // The cache is ToolCatalogCache's to test; here it remembers what it was given.
         ToolCatalog? known = null;
@@ -60,13 +60,13 @@ public sealed class ToolCatalogProviderTests
 
     private void RegistryRevisionIs(string? value) =>
         registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AggregatedRegistryResponse { Revision = value });
+            .ReturnsAsync(new KaleidoRegistry { Revision = value });
 
     [Fact]
     public async Task GetAsync_ReportsWhatTheOwnerShouldFix_AsWarnings_OncePerRevision()
     {
         var logger = new RecordingLogger();
-        builder.Setup(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()))
+        builder.Setup(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()))
             .Returns(new ToolCatalog
             {
                 MissingDescriptions = ["clinic_patient", "clinic_patient.name"],
@@ -103,7 +103,7 @@ public sealed class ToolCatalogProviderTests
     {
         var logger = new Mock<ILogger<ToolCatalogProvider>>();
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(false);
-        builder.Setup(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()))
+        builder.Setup(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()))
             .Returns(new ToolCatalog
             {
                 MissingDescriptions = ["clinic_patient"],
@@ -141,7 +141,7 @@ public sealed class ToolCatalogProviderTests
 
         Assert.Null(first.Revision);
         Assert.NotSame(first, second);
-        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Exactly(2));
         cache.Verify(x => x.Add(It.IsAny<string>(), It.IsAny<ToolCatalog>()), Times.Never);
         observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryFetched, string.Empty), Times.Exactly(2));
     }
@@ -150,12 +150,12 @@ public sealed class ToolCatalogProviderTests
     public async Task GetAsync_AnUnfilteredRegistryWithoutARevision_IsTranslatedEveryTime_AndNotKept()
     {
         unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AggregatedRegistryResponse { Revision = null });
+            .ReturnsAsync(new KaleidoRegistry { Revision = null });
 
         await CreateSut().GetAsync(Cancel);
         await CreateSut().GetAsync(Cancel);
 
-        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Exactly(2));
         cache.Verify(x => x.Add(It.IsAny<string>(), It.IsAny<ToolCatalog>()), Times.Never);
     }
 
@@ -186,7 +186,7 @@ public sealed class ToolCatalogProviderTests
         var second = await CreateSut().GetAsync(Cancel);
 
         Assert.Same(first, second);
-        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Once);
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Once);
         registry.Verify(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryHit, revision));
     }
@@ -198,12 +198,12 @@ public sealed class ToolCatalogProviderTests
 
         var other = "r-2";
         registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AggregatedRegistryResponse { Revision = other });
+            .ReturnsAsync(new KaleidoRegistry { Revision = other });
 
         var catalog = await CreateSut().GetAsync(Cancel);
 
         Assert.Equal(other, catalog.Revision);
-        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Exactly(2));
     }
 
     // #435: the caller's registry gives the tools, the unfiltered one gives their names.
@@ -213,8 +213,8 @@ public sealed class ToolCatalogProviderTests
         await CreateSut().GetAsync(Cancel);
 
         builder.Verify(x => x.Build(
-            It.Is<AggregatedRegistryResponse>(r => r.Revision == revision),
-            It.Is<AggregatedRegistryResponse>(r => r.Revision == unfilteredRevision)), Times.Once);
+            It.Is<KaleidoRegistry>(r => r.Revision == revision),
+            It.Is<KaleidoRegistry>(r => r.Revision == unfilteredRevision)), Times.Once);
     }
 
     [Fact]
@@ -223,10 +223,10 @@ public sealed class ToolCatalogProviderTests
         await CreateSut().GetAsync(Cancel);
 
         unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AggregatedRegistryResponse { Revision = "u-2" });
+            .ReturnsAsync(new KaleidoRegistry { Revision = "u-2" });
         await CreateSut().GetAsync(Cancel);
 
-        builder.Verify(x => x.Build(It.IsAny<AggregatedRegistryResponse>(), It.IsAny<AggregatedRegistryResponse>()), Times.Exactly(2));
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Exactly(2));
     }
 
     [Fact]

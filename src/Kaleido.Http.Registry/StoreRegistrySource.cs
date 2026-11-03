@@ -6,12 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Http.Registry;
 
-// The registry's statuses, apart from its capabilities (GET /registry/status, #553).
-internal interface IRegistryStatusReader
-{
-    Task<RegistryStatusResponse> GetStatusAsync(CancellationToken cancellationToken);
-}
-
 // The control registry's full registry, from its store (#553). One per host: it keeps each revision's
 // parsed capabilities (a revision never changes, so only new ones are read), and the view it built for
 // ViewTtl, so the capabilities endpoint, the status endpoint and the health check share one read.
@@ -26,18 +20,21 @@ internal sealed class StoreRegistrySource(
     IServiceScopeFactory scopeFactory,
     KaleidoRegistryOptions options,
     TimeProvider time)
-    : IKaleidoRegistrySource, IRegistryStatusReader, IDisposable
+    : IKaleidoRegistrySource, IDisposable
 {
     internal static readonly TimeSpan ViewTtl = TimeSpan.FromSeconds(1);
 
-    private readonly ConcurrentDictionary<string, RegistryCapabilities> _capabilities = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, KaleidoRegistry> _capabilities = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private RegistryView? _view;
 
-    public async Task<RegistrySourceContents> GetAsync(int? maxParallelism, CancellationToken cancellationToken) =>
+    // The store's registry is the whole registry: every participant registered its own capabilities.
+    public bool IsFullRegistry => true;
+
+    public async Task<KaleidoRegistry> GetAsync(int? maxParallelism, CancellationToken cancellationToken) =>
         (await ViewAsync(cancellationToken)).Contents;
 
-    public async Task<RegistryStatusResponse> GetStatusAsync(CancellationToken cancellationToken) =>
+    public async Task<KaleidoRegistryStatus> GetStatusAsync(CancellationToken cancellationToken) =>
         (await ViewAsync(cancellationToken)).Status;
 
     public Task RefreshAsync(CancellationToken cancellationToken)
@@ -77,10 +74,10 @@ internal sealed class StoreRegistrySource(
         await LoadCapabilitiesAsync(store, contents, cancellationToken);
 
         var now = time.GetUtcNow();
-        var built = Build(contents, now);
-        var revision = RegistryCapabilities.RevisionOf(JsonSerializer.Serialize(built.Services, KaleidoJsonOptions.Options));
+        var (registry, statuses) = Build(contents, now);
+        var revision = JsonSerializer.Serialize(statuses, KaleidoJsonOptions.Options).ToRevision();
 
-        return new RegistryView(built, new RegistryStatusResponse { Services = built.Services, GeneratedAt = now, Revision = revision }, now);
+        return new RegistryView(registry, new KaleidoRegistryStatus { Services = statuses, GeneratedAt = now, Revision = revision }, now);
     }
 
     // Reads only the revisions not parsed yet, and forgets those the store no longer has.
@@ -93,7 +90,7 @@ internal sealed class StoreRegistrySource(
         {
             foreach (var (revision, json) in await store.GetCapabilitiesAsync(missing, cancellationToken))
             {
-                _capabilities[revision] = RegistryCapabilities.FromJson(json);
+                _capabilities[revision] = json.ToRegistryEntry();
             }
         }
 
@@ -103,7 +100,7 @@ internal sealed class StoreRegistrySource(
         }
     }
 
-    private RegistrySourceContents Build(RegistryStoreContents contents, DateTimeOffset now)
+    private (KaleidoRegistry Registry, List<RegistryServiceStatus> Statuses) Build(RegistryStoreContents contents, DateTimeOffset now)
     {
         var versions = contents.Registrations.Select(x => (x.ServiceName, x.ServiceVersion))
             .Concat(contents.Instances.Select(x => (x.ServiceName, x.ServiceVersion)))
@@ -136,29 +133,25 @@ internal sealed class StoreRegistrySource(
             });
         }
 
-        return new RegistrySourceContents(processes, queryables, [])
-        {
-            Services = statuses,
-            Missing = Missing(versions, processes),
-        };
+        return (new KaleidoRegistry { Processes = processes, Queryables = queryables, Missing = Missing(versions, processes) }, statuses);
     }
 
     // The registrations the instances run, oldest first; with no instance, every registration kept.
-    private RegistryCapabilities Published(IEnumerable<RegistryRegistrationRecord> registrations, List<RegistryInstanceRecord> instances)
+    private KaleidoRegistry Published(IEnumerable<RegistryRegistrationRecord> registrations, List<RegistryInstanceRecord> instances)
     {
         var running = instances.Select(x => x.Revision).ToHashSet(StringComparer.Ordinal);
         var all = registrations.OrderBy(x => x.RegisteredUtc).ToList();
         var used = all.Where(x => running.Contains(x.Revision)).ToList();
 
-        return Shared([.. (used.Count > 0 ? used : all).Select(x => _capabilities.GetValueOrDefault(x.Revision)).OfType<RegistryCapabilities>()]);
+        return Shared([.. (used.Count > 0 ? used : all).Select(x => _capabilities.GetValueOrDefault(x.Revision)).OfType<KaleidoRegistry>()]);
     }
 
     // The rolling-deployment rule: a capability every revision has, as the oldest one defines it.
-    private static RegistryCapabilities Shared(List<RegistryCapabilities> revisions)
+    private static KaleidoRegistry Shared(List<KaleidoRegistry> revisions)
     {
         if (revisions.Count <= 1)
         {
-            return revisions.FirstOrDefault() ?? new RegistryCapabilities([], []);
+            return revisions.FirstOrDefault() ?? new KaleidoRegistry();
         }
 
         var oldest = revisions[0];
@@ -178,7 +171,7 @@ internal sealed class StoreRegistrySource(
                 Views = [.. q.Views.Where(v => revisions.TrueForAll(r => SourceOf(r, q.Name).Views.Any(o => SameName(o.Name, v.Name))))],
             });
 
-        return new RegistryCapabilities([.. processes], [.. queryables]);
+        return new KaleidoRegistry { Processes = [.. processes], Queryables = [.. queryables] };
     }
 
     private List<RegistryMissingService> Missing(List<(string ServiceName, string ServiceVersion)> versions, List<ProcessorRegistryResponse> processes)
@@ -200,10 +193,10 @@ internal sealed class StoreRegistrySource(
         return [.. expected.Concat(lookups)];
     }
 
-    private static ProcessorRegistryResponse ProcessorOf(RegistryCapabilities capabilities, string name) =>
+    private static ProcessorRegistryResponse ProcessorOf(KaleidoRegistry capabilities, string name) =>
         capabilities.Processes.First(x => SameName(x.Name, name));
 
-    private static QueryableSourceResponse SourceOf(RegistryCapabilities capabilities, string name) =>
+    private static QueryableSourceResponse SourceOf(KaleidoRegistry capabilities, string name) =>
         capabilities.Queryables.First(x => SameName(x.Name, name));
 
     private static bool Is(string service, string version, string otherService, string otherVersion) =>
@@ -211,5 +204,5 @@ internal sealed class StoreRegistrySource(
 
     private static bool SameName(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
-    private sealed record RegistryView(RegistrySourceContents Contents, RegistryStatusResponse Status, DateTimeOffset BuiltUtc);
+    private sealed record RegistryView(KaleidoRegistry Contents, KaleidoRegistryStatus Status, DateTimeOffset BuiltUtc);
 }

@@ -11,8 +11,8 @@ public abstract class IKaleidoRegistryStoreTests
 {
     private static readonly DateTimeOffset At = new(2026, 11, 2, 12, 0, 0, TimeSpan.Zero);
 
-    private static readonly (RegistryRegistrationRecord Record, string Capabilities) V1 = Registration("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []));
-    private static readonly (RegistryRegistrationRecord Record, string Capabilities) V2 = Registration("radiology", "2", new([ProcessorWith("radiology", "ReviewStep")], []));
+    private static readonly (RegistryRegistrationRecord Record, string Capabilities) V1 = Registration("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+    private static readonly (RegistryRegistrationRecord Record, string Capabilities) V2 = Registration("radiology", "2", Entry([ProcessorWith("radiology", "ReviewStep")], []));
 
     protected static CancellationToken Cancel => TestContext.Current.CancellationToken;
 

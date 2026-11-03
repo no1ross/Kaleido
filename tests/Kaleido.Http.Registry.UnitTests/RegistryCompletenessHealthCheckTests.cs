@@ -12,9 +12,11 @@ public sealed class RegistryCompletenessHealthCheckTests
     private static RegistryServiceStatus Status(string version, bool available) =>
         new() { ServiceName = "radiology", ServiceVersion = version, Available = available };
 
-    private void View(RegistryServiceStatus[] services, RegistryMissingService[] missing) =>
-        registrations.Setup(x => x.GetAsync(null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RegistrySourceContents([], [], []) { Services = services, Missing = missing });
+    private void View(RegistryServiceStatus[] services, RegistryMissingService[] missing)
+    {
+        registrations.Setup(x => x.GetAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistry { Missing = missing });
+        registrations.Setup(x => x.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistryStatus { Services = services });
+    }
 
     private Task<HealthCheckResult> CheckAsync() => CreateSut().CheckHealthAsync(new HealthCheckContext(), TestContext.Current.CancellationToken);
 

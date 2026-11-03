@@ -63,8 +63,8 @@ public sealed class ControlRegistryTests
         Assert.NotNull(stored);
         Assert.NotNull(json);
         Assert.Equal(("radiology", "2026-11", Start), (stored.ServiceName, stored.ServiceVersion, stored.RegisteredUtc));
-        Assert.Equal(RegistryCapabilities.RevisionOf(json), stored.Revision);
-        var capabilities = RegistryCapabilities.FromJson(json);
+        Assert.Equal(json.ToRevision(), stored.Revision);
+        var capabilities = json.ToRegistryEntry();
         Assert.Equal("2026-11", Assert.Single(capabilities.Processes).ServiceVersion);
         Assert.Equal("2026-11", Assert.Single(capabilities.Queryables).ServiceVersion);
         Assert.Equal(new RegistryInstanceRecord { InstanceId = registration.InstanceId, ServiceName = "radiology", ServiceVersion = "2026-11", Revision = stored.Revision, Address = registration.Address, RegisteredUtc = Start, LastHeartbeatUtc = Start }, instance);

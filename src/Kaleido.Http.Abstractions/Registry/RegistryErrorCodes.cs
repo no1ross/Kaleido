@@ -1,7 +1,8 @@
 namespace Kaleido.Http.Registry;
 
 /// <summary>
-/// Stable codes of the control registry's endpoints (#553), answered in a <c>KaleidoErrorResponse</c>.
+/// Stable codes of the control registry's endpoints (#553), answered in a <c>KaleidoErrorResponse</c>: shared,
+/// so the participants that register with it and read it recognize them.
 /// </summary>
 public static class RegistryErrorCodes
 {

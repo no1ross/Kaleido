@@ -12,11 +12,11 @@ internal static class RegistryEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps the unified registry endpoint at <c>GET /{service}/registry</c>.
-    /// Returns a single <see cref="AggregatedRegistryResponse"/> containing this
+    /// Returns a single <see cref="KaleidoRegistry"/> containing this
     /// service's local process and queryable registrations; when
     /// <paramref name="mapOptions"/>.<c>AggregateRegistry</c> is set the response also merges every
     /// downstream client registered via <c>AddHttpClients()</c>.
-    /// <c>ClientErrors</c> reports failed downstream clients. Partial aggregates
+    /// <c>Errors</c> reports failed downstream clients. Partial aggregates
     /// return HTTP 200 by default, or HTTP 502 with the same body when
     /// <c>?strict</c> is requested.
     /// </summary>
@@ -58,13 +58,13 @@ internal static class RegistryEndpointRouteBuilderExtensions
                     GetRegistryAsync(httpContext, mapOptions, cancellationToken))
             .WithName(RegistryEndpointNames.RegistryEndpointName)
             .WithTags("Registry")
-            .Produces<AggregatedRegistryResponse>()
+            .Produces<KaleidoRegistry>()
             .WithSummary("Get unified registry.")
             .WithDescription(Description(aggregate));
 
         if (aggregate)
         {
-            endpoint.Produces<AggregatedRegistryResponse>(StatusCodes.Status502BadGateway);
+            endpoint.Produces<KaleidoRegistry>(StatusCodes.Status502BadGateway);
         }
 
         return group;
@@ -110,7 +110,7 @@ internal static class RegistryEndpointRouteBuilderExtensions
     /// <c>Cache-Control</c>, 304 when <c>If-None-Match</c> matches, and 502 with the body for a partial
     /// response under <c>?strict</c>.
     /// </summary>
-    internal static IResult RegistryResult(this HttpContext httpContext, AggregatedRegistryResponse response, TimeSpan? cacheTtl)
+    internal static IResult RegistryResult(this HttpContext httpContext, KaleidoRegistry response, TimeSpan? cacheTtl)
     {
         var strict = httpContext.Request.Query.ContainsKey("strict");
 
@@ -148,7 +148,7 @@ internal static class RegistryEndpointRouteBuilderExtensions
         "Returns process and queryable registrations from this service" +
         (aggregate ? " and configured downstream clients. " : ". ") +
         (aggregate
-            ? "A partial aggregate returns HTTP 200 by default with isPartial and clientErrors; " +
+            ? "A partial aggregate returns HTTP 200 by default with isPartial and errors; " +
               "?strict returns HTTP 502 with the same body. Partial results are not cached. "
             : "A successful local-only registry request returns HTTP 200. ") +
         "Process steps carry fully-resolved executeUrl values. " +

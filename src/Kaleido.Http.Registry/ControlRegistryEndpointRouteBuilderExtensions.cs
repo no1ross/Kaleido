@@ -62,18 +62,18 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
             RegistryRefreshCooldown = options.HeartbeatInterval,
         });
 
-        var group = endpoints.MapGroup("/registry")
+        var group = endpoints.MapGroup(ControlRegistryRoutePaths.Group)
             .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
             .AddEndpointFilter<Observability.KaleidoCorrelationEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             .AddEndpointFilter<Observability.KaleidoCallerContextEndpointFilter>()
             .WithTags("Control registry");
 
-        group.MapPost("/instances", RegisterAsync).WithName(ControlRegistryEndpointNames.Register).WithSummary("Register an instance.");
-        group.MapPut("/instances/{instanceId:guid}/heartbeat", HeartbeatAsync).WithName(ControlRegistryEndpointNames.Heartbeat).WithSummary("Renew an instance's lease.");
-        group.MapDelete("/instances/{instanceId:guid}", DeregisterAsync).WithName(ControlRegistryEndpointNames.Deregister).WithSummary("Deregister an instance.");
-        group.MapGet("", ReadAsync).WithName(ControlRegistryEndpointNames.Read).WithSummary("The full registry of every service version, for other Kaleido hosts.");
-        group.MapGet("/status", StatusAsync).WithName(ControlRegistryEndpointNames.Status).WithSummary("Each service version's status, for other Kaleido hosts.");
+        group.MapPost(ControlRegistryRoutePaths.Instances, RegisterAsync).WithName(ControlRegistryEndpointNames.Register).WithSummary("Register an instance.");
+        group.MapPut(ControlRegistryRoutePaths.Heartbeat, HeartbeatAsync).WithName(ControlRegistryEndpointNames.Heartbeat).WithSummary("Renew an instance's lease.");
+        group.MapDelete(ControlRegistryRoutePaths.Instance, DeregisterAsync).WithName(ControlRegistryEndpointNames.Deregister).WithSummary("Deregister an instance.");
+        group.MapGet(ControlRegistryRoutePaths.Read, ReadAsync).WithName(ControlRegistryEndpointNames.Read).WithSummary("The full registry of every service version, for other Kaleido hosts.");
+        group.MapGet(ControlRegistryRoutePaths.Status, StatusAsync).WithName(ControlRegistryEndpointNames.Status).WithSummary("Each service version's status, for other Kaleido hosts.");
 
         return group;
     }
@@ -100,7 +100,7 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
         return httpContext.RegistryResult(registry, options.HeartbeatInterval);
     }
 
-    private static async Task<IResult> StatusAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, [FromServices] IRegistryStatusReader statuses, CancellationToken cancellationToken)
+    private static async Task<IResult> StatusAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, [FromServices] IKaleidoRegistrySource statuses, CancellationToken cancellationToken)
     {
         if (!await IsReaderAsync(httpContext, options))
         {

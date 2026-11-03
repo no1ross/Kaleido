@@ -13,12 +13,15 @@ public sealed class LookupSourcesTests
     private readonly Mock<IKaleidoRegistrySource> source = new();
 
     public LookupSourcesTests() =>
-        source.Setup(x => x.GetAsync(4, It.IsAny<CancellationToken>())).ReturnsAsync(new RegistrySourceContents([], [Chart], []));
+        source.Setup(x => x.GetAsync(4, It.IsAny<CancellationToken>())).ReturnsAsync(Contents([], [Chart], []));
 
     private LookupSources CreateSut(bool complete) => new([Member], complete, source.Object, maxParallelism: 4);
 
     private static ProcessFieldLookup Lookup(string service, string source) =>
         new() { Service = service, Source = source, Field = "Id", Group = source };
+
+    private static KaleidoRegistry Contents(IReadOnlyCollection<ProcessorRegistryResponse> processes, IReadOnlyCollection<QueryableSourceResponse> queryables, IReadOnlyCollection<RegistryReadError> errors) =>
+        new() { Processes = processes, Queryables = queryables, Errors = errors };
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 

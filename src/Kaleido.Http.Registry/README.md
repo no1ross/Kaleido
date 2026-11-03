@@ -38,8 +38,8 @@ app.MapKaleidoControlRegistry();
 | `POST /registry/instances` | an instance, with its service's own token | `RegistryLease`; 403 `registry_registrant_not_allowed`; 400 `registry_invalid_registration` |
 | `PUT /registry/instances/{instanceId}/heartbeat` | the instance (`RegistryHeartbeat`: its local health) | `RegistryLease`; 404 `registry_instance_unknown` (register again) |
 | `DELETE /registry/instances/{instanceId}` | the instance, at shutdown | 204; 404 |
-| `GET /registry` | a Kaleido host (`ReaderPolicy`) | the full registry's capabilities (`AggregatedRegistryResponse`: processes, query sources, `Missing`), unfiltered, with an ETag, 304 and `?strict`; 403 `registry_reader_not_allowed` for anyone else |
-| `GET /registry/status` | a Kaleido host (`ReaderPolicy`) | each service version's status (`RegistryStatusResponse`), with its own ETag and 304; 403 for anyone else |
+| `GET /registry` | a Kaleido host (`ReaderPolicy`) | the full registry's capabilities (`KaleidoRegistry`: processes, query sources, `Missing`), unfiltered, with an ETag, 304 and `?strict`; 403 `registry_reader_not_allowed` for anyone else |
+| `GET /registry/status` | a Kaleido host (`ReaderPolicy`) | each service version's status (`KaleidoRegistryStatus`), with its own ETag and 304; 403 for anyone else |
 
 - **Pushed, never polled.** Instances send registrations and heartbeats; the registry never calls an
   instance. An instance whose heartbeats stop is no longer ready once its lease runs out

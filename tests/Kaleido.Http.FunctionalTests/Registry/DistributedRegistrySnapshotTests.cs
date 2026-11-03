@@ -107,13 +107,13 @@ public sealed class DistributedRegistrySnapshotTests : IAsyncLifetime
         Assert.Equal(afterOutage.GeneratedAt, fromB.GeneratedAt);
     }
 
-    private static async Task<AggregatedRegistryResponse> ReadRegistryAsync(IHost router)
+    private static async Task<KaleidoRegistry> ReadRegistryAsync(IHost router)
     {
         using var client = router.GetTestClient();
         using var response = await client.GetAsync("/router/registry", Cancel);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var registry = await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options, Cancel);
+        var registry = await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, Cancel);
         Assert.NotNull(registry);
         Assert.False(registry.IsPartial);
         return registry;

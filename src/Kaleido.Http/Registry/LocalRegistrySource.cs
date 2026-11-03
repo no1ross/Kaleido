@@ -6,10 +6,19 @@ namespace Kaleido.Http.Registry;
 /// </summary>
 internal sealed class LocalRegistrySource : IKaleidoRegistrySource
 {
-    public Task<RegistrySourceContents> GetAsync(
+    private static readonly KaleidoRegistry Nothing = new();
+    private static readonly KaleidoRegistryStatus NoStatus = new();
+
+    public bool IsFullRegistry => false;
+
+    public Task<KaleidoRegistry> GetAsync(
         int? maxParallelism,
         CancellationToken cancellationToken) =>
-        Task.FromResult(RegistrySourceContents.None);
+        Task.FromResult(Nothing);
+
+    public Task<KaleidoRegistryStatus> GetStatusAsync(
+        CancellationToken cancellationToken) =>
+        Task.FromResult(NoStatus);
 
     // Nothing is kept, so there is nothing to drop.
     public Task RefreshAsync(

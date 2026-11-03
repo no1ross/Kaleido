@@ -10,12 +10,12 @@ public sealed class LocalRegistrySourceTests
     {
         var registry = await CreateSut().GetAsync(maxParallelism: null, cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Same(RegistrySourceContents.None, registry);
         Assert.Empty(registry.Processes);
         Assert.Empty(registry.Queryables);
         Assert.Empty(registry.Errors);
-        Assert.Empty(registry.Services);
         Assert.Empty(registry.Missing);
+        Assert.Empty((await CreateSut().GetStatusAsync(TestContext.Current.CancellationToken)).Services);
+        Assert.False(CreateSut().IsFullRegistry);
     }
 
     [Fact]

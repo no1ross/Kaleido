@@ -41,10 +41,12 @@ internal sealed class ControlRegistry(
 
         // One record per service version and revision: the capabilities are stamped with the version and
         // stored once; every instance of that build adds only its own row.
-        var capabilities = new RegistryCapabilities(
-            [.. registration.Processes.Select(x => x with { ServiceVersion = registration.ServiceVersion })],
-            [.. registration.Queryables.Select(x => x with { ServiceVersion = registration.ServiceVersion })]).ToJson();
-        var revision = RegistryCapabilities.RevisionOf(capabilities);
+        var capabilities = new KaleidoRegistry
+        {
+            Processes = [.. registration.Processes.Select(x => x with { ServiceVersion = registration.ServiceVersion })],
+            Queryables = [.. registration.Queryables.Select(x => x with { ServiceVersion = registration.ServiceVersion })],
+        }.ToEntryJson();
+        var revision = capabilities.ToRevision();
 
         await store.AddRegistrationAsync(
             new RegistryRegistrationRecord { ServiceName = registration.ServiceName, ServiceVersion = registration.ServiceVersion, Revision = revision, RegisteredUtc = now },

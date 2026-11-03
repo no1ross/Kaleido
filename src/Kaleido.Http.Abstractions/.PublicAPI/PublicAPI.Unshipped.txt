@@ -476,22 +476,20 @@ Kaleido.Http.Queryable.QueryApiSort.Field.init -> void
 Kaleido.Http.Queryable.QueryApiSort.QueryApiSort() -> void
 Kaleido.Http.Queryable.QueryApiSort.Sequence.get -> int?
 Kaleido.Http.Queryable.QueryApiSort.Sequence.init -> void
-Kaleido.Http.Registry.AggregatedRegistryResponse
-Kaleido.Http.Registry.AggregatedRegistryResponse.<Clone>$() -> Kaleido.Http.Registry.AggregatedRegistryResponse!
-Kaleido.Http.Registry.AggregatedRegistryResponse.AggregatedRegistryResponse() -> void
-Kaleido.Http.Registry.AggregatedRegistryResponse.ClientErrors.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.RegistryClientError!>!
-Kaleido.Http.Registry.AggregatedRegistryResponse.ClientErrors.init -> void
-Kaleido.Http.Registry.AggregatedRegistryResponse.Equals(Kaleido.Http.Registry.AggregatedRegistryResponse? other) -> bool
-Kaleido.Http.Registry.AggregatedRegistryResponse.GeneratedAt.get -> System.DateTimeOffset
-Kaleido.Http.Registry.AggregatedRegistryResponse.GeneratedAt.init -> void
-Kaleido.Http.Registry.AggregatedRegistryResponse.IsPartial.get -> bool
-Kaleido.Http.Registry.AggregatedRegistryResponse.IsPartial.init -> void
-Kaleido.Http.Registry.AggregatedRegistryResponse.Processes.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessorRegistryResponse!>!
-Kaleido.Http.Registry.AggregatedRegistryResponse.Processes.init -> void
-Kaleido.Http.Registry.AggregatedRegistryResponse.Queryables.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableSourceResponse!>!
-Kaleido.Http.Registry.AggregatedRegistryResponse.Queryables.init -> void
-Kaleido.Http.Registry.AggregatedRegistryResponse.Revision.get -> string?
-Kaleido.Http.Registry.AggregatedRegistryResponse.Revision.init -> void
+Kaleido.Http.Registry.KaleidoRegistry
+Kaleido.Http.Registry.KaleidoRegistry.KaleidoRegistry() -> void
+Kaleido.Http.Registry.KaleidoRegistry.Errors.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.RegistryReadError!>!
+Kaleido.Http.Registry.KaleidoRegistry.Errors.init -> void
+Kaleido.Http.Registry.KaleidoRegistry.GeneratedAt.get -> System.DateTimeOffset
+Kaleido.Http.Registry.KaleidoRegistry.GeneratedAt.init -> void
+Kaleido.Http.Registry.KaleidoRegistry.IsPartial.get -> bool
+Kaleido.Http.Registry.KaleidoRegistry.IsPartial.init -> void
+Kaleido.Http.Registry.KaleidoRegistry.Processes.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Processor.ProcessorRegistryResponse!>!
+Kaleido.Http.Registry.KaleidoRegistry.Processes.init -> void
+Kaleido.Http.Registry.KaleidoRegistry.Queryables.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableSourceResponse!>!
+Kaleido.Http.Registry.KaleidoRegistry.Queryables.init -> void
+Kaleido.Http.Registry.KaleidoRegistry.Revision.get -> string?
+Kaleido.Http.Registry.KaleidoRegistry.Revision.init -> void
 Kaleido.Http.Registry.ConstraintMetadata
 Kaleido.Http.Registry.ConstraintMetadata.<Clone>$() -> Kaleido.Http.Registry.ConstraintMetadata!
 Kaleido.Http.Registry.ConstraintMetadata.ConstraintMetadata() -> void
@@ -535,19 +533,15 @@ Kaleido.Http.Registry.EnumValueMetadata.Name.init -> void
 Kaleido.Http.Registry.EnumValueMetadata.Value.get -> int
 Kaleido.Http.Registry.EnumValueMetadata.Value.init -> void
 Kaleido.Http.Registry.IRegistrySnapshotStore
-Kaleido.Http.Registry.IRegistrySnapshotStore.GetAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Kaleido.Http.Registry.AggregatedRegistryResponse?>
+Kaleido.Http.Registry.IRegistrySnapshotStore.GetAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Kaleido.Http.Registry.KaleidoRegistry?>
 Kaleido.Http.Registry.IRegistrySnapshotStore.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
-Kaleido.Http.Registry.IRegistrySnapshotStore.SetAsync(string! key, Kaleido.Http.Registry.AggregatedRegistryResponse! snapshot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
-Kaleido.Http.Registry.RegistryClientError
-Kaleido.Http.Registry.RegistryClientError.<Clone>$() -> Kaleido.Http.Registry.RegistryClientError!
-Kaleido.Http.Registry.RegistryClientError.ClientName.get -> string!
-Kaleido.Http.Registry.RegistryClientError.ClientName.init -> void
-Kaleido.Http.Registry.RegistryClientError.ClientType.get -> string!
-Kaleido.Http.Registry.RegistryClientError.ClientType.init -> void
-Kaleido.Http.Registry.RegistryClientError.Equals(Kaleido.Http.Registry.RegistryClientError? other) -> bool
-Kaleido.Http.Registry.RegistryClientError.Reason.get -> string!
-Kaleido.Http.Registry.RegistryClientError.Reason.init -> void
-Kaleido.Http.Registry.RegistryClientError.RegistryClientError() -> void
+Kaleido.Http.Registry.IRegistrySnapshotStore.SetAsync(string! key, Kaleido.Http.Registry.KaleidoRegistry! snapshot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Kaleido.Http.Registry.RegistryReadError
+Kaleido.Http.Registry.RegistryReadError.<Clone>$() -> Kaleido.Http.Registry.RegistryReadError!
+Kaleido.Http.Registry.RegistryReadError.Equals(Kaleido.Http.Registry.RegistryReadError? other) -> bool
+Kaleido.Http.Registry.RegistryReadError.Reason.get -> string!
+Kaleido.Http.Registry.RegistryReadError.Reason.init -> void
+Kaleido.Http.Registry.RegistryReadError.RegistryReadError() -> void
 override Kaleido.Http.KaleidoError.Equals(object? obj) -> bool
 override Kaleido.Http.KaleidoError.GetHashCode() -> int
 override Kaleido.Http.KaleidoError.ToString() -> string!
@@ -654,9 +648,9 @@ override Kaleido.Http.Queryable.QueryApiRequest<TParameters>.ToString() -> strin
 override Kaleido.Http.Queryable.QueryApiSort.Equals(object? obj) -> bool
 override Kaleido.Http.Queryable.QueryApiSort.GetHashCode() -> int
 override Kaleido.Http.Queryable.QueryApiSort.ToString() -> string!
-override Kaleido.Http.Registry.AggregatedRegistryResponse.Equals(object? obj) -> bool
-override Kaleido.Http.Registry.AggregatedRegistryResponse.GetHashCode() -> int
-override Kaleido.Http.Registry.AggregatedRegistryResponse.ToString() -> string!
+override Kaleido.Http.Registry.KaleidoRegistry.Equals(object? obj) -> bool
+override Kaleido.Http.Registry.KaleidoRegistry.GetHashCode() -> int
+override Kaleido.Http.Registry.KaleidoRegistry.ToString() -> string!
 override Kaleido.Http.Registry.ConstraintMetadata.Equals(object? obj) -> bool
 override Kaleido.Http.Registry.ConstraintMetadata.GetHashCode() -> int
 override Kaleido.Http.Registry.ConstraintMetadata.ToString() -> string!
@@ -669,9 +663,9 @@ override Kaleido.Http.Registry.DataTypeMetadata.ToString() -> string!
 override Kaleido.Http.Registry.EnumValueMetadata.Equals(object? obj) -> bool
 override Kaleido.Http.Registry.EnumValueMetadata.GetHashCode() -> int
 override Kaleido.Http.Registry.EnumValueMetadata.ToString() -> string!
-override Kaleido.Http.Registry.RegistryClientError.Equals(object? obj) -> bool
-override Kaleido.Http.Registry.RegistryClientError.GetHashCode() -> int
-override Kaleido.Http.Registry.RegistryClientError.ToString() -> string!
+override Kaleido.Http.Registry.RegistryReadError.Equals(object? obj) -> bool
+override Kaleido.Http.Registry.RegistryReadError.GetHashCode() -> int
+override Kaleido.Http.Registry.RegistryReadError.ToString() -> string!
 override sealed Kaleido.Http.Processor.ProcessRequiredStep.Equals(Kaleido.Http.Processor.ProcessStepContract? other) -> bool
 override sealed Kaleido.Http.Processor.ProcessStepResponse.Equals(Kaleido.Http.Processor.ProcessStepContract? other) -> bool
 override sealed Kaleido.Http.Processor.ProcessStepSummary.Equals(Kaleido.Http.Processor.ProcessStepContract? other) -> bool
@@ -744,8 +738,8 @@ static Kaleido.Http.Queryable.QueryApiRequest.operator !=(Kaleido.Http.Queryable
 static Kaleido.Http.Queryable.QueryApiRequest.operator ==(Kaleido.Http.Queryable.QueryApiRequest? left, Kaleido.Http.Queryable.QueryApiRequest? right) -> bool
 static Kaleido.Http.Queryable.QueryApiSort.operator !=(Kaleido.Http.Queryable.QueryApiSort? left, Kaleido.Http.Queryable.QueryApiSort? right) -> bool
 static Kaleido.Http.Queryable.QueryApiSort.operator ==(Kaleido.Http.Queryable.QueryApiSort? left, Kaleido.Http.Queryable.QueryApiSort? right) -> bool
-static Kaleido.Http.Registry.AggregatedRegistryResponse.operator !=(Kaleido.Http.Registry.AggregatedRegistryResponse? left, Kaleido.Http.Registry.AggregatedRegistryResponse? right) -> bool
-static Kaleido.Http.Registry.AggregatedRegistryResponse.operator ==(Kaleido.Http.Registry.AggregatedRegistryResponse? left, Kaleido.Http.Registry.AggregatedRegistryResponse? right) -> bool
+static Kaleido.Http.Registry.KaleidoRegistry.operator !=(Kaleido.Http.Registry.KaleidoRegistry? left, Kaleido.Http.Registry.KaleidoRegistry? right) -> bool
+static Kaleido.Http.Registry.KaleidoRegistry.operator ==(Kaleido.Http.Registry.KaleidoRegistry? left, Kaleido.Http.Registry.KaleidoRegistry? right) -> bool
 static Kaleido.Http.Registry.ConstraintMetadata.operator !=(Kaleido.Http.Registry.ConstraintMetadata? left, Kaleido.Http.Registry.ConstraintMetadata? right) -> bool
 static Kaleido.Http.Registry.ConstraintMetadata.operator ==(Kaleido.Http.Registry.ConstraintMetadata? left, Kaleido.Http.Registry.ConstraintMetadata? right) -> bool
 static Kaleido.Http.Registry.ConstraintParameterMetadata.operator !=(Kaleido.Http.Registry.ConstraintParameterMetadata? left, Kaleido.Http.Registry.ConstraintParameterMetadata? right) -> bool
@@ -754,8 +748,8 @@ static Kaleido.Http.Registry.DataTypeMetadata.operator !=(Kaleido.Http.Registry.
 static Kaleido.Http.Registry.DataTypeMetadata.operator ==(Kaleido.Http.Registry.DataTypeMetadata? left, Kaleido.Http.Registry.DataTypeMetadata? right) -> bool
 static Kaleido.Http.Registry.EnumValueMetadata.operator !=(Kaleido.Http.Registry.EnumValueMetadata? left, Kaleido.Http.Registry.EnumValueMetadata? right) -> bool
 static Kaleido.Http.Registry.EnumValueMetadata.operator ==(Kaleido.Http.Registry.EnumValueMetadata? left, Kaleido.Http.Registry.EnumValueMetadata? right) -> bool
-static Kaleido.Http.Registry.RegistryClientError.operator !=(Kaleido.Http.Registry.RegistryClientError? left, Kaleido.Http.Registry.RegistryClientError? right) -> bool
-static Kaleido.Http.Registry.RegistryClientError.operator ==(Kaleido.Http.Registry.RegistryClientError? left, Kaleido.Http.Registry.RegistryClientError? right) -> bool
+static Kaleido.Http.Registry.RegistryReadError.operator !=(Kaleido.Http.Registry.RegistryReadError? left, Kaleido.Http.Registry.RegistryReadError? right) -> bool
+static Kaleido.Http.Registry.RegistryReadError.operator ==(Kaleido.Http.Registry.RegistryReadError? left, Kaleido.Http.Registry.RegistryReadError? right) -> bool
 static readonly Kaleido.Http.KaleidoJsonOptions.Options -> System.Text.Json.JsonSerializerOptions!
 virtual Kaleido.Http.Processor.ProcessStepContract.EqualityContract.get -> System.Type!
 virtual Kaleido.Http.Processor.ProcessStepContract.Equals(Kaleido.Http.Processor.ProcessStepContract? other) -> bool
@@ -813,8 +807,8 @@ override Kaleido.Http.Registry.RegistryHeartbeat.Equals(object? obj) -> bool
 Kaleido.Http.Registry.RegistryHeartbeat.Equals(Kaleido.Http.Registry.RegistryHeartbeat? other) -> bool
 Kaleido.Http.Registry.RegistryHeartbeat.<Clone>$() -> Kaleido.Http.Registry.RegistryHeartbeat!
 Kaleido.Http.Registry.RegistryHeartbeat.RegistryHeartbeat() -> void
-Kaleido.Http.Registry.AggregatedRegistryResponse.Missing.init -> void
-Kaleido.Http.Registry.AggregatedRegistryResponse.Missing.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.RegistryMissingService!>!
+Kaleido.Http.Registry.KaleidoRegistry.Missing.init -> void
+Kaleido.Http.Registry.KaleidoRegistry.Missing.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.RegistryMissingService!>!
 Kaleido.Http.Registry.RegistryMissingService.ServiceName.get -> string!
 Kaleido.Http.Registry.RegistryMissingService.ServiceName.init -> void
 Kaleido.Http.Registry.RegistryMissingService.ServiceVersion.get -> string?
@@ -859,18 +853,30 @@ Kaleido.Http.Processor.ProcessorRegistryResponse.ServiceVersion.get -> string?
 Kaleido.Http.Processor.ProcessorRegistryResponse.ServiceVersion.init -> void
 Kaleido.Http.Queryable.QueryableSourceResponse.ServiceVersion.get -> string?
 Kaleido.Http.Queryable.QueryableSourceResponse.ServiceVersion.init -> void
-Kaleido.Http.Registry.RegistryStatusResponse
-override Kaleido.Http.Registry.RegistryStatusResponse.ToString() -> string!
-static Kaleido.Http.Registry.RegistryStatusResponse.operator !=(Kaleido.Http.Registry.RegistryStatusResponse? left, Kaleido.Http.Registry.RegistryStatusResponse? right) -> bool
-static Kaleido.Http.Registry.RegistryStatusResponse.operator ==(Kaleido.Http.Registry.RegistryStatusResponse? left, Kaleido.Http.Registry.RegistryStatusResponse? right) -> bool
-override Kaleido.Http.Registry.RegistryStatusResponse.GetHashCode() -> int
-override Kaleido.Http.Registry.RegistryStatusResponse.Equals(object? obj) -> bool
-Kaleido.Http.Registry.RegistryStatusResponse.Equals(Kaleido.Http.Registry.RegistryStatusResponse? other) -> bool
-Kaleido.Http.Registry.RegistryStatusResponse.<Clone>$() -> Kaleido.Http.Registry.RegistryStatusResponse!
-Kaleido.Http.Registry.RegistryStatusResponse.RegistryStatusResponse() -> void
-Kaleido.Http.Registry.RegistryStatusResponse.Services.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.RegistryServiceStatus!>!
-Kaleido.Http.Registry.RegistryStatusResponse.Services.init -> void
-Kaleido.Http.Registry.RegistryStatusResponse.GeneratedAt.get -> System.DateTimeOffset
-Kaleido.Http.Registry.RegistryStatusResponse.GeneratedAt.init -> void
-Kaleido.Http.Registry.RegistryStatusResponse.Revision.get -> string?
-Kaleido.Http.Registry.RegistryStatusResponse.Revision.init -> void
+Kaleido.Http.Registry.KaleidoRegistryStatus
+override Kaleido.Http.Registry.KaleidoRegistryStatus.ToString() -> string!
+static Kaleido.Http.Registry.KaleidoRegistryStatus.operator !=(Kaleido.Http.Registry.KaleidoRegistryStatus? left, Kaleido.Http.Registry.KaleidoRegistryStatus? right) -> bool
+static Kaleido.Http.Registry.KaleidoRegistryStatus.operator ==(Kaleido.Http.Registry.KaleidoRegistryStatus? left, Kaleido.Http.Registry.KaleidoRegistryStatus? right) -> bool
+override Kaleido.Http.Registry.KaleidoRegistryStatus.GetHashCode() -> int
+override Kaleido.Http.Registry.KaleidoRegistryStatus.Equals(object? obj) -> bool
+Kaleido.Http.Registry.KaleidoRegistryStatus.Equals(Kaleido.Http.Registry.KaleidoRegistryStatus? other) -> bool
+Kaleido.Http.Registry.KaleidoRegistryStatus.<Clone>$() -> Kaleido.Http.Registry.KaleidoRegistryStatus!
+Kaleido.Http.Registry.KaleidoRegistryStatus.KaleidoRegistryStatus() -> void
+Kaleido.Http.Registry.KaleidoRegistryStatus.Services.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.RegistryServiceStatus!>!
+Kaleido.Http.Registry.KaleidoRegistryStatus.Services.init -> void
+Kaleido.Http.Registry.KaleidoRegistryStatus.GeneratedAt.get -> System.DateTimeOffset
+Kaleido.Http.Registry.KaleidoRegistryStatus.GeneratedAt.init -> void
+Kaleido.Http.Registry.KaleidoRegistryStatus.Revision.get -> string?
+Kaleido.Http.Registry.KaleidoRegistryStatus.Revision.init -> void
+Kaleido.Http.Registry.RegistryErrorCodes
+const Kaleido.Http.Registry.RegistryErrorCodes.RegistrantNotAllowed = "registry_registrant_not_allowed" -> string!
+const Kaleido.Http.Registry.RegistryErrorCodes.InstanceUnknown = "registry_instance_unknown" -> string!
+const Kaleido.Http.Registry.RegistryErrorCodes.InvalidRegistration = "registry_invalid_registration" -> string!
+const Kaleido.Http.Registry.RegistryErrorCodes.ReaderNotAllowed = "registry_reader_not_allowed" -> string!
+virtual Kaleido.Http.Registry.KaleidoRegistry.EqualityContract.get -> System.Type!
+virtual Kaleido.Http.Registry.KaleidoRegistry.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Kaleido.Http.Registry.KaleidoRegistry.Equals(Kaleido.Http.Registry.KaleidoRegistry? other) -> bool
+virtual Kaleido.Http.Registry.KaleidoRegistry.<Clone>$() -> Kaleido.Http.Registry.KaleidoRegistry!
+Kaleido.Http.Registry.KaleidoRegistry.KaleidoRegistry(Kaleido.Http.Registry.KaleidoRegistry! original) -> void
+Kaleido.Http.Registry.RegistryReadError.Source.get -> string!
+Kaleido.Http.Registry.RegistryReadError.Source.init -> void

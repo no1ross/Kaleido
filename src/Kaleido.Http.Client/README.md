@@ -15,7 +15,7 @@ See also:
 ## What lives here
 
 ### Shared registry fetch
-- `KaleidoRemoteRegistry` — singleton that fetches `GET /{routePrefix}/registry` once per named client and caches the combined `AggregatedRegistryResponse` under the client's own key `kaleido-client:{ServiceName}:{clientName}` in `IRegistrySnapshotStore`; both typed clients project their half (`Processes` / `Queryables`) from it for discovery (`GetRegistryAsync`, a router's aggregation), so a service's registry is only ever fetched once regardless of how many client types consume it. Capability calls never use it: they go to the contract URL built from the route prefix. `InvalidateRegistryAsync()` drops the snapshot — with a distributed store this propagates across all instances sharing it.
+- `KaleidoRemoteRegistry` — singleton that fetches `GET /{routePrefix}/registry` once per named client and caches the combined `KaleidoRegistry` under the client's own key `kaleido-client:{ServiceName}:{clientName}` in `IRegistrySnapshotStore`; both typed clients project their half (`Processes` / `Queryables`) from it for discovery (`GetRegistryAsync`, a router's aggregation), so a service's registry is only ever fetched once regardless of how many client types consume it. Capability calls never use it: they go to the contract URL built from the route prefix. `InvalidateRegistryAsync()` drops the snapshot — with a distributed store this propagates across all instances sharing it.
 
 ### Process client
 - `IKaleidoProcessorClient` (in `Kaleido.Http.Abstractions`) — typed interface for the registry, process state, and step execution
@@ -230,7 +230,7 @@ Sources and views are addressed by their **published names**, the remote type na
 ## Client behavior
 
 Both clients:
-- share `KaleidoRemoteRegistry` — one `GET /{routePrefix}/registry` call per named client, cached as `AggregatedRegistryResponse`; each client projects its half for discovery
+- share `KaleidoRemoteRegistry` — one `GET /{routePrefix}/registry` call per named client, cached as `KaleidoRegistry`; each client projects its half for discovery
 - send step and query calls to the contract URL built from the route prefix (`/{routePrefix}/processes/steps/{step}`, `/{routePrefix}/queryable/{source}[/{view}]/query`), never to a URL read from the registry
 - a non-success registry response (including 404 — every Kaleido service is expected to publish `/{service}/registry`) throws `KaleidoHttpClientException`
 - automatically forward Kaleido correlation headers on outbound requests

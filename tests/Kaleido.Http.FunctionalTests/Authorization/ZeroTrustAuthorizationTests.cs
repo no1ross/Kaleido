@@ -25,7 +25,7 @@ public sealed class ZeroTrustAuthorizationTests(
         var response = await fixture.Client.SendAsync(
             AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, "/kaleido/registry", roles: EveryRole));
 
-        var registry = await response.Content.ReadAsync<AggregatedRegistryResponse>();
+        var registry = await response.Content.ReadAsync<KaleidoRegistry>();
 
         var steps = Assert.Single(registry!.Processes).Steps!.Select(x => x.Name).Order(StringComparer.Ordinal);
         Assert.Equal(

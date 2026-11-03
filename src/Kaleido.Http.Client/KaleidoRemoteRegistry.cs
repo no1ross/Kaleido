@@ -9,7 +9,7 @@ namespace Kaleido.Http.Client;
 /// <summary>
 /// Singleton remote-registry fetcher shared by all typed clients and the
 /// aggregate registry endpoint. One HTTP call per named client — the returned
-/// <see cref="AggregatedRegistryResponse"/> carries both process and queryable
+/// <see cref="KaleidoRegistry"/> carries both process and queryable
 /// registrations, cached once per client name.
 /// </summary>
 /// <remarks>
@@ -23,7 +23,7 @@ namespace Kaleido.Http.Client;
 internal interface IKaleidoRemoteRegistry
 {
     /// <summary>The registry of <paramref name="client"/>'s remote service, from the cache while fresh.</summary>
-    Task<AggregatedRegistryResponse> GetAsync(
+    Task<KaleidoRegistry> GetAsync(
         KaleidoClientDefinition client,
         ICorrelationHeaderStamper stamper,
         CancellationToken cancellationToken);
@@ -39,7 +39,7 @@ internal sealed partial class KaleidoRemoteRegistry(
     ILogger<KaleidoRemoteRegistry> logger)
     : IKaleidoRemoteRegistry
 {
-    public Task<AggregatedRegistryResponse> GetAsync(
+    public Task<KaleidoRegistry> GetAsync(
         KaleidoClientDefinition client,
         ICorrelationHeaderStamper stamper,
         CancellationToken cancellationToken) =>
@@ -61,7 +61,7 @@ internal sealed partial class KaleidoRemoteRegistry(
         await cache.ResetAsync(CacheKey(serviceOptions.ScopeName, clientName), cancellationToken);
 
     // The remote's registry, or null when it answers that the known revision is still current (304).
-    private async Task<AggregatedRegistryResponse?> FetchAsync(
+    private async Task<KaleidoRegistry?> FetchAsync(
         string clientName,
         string routePrefix,
         ICorrelationHeaderStamper stamper,
@@ -100,7 +100,7 @@ internal sealed partial class KaleidoRemoteRegistry(
                 response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(
+        return await response.Content.ReadFromJsonAsync<KaleidoRegistry>(
                    KaleidoJsonOptions.Options,
                    cancellationToken)
                ?? throw new KaleidoHttpClientException(

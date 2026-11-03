@@ -37,10 +37,6 @@ override Kaleido.Http.Registry.RegistryInstanceRecord.Equals(object? obj) -> boo
 Kaleido.Http.Registry.RegistryInstanceRecord.Equals(Kaleido.Http.Registry.RegistryInstanceRecord? other) -> bool
 Kaleido.Http.Registry.RegistryInstanceRecord.<Clone>$() -> Kaleido.Http.Registry.RegistryInstanceRecord!
 Kaleido.Http.Registry.RegistryInstanceRecord.RegistryInstanceRecord() -> void
-Kaleido.Http.Registry.RegistryErrorCodes
-const Kaleido.Http.Registry.RegistryErrorCodes.RegistrantNotAllowed = "registry_registrant_not_allowed" -> string!
-const Kaleido.Http.Registry.RegistryErrorCodes.InstanceUnknown = "registry_instance_unknown" -> string!
-const Kaleido.Http.Registry.RegistryErrorCodes.InvalidRegistration = "registry_invalid_registration" -> string!
 const Kaleido.Http.Registry.KaleidoRegistryOptions.SectionName = "Registry" -> string!
 Kaleido.Http.Registry.KaleidoRegistryOptions
 override Kaleido.Http.Registry.KaleidoRegistryOptions.ToString() -> string!
@@ -110,7 +106,6 @@ Kaleido.Http.Registry.RegistryInstanceChange.NotAllowed = 2 -> Kaleido.Http.Regi
 Kaleido.Http.Registry.RegistryInstanceChange.Done = 0 -> Kaleido.Http.Registry.RegistryInstanceChange
 Kaleido.Http.Registry.RegistryInstanceChange.Unknown = 1 -> Kaleido.Http.Registry.RegistryInstanceChange
 Kaleido.Http.Registry.RegistryInstanceChange
-const Kaleido.Http.Registry.RegistryErrorCodes.ReaderNotAllowed = "registry_reader_not_allowed" -> string!
 Kaleido.Http.Registry.IKaleidoRegistryStore.AddRegistrationAsync(Kaleido.Http.Registry.RegistryRegistrationRecord! registration, string! capabilities, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Kaleido.Http.Registry.IKaleidoRegistryStore.RemoveInstanceAsync(System.Guid instanceId, System.Collections.Generic.IReadOnlyCollection<string!>? allowedServices, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Registry.RegistryInstanceChange>!
 Kaleido.Http.Registry.IKaleidoRegistryStore.RenewInstanceAsync(System.Guid instanceId, System.DateTimeOffset heartbeatUtc, bool healthy, System.Collections.Generic.IReadOnlyCollection<string!>? allowedServices, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Http.Registry.RegistryInstanceChange>!

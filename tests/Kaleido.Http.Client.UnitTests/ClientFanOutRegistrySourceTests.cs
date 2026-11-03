@@ -25,7 +25,7 @@ public sealed class ClientFanOutRegistrySourceTests
         }
         else
         {
-            registry.ReturnsAsync(new AggregatedRegistryResponse
+            registry.ReturnsAsync(new KaleidoRegistry
             {
                 Processes = [new ProcessorRegistryResponse { Name = routePrefix, ServiceName = routePrefix }],
                 Queryables = [new QueryableSourceResponse { Name = $"{routePrefix}-source", ServiceName = routePrefix }],
@@ -85,7 +85,7 @@ public sealed class ClientFanOutRegistrySourceTests
 
         Assert.Equal(["intake"], registries.Processes.Select(x => x.Name));
         var error = Assert.Single(registries.Errors);
-        Assert.Equal("Radiology", error.ClientName);
+        Assert.Equal("Radiology", error.Source);
         Assert.DoesNotContain("down", error.Reason, StringComparison.Ordinal);
     }
 
@@ -108,7 +108,7 @@ public sealed class ClientFanOutRegistrySourceTests
         var registries = await CreateSut().GetAsync(maxParallelism: null, cancellationToken: Cancel);
 
         Assert.Equal(["intake"], registries.Processes.Select(x => x.Name));
-        Assert.Equal("Radiology", Assert.Single(registries.Errors).ClientName);
+        Assert.Equal("Radiology", Assert.Single(registries.Errors).Source);
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public sealed class ClientFanOutRegistrySourceTests
 
         var registries = await CreateSut(logger: logger).GetAsync(maxParallelism: null, cancellationToken: Cancel);
 
-        Assert.Equal(["Intake", "Radiology"], registries.Errors.Select(e => e.ClientName).Order());
+        Assert.Equal(["Intake", "Radiology"], registries.Errors.Select(e => e.Source).Order());
         Assert.Equal(
             ["Registry client Intake failed: intake down.", "Registry client Radiology failed: radiology down."],
             logger.Entries.Select(e => e.Message).Order());
@@ -196,5 +196,15 @@ public sealed class ClientFanOutRegistrySourceTests
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
             Entries.Enqueue((logLevel, formatter(state, exception), exception));
+    }
+
+    // The host merges its clients' registries with its own; the clients' services publish no statuses.
+    [Fact]
+    public async Task TheFanOut_IsNotTheFullRegistry_AndHasNoStatuses()
+    {
+        var sut = CreateSut();
+
+        Assert.False(sut.IsFullRegistry);
+        Assert.Empty((await sut.GetStatusAsync(Cancel)).Services);
     }
 }

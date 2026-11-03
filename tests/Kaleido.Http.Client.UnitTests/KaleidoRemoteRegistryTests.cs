@@ -10,19 +10,19 @@ public sealed class KaleidoRemoteRegistryTests
     private static KaleidoRemoteRegistry CreateSut(
         IHttpClientFactory httpClientFactory,
         ILogger<KaleidoRemoteRegistry>? logger = null,
-        System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? data = null,
+        System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry>? data = null,
         string? serviceVersion = null)
     {
         // The cache keeps what it is given, serves it while the check interval allows, and otherwise
         // revalidates with the held revision (its own rules are tested in HttpClientRegistryCacheTests).
         var cache = new Mock<IHttpClientRegistryCache>();
-        data ??= new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
+        data ??= new System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry>(StringComparer.OrdinalIgnoreCase);
         cache.Setup(c => c.GetOrRevalidateAsync(
                 It.IsAny<string>(),
                 It.IsAny<TimeSpan?>(),
-                It.IsAny<Func<string?, CancellationToken, Task<AggregatedRegistryResponse?>>>(),
+                It.IsAny<Func<string?, CancellationToken, Task<KaleidoRegistry?>>>(),
                 It.IsAny<CancellationToken>()))
-            .Returns(async (string key, TimeSpan? checkInterval, Func<string?, CancellationToken, Task<AggregatedRegistryResponse?>> revalidate, CancellationToken cancellationToken) =>
+            .Returns(async (string key, TimeSpan? checkInterval, Func<string?, CancellationToken, Task<KaleidoRegistry?>> revalidate, CancellationToken cancellationToken) =>
             {
                 data.TryGetValue(key, out var held);
 
@@ -51,7 +51,7 @@ public sealed class KaleidoRemoteRegistryTests
     private static KaleidoClientDefinition Client(string name, string routePrefix, TimeSpan? registryTtl) =>
         new(name, routePrefix, registryTtl, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
 
-    private static readonly AggregatedRegistryResponse FakeRegistry = new()
+    private static readonly KaleidoRegistry FakeRegistry = new()
     {
         Processes =
         [
@@ -75,7 +75,7 @@ public sealed class KaleidoRemoteRegistryTests
     private static (KaleidoRemoteRegistry sut, Mock<HttpMessageHandler> handler) CreateSutWithHandler(
         Func<HttpRequestMessage, HttpResponseMessage>? respond = null,
         ILogger<KaleidoRemoteRegistry>? logger = null,
-        System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? data = null,
+        System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry>? data = null,
         string? serviceVersion = null)
     {
         var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
@@ -182,8 +182,8 @@ public sealed class KaleidoRemoteRegistryTests
     [Fact]
     public async Task GetAsync_UsesItsOwnKey_NeverTheServiceSnapshotKey()
     {
-        var serviceSnapshot = new AggregatedRegistryResponse { Processes = [] };
-        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase)
+        var serviceSnapshot = new KaleidoRegistry { Processes = [] };
+        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry>(StringComparer.OrdinalIgnoreCase)
         {
             ["kaleido:remote-svc"] = serviceSnapshot,
         };
@@ -352,7 +352,7 @@ public sealed class KaleidoRemoteRegistryTests
     [Fact]
     public async Task GetAsync_ForAVersionedConsumer_UsesTheVersionsKey()
     {
-        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
+        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry>(StringComparer.OrdinalIgnoreCase);
         var (sut, _) = CreateSutWithHandler(data: data, serviceVersion: "2");
 
         await sut.GetAsync(Client("remote", "remote-svc", null), Mock.Of<ICorrelationHeaderStamper>(), CancellationToken.None);

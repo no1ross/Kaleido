@@ -16,26 +16,26 @@ public sealed class HttpClientRegistryCacheTests
         new(store ?? CreateStore(), time);
 
     // A plain fetch: the revision is ignored, the fetched registry always returned.
-    private static Task<AggregatedRegistryResponse> GetOrFetchAsync(
+    private static Task<KaleidoRegistry> GetOrFetchAsync(
         HttpClientRegistryCache sut,
         TimeSpan? checkInterval,
-        Func<CancellationToken, Task<AggregatedRegistryResponse>> fetch,
+        Func<CancellationToken, Task<KaleidoRegistry>> fetch,
         CancellationToken cancellationToken) =>
         sut.GetOrRevalidateAsync(Key, checkInterval, async (_, ct) => await fetch(ct), cancellationToken);
 
     private static IRegistrySnapshotStore CreateStore(
-        System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>? backing = null)
+        System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry>? backing = null)
     {
-        var data = backing ?? new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
+        var data = backing ?? new System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry>(StringComparer.OrdinalIgnoreCase);
         var store = new Mock<IRegistrySnapshotStore>();
         store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns((string k, CancellationToken _) =>
             {
                 data.TryGetValue(k, out var snapshot);
-                return new ValueTask<AggregatedRegistryResponse?>(snapshot);
+                return new ValueTask<KaleidoRegistry?>(snapshot);
             });
-        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, AggregatedRegistryResponse v, CancellationToken _) =>
+        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<KaleidoRegistry>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, KaleidoRegistry v, CancellationToken _) =>
             {
                 data[k] = v;
                 return ValueTask.CompletedTask;
@@ -49,12 +49,12 @@ public sealed class HttpClientRegistryCacheTests
         return store.Object;
     }
 
-    private static readonly AggregatedRegistryResponse Fresh = new()
+    private static readonly KaleidoRegistry Fresh = new()
     {
         GeneratedAt = Start
     };
 
-    private static readonly AggregatedRegistryResponse Stale = new()
+    private static readonly KaleidoRegistry Stale = new()
     {
         GeneratedAt = Start.AddHours(-1)
     };
@@ -176,10 +176,10 @@ public sealed class HttpClientRegistryCacheTests
     public async Task GetOrRevalidateAsync_KeysAreIndependent()
     {
         using var sut = CreateSut();
-        var other = new AggregatedRegistryResponse { GeneratedAt = Start, Revision = "other" };
+        var other = new KaleidoRegistry { GeneratedAt = Start, Revision = "other" };
 
         await GetOrFetchAsync(sut, null, _ => Task.FromResult(Fresh), CancellationToken.None);
-        var result = await sut.GetOrRevalidateAsync("kaleido:another", null, (_, _) => Task.FromResult<AggregatedRegistryResponse?>(other), CancellationToken.None);
+        var result = await sut.GetOrRevalidateAsync("kaleido:another", null, (_, _) => Task.FromResult<KaleidoRegistry?>(other), CancellationToken.None);
 
         Assert.Same(other, result);
         Assert.Same(Fresh, await GetOrFetchAsync(sut, null, _ => Task.FromResult(Stale), CancellationToken.None));
@@ -205,7 +205,7 @@ public sealed class HttpClientRegistryCacheTests
             (_, _) =>
             {
                 revalidated++;
-                return Task.FromResult<AggregatedRegistryResponse?>(null);
+                return Task.FromResult<KaleidoRegistry?>(null);
             },
             CancellationToken.None);
 
@@ -221,10 +221,10 @@ public sealed class HttpClientRegistryCacheTests
         using var sut = CreateSut(store);
         var checks = 0;
 
-        Task<AggregatedRegistryResponse?> Unchanged(string? revision, CancellationToken _)
+        Task<KaleidoRegistry?> Unchanged(string? revision, CancellationToken _)
         {
             checks++;
-            return Task.FromResult<AggregatedRegistryResponse?>(null);
+            return Task.FromResult<KaleidoRegistry?>(null);
         }
 
         await sut.GetOrRevalidateAsync(Key, TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
@@ -284,7 +284,7 @@ public sealed class HttpClientRegistryCacheTests
         Assert.Equal(cancellation.Token, passed);
     }
 
-    private static readonly AggregatedRegistryResponse StaleWithRevision = new()
+    private static readonly KaleidoRegistry StaleWithRevision = new()
     {
         GeneratedAt = Start.AddHours(-1),
         Revision = "abc123",
@@ -304,7 +304,7 @@ public sealed class HttpClientRegistryCacheTests
             (revision, _) =>
             {
                 sentRevision = revision;
-                return Task.FromResult<AggregatedRegistryResponse?>(null);
+                return Task.FromResult<KaleidoRegistry?>(null);
             },
             CancellationToken.None);
 
@@ -319,10 +319,10 @@ public sealed class HttpClientRegistryCacheTests
         using var sut = CreateSut(store);
         var checks = 0;
 
-        Task<AggregatedRegistryResponse?> Unchanged(string? revision, CancellationToken _)
+        Task<KaleidoRegistry?> Unchanged(string? revision, CancellationToken _)
         {
             checks++;
-            return Task.FromResult<AggregatedRegistryResponse?>(null);
+            return Task.FromResult<KaleidoRegistry?>(null);
         }
 
         var first = await sut.GetOrRevalidateAsync(Key, TimeSpan.FromSeconds(30), Unchanged, CancellationToken.None);
@@ -343,7 +343,7 @@ public sealed class HttpClientRegistryCacheTests
         var result = await sut.GetOrRevalidateAsync(
             Key,
             TimeSpan.FromSeconds(30),
-            (_, _) => Task.FromResult<AggregatedRegistryResponse?>(Fresh),
+            (_, _) => Task.FromResult<KaleidoRegistry?>(Fresh),
             CancellationToken.None);
 
         Assert.Same(Fresh, result);
@@ -354,7 +354,7 @@ public sealed class HttpClientRegistryCacheTests
     public async Task GetOrRevalidateAsync_ASnapshotWithoutAnAge_IsServedWithoutChecking()
     {
         var store = CreateStore();
-        var undated = new AggregatedRegistryResponse { Revision = "r1" };
+        var undated = new KaleidoRegistry { Revision = "r1" };
         await store.SetAsync(Key, undated, TestContext.Current.CancellationToken);
         using var sut = CreateSut(store);
         var checks = 0;
@@ -365,7 +365,7 @@ public sealed class HttpClientRegistryCacheTests
             (_, _) =>
             {
                 checks++;
-                return Task.FromResult<AggregatedRegistryResponse?>(Fresh);
+                return Task.FromResult<KaleidoRegistry?>(Fresh);
             },
             CancellationToken.None);
 
@@ -377,10 +377,10 @@ public sealed class HttpClientRegistryCacheTests
     public async Task GetOrRevalidateAsync_ACallerWaitingForAnotherFetch_ServesItsResultWithoutFetchingAgain()
     {
         using var sut = CreateSut();
-        var release = new TaskCompletionSource<AggregatedRegistryResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<KaleidoRegistry>(TaskCreationOptions.RunContinuationsAsynchronously);
         var fetches = 0;
 
-        Task<AggregatedRegistryResponse> Fetch(CancellationToken _)
+        Task<KaleidoRegistry> Fetch(CancellationToken _)
         {
             fetches++;
             return release.Task;
@@ -404,7 +404,7 @@ public sealed class HttpClientRegistryCacheTests
             sut.GetOrRevalidateAsync(
                 Key,
                 TimeSpan.FromSeconds(30),
-                (_, _) => Task.FromResult<AggregatedRegistryResponse?>(null),
+                (_, _) => Task.FromResult<KaleidoRegistry?>(null),
                 CancellationToken.None));
 
         Assert.Equal(HttpClientErrorCodes.EmptyResponse, exception.Code);
@@ -415,7 +415,7 @@ public sealed class HttpClientRegistryCacheTests
     {
         using var cts = new CancellationTokenSource();
         var store = new Mock<IRegistrySnapshotStore>();
-        store.Setup(s => s.GetAsync(Key, cts.Token)).ReturnsAsync((AggregatedRegistryResponse?)null);
+        store.Setup(s => s.GetAsync(Key, cts.Token)).ReturnsAsync((KaleidoRegistry?)null);
         using var sut = CreateSut(store.Object);
         var fetchToken = CancellationToken.None;
 
@@ -443,7 +443,7 @@ public sealed class HttpClientRegistryCacheTests
     [Fact]
     public async Task GetOrRevalidateAsync_WhenTheFetchFails_NothingIsStored_AndTheNextCallFetchesAgain()
     {
-        var backing = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
+        var backing = new System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry>(StringComparer.OrdinalIgnoreCase);
         using var sut = CreateSut(CreateStore(backing));
 
         await Assert.ThrowsAsync<HttpRequestException>(() => GetOrFetchAsync(sut, null, _ => throw new HttpRequestException("down"), TestContext.Current.CancellationToken));

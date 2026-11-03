@@ -29,7 +29,7 @@ public interface IKaleidoRegistryService
     /// client snapshots are invalidated first so the rebuild re-fetches.
     /// </param>
     /// <param name="cancellationToken">Cancels the build.</param>
-    Task<AggregatedRegistryResponse> GetForCallerAsync(
+    Task<KaleidoRegistry> GetForCallerAsync(
         bool refresh,
         CancellationToken cancellationToken);
 }
@@ -42,7 +42,7 @@ public interface IKaleidoRegistryService
 internal interface IKaleidoUnfilteredRegistry
 {
     /// <summary>The shared snapshot, unfiltered, with its <c>Revision</c> (a hash of its content).</summary>
-    Task<AggregatedRegistryResponse> GetUnfilteredAsync(CancellationToken cancellationToken);
+    Task<KaleidoRegistry> GetUnfilteredAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -62,13 +62,13 @@ internal sealed partial class KaleidoRegistryService(
 
     // The snapshot carries its revision, computed once when it was built (#553): readers are served it
     // as it is, however many check it.
-    public Task<AggregatedRegistryResponse> GetUnfilteredAsync(CancellationToken cancellationToken) =>
+    public Task<KaleidoRegistry> GetUnfilteredAsync(CancellationToken cancellationToken) =>
         snapshot.GetOrBuildAsync(
             refresh: false,
             ct => BuildAsync(refresh: false, ct),
             cancellationToken);
 
-    public async Task<AggregatedRegistryResponse> GetForCallerAsync(
+    public async Task<KaleidoRegistry> GetForCallerAsync(
         bool refresh,
         CancellationToken cancellationToken)
     {
@@ -95,27 +95,66 @@ internal sealed partial class KaleidoRegistryService(
         return response with { Revision = ComputeRevision(response) };
     }
 
-    private async Task<AggregatedRegistryResponse> BuildAsync(
+    private static readonly KaleidoRegistry Nothing = new();
+
+    private async Task<KaleidoRegistry> BuildAsync(
         bool refresh,
         CancellationToken cancellationToken)
     {
+        // The full registry (the control registry's, or a participant's copy of it) is read whatever the
+        // map options, and already holds this host's own registrations: it is served as it is (#553).
+        var full = source.IsFullRegistry;
+        var reads = full || snapshot.Aggregate;
+
         // Honored refreshes drop the source's copies first — the rebuild reads afresh, not replays
         // stale snapshots.
-        if (refresh && snapshot.Aggregate)
+        if (refresh && reads)
         {
             await source.RefreshAsync(cancellationToken);
         }
 
-        var remote = snapshot.Aggregate
+        var remote = reads
             ? await source.GetAsync(snapshot.DownstreamMaxParallelism, cancellationToken)
-            : RegistrySourceContents.None;
+            : Nothing;
 
-        var processes = local.Processes()
+        var processes = (full ? [] : local.Processes())
             .Concat(remote.Processes)
             .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        // Versions of one service are one processor here: each may be marked (#553).
+        EnsureOneEntryProcessor(processes);
+
+        var result = new KaleidoRegistry
+        {
+            Processes = processes,
+            Queryables = (full ? [] : local.Queryables())
+                .Concat(remote.Queryables)
+                .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            Errors = remote.Errors,
+            Missing = remote.Missing,
+        };
+
+        if (refresh)
+        {
+            LogRegistryRebuilt(logger);
+        }
+
+        if (result.Errors.Count > 0 || result.Missing.Count > 0)
+        {
+            LogRegistryPartial(logger, result.Errors.Count + result.Missing.Count, string.Join(", ", result.Errors.Select(e => e.Source).Concat(result.Missing.Select(m => m.ServiceName))));
+        }
+        else
+        {
+            LogRegistryBuilt(logger, result.Processes.Count, result.Queryables.Count);
+        }
+
+        return result with { Revision = ComputeRevision(result) };
+    }
+
+    // Versions of one service are one processor here: each may be marked (#553).
+    private static void EnsureOneEntryProcessor(ProcessorRegistryResponse[] processes)
+    {
         var entryProcessors = processes
             .Where(p => p.IsEntryProcessor)
             .DistinctBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
@@ -128,40 +167,13 @@ internal sealed partial class KaleidoRegistryService(
                 $"Multiple processors are marked as entry processors: {string.Join(", ", entryProcessors.Select(p => p.Name))}. " +
                 "Only one processor in a distributed system should have IsEntryProcessor set to true.");
         }
-
-        var result = new AggregatedRegistryResponse
-        {
-            Processes = processes,
-            Queryables = local.Queryables()
-                .Concat(remote.Queryables)
-                .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
-                .ToArray(),
-            ClientErrors = remote.Errors,
-            Missing = remote.Missing,
-        };
-
-        if (refresh)
-        {
-            LogRegistryRebuilt(logger);
-        }
-
-        if (result.ClientErrors.Count > 0 || result.Missing.Count > 0)
-        {
-            LogRegistryPartial(logger, result.ClientErrors.Count + result.Missing.Count, string.Join(", ", result.ClientErrors.Select(e => e.ClientName).Concat(result.Missing.Select(m => m.ServiceName))));
-        }
-        else
-        {
-            LogRegistryBuilt(logger, result.Processes.Count, result.Queryables.Count);
-        }
-
-        return result with { Revision = ComputeRevision(result) };
     }
 
-    private async Task<AggregatedRegistryResponse> FilterForCallerAsync(
-        AggregatedRegistryResponse response,
+    private async Task<KaleidoRegistry> FilterForCallerAsync(
+        KaleidoRegistry response,
         CancellationToken cancellationToken)
     {
-        var lookups = new LookupSources(response.Queryables, snapshot.Aggregate, source, snapshot.DownstreamMaxParallelism);
+        var lookups = new LookupSources(response.Queryables, snapshot.Aggregate || source.IsFullRegistry, source, snapshot.DownstreamMaxParallelism);
 
         return response with
         {
@@ -317,7 +329,7 @@ internal sealed partial class KaleidoRegistryService(
     // SHA-256 over the filtered payload — same content always produces the same revision. The build
     // time is not content: a rebuilt but unchanged registry keeps its revision, so a client checking it
     // with its ETag gets 304.
-    private static string ComputeRevision(AggregatedRegistryResponse response)
+    private static string ComputeRevision(KaleidoRegistry response)
     {
         var payload = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
             response with { Revision = null, GeneratedAt = default },

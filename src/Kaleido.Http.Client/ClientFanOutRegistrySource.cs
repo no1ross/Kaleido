@@ -18,13 +18,21 @@ internal sealed partial class ClientFanOutRegistrySource(
     ILogger<ClientFanOutRegistrySource> logger)
     : IKaleidoRegistrySource
 {
-    public async Task<RegistrySourceContents> GetAsync(
+    private static readonly KaleidoRegistryStatus NoStatus = new();
+
+    // The host merges these clients' registries with its own.
+    public bool IsFullRegistry => false;
+
+    // The clients' services publish no versions' statuses.
+    public Task<KaleidoRegistryStatus> GetStatusAsync(CancellationToken cancellationToken) => Task.FromResult(NoStatus);
+
+    public async Task<KaleidoRegistry> GetAsync(
         int? maxParallelism,
         CancellationToken cancellationToken)
     {
         var processes = new ConcurrentBag<ProcessorRegistryResponse>();
         var queryables = new ConcurrentBag<QueryableSourceResponse>();
-        var errors = new ConcurrentBag<RegistryClientError>();
+        var errors = new ConcurrentBag<RegistryReadError>();
 
         // Bounds the fan-out when a router aggregates many downstreams — null = unbounded (client
         // count is the natural bound).
@@ -50,14 +58,14 @@ internal sealed partial class ClientFanOutRegistrySource(
                 }
             }));
 
-        return new RegistrySourceContents(processes.ToArray(), queryables.ToArray(), errors.ToArray());
+        return new KaleidoRegistry { Processes = processes.ToArray(), Queryables = queryables.ToArray(), Errors = errors.ToArray() };
     }
 
     private async Task LoadClientAsync(
         KaleidoClientDefinition client,
         ConcurrentBag<ProcessorRegistryResponse> processes,
         ConcurrentBag<QueryableSourceResponse> queryables,
-        ConcurrentBag<RegistryClientError> errors,
+        ConcurrentBag<RegistryReadError> errors,
         CancellationToken cancellationToken)
     {
         try
@@ -86,10 +94,9 @@ internal sealed partial class ClientFanOutRegistrySource(
         {
             LogRegistryClientFailed(logger, ex, client.Name, ex.Message);
 
-            errors.Add(new RegistryClientError
+            errors.Add(new RegistryReadError
             {
-                ClientName = client.Name,
-                ClientType = "Registry",
+                Source = client.Name,
                 Reason = "Registry fetch failed. See server logs for details.",
             });
         }

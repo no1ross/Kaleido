@@ -22,17 +22,21 @@ internal static class RegistryTestData
             Views = [.. views.Select(x => new QueryableViewResponse { Name = x, QueryUrl = $"/{service}/queryable/{name}/views/{x}" })],
         };
 
-    // A registration and its capabilities' serialized form, as the store keeps them.
-    public static (RegistryRegistrationRecord Record, string Capabilities) Registration(string service, string version, RegistryCapabilities capabilities, DateTimeOffset? registered = null)
+    // One build's registry entry: its processes and query sources.
+    public static KaleidoRegistry Entry(IReadOnlyCollection<ProcessorRegistryResponse> processes, IReadOnlyCollection<QueryableSourceResponse> queryables) =>
+        new() { Processes = processes, Queryables = queryables };
+
+    // A registration and its entry's serialized form, as the store keeps them.
+    public static (RegistryRegistrationRecord Record, string Capabilities) Registration(string service, string version, KaleidoRegistry entry, DateTimeOffset? registered = null)
     {
-        var json = capabilities.ToJson();
+        var json = entry.ToEntryJson();
 
         return (
             new RegistryRegistrationRecord
             {
                 ServiceName = service,
                 ServiceVersion = version,
-                Revision = RegistryCapabilities.RevisionOf(json),
+                Revision = json.ToRevision(),
                 RegisteredUtc = registered ?? Start,
             },
             json);

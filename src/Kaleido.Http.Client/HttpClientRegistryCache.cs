@@ -30,10 +30,10 @@ internal interface IHttpClientRegistryCache
     /// snapshot) and returns the new registry, or null when the remote reports the revision unchanged -
     /// the snapshot is then kept and counts as checked.
     /// </summary>
-    Task<AggregatedRegistryResponse> GetOrRevalidateAsync(
+    Task<KaleidoRegistry> GetOrRevalidateAsync(
         string key,
         TimeSpan? checkInterval,
-        Func<string?, CancellationToken, Task<AggregatedRegistryResponse?>> revalidate,
+        Func<string?, CancellationToken, Task<KaleidoRegistry?>> revalidate,
         CancellationToken cancellationToken);
 }
 
@@ -52,10 +52,10 @@ internal sealed class HttpClientRegistryCache(IRegistrySnapshotStore store, Time
     public ValueTask ResetAsync(string key, CancellationToken cancellationToken) =>
         store.RemoveAsync(key, cancellationToken);
 
-    public async Task<AggregatedRegistryResponse> GetOrRevalidateAsync(
+    public async Task<KaleidoRegistry> GetOrRevalidateAsync(
         string key,
         TimeSpan? checkInterval,
-        Func<string?, CancellationToken, Task<AggregatedRegistryResponse?>> revalidate,
+        Func<string?, CancellationToken, Task<KaleidoRegistry?>> revalidate,
         CancellationToken cancellationToken)
     {
         var entry = _entries.GetOrAdd(key, static _ => new Entry());
@@ -97,7 +97,7 @@ internal sealed class HttpClientRegistryCache(IRegistrySnapshotStore store, Time
         }
     }
 
-    private bool IsFresh(Entry entry, AggregatedRegistryResponse snapshot, TimeSpan? checkInterval)
+    private bool IsFresh(Entry entry, KaleidoRegistry snapshot, TimeSpan? checkInterval)
     {
         if (checkInterval is null)
         {

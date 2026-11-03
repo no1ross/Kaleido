@@ -38,14 +38,28 @@ public sealed class StoreRegistrySourceTests
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
-    private RegistryRegistrationRecord Stored(string service, string version, RegistryCapabilities published, DateTimeOffset? registered = null)
+    private RegistryRegistrationRecord Stored(string service, string version, KaleidoRegistry published, DateTimeOffset? registered = null)
     {
         var (record, json) = Registration(service, version, published, registered);
         capabilities[record.Revision] = json;
         return record;
     }
 
-    private Task<RegistrySourceContents> ViewAsync(IEnumerable<RegistryRegistrationRecord> registrations, IEnumerable<RegistryInstanceRecord> instances, KaleidoRegistryOptions? options = null, params (string Service, string Version)[] current)
+    // The registry and its statuses, as one source built them.
+    private sealed record View(KaleidoRegistry Registry, KaleidoRegistryStatus Status)
+    {
+        public IReadOnlyCollection<ProcessorRegistryResponse> Processes => Registry.Processes;
+
+        public IReadOnlyCollection<QueryableSourceResponse> Queryables => Registry.Queryables;
+
+        public IReadOnlyCollection<RegistryMissingService> Missing => Registry.Missing;
+
+        public IReadOnlyCollection<RegistryReadError> Errors => Registry.Errors;
+
+        public IReadOnlyCollection<RegistryServiceStatus> Services => Status.Services;
+    }
+
+    private async Task<View> ViewAsync(IEnumerable<RegistryRegistrationRecord> registrations, IEnumerable<RegistryInstanceRecord> instances, KaleidoRegistryOptions? options = null, params (string Service, string Version)[] current)
     {
         contents = new()
         {
@@ -54,13 +68,15 @@ public sealed class StoreRegistrySourceTests
             CurrentVersions = current.ToDictionary(x => x.Service, x => x.Version, StringComparer.OrdinalIgnoreCase),
         };
 
-        return CreateSut(options).GetAsync(maxParallelism: null, Cancel);
+        var sut = CreateSut(options);
+
+        return new View(await sut.GetAsync(maxParallelism: null, Cancel), await sut.GetStatusAsync(Cancel));
     }
 
     [Fact]
     public async Task AReadyInstance_PublishesItsVersionsCapabilities_AndItsStatus()
     {
-        var registration = Stored("radiology", "2026-11", new([ProcessorWith("radiology", "OrderScanStep")], [SourceWith("radiology", "ScanSource")]));
+        var registration = Stored("radiology", "2026-11", Entry([ProcessorWith("radiology", "OrderScanStep")], [SourceWith("radiology", "ScanSource")]));
 
         var view = await ViewAsync([registration], [Instance(registration, Now, address: "https://radiology")], current: ("radiology", "2026-11"));
 
@@ -79,7 +95,7 @@ public sealed class StoreRegistrySourceTests
     [InlineData(1, 0)]
     public async Task AnInstance_IsReadyAroundTheEndOfItsLease(long ticksPastTheLease, int ready)
     {
-        var registration = Stored("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []));
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
         var heartbeat = Now - Defaults.Lease - TimeSpan.FromTicks(ticksPastTheLease);
 
         var status = Assert.Single((await ViewAsync([registration], [Instance(registration, heartbeat)])).Services);
@@ -93,7 +109,7 @@ public sealed class StoreRegistrySourceTests
     [Fact]
     public async Task AVersionWithNoReadyInstance_KeepsItsCapabilities_Unavailable()
     {
-        var registration = Stored("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []));
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
 
         var view = await ViewAsync([registration], [Instance(registration, Now, healthy: false)]);
 
@@ -104,7 +120,7 @@ public sealed class StoreRegistrySourceTests
     [Fact]
     public async Task RegistrationsNoInstanceRuns_StayListed_Unavailable()
     {
-        var registration = Stored("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []));
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
 
         var view = await ViewAsync([registration], []);
 
@@ -116,10 +132,10 @@ public sealed class StoreRegistrySourceTests
     [Fact]
     public async Task DuringARollingDeployment_OnlyTheSharedCapabilities_ArePublished_AsTheOldestRevisionDefinesThem()
     {
-        var old = Stored("radiology", "1", new(
+        var old = Stored("radiology", "1", Entry(
             [ProcessorWith("radiology", "OrderScanStep", "CancelStep") with { Description = "old" }],
             [SourceWith("radiology", "ScanSource", "ScanCard", "OldView"), SourceWith("radiology", "Retired")]));
-        var rolled = Stored("radiology", "1", new(
+        var rolled = Stored("radiology", "1", Entry(
             [ProcessorWith("radiology", "OrderScanStep", "ReviewStep") with { Description = "new" }],
             [SourceWith("radiology", "ScanSource", "ScanCard"), SourceWith("radiology", "Added")]), Start.AddMinutes(5));
 
@@ -138,8 +154,8 @@ public sealed class StoreRegistrySourceTests
     [Fact]
     public async Task ARevisionNoReadyInstanceRuns_DoesNotNarrowThePublication()
     {
-        var old = Stored("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep", "CancelStep")], []));
-        var failed = Stored("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []), Start.AddMinutes(5));
+        var old = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep", "CancelStep")], []));
+        var failed = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []), Start.AddMinutes(5));
 
         var view = await ViewAsync([old, failed], [Instance(old, Now), Instance(failed, Now, healthy: false)]);
 
@@ -150,8 +166,8 @@ public sealed class StoreRegistrySourceTests
     [Fact]
     public async Task TwoVersions_AreEachListed_AndOnlyTheCurrentOneIsMarked()
     {
-        var v1 = Stored("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []));
-        var v2 = Stored("radiology", "2", new([ProcessorWith("radiology", "OrderScanStep", "ReviewStep")], []));
+        var v1 = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+        var v2 = Stored("radiology", "2", Entry([ProcessorWith("radiology", "OrderScanStep", "ReviewStep")], []));
 
         var view = await ViewAsync([v1, v2], [Instance(v1, Now), Instance(v2, Now)], current: ("radiology", "1"));
 
@@ -163,7 +179,7 @@ public sealed class StoreRegistrySourceTests
     [Fact]
     public async Task TheAddress_IsTheOneTheLatestInstanceRegistered()
     {
-        var registration = Stored("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []));
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
 
         var view = await ViewAsync([registration], [Instance(registration, Now.AddSeconds(-5), address: "https://old"), Instance(registration, Now, address: "https://new")]);
 
@@ -184,7 +200,7 @@ public sealed class StoreRegistrySourceTests
                 new ProcessFieldMetadata { Name = "ScanId", DataType = new DataTypeMetadata("string"), Lookup = new ProcessFieldLookup { Service = "radiology", Source = "ScanSource", Field = "Id", Group = "ScanId" } },
             ],
         };
-        var registration = Stored("radiology", "1", new([ProcessorWith("radiology") with { Steps = [step] }], []));
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology") with { Steps = [step] }], []));
 
         var view = await ViewAsync([registration], [Instance(registration, Now)], options);
 
@@ -198,8 +214,8 @@ public sealed class StoreRegistrySourceTests
     public async Task EachRevisionsCapabilities_AreReadOnce_AndForgottenWhenGone()
     {
         var sut = CreateSut();
-        var v1 = Stored("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []));
-        var v2 = Stored("radiology", "2", new([ProcessorWith("radiology", "ReviewStep")], []));
+        var v1 = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+        var v2 = Stored("radiology", "2", Entry([ProcessorWith("radiology", "ReviewStep")], []));
         contents = new() { Registrations = [v1], Instances = [Instance(v1, Now)] };
         await sut.GetAsync(null, Cancel);
 
@@ -252,7 +268,7 @@ public sealed class StoreRegistrySourceTests
     public async Task TheStatus_HasItsOwnRevision_FollowingTheStatusesOnly()
     {
         var sut = CreateSut();
-        var registration = Stored("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []));
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
         var instance = Instance(registration, Now);
         contents = new() { Registrations = [registration], Instances = [instance] };
 
@@ -277,5 +293,12 @@ public sealed class StoreRegistrySourceTests
         Assert.Empty(view.Processes);
         Assert.Empty(view.Services);
         store.Verify(x => x.GetCapabilitiesAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // The store's registry is the whole registry: every participant registered its own capabilities.
+    [Fact]
+    public void TheStoresRegistry_IsTheFullRegistry()
+    {
+        Assert.True(CreateSut().IsFullRegistry);
     }
 }

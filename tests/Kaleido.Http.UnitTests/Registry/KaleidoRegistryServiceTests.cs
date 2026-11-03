@@ -17,12 +17,13 @@ public sealed class KaleidoRegistryServiceTests
 {
     private static readonly AuthorizationMetadata Radiology = new(null, ["radiology"]);
 
-    private readonly ConcurrentDictionary<string, AggregatedRegistryResponse> stored = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, KaleidoRegistry> stored = new(StringComparer.OrdinalIgnoreCase);
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 28, 12, 0, 0, TimeSpan.Zero));
     private readonly Mock<IKaleidoRegistrySource> source = new();
     private readonly Mock<IKaleidoAuthorizer> authorizer = new();
     private readonly Mock<IProcessorResponseFactory> responses = new();
     private readonly List<ProcessorRegistryItem> localProcessors = [new()];
+    private readonly List<QueryableSourceRegistryItem> localSources = [];
     private readonly KaleidoServiceOptions serviceOptions = new() { ServiceName = "router" };
 
     public KaleidoRegistryServiceTests()
@@ -36,7 +37,7 @@ public sealed class KaleidoRegistryServiceTests
             });
 
         source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RegistrySourceContents(
+            .ReturnsAsync(Contents(
                 [new ProcessorRegistryResponse { Name = "radiology", ServiceName = "radiology", Steps = [new ProcessStepResponse { Name = "CaptureScanStep", Authorization = Radiology }] }],
                 [new QueryableSourceResponse { Name = "MemberSource", ServiceName = "member", QueryUrl = "/member/q" }],
                 []));
@@ -59,9 +60,9 @@ public sealed class KaleidoRegistryServiceTests
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<TimeSpan>(),
                 It.IsAny<bool>(),
-                It.IsAny<Func<CancellationToken, Task<AggregatedRegistryResponse>>>(),
+                It.IsAny<Func<CancellationToken, Task<KaleidoRegistry>>>(),
                 It.IsAny<CancellationToken>()))
-            .Returns(async (string key, TimeSpan? _, TimeSpan refreshCooldown, bool forceRefresh, Func<CancellationToken, Task<AggregatedRegistryResponse>> build, CancellationToken cancellationToken) =>
+            .Returns(async (string key, TimeSpan? _, TimeSpan refreshCooldown, bool forceRefresh, Func<CancellationToken, Task<KaleidoRegistry>> build, CancellationToken cancellationToken) =>
             {
                 if (stored.TryGetValue(key, out var held) && (!forceRefresh || refreshCooldown > TimeSpan.Zero))
                 {
@@ -69,9 +70,9 @@ public sealed class KaleidoRegistryServiceTests
                 }
 
                 var built = await build(cancellationToken) with { GeneratedAt = time.GetUtcNow() };
-                built = built with { IsPartial = built.ClientErrors.Count > 0 || built.Missing.Count > 0 };
+                built = built with { IsPartial = built.Errors.Count > 0 || built.Missing.Count > 0 };
 
-                if (built.ClientErrors.Count == 0)
+                if (built.Errors.Count == 0)
                 {
                     stored[key] = built;
                 }
@@ -90,7 +91,7 @@ public sealed class KaleidoRegistryServiceTests
         processors.Setup(x => x.Registrations).Returns(localProcessors);
 
         var queryables = new Mock<IQueryableRegistry>();
-        queryables.Setup(x => x.Registrations).Returns([]);
+        queryables.Setup(x => x.Registrations).Returns(localSources);
 
         var local = new LocalRegistrations([processors.Object], [queryables.Object], responses.Object, serviceOptions);
 
@@ -104,6 +105,9 @@ public sealed class KaleidoRegistryServiceTests
                 logger ?? NullLogger<KaleidoRegistryService>.Instance),
             snapshot);
     }
+
+    private static KaleidoRegistry Contents(IReadOnlyCollection<ProcessorRegistryResponse> processes, IReadOnlyCollection<QueryableSourceResponse> queryables, IReadOnlyCollection<RegistryReadError> errors) =>
+        new() { Processes = processes, Queryables = queryables, Errors = errors };
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -160,14 +164,14 @@ public sealed class KaleidoRegistryServiceTests
     public async Task GetForCaller_APartialAggregate_IsServedButNotKept()
     {
         source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RegistrySourceContents([], [], [new RegistryClientError { ClientName = "radiology", ClientType = "Registry", Reason = "down" }]));
+            .ReturnsAsync(Contents([], [], [new RegistryReadError { Source = "radiology", Reason = "down" }]));
         var (sut, _) = CreateSut();
 
         var first = await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
         await sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
 
         Assert.True(first.IsPartial);
-        Assert.Equal("radiology", Assert.Single(first.ClientErrors).ClientName);
+        Assert.Equal("radiology", Assert.Single(first.Errors).Source);
         source.Verify(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
@@ -234,7 +238,7 @@ public sealed class KaleidoRegistryServiceTests
                 ],
             });
         source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RegistrySourceContents(
+            .ReturnsAsync(Contents(
                 [],
                 [
                     new QueryableSourceResponse { Name = "MemberSource", ServiceName = "member", QueryUrl = "/member/q" },
@@ -280,7 +284,7 @@ public sealed class KaleidoRegistryServiceTests
     public async Task GetForCaller_ASourceTheCallerMayNotQueryDirectly_KeepsItsAllowedViews_WithoutAQueryUrl()
     {
         source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RegistrySourceContents(
+            .ReturnsAsync(Contents(
                 [],
                 [new QueryableSourceResponse
                 {
@@ -331,7 +335,7 @@ public sealed class KaleidoRegistryServiceTests
         responses.Setup(x => x.CreateRegistryResponse(It.IsAny<ProcessorRegistryItem>(), It.IsAny<KaleidoServiceOptions>()))
             .Returns((ProcessorRegistryItem _, KaleidoServiceOptions options) => new ProcessorRegistryResponse { Name = options.ServiceName, IsEntryProcessor = true });
         source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RegistrySourceContents(downstreamProcessors, [], []));
+            .ReturnsAsync(Contents(downstreamProcessors, [], []));
     }
 
     [Fact]
@@ -389,12 +393,12 @@ public sealed class KaleidoRegistryServiceTests
     public async Task GetForCaller_WhenPartial_LogsTheFailedClientsOnceAtWarning()
     {
         source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RegistrySourceContents(
+            .ReturnsAsync(Contents(
                 [],
                 [],
                 [
-                    new RegistryClientError { ClientName = "radiology", ClientType = "Registry", Reason = "down" },
-                    new RegistryClientError { ClientName = "member", ClientType = "Registry", Reason = "down" },
+                    new RegistryReadError { Source = "radiology", Reason = "down" },
+                    new RegistryReadError { Source = "member", Reason = "down" },
                 ]));
         var logger = CreateLogger();
 
@@ -428,7 +432,7 @@ public sealed class KaleidoRegistryServiceTests
     public async Task GetForCaller_WhenEnforced_DropsProcessorsAndSourcesTheCallerCannotUse()
     {
         source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RegistrySourceContents(
+            .ReturnsAsync(Contents(
                 [
                     new ProcessorRegistryResponse
                     {
@@ -526,7 +530,7 @@ public sealed class KaleidoRegistryServiceTests
     public async Task GetForCaller_CarriesWhatTheSourceIsMissing_AndIsPartial()
     {
         source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RegistrySourceContents([], [], []) { Missing = [MissingClinic] });
+            .ReturnsAsync(new KaleidoRegistry { Missing = [MissingClinic] });
         var logger = CreateLogger();
 
         var registry = await CreateSut(logger: logger.Object).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
@@ -549,5 +553,51 @@ public sealed class KaleidoRegistryServiceTests
         Assert.Same(first, await sut.GetUnfilteredAsync(Cancel));
         Assert.Same(first, forCaller);
         Assert.False(string.IsNullOrEmpty(first.Revision));
+    }
+
+    // #553: a full registry (the control registry's, or a participant's copy of it) is the registry: it is
+    // read whatever the map options, and served as it is - this host's own registrations are already in it.
+    [Fact]
+    public async Task GetForCaller_FromAFullRegistry_ServesIt_WithoutAddingThisHostsOwn()
+    {
+        source.Setup(x => x.IsFullRegistry).Returns(true);
+        localSources.Add(new QueryableSourceRegistryItem
+        {
+            SourceType = typeof(object),
+            QueryContextType = typeof(object),
+            ResultType = typeof(object),
+            ParametersType = typeof(object),
+            Name = "RouterSource",
+            DisplayName = "Router",
+        });
+
+        var registry = await CreateSut(aggregate: false).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel);
+
+        Assert.Equal(["radiology"], registry.Processes.Select(x => x.Name));
+        Assert.Equal(["MemberSource"], registry.Queryables.Select(x => x.Name));
+        source.Verify(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // A full registry is complete: a lookup it does not have is not looked for anywhere else.
+    [Fact]
+    public async Task GetForCaller_FromAFullRegistry_ALookupItDoesNotHave_IsNotPermitted()
+    {
+        source.Setup(x => x.IsFullRegistry).Returns(true);
+        source.Setup(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Contents(
+                [new ProcessorRegistryResponse
+                {
+                    Name = "radiology",
+                    ServiceName = "radiology",
+                    Steps = [new ProcessStepResponse { Name = "OrderScanStep", Fields = [LookupField("ChartId", "clinic", "ChartSource")] }],
+                }],
+                [],
+                []));
+        AllowEverything();
+
+        var step = Assert.Single(Assert.Single((await CreateSut(aggregate: false).Sut.GetForCallerAsync(refresh: false, cancellationToken: Cancel)).Processes).Steps!);
+
+        Assert.Null(Assert.Single(step.Fields).Lookup);
+        source.Verify(x => x.GetAsync(It.IsAny<int?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -77,7 +77,7 @@ public sealed class ToolCatalogBuilderTests
         ]
     };
 
-    private static ToolCatalog Build(AggregatedRegistryResponse registry) => CreateSut().Build(registry);
+    private static ToolCatalog Build(KaleidoRegistry registry) => CreateSut().Build(registry);
 
     private static KaleidoTool Tool(ToolCatalog catalog, string name) =>
         catalog.Find(name) ?? throw new Xunit.Sdk.XunitException($"No tool {name}; have {string.Join(", ", catalog.Tools.Select(x => x.Definition.Name))}");
@@ -85,7 +85,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Build_MakesQueryToolsForSourcesAndViews_StepToolsForOrdinarySteps_AndTheBuiltIns()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Revision = "r7", Queryables = [Patients()], Processes = [Visits()] });
+        var catalog = Build(new KaleidoRegistry { Revision = "r7", Queryables = [Patients()], Processes = [Visits()] });
 
         Assert.Equal(
             ["clinic_patientsource", "clinic_patientcardviewsource", "clinic_closevisitstep", "clinic_startvisitstep", "answer_information_request", "get_process_state"],
@@ -97,7 +97,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Build_InformationSteps_AreNeverTools()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Processes = [Visits()] });
+        var catalog = Build(new KaleidoRegistry { Processes = [Visits()] });
 
         Assert.Null(catalog.Find("clinic_visitquestionsstep"));
         Assert.Null(catalog.FindByUrl("/clinic/processes/steps/VisitQuestionsStep"));
@@ -106,7 +106,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Build_WithoutProcesses_HasNoBuiltInTools()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [Patients()] });
 
         Assert.Null(catalog.Find(ToolCatalogBuilder.AnswerInformationRequestTool));
         Assert.Null(catalog.Find(ToolCatalogBuilder.GetProcessStateTool));
@@ -115,7 +115,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Build_ASourceWithoutAQueryUrl_HasOnlyItsViews()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients(queryUrl: null)] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [Patients(queryUrl: null)] });
 
         Assert.Null(catalog.Find("clinic_patientsource"));
         Assert.NotNull(catalog.Find("clinic_patientcardviewsource"));
@@ -124,7 +124,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void QueryTool_IsReadOnly_Described_AndTargetsTheQueryUrl()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()] }), "clinic_patientsource");
+        var tool = Tool(Build(new KaleidoRegistry { Queryables = [Patients()] }), "clinic_patientsource");
 
         Assert.Equal(KaleidoToolKind.Query, tool.Kind);
         Assert.Equal("/clinic/queryable/patients/query", tool.Url);
@@ -150,7 +150,7 @@ public sealed class ToolCatalogBuilderTests
             Steps = [(Visits().Steps ?? []).First() with { Result = new ProcessStepResultMetadata { OutputFields = [new ProcessOutputFieldMetadata { Name = "VisitId", Description = "The visit opened.", DataType = Text }] } }],
         };
 
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [patients], Processes = [visits] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [patients], Processes = [visits] });
 
         var source = Tool(catalog, "clinic_patientsource").OutputDescriptions;
         Assert.Equal("The patient's id.", source["id"]);
@@ -162,7 +162,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void QueryTool_SchemaOffersOnlyWhatTheSourceSupports()
     {
-        var properties = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()] }), "clinic_patientsource")
+        var properties = Tool(Build(new KaleidoRegistry { Queryables = [Patients()] }), "clinic_patientsource")
             .Definition.InputSchema.GetProperty("properties");
 
         Assert.Contains("Name (contains)", properties.GetProperty("searchText").GetProperty("description").GetString(), StringComparison.Ordinal);
@@ -179,7 +179,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void QueryTool_WithARequiredParameter_RequiresParameters()
     {
-        var schema = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()] }), "clinic_patientsource").Definition.InputSchema;
+        var schema = Tool(Build(new KaleidoRegistry { Queryables = [Patients()] }), "clinic_patientsource").Definition.InputSchema;
 
         Assert.Equal(["parameters"], schema.GetProperty("required").EnumerateArray().Select(x => x.GetString()));
     }
@@ -187,7 +187,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void QueryTool_WithoutProcesses_HasNoProcessId()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()] }), "clinic_patientsource");
+        var tool = Tool(Build(new KaleidoRegistry { Queryables = [Patients()] }), "clinic_patientsource");
 
         Assert.False(tool.Definition.InputSchema.GetProperty("properties").TryGetProperty("processId", out _));
         Assert.DoesNotContain("processId", tool.Definition.Description, StringComparison.Ordinal);
@@ -196,7 +196,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void QueryTool_WhereProcessesExist_TakesAnOptionalTopLevelProcessId()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Visits()] }), "clinic_patientsource");
+        var tool = Tool(Build(new KaleidoRegistry { Queryables = [Patients()], Processes = [Visits()] }), "clinic_patientsource");
         var schema = tool.Definition.InputSchema;
 
         Assert.Equal("uuid", schema.GetProperty("properties").GetProperty("processId").GetProperty("format").GetString());
@@ -213,7 +213,7 @@ public sealed class ToolCatalogBuilderTests
             Parameters = [new QueryableQueryParameter { Name = "ProcessId", Description = "The visit this search is for.", DataType = Text, Constraints = [new ConstraintMetadata { Type = "Required" }] }]
         };
 
-        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [scoped], Processes = [Visits()] }), "clinic_patientsource");
+        var tool = Tool(Build(new KaleidoRegistry { Queryables = [scoped], Processes = [Visits()] }), "clinic_patientsource");
         var schema = tool.Definition.InputSchema;
         var properties = schema.GetProperty("properties");
 
@@ -227,7 +227,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void ViewTool_UsesItsSourcesFields_AndNamesItsSource()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()] }), "clinic_patientcardviewsource");
+        var tool = Tool(Build(new KaleidoRegistry { Queryables = [Patients()] }), "clinic_patientcardviewsource");
 
         Assert.Equal("/clinic/queryable/patients/views/card/query", tool.Url);
         Assert.Contains("A view of Patients.", tool.Definition.Description, StringComparison.Ordinal);
@@ -237,7 +237,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_ChangesState_TakesAProcessId_AndTheStepsFields()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits()] }), "clinic_startvisitstep");
+        var tool = Tool(Build(new KaleidoRegistry { Processes = [Visits()] }), "clinic_startvisitstep");
         var schema = tool.Definition.InputSchema;
         var properties = schema.GetProperty("properties");
 
@@ -254,7 +254,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_ByDefault_IsNeitherDestructiveNorOpenWorld_AndAnInitialStepIsNotIdempotent()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits()] }), "clinic_startvisitstep");
+        var tool = Tool(Build(new KaleidoRegistry { Processes = [Visits()] }), "clinic_startvisitstep");
 
         Assert.False(tool.Definition.Annotations?.DestructiveHint);
         Assert.False(tool.Definition.Annotations?.OpenWorldHint);
@@ -271,7 +271,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_ANonRepeatableStepContinuingAProcess_IsIdempotent()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits()] }), "clinic_closevisitstep");
+        var tool = Tool(Build(new KaleidoRegistry { Processes = [Visits()] }), "clinic_closevisitstep");
 
         Assert.True(tool.Definition.Annotations?.IdempotentHint);
     }
@@ -299,7 +299,7 @@ public sealed class ToolCatalogBuilderTests
             ],
         };
 
-        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [processor] }), "billing_chargecardstep");
+        var tool = Tool(Build(new KaleidoRegistry { Processes = [processor] }), "billing_chargecardstep");
 
         Assert.True(tool.Definition.Annotations?.DestructiveHint);
         Assert.True(tool.Definition.Annotations?.OpenWorldHint);
@@ -322,7 +322,7 @@ public sealed class ToolCatalogBuilderTests
             Steps = [new ProcessStepResponse { Name = "ChargeCardStep", IsInitial = true, RequiresConfirmation = true, ExecuteUrl = "/billing/processes/steps/ChargeCardStep" }],
         };
 
-        var tool = Tool(CreateSut(requireConfirmation: true).Build(new AggregatedRegistryResponse { Processes = [processor] }), "billing_chargecardstep");
+        var tool = Tool(CreateSut(requireConfirmation: true).Build(new KaleidoRegistry { Processes = [processor] }), "billing_chargecardstep");
 
         Assert.Contains("The user is asked to confirm in a form before it runs", tool.Definition.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("Ask the user to confirm", tool.Definition.Description, StringComparison.Ordinal);
@@ -351,7 +351,7 @@ public sealed class ToolCatalogBuilderTests
             Parameters = [new QueryableQueryParameter { Name = "Ssn", DataType = Text, Classifications = phi }],
             OutputFields = [new QueryableQueryProperty { Name = "Id", DataType = Text }, new QueryableQueryProperty { Name = "Name", DataType = Text, Classifications = phi }],
         };
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [patients], Processes = [visits] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [patients], Processes = [visits] });
 
         var step = Tool(catalog, "clinic_startvisitstep").Definition;
         var query = Tool(catalog, "clinic_patientsource").Definition;
@@ -364,7 +364,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_ThatIsNotInitial_RequiresTheProcessId()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits()] }), "clinic_closevisitstep");
+        var tool = Tool(Build(new KaleidoRegistry { Processes = [Visits()] }), "clinic_closevisitstep");
 
         Assert.Equal(["processId"], tool.Definition.InputSchema.GetProperty("required").EnumerateArray().Select(x => x.GetString()));
         Assert.Contains("pass its processId", tool.Definition.Description, StringComparison.Ordinal);
@@ -373,7 +373,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void BuiltInTools_OfferTheServicesThatHaveProcesses()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Processes = [Visits()] });
+        var catalog = Build(new KaleidoRegistry { Processes = [Visits()] });
 
         foreach (var name in new[] { ToolCatalogBuilder.AnswerInformationRequestTool, ToolCatalogBuilder.GetProcessStateTool })
         {
@@ -389,7 +389,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Build_CollectsWhatHasNoDescription()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Visits()] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [Patients()], Processes = [Visits()] });
 
         Assert.Contains("clinic.PatientSource.Name", catalog.MissingDescriptions);
         Assert.Contains("clinic_startvisitstep.reason", catalog.MissingDescriptions);
@@ -401,7 +401,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Build_ReportsAMissingFieldDescriptionOnce()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [Patients()] });
 
         Assert.Single(catalog.MissingDescriptions, x => x.EndsWith(".Name", StringComparison.Ordinal));
     }
@@ -419,7 +419,7 @@ public sealed class ToolCatalogBuilderTests
             ],
         };
 
-        var schema = Tool(Build(new AggregatedRegistryResponse { Queryables = [patients] }), "clinic_patientsource").Definition.InputSchema.GetProperty("properties");
+        var schema = Tool(Build(new KaleidoRegistry { Queryables = [patients] }), "clinic_patientsource").Definition.InputSchema.GetProperty("properties");
         var search = schema.GetProperty("searchText").GetProperty("description").GetString();
         var sort = schema.GetProperty("sort").GetProperty("description").GetString();
 
@@ -441,7 +441,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var sut = CreateSut((service, type) => new ToolName("same", type == "CloseVisitStep"));
 
-        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [Visits()] });
+        var catalog = sut.Build(new KaleidoRegistry { Processes = [Visits()] });
         var names = catalog.Tools.Select(x => x.Definition.Name).ToArray();
 
         Assert.Equal(names.Length, names.Distinct(StringComparer.Ordinal).Count());
@@ -458,7 +458,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var sut = CreateSut((service, type) => new ToolName("clinic_patient", false));
 
-        var catalog = sut.Build(new AggregatedRegistryResponse { Queryables = [Patients()] });
+        var catalog = sut.Build(new KaleidoRegistry { Queryables = [Patients()] });
 
         var source = Hashed("clinic_patient", "clinic|source|PatientSource");
         var view = Hashed("clinic_patient", "clinic|view|PatientSource|PatientCardViewSource");
@@ -472,8 +472,8 @@ public sealed class ToolCatalogBuilderTests
     public void Build_TheNameDependsOnTheUnfilteredRegistry_NotOnWhatTheCallerSees()
     {
         var sut = CreateSut((service, type) => new ToolName("clinic_patient", false));
-        var everything = new AggregatedRegistryResponse { Queryables = [Patients()] };
-        var viewOnly = new AggregatedRegistryResponse { Queryables = [Patients(queryUrl: null)] };
+        var everything = new KaleidoRegistry { Queryables = [Patients()] };
+        var viewOnly = new KaleidoRegistry { Queryables = [Patients(queryUrl: null)] };
 
         var full = sut.Build(everything, everything);
         var limited = sut.Build(viewOnly, everything);
@@ -488,9 +488,9 @@ public sealed class ToolCatalogBuilderTests
     public void Build_AUniqueName_StaysPlain_WhateverElseTheRegistryHolds()
     {
         var sut = CreateSut();
-        var registry = new AggregatedRegistryResponse { Processes = [Visits()], Queryables = [Patients()] };
+        var registry = new KaleidoRegistry { Processes = [Visits()], Queryables = [Patients()] };
 
-        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [Visits()] }, registry);
+        var catalog = sut.Build(new KaleidoRegistry { Processes = [Visits()] }, registry);
 
         Assert.Contains(catalog.Tools, x => x.Definition.Name == "clinic_startvisitstep");
         Assert.Empty(catalog.NameCollisions);
@@ -501,7 +501,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var sut = CreateSut((service, type) => new ToolName(type == "CloseVisitStep" ? ToolCatalogBuilder.GetProcessStateTool : $"{service}_{type}".ToLowerInvariant(), false));
 
-        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [Visits()] });
+        var catalog = sut.Build(new KaleidoRegistry { Processes = [Visits()] });
 
         Assert.Equal(KaleidoToolKind.GetProcessState, Assert.Single(catalog.Tools, x => x.Definition.Name == ToolCatalogBuilder.GetProcessStateTool).Kind);
         Assert.Contains(catalog.Tools, x => x.Definition.Name == Hashed(ToolCatalogBuilder.GetProcessStateTool, "clinic|step|CloseVisitStep"));
@@ -534,9 +534,9 @@ public sealed class ToolCatalogBuilderTests
                 new ProcessStepResponse { Name = "EStep", Description = "E.", ExecuteUrl = "/e" }
             ]
         };
-        var scope = new AggregatedRegistryResponse { Processes = [processor with { Steps = processor.Steps!.Take(2).ToArray() }] };
+        var scope = new KaleidoRegistry { Processes = [processor with { Steps = processor.Steps!.Take(2).ToArray() }] };
 
-        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [processor] }, scope);
+        var catalog = sut.Build(new KaleidoRegistry { Processes = [processor] }, scope);
 
         var names = catalog.Tools.Where(x => x.Kind == KaleidoToolKind.Step).Select(x => x.Definition.Name).ToArray();
         Assert.Equal(
@@ -568,7 +568,7 @@ public sealed class ToolCatalogBuilderTests
             ]
         };
 
-        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [processor] });
+        var catalog = sut.Build(new KaleidoRegistry { Processes = [processor] });
 
         Assert.Equal(
             [hashedP, Hashed("y", "clinic|step|QStep"), Hashed(hashedP, "clinic|step|RStep#1")],
@@ -581,7 +581,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var sut = CreateSut((service, type) => new ToolName(type is "StartVisitStep" or "VisitQuestionsStep" ? "clinic_start" : $"{service}_{type}".ToLowerInvariant(), false));
 
-        var catalog = sut.Build(new AggregatedRegistryResponse { Processes = [Visits()] });
+        var catalog = sut.Build(new KaleidoRegistry { Processes = [Visits()] });
 
         Assert.Contains(catalog.Tools, x => x.Definition.Name == "clinic_start");
         Assert.Empty(catalog.NameCollisions);
@@ -590,10 +590,10 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Build_APartialRegistry_IsMarked_WithTheServicesThatFailed()
     {
-        var catalog = Build(new AggregatedRegistryResponse
+        var catalog = Build(new KaleidoRegistry
         {
             IsPartial = true,
-            ClientErrors = [new RegistryClientError { ClientName = "radiology", ClientType = "processor", Reason = "timeout" }]
+            Errors = [new RegistryReadError { Source = "radiology", Reason = "timeout" }]
         });
 
         Assert.True(catalog.IsPartial);
@@ -603,7 +603,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void FindByUrl_MapsAnExecuteUrlBackToItsTool_CaseInsensitively()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Processes = [Visits()] });
+        var catalog = Build(new KaleidoRegistry { Processes = [Visits()] });
 
         Assert.Equal("clinic_closevisitstep", catalog.FindByUrl("/CLINIC/processes/steps/CloseVisitStep")?.Definition.Name);
         Assert.Null(catalog.FindByUrl(null));
@@ -649,7 +649,7 @@ public sealed class ToolCatalogBuilderTests
 
     private static ToolCatalog FrontDoor(params string[] listedTools) =>
         CreateSut(listing: McpToolListing.FrontDoor, listedTools: listedTools)
-            .Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Visits(), Referrals()] });
+            .Build(new KaleidoRegistry { Queryables = [Patients()], Processes = [Visits(), Referrals()] });
 
     private static string[] Listed(ToolCatalog catalog) =>
         [.. catalog.Tools.Where(x => x.Listed).Select(x => x.Definition.Name)];
@@ -657,7 +657,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void All_ListsEveryTool_WithoutTheFrontDoorBuiltIns()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Visits()] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [Patients()], Processes = [Visits()] });
 
         Assert.All(catalog.Tools, x => Assert.True(x.Listed));
         Assert.False(catalog.IsFrontDoor);
@@ -717,7 +717,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_ALookup_NamesTheQueryTool_TheResultField_AndTheInputsFromTheSameResult()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Referrals()] }), "referrals_referpatientstep");
+        var tool = Tool(Build(new KaleidoRegistry { Queryables = [Patients()], Processes = [Referrals()] }), "referrals_referpatientstep");
 
         var patientId = ArgumentDescription(tool, "patientId");
 
@@ -739,7 +739,7 @@ public sealed class ToolCatalogBuilderTests
     public void StepTool_ALookupTheCallerCannotSearch_SaysToAskTheUser_AndIsReported()
     {
         // No clinic queryables: the caller cannot see the lookup's query.
-        var catalog = Build(new AggregatedRegistryResponse { Processes = [Referrals()] });
+        var catalog = Build(new KaleidoRegistry { Processes = [Referrals()] });
         var tool = Tool(catalog, "referrals_referpatientstep");
 
         Assert.Contains("which you cannot search: ask the user", ArgumentDescription(tool, "patientId"), StringComparison.Ordinal);
@@ -756,7 +756,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Build_AProcessorThatPublishesNoSteps_HasNoStepTools_AndNoBuiltIns()
     {
-        var catalog = Build(new AggregatedRegistryResponse
+        var catalog = Build(new KaleidoRegistry
         {
             Processes = [new ProcessorRegistryResponse { ServiceName = "clinic", Name = "clinic", Steps = null }]
         });
@@ -777,7 +777,7 @@ public sealed class ToolCatalogBuilderTests
             Views = [new QueryableViewResponse { Name = "PatientCardViewSource", QueryUrl = "/clinic/queryable/patients/views/card/query" }]
         };
 
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [bare] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [bare] });
         var source = Tool(catalog, "clinic_patientsource").Definition;
         var view = Tool(catalog, "clinic_patientcardviewsource").Definition;
 
@@ -810,7 +810,7 @@ public sealed class ToolCatalogBuilderTests
             ]
         };
 
-        var filters = Tool(Build(new AggregatedRegistryResponse { Queryables = [patients] }), "clinic_patientsource")
+        var filters = Tool(Build(new KaleidoRegistry { Queryables = [patients] }), "clinic_patientsource")
             .Definition.InputSchema.GetProperty("properties").GetProperty("filters");
 
         Assert.Equal("Conditions, all of which must match. Fields and their operators: Kind (outpatient|inpatient): equals; Born (date, Date of birth): between. Pass values typed like the field (in/between take several values; isNull/isTrue take none).", filters.GetProperty("description").GetString());
@@ -825,7 +825,7 @@ public sealed class ToolCatalogBuilderTests
             OutputFields = [.. Enumerable.Range(1, 16).Select(i => new QueryableQueryProperty { Name = $"F{i}", DataType = Text })]
         };
 
-        var description = Tool(Build(new AggregatedRegistryResponse { Queryables = [patients] }), "clinic_patientsource").Definition.Description;
+        var description = Tool(Build(new KaleidoRegistry { Queryables = [patients] }), "clinic_patientsource").Definition.Description;
 
         Assert.Contains($"Returns: {string.Join(", ", Enumerable.Range(1, 15).Select(i => $"F{i}"))}, ….", description, StringComparison.Ordinal);
         Assert.DoesNotContain("F16", description, StringComparison.Ordinal);
@@ -839,7 +839,7 @@ public sealed class ToolCatalogBuilderTests
             Parameters = [new QueryableQueryParameter { Name = "processId", DataType = Text }]
         };
 
-        var tool = Tool(Build(new AggregatedRegistryResponse { Queryables = [scoped] }), "clinic_patientsource");
+        var tool = Tool(Build(new KaleidoRegistry { Queryables = [scoped] }), "clinic_patientsource");
         var properties = tool.Definition.InputSchema.GetProperty("properties");
 
         Assert.True(tool.ParametersTakeProcessId);
@@ -867,7 +867,7 @@ public sealed class ToolCatalogBuilderTests
             ]
         };
 
-        var schema = Tool(Build(new AggregatedRegistryResponse { Queryables = [patients] }), "clinic_patientcardviewsource").Definition.InputSchema;
+        var schema = Tool(Build(new KaleidoRegistry { Queryables = [patients] }), "clinic_patientcardviewsource").Definition.InputSchema;
 
         Assert.False(schema.TryGetProperty("required", out _));
         Assert.False(schema.GetProperty("properties").GetProperty("parameters").TryGetProperty("required", out _));
@@ -892,7 +892,7 @@ public sealed class ToolCatalogBuilderTests
             ]
         };
 
-        var catalog = Build(new AggregatedRegistryResponse { Processes = [processor] });
+        var catalog = Build(new KaleidoRegistry { Processes = [processor] });
         var tool = Tool(catalog, "clinic_waitstep");
 
         Assert.Equal("WaitStep", tool.Definition.Title);
@@ -916,7 +916,7 @@ public sealed class ToolCatalogBuilderTests
             ]
         };
 
-        var catalog = CreateSut((_, _) => new ToolName("same", false)).Build(new AggregatedRegistryResponse { Processes = [processor] });
+        var catalog = CreateSut((_, _) => new ToolName("same", false)).Build(new KaleidoRegistry { Processes = [processor] });
 
         string[] steps = ["AStep", "BStep", "CStep", "DStep"];
         Assert.Equal(
@@ -932,7 +932,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var longName = new string('x', ToolNameBuilder.MaxLength);
 
-        var catalog = CreateSut((_, _) => new ToolName(longName, false)).Build(new AggregatedRegistryResponse { Queryables = [Patients()] });
+        var catalog = CreateSut((_, _) => new ToolName(longName, false)).Build(new KaleidoRegistry { Queryables = [Patients()] });
 
         var names = catalog.Tools.Select(x => x.Definition.Name).ToArray();
         Assert.Equal(
@@ -979,7 +979,7 @@ public sealed class ToolCatalogBuilderTests
         };
 
         var tool = Tool(
-            Build(new AggregatedRegistryResponse { Queryables = [appointments, billingPatients, Patients()], Processes = [alpha, referrals] }),
+            Build(new KaleidoRegistry { Queryables = [appointments, billingPatients, Patients()], Processes = [alpha, referrals] }),
             "referrals_referpatientstep");
 
         var lookup = Assert.Single(tool.Lookups);
@@ -1018,7 +1018,7 @@ public sealed class ToolCatalogBuilderTests
             ]
         };
 
-        var catalog = Build(new AggregatedRegistryResponse { Processes = [Visits(), referrals] });
+        var catalog = Build(new KaleidoRegistry { Processes = [Visits(), referrals] });
         var tool = Tool(catalog, "referrals_referpatientstep");
 
         Assert.Equal(["referrals_referpatientstep.patientId -> clinic/PatientSource"], catalog.UnresolvedLookups);
@@ -1055,7 +1055,7 @@ public sealed class ToolCatalogBuilderTests
             ]
         };
 
-        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Visits(), referrals] }), "referrals_referpatientstep");
+        var tool = Tool(Build(new KaleidoRegistry { Processes = [Visits(), referrals] }), "referrals_referpatientstep");
 
         Assert.Empty(tool.Lookups);
         Assert.Equal(
@@ -1066,7 +1066,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_ALookupThroughAViewTheCallerCannotSearch_NamesTheView()
     {
-        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [Referrals()] }), "referrals_referpatientstep");
+        var tool = Tool(Build(new KaleidoRegistry { Processes = [Referrals()] }), "referrals_referpatientstep");
 
         Assert.Contains(" patientId and patientName come from PatientCardViewSource on clinic, which you cannot search: ask the user.", tool.Definition.Description, StringComparison.Ordinal);
         Assert.StartsWith("The patient. Value: a PatientCardViewSource result's Id on clinic", ArgumentDescription(tool, "patientId"), StringComparison.Ordinal);
@@ -1096,7 +1096,7 @@ public sealed class ToolCatalogBuilderTests
             Parameters = [new QueryableQueryParameter { Name = "Ssn", Description = " The SSN. ", DataType = Text, Classifications = pii }]
         };
 
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [patients], Processes = [visits] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [patients], Processes = [visits] });
         var step = Tool(catalog, "clinic_startvisitstep").Definition;
         var query = Tool(catalog, "clinic_patientsource").Definition;
 
@@ -1113,7 +1113,7 @@ public sealed class ToolCatalogBuilderTests
             Steps = [new ProcessStepResponse { Name = "NoteStep", Description = "Adds a note.", IsInitial = true, ExecuteUrl = "/clinic/processes/steps/NoteStep", Fields = [new ProcessFieldMetadata { Name = "Note", DataType = Text }] }]
         };
 
-        var tool = Tool(Build(new AggregatedRegistryResponse { Processes = [visits] }), "clinic_notestep");
+        var tool = Tool(Build(new KaleidoRegistry { Processes = [visits] }), "clinic_notestep");
 
         Assert.False(tool.Definition.InputSchema.GetProperty("properties").GetProperty("note").TryGetProperty("description", out _));
         Assert.False(tool.Definition.InputSchema.TryGetProperty("required", out _));
@@ -1122,7 +1122,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_ALookupThatIsNotListedAtTheFrontDoor_StaysUnlisted_WhenUnresolved()
     {
-        var catalog = CreateSut(listing: McpToolListing.FrontDoor).Build(new AggregatedRegistryResponse { Processes = [Referrals()] });
+        var catalog = CreateSut(listing: McpToolListing.FrontDoor).Build(new KaleidoRegistry { Processes = [Referrals()] });
 
         Assert.True(Tool(catalog, "referrals_referpatientstep").Listed);
         Assert.Empty(catalog.UnknownListedTools);
@@ -1132,7 +1132,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_ALookupOfAnUnknownView_IsUnresolved()
     {
-        var catalog = Build(new AggregatedRegistryResponse { Queryables = [Patients()], Processes = [Referrals("NoSuchView")] });
+        var catalog = Build(new KaleidoRegistry { Queryables = [Patients()], Processes = [Referrals("NoSuchView")] });
 
         Assert.Equal(2, catalog.UnresolvedLookups.Count);
     }

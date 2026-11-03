@@ -144,12 +144,12 @@ public sealed class ControlRegistryTests : IAsyncLifetime
     private Task<HttpResponseMessage> RegisterAsync(RegistryInstanceRegistration registration, string? subject) =>
         SendAsync(Request(HttpMethod.Post, "/registry/instances", subject, body: registration));
 
-    private async Task<AggregatedRegistryResponse> ReadAsync()
+    private async Task<KaleidoRegistry> ReadAsync()
     {
         using var response = await SendAsync(Request(HttpMethod.Get, "/registry", "reader", ReaderRole));
         response.EnsureSuccessStatusCode();
 
-        return (await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options, Cancel))!;
+        return (await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, Cancel))!;
     }
 
     private async Task<IReadOnlyCollection<RegistryServiceStatus>> StatusAsync()
@@ -157,7 +157,7 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         using var response = await SendAsync(Request(HttpMethod.Get, "/registry/status", "reader", ReaderRole));
         response.EnsureSuccessStatusCode();
 
-        return (await response.Content.ReadFromJsonAsync<RegistryStatusResponse>(KaleidoJsonOptions.Options, Cancel))!.Services;
+        return (await response.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, Cancel))!.Services;
     }
 
     private static async Task<string> CodeAsync(HttpResponseMessage response) =>

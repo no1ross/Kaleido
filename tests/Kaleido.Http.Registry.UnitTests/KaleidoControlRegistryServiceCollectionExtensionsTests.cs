@@ -37,8 +37,8 @@ public sealed class KaleidoControlRegistryServiceCollectionExtensionsTests
         // One full registry per host: the source, the status reader and the health check share it.
         using var provider = services.BuildServiceProvider();
         var source = Assert.IsType<StoreRegistrySource>(provider.GetRequiredService<IKaleidoRegistrySource>());
-        Assert.Same(source, provider.GetRequiredService<IRegistryStatusReader>());
         Assert.Same(source, provider.GetRequiredService<IKaleidoRegistrySource>());
+        Assert.Same(source, provider.GetRequiredService<StoreRegistrySource>());
         var checks = provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations;
         Assert.Contains("ready", checks.Single(x => x.Name == "kaleido-registry-store").Tags);
         Assert.DoesNotContain("ready", checks.Single(x => x.Name == "kaleido-registry-completeness").Tags);

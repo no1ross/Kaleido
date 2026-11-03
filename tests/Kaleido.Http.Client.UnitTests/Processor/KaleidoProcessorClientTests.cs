@@ -58,7 +58,7 @@ public sealed class KaleidoProcessorClientTests
     {
         var sut = CreateSut();
         remoteRegistry.Setup(x => x.GetAsync(Definition("radiology"), stamper, Cancel))
-            .ReturnsAsync(new AggregatedRegistryResponse { Processes = [new ProcessorRegistryResponse { Name = "radiology", ServiceName = "radiology" }] });
+            .ReturnsAsync(new KaleidoRegistry { Processes = [new ProcessorRegistryResponse { Name = "radiology", ServiceName = "radiology" }] });
 
         var result = await sut.GetRegistryAsync(Cancel);
 

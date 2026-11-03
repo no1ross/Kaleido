@@ -33,7 +33,7 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var registry =
-            await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options);
+            await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options);
 
         Assert.NotNull(registry);
         Assert.NotEmpty(registry.Processes);
@@ -51,7 +51,7 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
         Assert.Equal(TimeSpan.FromSeconds(30), response.Headers.CacheControl?.MaxAge);
 
         var registry =
-            await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options);
+            await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options);
 
         Assert.NotNull(registry);
         Assert.NotEqual(default, registry.GeneratedAt);
@@ -108,21 +108,20 @@ public sealed class RegistryEndpointTests(ProcessorAspNetCoreFixture fixture)
 
         using var defaultResponse = await client.GetAsync("/kaleido/registry");
         Assert.Equal(HttpStatusCode.OK, defaultResponse.StatusCode);
-        var partial = await defaultResponse.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options);
+        var partial = await defaultResponse.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options);
         Assert.NotNull(partial);
         Assert.True(partial.IsPartial);
         Assert.NotEmpty(partial.Processes);
-        var error = Assert.Single(partial.ClientErrors);
-        Assert.Equal("unavailable", error.ClientName);
-        Assert.Equal("Registry", error.ClientType);
+        var error = Assert.Single(partial.Errors);
+        Assert.Equal("unavailable", error.Source);
 
         using var strictResponse = await client.GetAsync("/kaleido/registry?strict");
         Assert.Equal(HttpStatusCode.BadGateway, strictResponse.StatusCode);
-        var strict = await strictResponse.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options);
+        var strict = await strictResponse.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options);
         Assert.NotNull(strict);
         Assert.True(strict.IsPartial);
         Assert.Equal(partial.Processes.Count, strict.Processes.Count);
-        Assert.Equal(error.ClientName, Assert.Single(strict.ClientErrors).ClientName);
+        Assert.Equal(error.Source, Assert.Single(strict.Errors).Source);
         Assert.Equal(2, handler.RequestCount);
     }
 

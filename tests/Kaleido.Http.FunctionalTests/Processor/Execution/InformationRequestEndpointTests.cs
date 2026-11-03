@@ -244,7 +244,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
     public async Task Registry_MarksInformationSteps_AndPublishesNoFields()
     {
         var response = await fixture.Client.GetAsync("/kaleido/registry");
-        var registry = await response.Content.ReadAsync<AggregatedRegistryResponse>();
+        var registry = await response.Content.ReadAsync<KaleidoRegistry>();
 
         var processor = Assert.Single(registry!.Processes);
         var step = Assert.Single(processor.Steps!, x => x.Name == RuntimeStepNames.Answer);

@@ -9,17 +9,17 @@ namespace Kaleido.Http.Registry;
 internal sealed class InMemoryRegistrySnapshotStore
     : IRegistrySnapshotStore
 {
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse> _snapshots =
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry> _snapshots =
         new(StringComparer.OrdinalIgnoreCase);
 
-    public ValueTask<AggregatedRegistryResponse?> GetAsync(
+    public ValueTask<KaleidoRegistry?> GetAsync(
         string key,
         CancellationToken cancellationToken) =>
         new(_snapshots.TryGetValue(key, out var snapshot) ? snapshot : null);
 
     public ValueTask SetAsync(
         string key,
-        AggregatedRegistryResponse snapshot,
+        KaleidoRegistry snapshot,
         CancellationToken cancellationToken)
     {
         _snapshots[key] = snapshot;

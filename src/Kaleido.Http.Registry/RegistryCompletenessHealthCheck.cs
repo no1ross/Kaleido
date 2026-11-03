@@ -11,9 +11,10 @@ internal sealed class RegistryCompletenessHealthCheck(IKaleidoRegistrySource reg
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var view = await registrations.GetAsync(maxParallelism: null, cancellationToken);
-        var unavailable = view.Services.Where(x => !x.Available).Select(x => $"{x.ServiceName}/{x.ServiceVersion}").ToList();
-        var missing = view.Missing.Select(x => x.ServiceVersion is null ? x.ServiceName : $"{x.ServiceName}/{x.ServiceVersion}").ToList();
+        var registry = await registrations.GetAsync(maxParallelism: null, cancellationToken);
+        var status = await registrations.GetStatusAsync(cancellationToken);
+        var unavailable = status.Services.Where(x => !x.Available).Select(x => $"{x.ServiceName}/{x.ServiceVersion}").ToList();
+        var missing = registry.Missing.Select(x => x.ServiceVersion is null ? x.ServiceName : $"{x.ServiceName}/{x.ServiceVersion}").ToList();
         var data = new Dictionary<string, object>(StringComparer.Ordinal)
         {
             ["missing"] = missing,

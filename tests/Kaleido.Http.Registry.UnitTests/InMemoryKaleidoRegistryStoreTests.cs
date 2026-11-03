@@ -19,7 +19,7 @@ public sealed class InMemoryKaleidoRegistryStoreTests
     public async Task Read_ReturnsACopy()
     {
         var read = await store.ReadAsync(Cancel);
-        var (registration, capabilities) = Registration("radiology", "1", new([ProcessorWith("radiology", "OrderScanStep")], []));
+        var (registration, capabilities) = Registration("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
 
         await store.AddRegistrationAsync(registration, capabilities, Cancel);
         await store.SaveInstanceAsync(Instance(registration, Start), Cancel);

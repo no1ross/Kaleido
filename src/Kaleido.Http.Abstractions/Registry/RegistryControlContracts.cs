@@ -71,7 +71,7 @@ public sealed record RegistryHeartbeat
 /// changes whenever an instance starts, stops or fails, while the capabilities change only with a deployment.
 /// </summary>
 [ExcludeFromCodeCoverage]
-public sealed record RegistryStatusResponse
+public sealed record KaleidoRegistryStatus
 {
     /// <summary>Every service version the registry knows.</summary>
     public IReadOnlyCollection<RegistryServiceStatus> Services { get; init; } = [];

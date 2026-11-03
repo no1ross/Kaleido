@@ -1,3 +1,4 @@
+using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry;
 using Kaleido.Registry;
 using Kaleido.UnitTests;
@@ -35,6 +36,9 @@ public sealed class HandOffStepResolverTests
 
     private static HandOffStepResolver CreateSut(IKaleidoRegistrySource registries, ILogger<HandOffStepResolver> log) => new(registries, log);
 
+    private static KaleidoRegistry Contents(IReadOnlyCollection<ProcessorRegistryResponse> processes, IReadOnlyCollection<QueryableSourceResponse> queryables, IReadOnlyCollection<RegistryReadError> errors) =>
+        new() { Processes = processes, Queryables = queryables, Errors = errors };
+
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     private static ProcessResult HandedOff(string? required = null, InformationRequest? questions = null, IReadOnlyCollection<string>? available = null, KaleidoNotice? notice = null) =>
@@ -50,11 +54,14 @@ public sealed class HandOffStepResolverTests
             Steps = [],
         };
 
-    private void Registry(RegistrySourceContents contents) =>
+    private void Registry(KaleidoRegistry contents, KaleidoRegistryStatus? status = null)
+    {
         source.Setup(x => x.GetAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(contents);
+        source.Setup(x => x.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(status ?? new KaleidoRegistryStatus());
+    }
 
     private void Publishes(params ProcessStepResponse[] steps) =>
-        Registry(new RegistrySourceContents([new ProcessorRegistryResponse { Name = Target, ServiceName = Target, Steps = steps }], [], []));
+        Registry(Contents([new ProcessorRegistryResponse { Name = Target, ServiceName = Target, Steps = steps }], [], []));
 
     private void VerifyWarning(Times times) =>
         logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), times);
@@ -113,7 +120,7 @@ public sealed class HandOffStepResolverTests
     [Fact]
     public async Task ATargetTheRegistryDoesNotHave_LeavesEveryStepOut_WithTheNotice()
     {
-        Registry(new RegistrySourceContents([new ProcessorRegistryResponse { Name = "intake", ServiceName = "intake", Steps = [CaptureMri, Validate] }], [], []));
+        Registry(Contents([new ProcessorRegistryResponse { Name = "intake", ServiceName = "intake", Steps = [CaptureMri, Validate] }], [], []));
 
         var continuation = await CreateSut().ResolveAsync(HandedOff(required: CaptureMri.Name, available: [Validate.Name], notice: TargetNotice), Cancel);
 
@@ -127,20 +134,21 @@ public sealed class HandOffStepResolverTests
     [Fact]
     public async Task WhenTheRegistryKnowsVersions_TheTargetsCurrentVersion_Answers()
     {
-        Registry(new RegistrySourceContents(
+        Registry(Contents(
             [
                 new ProcessorRegistryResponse { Name = Target, ServiceName = Target, ServiceVersion = "1", Steps = [Validate] },
                 new ProcessorRegistryResponse { Name = Target, ServiceName = Target, ServiceVersion = "2", Steps = [Validate, CaptureMri] },
             ],
             [],
-            [])
-        {
-            Services =
-            [
-                new RegistryServiceStatus { ServiceName = Target, ServiceVersion = "1", IsCurrent = true },
-                new RegistryServiceStatus { ServiceName = Target, ServiceVersion = "2" },
-            ],
-        });
+            []),
+            new KaleidoRegistryStatus
+            {
+                Services =
+                [
+                    new RegistryServiceStatus { ServiceName = Target, ServiceVersion = "1", IsCurrent = true },
+                    new RegistryServiceStatus { ServiceName = Target, ServiceVersion = "2" },
+                ],
+            });
 
         var continuation = await CreateSut().ResolveAsync(HandedOff(available: [Validate.Name, CaptureMri.Name]), Cancel);
 

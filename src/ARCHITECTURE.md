@@ -18,7 +18,7 @@ Canonical vocabulary — type names, namespaces, and docs must follow it:
 | **Step** | A unit of work inside a Processor — identified by `IProcessStep`, described by `[ProcessStep]`, named by its type name (it marks the work, not the executor) |
 | **Source / View / Query context** | Queryable-side (`Queryable` is the feature namespace). Names are type names. <br>- **Query source** (`IQuerySource<T>`, described by `[QuerySource]`): the published capability. <br>- **Query view** (`IQueryViewSource<TSource, …>`, `[QueryView]`): projects a source. <br>- **Query context** (`IQueryContext`): the record that describes how a source is queried. |
 | **Delegated** | A query source that fulfils queries downstream (a facade): `IDelegatedQuerySource`, `DelegatedQuerySourceEngine`. Not visible to consumers |
-| **Registry / Snapshot** | Discovery envelope (`AggregatedRegistryResponse`); cached under `kaleido:{serviceName}` in `IRegistrySnapshotStore` |
+| **Registry / Snapshot** | Discovery envelope (`KaleidoRegistry`); cached under `kaleido:{serviceName}` in `IRegistrySnapshotStore` |
 
 Rule of thumb: if a name refers to *who runs the work* (runtime, registries, planner, executor, stores, telemetry identity) it's `Processor*`; if it refers to *one executing instance* (request/response/state, routes, events) it's `Process*`. Transport namespaces (`Kaleido.Http.Processor`, `Kaleido.Http.Client.Processor`, `Kaleido.Http.Abstractions.Processor`) organize the processor-facing API surface even though the wire resource is `processes`.
 
@@ -127,11 +127,11 @@ Public seams consumers are expected to implement or replace:
 - Step metadata is published by the registry endpoint (no per-step metadata endpoint)
 
 **Registry endpoint** (`RegistryEndpointRouteBuilderExtensions` — internal; mapped by `MapKaleidoHttp`)
-- `GET /{prefix}/registry` — unified discovery envelope (`AggregatedRegistryResponse`: `Processes`, `Queryables`, `ClientErrors`)
+- `GET /{prefix}/registry` — unified discovery envelope (`KaleidoRegistry`: `Processes`, `Queryables`, `Errors`)
 - Leaf mode returns this service's local registrations; `MapKaleidoHttp(new() { AggregateRegistry = true })` also fans out to every `AddHttpClients()` client — one `GET /{svc}/registry` fetch per client, shared via `KaleidoRemoteRegistry`
 - Freshness: `GeneratedAt`, `Revision` (SHA-256 of the filtered payload), `IsPartial`; `ETag`/`Cache-Control` headers, `If-None-Match` → 304; `?strict` → 502 when partial (body still included); `?refresh` forces rebuild, throttled by `KaleidoHttpMapOptions.RegistryRefreshCooldown`
 - Snapshots live in `IRegistrySnapshotStore` (in-memory default; `AddDistributedRegistrySnapshots()` puts them in the host's `IDistributedCache`, mirrored in memory so an unreachable cache never fails a read) under canonical key `kaleido:{ServiceName}` (`kaleido:{ServiceName}@{ServiceVersion}` for a versioned service, #552) (the unfiltered union, filtered per caller on every request); consumers' client copies use their own `kaleido-client:{ServiceName}:{clientName}` keys, so a shared store never mixes them; only clean snapshots are committed, so degraded states are re-probed per request
-- Always returns HTTP 200 unless `?strict` is requested; unreachable downstream clients populate `ClientErrors`
+- Always returns HTTP 200 unless `?strict` is requested; unreachable downstream clients populate `Errors`
 
 **URL generation**
 - `ProcessContractUrls` / `ProcessRoutePaths` (`Kaleido.Http.Abstractions/Processor/ProcessRoutes.cs`)
@@ -140,7 +140,7 @@ Public seams consumers are expected to implement or replace:
 ### Key design invariants
 - Endpoints adapt contracts and publish routes. They do not reimplement runtime planning or business execution.
 - The route prefix is derived from `KaleidoServiceOptions.ServiceName` (set in the options passed to `AddKaleido`; `Kaleido:ServiceName` in configuration overrides it).
-- Registry endpoint returns 200 by default. Partial responses are signalled through `ClientErrors`/`IsPartial`; `?strict` opts into a 502 when partial.
+- Registry endpoint returns 200 by default. Partial responses are signalled through `Errors`/`IsPartial`; `?strict` opts into a 502 when partial.
 - `ConfigureHttpJsonOptions` is never called — Kaleido JSON options are scoped to Kaleido endpoints via `KaleidoJsonEndpointFilter`. Consumer endpoints retain their own serialization behavior.
 
 ---

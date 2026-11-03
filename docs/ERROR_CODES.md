@@ -192,9 +192,9 @@ The reference provider owns its own code; core knows nothing about it.
 
 ---
 
-## `RegistryErrorCodes` - control registry (`Kaleido.Http.Registry`)
+## `RegistryErrorCodes` - control registry (`Kaleido.Http.Abstractions`)
 
-Answered by the control registry's endpoints in a `KaleidoErrorResponse` (#553); see [the package README](../src/Kaleido.Http.Registry/README.md).
+Answered by the control registry's endpoints (`Kaleido.Http.Registry`) in a `KaleidoErrorResponse` (#553), and shared so the participants that register with it and read it recognize them; see [the registry's README](../src/Kaleido.Http.Registry/README.md).
 
 | Constant | Code | Meaning |
 |---|---|---|

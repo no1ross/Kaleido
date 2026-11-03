@@ -13,7 +13,7 @@ namespace Kaleido.Http.Registry;
 /// <remarks>
 /// <para>
 /// A snapshot is stored as its JSON (<see cref="KaleidoJsonOptions"/>, the wire format) without a
-/// cache expiry: freshness is decided by the callers from <see cref="AggregatedRegistryResponse.GeneratedAt"/>,
+/// cache expiry: freshness is decided by the callers from <see cref="KaleidoRegistry.GeneratedAt"/>,
 /// as with the in-memory store. An entry that cannot be read counts as absent, so the caller rebuilds it.
 /// </para>
 /// <para>
@@ -41,7 +41,7 @@ internal sealed partial class DistributedRegistrySnapshotStore(
 
     private long _unavailableUntilUtcTicks;
 
-    public async ValueTask<AggregatedRegistryResponse?> GetAsync(
+    public async ValueTask<KaleidoRegistry?> GetAsync(
         string key,
         CancellationToken cancellationToken)
     {
@@ -66,7 +66,7 @@ internal sealed partial class DistributedRegistrySnapshotStore(
 
     public async ValueTask SetAsync(
         string key,
-        AggregatedRegistryResponse snapshot,
+        KaleidoRegistry snapshot,
         CancellationToken cancellationToken)
     {
         await memory.SetAsync(key, snapshot, cancellationToken);
@@ -107,7 +107,7 @@ internal sealed partial class DistributedRegistrySnapshotStore(
         }
     }
 
-    private AggregatedRegistryResponse? Read(string key, byte[]? entry)
+    private KaleidoRegistry? Read(string key, byte[]? entry)
     {
         if (entry is null)
         {
@@ -116,7 +116,7 @@ internal sealed partial class DistributedRegistrySnapshotStore(
 
         try
         {
-            return JsonSerializer.Deserialize<AggregatedRegistryResponse>(entry, KaleidoJsonOptions.Options);
+            return JsonSerializer.Deserialize<KaleidoRegistry>(entry, KaleidoJsonOptions.Options);
         }
         catch (JsonException exception)
         {
