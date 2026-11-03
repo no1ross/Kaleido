@@ -16,11 +16,10 @@ public static class KaleidoControlRegistryClientServiceCollectionExtensions
     /// <summary>
     /// Registers this instance with the control registry (<c>Kaleido:Registry:Url</c>) and heartbeats while it
     /// runs, and makes this host's registry the control registry's: its full registry,
-    /// kept in memory and fresh - the capabilities checked every
-    /// <see cref="KaleidoRegistryClientOptions.CapabilitiesInterval"/>, each version's availability every
-    /// <see cref="KaleidoRegistryClientOptions.AvailabilityInterval"/>, each with its ETag - is what this
-    /// host serves, filtered per caller, and what its lookups, hand-offs and MCP read. It replaces the
-    /// per-client fan-out of <c>AddHttpClients()</c>.
+    /// kept in memory and fresh - the capabilities and each version's availability, each with its ETag, checked
+    /// at the intervals the registry hands out (the host sets none) - is what this host serves, filtered per
+    /// caller, and what its lookups, hand-offs and MCP read. It replaces the per-client fan-out of
+    /// <c>AddHttpClients()</c>.
     /// </summary>
     /// <remarks>
     /// <para>

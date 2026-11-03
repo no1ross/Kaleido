@@ -24,6 +24,7 @@ public sealed class ControlRegistryRegistrarTests
     private Func<HttpRequestMessage, HttpStatusCode> answer = _ => HttpStatusCode.OK;
     private TaskCompletionSource<int> reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int expected = 1;
+    private TimeSpan leaseInterval = Interval;
 
     public ControlRegistryRegistrarTests()
     {
@@ -40,7 +41,7 @@ public sealed class ControlRegistryRegistrarTests
 
                 if (status == HttpStatusCode.OK)
                 {
-                    response.Content = JsonContent.Create(new RegistryLease { InstanceId = InstanceId, HeartbeatInterval = Interval, LeaseUntilUtc = Start }, options: KaleidoJsonOptions.Options);
+                    response.Content = JsonContent.Create(new RegistryLease { InstanceId = InstanceId, HeartbeatInterval = leaseInterval, LeaseUntilUtc = Start }, options: KaleidoJsonOptions.Options);
                 }
 
                 if (calls.Count >= expected)
@@ -118,7 +119,7 @@ public sealed class ControlRegistryRegistrarTests
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
         Assert.False(sut.HasRegistered);
-        time.Advance(ControlRegistryRegistrar.FirstRetry - TimeSpan.FromTicks(1));
+        time.Advance(RegistryRetry.First - TimeSpan.FromTicks(1));
         Assert.Single(Calls);
         time.Advance(TimeSpan.FromTicks(1));
         await CalledAsync(2);
@@ -126,17 +127,6 @@ public sealed class ControlRegistryRegistrarTests
 
         Assert.All(Calls.Take(2), x => Assert.Equal(HttpMethod.Post, x.Method));
         Assert.True(sut.HasRegistered);
-    }
-
-    [Theory]
-    [InlineData(0, 1)]
-    [InlineData(1, 2)]
-    [InlineData(4, 16)]
-    [InlineData(5, 30)]
-    [InlineData(40, 30)]
-    public void TheBackoff_DoublesUpTo30Seconds(int attempt, int seconds)
-    {
-        Assert.Equal(TimeSpan.FromSeconds(seconds), ControlRegistryRegistrar.RetryAfter(attempt));
     }
 
     // Heartbeats at the interval the lease hands out, with the instance's local health.
@@ -259,5 +249,28 @@ public sealed class ControlRegistryRegistrarTests
         time.Advance(TimeSpan.FromTicks(1));
         await CalledAsync(2);
         await sut.StopAsync(Cancel);
+    }
+
+    // The registry decides the heartbeat's pace: a registration whose lease names no interval does not count,
+    // and is retried; once a lease names one, the heartbeats follow it.
+    [Fact]
+    public async Task ARegistrationWhoseLeaseNamesNoInterval_IsRetried()
+    {
+        leaseInterval = TimeSpan.Zero;
+        var sut = CreateSut();
+
+        await sut.StartAsync(Cancel);
+        await CalledAsync(1);
+        Assert.False(sut.HasRegistered);
+        leaseInterval = TimeSpan.FromSeconds(20);
+        time.Advance(RegistryRetry.First);
+        await CalledAsync(2);
+        time.Advance(TimeSpan.FromSeconds(20) - TimeSpan.FromTicks(1));
+        Assert.Equal(2, Calls.Length);
+        time.Advance(TimeSpan.FromTicks(1));
+        await CalledAsync(3);
+        await sut.StopAsync(Cancel);
+
+        Assert.Equal([HttpMethod.Post, HttpMethod.Post, HttpMethod.Put], Calls.Take(3).Select(x => x.Method));
     }
 }

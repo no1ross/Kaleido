@@ -14,11 +14,11 @@ public sealed class KaleidoRegistryClientOptionsTests
 
         KaleidoRegistryClientOptions.Validate(sut);
 
-        Assert.Equal(("registry", TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(10)), (sut.ServiceName, sut.CapabilitiesInterval, sut.AvailabilityInterval));
+        Assert.Equal("registry", sut.ServiceName);
         Assert.Null(sut.Address);
     }
 
-    public static TheoryData<string> InvalidSettings() => ["no url", "relative url", "ftp url", "relative address", "bad service name", "capabilities zero", "availability zero"];
+    public static TheoryData<string> InvalidSettings() => ["no url", "relative url", "ftp url", "relative address", "bad service name"];
 
     [Theory]
     [MemberData(nameof(InvalidSettings))]
@@ -31,9 +31,7 @@ public sealed class KaleidoRegistryClientOptionsTests
             "relative url" => sut with { Url = "/registry" },
             "ftp url" => sut with { Url = "ftp://registry" },
             "relative address" => sut with { Address = "code-sets" },
-            "bad service name" => sut with { ServiceName = "Registry!" },
-            "capabilities zero" => sut with { CapabilitiesInterval = TimeSpan.Zero },
-            _ => sut with { AvailabilityInterval = TimeSpan.Zero },
+            _ => sut with { ServiceName = "Registry!" },
         };
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() => KaleidoRegistryClientOptions.Validate(options));

@@ -99,11 +99,14 @@ internal sealed class StoreRegistrySource(
         var (capabilities, statuses) = Build(contents, now);
         var status = new KaleidoRegistryStatus { Services = statuses, GeneratedAt = now, Revision = RevisionOf(statuses) };
         List<RegistryServiceAvailability> versions = [.. statuses.Select(x => new RegistryServiceAvailability { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, IsCurrent = x.IsCurrent, Address = x.Address, Status = x.Status })];
+        // The hosts check at the registry's pace: the heartbeat interval, and the capabilities' own.
         var availability = new KaleidoRegistryAvailability
         {
             Services = versions,
+            AvailabilityInterval = options.HeartbeatInterval,
+            CapabilitiesInterval = options.CapabilitiesInterval,
             GeneratedAt = now,
-            Revision = JsonSerializer.Serialize(versions, KaleidoJsonOptions.Options).ToRevision(),
+            Revision = JsonSerializer.Serialize(new { versions, options.HeartbeatInterval, options.CapabilitiesInterval }, KaleidoJsonOptions.Options).ToRevision(),
         };
 
         return new RegistryView(

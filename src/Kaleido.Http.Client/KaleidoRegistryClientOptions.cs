@@ -5,7 +5,8 @@ namespace Kaleido.Http.Client;
 
 /// <summary>
 /// How a Kaleido host takes part in the control registry (#553), bound from <c>Kaleido:Registry</c>: where it
-/// is, and how often the host's copy of it is checked.
+/// is, and the address this version is reached at. How often the host heartbeats and checks the registry is
+/// the registry's to decide: it hands the intervals out, and the host follows them.
 /// </summary>
 /// <remarks>
 /// <code>
@@ -29,22 +30,11 @@ public sealed record KaleidoRegistryClientOptions
     /// </summary>
     public string ServiceName { get; init; } = "registry";
 
-    /// <summary>How often the capabilities are checked (they change with a deployment). Default 30 seconds.</summary>
-    public TimeSpan CapabilitiesInterval { get; init; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>
-    /// How often each version's availability is checked (it changes when a version's status does). Default
-    /// 10 seconds, the registry's default heartbeat interval.
-    /// </summary>
-    public TimeSpan AvailabilityInterval { get; init; } = TimeSpan.FromSeconds(10);
-
     internal static void Validate(KaleidoRegistryClientOptions options)
     {
         Require(Uri.TryCreate(options.Url, UriKind.Absolute, out var url) && url.Scheme is "http" or "https", nameof(Url), "must be an absolute http or https URL, e.g. 'https://registry.internal'");
         Require(options.Address is null || (Uri.TryCreate(options.Address, UriKind.Absolute, out var address) && address.Scheme is "http" or "https"), nameof(Address), "must be an absolute http or https URL when set");
         Require(KaleidoServiceOptions.IsValidServiceName(options.ServiceName), nameof(ServiceName), "must be a service name");
-        Require(options.CapabilitiesInterval > TimeSpan.Zero, nameof(CapabilitiesInterval), "must be positive");
-        Require(options.AvailabilityInterval > TimeSpan.Zero, nameof(AvailabilityInterval), "must be positive");
     }
 
     private static void Require(bool condition, string name, string rule)

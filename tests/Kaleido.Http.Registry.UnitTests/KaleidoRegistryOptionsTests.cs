@@ -15,6 +15,7 @@ public sealed class KaleidoRegistryOptionsTests
         Assert.Equal(TimeSpan.FromSeconds(10), sut.HeartbeatInterval);
         Assert.Equal(3, sut.MissedHeartbeats);
         Assert.Equal(TimeSpan.FromSeconds(30), sut.Lease);
+        Assert.Equal(TimeSpan.FromSeconds(30), sut.CapabilitiesInterval);
         Assert.Equal(TimeSpan.FromHours(24), sut.Retention);
         Assert.Null(sut.ReaderPolicy);
         Assert.Null(sut.RegistrantPolicy);
@@ -24,7 +25,7 @@ public sealed class KaleidoRegistryOptionsTests
     }
 
     public static TheoryData<string> InvalidSettings() =>
-        ["heartbeat zero", "missed zero", "retention within the lease", "blank role prefix", "registrant without clients", "registrant blank client", "registrant bad name", "expected without versions", "expected bad version"];
+        ["heartbeat zero", "capabilities zero", "missed zero", "retention within the lease", "blank role prefix", "registrant without clients", "registrant blank client", "registrant bad name", "expected without versions", "expected bad version"];
 
     [Theory]
     [MemberData(nameof(InvalidSettings))]
@@ -35,6 +36,7 @@ public sealed class KaleidoRegistryOptionsTests
         {
             "heartbeat zero" => sut with { HeartbeatInterval = TimeSpan.Zero },
             "missed zero" => sut with { MissedHeartbeats = 0 },
+            "capabilities zero" => sut with { CapabilitiesInterval = TimeSpan.Zero },
             "retention within the lease" => sut with { Retention = sut.Lease },
             "blank role prefix" => sut with { RegistrantRolePrefix = " " },
             "registrant without clients" => sut with { Registrants = new Dictionary<string, IReadOnlyList<string>> { ["radiology"] = [] } },

@@ -132,7 +132,12 @@ allowed addresses per service and a production guard are #566.
 
 `KaleidoRegistryOptions`: `RegistrantPolicy`, `ReaderPolicy`, `RegistrantRolePrefix`
 (`Kaleido.Registrant.`), `Registrants` (optional), `Expected`, `HeartbeatInterval` (10 s),
-`MissedHeartbeats` (3), `Retention` (24 h). An invalid value stops startup (`invalid_options`).
+`CapabilitiesInterval` (30 s), `MissedHeartbeats` (3), `Retention` (24 h). An invalid value stops startup
+(`invalid_options`).
+
+The registry sets every participant's pace: the heartbeat interval in each lease, and the intervals at
+which the hosts check the availability (`HeartbeatInterval`) and the capabilities
+(`CapabilitiesInterval`) with each availability. A change reaches every host at its next check.
 
 ## Health
 

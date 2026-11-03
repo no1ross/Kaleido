@@ -11,7 +11,9 @@ public sealed class CentralRegistrySourceTests
     : Kaleido.UnitTests.SutFixture, IDisposable
 {
     private static readonly DateTimeOffset Start = new(2026, 11, 2, 12, 0, 0, TimeSpan.Zero);
-    private static readonly KaleidoRegistryClientOptions Options = new() { Url = "https://registry.internal" };
+    // The pace the registry hands out with its availability.
+    private static readonly TimeSpan AvailabilityEvery = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan CapabilitiesEvery = TimeSpan.FromSeconds(30);
 
     private static readonly KaleidoRegistry Capabilities = new()
     {
@@ -45,7 +47,7 @@ public sealed class CentralRegistrySourceTests
         var factory = new Mock<IHttpClientFactory>();
         factory.Setup(x => x.CreateClient(CentralRegistrySource.ClientName))
             .Returns(() => new HttpClient(handler.Object, disposeHandler: false) { BaseAddress = new Uri("https://registry.internal/") });
-        var sut = new CentralRegistrySource(factory.Object, Options, time, NullLogger<CentralRegistrySource>.Instance);
+        var sut = new CentralRegistrySource(factory.Object, time, NullLogger<CentralRegistrySource>.Instance);
         created.Add(sut);
         return sut;
     }
@@ -64,6 +66,8 @@ public sealed class CentralRegistrySourceTests
         new()
         {
             Services = [new RegistryServiceAvailability { ServiceName = "code-sets", ServiceVersion = "3", IsCurrent = true, Status = status }],
+            AvailabilityInterval = AvailabilityEvery,
+            CapabilitiesInterval = CapabilitiesEvery,
             Revision = revision,
             GeneratedAt = Start,
         };
@@ -117,7 +121,7 @@ public sealed class CentralRegistrySourceTests
         var sut = CreateSut();
         await sut.SyncAsync(force: true, Cancel);
 
-        time.Advance(Options.CapabilitiesInterval + TimeSpan.FromTicks(ticksFromTheInterval));
+        time.Advance(CapabilitiesEvery + TimeSpan.FromTicks(ticksFromTheInterval));
         answers["/registry/capabilities"] = _ => new HttpResponseMessage(HttpStatusCode.NotModified);
         answers["/registry/availability"] = _ => new HttpResponseMessage(HttpStatusCode.NotModified);
         await sut.SyncAsync(force: false, Cancel);
@@ -134,7 +138,7 @@ public sealed class CentralRegistrySourceTests
         var sut = CreateSut();
         await sut.SyncAsync(force: true, Cancel);
 
-        time.Advance(Options.AvailabilityInterval + TimeSpan.FromTicks(ticksFromTheInterval));
+        time.Advance(AvailabilityEvery + TimeSpan.FromTicks(ticksFromTheInterval));
         answers["/registry/availability"] = _ => new HttpResponseMessage(HttpStatusCode.NotModified);
         await sut.SyncAsync(force: false, Cancel);
 
@@ -166,7 +170,7 @@ public sealed class CentralRegistrySourceTests
         var first = await sut.GetAsync(null, Cancel);
 
         answers["/registry/availability"] = _ => Ok(Availability(RegistryCapabilityStatus.Unavailable, "avail-2"), "avail-2");
-        time.Advance(Options.AvailabilityInterval);
+        time.Advance(AvailabilityEvery);
         await sut.SyncAsync(force: false, Cancel);
 
         var flipped = await sut.GetAsync(null, Cancel);
@@ -221,5 +225,69 @@ public sealed class CentralRegistrySourceTests
         Assert.Empty(registry.Processes);
         Assert.Contains("403", Assert.Single(registry.Errors).Reason, StringComparison.Ordinal);
         Assert.False(sut.HasRead);
+    }
+
+    // The registry sets the pace: the next check is when the earlier of its two intervals is due.
+    [Fact]
+    public async Task TheNextCheck_FollowsTheRegistrysIntervals()
+    {
+        var sut = CreateSut();
+        await sut.SyncAsync(force: true, Cancel);
+
+        Assert.Equal(AvailabilityEvery, sut.NextCheck);
+        time.Advance(TimeSpan.FromSeconds(4));
+        Assert.Equal(AvailabilityEvery - TimeSpan.FromSeconds(4), sut.NextCheck);
+
+        answers["/registry/availability"] = _ => Ok(Available with { AvailabilityInterval = TimeSpan.FromMinutes(5), CapabilitiesInterval = TimeSpan.FromMinutes(1), Revision = "avail-slow" }, "avail-slow");
+        await sut.SyncAsync(force: true, Cancel);
+
+        Assert.Equal(TimeSpan.FromMinutes(1), sut.NextCheck);
+    }
+
+    // Nothing to follow yet, or a read that failed: the retry, 1 s doubling - never an interval of the host's.
+    [Fact]
+    public async Task WithoutTheRegistrysPace_TheNextCheck_IsTheRetry()
+    {
+        answers["/registry/availability"] = _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+        var sut = CreateSut();
+
+        Assert.Equal(RegistryRetry.First, sut.NextCheck);
+        await sut.SyncAsync(force: true, Cancel);
+        Assert.Equal(RegistryRetry.First, sut.NextCheck);
+        await sut.SyncAsync(force: false, Cancel);
+        Assert.Equal(RegistryRetry.After(1), sut.NextCheck);
+
+        answers["/registry/availability"] = _ => Ok(Available, "avail-1");
+        await sut.SyncAsync(force: false, Cancel);
+        Assert.Equal(AvailabilityEvery, sut.NextCheck);
+    }
+
+    // A registry naming no interval is checked at the retry's pace, never at one the host invents.
+    [Fact]
+    public async Task ARegistryNamingNoInterval_IsCheckedAtTheRetrysPace()
+    {
+        answers["/registry/availability"] = _ => Ok(Available with { AvailabilityInterval = TimeSpan.Zero }, "avail-1");
+        var sut = CreateSut();
+
+        await sut.SyncAsync(force: true, Cancel);
+        await sut.SyncAsync(force: false, Cancel);
+
+        Assert.Equal(RegistryRetry.First, sut.NextCheck);
+        Assert.Equal(2, Reads("/registry/availability"));
+    }
+
+    // A registry that stops answering after a good read: the host backs off, never checking at the
+    // registry's interval while it cannot be read.
+    [Fact]
+    public async Task AfterAGoodRead_AFailedRead_BacksOff()
+    {
+        var sut = CreateSut();
+        await sut.SyncAsync(force: true, Cancel);
+        answers["/registry/availability"] = _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+
+        await sut.SyncAsync(force: true, Cancel);
+        Assert.Equal(RegistryRetry.First, sut.NextCheck);
+        await sut.SyncAsync(force: true, Cancel);
+        Assert.Equal(RegistryRetry.After(1), sut.NextCheck);
     }
 }

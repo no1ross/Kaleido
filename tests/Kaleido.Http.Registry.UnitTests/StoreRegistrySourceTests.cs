@@ -428,4 +428,20 @@ public sealed class StoreRegistrySourceTests
         Assert.Equal(RegistryCapabilityStatus.Degraded, Assert.Single(degraded.Services).Status);
         Assert.Matches("^[0-9a-f]{64}$", first.Revision!);
     }
+
+    // The registry sets the hosts' pace: availability at its heartbeat interval, capabilities at their own;
+    // a change of pace is a new availability, so the hosts follow it.
+    [Fact]
+    public async Task TheAvailability_CarriesTheRegistrysPace()
+    {
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+        contents = new() { Registrations = [registration], Instances = [Instance(registration, Now)] };
+
+        var standard = await CreateSut().GetAvailabilityAsync(Cancel);
+        var slower = await CreateSut(Defaults with { HeartbeatInterval = TimeSpan.FromSeconds(20), CapabilitiesInterval = TimeSpan.FromMinutes(2) }).GetAvailabilityAsync(Cancel);
+
+        Assert.Equal((Defaults.HeartbeatInterval, Defaults.CapabilitiesInterval), (standard.AvailabilityInterval, standard.CapabilitiesInterval));
+        Assert.Equal((TimeSpan.FromSeconds(20), TimeSpan.FromMinutes(2)), (slower.AvailabilityInterval, slower.CapabilitiesInterval));
+        Assert.NotEqual(standard.Revision, slower.Revision);
+    }
 }

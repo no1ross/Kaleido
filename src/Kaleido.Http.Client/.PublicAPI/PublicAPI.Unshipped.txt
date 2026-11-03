@@ -128,8 +128,4 @@ Kaleido.Http.Client.KaleidoRegistryClientOptions.Address.get -> string?
 Kaleido.Http.Client.KaleidoRegistryClientOptions.Address.init -> void
 Kaleido.Http.Client.KaleidoRegistryClientOptions.ServiceName.get -> string!
 Kaleido.Http.Client.KaleidoRegistryClientOptions.ServiceName.init -> void
-Kaleido.Http.Client.KaleidoRegistryClientOptions.CapabilitiesInterval.get -> System.TimeSpan
-Kaleido.Http.Client.KaleidoRegistryClientOptions.AvailabilityInterval.get -> System.TimeSpan
-Kaleido.Http.Client.KaleidoRegistryClientOptions.AvailabilityInterval.init -> void
-Kaleido.Http.Client.KaleidoRegistryClientOptions.CapabilitiesInterval.init -> void
 static Kaleido.Http.Client.KaleidoControlRegistryClientServiceCollectionExtensions.AddControlRegistryClient(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

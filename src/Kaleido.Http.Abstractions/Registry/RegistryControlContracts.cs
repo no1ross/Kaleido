@@ -133,12 +133,24 @@ public sealed record KaleidoRegistryAvailability
     /// <summary>Every service version the registry knows.</summary>
     public IReadOnlyCollection<RegistryServiceAvailability> Services { get; init; } = [];
 
+    /// <summary>
+    /// How often a Kaleido host checks this availability again: the registry's heartbeat interval, decided by
+    /// the registry, never by the host.
+    /// </summary>
+    public TimeSpan AvailabilityInterval { get; init; }
+
+    /// <summary>
+    /// How often a Kaleido host checks the capabilities (<c>GET /registry/capabilities</c>) again, decided by
+    /// the registry.
+    /// </summary>
+    public TimeSpan CapabilitiesInterval { get; init; }
+
     /// <summary>When the availability was worked out (UTC).</summary>
     public DateTimeOffset GeneratedAt { get; init; }
 
     /// <summary>
-    /// A hash of <see cref="Services"/> (SHA-256, lowercase hex), mirrored by the <c>ETag</c> header: send it
-    /// back as <c>If-None-Match</c> to get 304 while nothing changed.
+    /// A hash of <see cref="Services"/> and the two intervals (SHA-256, lowercase hex), mirrored by the
+    /// <c>ETag</c> header: send it back as <c>If-None-Match</c> to get 304 while nothing changed.
     /// </summary>
     public string? Revision { get; init; }
 }

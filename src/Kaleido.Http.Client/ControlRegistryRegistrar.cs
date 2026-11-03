@@ -15,8 +15,9 @@ internal interface IControlRegistryRegistrar
 
 // This instance's registration with the control registry (#553). The registry never calls an instance:
 // - at startup it registers (POST /registry/instances: the service, version, instance, address and this
-//   host's own capabilities), retrying with jittered backoff (1 s doubling, at most 30 s) until it succeeds,
-//   then reads the registry at once so its own entry shows;
+//   host's own capabilities), retrying with jittered backoff (RegistryRetry, +-20%) until it succeeds - a
+//   registration counts only with a lease naming the heartbeat interval, the registry's, never one of this
+//   instance's - then reads the registry at once so its own entry shows;
 // - then it heartbeats (PUT /registry/instances/{id}/heartbeat) every interval the lease hands out, +-10%
 //   so a fleet's heartbeats spread, reporting its health from local checks only (never a check calling
 //   another service, tagged "remote", nor the registration check);
@@ -34,13 +35,13 @@ internal sealed partial class ControlRegistryRegistrar(
     ILogger<ControlRegistryRegistrar> logger)
     : BackgroundService, IControlRegistryRegistrar
 {
-    internal static readonly TimeSpan FirstRetry = TimeSpan.FromSeconds(1);
-    internal static readonly TimeSpan LongestRetry = TimeSpan.FromSeconds(30);
     internal static readonly TimeSpan DeregisterTimeout = TimeSpan.FromSeconds(5);
 
     private volatile bool _registered;
     private volatile bool _hasRegistered;
-    private TimeSpan _interval = TimeSpan.FromSeconds(10);
+
+    // The heartbeat interval of the latest lease: the registry's, never this instance's.
+    private TimeSpan _interval;
 
     public bool HasRegistered => _hasRegistered;
 
@@ -64,7 +65,7 @@ internal sealed partial class ControlRegistryRegistrar(
                         continue;
                     }
 
-                    await Task.Delay(Spread(RetryAfter(attempt++), 0.2), time, stoppingToken);
+                    await Task.Delay(Spread(RegistryRetry.After(attempt++), 0.2), time, stoppingToken);
                     continue;
                 }
 
@@ -90,9 +91,6 @@ internal sealed partial class ControlRegistryRegistrar(
         }
     }
 
-    internal static TimeSpan RetryAfter(int attempt) =>
-        TimeSpan.FromTicks(Math.Min(LongestRetry.Ticks, FirstRetry.Ticks << Math.Min(attempt, 10)));
-
     private TimeSpan Spread(TimeSpan nominal, double spread) => nominal * (1 + (spread * Jitter()));
 
     private async Task<bool> RegisterAsync(CancellationToken cancellationToken)
@@ -110,13 +108,13 @@ internal sealed partial class ControlRegistryRegistrar(
 
         using var response = await SendAsync(HttpMethod.Post, ControlRegistryContractUrls.Instances, JsonContent.Create(registration, options: KaleidoJsonOptions.Options), cancellationToken);
 
-        if (response?.IsSuccessStatusCode != true)
+        // Registered only with a lease naming the interval: the registry decides how often it hears from us.
+        if (response?.IsSuccessStatusCode != true || !await LeaseAsync(response, cancellationToken))
         {
             LogRegistrationFailed(logger, serviceOptions.ServiceName, (int?)response?.StatusCode);
             return false;
         }
 
-        await LeaseAsync(response, cancellationToken);
         _registered = true;
 
         if (!_hasRegistered)
@@ -154,13 +152,24 @@ internal sealed partial class ControlRegistryRegistrar(
         _registered = false;
     }
 
-    // The interval the registry hands out, for the next heartbeats.
-    private async Task LeaseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    // The interval the registry hands out, for the next heartbeats; false when the answer names none (an
+    // answer without one keeps the last).
+    private async Task<bool> LeaseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        if (await response.Content.ReadFromJsonAsync<RegistryLease>(KaleidoJsonOptions.Options, cancellationToken) is { HeartbeatInterval: var interval } && interval > TimeSpan.Zero)
+        try
         {
-            _interval = interval;
+            if (await response.Content.ReadFromJsonAsync<RegistryLease>(KaleidoJsonOptions.Options, cancellationToken) is { HeartbeatInterval: var interval } && interval > TimeSpan.Zero)
+            {
+                _interval = interval;
+                return true;
+            }
         }
+        catch (System.Text.Json.JsonException)
+        {
+            // Not a lease: treated as none.
+        }
+
+        return false;
     }
 
     // Local checks only: never one calling another service, nor this registration's own.

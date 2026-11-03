@@ -13,7 +13,7 @@ namespace Kaleido.Http.Registry;
 ///     "RegistrantPolicy": "KaleidoServiceApplication",
 ///     "ReaderPolicy": "KaleidoRegistryReader",
 ///     "Expected": [ { "ServiceName": "radiology", "Versions": [ "2026-11" ] } ],
-///     "HeartbeatInterval": "00:00:10", "MissedHeartbeats": 3, "Retention": "1.00:00:00"
+///     "HeartbeatInterval": "00:00:10", "CapabilitiesInterval": "00:00:30", "MissedHeartbeats": 3, "Retention": "1.00:00:00"
 ///   }
 /// }
 /// </code>
@@ -61,8 +61,17 @@ public sealed record KaleidoRegistryOptions
     /// </summary>
     public IReadOnlyList<KaleidoRegistryExpectedService> Expected { get; init; } = [];
 
-    /// <summary>How often an instance heartbeats. Default 10 seconds.</summary>
+    /// <summary>
+    /// How often an instance heartbeats, handed out in every lease; also how often the Kaleido hosts check
+    /// each version's availability (it cannot change faster than heartbeats arrive). Default 10 seconds.
+    /// </summary>
     public TimeSpan HeartbeatInterval { get; init; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// How often the Kaleido hosts check the capabilities (they change with a deployment), handed out with
+    /// each version's availability. Default 30 seconds.
+    /// </summary>
+    public TimeSpan CapabilitiesInterval { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>The heartbeats an instance may miss before it is not ready. Default 3.</summary>
     public int MissedHeartbeats { get; init; } = 3;
@@ -77,6 +86,7 @@ public sealed record KaleidoRegistryOptions
     {
         Require(options.HeartbeatInterval > TimeSpan.Zero, nameof(HeartbeatInterval), "must be positive");
         Require(options.MissedHeartbeats > 0, nameof(MissedHeartbeats), "must be positive");
+        Require(options.CapabilitiesInterval > TimeSpan.Zero, nameof(CapabilitiesInterval), "must be positive");
         Require(options.Retention > options.Lease, nameof(Retention), "must be longer than HeartbeatInterval x MissedHeartbeats");
         Require(!string.IsNullOrWhiteSpace(options.RegistrantRolePrefix), nameof(RegistrantRolePrefix), "must not be empty");
 

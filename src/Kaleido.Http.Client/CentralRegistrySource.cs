@@ -7,8 +7,9 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Http.Client;
 
 // A participant's full registry (#553): the control registry's, kept in memory and fresh. It holds two
-// documents, each with its ETag - the capabilities, checked every CapabilitiesInterval (they change with a
-// deployment), and each version's availability, checked every AvailabilityInterval - and composes the one
+// documents, each with its ETag - the capabilities (they change with a deployment) and each version's
+// availability - checked at the intervals the registry hands out with the availability, never the host's
+// own; before the first read, and after a failed one, it tries again on RegistryRetry. It composes the one
 // KaleidoRegistry every reader on this host gets: each capability with its overall status, never an
 // instance. Reads never call out; CentralRegistrySync does. When the registry cannot be read, the last
 // good copy is served, partial (a RegistryReadError for the registry) and without a revision, so readers
@@ -18,13 +19,15 @@ internal interface ICentralRegistrySource : IKaleidoRegistrySource
     // Both documents have been read once: the host's registry is the full registry.
     bool HasRead { get; }
 
+    // How long until the next check: the registry's pace once it is known and reads succeed, else the retry.
+    TimeSpan NextCheck { get; }
+
     // Checks each document that is due (both when forced), and composes the registry when either changed.
     Task SyncAsync(bool force, CancellationToken cancellationToken);
 }
 
 internal sealed partial class CentralRegistrySource(
     IHttpClientFactory httpClientFactory,
-    KaleidoRegistryClientOptions options,
     TimeProvider time,
     ILogger<CentralRegistrySource> logger)
     : ICentralRegistrySource, IDisposable
@@ -38,11 +41,29 @@ internal sealed partial class CentralRegistrySource(
     private Fetched<KaleidoRegistry>? _capabilities;
     private Fetched<KaleidoRegistryAvailability>? _availability;
     private string? _failure;
+    private int _failedReads;
     private KaleidoRegistry _composed = Unread("The control registry has not been read yet.");
 
     public bool IsFullRegistry => true;
 
     public bool HasRead => _capabilities is not null && _availability is not null;
+
+    public TimeSpan NextCheck
+    {
+        get
+        {
+            if (_failure is null
+                && _availability is { } availability && Pace(x => x.AvailabilityInterval) is { } availabilityEvery
+                && _capabilities is { } capabilities && Pace(x => x.CapabilitiesInterval) is { } capabilitiesEvery)
+            {
+                var next = Min(availability.CheckedUtc + availabilityEvery, capabilities.CheckedUtc + capabilitiesEvery) - time.GetUtcNow();
+
+                return next > TimeSpan.Zero ? next : TimeSpan.Zero;
+            }
+
+            return RegistryRetry.After(_failedReads - 1);
+        }
+    }
 
     public Task<KaleidoRegistry> GetAsync(int? maxParallelism, CancellationToken cancellationToken) =>
         Task.FromResult(_composed);
@@ -64,19 +85,20 @@ internal sealed partial class CentralRegistrySource(
             var now = time.GetUtcNow();
             var failure = default(string);
 
-            if (force || Due(_capabilities, options.CapabilitiesInterval, now))
+            if (force || Due(_availability, Pace(x => x.AvailabilityInterval), now))
             {
-                (_capabilities, failure) = await FetchAsync(ControlRegistryContractUrls.Capabilities, _capabilities, now, cancellationToken);
+                (_availability, failure) = await FetchAsync(ControlRegistryContractUrls.Availability, _availability, now, cancellationToken);
             }
 
-            if (force || Due(_availability, options.AvailabilityInterval, now))
+            if (force || Due(_capabilities, Pace(x => x.CapabilitiesInterval), now))
             {
-                var (availability, availabilityFailure) = await FetchAsync(ControlRegistryContractUrls.Availability, _availability, now, cancellationToken);
-                _availability = availability;
-                failure ??= availabilityFailure;
+                var (capabilities, capabilitiesFailure) = await FetchAsync(ControlRegistryContractUrls.Capabilities, _capabilities, now, cancellationToken);
+                _capabilities = capabilities;
+                failure ??= capabilitiesFailure;
             }
 
             _failure = failure;
+            _failedReads = failure is null ? 0 : _failedReads + 1;
             _composed = Compose();
         }
         finally
@@ -85,8 +107,15 @@ internal sealed partial class CentralRegistrySource(
         }
     }
 
-    private static bool Due<T>(Fetched<T>? fetched, TimeSpan interval, DateTimeOffset now) =>
-        fetched is null || now - fetched.CheckedUtc >= interval;
+    // Due when never read, when the registry has not named its pace, or once its interval has passed.
+    private static bool Due<T>(Fetched<T>? fetched, TimeSpan? interval, DateTimeOffset now) =>
+        fetched is null || interval is not { } every || now - fetched.CheckedUtc >= every;
+
+    // An interval the registry handed out with the availability; none before it was read (or if it named none).
+    private TimeSpan? Pace(Func<KaleidoRegistryAvailability, TimeSpan> interval) =>
+        _availability?.Value is { } availability && interval(availability) is var every && every > TimeSpan.Zero ? every : null;
+
+    private static DateTimeOffset Min(DateTimeOffset a, DateTimeOffset b) => a < b ? a : b;
 
     private KaleidoRegistry Compose()
     {

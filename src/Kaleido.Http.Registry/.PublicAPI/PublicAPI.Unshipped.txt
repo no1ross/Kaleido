@@ -117,3 +117,5 @@ Kaleido.Http.Registry.KaleidoRegistryOptions.RegistrantPolicy.get -> string?
 Kaleido.Http.Registry.KaleidoRegistryOptions.RegistrantPolicy.init -> void
 Kaleido.Http.Registry.KaleidoRegistryOptions.RegistrantRolePrefix.init -> void
 Kaleido.Http.Registry.KaleidoRegistryOptions.RegistrantRolePrefix.get -> string!
+Kaleido.Http.Registry.KaleidoRegistryOptions.CapabilitiesInterval.get -> System.TimeSpan
+Kaleido.Http.Registry.KaleidoRegistryOptions.CapabilitiesInterval.init -> void

@@ -12,7 +12,7 @@ namespace Kaleido.Http.Client.UnitTests;
 public sealed class KaleidoControlRegistryClientServiceCollectionExtensionsTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static readonly Dictionary<string, string?> Registry = new() { ["Kaleido:Registry:Url"] = "https://registry.internal", ["Kaleido:Registry:CapabilitiesInterval"] = "00:01:00" };
+    private static readonly Dictionary<string, string?> Registry = new() { ["Kaleido:Registry:Url"] = "https://registry.internal", ["Kaleido:Registry:Address"] = "https://code-sets.internal" };
 
     private static IKaleidoBuilder CreateBuilder(Dictionary<string, string?> settings, string? version = "3")
     {
@@ -39,7 +39,7 @@ public sealed class KaleidoControlRegistryClientServiceCollectionExtensionsTests
         using var provider = builder.Services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         var source = Assert.IsType<CentralRegistrySource>(provider.GetRequiredService<IKaleidoRegistrySource>());
         Assert.Same(source, provider.GetRequiredService<ICentralRegistrySource>());
-        Assert.Equal(TimeSpan.FromMinutes(1), provider.GetRequiredService<KaleidoRegistryClientOptions>().CapabilitiesInterval);
+        Assert.Equal("https://code-sets.internal", provider.GetRequiredService<KaleidoRegistryClientOptions>().Address);
         Assert.Contains(provider.GetServices<IHostedService>(), x => x is CentralRegistrySync);
         var registrar = Assert.Single(provider.GetServices<IHostedService>().OfType<ControlRegistryRegistrar>());
         Assert.Same(registrar, provider.GetRequiredService<IControlRegistryRegistrar>());
