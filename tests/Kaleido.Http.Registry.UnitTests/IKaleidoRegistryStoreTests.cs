@@ -132,4 +132,49 @@ public abstract class IKaleidoRegistryStoreTests
         Assert.Equal(stale.Count, results.Sum(x => x.swept));
         Assert.Equal([instance.InstanceId], contents.Instances.Select(x => x.InstanceId));
     }
+
+    private static readonly TimeSpan Lease = TimeSpan.FromSeconds(30);
+
+    // The watch: the first touch starts it; a touch within the lease of the last one keeps it; a touch
+    // after a longer gap (every registry node was down) resumes it at that touch.
+    [Fact]
+    public async Task TheWatch_Starts_IsKept_AndResumesAfterAGap()
+    {
+        Assert.Null((await CreateStore().ReadAsync(Cancel)).WatchResumedUtc);
+
+        Assert.Equal(At, await CreateStore().TouchWatchAsync(At, Lease, Cancel));
+        Assert.Equal(At, await CreateStore().TouchWatchAsync(At + Lease, Lease, Cancel));
+        Assert.Equal(At, await CreateStore().TouchWatchAsync(At + Lease + Lease, Lease, Cancel));
+
+        var afterAGap = At + Lease + Lease + Lease + TimeSpan.FromTicks(1);
+        Assert.Equal(afterAGap, await CreateStore().TouchWatchAsync(afterAGap, Lease, Cancel));
+        Assert.Equal(afterAGap, (await CreateStore().ReadAsync(Cancel)).WatchResumedUtc);
+    }
+
+    // A node whose clock is behind never moves the last touch back, so it cannot open a gap.
+    [Fact]
+    public async Task TheWatch_ATouchFromASlowClock_DoesNotMoveItBack()
+    {
+        await CreateStore().TouchWatchAsync(At, Lease, Cancel);
+        await CreateStore().TouchWatchAsync(At + Lease, Lease, Cancel);
+        await CreateStore().TouchWatchAsync(At + TimeSpan.FromSeconds(1), Lease, Cancel);
+
+        Assert.Equal(At, await CreateStore().TouchWatchAsync(At + Lease + Lease, Lease, Cancel));
+    }
+
+    // Nodes starting together after an outage resume one watch.
+    [Fact]
+    public async Task TheWatch_ConcurrentTouches_AgreeOnOneResumption()
+    {
+        await CreateStore().TouchWatchAsync(At, Lease, Cancel);
+        var back = At + TimeSpan.FromHours(1);
+
+        var resumed = await Task.WhenAll(Enumerable.Range(0, 10).Select(i => Task.Run(
+            () => CreateStore().TouchWatchAsync(back + TimeSpan.FromMilliseconds(i), Lease, Cancel),
+            Cancel)));
+
+        Assert.Single(resumed.Distinct());
+        Assert.Equal(resumed[0], (await CreateStore().ReadAsync(Cancel)).WatchResumedUtc);
+        Assert.InRange(resumed[0], back, back + TimeSpan.FromMilliseconds(9));
+    }
 }

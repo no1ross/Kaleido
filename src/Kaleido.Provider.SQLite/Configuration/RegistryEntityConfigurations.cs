@@ -52,3 +52,15 @@ internal sealed class RegistryCurrentVersionEntityConfiguration
         builder.Property(x => x.ServiceVersion).HasMaxLength(KaleidoServiceOptions.MaxServiceVersionLength).IsRequired();
     }
 }
+
+[ExcludeFromCodeCoverage]
+internal sealed class RegistryWatchEntityConfiguration
+    : IEntityTypeConfiguration<RegistryWatchEntity>
+{
+    public void Configure(EntityTypeBuilder<RegistryWatchEntity> builder)
+    {
+        builder.ToTable("RegistryWatch");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
+    }
+}

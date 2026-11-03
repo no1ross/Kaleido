@@ -67,8 +67,11 @@ public sealed record RegistryHeartbeat
 }
 
 /// <summary>
-/// Each service version's status (<c>GET /registry/status</c>, #553), apart from the capabilities: it
-/// changes whenever an instance starts, stops or fails, while the capabilities change only with a deployment.
+/// Each service version's status in detail, its instances included (<c>GET /registry/status</c>, #553): for
+/// operations and the registry's UI. A capability consumer reads the overall status on each capability of
+/// <see cref="KaleidoRegistry"/> instead (<see cref="RegistryCapabilityStatus"/>). Kaleido hosts also use it
+/// to keep their copy of the registry fresh: it changes whenever an instance starts, stops or fails, while
+/// the capabilities change only with a deployment.
 /// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record KaleidoRegistryStatus
@@ -80,8 +83,9 @@ public sealed record KaleidoRegistryStatus
     public DateTimeOffset GeneratedAt { get; init; }
 
     /// <summary>
-    /// A hash of <see cref="Services"/> (SHA-256, lowercase hex), mirrored by the <c>ETag</c> header: send it
-    /// back as <c>If-None-Match</c> to get 304 while nothing changed.
+    /// A hash of the statuses and the instances' states (SHA-256, lowercase hex; heartbeat times are left
+    /// out, so a heartbeat alone does not change it), mirrored by the <c>ETag</c> header: send it back as
+    /// <c>If-None-Match</c> to get 304 while nothing changed.
     /// </summary>
     public string? Revision { get; init; }
 }
@@ -105,16 +109,76 @@ public sealed record RegistryServiceStatus
     /// <summary>The address the version is reached at, when one was registered.</summary>
     public string? Address { get; init; }
 
-    /// <summary>The instances alive (leased) and reporting themselves healthy.</summary>
+    /// <summary>The version's overall status, as each of its capabilities carries it.</summary>
+    public RegistryCapabilityStatus Status { get; init; }
+
+    /// <summary>The instances ready: alive (leased) and reporting themselves healthy.</summary>
     public int ReadyInstances { get; init; }
 
-    /// <summary>The instances known, ready or not, until they are removed after the retention period.</summary>
-    public int Instances { get; init; }
+    /// <summary>The instances not heard from since the registry resumed watching after it was down.</summary>
+    public int UnknownInstances { get; init; }
+
+    /// <summary>Every instance known, ready or not, until it is removed after the retention period.</summary>
+    public IReadOnlyCollection<RegistryInstanceStatus> Instances { get; init; } = [];
+}
+
+/// <summary>An instance of a service version, as the control registry last heard from it (#553).</summary>
+[ExcludeFromCodeCoverage]
+public sealed record RegistryInstanceStatus
+{
+    /// <summary>The instance.</summary>
+    public required Guid InstanceId { get; init; }
+
+    /// <summary>Its state, worked out from its last heartbeat whenever the registry is read.</summary>
+    public RegistryInstanceState State { get; init; }
+
+    /// <summary>Its last heartbeat, or its registration (UTC).</summary>
+    public DateTimeOffset LastHeartbeatUtc { get; init; }
+
+    /// <summary>The address its version is reached at, as it registered it.</summary>
+    public string? Address { get; init; }
+}
+
+/// <summary>An instance's state, worked out from its last heartbeat whenever the registry is read (#553).</summary>
+public enum RegistryInstanceState
+{
+    /// <summary>
+    /// Not heard from since the registry resumed watching after every registry node was down: its
+    /// silence says nothing yet. It is Ready or NotReady once it reports, or one lease after the registry resumed.
+    /// </summary>
+    Unknown,
+
+    /// <summary>Alive (a heartbeat within its lease) and reporting itself healthy.</summary>
+    Ready,
+
+    /// <summary>Its lease ran out, or it reported itself unhealthy.</summary>
+    NotReady,
+}
+
+/// <summary>
+/// The overall status of a capability (#553): of the service version serving it, worked out from its
+/// instances. Carried on every processor and query source of <see cref="KaleidoRegistry"/>, so a consumer
+/// knows whether a capability is working without reading any instance.
+/// </summary>
+public enum RegistryCapabilityStatus
+{
+    /// <summary>Not reported: the host reads no control registry, so nothing watches the service's instances.</summary>
+    NotReported,
+
+    /// <summary>Every known instance is ready.</summary>
+    Available,
+
+    /// <summary>Some instances are ready but not all (one failed, a rollout is under way): calls work.</summary>
+    Degraded,
 
     /// <summary>
-    /// False when no instance is ready: the version's capabilities stay listed, but calls to it will fail.
+    /// No instance is ready yet, but some have not been heard from since the registry resumed after it was
+    /// down: this clears within about one heartbeat.
     /// </summary>
-    public bool Available { get; init; }
+    Unknown,
+
+    /// <summary>No instance is ready: calls to the capability will fail.</summary>
+    Unavailable,
 }
 
 /// <summary>Something the control registry expects and has no registration for (#553).</summary>

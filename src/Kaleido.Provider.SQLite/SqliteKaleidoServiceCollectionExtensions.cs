@@ -110,7 +110,7 @@ public static class SqliteKaleidoServiceCollectionExtensions
     /// Keeps the control registry's state in SQLite (tables <c>RegistryRegistrations</c>,
     /// <c>RegistryInstances</c>, <c>RegistryCurrentVersions</c>; #553), in the registry host's own database
     /// (<see cref="SqliteKaleidoRegistryDbContext"/>), apart from any service's process database. Every write
-    /// is one statement, so several registry instances may share the database file on one node.
+    /// is one statement, so several registry nodes may share the database file on one machine.
     /// </summary>
     /// <param name="builder">The Kaleido builder of the registry host (<c>AddControlRegistry()</c>).</param>
     /// <param name="connectionString">The SQLite connection string, e.g. <c>Data Source=registry.db</c>.</param>

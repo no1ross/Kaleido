@@ -78,13 +78,19 @@ public sealed class StoreRegistrySourceTests
     {
         var registration = Stored("radiology", "2026-11", Entry([ProcessorWith("radiology", "OrderScanStep")], [SourceWith("radiology", "ScanSource")]));
 
-        var view = await ViewAsync([registration], [Instance(registration, Now, address: "https://radiology")], current: ("radiology", "2026-11"));
+        var instance = Instance(registration, Now, address: "https://radiology");
+
+        var view = await ViewAsync([registration], [instance], current: ("radiology", "2026-11"));
 
         Assert.Equal(["OrderScanStep"], Assert.Single(view.Processes).Steps!.Select(x => x.Name));
         Assert.Equal("ScanSource", Assert.Single(view.Queryables).Name);
+        var status = Assert.Single(view.Services);
         Assert.Equal(
-            new RegistryServiceStatus { ServiceName = "radiology", ServiceVersion = "2026-11", IsCurrent = true, Address = "https://radiology", ReadyInstances = 1, Instances = 1, Available = true },
-            Assert.Single(view.Services));
+            new RegistryServiceStatus { ServiceName = "radiology", ServiceVersion = "2026-11", IsCurrent = true, Address = "https://radiology", Status = RegistryCapabilityStatus.Available, ReadyInstances = 1, Instances = status.Instances },
+            status);
+        Assert.Equal(
+            new RegistryInstanceStatus { InstanceId = instance.InstanceId, State = RegistryInstanceState.Ready, LastHeartbeatUtc = Now, Address = "https://radiology" },
+            Assert.Single(status.Instances));
         Assert.Empty(view.Missing);
         Assert.Empty(view.Errors);
     }
@@ -101,8 +107,7 @@ public sealed class StoreRegistrySourceTests
         var status = Assert.Single((await ViewAsync([registration], [Instance(registration, heartbeat)])).Services);
 
         Assert.Equal(ready, status.ReadyInstances);
-        Assert.Equal(ready == 1, status.Available);
-        Assert.Equal(1, status.Instances);
+        Assert.Equal(ready == 1 ? RegistryInstanceState.Ready : RegistryInstanceState.NotReady, Assert.Single(status.Instances).State);
     }
 
     // A version with no ready instance stays listed, flagged unavailable.
@@ -114,7 +119,7 @@ public sealed class StoreRegistrySourceTests
         var view = await ViewAsync([registration], [Instance(registration, Now, healthy: false)]);
 
         Assert.Single(view.Processes);
-        Assert.False(Assert.Single(view.Services).Available);
+        Assert.Equal(RegistryCapabilityStatus.Unavailable, Assert.Single(view.Services).Status);
     }
 
     [Fact]
@@ -125,7 +130,9 @@ public sealed class StoreRegistrySourceTests
         var view = await ViewAsync([registration], []);
 
         Assert.Single(view.Processes);
-        Assert.Equal(0, Assert.Single(view.Services).Instances);
+        var status = Assert.Single(view.Services);
+        Assert.Empty(status.Instances);
+        Assert.Equal(RegistryCapabilityStatus.Unavailable, status.Status);
     }
 
     // The rolling-deployment rule: only what every ready instance's revision has, as the oldest defines it.
@@ -263,7 +270,7 @@ public sealed class StoreRegistrySourceTests
         store.Verify(x => x.ReadAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
-    // The statuses, apart: their revision follows their content only.
+    // The statuses, apart: their revision follows their states only.
     [Fact]
     public async Task TheStatus_HasItsOwnRevision_FollowingTheStatusesOnly()
     {
@@ -279,7 +286,7 @@ public sealed class StoreRegistrySourceTests
         contents = contents with { Instances = [instance, Instance(registration, Now)] };
         var changed = await sut.GetStatusAsync(Cancel);
 
-        Assert.Equal((1, time.GetUtcNow() - (StoreRegistrySource.ViewTtl * 2)), (Assert.Single(first.Services).Instances, first.GeneratedAt));
+        Assert.Equal((1, time.GetUtcNow() - (StoreRegistrySource.ViewTtl * 2)), (Assert.Single(first.Services).Instances.Count, first.GeneratedAt));
         Assert.Equal(first.Revision, same.Revision);
         Assert.NotEqual(first.Revision, changed.Revision);
         Assert.Matches("^[0-9a-f]{64}$", first.Revision!);
@@ -300,5 +307,99 @@ public sealed class StoreRegistrySourceTests
     public void TheStoresRegistry_IsTheFullRegistry()
     {
         Assert.True(CreateSut().IsFullRegistry);
+    }
+
+    // A heartbeat alone (a later time, the same state) does not change the status revision.
+    [Fact]
+    public async Task TheStatusRevision_IgnoresHeartbeatTimes()
+    {
+        var sut = CreateSut();
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+        var instance = Instance(registration, Now);
+        contents = new() { Registrations = [registration], Instances = [instance] };
+
+        var first = await sut.GetStatusAsync(Cancel);
+        time.Advance(StoreRegistrySource.ViewTtl);
+        contents = contents with { Instances = [instance with { LastHeartbeatUtc = Now + StoreRegistrySource.ViewTtl }] };
+        var later = await sut.GetStatusAsync(Cancel);
+
+        Assert.Equal(first.Revision, later.Revision);
+        Assert.Equal(Now + StoreRegistrySource.ViewTtl, Assert.Single(Assert.Single(later.Services).Instances).LastHeartbeatUtc);
+    }
+
+    // The overall status of a version, from its instances' states.
+    [Theory]
+    [InlineData(2, 0, 0, RegistryCapabilityStatus.Available)]
+    [InlineData(1, 1, 0, RegistryCapabilityStatus.Degraded)]
+    [InlineData(1, 0, 1, RegistryCapabilityStatus.Degraded)]
+    [InlineData(0, 1, 1, RegistryCapabilityStatus.Unknown)]
+    [InlineData(0, 2, 0, RegistryCapabilityStatus.Unavailable)]
+    public async Task AVersionsStatus_FollowsItsInstances(int ready, int notReady, int unknown, RegistryCapabilityStatus expected)
+    {
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+        var resumed = Now - TimeSpan.FromSeconds(5);
+        var instances = Enumerable.Range(0, ready).Select(_ => Instance(registration, Now))
+            .Concat(Enumerable.Range(0, notReady).Select(_ => Instance(registration, Now, healthy: false)))
+            .Concat(Enumerable.Range(0, unknown).Select(_ => Instance(registration, resumed - TimeSpan.FromMinutes(5))));
+        contents = new() { Registrations = [registration], Instances = [.. instances], WatchResumedUtc = resumed };
+
+        var status = Assert.Single((await CreateSut().GetStatusAsync(Cancel)).Services);
+
+        Assert.Equal((expected, ready, unknown), (status.Status, status.ReadyInstances, status.UnknownInstances));
+    }
+
+    // After every registry node was down: an instance last heard from before the watch resumed is Unknown
+    // for one lease after it; one heard from since is judged as usual.
+    [Theory]
+    [InlineData(-1, RegistryInstanceState.Unknown)]
+    [InlineData(0, RegistryInstanceState.NotReady)]
+    public async Task AnInstanceNotHeardFromSinceTheWatchResumed_IsUnknown_ForOneLease(long ticksFromTheLease, RegistryInstanceState expected)
+    {
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+        var resumed = Now - Defaults.Lease - TimeSpan.FromTicks(ticksFromTheLease);
+        var silent = Instance(registration, resumed - TimeSpan.FromTicks(1));
+        var reported = Instance(registration, Now);
+        contents = new() { Registrations = [registration], Instances = [silent, reported], WatchResumedUtc = resumed };
+
+        var states = Assert.Single((await CreateSut().GetStatusAsync(Cancel)).Services).Instances.ToDictionary(x => x.InstanceId, x => x.State);
+
+        Assert.Equal(expected, states[silent.InstanceId]);
+        Assert.Equal(RegistryInstanceState.Ready, states[reported.InstanceId]);
+    }
+
+    // An Unknown instance's revision is believed running: it takes part in the rolling rule.
+    [Fact]
+    public async Task AnUnknownInstance_TakesPartInTheRollingRule()
+    {
+        var old = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep", "CancelStep")], []));
+        var rolled = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []), Start.AddMinutes(5));
+        var resumed = Now - TimeSpan.FromSeconds(5);
+        contents = new() { Registrations = [old, rolled], Instances = [Instance(old, Now), Instance(rolled, resumed - TimeSpan.FromMinutes(1))], WatchResumedUtc = resumed };
+
+        var registry = await CreateSut().GetAsync(null, Cancel);
+
+        Assert.Equal(["OrderScanStep"], Assert.Single(registry.Processes).Steps!.Select(x => x.Name));
+    }
+
+    // The registry a consumer reads carries each capability's status; the capabilities the hosts sync do not,
+    // so their revision changes only with a deployment.
+    [Fact]
+    public async Task TheRegistry_CarriesEachCapabilitysStatus_AndTheCapabilitiesDoNot()
+    {
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], [SourceWith("radiology", "ScanSource")]));
+        var sut = CreateSut();
+        contents = new() { Registrations = [registration], Instances = [Instance(registration, Now)] };
+
+        var registry = await sut.GetAsync(null, Cancel);
+        var capabilities = await sut.GetCapabilitiesAsync(Cancel);
+        time.Advance(StoreRegistrySource.ViewTtl);
+        contents = contents with { Instances = [Instance(registration, Now, healthy: false)] };
+        var afterAFailure = await sut.GetCapabilitiesAsync(Cancel);
+
+        Assert.Equal(RegistryCapabilityStatus.Available, Assert.Single(registry.Processes).Status);
+        Assert.Equal(RegistryCapabilityStatus.Available, Assert.Single(registry.Queryables).Status);
+        Assert.Equal(RegistryCapabilityStatus.NotReported, Assert.Single(capabilities.Processes).Status);
+        Assert.Matches("^[0-9a-f]{64}$", capabilities.Revision!);
+        Assert.Equal(capabilities.Revision, afterAFailure.Revision);
     }
 }

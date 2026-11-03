@@ -55,7 +55,7 @@ public static class KaleidoControlRegistryServiceCollectionExtensions
         services.TryAddSingleton<StoreRegistrySource>();
         services.Replace(ServiceDescriptor.Singleton<IKaleidoRegistrySource>(x => x.GetRequiredService<StoreRegistrySource>()));
 
-        services.AddHostedService<RegistryRetentionSweeper>();
+        services.AddHostedService<RegistryHousekeeping>();
         services.AddHealthChecks()
             .AddCheck<RegistryStoreHealthCheck>(RegistryStoreHealthCheck.Name, failureStatus: null, tags: ["kaleido", "registry", "ready"])
             .AddCheck<RegistryCompletenessHealthCheck>(RegistryCompletenessHealthCheck.Name, failureStatus: null, tags: ["kaleido", "registry"]);
@@ -65,7 +65,7 @@ public static class KaleidoControlRegistryServiceCollectionExtensions
 
     /// <summary>
     /// Keeps the control registry's state in this process only, chosen explicitly: lost on restart and not
-    /// shared between registry instances. For development, tests and demos.
+    /// shared between registry nodes. For development, tests and demos.
     /// </summary>
     /// <param name="builder">The Kaleido builder.</param>
     /// <returns>The same builder.</returns>

@@ -12,8 +12,8 @@ namespace Kaleido.Provider.SQLite;
 /// <remarks>
 /// Registration does not create the database. The registry host creates the schema once at startup by
 /// resolving this context in a scope and calling <c>Database.EnsureCreatedAsync()</c>. <c>EnsureCreated</c>
-/// never changes an existing database. Several registry instances may share one database file on one
-/// node; SQLite on a network share is unsafe, so registry instances on several nodes need a server
+/// never changes an existing database. Several registry nodes may share one database file on one
+/// machine; SQLite on a network share is unsafe, so registry nodes on several machines need a server
 /// database (a store of the host's own, <c>AddRegistryStore&lt;T&gt;()</c>).
 /// </remarks>
 /// <param name="options">The context options, configured by <c>AddSqliteRegistryStore</c>.</param>
@@ -28,11 +28,14 @@ public sealed class SqliteKaleidoRegistryDbContext(
 
     internal DbSet<RegistryCurrentVersionEntity> RegistryCurrentVersions => Set<RegistryCurrentVersionEntity>();
 
+    internal DbSet<RegistryWatchEntity> RegistryWatch => Set<RegistryWatchEntity>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new RegistryRegistrationEntityConfiguration());
         modelBuilder.ApplyConfiguration(new RegistryInstanceEntityConfiguration());
         modelBuilder.ApplyConfiguration(new RegistryCurrentVersionEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new RegistryWatchEntityConfiguration());
     }
 }

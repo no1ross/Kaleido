@@ -32,7 +32,7 @@ public sealed class KaleidoControlRegistryServiceCollectionExtensionsTests
         Assert.Equal(["radiology-client"], options.Registrants["radiology"]);
         Assert.Contains(services, x => x.ServiceType == typeof(IControlRegistry) && x.ImplementationType == typeof(ControlRegistry));
         Assert.Contains(services, x => x.ServiceType == typeof(IRegistryRegistrants) && x.ImplementationType == typeof(RegistryRegistrants));
-        Assert.Contains(services, x => x.ServiceType == typeof(IHostedService) && x.ImplementationType == typeof(RegistryRetentionSweeper));
+        Assert.Contains(services, x => x.ServiceType == typeof(IHostedService) && x.ImplementationType == typeof(RegistryHousekeeping));
 
         // One full registry per host: the source, the status reader and the health check share it.
         using var provider = services.BuildServiceProvider();
@@ -129,6 +129,8 @@ public sealed class KaleidoControlRegistryServiceCollectionExtensionsTests
         public Task<int> RemoveInstancesSeenBeforeAsync(DateTimeOffset cutoffUtc, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<string> GetOrSetCurrentVersionAsync(string serviceName, string serviceVersion, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<DateTimeOffset> TouchWatchAsync(DateTimeOffset nowUtc, TimeSpan lease, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<RegistryStoreContents> ReadAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
     }

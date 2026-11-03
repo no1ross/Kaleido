@@ -73,7 +73,8 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
         group.MapPut(ControlRegistryRoutePaths.Heartbeat, HeartbeatAsync).WithName(ControlRegistryEndpointNames.Heartbeat).WithSummary("Renew an instance's lease.");
         group.MapDelete(ControlRegistryRoutePaths.Instance, DeregisterAsync).WithName(ControlRegistryEndpointNames.Deregister).WithSummary("Deregister an instance.");
         group.MapGet(ControlRegistryRoutePaths.Read, ReadAsync).WithName(ControlRegistryEndpointNames.Read).WithSummary("The full registry of every service version, for other Kaleido hosts.");
-        group.MapGet(ControlRegistryRoutePaths.Status, StatusAsync).WithName(ControlRegistryEndpointNames.Status).WithSummary("Each service version's status, for other Kaleido hosts.");
+        group.MapGet(ControlRegistryRoutePaths.Status, StatusAsync).WithName(ControlRegistryEndpointNames.Status).WithSummary("Each service version's status and instances, for other Kaleido hosts.");
+        group.MapGet(ControlRegistryRoutePaths.Capabilities, CapabilitiesAsync).WithName(ControlRegistryEndpointNames.Capabilities).WithSummary("The capabilities alone, for Kaleido hosts keeping their copy fresh.");
 
         return group;
     }
@@ -108,13 +109,33 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
         }
 
         var status = await statuses.GetStatusAsync(cancellationToken);
-        var etag = $"\"{status.Revision}\"";
+
+        return Revisioned(httpContext, status.Revision, status);
+    }
+
+    // The capabilities alone, for the hosts keeping their copy fresh: their revision changes only with a deployment.
+    private static async Task<IResult> CapabilitiesAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, [FromServices] StoreRegistrySource registry, CancellationToken cancellationToken)
+    {
+        if (!await IsReaderAsync(httpContext, options))
+        {
+            return ReaderNotAllowed();
+        }
+
+        var capabilities = await registry.GetCapabilitiesAsync(cancellationToken);
+
+        return Revisioned(httpContext, capabilities.Revision, capabilities);
+    }
+
+    // The ETag of what is sent, and 304 to a reader that already has it.
+    private static IResult Revisioned<T>(HttpContext httpContext, string? revision, T value)
+    {
+        var etag = $"\"{revision}\"";
         httpContext.Response.Headers.ETag = etag;
         httpContext.Response.Headers.CacheControl = "private, no-cache";
 
         return httpContext.Request.Headers.IfNoneMatch.Any(x => string.Equals(x, etag, StringComparison.Ordinal))
             ? Results.StatusCode(StatusCodes.Status304NotModified)
-            : Results.Ok(status);
+            : Results.Ok(value);
     }
 
     // Not enforced (AuthorizationMode None, development): anyone reads.

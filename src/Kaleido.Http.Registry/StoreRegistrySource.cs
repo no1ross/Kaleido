@@ -8,12 +8,16 @@ namespace Kaleido.Http.Registry;
 
 // The control registry's full registry, from its store (#553). One per host: it keeps each revision's
 // parsed capabilities (a revision never changes, so only new ones are read), and the view it built for
-// ViewTtl, so the capabilities endpoint, the status endpoint and the health check share one read.
-// The rules:
-// - each service version's capabilities: during a rolling deployment only what every ready instance's
-//   revision shares (by name), as the longest-running revision defines it; with no ready instance, what
-//   its known instances run, so the version stays listed (unavailable);
-// - each version's status: current or not, ready and known instances, available;
+// ViewTtl, so the registry, the status endpoint and the health check share one read.
+// The rules, worked out on every build from what the instances reported - nothing writes a state:
+// - each instance's state: Unknown while it has not been heard from since the registry's watch resumed
+//   (every registry node was down), for one lease; else Ready (healthy, a heartbeat within its lease)
+//   or NotReady;
+// - each service version's capabilities: during a rolling deployment only what every live (ready or
+//   unknown) instance's revision shares (by name), as the longest-running revision defines it; with no live
+//   instance, what its known instances run, so the version stays listed (unavailable);
+// - each version's overall status (Available, Degraded, Unknown, Unavailable), carried on each of its
+//   capabilities, and its instances in detail;
 // - what is missing: an expected processor version, or a service a published step looks up, with no
 //   registration.
 internal sealed class StoreRegistrySource(
@@ -31,8 +35,13 @@ internal sealed class StoreRegistrySource(
     // The store's registry is the whole registry: every participant registered its own capabilities.
     public bool IsFullRegistry => true;
 
+    // The registry a consumer reads: every capability with its version's overall status.
     public async Task<KaleidoRegistry> GetAsync(int? maxParallelism, CancellationToken cancellationToken) =>
         (await ViewAsync(cancellationToken)).Contents;
+
+    // The capabilities alone, for the hosts that keep their copy fresh: they change only with a deployment.
+    public async Task<KaleidoRegistry> GetCapabilitiesAsync(CancellationToken cancellationToken) =>
+        (await ViewAsync(cancellationToken)).Capabilities;
 
     public async Task<KaleidoRegistryStatus> GetStatusAsync(CancellationToken cancellationToken) =>
         (await ViewAsync(cancellationToken)).Status;
@@ -74,11 +83,21 @@ internal sealed class StoreRegistrySource(
         await LoadCapabilitiesAsync(store, contents, cancellationToken);
 
         var now = time.GetUtcNow();
-        var (registry, statuses) = Build(contents, now);
-        var revision = JsonSerializer.Serialize(statuses, KaleidoJsonOptions.Options).ToRevision();
+        var (capabilities, statuses) = Build(contents, now);
+        var status = new KaleidoRegistryStatus { Services = statuses, GeneratedAt = now, Revision = RevisionOf(statuses) };
 
-        return new RegistryView(registry, new KaleidoRegistryStatus { Services = statuses, GeneratedAt = now, Revision = revision }, now);
+        return new RegistryView(
+            capabilities with { Revision = capabilities.ToEntryJson().ToRevision() },
+            capabilities.WithStatuses(status),
+            status,
+            now);
     }
+
+    // The states and statuses, without the heartbeat times: a heartbeat alone changes nothing a reader acts on.
+    private static string RevisionOf(List<RegistryServiceStatus> statuses) =>
+        JsonSerializer.Serialize(
+            statuses.Select(x => x with { Instances = [.. x.Instances.Select(i => i with { LastHeartbeatUtc = default })] }),
+            KaleidoJsonOptions.Options).ToRevision();
 
     // Reads only the revisions not parsed yet, and forgets those the store no longer has.
     private async Task LoadCapabilitiesAsync(IKaleidoRegistryStore store, RegistryStoreContents contents, CancellationToken cancellationToken)
@@ -115,25 +134,52 @@ internal sealed class StoreRegistrySource(
 
         foreach (var (service, version) in versions)
         {
-            var instances = contents.Instances.Where(x => Is(x.ServiceName, x.ServiceVersion, service, version)).ToList();
-            var ready = instances.Where(x => x.Healthy && now - x.LastHeartbeatUtc <= options.Lease).ToList();
-            var published = Published(contents.Registrations.Where(x => Is(x.ServiceName, x.ServiceVersion, service, version)), ready.Count > 0 ? ready : instances);
+            var instances = contents.Instances
+                .Where(x => Is(x.ServiceName, x.ServiceVersion, service, version))
+                .Select(x => (Record: x, State: StateOf(x, now, contents.WatchResumedUtc)))
+                .ToList();
+            var live = instances.Where(x => x.State != RegistryInstanceState.NotReady).Select(x => x.Record).ToList();
+            var published = Published(contents.Registrations.Where(x => Is(x.ServiceName, x.ServiceVersion, service, version)), live.Count > 0 ? live : [.. instances.Select(x => x.Record)]);
 
-            processes.AddRange(published.Processes);
-            queryables.AddRange(published.Queryables);
-            statuses.Add(new RegistryServiceStatus
-            {
-                ServiceName = service,
-                ServiceVersion = version,
-                IsCurrent = contents.CurrentVersions.TryGetValue(service, out var current) && string.Equals(current, version, StringComparison.Ordinal),
-                Address = instances.OrderByDescending(x => x.LastHeartbeatUtc).Select(x => x.Address).FirstOrDefault(x => x is not null),
-                ReadyInstances = ready.Count,
-                Instances = instances.Count,
-                Available = ready.Count > 0,
-            });
+            // Each entry is the version it was registered under, whatever the stored copy says.
+            processes.AddRange(published.Processes.Select(x => x with { ServiceVersion = version }));
+            queryables.AddRange(published.Queryables.Select(x => x with { ServiceVersion = version }));
+            statuses.Add(StatusOf(service, version, instances, contents.CurrentVersions));
         }
 
         return (new KaleidoRegistry { Processes = processes, Queryables = queryables, Missing = Missing(versions, processes) }, statuses);
+    }
+
+    // Unknown while not heard from since the watch resumed, for one lease after it; else by lease and health.
+    private RegistryInstanceState StateOf(RegistryInstanceRecord instance, DateTimeOffset now, DateTimeOffset? resumed) =>
+        resumed is { } since && instance.LastHeartbeatUtc < since && now < since + options.Lease
+            ? RegistryInstanceState.Unknown
+            : instance.Healthy && now - instance.LastHeartbeatUtc <= options.Lease
+                ? RegistryInstanceState.Ready
+                : RegistryInstanceState.NotReady;
+
+    private static RegistryServiceStatus StatusOf(string service, string version, List<(RegistryInstanceRecord Record, RegistryInstanceState State)> instances, IReadOnlyDictionary<string, string> currentVersions)
+    {
+        var ready = instances.Count(x => x.State == RegistryInstanceState.Ready);
+        var unknown = instances.Count(x => x.State == RegistryInstanceState.Unknown);
+
+        return new RegistryServiceStatus
+        {
+            ServiceName = service,
+            ServiceVersion = version,
+            IsCurrent = currentVersions.TryGetValue(service, out var current) && string.Equals(current, version, StringComparison.Ordinal),
+            Address = instances.OrderByDescending(x => x.Record.LastHeartbeatUtc).Select(x => x.Record.Address).FirstOrDefault(x => x is not null),
+            Status = instances.Count == 0 ? RegistryCapabilityStatus.Unavailable
+                : ready == instances.Count ? RegistryCapabilityStatus.Available
+                : ready > 0 ? RegistryCapabilityStatus.Degraded
+                : unknown > 0 ? RegistryCapabilityStatus.Unknown
+                : RegistryCapabilityStatus.Unavailable,
+            ReadyInstances = ready,
+            UnknownInstances = unknown,
+            Instances = [.. instances
+                .OrderBy(x => x.Record.InstanceId)
+                .Select(x => new RegistryInstanceStatus { InstanceId = x.Record.InstanceId, State = x.State, LastHeartbeatUtc = x.Record.LastHeartbeatUtc, Address = x.Record.Address })],
+        };
     }
 
     // The registrations the instances run, oldest first; with no instance, every registration kept.
@@ -204,5 +250,5 @@ internal sealed class StoreRegistrySource(
 
     private static bool SameName(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
-    private sealed record RegistryView(KaleidoRegistry Contents, KaleidoRegistryStatus Status, DateTimeOffset BuiltUtc);
+    private sealed record RegistryView(KaleidoRegistry Capabilities, KaleidoRegistry Contents, KaleidoRegistryStatus Status, DateTimeOffset BuiltUtc);
 }

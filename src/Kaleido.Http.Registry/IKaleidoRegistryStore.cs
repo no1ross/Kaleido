@@ -4,7 +4,7 @@ namespace Kaleido.Http.Registry;
 /// The control registry's state (#553): one registration per service version and revision, every instance
 /// with its last heartbeat, and each service's current version. In memory (<c>AddInMemoryRegistryStore()</c>)
 /// or durable (e.g. <c>AddSqliteRegistryStore</c>, or your own with <c>AddRegistryStore&lt;T&gt;()</c>), shared
-/// by every registry instance.
+/// by every registry node.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -12,10 +12,10 @@ namespace Kaleido.Http.Registry;
 /// registry's. A platform that edits the registry plugs in its own store over its own database.
 /// </para>
 /// <para>
-/// Several registry instances share one store, and many service instances write to it at once (a few
+/// Several registry nodes share one store, and many service instances write to it at once (a few
 /// hundred instances heartbeat every few seconds), so every write is atomic on its own:
 /// a registration is inserted only if absent; the current version is set only if absent; a renewal and a
-/// removal are each one conditional statement; a sweep may run on every registry instance at once.
+/// removal are each one conditional statement; a sweep may run on every registry node at once.
 /// </para>
 /// </remarks>
 public interface IKaleidoRegistryStore
@@ -64,8 +64,20 @@ public interface IKaleidoRegistryStore
     Task<string> GetOrSetCurrentVersionAsync(string serviceName, string serviceVersion, CancellationToken cancellationToken);
 
     /// <summary>
-    /// The registrations (without their capabilities), the instances and each service's current version,
-    /// for the registry to build its view.
+    /// Keeps the registry's watch alive, in one atomic statement: every registry node touches it
+    /// regularly, so while one is running the watch is unbroken. When no registry node touched it within
+    /// <paramref name="lease"/> (every one was down), the watch resumes at <paramref name="nowUtc"/>: service
+    /// instances not heard from since are Unknown, and their silence is not counted against them.
+    /// </summary>
+    /// <param name="nowUtc">The touch's time, on the registry's clock.</param>
+    /// <param name="lease">How long the watch stays unbroken without a touch.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    /// <returns>When the current unbroken watch began (UTC).</returns>
+    Task<DateTimeOffset> TouchWatchAsync(DateTimeOffset nowUtc, TimeSpan lease, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The registrations (without their capabilities), the instances, each service's current version and
+    /// when the watch resumed, for the registry to build its view.
     /// </summary>
     Task<RegistryStoreContents> ReadAsync(CancellationToken cancellationToken);
 
@@ -148,4 +160,7 @@ public sealed record RegistryStoreContents
     /// <summary>Each service's current version, by service name.</summary>
     public IReadOnlyDictionary<string, string> CurrentVersions { get; init; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>When the registry's current unbroken watch began (UTC); null before the first touch.</summary>
+    public DateTimeOffset? WatchResumedUtc { get; init; }
 }

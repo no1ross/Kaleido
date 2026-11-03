@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Kaleido.Provider.SQLite;
 
 // The control registry's store on SQLite (#553). Every write is one statement, so it is atomic among
-// many instances and several registry instances on the same database: a registration and the current
+// many instances and several registry nodes on the same database: a registration and the current
 // version are inserted only if absent (ON CONFLICT DO NOTHING), a renewal and a removal check the
 // instance's service in their own WHERE, and the sweep may run anywhere at once.
 internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext dbContext)
@@ -92,6 +92,24 @@ internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext 
             .FirstAsync(cancellationToken);
     }
 
+    // One statement: the watch resumes at now when no registry node touched it within the lease.
+    public async Task<DateTimeOffset> TouchWatchAsync(DateTimeOffset nowUtc, TimeSpan lease, CancellationToken cancellationToken)
+    {
+        var now = nowUtc.UtcTicks;
+        var gap = now - lease.Ticks;
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO RegistryWatch (Id, ResumedUtc, LastSeenUtc) VALUES (1, {now}, {now})
+            ON CONFLICT(Id) DO UPDATE SET
+                ResumedUtc = CASE WHEN LastSeenUtc < {gap} THEN {now} ELSE ResumedUtc END,
+                LastSeenUtc = MAX(LastSeenUtc, {now})
+            """,
+            cancellationToken);
+
+        return Utc(await dbContext.RegistryWatch.AsNoTracking().Where(x => x.Id == 1).Select(x => x.ResumedUtc).FirstAsync(cancellationToken));
+    }
+
     public async Task<RegistryStoreContents> ReadAsync(CancellationToken cancellationToken)
     {
         var registrations = await dbContext.RegistryRegistrations.AsNoTracking()
@@ -99,12 +117,14 @@ internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext 
             .ToListAsync(cancellationToken);
         var instances = await dbContext.RegistryInstances.AsNoTracking().ToListAsync(cancellationToken);
         var current = await dbContext.RegistryCurrentVersions.AsNoTracking().ToListAsync(cancellationToken);
+        var resumed = await dbContext.RegistryWatch.AsNoTracking().Where(x => x.Id == 1).Select(x => (long?)x.ResumedUtc).FirstOrDefaultAsync(cancellationToken);
 
         return new RegistryStoreContents
         {
             Registrations = [.. registrations.Select(x => new RegistryRegistrationRecord { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, Revision = x.Revision, RegisteredUtc = Utc(x.RegisteredUtc) })],
             Instances = [.. instances.Select(ToRecord)],
             CurrentVersions = current.ToDictionary(x => x.ServiceName, x => x.ServiceVersion, StringComparer.OrdinalIgnoreCase),
+            WatchResumedUtc = resumed is { } ticks ? Utc(ticks) : null,
         };
     }
 

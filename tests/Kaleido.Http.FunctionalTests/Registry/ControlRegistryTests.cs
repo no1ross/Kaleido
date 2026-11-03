@@ -8,8 +8,12 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Kaleido.Provider.SQLite;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 
@@ -40,7 +44,7 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         host.Dispose();
     }
 
-    private async Task<IHost> StartAsync(Dictionary<string, string?> extra)
+    private async Task<IHost> StartAsync(Dictionary<string, string?> extra, string? database = null)
     {
         var settings = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -64,7 +68,7 @@ public sealed class ControlRegistryTests : IAsyncLifetime
                     services.AddRouting();
                     services.AddAuthentication(TestAuthHandler.SchemeName).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
                     services.AddAuthorization(o => o.AddPolicy("registry-reader", p => p.RequireRole(ReaderRole)));
-                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new()
+                    var kaleido = services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new()
                     {
                         ServiceName = "registry",
                         AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
@@ -73,8 +77,16 @@ public sealed class ControlRegistryTests : IAsyncLifetime
                     })
                         .AddInMemoryStores()
                         .AddHttp()
-                        .AddControlRegistry()
-                        .AddInMemoryRegistryStore();
+                        .AddControlRegistry();
+
+                    if (database is null)
+                    {
+                        kaleido.AddInMemoryRegistryStore();
+                    }
+                    else
+                    {
+                        kaleido.AddSqliteRegistryStore(database);
+                    }
                 });
                 web.Configure(app =>
                 {
@@ -175,8 +187,10 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(time.GetUtcNow() + TimeSpan.FromSeconds(30), lease!.LeaseUntilUtc);
         var processor = Assert.Single(registry.Processes);
-        Assert.Equal(("radiology", "2026-11"), (processor.ServiceName, processor.ServiceVersion));
-        Assert.Equal(new RegistryServiceStatus { ServiceName = "radiology", ServiceVersion = "2026-11", IsCurrent = true, Address = "https://radiology", ReadyInstances = 1, Instances = 1, Available = true }, Assert.Single(await StatusAsync()));
+        Assert.Equal(("radiology", "2026-11", RegistryCapabilityStatus.Available), (processor.ServiceName, processor.ServiceVersion, processor.Status));
+        var status = Assert.Single(await StatusAsync());
+        Assert.Equal(("radiology", "2026-11", true, "https://radiology", RegistryCapabilityStatus.Available, 1), (status.ServiceName, status.ServiceVersion, status.IsCurrent, status.Address, status.Status, status.ReadyInstances));
+        Assert.Equal((registration.InstanceId, RegistryInstanceState.Ready), (Assert.Single(status.Instances).InstanceId, Assert.Single(status.Instances).State));
     }
 
     // A service may register only as itself (the registrants map), and only with a version.
@@ -207,12 +221,12 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         }
 
         time.Advance(TimeSpan.FromSeconds(25));
-        Assert.True(Assert.Single(await StatusAsync()).Available);
+        Assert.Equal(RegistryCapabilityStatus.Available, Assert.Single(await StatusAsync()).Status);
 
         time.Advance(TimeSpan.FromSeconds(10));
         var status = Assert.Single(await StatusAsync());
-        Assert.Equal((false, 0, 1), (status.Available, status.ReadyInstances, status.Instances));
-        Assert.Single((await ReadAsync()).Processes);
+        Assert.Equal((RegistryCapabilityStatus.Unavailable, 0, RegistryInstanceState.NotReady), (status.Status, status.ReadyInstances, Assert.Single(status.Instances).State));
+        Assert.Equal(RegistryCapabilityStatus.Unavailable, Assert.Single((await ReadAsync()).Processes).Status);
     }
 
     [Fact]
@@ -235,7 +249,7 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         time.Advance(PastTheSnapshot);
 
         Assert.Equal(HttpStatusCode.NoContent, removal.StatusCode);
-        Assert.Equal(0, Assert.Single(await StatusAsync()).Instances);
+        Assert.Empty(Assert.Single(await StatusAsync()).Instances);
     }
 
     // Only Kaleido hosts read the registry, and they get all of it, unfiltered - capabilities a reader's
@@ -313,5 +327,95 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         Assert.True(registry.IsPartial);
         Assert.Equal(new RegistryMissingService { ServiceName = "radiology", ServiceVersion = "2026-11", Reason = "expected" }, Assert.Single(registry.Missing));
         Assert.Equal(HttpStatusCode.BadGateway, strict.StatusCode);
+    }
+
+    // After every registry node was down, a new node serves the registry from the database at once:
+    // what was registered is all there, each instance not heard from since is Unknown and the registry is
+    // Degraded, until the instance's next heartbeat (it never needs to register again).
+    [Fact]
+    public async Task AfterEveryNodeWasDown_TheRegistryServesWhatItStored_UnknownUntilTheInstancesReport()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"kaleido-registry-{Guid.NewGuid():N}.db");
+        var database = $"Data Source={file};Pooling=False";
+        await using (var context = new SqliteKaleidoRegistryDbContext(new DbContextOptionsBuilder<SqliteKaleidoRegistryDbContext>().UseSqlite(database).Options))
+        {
+            await context.Database.EnsureCreatedAsync(Cancel);
+        }
+
+        try
+        {
+            var registration = Radiology();
+            await host.StopAsync(Cancel);
+            host.Dispose();
+            host = await StartAsync([], database);
+            (await RegisterAsync(registration, RadiologyClient)).Dispose();
+            await host.StopAsync(Cancel);
+            host.Dispose();
+
+            time.Advance(TimeSpan.FromMinutes(5));
+            host = await StartAsync([], database);
+            await TouchWatchAsync();
+
+            var registry = await ReadAsync();
+            var status = Assert.Single(await StatusAsync());
+            Assert.Equal(("radiology", RegistryCapabilityStatus.Unknown), (Assert.Single(registry.Processes).ServiceName, Assert.Single(registry.Processes).Status));
+            Assert.Equal((RegistryCapabilityStatus.Unknown, 1, RegistryInstanceState.Unknown), (status.Status, status.UnknownInstances, Assert.Single(status.Instances).State));
+            Assert.Equal(HealthStatus.Degraded, await CompletenessAsync());
+
+            time.Advance(TimeSpan.FromSeconds(5));
+            using (var heartbeat = await SendAsync(Request(HttpMethod.Put, $"/registry/instances/{registration.InstanceId}/heartbeat", RadiologyClient, body: new RegistryHeartbeat())))
+            {
+                Assert.Equal(HttpStatusCode.OK, heartbeat.StatusCode);
+            }
+
+            time.Advance(PastTheSnapshot);
+            Assert.Equal(RegistryCapabilityStatus.Available, Assert.Single((await ReadAsync()).Processes).Status);
+            Assert.Equal(HealthStatus.Healthy, await CompletenessAsync());
+        }
+        finally
+        {
+            await host.StopAsync(CancellationToken.None);
+            SqliteConnection.ClearAllPools();
+            File.Delete(file);
+            host = await StartAsync([]);
+        }
+    }
+
+    // The node's housekeeping touches the watch at startup, in the background; the test touches it at the
+    // same moment, so the reads after it see the watch resumed (the same statement: idempotent).
+    private async Task TouchWatchAsync()
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<IKaleidoRegistryStore>().TouchWatchAsync(time.GetUtcNow(), TimeSpan.FromSeconds(30), Cancel);
+    }
+
+    private async Task<HealthStatus> CompletenessAsync() =>
+        (await host.Services.GetRequiredService<HealthCheckService>().CheckHealthAsync(x => x.Name == "kaleido-registry-completeness", Cancel)).Status;
+
+    // The capabilities alone, for hosts keeping their copy fresh: an instance failing changes the statuses,
+    // not the capabilities, so their ETag still answers 304. Only readers get them.
+    [Fact]
+    public async Task TheCapabilities_AreUnchanged_WhenOnlyAStatusChanges()
+    {
+        var registration = Radiology();
+        (await RegisterAsync(registration, RadiologyClient)).Dispose();
+        using var first = await SendAsync(Request(HttpMethod.Get, "/registry/capabilities", "reader", ReaderRole));
+        var capabilities = await first.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, Cancel);
+
+        using (var failing = await SendAsync(Request(HttpMethod.Put, $"/registry/instances/{registration.InstanceId}/heartbeat", RadiologyClient, body: new RegistryHeartbeat { Healthy = false })))
+        {
+            Assert.Equal(HttpStatusCode.OK, failing.StatusCode);
+        }
+
+        time.Advance(PastTheSnapshot);
+        var check = Request(HttpMethod.Get, "/registry/capabilities", "reader", ReaderRole);
+        check.Headers.IfNoneMatch.Add(first.Headers.ETag!);
+        using var unchanged = await SendAsync(check);
+        using var clerk = await SendAsync(Request(HttpMethod.Get, "/registry/capabilities", "clerk", "clerk"));
+
+        Assert.Equal(RegistryCapabilityStatus.NotReported, Assert.Single(capabilities!.Processes).Status);
+        Assert.Equal(HttpStatusCode.NotModified, unchanged.StatusCode);
+        Assert.Equal(RegistryCapabilityStatus.Unavailable, Assert.Single((await ReadAsync()).Processes).Status);
+        Assert.Equal(HttpStatusCode.Forbidden, clerk.StatusCode);
     }
 }

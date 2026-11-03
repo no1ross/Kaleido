@@ -58,7 +58,7 @@ public sealed class ControlRegistryEndpointRouteBuilderExtensionsTests
             .Select(x => (x.RoutePattern.RawText, x.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.HttpMethodMetadata>()?.HttpMethods.Single()))
             .ToList();
         Assert.Equal(
-            [("/registry/instances", "POST"), ("/registry/instances/{instanceId:guid}/heartbeat", "PUT"), ("/registry/instances/{instanceId:guid}", "DELETE"), ("/registry/", "GET"), ("/registry/status", "GET")],
+            [("/registry/instances", "POST"), ("/registry/instances/{instanceId:guid}/heartbeat", "PUT"), ("/registry/instances/{instanceId:guid}", "DELETE"), ("/registry/", "GET"), ("/registry/status", "GET"), ("/registry/capabilities", "GET")],
             routes);
     }
 

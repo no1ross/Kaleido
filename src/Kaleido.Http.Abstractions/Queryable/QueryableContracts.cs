@@ -180,6 +180,12 @@ public sealed record QueryableSourceResponse
     /// </summary>
     public string? ServiceVersion { get; init; }
 
+    /// <summary>
+    /// The capability's overall status: of its service version, from its instances (#553). Not reported on
+    /// a host that reads no control registry.
+    /// </summary>
+    public RegistryCapabilityStatus Status { get; init; }
+
     /// <summary>The source's public name (its type name). Pass it to the client to query the source.</summary>
     public required string Name { get; init; }
 

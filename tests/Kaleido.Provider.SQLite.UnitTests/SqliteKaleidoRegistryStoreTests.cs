@@ -7,7 +7,7 @@ namespace Kaleido.Provider.SQLite.UnitTests;
 
 // The registry store contract (IKaleidoRegistryStoreTests, #553) on SQLite: each test has its own
 // database file, and every store is its own connection to it, as each registry request (and each
-// registry instance) has - so the concurrent writes run as several writers on one file.
+// registry node) has - so the concurrent writes run as several writers on one file.
 public sealed class SqliteKaleidoRegistryStoreTests
     : IKaleidoRegistryStoreTests, IDisposable
 {

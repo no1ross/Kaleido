@@ -11,6 +11,7 @@ public sealed class ControlRegistryContractUrlsTests
     {
         Assert.Equal("/registry", ControlRegistryContractUrls.Registry);
         Assert.Equal("/registry/status", ControlRegistryContractUrls.Status);
+        Assert.Equal("/registry/capabilities", ControlRegistryContractUrls.Capabilities);
         Assert.Equal("/registry/instances", ControlRegistryContractUrls.Instances);
         Assert.Equal("/registry/instances/4b8d3c1e-2f6a-4c7b-9e0d-1a2b3c4d5e6f", ControlRegistryContractUrls.Instance(InstanceId));
         Assert.Equal("/registry/instances/4b8d3c1e-2f6a-4c7b-9e0d-1a2b3c4d5e6f/heartbeat", ControlRegistryContractUrls.Heartbeat(InstanceId));

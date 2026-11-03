@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Http.Registry;
 
 // The control registry's state in this process only: for development and tests, chosen explicitly with
-// AddInMemoryRegistryStore(). Lost on restart, and not shared between registry instances. Every operation
+// AddInMemoryRegistryStore(). Lost on restart, and not shared between registry nodes. Every operation
 // takes one lock, so each is atomic as the contract requires.
 internal sealed partial class InMemoryKaleidoRegistryStore : IKaleidoRegistryStore
 {
@@ -11,6 +11,7 @@ internal sealed partial class InMemoryKaleidoRegistryStore : IKaleidoRegistrySto
     private readonly Dictionary<Guid, RegistryInstanceRecord> _instances = [];
     private readonly Dictionary<string, string> _current = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
+    private (DateTimeOffset ResumedUtc, DateTimeOffset LastSeenUtc)? _watch;
 
     public InMemoryKaleidoRegistryStore(ILogger<InMemoryKaleidoRegistryStore> logger) => LogInMemoryStoreActive(logger);
 
@@ -99,6 +100,17 @@ internal sealed partial class InMemoryKaleidoRegistryStore : IKaleidoRegistrySto
         }
     }
 
+    public Task<DateTimeOffset> TouchWatchAsync(DateTimeOffset nowUtc, TimeSpan lease, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var resumed = _watch is { } watch && watch.LastSeenUtc >= nowUtc - lease ? watch.ResumedUtc : nowUtc;
+            _watch = (resumed, _watch is { } last && last.LastSeenUtc > nowUtc ? last.LastSeenUtc : nowUtc);
+
+            return Task.FromResult(resumed);
+        }
+    }
+
     public Task<RegistryStoreContents> ReadAsync(CancellationToken cancellationToken)
     {
         lock (_lock)
@@ -108,6 +120,7 @@ internal sealed partial class InMemoryKaleidoRegistryStore : IKaleidoRegistrySto
                 Registrations = [.. _registrations.Values.Select(x => x.Registration)],
                 Instances = [.. _instances.Values],
                 CurrentVersions = new Dictionary<string, string>(_current, StringComparer.OrdinalIgnoreCase),
+                WatchResumedUtc = _watch?.ResumedUtc,
             });
         }
     }
@@ -135,6 +148,6 @@ internal sealed partial class InMemoryKaleidoRegistryStore : IKaleidoRegistrySto
                 ? RegistryInstanceChange.Done
                 : RegistryInstanceChange.NotAllowed;
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoRegistryStore is active. The control registry's registrations and instances are kept in memory only: lost on restart, and not shared between registry instances. Register a durable registry store (e.g. AddSqliteRegistryStore, or AddRegistryStore<T>()) before deploying to production.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryKaleidoRegistryStore is active. The control registry's registrations and instances are kept in memory only: lost on restart, and not shared between registry nodes. Register a durable registry store (e.g. AddSqliteRegistryStore, or AddRegistryStore<T>()) before deploying to production.")]
     private static partial void LogInMemoryStoreActive(ILogger logger);
 }

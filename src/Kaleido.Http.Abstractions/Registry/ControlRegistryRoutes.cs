@@ -10,6 +10,8 @@ internal static class ControlRegistryRoutePaths
 
     public const string Status = "/status";
 
+    public const string Capabilities = "/capabilities";
+
     public const string Instances = "/instances";
 
     public const string Instance = "/instances/{instanceId:guid}";
@@ -22,6 +24,8 @@ internal static class ControlRegistryContractUrls
     public const string Registry = ControlRegistryRoutePaths.Group;
 
     public const string Status = ControlRegistryRoutePaths.Group + ControlRegistryRoutePaths.Status;
+
+    public const string Capabilities = ControlRegistryRoutePaths.Group + ControlRegistryRoutePaths.Capabilities;
 
     public const string Instances = ControlRegistryRoutePaths.Group + ControlRegistryRoutePaths.Instances;
 
@@ -37,4 +41,5 @@ internal static class ControlRegistryEndpointNames
     public const string Deregister = "KaleidoRegistryDeregister";
     public const string Read = "KaleidoRegistryRead";
     public const string Status = "KaleidoRegistryStatus";
+    public const string Capabilities = "KaleidoRegistryCapabilities";
 }

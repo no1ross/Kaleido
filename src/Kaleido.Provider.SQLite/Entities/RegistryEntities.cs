@@ -43,3 +43,13 @@ internal sealed class RegistryCurrentVersionEntity
 
     public string ServiceVersion { get; set; } = string.Empty;
 }
+
+// The registry's watch: one row (Id 1), touched by every registry node.
+internal sealed class RegistryWatchEntity
+{
+    public int Id { get; set; }
+
+    public long ResumedUtc { get; set; }
+
+    public long LastSeenUtc { get; set; }
+}
