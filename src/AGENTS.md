@@ -15,7 +15,8 @@ What each project owns and must not own is stated once, in the root [project bou
 
 - **Project references point one way.** A new reference is an architecture change:
   - `Kaleido` references no other Kaleido project. Its one tooling reference, to the consumer analyzer (`tools/analyzers/Kaleido.Analyzers`), carries only analyzer assets (`Kaleido.nupkg` depends on `Kaleido.Analyzers`; nothing compiles against or runs it).
-  - `Kaleido.Http.Abstractions`, `Kaleido.Observability.OpenTelemetry` and `Kaleido.Provider.SQLite` reference only `Kaleido`.
+  - `Kaleido.Http.Abstractions` and `Kaleido.Observability.OpenTelemetry` reference only `Kaleido`.
+  - A provider (`Kaleido.Provider.<Technology>`) implements every Kaleido store on its technology, so it references the packages whose stores it implements: `Kaleido.Provider.SQLite` references `Kaleido` and `Kaleido.Http.Registry` (#553).
   - `Kaleido.Http` and `Kaleido.Http.Client` reference `Kaleido.Http.Abstractions`.
   - `Kaleido.Http.Mcp` references `Kaleido.Http` and `Kaleido.Http.Client`; `Kaleido.Http.Registry` references `Kaleido.Http`.
 - **One type with behavior per file.** A type with hand-written logic (a method, operator or computed property; records included) is declared in a file named after it - a generic twin by its arity, `ProcessStepHandlerResult<T>` in `ProcessStepHandlerResultOfT.cs` - and has its own unit-test class (KAL0019, KAL1009, [types with behavior](../docs/ANALYZERS.md#types-with-behavior)). Data-only records, an interface with its implementation (KAL0014), exceptions and attributes may share a file. `[ExcludeFromCodeCoverage]` only on data types (KAL0020).
@@ -168,18 +169,7 @@ When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` a
 
 ## Verification
 
-Build all source projects:
-```
-dotnet build src/Kaleido/Kaleido.csproj
-dotnet build src/Kaleido.Http/Kaleido.Http.csproj
-dotnet build src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj
-dotnet build src/Kaleido.Http.Client/Kaleido.Http.Client.csproj
-dotnet build src/Kaleido.Http.Mcp/Kaleido.Http.Mcp.csproj
-dotnet build src/Kaleido.Observability.OpenTelemetry/Kaleido.Observability.OpenTelemetry.csproj
-dotnet build src/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj
-```
-
-Or build the solution:
+Build the solution (or one project, `dotnet build src/<Project>/<Project>.csproj`):
 ```
 dotnet build Kaleido.slnx
 ```

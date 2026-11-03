@@ -155,4 +155,33 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
         var checks = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckServiceOptions>>().Value.Registrations;
         Assert.Equal(["kaleido-outbox"], checks.Select(x => x.Name));
     }
+
+    // #553: the control registry's store, in the registry host's own database (no process store with it).
+    [Fact]
+    public void AddSqliteRegistryStore_RegistersTheRegistryStore_OnItsOwnDatabase()
+    {
+        var services = new ServiceCollection();
+
+        CreateBuilder(services).AddSqliteRegistryStore("Data Source=registry.db");
+
+        Assert.Equal(typeof(SqliteKaleidoRegistryStore), Registered<Kaleido.Http.Registry.IKaleidoRegistryStore>(services));
+        Assert.Null(Registered<IKaleidoContextStore>(services));
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SqliteKaleidoRegistryDbContext>();
+        Assert.Equal("Data Source=registry.db", context.Database.GetConnectionString());
+        Assert.IsType<SqliteKaleidoRegistryStore>(scope.ServiceProvider.GetRequiredService<Kaleido.Http.Registry.IKaleidoRegistryStore>());
+    }
+
+    [Theory]
+    [InlineData("NotAnOption=true")]
+    [InlineData("  ")]
+    public void AddSqliteRegistryStore_WithAnInvalidConnectionString_FailsBeforeRegisteringAnything(string connectionString)
+    {
+        var services = new ServiceCollection();
+
+        Assert.ThrowsAny<Exception>(() => CreateBuilder(services).AddSqliteRegistryStore(connectionString));
+
+        Assert.Empty(services);
+    }
 }

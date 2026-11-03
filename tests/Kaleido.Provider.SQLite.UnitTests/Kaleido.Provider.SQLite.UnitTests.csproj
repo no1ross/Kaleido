@@ -3,5 +3,7 @@
 		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
 		<ProjectReference Include="..\..\src\Kaleido.Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
 		<ProjectReference Include="..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+		<!-- The registry store contract every registry store passes (IKaleidoRegistryStoreTests, #553). -->
+		<ProjectReference Include="..\Kaleido.Http.Registry.UnitTests\Kaleido.Http.Registry.UnitTests.csproj" />
 	</ItemGroup>
 </Project>

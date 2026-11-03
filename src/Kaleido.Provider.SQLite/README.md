@@ -23,6 +23,7 @@ See also:
 - `SqliteKaleidoIdempotencyStore` — example `IKaleidoIdempotencyStore` implementation (idempotent requests, same database)
 - `SqliteKaleidoTransactions` — `IKaleidoTransactions`: one transaction on the shared `DbContext` per process-state transition, so state and events commit together
 - `ISqliteKaleidoTransaction` - the open transaction of the current transition, for an outbox store of the host's own on the same database to join
+- `SqliteKaleidoRegistryStore` - example `IKaleidoRegistryStore` implementation (the control registry's state, #553), on the registry host's own database (`SqliteKaleidoRegistryDbContext`), registered with `AddSqliteRegistryStore`
 - `SqliteKaleidoContextDbContext` — the one EF Core context all of them share (scoped: one per request)
 - `SqliteKaleidoServiceCollectionExtensions` — `AddSqliteContextStore`, `AddSqliteOutboxStore`, `AddSqliteIdempotencyStore`
 
@@ -115,6 +116,12 @@ Every service adds its events to its outbox store, and the relay (`AddOutboxRela
 
 The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, `ServiceName`/`ServiceVersion` columns with an index, times as UTC ticks, `LeaseOwner`/`LeaseUntil` columns). A claim selects due entries and leases them with one `UPDATE` that re-checks the lease (SQLite serializes writers, so two claims cannot overlap); complete and fail are `DELETE`/`UPDATE ... WHERE LeaseOwner = @me AND LeaseUntil > @now`. Parked entries stay in the table: inspect them, fix the cause, and set `IsParked = 0, NextAttemptUtc = 0` to retry them. Relays' heartbeats are in `OutboxRelays` (`InstanceId` primary key, `SeenUtc` as UTC ticks): a row is upserted at each heartbeat, and rows not seen for seven days are deleted.
 
+### Control registry
+
+The control registry (`Kaleido.Http.Registry`, #553) keeps its state in an `IKaleidoRegistryStore`: registrations per service, version and revision (with their capabilities, opaque text), instances with their last heartbeat, and each service's current version. Several registry instances share one store, and a few hundred service instances heartbeat into it, so **every write is atomic on its own**: a registration is inserted only if absent, the current version is set only if absent, a heartbeat (`RenewInstanceAsync`) and a deregistration (`RemoveInstanceAsync`) are each one conditional statement that also checks the instance's service against the services the caller may register, and a sweep (`RemoveInstancesSeenBeforeAsync`) may run on every registry instance at once. `ReadAsync` leaves the capabilities out; the registry reads each revision's once with `GetCapabilitiesAsync`, since a revision never changes.
+
+The SQLite store keeps them in `RegistryRegistrations` (`Revision` primary key), `RegistryInstances` (`InstanceId` primary key, indexed on `LastHeartbeatUtc` and `Revision`) and `RegistryCurrentVersions` (`ServiceName` primary key), service names compared without case, times as UTC ticks. Registrations and the current version use `INSERT ... ON CONFLICT DO NOTHING`; a renewal is `UPDATE ... WHERE InstanceId = @id AND ServiceName IN (@allowed)`. Its database is the registry host's own (`AddSqliteRegistryStore(connectionString)`, created with `SqliteKaleidoRegistryDbContext.Database.EnsureCreatedAsync()`), apart from any service's process database. Registry instances on one node may share the file; on several nodes, use a server database (a store of your own, `AddRegistryStore<T>()`). The shared contract suite (`IKaleidoRegistryStoreTests`, in `Kaleido.Http.Registry.UnitTests`) runs against both the in-memory and the SQLite store, concurrent writers included: derive from it to test your own.
+
 ### Schema changes
 
 The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, or with the step `Version` column in `ProcessStepContexts` (removed, #474), the `IdempotentResults` and `OutboxEvents` tables, the `IdempotentResults` `State`/`LeaseUntilUtc` columns (#285) or its `AdmissionId` column (#441), the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed, before the `ProcessContexts.TargetProcessorName` column (`ProcessRequiredSteps.ProcessorName` removed, #513), or before the process tables were keyed by `ProcessorName`, `ProcessorVersion` and `ProcessId`, `IdempotentResults` and `OutboxEvents` had their service columns and `OutboxRelays` existed (#552) (delete the file; the host's `EnsureCreated` call recreates it at startup). A production store manages its own schema migrations.
@@ -206,5 +213,6 @@ The default in-memory stores are sufficient for tests and single-request process
 
 - `SqliteKaleidoContextStore.cs`, `SqliteKaleidoOutboxStore.cs`, `SqliteKaleidoIdempotencyStore.cs`, `SqliteKaleidoTransactions.cs` — the reference implementations of the contracts
 - `SqliteKaleidoTransaction.cs` - `ISqliteKaleidoTransaction`, for an outbox store of the host's own to join
+- `SqliteKaleidoRegistryStore.cs`, `SqliteKaleidoRegistryDbContext.cs` - the control registry's store and its database
 - `SqliteKaleidoServiceCollectionExtensions.cs` — the three registrations
 - `tests/Kaleido.Provider.SQLite.UnitTests` — the executable contract specification to mirror for your own store

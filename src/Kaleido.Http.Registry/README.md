@@ -90,7 +90,7 @@ checking the instance's service against what the caller may register; a sweep is
 leave the capabilities out (`ReadAsync`); the registry reads each revision's once
 (`GetCapabilitiesAsync`), since a revision never changes. Choose it explicitly:
 `AddInMemoryRegistryStore()` (development and tests: lost on restart, not shared between registry
-instances), or a durable one with `AddRegistryStore<T>()`. Without one, `MapKaleidoControlRegistry()`
+instances), or a durable one: `AddSqliteRegistryStore(connectionString)` (`Kaleido.Provider.SQLite`, one node) or your own with `AddRegistryStore<T>()`, tested by deriving from the shared contract suite `IKaleidoRegistryStoreTests`. Without one, `MapKaleidoControlRegistry()`
 stops startup (`stores_not_chosen`).
 
 ## Where to look

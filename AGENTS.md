@@ -46,7 +46,7 @@ One place owns each fact: a project's README lists its types and entry points, [
 | [`Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md) | the MCP adapter: tools built per caller from the registry (listing, schemas, forms, `call_tool`), calls through the Kaleido clients as the caller | transport or client logic |
 | [`Kaleido.Http.Registry`](./src/Kaleido.Http.Registry/README.md) | the control registry (#553): registration, heartbeats and leases, the store contract and its in-memory store, the merged registry of every service version | the services' own capabilities, routing calls |
 | [`Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) | wiring Kaleido's activity sources and meters into OpenTelemetry (exporters, instrumentation, resource; one of many possible `Kaleido.Observability.<Technology>` providers) | the instrumentation itself, which lives in core on BCL `ActivitySource`/`Meter` |
-| [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) | reference implementations of the store contracts (`IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore`) and of `IKaleidoTransactions` on one SQLite database | production guarantees; production hosts implement the store on their own infrastructure |
+| [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) | reference implementations of the store contracts (`IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore`) and of `IKaleidoTransactions` on one SQLite database, and of the control registry's `IKaleidoRegistryStore` on the registry host's own | production guarantees; production hosts implement the store on their own infrastructure |
 
 ## General contributor rules
 
