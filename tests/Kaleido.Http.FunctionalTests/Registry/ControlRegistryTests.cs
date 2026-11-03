@@ -165,10 +165,12 @@ public sealed class ControlRegistryTests : IAsyncLifetime
     private Task<HttpResponseMessage> RegisterAsync(RegistryInstanceRegistration registration, string? subject, string? roles = null) =>
         SendAsync(Request(HttpMethod.Post, "/registry/instances", subject, roles, registration));
 
-    private async Task<KaleidoRegistry> ReadAsync()
+    private Task<KaleidoRegistry> ReadAsync() => ReadAsAsync("reader", ReaderRole);
+
+    private async Task<KaleidoRegistry> ReadAsAsync(string? subject, string? roles)
     {
-        using var response = await SendAsync(Request(HttpMethod.Get, "/registry", "reader", ReaderRole));
-        response.EnsureSuccessStatusCode();
+        using var response = await SendAsync(Request(HttpMethod.Get, "/registry", subject, roles));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         return (await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, Cancel))!;
     }
@@ -261,25 +263,47 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         Assert.Empty(Assert.Single(await StatusAsync()).Instances);
     }
 
-    // Only Kaleido hosts read the registry, and they get all of it, unfiltered - capabilities a reader's
-    // own roles would not allow included; they filter for their callers. Anyone else is refused.
+    // One registry for everyone: a Kaleido host gets all of it, unfiltered - capabilities its own roles would
+    // not allow included; it filters for its callers. Any other caller (the UI, a user) gets only what it may
+    // use. The documents for keeping a copy fresh, and the status, stay the Kaleido hosts'.
     [Fact]
-    public async Task AReader_GetsTheWholeRegistry_AndNoOneElseReadsIt()
+    public async Task AReader_GetsTheWholeRegistry_AndAnyoneElseWhatTheyMayUse()
     {
         (await RegisterAsync(Radiology(), RadiologyClient)).Dispose();
         (await RegisterAsync(Member(), MemberClient)).Dispose();
 
         var registry = await ReadAsync();
-        using var clerk = await SendAsync(Request(HttpMethod.Get, "/registry", "clerk", "clerk"));
+        var clerk = await ReadAsAsync("clerk", "clerk");
+        var radiologist = await ReadAsAsync("rad", "radiology");
+        var anonymous = await ReadAsAsync(subject: null, roles: null);
         using var clerkStatus = await SendAsync(Request(HttpMethod.Get, "/registry/status", "clerk", "clerk"));
-        using var anonymous = await SendAsync(Request(HttpMethod.Get, "/registry"));
 
-        Assert.Single(registry.Processes);
-        Assert.Single(registry.Queryables);
-        Assert.Equal(2, (await StatusAsync()).Count);
-        Assert.Equal((HttpStatusCode.Forbidden, RegistryErrorCodes.ReaderNotAllowed), (clerk.StatusCode, await CodeAsync(clerk)));
-        Assert.Equal(HttpStatusCode.Forbidden, clerkStatus.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, anonymous.StatusCode);
+        Assert.Equal((1, 1), (registry.Processes.Count, registry.Queryables.Count));
+        Assert.Equal(["MemberSource"], clerk.Queryables.Select(x => x.Name));
+        Assert.DoesNotContain(clerk.Processes, x => x.Steps?.Count > 0);
+        Assert.Equal(["OrderScanStep"], Assert.Single(radiologist.Processes).Steps!.Select(x => x.Name));
+        Assert.Empty(radiologist.Queryables);
+        Assert.Empty(anonymous.Queryables);
+        Assert.DoesNotContain(anonymous.Processes, x => x.Steps?.Count > 0);
+        Assert.NotEqual(clerk.Revision, radiologist.Revision);
+        Assert.Equal((HttpStatusCode.Forbidden, RegistryErrorCodes.ReaderNotAllowed), (clerkStatus.StatusCode, await CodeAsync(clerkStatus)));
+    }
+
+    // A capability naming a policy the registry host does not define is hidden from callers it filters for;
+    // it never fails the read.
+    [Fact]
+    public async Task ACapabilityWithAPolicyTheRegistryLacks_IsHidden_AndTheReadSucceeds()
+    {
+        var member = Member() with
+        {
+            Queryables = [.. Member().Queryables, new QueryableSourceResponse { ServiceName = "member", Name = "AuditSource", QueryUrl = "/member/queryable/auditsource/query", Authorization = new AuthorizationMetadata("member-auditors", []) }],
+        };
+        (await RegisterAsync(member, MemberClient)).Dispose();
+
+        var clerk = await ReadAsAsync("clerk", "clerk");
+
+        Assert.Equal(["MemberSource"], clerk.Queryables.Select(x => x.Name));
+        Assert.Equal(2, (await ReadAsync()).Queryables.Count);
     }
 
     // The statuses have their own ETag: unchanged statuses answer 304.

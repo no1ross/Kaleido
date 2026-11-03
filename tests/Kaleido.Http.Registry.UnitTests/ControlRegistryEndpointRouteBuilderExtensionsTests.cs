@@ -88,7 +88,7 @@ public sealed class ControlRegistryEndpointRouteBuilderExtensionsTests
         { ControlRegistryEndpointNames.Register, typeof(RegistryInstanceRegistration), "200 RegistryLease, 400, 403, 415, 500" },
         { ControlRegistryEndpointNames.Heartbeat, typeof(RegistryHeartbeat), "200 RegistryLease, 400, 403, 404, 415, 500" },
         { ControlRegistryEndpointNames.Deregister, null, "204, 403, 404, 500" },
-        { ControlRegistryEndpointNames.Read, null, "200 KaleidoRegistry, 304, 403, 500, 502 KaleidoRegistry" },
+        { ControlRegistryEndpointNames.Read, null, "200 KaleidoRegistry, 304, 500, 502 KaleidoRegistry" },
         { ControlRegistryEndpointNames.Status, null, "200 KaleidoRegistryStatus, 304, 403, 500" },
         { ControlRegistryEndpointNames.Availability, null, "200 KaleidoRegistryAvailability, 304, 403, 500" },
         { ControlRegistryEndpointNames.Capabilities, null, "200 KaleidoRegistry, 304, 403, 500" },

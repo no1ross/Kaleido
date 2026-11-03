@@ -2,8 +2,8 @@
 
 The control registry (#553): the central registry every Kaleido service registers with and heartbeats
 to. It keeps one record per service and version, each instance's status, and each service's current
-version, and serves the full registry of every service to the other Kaleido hosts. It makes no outbound
-calls; users never read it directly (a router or orchestrator serves them its own registry, filtered).
+version. It serves the registry to everyone through one endpoint: the full registry to the other Kaleido
+hosts, and to any other caller (the UI, a user) only what that caller may use. It makes no outbound calls.
 
 > **Status:** the registry itself (PR 1 of #553). Version routes, the Kaleido gateway, wording overrides
 > and the admin UI follow.
@@ -38,7 +38,7 @@ app.MapKaleidoControlRegistry();
 | `POST /registry/instances` | an instance, with its service's own token | `RegistryLease`; 403 `registry_registrant_not_allowed`; 400 `registry_invalid_registration` |
 | `PUT /registry/instances/{instanceId}/heartbeat` | the instance (`RegistryHeartbeat`: its local health) | `RegistryLease`; 404 `registry_instance_unknown` (register again) |
 | `DELETE /registry/instances/{instanceId}` | the instance, at shutdown | 204; 404 |
-| `GET /registry` | a Kaleido host (`ReaderPolicy`) | the registry, in one call (`KaleidoRegistry`): every processor and query source with its overall `Status`, and `Missing`; unfiltered, with an ETag, 304 and `?strict`; 403 `registry_reader_not_allowed` for anyone else |
+| `GET /registry` | everyone | the registry, in one call (`KaleidoRegistry`): every processor and query source with its overall `Status`, and `Missing`, with an ETag, 304 and `?strict`. Unfiltered for a Kaleido host (`ReaderPolicy`); for any other caller, only the capabilities it may use (by each one's published authorization), with its own ETag |
 | `GET /registry/capabilities` | a Kaleido host keeping its copy fresh, when the availability names a new revision | the capabilities alone (no statuses), with an ETag that changes only with a deployment; 403 for anyone else |
 | `GET /registry/availability` | a Kaleido host keeping its copy fresh | each service version's overall status and current version, no instances (`KaleidoRegistryAvailability`), with an ETag that changes only when one of those does; 403 for anyone else |
 | `GET /registry/status` | operations, the registry's UI | each service version's status in detail, its instances included (`KaleidoRegistryStatus`), with its own ETag (heartbeat times alone do not change it); 403 for anyone else |
@@ -105,7 +105,7 @@ authentication validates each token, and Kaleido reads who the caller is from it
 |---|---|
 | Is the caller a service application, not a user? | `Kaleido:Registry:RegistrantPolicy`, on every registration, heartbeat and deregistration: a host policy only app-only tokens satisfy |
 | Which service may it register? | its app roles naming the services, `{RegistrantRolePrefix}{service}` (`Kaleido.Registrant.code-sets`), assigned to each service's app registration in the IdP; and, as a fallback, the `Kaleido:Registry:Registrants` map (service -> client ids, compared with the token's actor `act`/`azp`/`appid`, else its subject) |
-| May it read the registry? | `Kaleido:Registry:ReaderPolicy`: the Kaleido hosts (services, MCP, the gateway), which get all of it unfiltered and filter it for their own callers |
+| What does it read? | `GET /registry`: all of it, unfiltered, for a caller satisfying `Kaleido:Registry:ReaderPolicy` (the Kaleido hosts: services, MCP), which filter it for their own callers; for anyone else, only the capabilities that caller may use. The documents for keeping a copy fresh and the status are for the Kaleido hosts only |
 
 - A deployment that is not the service fails: it has neither the service's credential nor the app role
   naming the service. A real service registering another one's name gets 403
@@ -117,7 +117,10 @@ authentication validates each token, and Kaleido reads who the caller is from it
   service's app registration the role naming itself when creating it, and the reader role to the hosts
   that read.
 - Which capabilities a caller may *use* is a separate matter: each source's, view's and step's
-  authorization is published in the registry and enforced by its service.
+  authorization is published in the registry and enforced by its service. Filtering `GET /registry` for a
+  user is discovery only, by those published rules: define on the registry host the policies they name
+  (as MCP hosts do); a capability naming a policy the registry host lacks is hidden, with a Warning,
+  never a failed read.
 
 An example with Entra ID: the registry's app registration defines the app roles (`allowedMemberTypes:
 Application`) `Kaleido.RegistryReader` and one `Kaleido.Registrant.{service}` per service, each assigned
