@@ -15,10 +15,9 @@ public sealed class KaleidoRegistryClientOptionsTests
         KaleidoRegistryClientOptions.Validate(sut);
 
         Assert.Equal("registry", sut.ServiceName);
-        Assert.Null(sut.Address);
     }
 
-    public static TheoryData<string> InvalidSettings() => ["no url", "relative url", "ftp url", "relative address", "bad service name"];
+    public static TheoryData<string> InvalidSettings() => ["no url", "relative url", "ftp url", "bad service name"];
 
     [Theory]
     [MemberData(nameof(InvalidSettings))]
@@ -30,7 +29,6 @@ public sealed class KaleidoRegistryClientOptionsTests
             "no url" => sut with { Url = null },
             "relative url" => sut with { Url = "/registry" },
             "ftp url" => sut with { Url = "ftp://registry" },
-            "relative address" => sut with { Address = "code-sets" },
             _ => sut with { ServiceName = "Registry!" },
         };
 
@@ -40,9 +38,4 @@ public sealed class KaleidoRegistryClientOptionsTests
         Assert.StartsWith("Kaleido:Registry:", exception.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void Validate_AnAddress_IsAccepted()
-    {
-        KaleidoRegistryClientOptions.Validate(Sut with { Address = "https://code-sets.internal" });
-    }
 }

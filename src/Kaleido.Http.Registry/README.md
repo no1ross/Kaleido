@@ -40,7 +40,7 @@ app.MapKaleidoControlRegistry();
 | `DELETE /registry/instances/{instanceId}` | the instance, at shutdown | 204; 404 |
 | `GET /registry` | a Kaleido host (`ReaderPolicy`) | the registry, in one call (`KaleidoRegistry`): every processor and query source with its overall `Status`, and `Missing`; unfiltered, with an ETag, 304 and `?strict`; 403 `registry_reader_not_allowed` for anyone else |
 | `GET /registry/capabilities` | a Kaleido host keeping its copy fresh | the capabilities alone (no statuses), with an ETag that changes only with a deployment; 403 for anyone else |
-| `GET /registry/availability` | a Kaleido host keeping its copy fresh | each service version's overall status, current version and address, no instances (`KaleidoRegistryAvailability`), with an ETag that changes only when one of those does; 403 for anyone else |
+| `GET /registry/availability` | a Kaleido host keeping its copy fresh | each service version's overall status and current version, no instances (`KaleidoRegistryAvailability`), with an ETag that changes only when one of those does; 403 for anyone else |
 | `GET /registry/status` | operations, the registry's UI | each service version's status in detail, its instances included (`KaleidoRegistryStatus`), with its own ETag (heartbeat times alone do not change it); 403 for anyone else |
 
 Every endpoint is described for OpenAPI (tag `Control registry`, summary, description, what it accepts,
@@ -66,7 +66,7 @@ are (#564 brings every Kaleido endpoint to the same).
   | `Unknown` | none is ready yet, some have not reported since the registry resumed after it was down |
   | `Unavailable` | none is ready (the version stays listed, with its capabilities): calls will fail |
 
-  The instances themselves (`Ready`, `NotReady`, `Unknown`; last heartbeat; address) are on
+  The instances themselves (`Ready`, `NotReady`, `Unknown`; last heartbeat) are on
   `GET /registry/status`, for operations. Nothing writes a state: each is worked out on every read from
   what the instances reported.
 - **After a restart.** The registry serves what its store holds at once. A new registry node joining
@@ -87,6 +87,14 @@ are (#564 brings every Kaleido endpoint to the same).
 - **Completeness.** `Kaleido:Registry:Expected` lists the processor versions the environment needs; one
   not registered, or a service a published step looks up and nobody registered, is listed in `Missing`
   and makes the registry partial (`?strict` answers 502).
+
+## What the registry does not know
+
+Where anything runs. A service never registers an address or a host: the router maps each
+`/{service}/{version}` route to that version's endpoint, from its own configuration, deployed with each
+version (#553, PR 2). The registry describes what exists - services, versions, capabilities, statuses and
+their logical routes - so no registration can redirect traffic, and no host or DNS name ever needs to be
+kept in step with it.
 
 ## Trust
 
@@ -126,7 +134,7 @@ builder.Services.AddAuthorization(o =>
 
 Validate the token's audience (the registry's own API) in the host's authentication, so a token issued
 for another API is not accepted. Which policies Kaleido needs overall, and their defaults, is #565;
-allowed addresses per service and a production guard are #566.
+a production guard and the host-side docs are #566.
 
 ## Settings (`Kaleido:Registry`)
 

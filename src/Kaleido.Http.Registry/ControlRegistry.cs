@@ -54,7 +54,7 @@ internal sealed class ControlRegistry(
             capabilities,
             cancellationToken);
         await store.SaveInstanceAsync(
-            new RegistryInstanceRecord { InstanceId = registration.InstanceId, ServiceName = registration.ServiceName, ServiceVersion = registration.ServiceVersion, Revision = revision, Address = registration.Address, RegisteredUtc = now, LastHeartbeatUtc = now },
+            new RegistryInstanceRecord { InstanceId = registration.InstanceId, ServiceName = registration.ServiceName, ServiceVersion = registration.ServiceVersion, Revision = revision, RegisteredUtc = now, LastHeartbeatUtc = now },
             cancellationToken);
 
         // The first version registered becomes the service's current one; a later one never takes over here.

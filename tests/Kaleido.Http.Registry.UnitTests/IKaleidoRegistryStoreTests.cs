@@ -39,12 +39,12 @@ public abstract class IKaleidoRegistryStoreTests
     [Fact]
     public async Task AnInstance_IsSaved_AndReplaced()
     {
-        var instance = Instance(V1.Record, At, address: "https://old");
+        var instance = Instance(V1.Record, At);
 
         await CreateStore().SaveInstanceAsync(instance, Cancel);
-        await CreateStore().SaveInstanceAsync(instance with { Address = "https://new", Healthy = false, LastHeartbeatUtc = At.AddSeconds(5) }, Cancel);
+        await CreateStore().SaveInstanceAsync(instance with { Healthy = false, LastHeartbeatUtc = At.AddSeconds(5) }, Cancel);
 
-        Assert.Equal([instance with { Address = "https://new", Healthy = false, LastHeartbeatUtc = At.AddSeconds(5) }], (await CreateStore().ReadAsync(Cancel)).Instances);
+        Assert.Equal([instance with { Healthy = false, LastHeartbeatUtc = At.AddSeconds(5) }], (await CreateStore().ReadAsync(Cancel)).Instances);
     }
 
     // A renewal and a removal check the instance's service against what the caller may change.

@@ -42,14 +42,13 @@ internal static class RegistryTestData
             json);
     }
 
-    public static RegistryInstanceRecord Instance(RegistryRegistrationRecord registration, DateTimeOffset lastHeartbeat, bool healthy = true, string? address = null) =>
+    public static RegistryInstanceRecord Instance(RegistryRegistrationRecord registration, DateTimeOffset lastHeartbeat, bool healthy = true) =>
         new()
         {
             InstanceId = Guid.NewGuid(),
             ServiceName = registration.ServiceName,
             ServiceVersion = registration.ServiceVersion,
             Revision = registration.Revision,
-            Address = address,
             Healthy = healthy,
             RegisteredUtc = registration.RegisteredUtc,
             LastHeartbeatUtc = lastHeartbeat,

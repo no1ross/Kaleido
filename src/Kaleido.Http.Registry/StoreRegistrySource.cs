@@ -98,7 +98,7 @@ internal sealed class StoreRegistrySource(
         var now = time.GetUtcNow();
         var (capabilities, statuses) = Build(contents, now);
         var status = new KaleidoRegistryStatus { Services = statuses, GeneratedAt = now, Revision = RevisionOf(statuses) };
-        List<RegistryServiceAvailability> versions = [.. statuses.Select(x => new RegistryServiceAvailability { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, IsCurrent = x.IsCurrent, Address = x.Address, Status = x.Status })];
+        List<RegistryServiceAvailability> versions = [.. statuses.Select(x => new RegistryServiceAvailability { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, IsCurrent = x.IsCurrent, Status = x.Status })];
         // The hosts check at the registry's pace: the heartbeat interval, and the capabilities' own.
         var availability = new KaleidoRegistryAvailability
         {
@@ -192,7 +192,6 @@ internal sealed class StoreRegistrySource(
             ServiceName = service,
             ServiceVersion = version,
             IsCurrent = currentVersions.TryGetValue(service, out var current) && string.Equals(current, version, StringComparison.Ordinal),
-            Address = instances.OrderByDescending(x => x.Record.LastHeartbeatUtc).Select(x => x.Record.Address).FirstOrDefault(x => x is not null),
             Status = instances.Count == 0 ? RegistryCapabilityStatus.Unavailable
                 : ready == instances.Count ? RegistryCapabilityStatus.Available
                 : ready > 0 ? RegistryCapabilityStatus.Degraded
@@ -202,7 +201,7 @@ internal sealed class StoreRegistrySource(
             UnknownInstances = unknown,
             Instances = [.. instances
                 .OrderBy(x => x.Record.InstanceId)
-                .Select(x => new RegistryInstanceStatus { InstanceId = x.Record.InstanceId, State = x.State, LastHeartbeatUtc = x.Record.LastHeartbeatUtc, Address = x.Record.Address })],
+                .Select(x => new RegistryInstanceStatus { InstanceId = x.Record.InstanceId, State = x.State, LastHeartbeatUtc = x.Record.LastHeartbeatUtc })],
         };
     }
 

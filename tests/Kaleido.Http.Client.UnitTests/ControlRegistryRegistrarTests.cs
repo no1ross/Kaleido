@@ -61,7 +61,6 @@ public sealed class ControlRegistryRegistrarTests
 
         return new ControlRegistryRegistrar(
             factory.Object,
-            new KaleidoRegistryClientOptions { Url = "https://registry.internal", Address = "https://code-sets.internal" },
             new KaleidoServiceOptions { ServiceName = "code-sets", ServiceVersion = "3", InstanceId = InstanceId },
             [local.Object],
             registry.Object,
@@ -103,7 +102,7 @@ public sealed class ControlRegistryRegistrarTests
         var (method, path, body) = Calls[0];
         Assert.Equal((HttpMethod.Post, "/registry/instances"), (method, path));
         var registration = JsonSerializer.Deserialize<RegistryInstanceRegistration>(body!, KaleidoJsonOptions.Options)!;
-        Assert.Equal(("code-sets", "3", InstanceId, "https://code-sets.internal"), (registration.ServiceName, registration.ServiceVersion, registration.InstanceId, registration.Address));
+        Assert.Equal(("code-sets", "3", InstanceId), (registration.ServiceName, registration.ServiceVersion, registration.InstanceId));
         Assert.Equal("CodeSetSource", Assert.Single(registration.Queryables).Name);
         Assert.True(sut.HasRegistered);
         registry.Verify(x => x.RefreshAsync(It.IsAny<CancellationToken>()), Times.Once);

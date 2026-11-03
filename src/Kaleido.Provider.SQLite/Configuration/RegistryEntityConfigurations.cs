@@ -32,7 +32,6 @@ internal sealed class RegistryInstanceEntityConfiguration
         builder.Property(x => x.ServiceName).HasMaxLength(200).UseCollation("NOCASE").IsRequired();
         builder.Property(x => x.ServiceVersion).HasMaxLength(KaleidoServiceOptions.MaxServiceVersionLength).IsRequired();
         builder.Property(x => x.Revision).HasMaxLength(64).IsRequired();
-        builder.Property(x => x.Address).HasMaxLength(2000);
 
         // The sweep removes by last heartbeat; registrations are kept while an instance runs them.
         builder.HasIndex(x => x.LastHeartbeatUtc);

@@ -34,11 +34,11 @@ internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext 
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
-            INSERT INTO RegistryInstances (InstanceId, ServiceName, ServiceVersion, Revision, Address, Healthy, RegisteredUtc, LastHeartbeatUtc)
-            VALUES ({id}, {instance.ServiceName}, {instance.ServiceVersion}, {instance.Revision}, {instance.Address}, {instance.Healthy}, {registered}, {heartbeat})
+            INSERT INTO RegistryInstances (InstanceId, ServiceName, ServiceVersion, Revision, Healthy, RegisteredUtc, LastHeartbeatUtc)
+            VALUES ({id}, {instance.ServiceName}, {instance.ServiceVersion}, {instance.Revision}, {instance.Healthy}, {registered}, {heartbeat})
             ON CONFLICT(InstanceId) DO UPDATE SET
                 ServiceName = excluded.ServiceName, ServiceVersion = excluded.ServiceVersion, Revision = excluded.Revision,
-                Address = excluded.Address, Healthy = excluded.Healthy, RegisteredUtc = excluded.RegisteredUtc,
+                Healthy = excluded.Healthy, RegisteredUtc = excluded.RegisteredUtc,
                 LastHeartbeatUtc = excluded.LastHeartbeatUtc
             """,
             cancellationToken);
@@ -171,7 +171,6 @@ internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext 
             ServiceName = x.ServiceName,
             ServiceVersion = x.ServiceVersion,
             Revision = x.Revision,
-            Address = x.Address,
             Healthy = x.Healthy,
             RegisteredUtc = Utc(x.RegisteredUtc),
             LastHeartbeatUtc = Utc(x.LastHeartbeatUtc),

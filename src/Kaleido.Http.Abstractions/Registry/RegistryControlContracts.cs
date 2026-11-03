@@ -23,13 +23,6 @@ public sealed record RegistryInstanceRegistration
     /// <summary>This instance (<see cref="KaleidoServiceOptions.InstanceId"/>).</summary>
     public required Guid InstanceId { get; init; }
 
-    /// <summary>
-    /// The address the service version is reached at (a DNS name or a load balancer, e.g.
-    /// <c>https://radiology-2026-11.internal</c>), when the host configures one; the platform balances
-    /// across instances behind it.
-    /// </summary>
-    public string? Address { get; init; }
-
     /// <summary>The instance's processors, as its own registry publishes them.</summary>
     public IReadOnlyCollection<ProcessorRegistryResponse> Processes { get; init; }
         = [];
@@ -106,9 +99,6 @@ public sealed record RegistryServiceStatus
     /// </summary>
     public bool IsCurrent { get; init; }
 
-    /// <summary>The address the version is reached at, when one was registered.</summary>
-    public string? Address { get; init; }
-
     /// <summary>The version's overall status, as each of its capabilities carries it.</summary>
     public RegistryCapabilityStatus Status { get; init; }
 
@@ -125,7 +115,8 @@ public sealed record RegistryServiceStatus
 /// <summary>
 /// Each service version's overall availability (<c>GET /registry/availability</c>, #553): what a Kaleido host
 /// keeping its copy of the registry fresh needs, without the instances. Its revision changes only when a
-/// version's status, current version or address does - not when instances come and go within the same status.
+/// version's status or current version does - not when instances come and go within the same status. Where a
+/// version runs is never the registry's: the router maps each version's route to its endpoint.
 /// </summary>
 [ExcludeFromCodeCoverage]
 public sealed record KaleidoRegistryAvailability
@@ -168,9 +159,6 @@ public sealed record RegistryServiceAvailability
     /// <summary>Whether this is the service's current version.</summary>
     public bool IsCurrent { get; init; }
 
-    /// <summary>The address the version is reached at, when one was registered.</summary>
-    public string? Address { get; init; }
-
     /// <summary>The version's overall status, as each of its capabilities carries it.</summary>
     public RegistryCapabilityStatus Status { get; init; }
 }
@@ -187,9 +175,6 @@ public sealed record RegistryInstanceStatus
 
     /// <summary>Its last heartbeat, or its registration (UTC).</summary>
     public DateTimeOffset LastHeartbeatUtc { get; init; }
-
-    /// <summary>The address its version is reached at, as it registered it.</summary>
-    public string? Address { get; init; }
 }
 
 /// <summary>An instance's state, worked out from its last heartbeat whenever the registry is read (#553).</summary>

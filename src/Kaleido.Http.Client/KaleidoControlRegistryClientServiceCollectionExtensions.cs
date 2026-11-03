@@ -23,8 +23,8 @@ public static class KaleidoControlRegistryClientServiceCollectionExtensions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The instance registers at startup (its service, <c>ServiceVersion</c>, <c>InstanceId</c>,
-    /// <see cref="KaleidoRegistryClientOptions.Address"/> and its own capabilities), retrying until it succeeds,
+    /// The instance registers at startup (its service, <c>ServiceVersion</c>, <c>InstanceId</c> and its own
+    /// capabilities - never where it runs: the router maps its route to its endpoint), retrying until it succeeds,
     /// then heartbeats at the interval the registry hands out, with its health from local checks only; it
     /// registers again when the registry no longer knows it, and deregisters at shutdown. The readiness check
     /// <c>kaleido-registration</c> (tagged <c>ready</c>) is unhealthy until it has registered and read the

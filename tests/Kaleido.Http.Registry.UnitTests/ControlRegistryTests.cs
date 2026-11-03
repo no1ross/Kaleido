@@ -41,7 +41,6 @@ public sealed class ControlRegistryTests
             ServiceName = "radiology",
             ServiceVersion = version,
             InstanceId = instance ?? Guid.NewGuid(),
-            Address = "https://radiology-2026-11",
             Processes = [ProcessorWith("radiology", "OrderScanStep")],
             Queryables = [SourceWith("radiology", "ScanSource")],
         };
@@ -69,7 +68,7 @@ public sealed class ControlRegistryTests
         var capabilities = json.ToRegistryEntry();
         Assert.Equal("2026-11", Assert.Single(capabilities.Processes).ServiceVersion);
         Assert.Equal("2026-11", Assert.Single(capabilities.Queryables).ServiceVersion);
-        Assert.Equal(new RegistryInstanceRecord { InstanceId = registration.InstanceId, ServiceName = "radiology", ServiceVersion = "2026-11", Revision = stored.Revision, Address = registration.Address, RegisteredUtc = Start, LastHeartbeatUtc = Start }, instance);
+        Assert.Equal(new RegistryInstanceRecord { InstanceId = registration.InstanceId, ServiceName = "radiology", ServiceVersion = "2026-11", Revision = stored.Revision, RegisteredUtc = Start, LastHeartbeatUtc = Start }, instance);
         store.Verify(x => x.GetOrSetCurrentVersionAsync("radiology", "2026-11", Cancel), Times.Once);
     }
 

@@ -78,7 +78,7 @@ public sealed class StoreRegistrySourceTests
     {
         var registration = Stored("radiology", "2026-11", Entry([ProcessorWith("radiology", "OrderScanStep")], [SourceWith("radiology", "ScanSource")]));
 
-        var instance = Instance(registration, Now, address: "https://radiology");
+        var instance = Instance(registration, Now);
 
         var view = await ViewAsync([registration], [instance], current: ("radiology", "2026-11"));
 
@@ -86,10 +86,10 @@ public sealed class StoreRegistrySourceTests
         Assert.Equal("ScanSource", Assert.Single(view.Queryables).Name);
         var status = Assert.Single(view.Services);
         Assert.Equal(
-            new RegistryServiceStatus { ServiceName = "radiology", ServiceVersion = "2026-11", IsCurrent = true, Address = "https://radiology", Status = RegistryCapabilityStatus.Available, ReadyInstances = 1, Instances = status.Instances },
+            new RegistryServiceStatus { ServiceName = "radiology", ServiceVersion = "2026-11", IsCurrent = true, Status = RegistryCapabilityStatus.Available, ReadyInstances = 1, Instances = status.Instances },
             status);
         Assert.Equal(
-            new RegistryInstanceStatus { InstanceId = instance.InstanceId, State = RegistryInstanceState.Ready, LastHeartbeatUtc = Now, Address = "https://radiology" },
+            new RegistryInstanceStatus { InstanceId = instance.InstanceId, State = RegistryInstanceState.Ready, LastHeartbeatUtc = Now },
             Assert.Single(status.Instances));
         Assert.Empty(view.Missing);
         Assert.Empty(view.Errors);
@@ -180,17 +180,6 @@ public sealed class StoreRegistrySourceTests
 
         Assert.Equal(2, view.Processes.Count);
         Assert.Equal([("1", true), ("2", false)], view.Services.Select(x => (x.ServiceVersion, x.IsCurrent)));
-    }
-
-    // The address the instance seen most recently registered.
-    [Fact]
-    public async Task TheAddress_IsTheOneTheLatestInstanceRegistered()
-    {
-        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
-
-        var view = await ViewAsync([registration], [Instance(registration, Now.AddSeconds(-5), address: "https://old"), Instance(registration, Now, address: "https://new")]);
-
-        Assert.Equal("https://new", Assert.Single(view.Services).Address);
     }
 
     // Missing: an expected processor version, or a service a published step looks up, with no registration.
@@ -410,18 +399,18 @@ public sealed class StoreRegistrySourceTests
     {
         var sut = CreateSut();
         var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
-        contents = new() { Registrations = [registration], Instances = [Instance(registration, Now, address: "https://radiology")], CurrentVersions = new Dictionary<string, string> { ["radiology"] = "1" } };
+        contents = new() { Registrations = [registration], Instances = [Instance(registration, Now)], CurrentVersions = new Dictionary<string, string> { ["radiology"] = "1" } };
 
         var first = await sut.GetAvailabilityAsync(Cancel);
         time.Advance(StoreRegistrySource.ViewTtl);
-        contents = contents with { Instances = [.. contents.Instances, Instance(registration, Now, address: "https://radiology")] };
+        contents = contents with { Instances = [.. contents.Instances, Instance(registration, Now)] };
         var anotherInstance = await sut.GetAvailabilityAsync(Cancel);
         time.Advance(StoreRegistrySource.ViewTtl);
-        contents = contents with { Instances = [.. contents.Instances, Instance(registration, Now, healthy: false, address: "https://radiology")] };
+        contents = contents with { Instances = [.. contents.Instances, Instance(registration, Now, healthy: false)] };
         var degraded = await sut.GetAvailabilityAsync(Cancel);
 
         Assert.Equal(
-            new RegistryServiceAvailability { ServiceName = "radiology", ServiceVersion = "1", IsCurrent = true, Address = "https://radiology", Status = RegistryCapabilityStatus.Available },
+            new RegistryServiceAvailability { ServiceName = "radiology", ServiceVersion = "1", IsCurrent = true, Status = RegistryCapabilityStatus.Available },
             Assert.Single(first.Services));
         Assert.Equal(first.Revision, anotherInstance.Revision);
         Assert.NotEqual(first.Revision, degraded.Revision);

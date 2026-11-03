@@ -134,9 +134,6 @@ public sealed record RegistryInstanceRecord
     /// <summary>The revision (build) it runs.</summary>
     public required string Revision { get; init; }
 
-    /// <summary>The address its version is reached at, when it registered one.</summary>
-    public string? Address { get; init; }
-
     /// <summary>Whether its last heartbeat reported its local checks healthy.</summary>
     public bool Healthy { get; init; } = true;
 

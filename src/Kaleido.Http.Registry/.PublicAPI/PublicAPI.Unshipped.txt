@@ -64,9 +64,7 @@ Kaleido.Http.Registry.RegistryInstanceRecord.ServiceVersion.init -> void
 Kaleido.Http.Registry.RegistryInstanceRecord.Revision.get -> string!
 Kaleido.Http.Registry.RegistryRegistrationRecord.ServiceVersion.init -> void
 Kaleido.Http.Registry.RegistryInstanceRecord.Revision.init -> void
-Kaleido.Http.Registry.RegistryInstanceRecord.Address.get -> string?
 Kaleido.Http.Registry.RegistryRegistrationRecord.Revision.get -> string!
-Kaleido.Http.Registry.RegistryInstanceRecord.Address.init -> void
 Kaleido.Http.Registry.RegistryInstanceRecord.Healthy.get -> bool
 Kaleido.Http.Registry.RegistryInstanceRecord.Healthy.init -> void
 Kaleido.Http.Registry.RegistryRegistrationRecord.Revision.init -> void

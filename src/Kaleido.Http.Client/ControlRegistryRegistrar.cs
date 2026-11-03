@@ -14,7 +14,7 @@ internal interface IControlRegistryRegistrar
 }
 
 // This instance's registration with the control registry (#553). The registry never calls an instance:
-// - at startup it registers (POST /registry/instances: the service, version, instance, address and this
+// - at startup it registers (POST /registry/instances: the service, version, instance and this
 //   host's own capabilities), retrying with jittered backoff (RegistryRetry, +-20%) until it succeeds - a
 //   registration counts only with a lease naming the heartbeat interval, the registry's, never one of this
 //   instance's - then reads the registry at once so its own entry shows;
@@ -26,7 +26,6 @@ internal interface IControlRegistryRegistrar
 // - at shutdown it deregisters (DELETE), best effort.
 internal sealed partial class ControlRegistryRegistrar(
     IHttpClientFactory httpClientFactory,
-    KaleidoRegistryClientOptions options,
     KaleidoServiceOptions serviceOptions,
     IEnumerable<IKaleidoLocalCapabilities> capabilities,
     ICentralRegistrySource registry,
@@ -101,7 +100,6 @@ internal sealed partial class ControlRegistryRegistrar(
             ServiceName = serviceOptions.ServiceName,
             ServiceVersion = serviceOptions.ServiceVersion ?? string.Empty,
             InstanceId = serviceOptions.InstanceId,
-            Address = options.Address,
             Processes = own.Processes,
             Queryables = own.Queryables,
         };

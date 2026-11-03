@@ -124,8 +124,6 @@ Kaleido.Http.Client.KaleidoRegistryClientOptions.<Clone>$() -> Kaleido.Http.Clie
 Kaleido.Http.Client.KaleidoRegistryClientOptions.KaleidoRegistryClientOptions() -> void
 Kaleido.Http.Client.KaleidoRegistryClientOptions.Url.get -> string?
 Kaleido.Http.Client.KaleidoRegistryClientOptions.Url.init -> void
-Kaleido.Http.Client.KaleidoRegistryClientOptions.Address.get -> string?
-Kaleido.Http.Client.KaleidoRegistryClientOptions.Address.init -> void
 Kaleido.Http.Client.KaleidoRegistryClientOptions.ServiceName.get -> string!
 Kaleido.Http.Client.KaleidoRegistryClientOptions.ServiceName.init -> void
 static Kaleido.Http.Client.KaleidoControlRegistryClientServiceCollectionExtensions.AddControlRegistryClient(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

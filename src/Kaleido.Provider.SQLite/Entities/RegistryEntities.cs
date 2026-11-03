@@ -27,8 +27,6 @@ internal sealed class RegistryInstanceEntity
 
     public string Revision { get; set; } = string.Empty;
 
-    public string? Address { get; set; }
-
     public bool Healthy { get; set; }
 
     public long RegisteredUtc { get; set; }

@@ -820,8 +820,6 @@ Kaleido.Http.Registry.RegistryServiceStatus.ServiceName.init -> void
 Kaleido.Http.Registry.RegistryServiceStatus.ServiceVersion.get -> string!
 Kaleido.Http.Registry.RegistryServiceStatus.ServiceVersion.init -> void
 Kaleido.Http.Registry.RegistryServiceStatus.IsCurrent.init -> void
-Kaleido.Http.Registry.RegistryServiceStatus.Address.get -> string?
-Kaleido.Http.Registry.RegistryServiceStatus.Address.init -> void
 Kaleido.Http.Registry.RegistryServiceStatus.ReadyInstances.get -> int
 Kaleido.Http.Registry.RegistryServiceStatus.ReadyInstances.init -> void
 Kaleido.Http.Registry.RegistryServiceStatus.IsCurrent.get -> bool
@@ -843,8 +841,6 @@ Kaleido.Http.Registry.RegistryInstanceRegistration.Processes.get -> System.Colle
 Kaleido.Http.Registry.RegistryInstanceRegistration.Processes.init -> void
 Kaleido.Http.Registry.RegistryInstanceRegistration.Queryables.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Queryable.QueryableSourceResponse!>!
 Kaleido.Http.Registry.RegistryInstanceRegistration.Queryables.init -> void
-Kaleido.Http.Registry.RegistryInstanceRegistration.Address.init -> void
-Kaleido.Http.Registry.RegistryInstanceRegistration.Address.get -> string?
 Kaleido.Http.Registry.RegistryInstanceRegistration.InstanceId.init -> void
 Kaleido.Http.Processor.ProcessorRegistryResponse.ServiceVersion.get -> string?
 Kaleido.Http.Processor.ProcessorRegistryResponse.ServiceVersion.init -> void
@@ -907,8 +903,6 @@ Kaleido.Http.Registry.RegistryInstanceStatus.State.get -> Kaleido.Http.Registry.
 Kaleido.Http.Registry.RegistryInstanceStatus.State.init -> void
 Kaleido.Http.Registry.RegistryInstanceStatus.LastHeartbeatUtc.get -> System.DateTimeOffset
 Kaleido.Http.Registry.RegistryInstanceStatus.LastHeartbeatUtc.init -> void
-Kaleido.Http.Registry.RegistryInstanceStatus.Address.get -> string?
-Kaleido.Http.Registry.RegistryInstanceStatus.Address.init -> void
 Kaleido.Http.Queryable.QueryableSourceResponse.Status.get -> Kaleido.Http.Registry.RegistryCapabilityStatus
 Kaleido.Http.Queryable.QueryableSourceResponse.Status.init -> void
 Kaleido.Http.Processor.ProcessorRegistryResponse.Status.get -> Kaleido.Http.Registry.RegistryCapabilityStatus
@@ -937,8 +931,6 @@ Kaleido.Http.Registry.RegistryServiceAvailability.ServiceVersion.get -> string!
 Kaleido.Http.Registry.RegistryServiceAvailability.ServiceVersion.init -> void
 Kaleido.Http.Registry.RegistryServiceAvailability.IsCurrent.get -> bool
 Kaleido.Http.Registry.RegistryServiceAvailability.IsCurrent.init -> void
-Kaleido.Http.Registry.RegistryServiceAvailability.Address.get -> string?
-Kaleido.Http.Registry.RegistryServiceAvailability.Address.init -> void
 Kaleido.Http.Registry.RegistryServiceAvailability.Status.get -> Kaleido.Http.Registry.RegistryCapabilityStatus
 Kaleido.Http.Registry.RegistryServiceAvailability.Status.init -> void
 Kaleido.Http.Registry.KaleidoRegistryAvailability.Services.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Http.Registry.RegistryServiceAvailability!>!

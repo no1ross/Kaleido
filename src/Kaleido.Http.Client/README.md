@@ -98,7 +98,7 @@ builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
 ```
 
 - **Registering.** At startup the instance registers (its `ServiceName`, `ServiceVersion` - required -,
-  `InstanceId`, `Kaleido:Registry:Address` and its own capabilities), retrying with jittered backoff
+  `InstanceId` and its own capabilities; never where it runs), retrying with jittered backoff
   (1 s doubling, at most 30 s) until it succeeds - a registration counts only with a lease naming the
   interval - then reads the registry at once. It heartbeats at the interval the lease names (+-10%, so a
   fleet spreads), with its health from local checks only
@@ -126,8 +126,8 @@ builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
   `KaleidoRegistryClientOptions.ServiceName`, `registry` by default), which must satisfy the registry's
   reader policy.
 
-Settings (`Kaleido:Registry`, `KaleidoRegistryClientOptions`): `Url` (required), `Address` (this version's
-address, registered with each instance), `ServiceName`. Every interval is the registry's.
+Settings (`Kaleido:Registry`, `KaleidoRegistryClientOptions`): `Url` (required) and `ServiceName`. Every
+interval is the registry's, and no address is registered: where a version runs is the router's to know.
 
 ## Resilience
 

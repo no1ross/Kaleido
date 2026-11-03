@@ -113,7 +113,6 @@ public sealed class ControlRegistryTests : IAsyncLifetime
             ServiceName = "radiology",
             ServiceVersion = version,
             InstanceId = Guid.NewGuid(),
-            Address = "https://radiology",
             Processes =
             [
                 new ProcessorRegistryResponse
@@ -199,7 +198,7 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         var processor = Assert.Single(registry.Processes);
         Assert.Equal(("radiology", "2026-11", RegistryCapabilityStatus.Available), (processor.ServiceName, processor.ServiceVersion, processor.Status));
         var status = Assert.Single(await StatusAsync());
-        Assert.Equal(("radiology", "2026-11", true, "https://radiology", RegistryCapabilityStatus.Available, 1), (status.ServiceName, status.ServiceVersion, status.IsCurrent, status.Address, status.Status, status.ReadyInstances));
+        Assert.Equal(("radiology", "2026-11", true, RegistryCapabilityStatus.Available, 1), (status.ServiceName, status.ServiceVersion, status.IsCurrent, status.Status, status.ReadyInstances));
         Assert.Equal((registration.InstanceId, RegistryInstanceState.Ready), (Assert.Single(status.Instances).InstanceId, Assert.Single(status.Instances).State));
     }
 
