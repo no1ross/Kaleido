@@ -93,7 +93,7 @@ internal sealed partial class KaleidoToolInvoker
             return NotConfirmed(tool, answer?.Action ?? "no answer");
         }
 
-        var arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(state.Arguments, KaleidoJsonOptions.Options) ?? [];
+        var arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(state.Arguments, KaleidoJsonOptions.Options) ?? new(StringComparer.Ordinal);
 
         return await RunStepAsync(
             tool,
