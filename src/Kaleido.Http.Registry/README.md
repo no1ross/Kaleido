@@ -5,8 +5,8 @@ to. It keeps one record per service and version, each instance's status, and eac
 version. It serves the registry to everyone through one endpoint: the full registry to the other Kaleido
 hosts, and to any other caller (the UI, a user) only what that caller may use. It makes no outbound calls.
 
-> **Status:** the registry itself (PR 1 of #553). Version routes, the Kaleido gateway, wording overrides
-> and the admin UI follow.
+> **Status:** the registry itself (PR 1 of #553, [ADR 0037](../../docs/decisions/0037-the-control-registry.md)).
+> Versioned routes everywhere with a required `ServiceVersion`, wording overrides and the admin UI follow.
 
 ## A registry host
 

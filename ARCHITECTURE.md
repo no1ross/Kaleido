@@ -11,6 +11,7 @@ At the highest level, the repository is organized around seven source projects:
 - [`Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP request/response contract types used across server-side and client-side projects
 - [`Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients for consuming remote Process and Queryable endpoints
 - [`Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md) — MCP adapter: publishes the host's (aggregated) registry to AI agents as MCP tools
+- [`Kaleido.Http.Registry`](./src/Kaleido.Http.Registry/README.md) — the control registry: every service registers and heartbeats; it serves the one registry of every service version ([ADR 0037](./docs/decisions/0037-the-control-registry.md))
 - [`Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — optional OpenTelemetry provider (logging, tracing, metrics, OTLP)
 - [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) - reference implementations of the store contracts on one SQLite database (process state, the built-in outbox's storage, idempotent requests) and the transactions that make a state change and its event atomic
 
@@ -28,8 +29,9 @@ Kaleido separates foundational runtime concerns from transport and persistence c
 Kaleido.Http.Mcp ──► Kaleido.Http ────────┐
         │                                 ├──► Kaleido.Http.Abstractions ──► Kaleido
         └──────────► Kaleido.Http.Client ─┘
+Kaleido.Http.Registry ────────────────► Kaleido.Http
 Kaleido.Observability.OpenTelemetry ──► Kaleido
-Kaleido.Provider.SQLite ──────────────► Kaleido
+Kaleido.Provider.SQLite ──────────────► Kaleido, Kaleido.Http.Registry
 ```
 
 - **[`Kaleido`](./src/Kaleido/README.md)** (core) bootstraps the framework and runs Process and Queryable at the application layer: builder state, metadata derived from CLR types, eventing, correlation, both runtimes, the store contract and its in-memory default. It defines no transport endpoints and no ASP.NET Core services.
@@ -37,8 +39,9 @@ Kaleido.Provider.SQLite ──────────────► Kaleido
 - **[`Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md)** holds the wire contracts used at both ends of each HTTP call; errors from every Kaleido endpoint share one shape. Changes here ripple into the server and the clients.
 - **[`Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md)** calls remote Kaleido services: registry, process state, step execution, source and view queries.
 - **[`Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md)** publishes the host's (aggregated) registry to AI agents as MCP tools, built per caller; tool calls go to the services through the Kaleido clients with the caller's credentials.
+- **[`Kaleido.Http.Registry`](./src/Kaleido.Http.Registry/README.md)** is the control registry, a Kaleido host of its own: services register and heartbeat to it (it never calls out), and it serves one `KaleidoRegistry` - unfiltered to Kaleido hosts, which take part with `AddControlRegistryClient()` (in `Kaleido.Http.Client`), and filtered for anyone else. It knows what exists, never where it runs: the gateway routes ([ADR 0037](./docs/decisions/0037-the-control-registry.md)).
 - **[`Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md)** is an optional provider that exports Kaleido's telemetry (core emits BCL `ActivitySource`/`Meter` only).
-- **[`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md)** is a reference store on SQLite (process state, idempotent results, event outbox).
+- **[`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md)** is a reference store on SQLite (process state, idempotent results, event outbox, the control registry's store).
 
 Each README lists the project's types and entry points; [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) describes their internals.
 
@@ -79,6 +82,7 @@ Core runtime concerns live in `Kaleido`. HTTP transport (DI, middleware, routes)
 - [`src/Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) — shared HTTP contracts
 - [`src/Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) — typed HTTP clients
 - [`src/Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md) — MCP adapter
+- [`src/Kaleido.Http.Registry`](./src/Kaleido.Http.Registry/README.md) — the control registry
 - [`src/Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) — OpenTelemetry provider
 - [`src/Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) — SQLite process state provider
 
