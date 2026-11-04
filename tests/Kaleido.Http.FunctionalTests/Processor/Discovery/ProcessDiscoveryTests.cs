@@ -19,7 +19,7 @@ public sealed class ProcessDiscoveryTests(ProcessorAspNetCoreFixture fixture)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var contract =
-            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+            await response.Content.ReadAsync<KaleidoRegistry>();
 
         Assert.NotNull(contract);
 
@@ -45,7 +45,7 @@ public sealed class ProcessDiscoveryTests(ProcessorAspNetCoreFixture fixture)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var registry =
-            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+            await response.Content.ReadAsync<KaleidoRegistry>();
 
         var processor = Assert.Single(registry!.Processes);
         var contract = Assert.Single(processor.Steps!, s => s.Name == RuntimeStepNames.Merge);

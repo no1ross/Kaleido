@@ -25,7 +25,7 @@
        repository-only diagnostic (KAL0xxx, KAL1xxx, MA, RCS), and a deliberate violation (a
        [ProcessStep] with an empty Description) fails with KAL2001: the consumer analyzer flows through the
        package dependency.
-    6. A clean host consumer of every runtime package (Kaleido.Http, .Http.Client, .Http.Mcp,
+    6. A clean host consumer of every runtime package (Kaleido.Http, .Http.Client, .Http.Mcp, .Http.Registry,
        .Provider.SQLite, .Observability.OpenTelemetry) builds, starts, answers its registry and MCP
        endpoints, and stops.
     The consumers live outside the repository and restore Kaleido packages from the local feed only,
@@ -58,6 +58,7 @@ $libraries = @(
     "Kaleido.Http.Abstractions",
     "Kaleido.Http.Client",
     "Kaleido.Http.Mcp",
+    "Kaleido.Http.Registry",
     "Kaleido.Observability.OpenTelemetry",
     "Kaleido.Provider.SQLite"
 )

@@ -27,10 +27,14 @@ internal sealed class KaleidoCallCredentialHandlerFilter(
 
             if (builder.Name is { } name &&
                 providers.Any() &&
-                catalog.Find(name) is { } client)
+                (catalog.Find(name)?.Name ?? RegistryClient(name)) is { } client)
             {
-                builder.AdditionalHandlers.Add(builder.Services.GetRequiredKeyedService<KaleidoCallCredentialHandler>(client.Name));
+                builder.AdditionalHandlers.Add(builder.Services.GetRequiredKeyedService<KaleidoCallCredentialHandler>(client));
             }
         };
     }
+
+    // The control registry's client (#553), when this host takes part in it.
+    private static string? RegistryClient(string name) =>
+        string.Equals(name, CentralRegistrySource.ClientName, StringComparison.Ordinal) ? name : null;
 }

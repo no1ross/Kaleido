@@ -32,12 +32,16 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
             AddClients(builder, config, name, entry);
         }
 
-        // An aggregating host merges these clients' registries into its own (AddHttp() registers
-        // a "no downstream" default; with clients configured, this replaces it).
+        // The host's full registry is these clients' registries (AddHttp() registers the "nothing
+        // beyond this host" default; with clients configured, this replaces it) - unless the host takes part
+        // in the control registry, whose registry is the full one (AddControlRegistryClient(), #553).
         if (config.Clients.Count > 0)
         {
-            builder.Services.Replace(
-                ServiceDescriptor.Scoped<IKaleidoDownstreamRegistries, ClientDownstreamRegistries>());
+            if (!builder.Services.Any(x => x.ServiceType == typeof(CentralRegistrySource)))
+            {
+                builder.Services.Replace(
+                    ServiceDescriptor.Scoped<IKaleidoRegistrySource, ClientFanOutRegistrySource>());
+            }
 
             // With an IKaleidoCallCredentialProvider registered, it decides every call's Authorization
             // (innermost handler); without one the host's own client handlers do, as before.

@@ -12,11 +12,11 @@ internal static class RegistryEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps the unified registry endpoint at <c>GET /{service}/registry</c>.
-    /// Returns a single <see cref="AggregatedRegistryResponse"/> containing this
+    /// Returns a single <see cref="KaleidoRegistry"/> containing this
     /// service's local process and queryable registrations; when
     /// <paramref name="mapOptions"/>.<c>AggregateRegistry</c> is set the response also merges every
     /// downstream client registered via <c>AddHttpClients()</c>.
-    /// <c>ClientErrors</c> reports failed downstream clients. Partial aggregates
+    /// <c>Errors</c> reports failed downstream clients. Partial aggregates
     /// return HTTP 200 by default, or HTTP 502 with the same body when
     /// <c>?strict</c> is requested.
     /// </summary>
@@ -58,13 +58,15 @@ internal static class RegistryEndpointRouteBuilderExtensions
                     GetRegistryAsync(httpContext, mapOptions, cancellationToken))
             .WithName(RegistryEndpointNames.RegistryEndpointName)
             .WithTags("Registry")
-            .Produces<AggregatedRegistryResponse>()
+            .Produces<KaleidoRegistry>()
+            .Produces(StatusCodes.Status304NotModified)
+            .ProducesKaleidoErrors()
             .WithSummary("Get unified registry.")
             .WithDescription(Description(aggregate));
 
         if (aggregate)
         {
-            endpoint.Produces<AggregatedRegistryResponse>(StatusCodes.Status502BadGateway);
+            endpoint.Produces<KaleidoRegistry>(StatusCodes.Status502BadGateway);
         }
 
         return group;
@@ -99,9 +101,20 @@ internal static class RegistryEndpointRouteBuilderExtensions
                 "Registry filtering requires AddHttp() to register the Kaleido HTTP authorizer.");
 
         var forceRefresh = httpContext.Request.Query.ContainsKey("refresh");
-        var strict = httpContext.Request.Query.ContainsKey("strict");
 
         var response = await registry.GetForCallerAsync(forceRefresh, cancellationToken);
+
+        return httpContext.RegistryResult(response, mapOptions.RegistryCacheTtl);
+    }
+
+    /// <summary>
+    /// The registry's HTTP answer, shared with the control registry (#553): the ETag (the revision) and
+    /// <c>Cache-Control</c>, 304 when <c>If-None-Match</c> matches, and 502 with the body for a partial
+    /// response under <c>?strict</c>.
+    /// </summary>
+    internal static IResult RegistryResult(this HttpContext httpContext, KaleidoRegistry response, TimeSpan? cacheTtl)
+    {
+        var strict = httpContext.Request.Query.ContainsKey("strict");
 
         // Freshness contract: Revision hashes the per-caller filtered payload (same
         // content → same ETag); Cache-Control advertises the configured staleness window. Private:
@@ -109,7 +122,7 @@ internal static class RegistryEndpointRouteBuilderExtensions
         var etag = $"\"{response.Revision}\"";
         httpContext.Response.Headers.ETag = etag;
         httpContext.Response.Headers.CacheControl =
-            mapOptions.RegistryCacheTtl is { } ttl
+            cacheTtl is { } ttl
                 ? string.Create(CultureInfo.InvariantCulture, $"private, max-age={(int)ttl.TotalSeconds}")
                 : "private, no-cache";
 
@@ -122,7 +135,7 @@ internal static class RegistryEndpointRouteBuilderExtensions
 
         // ?strict — agents/gateways get a real failure signal when
         // the aggregate is partial; the full body is still included.
-        if (strict && response.ClientErrors.Count > 0)
+        if (strict && response.IsPartial)
         {
             return Results.Json(
                 response,
@@ -137,7 +150,7 @@ internal static class RegistryEndpointRouteBuilderExtensions
         "Returns process and queryable registrations from this service" +
         (aggregate ? " and configured downstream clients. " : ". ") +
         (aggregate
-            ? "A partial aggregate returns HTTP 200 by default with isPartial and clientErrors; " +
+            ? "A partial aggregate returns HTTP 200 by default with isPartial and errors; " +
               "?strict returns HTTP 502 with the same body. Partial results are not cached. "
             : "A successful local-only registry request returns HTTP 200. ") +
         "Process steps carry fully-resolved executeUrl values. " +

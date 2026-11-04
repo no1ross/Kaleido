@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<Description>Reference IKaleidoContextStore for Kaleido on SQLite (process state, idempotent results, event outbox). A worked example of the store contract, not a production provider.</Description>
+		<Description>Reference Kaleido stores on SQLite (process state, idempotent results, event outbox, the control registry). A worked example of the store contracts, not a production provider.</Description>
 		<PackageTags>kaleido;sqlite;entity-framework-core;process-state</PackageTags>
 	</PropertyGroup>
 
@@ -17,6 +17,8 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
+		<!-- One provider per technology implements every Kaleido store it serves: the control registry's too (#553). -->
+		<ProjectReference Include="..\Kaleido.Http.Registry\Kaleido.Http.Registry.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

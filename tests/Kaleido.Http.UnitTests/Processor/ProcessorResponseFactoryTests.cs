@@ -10,11 +10,12 @@ public sealed class ProcessorResponseFactoryTests
     {
         var sut = CreateSut();
         var registration = new ProcessorRegistryItem();
-        var options = new KaleidoServiceOptions { ServiceName = "test-svc" };
+        var options = new KaleidoServiceOptions { ServiceName = "test-svc", ServiceVersion = "2" };
 
         var result = sut.CreateRegistryResponse(registration, options);
 
         Assert.Equal("test-svc", result.ServiceName);
+        Assert.Equal("2", result.ServiceVersion);
         Assert.Empty(result.Steps ?? []);
     }
 

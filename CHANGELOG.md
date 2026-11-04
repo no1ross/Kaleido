@@ -314,6 +314,24 @@ sections.
   - test: KAL1012 and KAL1013 are now KAL1011 and KAL1012.
 
 ### Added
+- **The control registry** (#553, [ADR 0037](docs/decisions/0037-the-control-registry.md)): a new package,
+  `Kaleido.Http.Registry`, and one registry for every service version.
+  - **A registry host** (`AddControlRegistry()`, `MapKaleidoControlRegistry()`, a registry store:
+    in-memory, `AddSqliteRegistryStore`, or the host's own `IKaleidoRegistryStore`) that services register
+    with and heartbeat to; it never calls out. Several nodes share one store; after all nodes were down,
+    old instances are `Unknown` for one lease.
+  - **Each capability carries its version's status** (Available, Degraded, Unknown, Unavailable) in
+    `GET /registry`, which is unfiltered for Kaleido hosts (`Kaleido:Registry:ReaderPolicy`) and filtered
+    for anyone else to what they may use. `GET /registry/availability` and `/registry/capabilities` keep
+    a host's copy fresh; `GET /registry/status` lists every instance.
+  - **Services take part with `AddControlRegistryClient()`** (`Kaleido:Registry:Url`, the gateway): each
+    instance registers its own capabilities, heartbeats at the interval the registry hands out, is ready
+    (`kaleido-registration`) once registered and read, and serves the control registry's registry as its
+    own. A deployment shows on every host within one availability check.
+  - **Trust:** registering needs `Kaleido:Registry:RegistrantPolicy` (an app-only token) and the app role
+    naming the service (`Kaleido.Registrant.{service}`), or the optional `Registrants` map. The registry
+    knows no address: the gateway routes each version.
+  - Error codes `registry_*` ([ERROR_CODES.md](docs/ERROR_CODES.md)).
 - **Deployment modes are stated** (#449): framework-dependent and self-contained publishing are
   supported; trimmed and NativeAOT publishing are not, since discovery and dispatch use reflection
   ([VERSIONING.md](docs/VERSIONING.md#deployment-modes)).
@@ -339,6 +357,12 @@ sections.
 - Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
 
 ### Changed
+- **A policy a host does not define hides what names it** (#553): when a host filters a registry for its
+  caller (MCP, the control registry), a capability whose authorization names a policy the host does not
+  define is treated as not allowed, and the policy is logged once at Warning; it no longer fails the whole
+  read.
+- **A host reading a full registry rebuilds its snapshot when that registry changes** (#553), not on
+  `RegistryCacheTtl`: the control registry's changes reach MCP and lookups at once.
 - **The 1.0 runtime support window is stated** (#528, ADR 0035): the packages stay on `net8.0`; Kaleido supports a
   runtime while Microsoft does (.NET 8 and 9 end on 10 November 2026), and services override the 8.x dependencies
   to patched versions (VERSIONING, SUPPORT, README).

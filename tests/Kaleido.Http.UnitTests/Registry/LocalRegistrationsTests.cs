@@ -5,7 +5,7 @@ namespace Kaleido.Http.Registry.UnitTests;
 public sealed class LocalRegistrationsTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static readonly KaleidoServiceOptions ServiceOptions = new() { ServiceName = "intake" };
+    private static readonly KaleidoServiceOptions ServiceOptions = new() { ServiceName = "intake", ServiceVersion = "2" };
 
     // No Process or Queryable registry at all: a host that only aggregates.
     private static LocalRegistrations CreateSut() =>
@@ -55,6 +55,7 @@ public sealed class LocalRegistrationsTests
 
         Assert.Equal("MemberSource", queryable.Name);
         Assert.Equal("intake", queryable.ServiceName);
+        Assert.Equal("2", queryable.ServiceVersion);
     }
 
     [Fact]
@@ -73,5 +74,25 @@ public sealed class LocalRegistrationsTests
 
         Assert.Empty(sut.Processes());
         Assert.Empty(sut.Queryables());
+    }
+
+    // #553: what this host registers with the control registry - its own processors and sources, no one else's.
+    [Fact]
+    public void Capabilities_AreThisServicesProcessorsAndSources()
+    {
+        var source = new QueryableSourceRegistryItem
+        {
+            SourceType = typeof(object),
+            QueryContextType = typeof(object),
+            ResultType = typeof(object),
+            ParametersType = typeof(object),
+            Name = "MemberSource",
+            DisplayName = "Members",
+        };
+
+        var capabilities = CreateSut([new ProcessorRegistryItem()], [source]).Capabilities();
+
+        Assert.Single(capabilities.Processes);
+        Assert.Equal("MemberSource", Assert.Single(capabilities.Queryables).Name);
     }
 }

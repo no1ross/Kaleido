@@ -45,9 +45,9 @@ internal sealed class RegistrySnapshot(
     /// The snapshot while fresh (and not force-refreshed outside the cooldown); otherwise
     /// <paramref name="build"/> rebuilds it. Only clean (non-partial) snapshots are stored.
     /// </summary>
-    public Task<AggregatedRegistryResponse> GetOrBuildAsync(
+    public Task<KaleidoRegistry> GetOrBuildAsync(
         bool refresh,
-        Func<CancellationToken, Task<AggregatedRegistryResponse>> build,
+        Func<CancellationToken, Task<KaleidoRegistry>> build,
         CancellationToken cancellationToken) =>
         cache.GetOrBuildAsync(_key, CacheTtl, RefreshCooldown, refresh, build, cancellationToken);
 

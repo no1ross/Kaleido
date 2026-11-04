@@ -38,7 +38,7 @@ $work = Join-Path ([System.IO.Path]::GetTempPath()) "kaleido-package-gate-$([gui
 New-Item -ItemType Directory -Path $work | Out-Null
 
 $expected = "Kaleido", "Kaleido.Analyzers", "Kaleido.Http", "Kaleido.Http.Abstractions", "Kaleido.Http.Client",
-    "Kaleido.Http.Mcp", "Kaleido.Observability.OpenTelemetry", "Kaleido.Provider.SQLite"
+    "Kaleido.Http.Mcp", "Kaleido.Http.Registry", "Kaleido.Observability.OpenTelemetry", "Kaleido.Provider.SQLite"
 $version = [regex]::Match((Get-ChildItem $feed -Filter "Kaleido.Http.*.nupkg" | Where-Object Name -match '^Kaleido\.Http\.\d' | Select-Object -First 1).Name, '^Kaleido\.Http\.(.+)\.nupkg$').Groups[1].Value
 
 function Invoke-Gate([string] $packages) {

@@ -56,7 +56,7 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
         var options = Instance<KaleidoClientOptions>(builder.Services);
         Assert.Equal("http://router/", options.BaseUrl);
         Assert.Empty(options.Clients);
-        Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IKaleidoDownstreamRegistries));
+        Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IKaleidoRegistrySource));
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IHttpMessageHandlerBuilderFilter));
         Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(IKaleidoProcessorClientFactory));
         Assert.DoesNotContain(builder.Services, d => d.ImplementationType == typeof(KaleidoClientTransportCheck));
@@ -192,13 +192,13 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
     public void AddHttpClients_WithClients_ReplacesTheDownstreamRegistriesAndAddsTheCredentialFilterOnce()
     {
         var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/" });
-        builder.Services.AddScoped(_ => Mock.Of<IKaleidoDownstreamRegistries>());
+        builder.Services.AddScoped(_ => Mock.Of<IKaleidoRegistrySource>());
 
         builder.AddHttpClients();
         builder.AddHttpClients();
 
-        var downstream = Assert.Single(builder.Services, d => d.ServiceType == typeof(IKaleidoDownstreamRegistries));
-        Assert.Equal(typeof(ClientDownstreamRegistries), downstream.ImplementationType);
+        var downstream = Assert.Single(builder.Services, d => d.ServiceType == typeof(IKaleidoRegistrySource));
+        Assert.Equal(typeof(ClientFanOutRegistrySource), downstream.ImplementationType);
         Assert.Equal(ServiceLifetime.Scoped, downstream.Lifetime);
         Assert.Single(
             builder.Services,

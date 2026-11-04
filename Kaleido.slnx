@@ -35,6 +35,7 @@
     <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
     <Project Path="src/Kaleido.Http.Client/Kaleido.Http.Client.csproj" />
     <Project Path="src/Kaleido.Http.Mcp/Kaleido.Http.Mcp.csproj" />
+    <Project Path="src/Kaleido.Http.Registry/Kaleido.Http.Registry.csproj" />
     <Project Path="src/Kaleido.Http/Kaleido.Http.csproj" />
   </Folder>
   <Folder Name="/test/">
@@ -49,6 +50,7 @@
     <Project Path="tests/Kaleido.Http.FunctionalTests/Kaleido.Http.FunctionalTests.csproj" />
     <Project Path="tests/Kaleido.Http.Mcp.FunctionalTests/Kaleido.Http.Mcp.FunctionalTests.csproj" />
     <Project Path="tests/Kaleido.Http.Mcp.UnitTests/Kaleido.Http.Mcp.UnitTests.csproj" />
+    <Project Path="tests/Kaleido.Http.Registry.UnitTests/Kaleido.Http.Registry.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Http.UnitTests/Kaleido.Http.UnitTests.csproj" />
     <Project Path="tests/Kaleido.IntegrationTests/Kaleido.IntegrationTests.csproj" />
     <Project Path="tests/Kaleido.Observability.OpenTelemetry.UnitTests/Kaleido.Observability.OpenTelemetry.UnitTests.csproj" />

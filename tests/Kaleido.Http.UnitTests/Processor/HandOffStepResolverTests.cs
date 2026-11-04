@@ -1,3 +1,4 @@
+using Kaleido.Http.Queryable;
 using Kaleido.Http.Registry;
 using Kaleido.Registry;
 using Kaleido.UnitTests;
@@ -6,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Http.Processor.UnitTests;
 
 // #198: after a hand-off the runtime answers with the target's next steps by name; the resolver
-// finds them in the target's published registry (its client's cached copy).
+// finds them in the target's processor in the full registry (its current version when versions are known).
 public sealed class HandOffStepResolverTests
     : SutFixture
 {
@@ -24,16 +25,19 @@ public sealed class HandOffStepResolverTests
 
     private static readonly KaleidoNotice TargetNotice = new("target_notice", "The target left something out.");
 
-    private readonly Mock<IKaleidoDownstreamRegistries> downstream = new(MockBehavior.Strict);
+    private readonly Mock<IKaleidoRegistrySource> source = new(MockBehavior.Strict);
 
     private readonly Mock<ILogger<HandOffStepResolver>> logger = new();
 
     public HandOffStepResolverTests() =>
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
-    private HandOffStepResolver CreateSut() => CreateSut(downstream.Object, logger.Object);
+    private HandOffStepResolver CreateSut() => CreateSut(source.Object, logger.Object);
 
-    private static HandOffStepResolver CreateSut(IKaleidoDownstreamRegistries registries, ILogger<HandOffStepResolver> log) => new(registries, log);
+    private static HandOffStepResolver CreateSut(IKaleidoRegistrySource registries, ILogger<HandOffStepResolver> log) => new(registries, log);
+
+    private static KaleidoRegistry Contents(IReadOnlyCollection<ProcessorRegistryResponse> processes, IReadOnlyCollection<QueryableSourceResponse> queryables, IReadOnlyCollection<RegistryReadError> errors) =>
+        new() { Processes = processes, Queryables = queryables, Errors = errors };
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -50,9 +54,14 @@ public sealed class HandOffStepResolverTests
             Steps = [],
         };
 
+    private void Registry(KaleidoRegistry contents, KaleidoRegistryAvailability? status = null)
+    {
+        source.Setup(x => x.GetAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(contents);
+        source.Setup(x => x.GetAvailabilityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(status ?? new KaleidoRegistryAvailability());
+    }
+
     private void Publishes(params ProcessStepResponse[] steps) =>
-        downstream.Setup(x => x.GetServiceAsync(Target, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AggregatedRegistryResponse { Processes = [new ProcessorRegistryResponse { Name = Target, ServiceName = Target, Steps = steps }] });
+        Registry(Contents([new ProcessorRegistryResponse { Name = Target, ServiceName = Target, Steps = steps }], [], []));
 
     private void VerifyWarning(Times times) =>
         logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), times);
@@ -88,7 +97,7 @@ public sealed class HandOffStepResolverTests
         Assert.Null(continuation.RequiredStep);
         Assert.Empty(continuation.AvailableSteps);
         Assert.Same(TargetNotice, continuation.Notice);
-        downstream.VerifyNoOtherCalls();
+        source.VerifyNoOtherCalls();
     }
 
     // A step the target's registry (as this host's client sees it) does not publish is left out with
@@ -106,11 +115,12 @@ public sealed class HandOffStepResolverTests
         VerifyWarning(Times.Once());
     }
 
-    // A registry that cannot be read leaves every step out, with pro_not_permitted and a Warning.
+    // A target the full registry does not have (never registered, or its registry could not be read)
+    // leaves every step out, with pro_not_permitted and a Warning; another service's steps never stand in.
     [Fact]
-    public async Task AnUnreadableTargetRegistry_LeavesEveryStepOut_WithTheNotice()
+    public async Task ATargetTheRegistryDoesNotHave_LeavesEveryStepOut_WithTheNotice()
     {
-        downstream.Setup(x => x.GetServiceAsync(Target, It.IsAny<CancellationToken>())).ReturnsAsync((AggregatedRegistryResponse?)null);
+        Registry(Contents([new ProcessorRegistryResponse { Name = "intake", ServiceName = "intake", Steps = [CaptureMri, Validate] }], [], []));
 
         var continuation = await CreateSut().ResolveAsync(HandedOff(required: CaptureMri.Name, available: [Validate.Name], notice: TargetNotice), Cancel);
 
@@ -118,5 +128,31 @@ public sealed class HandOffStepResolverTests
         Assert.Empty(continuation.AvailableSteps);
         Assert.Equal(ProcessContinuationFilter.NotPermitted, continuation.Notice);
         VerifyWarning(Times.Once());
+    }
+
+    // #553: with the target's versions known, its steps are its current version's.
+    [Fact]
+    public async Task WhenTheRegistryKnowsVersions_TheTargetsCurrentVersion_Answers()
+    {
+        Registry(Contents(
+            [
+                new ProcessorRegistryResponse { Name = Target, ServiceName = Target, ServiceVersion = "1", Steps = [Validate] },
+                new ProcessorRegistryResponse { Name = Target, ServiceName = Target, ServiceVersion = "2", Steps = [Validate, CaptureMri] },
+            ],
+            [],
+            []),
+            new KaleidoRegistryAvailability
+            {
+                Services =
+                [
+                    new RegistryServiceAvailability { ServiceName = Target, ServiceVersion = "1", IsCurrent = true },
+                    new RegistryServiceAvailability { ServiceName = Target, ServiceVersion = "2" },
+                ],
+            });
+
+        var continuation = await CreateSut().ResolveAsync(HandedOff(available: [Validate.Name, CaptureMri.Name]), Cancel);
+
+        Assert.Equal([Validate.Name], continuation.AvailableSteps.Select(x => x.Name));
+        Assert.Equal(ProcessContinuationFilter.NotPermitted, continuation.Notice);
     }
 }

@@ -128,7 +128,7 @@ public sealed class AuthorizationEndpointTests(
         var response = await fixture.Client.GetAsync(RegistryUrl);
 
         var registry =
-            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+            await response.Content.ReadAsync<KaleidoRegistry>();
 
         var processor = Assert.Single(registry!.Processes);
         var step = Assert.Single(processor.Steps!);
@@ -202,7 +202,7 @@ public sealed class AuthorizationEndpointTests(
                 roles: ["viewer"]));
 
         var registry =
-            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+            await response.Content.ReadAsync<KaleidoRegistry>();
 
         var processor = Assert.Single(registry!.Processes);
         Assert.DoesNotContain(
@@ -222,7 +222,7 @@ public sealed class AuthorizationEndpointTests(
                 roles: ["internal"]));
 
         var registry =
-            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+            await response.Content.ReadAsync<KaleidoRegistry>();
 
         var processor = Assert.Single(registry!.Processes);
         Assert.Contains(
@@ -242,7 +242,7 @@ public sealed class AuthorizationEndpointTests(
                 roles: ["viewer"]));
 
         var registry =
-            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+            await response.Content.ReadAsync<KaleidoRegistry>();
 
         Assert.DoesNotContain(
             registry!.Queryables,
@@ -263,7 +263,7 @@ public sealed class AuthorizationEndpointTests(
                 roles: ["admin"]));
 
         var registry =
-            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+            await response.Content.ReadAsync<KaleidoRegistry>();
 
         var context = Assert.Single(registry!.Queryables, r => r.Name == "SecuredRecordContextSource");
         Assert.Null(context.QueryUrl);
@@ -293,7 +293,7 @@ public sealed class AuthorizationEndpointTests(
                 roles: ["internal"]));
 
         var registry =
-            await response.Content.ReadAsync<AggregatedRegistryResponse>();
+            await response.Content.ReadAsync<KaleidoRegistry>();
 
         var secured = Assert.Single(
             registry!.Queryables,
@@ -336,7 +336,7 @@ public sealed class AuthorizationEndpointTests(
             AuthorizationAspNetCoreFixture.AuthenticatedJson(ExecuteUrl, ExecuteBody(AuthorizationStepNames.InternalStep), "alice", role)));
         var registry = await (await fixture.Client.SendAsync(As(
                 AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, RegistryUrl, "alice", role))))
-            .Content.ReadAsync<AggregatedRegistryResponse>();
+            .Content.ReadAsync<KaleidoRegistry>();
 
         var expected = allowed ? HttpStatusCode.OK : HttpStatusCode.Forbidden;
         Assert.Equal(expected, typed.StatusCode);
@@ -364,7 +364,7 @@ public sealed class AuthorizationEndpointTests(
             AuthorizationAspNetCoreFixture.AuthenticatedJson(ExecuteUrl, ExecuteBody(AuthorizationStepNames.InternalStep), "client", "internal")));
         var registry = await (await fixture.Client.SendAsync(Nameless(
                 AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, RegistryUrl, "client", "internal"))))
-            .Content.ReadAsync<AggregatedRegistryResponse>();
+            .Content.ReadAsync<KaleidoRegistry>();
 
         Assert.Equal(HttpStatusCode.OK, typed.StatusCode);
         Assert.Equal(HttpStatusCode.OK, generic.StatusCode);

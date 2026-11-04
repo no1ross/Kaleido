@@ -21,7 +21,7 @@ public sealed class InMemoryRegistrySnapshotStoreTests
     {
         var store = CreateSut();
 
-        var snapshot = new AggregatedRegistryResponse
+        var snapshot = new KaleidoRegistry
         {
             GeneratedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
         };
@@ -37,7 +37,7 @@ public sealed class InMemoryRegistrySnapshotStoreTests
     {
         var store = CreateSut();
 
-        var snapshot = new AggregatedRegistryResponse();
+        var snapshot = new KaleidoRegistry();
 
         await store.SetAsync("kaleido:member", snapshot, TestContext.Current.CancellationToken);
         await store.RemoveAsync("kaleido:member", TestContext.Current.CancellationToken);
@@ -50,7 +50,7 @@ public sealed class InMemoryRegistrySnapshotStoreTests
     {
         var store = CreateSut();
 
-        var snapshot = new AggregatedRegistryResponse();
+        var snapshot = new KaleidoRegistry();
 
         await store.SetAsync("Kaleido:Member", snapshot, TestContext.Current.CancellationToken);
 

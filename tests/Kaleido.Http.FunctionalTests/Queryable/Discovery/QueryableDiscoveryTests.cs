@@ -21,7 +21,7 @@ public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) 
     [Fact]
     public async Task GetRegistry_ReturnsFunctionalRecord()
     {
-        var registry = await _client.GetFromJsonAsync<AggregatedRegistryResponse>("/kaleido/registry", KaleidoJsonOptions.Options);
+        var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/kaleido/registry", KaleidoJsonOptions.Options);
 
         var record = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalRecordContextSource");
 
@@ -37,7 +37,7 @@ public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) 
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var registry = await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options);
+        var registry = await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options);
         var record = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalRecordContextSource");
         var view = Assert.Single(record.Views, x => x.Name == "FunctionalRecordGridView");
 
@@ -53,7 +53,7 @@ public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) 
     [Fact]
     public async Task GetRegistry_PublishesEachFieldsDeclaredCapabilities()
     {
-        var registry = await _client.GetFromJsonAsync<AggregatedRegistryResponse>("/kaleido/registry", KaleidoJsonOptions.Options);
+        var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/kaleido/registry", KaleidoJsonOptions.Options);
         var record = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalRecordContextSource");
         QueryableFieldMetadata Field(string name) => Assert.Single(record.Fields, x => x.Name == name);
 
@@ -80,7 +80,7 @@ public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) 
     [Fact]
     public async Task GetRegistry_PublishesAViewsOwnPaging_NotItsSources()
     {
-        var registry = await _client.GetFromJsonAsync<AggregatedRegistryResponse>("/kaleido/registry", KaleidoJsonOptions.Options);
+        var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/kaleido/registry", KaleidoJsonOptions.Options);
         var source = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalAsyncRecordSource");
         var view = Assert.Single(source.Views, x => x.Name == "FunctionalCodeListView");
 

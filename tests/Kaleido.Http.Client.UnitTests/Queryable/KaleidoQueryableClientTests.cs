@@ -52,7 +52,7 @@ public sealed class KaleidoQueryableClientTests
     {
         var sut = CreateSut();
         remoteRegistry.Setup(x => x.GetAsync(Definition("member"), stamper, Cancel))
-            .ReturnsAsync(new AggregatedRegistryResponse { Queryables = [new QueryableSourceResponse { Name = "my-context", ServiceName = "member" }] });
+            .ReturnsAsync(new KaleidoRegistry { Queryables = [new QueryableSourceResponse { Name = "my-context", ServiceName = "member" }] });
 
         var result = await sut.GetRegistryAsync(Cancel);
 

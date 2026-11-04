@@ -22,7 +22,7 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
     {
         registry
             .Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AggregatedRegistryResponse { Revision = Revision });
+            .ReturnsAsync(new KaleidoRegistry { Revision = Revision });
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
         Assert.Equal("/test/registry", "/" + endpoint.RoutePattern.RawText?.TrimStart('/'));
         Assert.Contains(
             endpoint.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>(),
-            x => x.StatusCode == StatusCodes.Status502BadGateway && x.Type == typeof(AggregatedRegistryResponse));
+            x => x.StatusCode == StatusCodes.Status502BadGateway && x.Type == typeof(KaleidoRegistry));
         var description = endpoint.Metadata.GetMetadata<IEndpointDescriptionMetadata>()!.Description;
         Assert.Contains("and configured downstream clients.", description, StringComparison.Ordinal);
         Assert.Contains("?strict returns HTTP 502", description, StringComparison.Ordinal);
@@ -180,15 +180,15 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task RegistryEndpoint_Strict_WithClientErrors_AnswersBadGatewayWithTheBody()
+    public async Task RegistryEndpoint_Strict_WithErrors_AnswersBadGatewayWithTheBody()
     {
         registry
             .Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AggregatedRegistryResponse
+            .ReturnsAsync(new KaleidoRegistry
             {
                 Revision = Revision,
                 IsPartial = true,
-                ClientErrors = [new RegistryClientError { ClientName = "radiology", ClientType = "Registry", Reason = "down" }],
+                Errors = [new RegistryReadError { Source = "radiology", Reason = "down" }],
             });
         var endpoints = CreateEndpoints(clients: true);
         endpoints.MapRegistry(new KaleidoHttpMapOptions { AggregateRegistry = true });
@@ -196,20 +196,20 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
         var context = await InvokeAsync(endpoints, query: "?strict");
 
         Assert.Equal(StatusCodes.Status502BadGateway, context.Response.StatusCode);
-        var error = Assert.Single(ReadJson(context).GetProperty("clientErrors").EnumerateArray());
-        Assert.Equal("radiology", error.GetProperty("clientName").GetString());
+        var error = Assert.Single(ReadJson(context).GetProperty("errors").EnumerateArray());
+        Assert.Equal("radiology", error.GetProperty("source").GetString());
     }
 
     [Fact]
-    public async Task RegistryEndpoint_WithClientErrorsButNotStrict_AnswersOk()
+    public async Task RegistryEndpoint_WithErrorsButNotStrict_AnswersOk()
     {
         registry
             .Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AggregatedRegistryResponse
+            .ReturnsAsync(new KaleidoRegistry
             {
                 Revision = Revision,
                 IsPartial = true,
-                ClientErrors = [new RegistryClientError { ClientName = "radiology", ClientType = "Registry", Reason = "down" }],
+                Errors = [new RegistryReadError { Source = "radiology", Reason = "down" }],
             });
         var endpoints = CreateEndpoints(clients: true);
         endpoints.MapRegistry(new KaleidoHttpMapOptions { AggregateRegistry = true });
@@ -220,8 +220,30 @@ public sealed class RegistryEndpointRouteBuilderExtensionsTests
         Assert.True(ReadJson(context).GetProperty("isPartial").GetBoolean());
     }
 
+    // #553: a control registry's response is partial when an expected service is missing; ?strict reports
+    // that too, not only a failed downstream read.
     [Fact]
-    public async Task RegistryEndpoint_Strict_WithoutClientErrors_AnswersOk()
+    public async Task RegistryEndpoint_Strict_WithAMissingService_AnswersBadGateway()
+    {
+        registry
+            .Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KaleidoRegistry
+            {
+                Revision = Revision,
+                IsPartial = true,
+                Missing = [new RegistryMissingService { ServiceName = "clinic", Reason = "expected" }],
+            });
+        var endpoints = CreateEndpoints();
+        endpoints.MapRegistry(new KaleidoHttpMapOptions());
+
+        var context = await InvokeAsync(endpoints, query: "?strict");
+
+        Assert.Equal(StatusCodes.Status502BadGateway, context.Response.StatusCode);
+        Assert.Equal("clinic", Assert.Single(ReadJson(context).GetProperty("missing").EnumerateArray()).GetProperty("serviceName").GetString());
+    }
+
+    [Fact]
+    public async Task RegistryEndpoint_Strict_WithoutErrors_AnswersOk()
     {
         var endpoints = CreateEndpoints();
         endpoints.MapRegistry(new KaleidoHttpMapOptions());

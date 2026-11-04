@@ -87,12 +87,12 @@ public sealed class RegistryAggregationTests : IAsyncLifetime
         using var client = _router!.GetTestClient();
 
         using var response = await client.GetAsync("/router/registry", TestContext.Current.CancellationToken);
-        var registry = await response.Content.ReadFromJsonAsync<AggregatedRegistryResponse>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        var registry = await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(registry);
         Assert.False(registry.IsPartial);
-        Assert.Empty(registry.ClientErrors);
+        Assert.Empty(registry.Errors);
 
         var processor = Assert.Single(registry.Processes, x => x.ServiceName == BehaviorFixture.ServiceName);
         Assert.Contains(processor.InitialSteps, x => x.Name == BehaviorSteps.Start);

@@ -14,7 +14,7 @@ namespace Kaleido.Http.Registry;
 /// client-side), not by the store. Store expiry features are intentionally not
 /// used so in-memory and distributed stores behave identically.
 /// Only clean (non-partial) snapshots are ever written, and they always carry
-/// a populated <see cref="AggregatedRegistryResponse.GeneratedAt"/>.
+/// a populated <see cref="KaleidoRegistry.GeneratedAt"/>.
 /// <para>
 /// Every call is awaited with the caller's cancellation token; nothing blocks on it. An exception
 /// from the store is the caller's failure (the registry read fails and nothing is stored), so a
@@ -26,14 +26,14 @@ namespace Kaleido.Http.Registry;
 public interface IRegistrySnapshotStore
 {
     /// <summary>Returns the snapshot for <paramref name="key"/>, or <see langword="null"/> when absent.</summary>
-    ValueTask<AggregatedRegistryResponse?> GetAsync(
+    ValueTask<KaleidoRegistry?> GetAsync(
         string key,
         CancellationToken cancellationToken);
 
     /// <summary>Stores (or replaces) the snapshot for <paramref name="key"/>.</summary>
     ValueTask SetAsync(
         string key,
-        AggregatedRegistryResponse snapshot,
+        KaleidoRegistry snapshot,
         CancellationToken cancellationToken);
 
     /// <summary>Removes the snapshot for <paramref name="key"/> if present.</summary>

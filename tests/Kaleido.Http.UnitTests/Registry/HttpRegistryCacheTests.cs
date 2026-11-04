@@ -17,16 +17,16 @@ public sealed class HttpRegistryCacheTests
 
     private static IRegistrySnapshotStore CreateStore()
     {
-        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.OrdinalIgnoreCase);
+        var data = new System.Collections.Concurrent.ConcurrentDictionary<string, KaleidoRegistry>(StringComparer.OrdinalIgnoreCase);
         var store = new Mock<IRegistrySnapshotStore>();
         store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns((string k, CancellationToken _) =>
             {
                 data.TryGetValue(k, out var snapshot);
-                return new ValueTask<AggregatedRegistryResponse?>(snapshot);
+                return new ValueTask<KaleidoRegistry?>(snapshot);
             });
-        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, AggregatedRegistryResponse v, CancellationToken _) =>
+        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<KaleidoRegistry>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, KaleidoRegistry v, CancellationToken _) =>
             {
                 data[k] = v;
                 return ValueTask.CompletedTask;
@@ -40,18 +40,17 @@ public sealed class HttpRegistryCacheTests
         return store.Object;
     }
 
-    private static Task<AggregatedRegistryResponse> Clean() =>
-        Task.FromResult(new AggregatedRegistryResponse());
+    private static Task<KaleidoRegistry> Clean() =>
+        Task.FromResult(new KaleidoRegistry());
 
-    private static Task<AggregatedRegistryResponse> Partial() =>
-        Task.FromResult(new AggregatedRegistryResponse
+    private static Task<KaleidoRegistry> Partial() =>
+        Task.FromResult(new KaleidoRegistry
         {
-            ClientErrors =
+            Errors =
             [
-                new RegistryClientError
+                new RegistryReadError
                 {
-                    ClientName = "down",
-                    ClientType = "Registry",
+                    Source = "down",
                     Reason = "unreachable"
                 }
             ]
@@ -133,7 +132,7 @@ public sealed class HttpRegistryCacheTests
     public async Task GetOrBuildAsync_WhenSnapshotOlderThanTtl_Rebuilds()
     {
         var store = CreateStore();
-        await store.SetAsync(Key, new AggregatedRegistryResponse
+        await store.SetAsync(Key, new KaleidoRegistry
         {
             GeneratedAt = Start.AddMinutes(-10)
         }, TestContext.Current.CancellationToken);
@@ -160,7 +159,7 @@ public sealed class HttpRegistryCacheTests
     public async Task GetOrBuildAsync_WhenSnapshotWithinTtl_ServesCached()
     {
         var store = CreateStore();
-        await store.SetAsync(Key, new AggregatedRegistryResponse
+        await store.SetAsync(Key, new KaleidoRegistry
         {
             GeneratedAt = Start
         }, TestContext.Current.CancellationToken);
@@ -209,10 +208,10 @@ public sealed class HttpRegistryCacheTests
     [Fact]
     public async Task GetOrBuildAsync_WhenAnotherCallerBuiltWhileWaiting_ServesThatSnapshot()
     {
-        var builtMeanwhile = new AggregatedRegistryResponse { GeneratedAt = Start, Revision = "meanwhile" };
+        var builtMeanwhile = new KaleidoRegistry { GeneratedAt = Start, Revision = "meanwhile" };
         var store = new Mock<IRegistrySnapshotStore>();
         store.SetupSequence(s => s.GetAsync(Key, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((AggregatedRegistryResponse?)null)
+            .ReturnsAsync((KaleidoRegistry?)null)
             .ReturnsAsync(builtMeanwhile);
         using var sut = CreateSut(store.Object);
         var buildCount = 0;
@@ -231,7 +230,7 @@ public sealed class HttpRegistryCacheTests
 
         Assert.Same(builtMeanwhile, result);
         Assert.Equal(0, buildCount);
-        store.Verify(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()), Times.Never);
+        store.Verify(s => s.SetAsync(It.IsAny<string>(), It.IsAny<KaleidoRegistry>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -260,7 +259,7 @@ public sealed class HttpRegistryCacheTests
     public async Task GetOrBuildAsync_RefreshPastCooldown_Rebuilds()
     {
         var store = CreateStore();
-        await store.SetAsync(Key, new AggregatedRegistryResponse
+        await store.SetAsync(Key, new KaleidoRegistry
         {
             GeneratedAt = Start.AddMinutes(-1)
         }, TestContext.Current.CancellationToken);
@@ -350,13 +349,13 @@ public sealed class HttpRegistryCacheTests
     {
         using var cts = new CancellationTokenSource();
         var store = new Mock<IRegistrySnapshotStore>();
-        store.Setup(s => s.GetAsync(Key, cts.Token)).ReturnsAsync((AggregatedRegistryResponse?)null);
+        store.Setup(s => s.GetAsync(Key, cts.Token)).ReturnsAsync((KaleidoRegistry?)null);
         using var sut = CreateSut(store.Object);
 
         await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => Clean(), cts.Token);
 
         store.Verify(s => s.GetAsync(Key, cts.Token), Times.Exactly(2));
-        store.Verify(s => s.SetAsync(Key, It.IsAny<AggregatedRegistryResponse>(), cts.Token), Times.Once);
+        store.Verify(s => s.SetAsync(Key, It.IsAny<KaleidoRegistry>(), cts.Token), Times.Once);
     }
 
     // A store failure is the caller's failure: nothing is built on top of an unreadable store.
@@ -378,7 +377,7 @@ public sealed class HttpRegistryCacheTests
     public async Task GetOrBuildAsync_WhenCanceled_StopsWithoutStoring()
     {
         var store = new Mock<IRegistrySnapshotStore>();
-        store.Setup(s => s.GetAsync(Key, It.IsAny<CancellationToken>())).ReturnsAsync((AggregatedRegistryResponse?)null);
+        store.Setup(s => s.GetAsync(Key, It.IsAny<CancellationToken>())).ReturnsAsync((KaleidoRegistry?)null);
         using var sut = CreateSut(store.Object);
         using var cts = new CancellationTokenSource();
 
@@ -395,6 +394,28 @@ public sealed class HttpRegistryCacheTests
             },
             cts.Token));
 
-        store.Verify(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()), Times.Never);
+        store.Verify(s => s.SetAsync(It.IsAny<string>(), It.IsAny<KaleidoRegistry>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // #553: what a control registry is missing makes the result partial, but it is the store's truth,
+    // not a failed read, so the result is still kept.
+    [Fact]
+    public async Task GetOrBuildAsync_AResultWithMissingServices_IsPartial_ButKept()
+    {
+        using var sut = CreateSut();
+        var builds = 0;
+
+        Task<KaleidoRegistry> Build()
+        {
+            builds++;
+            return Task.FromResult(new KaleidoRegistry { Missing = [new RegistryMissingService { ServiceName = "clinic", Reason = "expected" }] });
+        }
+
+        var first = await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => Build(), default);
+        var second = await sut.GetOrBuildAsync(Key, null, TimeSpan.Zero, false, _ => Build(), default);
+
+        Assert.True(first.IsPartial);
+        Assert.Same(first, second);
+        Assert.Equal(1, builds);
     }
 }

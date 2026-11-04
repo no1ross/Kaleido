@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using Kaleido.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Authorization;
 
@@ -52,12 +54,16 @@ internal interface IKaleidoAuthorizer
         CancellationToken cancellationToken);
 }
 
-internal sealed class KaleidoAuthorizer(
+internal sealed partial class KaleidoAuthorizer(
     IKaleidoAuthorizationEvaluator evaluator,
     IKaleidoCorrelationContextAccessor correlationAccessor,
-    IHttpContextAccessor httpContextAccessor)
+    IHttpContextAccessor httpContextAccessor,
+    ILogger<KaleidoAuthorizer> logger)
     : IKaleidoAuthorizer
 {
+    // The policies this process was asked for and does not define, each logged once.
+    private static readonly ConcurrentDictionary<string, byte> UnknownPolicies = new(StringComparer.Ordinal);
+
     public bool IsEnforced => evaluator.IsEnforced;
 
     public Task<bool> CanAccessAsync(
@@ -119,6 +125,9 @@ internal sealed class KaleidoAuthorizer(
 
     // The policy bridge stays in the transport — ASP.NET policies evaluate
     // against the live ClaimsPrincipal, which core cannot reconstruct.
+    // A policy this host does not define fails closed (#553): the caller is not allowed, and the policy is
+    // logged once - a host filtering another service's capabilities (the control registry, MCP) may not
+    // define every policy they name, and one of them must not fail the whole read.
     private Func<string, CancellationToken, Task<bool>>? PolicyEvaluator()
     {
         var httpContext = httpContextAccessor.HttpContext;
@@ -130,13 +139,30 @@ internal sealed class KaleidoAuthorizer(
 
         var authorizationService =
             httpContext.RequestServices.GetService<IAuthorizationService>();
+        var policies =
+            httpContext.RequestServices.GetService<IAuthorizationPolicyProvider>();
 
         return authorizationService is null
             ? null
             : async (policy, _) =>
-                (await authorizationService.AuthorizeAsync(
+            {
+                if (policies is not null && await policies.GetPolicyAsync(policy) is null)
+                {
+                    if (UnknownPolicies.TryAdd(policy, 0))
+                    {
+                        LogUnknownPolicy(logger, policy);
+                    }
+
+                    return false;
+                }
+
+                return (await authorizationService.AuthorizeAsync(
                     httpContext.User,
                     resource: null,
                     policy)).Succeeded;
+            };
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Authorization policy '{Policy}' is not defined on this host: capabilities requiring it are treated as not allowed. Define it here as the services that name it do.")]
+    private static partial void LogUnknownPolicy(ILogger logger, string policy);
 }

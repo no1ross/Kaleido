@@ -22,7 +22,7 @@ internal interface IToolCatalogBuilder
     /// <paramref name="nameScope"/> (the unfiltered registry): a capability's tool name depends only on
     /// the capabilities that exist, never on which of them this caller sees (#435).
     /// </summary>
-    ToolCatalog Build(AggregatedRegistryResponse registry, AggregatedRegistryResponse nameScope);
+    ToolCatalog Build(KaleidoRegistry registry, KaleidoRegistry nameScope);
 }
 
 internal sealed partial class ToolCatalogBuilder(
@@ -52,10 +52,10 @@ internal sealed partial class ToolCatalogBuilder(
     private const int MaxListedOutputFields = 15;
 
     // The tools of a registry named within that registry alone (nothing hidden from the caller).
-    public ToolCatalog Build(AggregatedRegistryResponse registry) =>
+    public ToolCatalog Build(KaleidoRegistry registry) =>
         Build(registry, registry);
 
-    public ToolCatalog Build(AggregatedRegistryResponse registry, AggregatedRegistryResponse nameScope)
+    public ToolCatalog Build(KaleidoRegistry registry, KaleidoRegistry nameScope)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(nameScope);
@@ -105,8 +105,8 @@ internal sealed partial class ToolCatalogBuilder(
             IsFrontDoor = frontDoor,
             UnknownListedTools = unknownListed,
             Revision = registry.Revision,
-            IsPartial = registry.IsPartial || registry.ClientErrors.Count > 0,
-            UnavailableServices = registry.ClientErrors.Select(x => x.ClientName).ToArray(),
+            IsPartial = registry.IsPartial || registry.Errors.Count > 0,
+            UnavailableServices = registry.Errors.Select(x => x.Source).ToArray(),
             ProcessServices = processServices,
             MissingDescriptions = context.MissingDescriptions,
             TruncatedNames = context.TruncatedNames,
@@ -777,7 +777,7 @@ internal sealed partial class ToolCatalogBuilder(
     // views of different sources) or by a built-in tool is used by none of them - each gets base_ plus a
     // hash of its own identity. A name therefore depends only on the capabilities that exist, never on
     // which ones a caller sees or their order, and a shared base never resolves to one of them.
-    private Dictionary<string, string> AllocateNames(AggregatedRegistryResponse scope)
+    private Dictionary<string, string> AllocateNames(KaleidoRegistry scope)
     {
         var capabilities = new List<(string Identity, string Base)>();
 

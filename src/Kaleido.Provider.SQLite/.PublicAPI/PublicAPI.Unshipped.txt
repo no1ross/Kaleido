@@ -10,3 +10,6 @@ Kaleido.Provider.SQLite.SqliteKaleidoServiceCollectionExtensions
 static Kaleido.Provider.SQLite.SqliteKaleidoServiceCollectionExtensions.AddSqliteContextStore(this Kaleido.IKaleidoBuilder! builder, string! connectionString) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Provider.SQLite.SqliteKaleidoServiceCollectionExtensions.AddSqliteIdempotencyStore(this Kaleido.IKaleidoBuilder! builder, string! connectionString) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Provider.SQLite.SqliteKaleidoServiceCollectionExtensions.AddSqliteOutboxStore(this Kaleido.IKaleidoBuilder! builder, string! connectionString) -> Kaleido.IKaleidoBuilder!
+Kaleido.Provider.SQLite.SqliteKaleidoRegistryDbContext
+Kaleido.Provider.SQLite.SqliteKaleidoRegistryDbContext.SqliteKaleidoRegistryDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<Kaleido.Provider.SQLite.SqliteKaleidoRegistryDbContext!>! options) -> void
+static Kaleido.Provider.SQLite.SqliteKaleidoServiceCollectionExtensions.AddSqliteRegistryStore(this Kaleido.IKaleidoBuilder! builder, string! connectionString) -> Kaleido.IKaleidoBuilder!

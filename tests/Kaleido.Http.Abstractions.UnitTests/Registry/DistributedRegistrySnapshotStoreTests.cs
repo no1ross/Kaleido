@@ -12,7 +12,7 @@ public sealed class DistributedRegistrySnapshotStoreTests
 {
     private const string Key = "kaleido:router";
 
-    private static readonly AggregatedRegistryResponse Snapshot = new()
+    private static readonly KaleidoRegistry Snapshot = new()
     {
         GeneratedAt = new DateTimeOffset(2026, 10, 22, 12, 0, 0, TimeSpan.Zero),
         Revision = "abc123",
@@ -31,12 +31,12 @@ public sealed class DistributedRegistrySnapshotStoreTests
     // The snapshots this replica keeps in memory (the in-memory store's own rules are tested in its fixture).
     private static IRegistrySnapshotStore MemoryStore()
     {
-        var data = new ConcurrentDictionary<string, AggregatedRegistryResponse>(StringComparer.Ordinal);
+        var data = new ConcurrentDictionary<string, KaleidoRegistry>(StringComparer.Ordinal);
         var store = new Mock<IRegistrySnapshotStore>();
         store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, CancellationToken _) => new ValueTask<AggregatedRegistryResponse?>(data.TryGetValue(k, out var v) ? v : null));
-        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<AggregatedRegistryResponse>(), It.IsAny<CancellationToken>()))
-            .Returns((string k, AggregatedRegistryResponse v, CancellationToken _) =>
+            .Returns((string k, CancellationToken _) => new ValueTask<KaleidoRegistry?>(data.TryGetValue(k, out var v) ? v : null));
+        store.Setup(s => s.SetAsync(It.IsAny<string>(), It.IsAny<KaleidoRegistry>(), It.IsAny<CancellationToken>()))
+            .Returns((string k, KaleidoRegistry v, CancellationToken _) =>
             {
                 data[k] = v;
                 return ValueTask.CompletedTask;

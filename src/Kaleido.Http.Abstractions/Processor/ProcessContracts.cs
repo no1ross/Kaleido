@@ -432,6 +432,18 @@ public sealed record ProcessorRegistryResponse
     /// </summary>
     public string ServiceName { get; init; } = string.Empty;
 
+    /// <summary>
+    /// The service's version (<see cref="KaleidoServiceOptions.ServiceVersion"/>); <see langword="null"/>
+    /// when the service is unversioned. The control registry keeps one entry per service and version (#553).
+    /// </summary>
+    public string? ServiceVersion { get; init; }
+
+    /// <summary>
+    /// The capability's overall status: of its service version, from its instances (#553). Not reported on
+    /// a host that reads no control registry.
+    /// </summary>
+    public RegistryCapabilityStatus Status { get; init; }
+
     /// <summary>The processor's name: the service name, the same value as <see cref="ServiceName"/>.</summary>
     public required string Name { get; init; }
 

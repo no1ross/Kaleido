@@ -42,6 +42,7 @@ internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
         return new ProcessorRegistryResponse
         {
             ServiceName = serviceName,
+            ServiceVersion = serviceOptions.ServiceVersion,
             Name = serviceName,
             Description = serviceOptions.Description,
             DisplayName = serviceOptions.DisplayName,

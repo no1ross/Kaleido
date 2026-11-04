@@ -4,27 +4,35 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Http.Client;
 
 /// <summary>
-/// <see cref="IKaleidoDownstreamRegistries"/> over the clients registered with
-/// <c>AddHttpClients()</c>: one registry fetch per client name, carrying both its Process and Queryable
-/// registrations (<see cref="IKaleidoRemoteRegistry"/>, cached per client). Clients whose
+/// <see cref="IKaleidoRegistrySource"/> over the clients registered with <c>AddHttpClients()</c>, until
+/// the control registry replaces it (#553): one registry fetch per client name, carrying both its Process
+/// and Queryable registrations (<see cref="IKaleidoRemoteRegistry"/>, cached per client). Clients whose
 /// route prefix is this service's own name are skipped — an aggregator must never fetch its own
 /// registry, or the request would recurse through its own endpoint.
 /// </summary>
-internal sealed partial class ClientDownstreamRegistries(
+internal sealed partial class ClientFanOutRegistrySource(
     IKaleidoClientCatalog catalog,
     IKaleidoRemoteRegistry remoteRegistry,
     ICorrelationHeaderStamper headerStamper,
     KaleidoServiceOptions serviceOptions,
-    ILogger<ClientDownstreamRegistries> logger)
-    : IKaleidoDownstreamRegistries
+    ILogger<ClientFanOutRegistrySource> logger)
+    : IKaleidoRegistrySource
 {
-    public async Task<DownstreamRegistries> GetAsync(
+    private static readonly KaleidoRegistryAvailability NoStatus = new();
+
+    // The host merges these clients' registries with its own.
+    public bool IsFullRegistry => false;
+
+    // The clients' services publish no versions' availability.
+    public Task<KaleidoRegistryAvailability> GetAvailabilityAsync(CancellationToken cancellationToken) => Task.FromResult(NoStatus);
+
+    public async Task<KaleidoRegistry> GetAsync(
         int? maxParallelism,
         CancellationToken cancellationToken)
     {
         var processes = new ConcurrentBag<ProcessorRegistryResponse>();
         var queryables = new ConcurrentBag<QueryableSourceResponse>();
-        var errors = new ConcurrentBag<RegistryClientError>();
+        var errors = new ConcurrentBag<RegistryReadError>();
 
         // Bounds the fan-out when a router aggregates many downstreams — null = unbounded (client
         // count is the natural bound).
@@ -50,14 +58,14 @@ internal sealed partial class ClientDownstreamRegistries(
                 }
             }));
 
-        return new DownstreamRegistries(processes.ToArray(), queryables.ToArray(), errors.ToArray());
+        return new KaleidoRegistry { Processes = processes.ToArray(), Queryables = queryables.ToArray(), Errors = errors.ToArray() };
     }
 
     private async Task LoadClientAsync(
         KaleidoClientDefinition client,
         ConcurrentBag<ProcessorRegistryResponse> processes,
         ConcurrentBag<QueryableSourceResponse> queryables,
-        ConcurrentBag<RegistryClientError> errors,
+        ConcurrentBag<RegistryReadError> errors,
         CancellationToken cancellationToken)
     {
         try
@@ -86,16 +94,15 @@ internal sealed partial class ClientDownstreamRegistries(
         {
             LogRegistryClientFailed(logger, ex, client.Name, ex.Message);
 
-            errors.Add(new RegistryClientError
+            errors.Add(new RegistryReadError
             {
-                ClientName = client.Name,
-                ClientType = "Registry",
+                Source = client.Name,
                 Reason = "Registry fetch failed. See server logs for details.",
             });
         }
     }
 
-    public async Task InvalidateAsync(
+    public async Task RefreshAsync(
         CancellationToken cancellationToken)
     {
         foreach (var client in Clients())
@@ -111,33 +118,6 @@ internal sealed partial class ClientDownstreamRegistries(
             {
                 LogInvalidateFailed(logger, ex, client.Name);
             }
-        }
-    }
-
-    public async Task<AggregatedRegistryResponse?> GetServiceAsync(
-        string serviceName,
-        CancellationToken cancellationToken)
-    {
-        var client = Clients().FirstOrDefault(x => string.Equals(x.RoutePrefix, serviceName, StringComparison.OrdinalIgnoreCase));
-
-        if (client is null)
-        {
-            return null;
-        }
-
-        try
-        {
-            return await remoteRegistry.GetAsync(client, headerStamper, cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        // A registry that cannot be read describes nothing (for a lookup: not permitted).
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
-        {
-            LogRegistryClientFailed(logger, ex, client.Name, ex.Message);
-            return null;
         }
     }
 

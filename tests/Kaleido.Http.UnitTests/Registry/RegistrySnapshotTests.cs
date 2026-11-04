@@ -51,11 +51,11 @@ public sealed class RegistrySnapshotTests
             RegistryCacheTtl = TimeSpan.FromMinutes(5),
             RegistryRefreshCooldown = TimeSpan.FromSeconds(3)
         });
-        var built = new AggregatedRegistryResponse();
-        cache.Setup(c => c.GetOrBuildAsync("kaleido:router", TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(3), true, It.IsAny<Func<CancellationToken, Task<AggregatedRegistryResponse>>>(), Cancel))
+        var built = new KaleidoRegistry();
+        cache.Setup(c => c.GetOrBuildAsync("kaleido:router", TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(3), true, It.IsAny<Func<CancellationToken, Task<KaleidoRegistry>>>(), Cancel))
             .ReturnsAsync(built);
 
-        var result = await sut.GetOrBuildAsync(refresh: true, _ => Task.FromResult(new AggregatedRegistryResponse()), Cancel);
+        var result = await sut.GetOrBuildAsync(refresh: true, _ => Task.FromResult(new KaleidoRegistry()), Cancel);
 
         Assert.Same(built, result);
     }
@@ -66,11 +66,11 @@ public sealed class RegistrySnapshotTests
     {
         var sut = CreateSut("router", serviceVersion: "2");
         sut.Configure(new KaleidoHttpMapOptions());
-        var built = new AggregatedRegistryResponse();
-        cache.Setup(c => c.GetOrBuildAsync("kaleido:router@2", It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan>(), false, It.IsAny<Func<CancellationToken, Task<AggregatedRegistryResponse>>>(), Cancel))
+        var built = new KaleidoRegistry();
+        cache.Setup(c => c.GetOrBuildAsync("kaleido:router@2", It.IsAny<TimeSpan?>(), It.IsAny<TimeSpan>(), false, It.IsAny<Func<CancellationToken, Task<KaleidoRegistry>>>(), Cancel))
             .ReturnsAsync(built);
 
-        var result = await sut.GetOrBuildAsync(refresh: false, _ => Task.FromResult(new AggregatedRegistryResponse()), Cancel);
+        var result = await sut.GetOrBuildAsync(refresh: false, _ => Task.FromResult(new KaleidoRegistry()), Cancel);
 
         Assert.Same(built, result);
     }

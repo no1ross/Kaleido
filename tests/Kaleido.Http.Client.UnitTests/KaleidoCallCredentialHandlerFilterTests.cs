@@ -30,6 +30,8 @@ public sealed class KaleidoCallCredentialHandlerFilterTests
         services.AddSingleton(Mock.Of<IKaleidoCallCredentialProvider>());
         services.AddKeyedTransient<KaleidoCallCredentialHandler>("Intake");
         services.AddKeyedTransient<KaleidoCallCredentialHandler>("Member");
+        services.AddSingleton(new KaleidoRegistryClientOptions { Url = "https://registry.internal" });
+        services.AddKeyedTransient<KaleidoCallCredentialHandler>(CentralRegistrySource.ClientName);
 
         var handlers = new List<DelegatingHandler>();
         var builder = new Mock<HttpMessageHandlerBuilder>();
@@ -76,5 +78,16 @@ public sealed class KaleidoCallCredentialHandlerFilterTests
         CreateSut(Mock.Of<IKaleidoCallCredentialProvider>()).Configure(_ => { })(builder.Object);
 
         Assert.Empty(builder.Object.AdditionalHandlers);
+    }
+
+    // #553: the control registry's client gets the handler too, though it is not in the catalog.
+    [Fact]
+    public void WithAProvider_TheControlRegistrysClient_GetsTheCredentialHandler()
+    {
+        var builder = Builder(CentralRegistrySource.ClientName);
+
+        CreateSut(Mock.Of<IKaleidoCallCredentialProvider>()).Configure(_ => { })(builder.Object);
+
+        Assert.IsType<KaleidoCallCredentialHandler>(Assert.Single(builder.Object.AdditionalHandlers));
     }
 }

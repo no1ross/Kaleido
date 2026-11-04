@@ -5,6 +5,8 @@ using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Http.Authorization.UnitTests;
 
@@ -14,7 +16,8 @@ public sealed class KaleidoAuthorizerTests
     private static KaleidoAuthorizer CreateSut(
         Mock<IKaleidoAuthorizationEvaluator> evaluator,
         KaleidoCorrelationContext? caller = null,
-        IHttpContextAccessor? httpContextAccessor = null)
+        IHttpContextAccessor? httpContextAccessor = null,
+        ILogger<KaleidoAuthorizer>? logger = null)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
         correlation
@@ -24,7 +27,8 @@ public sealed class KaleidoAuthorizerTests
         return new(
             evaluator.Object,
             correlation.Object,
-            httpContextAccessor ?? new HttpContextAccessor());
+            httpContextAccessor ?? new HttpContextAccessor(),
+            logger ?? NullLogger<KaleidoAuthorizer>.Instance);
     }
 
     private static Mock<IKaleidoAuthorizationEvaluator> Evaluator(
@@ -270,4 +274,38 @@ public sealed class KaleidoAuthorizerTests
     }
 
     private sealed record Item(string Name, AuthorizationMetadata? Authorization);
+
+    // #553: a policy this host does not define fails closed - not allowed, never an exception - and is
+    // logged once; a defined one is evaluated as before.
+    [Fact]
+    public async Task APolicyThisHostDoesNotDefine_IsNotAllowed_AndLoggedOnce()
+    {
+        var unknown = $"undefined-{Guid.NewGuid():N}";
+        var authz = new Mock<IAuthorizationService>(MockBehavior.Strict);
+        authz.Setup(x => x.AuthorizeAsync(It.IsAny<ClaimsPrincipal>(), null, "defined")).ReturnsAsync(AuthorizationResult.Success());
+        var policies = new Mock<IAuthorizationPolicyProvider>();
+        policies.Setup(x => x.GetPolicyAsync("defined")).ReturnsAsync(new AuthorizationPolicyBuilder().RequireAssertion(_ => true).Build());
+        policies.Setup(x => x.GetPolicyAsync(unknown)).ReturnsAsync((AuthorizationPolicy?)null);
+        Func<string, CancellationToken, Task<bool>>? captured = null;
+        var evaluator = Evaluator();
+        evaluator
+            .Setup(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<KaleidoCorrelationContext>(), It.IsAny<Func<string, CancellationToken, Task<bool>>?>(), It.IsAny<CancellationToken>()))
+            .Callback<AuthorizationMetadata?, KaleidoCorrelationContext, Func<string, CancellationToken, Task<bool>>?, CancellationToken>((_, _, pe, _) => captured = pe)
+            .ReturnsAsync(true);
+        var services = new ServiceCollection().AddSingleton(authz.Object).AddSingleton(policies.Object);
+        var logger = new Mock<ILogger<KaleidoAuthorizer>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        var sut = CreateSut(
+            evaluator,
+            httpContextAccessor: new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() } },
+            logger: logger.Object);
+
+        await sut.CanAccessAsync(new AuthorizationMetadata(unknown, []), TestContext.Current.CancellationToken);
+
+        Assert.NotNull(captured);
+        Assert.False(await captured(unknown, CancellationToken.None));
+        Assert.False(await captured(unknown, CancellationToken.None));
+        Assert.True(await captured("defined", CancellationToken.None));
+        logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains(unknown, StringComparison.Ordinal)), null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+    }
 }

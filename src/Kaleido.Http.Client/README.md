@@ -15,7 +15,7 @@ See also:
 ## What lives here
 
 ### Shared registry fetch
-- `KaleidoRemoteRegistry` — singleton that fetches `GET /{routePrefix}/registry` once per named client and caches the combined `AggregatedRegistryResponse` under the client's own key `kaleido-client:{ServiceName}:{clientName}` in `IRegistrySnapshotStore`; both typed clients project their half (`Processes` / `Queryables`) from it for discovery (`GetRegistryAsync`, a router's aggregation), so a service's registry is only ever fetched once regardless of how many client types consume it. Capability calls never use it: they go to the contract URL built from the route prefix. `InvalidateRegistryAsync()` drops the snapshot — with a distributed store this propagates across all instances sharing it.
+- `KaleidoRemoteRegistry` — singleton that fetches `GET /{routePrefix}/registry` once per named client and caches the combined `KaleidoRegistry` under the client's own key `kaleido-client:{ServiceName}:{clientName}` in `IRegistrySnapshotStore`; both typed clients project their half (`Processes` / `Queryables`) from it for discovery (`GetRegistryAsync`, a router's aggregation), so a service's registry is only ever fetched once regardless of how many client types consume it. Capability calls never use it: they go to the contract URL built from the route prefix. `InvalidateRegistryAsync()` drops the snapshot — with a distributed store this propagates across all instances sharing it.
 
 ### Process client
 - `IKaleidoProcessorClient` (in `Kaleido.Http.Abstractions`) — typed interface for the registry, process state, and step execution
@@ -84,6 +84,52 @@ The per-client `AddKaleidoClient` builder extension is internal — `AddHttpClie
 Failed fetches are never cached - the next call retries naturally.
 
 ---
+
+## Taking part in the control registry
+
+With a control registry (`Kaleido.Http.Registry`, #553), each instance registers itself, and a host's
+registry is the control registry's, not one it builds:
+
+```csharp
+builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
+    .AddHttp()
+    .AddHttpClients()             // still how this host calls other services
+    .AddControlRegistryClient();  // Kaleido:Registry:Url = "https://registry.internal"
+```
+
+- **Registering.** At startup the instance registers (its `ServiceName`, `ServiceVersion` - required -,
+  `InstanceId` and its own capabilities; never where it runs), retrying with jittered backoff
+  (1 s doubling, at most 30 s) until it succeeds - a registration counts only with a lease naming the
+  interval - then reads the registry at once, so the host has it before its first check. It heartbeats at the interval the lease names (+-10%, so a
+  fleet spreads), with its health from local checks only
+  (never one tagged `remote`); answered 404 `registry_instance_unknown`, it registers again; at shutdown
+  it deregisters.
+- **Ready.** `kaleido-registration` (tagged `ready`) is unhealthy until the instance has registered and
+  read the registry once; a later failure (a heartbeat, a read) never makes it not ready, so a registry
+  outage never pulls services out of their load balancers.
+- **One registry, in memory.** `CentralRegistrySource` keeps the control registry's capabilities
+  (`GET /registry/capabilities`) and each version's availability (`GET /registry/availability`), each with
+  its ETag, and composes the one `KaleidoRegistry` every reader on this host gets: each capability with its
+  overall status, never an instance. Reads never call out.
+- **The registry sets the pace.** The host configures no interval: it heartbeats at the interval each lease
+  names, and checks the availability at the interval the availability names (the registry's
+  `HeartbeatInterval`), following a change at its next check. The capabilities are read exactly when the
+  availability names other capabilities than those held (`CapabilitiesRevision`): a deployment shows on
+  every host, capabilities and status together, within one check, and otherwise they are never read
+  again. Until it has read the registry, and after a failed call, it retries at 1 s doubling, at most 30 s.
+- **Served as it is.** It is the full registry: this host serves it, filtered per caller, and its lookups,
+  hand-offs and MCP read it; nothing is merged in. Its revision follows both documents, so the host
+  rebuilds what it serves the moment either changes, whatever `RegistryCacheTtl`. It replaces the
+  per-client fan-out of `AddHttpClients()`, in either order.
+- **When the registry cannot be read,** the last good copy is served, partial (a `RegistryReadError` for
+  `registry`), until a read succeeds.
+- **Its calls are the service's own** (named client `kaleido-registry`): with an
+  `IKaleidoCallCredentialProvider`, it decides their credential (purpose `ServiceOwn`, service
+  `KaleidoRegistryClientOptions.ServiceName`, `registry` by default), which must satisfy the registry's
+  reader policy.
+
+Settings (`Kaleido:Registry`, `KaleidoRegistryClientOptions`): `Url` (required) and `ServiceName`. Every
+interval is the registry's, and no address is registered: where a version runs is the router's to know.
 
 ## Resilience
 
@@ -230,7 +276,7 @@ Sources and views are addressed by their **published names**, the remote type na
 ## Client behavior
 
 Both clients:
-- share `KaleidoRemoteRegistry` — one `GET /{routePrefix}/registry` call per named client, cached as `AggregatedRegistryResponse`; each client projects its half for discovery
+- share `KaleidoRemoteRegistry` — one `GET /{routePrefix}/registry` call per named client, cached as `KaleidoRegistry`; each client projects its half for discovery
 - send step and query calls to the contract URL built from the route prefix (`/{routePrefix}/processes/steps/{step}`, `/{routePrefix}/queryable/{source}[/{view}]/query`), never to a URL read from the registry
 - a non-success registry response (including 404 — every Kaleido service is expected to publish `/{service}/registry`) throws `KaleidoHttpClientException`
 - automatically forward Kaleido correlation headers on outbound requests
@@ -324,6 +370,8 @@ This project does not contain:
 
 ## Where to look
 
+- `ControlRegistryRegistrar.cs`, `RegistrationHealthCheck.cs` - registering, heartbeats, readiness
+- `CentralRegistrySource.cs`, `CentralRegistrySync.cs` - the host's copy of the control registry, and keeping it fresh
 - `../Kaleido.Http.Abstractions/Processor/IKaleidoProcessorClient.cs` — process client interface
 - `Processor/KaleidoProcessorClient.cs` — process client implementation
 - `../Kaleido.Http.Abstractions/Queryable/IKaleidoQueryableClient.cs` — queryable client interface

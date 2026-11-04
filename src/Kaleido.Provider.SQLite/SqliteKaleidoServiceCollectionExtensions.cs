@@ -1,4 +1,5 @@
 using Kaleido.Exceptions;
+using Kaleido.Http.Registry;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -105,24 +106,38 @@ public static class SqliteKaleidoServiceCollectionExtensions
         return builder.AddIdempotencyStore<SqliteKaleidoIdempotencyStore>();
     }
 
+    /// <summary>
+    /// Keeps the control registry's state in SQLite (tables <c>RegistryRegistrations</c>,
+    /// <c>RegistryInstances</c>, <c>RegistryCurrentVersions</c>; #553), in the registry host's own database
+    /// (<see cref="SqliteKaleidoRegistryDbContext"/>), apart from any service's process database. Every write
+    /// is one statement, so several registry nodes may share the database file on one machine.
+    /// </summary>
+    /// <param name="builder">The Kaleido builder of the registry host (<c>AddControlRegistry()</c>).</param>
+    /// <param name="connectionString">The SQLite connection string, e.g. <c>Data Source=registry.db</c>.</param>
+    /// <returns>The builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">
+    /// The connection string is invalid (<see cref="SqliteErrorCodes.InvalidConnectionString"/>); another
+    /// registry store is registered (<c>conflicting_store</c>).
+    /// </exception>
+    public static IKaleidoBuilder AddSqliteRegistryStore(this IKaleidoBuilder builder, string connectionString)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        Validate(connectionString);
+
+        builder.Services.TryAdd(ServiceDescriptor.Scoped(
+            typeof(DbContextOptions<SqliteKaleidoRegistryDbContext>),
+            _ => new DbContextOptionsBuilder<SqliteKaleidoRegistryDbContext>().UseSqlite(connectionString).Options));
+        builder.Services.TryAddScoped<SqliteKaleidoRegistryDbContext>();
+
+        return builder.AddRegistryStore<SqliteKaleidoRegistryStore>();
+    }
+
     // One database for every SQLite store: the first call registers the DbContext, the others must name
     // the same database.
     private static void AddDatabase(IKaleidoBuilder builder, string connectionString)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
-
-        try
-        {
-            _ = new SqliteConnectionStringBuilder(connectionString);
-        }
-        catch (ArgumentException exception)
-        {
-            throw new KaleidoConfigurationException(
-                SqliteErrorCodes.InvalidConnectionString,
-                "The SQLite Kaleido store connection string is invalid.",
-                exception);
-        }
+        Validate(connectionString);
 
         var registered = builder.Services
             .Select(x => x.ImplementationInstance)
@@ -143,6 +158,23 @@ public static class SqliteKaleidoServiceCollectionExtensions
 
         builder.Services.AddSingleton(new SqliteKaleidoDatabase(connectionString));
         builder.Services.AddDbContext<SqliteKaleidoContextDbContext>(options => options.UseSqlite(connectionString));
+    }
+
+    private static void Validate(string connectionString)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+
+        try
+        {
+            _ = new SqliteConnectionStringBuilder(connectionString);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new KaleidoConfigurationException(
+                SqliteErrorCodes.InvalidConnectionString,
+                "The SQLite Kaleido store connection string is invalid.",
+                exception);
+        }
     }
 }
 

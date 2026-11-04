@@ -9,15 +9,18 @@ internal static class QueryableRegistryItemExtensions
 {
     public static QueryableSourceResponse ToResponse(
         this QueryableSourceRegistryItem item,
-        string serviceName)
+        KaleidoServiceOptions serviceOptions)
     {
         ArgumentNullException.ThrowIfNull(item);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
 
+        var serviceName = serviceOptions.ServiceName;
         var sourceName = item.Name.ToLowerInvariant();
 
         return new QueryableSourceResponse
         {
             ServiceName = serviceName,
+            ServiceVersion = serviceOptions.ServiceVersion,
             Name = item.Name,
             Description = item.Description,
             DisplayName = item.DisplayName,
