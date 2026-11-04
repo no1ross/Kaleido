@@ -38,7 +38,7 @@ public interface IKaleidoBuilder
 
 internal sealed class KaleidoBuilder : IKaleidoBuilder
 {
-    private readonly Dictionary<string, Assembly> _assemblies = [];
+    private readonly Dictionary<string, Assembly> _assemblies = new(StringComparer.Ordinal);
 
     public KaleidoBuilder(IServiceCollection services, IConfiguration configuration, KaleidoServiceOptions serviceOptions)
     {

@@ -140,7 +140,7 @@ internal sealed partial class KaleidoToolInvoker
             return Error(McpErrorCodes.InvalidArguments, "The record search could not be continued - the form expired, was changed, or was answered on another server - so nothing was run. Tell the user to start the search again by calling the tool again.");
         }
 
-        var arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(state.Arguments, KaleidoJsonOptions.Options) ?? [];
+        var arguments = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(state.Arguments, KaleidoJsonOptions.Options) ?? new(StringComparer.Ordinal);
 
         ElicitResult? elicited = null;
 
