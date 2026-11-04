@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace Kaleido.Http.Registry;
 
 /// <summary>
@@ -100,7 +98,7 @@ public sealed record KaleidoRegistryOptions
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidOptions,
-                string.Create(CultureInfo.InvariantCulture, $"Kaleido:Registry:{name} {rule}."));
+                $"Kaleido:Registry:{name} {rule}.");
         }
     }
 }

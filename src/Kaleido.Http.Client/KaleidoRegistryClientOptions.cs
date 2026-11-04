@@ -1,4 +1,3 @@
-using System.Globalization;
 using Kaleido.Exceptions;
 
 namespace Kaleido.Http.Client;
@@ -40,7 +39,7 @@ public sealed record KaleidoRegistryClientOptions
         {
             throw new KaleidoConfigurationException(
                 HttpClientErrorCodes.InvalidClientOptions,
-                string.Create(CultureInfo.InvariantCulture, $"Kaleido:Registry:{name} {rule}."));
+                $"Kaleido:Registry:{name} {rule}.");
         }
     }
 }
