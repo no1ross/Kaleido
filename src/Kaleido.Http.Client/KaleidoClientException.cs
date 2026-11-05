@@ -89,11 +89,11 @@ public static class HttpClientErrorCodes
     public const string InvalidClientOptions = "httpclient_invalid_options";
 
     /// <summary>
-    /// An <see cref="IKaleidoCallCredentialProvider"/> answered <see cref="KaleidoCallCredential.Configured"/>
-    /// for a call made for a caller; a caller's call never goes out with the host's own credentials.
-    /// Raised on the call as a configuration error.
+    /// <see cref="KaleidoOnBehalfOfCalls.Exchange"/>: a call made for a caller carries no token, or the caller's
+    /// inbound token unchanged; the host's handler (<c>AddKaleidoClientHandler&lt;THandler&gt;()</c>) must set the
+    /// caller's exchanged token. Raised on the call, before it is sent, as a configuration error (#574).
     /// </summary>
-    public const string ConfiguredCredentialForCaller = "httpclient_configured_credential_for_caller";
+    public const string CallerTokenNotExchanged = "httpclient_caller_token_not_exchanged";
 
     /// <summary>
     /// <c>GetClient</c> was asked for a client name that is not configured under <c>Kaleido:Clients</c>.

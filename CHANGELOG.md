@@ -13,6 +13,20 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **What a call made for a caller carries: forwarded, or exchanged by the host's own handler** (#574,
+  [ADR 0038](docs/decisions/0038-the-authentication-model.md)).
+  - `Kaleido:OnBehalfOfCalls` (`KaleidoClientOptions.OnBehalfOfCalls`): `Forward` (the default) sends the
+    caller's token unchanged; `Exchange` sends the token the host's handler set for the caller, and refuses a
+    call carrying none or the inbound one (`httpclient_caller_token_not_exchanged`). An anonymous caller's
+    call carries nothing; the service's own calls keep what the host's handlers set.
+  - `AddKaleidoClientHandler<THandler>()` adds a standard `DelegatingHandler` to every Kaleido client (and
+    no other); `KaleidoCallContext.Of(request)` gives it the call's purpose, caller and inbound token.
+  - `AddMcp()` requires `Exchange` (`mcp_on_behalf_of_calls_not_exchanged`): the agent's token is never
+    passed through.
+  - **Breaking:** the IKaleidoCallCredentialProvider seam (KaleidoCallCredential, KaleidoCallCredentialRequest,
+    KaleidoCallCredentialKind), AddCallCredentials&lt;T&gt;() and ForwardCallerToken() are removed, with
+    `httpclient_configured_credential_for_caller` and `mcp_call_credentials_not_configured`. A host without
+    handlers now forwards the caller's token on a caller's calls instead of its own client credentials.
 - **One authorization path: ASP.NET Core's** (#574).
   - Generic execute, resumes and registry/MCP discovery check a capability's declaration as the same
     ASP.NET `AuthorizationPolicy` the typed routes attach (an authenticated user, `RequireRole` for its
@@ -263,8 +277,9 @@ sections.
   as a single-audience choice; an OAuth-protected MCP endpoint exchanges the token per service.
 - **Authorization is enforced by default:** `AuthorizationMode` defaults to `Authenticated`; a host
   without authentication sets `None` explicitly ([ADR 0021](docs/decisions/0021-authenticated-by-default.md), #400).
-- **One credential model for outgoing calls:** `IKaleidoCallCredentialProvider`; an MCP host registers
-  `ForwardCallerToken()` or its own provider ([ADR 0022](docs/decisions/0022-call-credentials.md), #403).
+- **One credential model for outgoing calls:** IKaleidoCallCredentialProvider; an MCP host registers
+  ForwardCallerToken() or its own provider ([ADR 0022](docs/decisions/0022-call-credentials.md), #403;
+  replaced by `Kaleido:OnBehalfOfCalls` and the host's own handlers, ADR 0038, #574).
 - **Store contracts split** into `IKaleidoContextStore`, `IKaleidoOutboxStore` and
   `IKaleidoIdempotencyStore` ([ADR 0020](docs/decisions/0020-three-store-contracts.md), #399).
 - **Outbox integration** ([ADR 0023](docs/decisions/0023-outbox-integration.md), #408): the context store is

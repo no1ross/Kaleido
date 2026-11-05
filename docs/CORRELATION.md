@@ -192,7 +192,7 @@ A call that came through the MCP adapter stays recognizable on every hop behind 
 | Hop | `Origin` / `OriginTool` (end to end) | `CallerActor` (per hop, from the token) |
 |---|---|---|
 | MCP client → router | *(the router sets them for its tool call)* | the MCP client app (`azp`), if the token names it |
-| Router → Intake (`ForwardCallerToken()`) | `mcp` / `intake_capture_requested_service` | the MCP client app (same token) |
+| Router → Intake (the exchanged token) | `mcp` / `intake_capture_requested_service` | the MCP client app (same token) |
 | Intake → Radiology (handoff) | unchanged | `intake` (the on-behalf-of token's `act`) |
 | Radiology → Member | unchanged | `radiology` |
 

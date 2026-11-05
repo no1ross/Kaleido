@@ -185,7 +185,7 @@ Public seams consumers are expected to implement or replace:
 
 **Shared services (#498)** — every piece is built by the container; no service creates another
 - `IKaleidoClientCatalog` (in `Kaleido.Http.Abstractions`) — the configured clients by name: one `KaleidoClientDefinition` (route prefix, registry TTL, health-check settings) per entry in `Kaleido:Clients`
-- Per client, keyed services under its name (`[ServiceKey]`): the Process and Queryable clients, its `KaleidoClientHealthCheck` and its `KaleidoCallCredentialHandler`. Code that knows the name injects `[FromKeyedServices("name")]`; the factories (`IKaleidoProcessorClientFactory`, `IKaleidoQueryableClientFactory`) resolve a name chosen at runtime
+- Per client, keyed services under its name (`[ServiceKey]`): the Process and Queryable clients, its `KaleidoClientHealthCheck` and its `KaleidoOnBehalfOfGuard` (the innermost handler: what a call made for a caller carries, #574; `KaleidoClientHandlerFilter` puts the host's `AddKaleidoClientHandler<T>()` handlers, then the guard, on every Kaleido client). Code that knows the name injects `[FromKeyedServices("name")]`; the factories (`IKaleidoProcessorClientFactory`, `IKaleidoQueryableClientFactory`) resolve a name chosen at runtime
 - `IKaleidoClientTransport` — sends one call through the client's named `HttpClient`: correlation headers, idempotency key, logging, failure mapping, deserialization, and dropping the registry snapshot when a capability call answers 404
 - `IKaleidoRemoteRegistry` and `IHttpClientRegistryCache` — singletons for every client: the remote registry fetch (ETag revalidation) and its snapshot cache, keyed per client
 - `KaleidoClientServiceCollectionExtensions` — internal `AddKaleidoClient(...)` registration used by `AddHttpClients`
@@ -224,7 +224,7 @@ Public seams consumers are expected to implement or replace:
 ## 7. Kaleido.Http.Mcp
 
 ### Internal structure
-- `KaleidoMcpServiceCollectionExtensions` — `AddMcp()`: the MCP server (stateless Streamable HTTP), `KaleidoMcpOptions` (configuration over code, ADR 0030), the tool catalog and the tool invoker; startup fails without `AddHttp()`, `AddHttpClients()` or a call-credential registration
+- `KaleidoMcpServiceCollectionExtensions` — `AddMcp()`: the MCP server (stateless Streamable HTTP), `KaleidoMcpOptions` (configuration over code, ADR 0030), the tool catalog and the tool invoker; startup fails without `AddHttp()`, `AddHttpClients()` or `Kaleido:OnBehalfOfCalls = Exchange`
 - `KaleidoMcpEndpointRouteBuilderExtensions` — `MapKaleidoMcp(pattern)`; the endpoint runs the same correlation setup as Kaleido's HTTP endpoints
 - `KaleidoMcpToolHandler` — the server's hooks: `tools/list` returns the caller's tools, `tools/call` runs one
 - Tool catalog: `ToolCatalogProvider` (the caller's tools, from `IKaleidoRegistryService` — the same shared snapshot and per-caller filtering as the registry endpoint), `ToolCatalogBuilder` (registry to tools, incl. the front-door menu), `ToolCatalogCache` (translated catalogs by registry revision, per registration, #464), `ToolNameBuilder` (`{service}_{capability}`, independent of what the caller sees, #435), `ToolSchemaBuilder` (input metadata to JSON Schema)
@@ -235,7 +235,7 @@ Public seams consumers are expected to implement or replace:
 
 ### Key design invariants
 - Tools are generated from the registry, never declared: a capability is a tool because the service publishes it, and the list is the caller's (a tool not in it is `mcp_unknown_tool`, and no service is called).
-- Every tool call goes through the Kaleido clients **as the caller**: the credential is the host's call-credential provider's decision for that caller, never the host's own identity ([ADR 0022](../docs/decisions/0022-call-credentials.md), [ADR 0027](../docs/decisions/0027-forward-caller-token-kept-with-guards.md)).
+- Every tool call goes through the Kaleido clients **as the caller**: it carries the token the host's handler exchanged for that caller (`Kaleido:OnBehalfOfCalls = Exchange`, required), never the agent's token and never the host's own identity (#574).
 - The agent and the MCP client are untrusted input: authorization, validation and confirmation are decided on the server ([trust boundary](./Kaleido.Http.Mcp/README.md#trust-boundary)).
 - The adapter has no transport or client logic of its own; it references `Kaleido.Http` and `Kaleido.Http.Client` only.
 

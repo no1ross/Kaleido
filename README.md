@@ -221,8 +221,7 @@ builder.Services
         AuthorizationMode = KaleidoAuthorizationMode.None, // Local evaluation only.
     })
     .AddHttp()
-    .AddHttpClients()
-    .ForwardCallerToken() // tool calls carry the agent user's token; required before AddMcp()
+    .AddHttpClients() // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
     .AddMcp(new() { ServerName = "business" });
 
 var app = builder.Build();
@@ -233,7 +232,7 @@ app.MapKaleidoMcp("/mcp");
 app.Run();
 ```
 
-Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. `AddMcp()` refuses to start without a call-credential registration: `ForwardCallerToken()` sends the user's token unchanged, `AddCallCredentials<TProvider>()` exchanges it per service ([ADR 0022](docs/decisions/0022-call-credentials.md)). `ForwardCallerToken()` suits this local, single-audience example; an OAuth-protected MCP endpoint must not pass its token through to the services and registers `AddCallCredentials<TProvider>()` instead ([ADR 0027](docs/decisions/0027-forward-caller-token-kept-with-guards.md)). Use `https` base URLs outside local development. Each `RoutePrefix` must match the downstream `ServiceName` (refused at startup otherwise); adjust addresses and ports for your environment.
+Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. `AddMcp()` refuses to start unless `Kaleido:OnBehalfOfCalls` is `Exchange`: the agent's user's token is issued for the MCP endpoint and must not be passed through to the services. This local example has no sign-in, so its calls carry nothing; with sign-in, add the handler that exchanges the user's token with `AddKaleidoClientHandler<THandler>()` ([Which token a service sends](docs/guide/callers-and-correlation.md#which-token-a-service-sends), #574). Use `https` base URLs outside local development. Each `RoutePrefix` must match the downstream `ServiceName` (refused at startup otherwise); adjust addresses and ports for your environment.
 
 See the [HTTP client](src/Kaleido.Http.Client/README.md) and [MCP adapter](src/Kaleido.Http.Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
 

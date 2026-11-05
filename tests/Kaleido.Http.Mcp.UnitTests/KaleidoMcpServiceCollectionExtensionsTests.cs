@@ -32,12 +32,14 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
         // AddHttp() registers the unfiltered registry the tool names come from (#435).
         services.AddScoped(_ => Mock.Of<IKaleidoUnfilteredRegistry>());
         // What AddHttpClients() registers with a client configured, and AddKaleido() the inbound caller.
-        services.AddSingleton(new KaleidoClientOptions { Clients = new Dictionary<string, KaleidoClientEntry> { ["Clinic"] = new() } });
-        services.AddSingleton(Mock.Of<IKaleidoCallCredentialProvider>());
+        services.AddSingleton(Clients(KaleidoOnBehalfOfCalls.Exchange));
         services.AddScoped(_ => Mock.Of<IKaleidoInboundCallerAccessor>());
         services.AddScoped(_ => Mock.Of<IKaleidoCorrelationContextInitializer>());
         return services;
     }
+
+    private static KaleidoClientOptions Clients(KaleidoOnBehalfOfCalls onBehalfOfCalls) =>
+        new() { Clients = new Dictionary<string, KaleidoClientEntry> { ["Clinic"] = new() }, OnBehalfOfCalls = onBehalfOfCalls };
 
     private static KaleidoMcpOptions RegisteredOptions(ServiceCollection services) =>
         Assert.IsType<KaleidoMcpOptions>(Assert.Single(services, x => x.ServiceType == typeof(KaleidoMcpOptions)).ImplementationInstance);
@@ -122,18 +124,19 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
         Assert.Equal("priorauth", Assert.IsType<KaleidoMcpOptions>(options).ServerName);
     }
 
-    // ADR 0022: fail closed - the host states how tool calls are authorized for the agent's user.
+    // #574: fail closed - the agent's token is issued for this MCP server and must not be passed through.
     [Fact]
-    public void AddMcp_WithoutCallCredentials_FailsWithItsCode_NamingBothChoices()
+    public void AddMcp_WhenOnBehalfOfCallsForward_FailsWithItsCode_NamingTheSettingAndTheHandler()
     {
         var services = HostServices();
-        services.RemoveAll<IKaleidoCallCredentialProvider>();
+        services.RemoveAll<KaleidoClientOptions>();
+        services.AddSingleton(Clients(KaleidoOnBehalfOfCalls.Forward));
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() => Builder(services).Object.AddMcp());
 
-        Assert.Equal(McpErrorCodes.MissingCallCredentials, exception.Code);
-        Assert.Contains("ForwardCallerToken()", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("AddCallCredentials<TProvider>()", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(McpErrorCodes.OnBehalfOfCallsNotExchanged, exception.Code);
+        Assert.Contains("Kaleido:OnBehalfOfCalls", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("AddKaleidoClientHandler<THandler>()", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

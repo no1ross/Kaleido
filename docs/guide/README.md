@@ -42,7 +42,7 @@ flowchart LR
 | [Processes](processes.md) | Steps, handlers, relationships, outcomes, changing a step |
 | [Queries](queries.md) | Sources, views, query contexts, paging and counting, delegated sources |
 | [Information requests](information-requests.md) | Questions decided at runtime, conditional questions |
-| [Callers and correlation](callers-and-correlation.md) | Authorization, call credentials, request and process ids across services |
+| [Callers and correlation](callers-and-correlation.md) | Authorization, the tokens calls carry, request and process ids across services |
 | [Events and the outbox](events-and-outbox.md) | Which events exist, when they are written, the delivery guarantees |
 | [Persistence](persistence.md) | The store contracts, the defaults, SQLite, your own store, atomicity |
 | [Deployment](deployment.md) | Several instances, schemas, health, what to monitor |

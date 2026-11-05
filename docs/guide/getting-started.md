@@ -212,17 +212,16 @@ services.AddKaleido(configuration, new()
 })
     .AddInMemoryStores()   // local evaluation only: nothing survives a restart
     .AddHttp()
-    .AddHttpClients()
-    .ForwardCallerToken()   // the agent's user's token on tool calls; AddMcp() requires a choice
+    .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
     .AddMcp();
 ```
 
-`AddMcp()` refuses to start without a call-credential registration
-(`mcp_call_credentials_not_configured`): every tool call is made for the agent's user, and the host
-decides with which credential. `ForwardCallerToken()` sends the user's token unchanged, which suits
-this single-service example; an OAuth-protected MCP endpoint exchanges the token per service with
-`AddCallCredentials<TProvider>()` instead
-([ADR 0027](../decisions/0027-forward-caller-token-kept-with-guards.md)).
+`AddMcp()` refuses to start unless `Kaleido:OnBehalfOfCalls` is `Exchange`
+(`mcp_on_behalf_of_calls_not_exchanged`): every tool call is made for the agent's user, whose token is
+issued for this MCP server, and the MCP authorization specification forbids passing it through to the
+services. This local example has no sign-in, so its calls are anonymous and carry nothing; with sign-in,
+add the handler that exchanges the user's token
+([Which token a service sends](callers-and-correlation.md#which-token-a-service-sends)).
 
 <!-- snippet: getting-started-mcp-map -->
 ```csharp
@@ -233,7 +232,7 @@ app.MapKaleidoMcp("/mcp");
 The client the tools call through is configured like any Kaleido client:
 
 ```json
-{ "Kaleido": { "Clients": { "orders": { "BaseUrl": "http://localhost:5100", "RoutePrefix": "orders" } } } }
+{ "Kaleido": { "OnBehalfOfCalls": "Exchange", "Clients": { "orders": { "BaseUrl": "http://localhost:5100", "RoutePrefix": "orders" } } } }
 ```
 
 An agent connected to `/mcp` sees one tool per capability, named `orders_<capability>` (the

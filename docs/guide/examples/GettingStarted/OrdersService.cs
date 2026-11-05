@@ -49,8 +49,7 @@ public static class OrdersService
         })
             .AddInMemoryStores()   // local evaluation only: nothing survives a restart
             .AddHttp()
-            .AddHttpClients()
-            .ForwardCallerToken()   // the agent's user's token on tool calls; AddMcp() requires a choice
+            .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
             .AddMcp();
         // end snippet
     }

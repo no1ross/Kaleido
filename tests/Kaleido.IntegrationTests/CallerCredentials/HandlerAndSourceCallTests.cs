@@ -1,130 +1,135 @@
 using System.ComponentModel;
 using System.Net;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text.Encodings.Web;
 using Kaleido.Http;
 using Kaleido.Http.Client;
 using Kaleido.Http.Processor;
 using Kaleido.Processor;
 using Kaleido.Processor.Execution;
-using Microsoft.AspNetCore.Authentication;
+using Kaleido.Testing.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Kaleido.IntegrationTests.CallerCredentials;
 
 /// <summary>
-/// #428 through a real host: a step handler and a delegated source that call another service while
-/// handling a caller's request make that call for the caller (ADR 0022), as an MCP tool call does.
-/// They run in their own DI scope, which must know the inbound caller as it knows the correlation;
-/// otherwise the call goes out as the service's own and the downstream refuses user-only steps.
+/// Through a real host authenticating real bearer tokens (#428, #574): a step handler and a delegated source
+/// that call another service while handling a caller's request make that call for the caller. They run in
+/// their own DI scope, which must know the inbound caller as it knows the correlation. By default the call
+/// carries the caller's token unchanged (<c>Forward</c>); with <c>Exchange</c> it carries the token the host's
+/// handler exchanged for the caller, never the inbound one.
 /// </summary>
 public sealed class HandlerAndSourceCallTests
 {
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task AStepHandlersCall_IsMadeForTheCaller()
+    public async Task AStepHandlersCall_CarriesTheCallersToken_ByDefault()
     {
-        await using var host = await RelayHost.StartAsync();
+        await using var host = await RelayHost.StartAsync(onBehalfOfCalls: null);
+        var bob = TestTokenIssuer.User("bob", ["radiology"]);
 
-        var status = await host.ExecuteRelayStepAsync(caller: "bob|radiology");
+        var status = await host.ExecuteRelayStepAsync(bob);
 
         Assert.Equal(HttpStatusCode.OK, status);
-        var asked = Assert.Single(host.Credentials.Asked);
-        Assert.Equal(KaleidoCallPurpose.OnBehalfOfCaller, asked.Purpose);
-        Assert.Equal("bob", asked.Caller?.Identity?.Name);
-        Assert.Equal("Test bob|radiology", asked.CallerAuthorization);
-        Assert.Equal(["Bearer bob-for-downstream"], Assert.Single(host.Wire.Sent).Headers.GetValues("Authorization"));
+        Assert.Equal([$"Bearer {bob}"], Assert.Single(host.Wire.Sent).Headers.GetValues("Authorization"));
     }
 
     [Fact]
-    public async Task ADelegatedSourcesCall_IsMadeForTheCaller()
+    public async Task ADelegatedSourcesCall_CarriesTheCallersToken_ByDefault()
     {
-        await using var host = await RelayHost.StartAsync();
+        await using var host = await RelayHost.StartAsync(onBehalfOfCalls: null);
+        var bob = TestTokenIssuer.User("bob");
 
-        var status = await host.QueryRelaySourceAsync(caller: "bob");
+        var status = await host.QueryRelaySourceAsync(bob);
 
         Assert.Equal(HttpStatusCode.OK, status);
-        var asked = Assert.Single(host.Credentials.Asked);
-        Assert.Equal(KaleidoCallPurpose.OnBehalfOfCaller, asked.Purpose);
-        Assert.Equal("bob", asked.Caller?.Identity?.Name);
-        Assert.Equal(["Bearer bob-for-downstream"], Assert.Single(host.Wire.Sent).Headers.GetValues("Authorization"));
+        Assert.Equal([$"Bearer {bob}"], Assert.Single(host.Wire.Sent).Headers.GetValues("Authorization"));
     }
 
-    // An anonymous caller reaches the downstream anonymous: never with the service's credential.
     [Fact]
-    public async Task AnAnonymousCaller_StaysAnonymous_InAStepHandlersCall()
+    public async Task Exchange_AStepHandlersCall_CarriesTheTokenExchangedForTheCaller()
     {
-        await using var host = await RelayHost.StartAsync();
+        await using var host = await RelayHost.StartAsync("Exchange");
 
-        var status = await host.ExecuteRelayStepAsync(caller: null);
+        var status = await host.ExecuteRelayStepAsync(TestTokenIssuer.User("bob"));
 
         Assert.Equal(HttpStatusCode.OK, status);
-        Assert.Empty(host.Credentials.Asked);
+        Assert.Equal(["Bearer exchanged-for-bob"], Assert.Single(host.Wire.Sent).Headers.GetValues("Authorization"));
+    }
+
+    // An anonymous caller reaches the downstream anonymous: never with a credential the host's handler set.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Exchange")]
+    public async Task AnAnonymousCaller_StaysAnonymous_InAStepHandlersCall(string? onBehalfOfCalls)
+    {
+        await using var host = await RelayHost.StartAsync(onBehalfOfCalls);
+
+        var status = await host.ExecuteRelayStepAsync(token: null);
+
+        Assert.Equal(HttpStatusCode.OK, status);
         Assert.False(Assert.Single(host.Wire.Sent).Headers.Contains("Authorization"));
     }
 
-    [Fact]
-    public async Task ConcurrentCallers_EachGetTheirOwnCredential_InStepHandlersCalls()
+    [Theory]
+    [InlineData(null, "Bearer {0}")]
+    [InlineData("Exchange", "Bearer exchanged-for-{1}")]
+    public async Task ConcurrentCallers_EachCallCarriesItsOwnCaller(string? onBehalfOfCalls, string expected)
     {
-        await using var host = await RelayHost.StartAsync();
-        var callers = Enumerable.Range(0, 16).Select(i => $"user{i}").ToArray();
+        await using var host = await RelayHost.StartAsync(onBehalfOfCalls);
+        var callers = Enumerable.Range(0, 16).Select(i => (Name: $"user{i}", Token: TestTokenIssuer.User($"user{i}"))).ToArray();
 
-        var statuses = await Task.WhenAll(callers.Select(host.ExecuteRelayStepAsync));
+        var statuses = await Task.WhenAll(callers.Select(x => host.ExecuteRelayStepAsync(x.Token)));
 
         Assert.All(statuses, status => Assert.Equal(HttpStatusCode.OK, status));
         var sent = host.Wire.Sent.Select(x => x.Headers.GetValues("Authorization").Single()).Order(StringComparer.Ordinal);
-        Assert.Equal(callers.Select(x => $"Bearer {x}-for-downstream").Order(StringComparer.Ordinal), sent);
+        Assert.Equal(callers.Select(x => string.Format(System.Globalization.CultureInfo.InvariantCulture, expected, x.Token, x.Name)).Order(StringComparer.Ordinal), sent);
     }
 
-    // The relay service: its step handler and its delegated source call the "Downstream" service,
-    // whose wire is captured; the credential provider stands in for a token exchange.
+    // The relay service: its step handler and its delegated source call the "Downstream" service, whose wire
+    // is captured. It authenticates real bearer tokens, as Production, and calls over https.
     private sealed class RelayHost : IAsyncDisposable
     {
         private readonly IHost _host;
 
-        private RelayHost(IHost host, ExchangeProvider credentials, CaptureHandler wire)
+        private RelayHost(IHost host, CaptureHandler wire)
         {
             _host = host;
-            Credentials = credentials;
             Wire = wire;
         }
 
-        public ExchangeProvider Credentials { get; }
-
         public CaptureHandler Wire { get; }
 
-        public static async Task<RelayHost> StartAsync()
+        public static async Task<RelayHost> StartAsync(string? onBehalfOfCalls)
         {
-            var credentials = new ExchangeProvider();
             var wire = new CaptureHandler();
+            var settings = new Dictionary<string, string?>
+            {
+                ["Kaleido:Clients:Downstream:BaseUrl"] = "https://downstream.test/",
+                ["Kaleido:Clients:Downstream:RoutePrefix"] = "downstream",
+            };
 
-            var configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Kaleido:Clients:Downstream:BaseUrl"] = "http://downstream.test/",
-                    ["Kaleido:Clients:Downstream:RoutePrefix"] = "downstream",
-                })
-                .Build();
+            if (onBehalfOfCalls is not null)
+            {
+                settings["Kaleido:OnBehalfOfCalls"] = onBehalfOfCalls;
+            }
+
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
             var host = await new HostBuilder()
+                .UseEnvironment(Environments.Production)
                 .ConfigureWebHost(web =>
                 {
                     web.UseTestServer();
                     web.ConfigureServices(s =>
                     {
                         s.AddRouting();
-                        s.AddAuthentication(TestAuthentication.SchemeName)
-                            .AddScheme<AuthenticationSchemeOptions, TestAuthentication>(TestAuthentication.SchemeName, _ => { });
-                        s.AddAuthorization();
+                        s.AddTestJwtBearer();
 
                         s.AddKaleido(configuration, new()
                         {
@@ -135,9 +140,9 @@ public sealed class HandlerAndSourceCallTests
                         })
                             .AddInMemoryStores()
                             .AddHttp()
-                            .AddHttpClients();
+                            .AddHttpClients()
+                            .AddKaleidoClientHandler<NameExchangeHandler>();
 
-                        s.AddSingleton<IKaleidoCallCredentialProvider>(credentials);
                         s.AddHttpClient("Downstream").ConfigurePrimaryHttpMessageHandler(() => wire);
                     });
                     web.Configure(app =>
@@ -150,28 +155,29 @@ public sealed class HandlerAndSourceCallTests
                 })
                 .StartAsync(Cancel);
 
-            return new RelayHost(host, credentials, wire);
+            return new RelayHost(host, wire);
         }
 
-        public Task<HttpStatusCode> ExecuteRelayStepAsync(string? caller) =>
-            PostAsync($"/relay/processes/steps/{nameof(RelayToDownstreamStep)}", new { processStep = new { } }, caller);
+        public Task<HttpStatusCode> ExecuteRelayStepAsync(string? token) =>
+            PostAsync($"/relay/processes/steps/{nameof(RelayToDownstreamStep)}", new { processStep = new { } }, token);
 
-        public Task<HttpStatusCode> QueryRelaySourceAsync(string? caller) =>
-            PostAsync($"/relay/queryable/{nameof(DownstreamRecordSource)}/query", new { }, caller);
+        public Task<HttpStatusCode> QueryRelaySourceAsync(string? token) =>
+            PostAsync($"/relay/queryable/{nameof(DownstreamRecordSource)}/query", new { }, token);
 
-        private async Task<HttpStatusCode> PostAsync(string url, object body, string? caller)
+        private async Task<HttpStatusCode> PostAsync(string url, object body, string? token)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, url)
             {
                 Content = JsonContent.Create(body, options: KaleidoJsonOptions.Options),
             };
 
-            if (caller is not null)
+            if (token is not null)
             {
-                request.Headers.TryAddWithoutValidation("Authorization", $"Test {caller}");
+                request.Headers.Authorization = TestJwtAuthentication.Bearer(token);
             }
 
             using var client = _host.GetTestClient();
+            client.BaseAddress = new Uri("https://localhost/");
             using var response = await client.SendAsync(request, Cancel);
             return response.StatusCode;
         }
@@ -183,33 +189,20 @@ public sealed class HandlerAndSourceCallTests
         }
     }
 
-    // A token exchange stand-in: a token for the caller addressed to the destination, a service token for own calls.
-    private sealed class ExchangeProvider : IKaleidoCallCredentialProvider
+    // A token exchange stand-in on the Kaleido clients: a token naming the caller, for calls made for a caller.
+    private sealed class NameExchangeHandler : DelegatingHandler
     {
-        private readonly List<KaleidoCallCredentialRequest> _asked = [];
-
-        public IReadOnlyList<KaleidoCallCredentialRequest> Asked
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            get
-            {
-                lock (_asked)
-                {
-                    return [.. _asked];
-                }
-            }
-        }
+            var call = KaleidoCallContext.Of(request);
 
-        public ValueTask<KaleidoCallCredential> GetCredentialAsync(KaleidoCallCredentialRequest request, CancellationToken cancellationToken)
-        {
-            lock (_asked)
+            if (call.Purpose == KaleidoCallPurpose.OnBehalfOfCaller && call.Caller is { } caller)
             {
-                _asked.Add(request);
+                request.Headers.Remove("Authorization");
+                request.Headers.TryAddWithoutValidation("Authorization", $"Bearer exchanged-for-{caller.Identity?.Name}");
             }
 
-            return ValueTask.FromResult(KaleidoCallCredential.Header(
-                request.Purpose == KaleidoCallPurpose.OnBehalfOfCaller
-                    ? $"Bearer {request.Caller?.Identity?.Name}-for-{request.ServiceName}"
-                    : $"Bearer svc-for-{request.ServiceName}"));
+            return base.SendAsync(request, cancellationToken);
         }
     }
 
@@ -240,29 +233,6 @@ public sealed class HandlerAndSourceCallTests
             {
                 Content = JsonContent.Create(new ProcessStateResponse { ProcessId = Guid.Empty }, options: KaleidoJsonOptions.Options),
             });
-        }
-    }
-
-    // Authorization: Test name|role,role signs the caller in; no header is anonymous.
-    private sealed class TestAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
-        : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
-    {
-        public const string SchemeName = "Test";
-
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-        {
-            var header = Request.Headers.Authorization.ToString();
-
-            if (!header.StartsWith("Test ", StringComparison.Ordinal))
-            {
-                return Task.FromResult(AuthenticateResult.NoResult());
-            }
-
-            var parts = header["Test ".Length..].Split('|');
-            var claims = new List<Claim> { new(ClaimTypes.Name, parts[0]) };
-            claims.AddRange((parts.Length > 1 ? parts[1] : string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(role => new Claim(ClaimTypes.Role, role)));
-
-            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName)), SchemeName)));
         }
     }
 }

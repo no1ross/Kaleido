@@ -43,6 +43,16 @@ public sealed record KaleidoClientOptions
     public bool StrictRegistryProbe { get; init; }
 
     /// <summary>
+    /// How this service makes the calls it makes for a caller (<c>Kaleido:OnBehalfOfCalls</c>, #574): a
+    /// setting read once at startup, not a token. <see cref="KaleidoOnBehalfOfCalls.Forward"/> (the default)
+    /// sends the token the caller's request arrived with, unchanged; <see cref="KaleidoOnBehalfOfCalls.Exchange"/>
+    /// sends the token the host's own handler gets for the caller at the time of the call
+    /// (<c>AddKaleidoClientHandler&lt;THandler&gt;()</c>), never the inbound one. An MCP host requires
+    /// <see cref="KaleidoOnBehalfOfCalls.Exchange"/>.
+    /// </summary>
+    public KaleidoOnBehalfOfCalls OnBehalfOfCalls { get; init; }
+
+    /// <summary>
     /// Named downstream Kaleido service clients.
     /// The dictionary key is the client name (e.g. <c>"Member"</c>).
     /// <see cref="KaleidoClientEntry.RoutePrefix"/> defaults to the key lowercased

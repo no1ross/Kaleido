@@ -1,6 +1,6 @@
 # 0027. `ForwardCallerToken()` stays, as a stated single-audience choice; credentials over plain HTTP are reported; route prefixes are service names
 
-- **Status:** Accepted
+- **Status:** Superseded by 0038
 - **Date:** 2026-10-24
 - **Related:** #434, #430, ADR 0022
 

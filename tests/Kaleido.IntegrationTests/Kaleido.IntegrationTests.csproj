@@ -8,6 +8,11 @@
     <PackageReference Include="Microsoft.AspNetCore.TestHost" />
     <!-- The MCP client, to host the guide's MCP recipe end to end (#450). -->
     <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <!-- Real bearer authentication with the shared test identity (#574). -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />

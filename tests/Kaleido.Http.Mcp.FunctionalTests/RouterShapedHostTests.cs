@@ -24,6 +24,7 @@ public sealed class RouterShapedHostTests
         });
         builder.Configuration["Kaleido:ServiceName"] = "router";
         builder.Configuration["Kaleido:Clients:intake:BaseUrl"] = "http://intake.test/";
+        builder.Configuration["Kaleido:OnBehalfOfCalls"] = "Exchange";
 
         builder.Services.AddKaleido(builder.Configuration, new()
         {
@@ -34,13 +35,13 @@ public sealed class RouterShapedHostTests
             .AddInMemoryStores()
             .AddHttp()
             .AddHttpClients()
-            .ForwardCallerToken()
+            .AddKaleidoClientHandler<Infrastructure.TestTokenExchangeHandler>()
             .AddMcp();
 
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
 
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IKaleidoRegistryService>());
-        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IKaleidoCallCredentialProvider>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<Infrastructure.TestTokenExchangeHandler>());
     }
 }

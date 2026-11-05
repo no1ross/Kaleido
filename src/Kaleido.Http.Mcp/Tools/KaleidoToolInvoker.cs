@@ -34,7 +34,7 @@ internal sealed record KaleidoToolCall
 /// </summary>
 /// <remarks>
 /// <para>Every call goes through the Kaleido clients (<c>AddHttpClients()</c>) of the tool's service,
-/// by capability name, as the MCP caller (the handler opens the caller-forwarding scope).</para>
+/// by capability name, as the MCP caller (the handler opens the caller's scope).</para>
 /// <para><b>Queries</b> run the source or view query and return its result.</para>
 /// <para><b>Steps</b> execute the step by name, continuing the given process.
 /// The result is summarized for the model: the outcome, the business messages (verbatim), and

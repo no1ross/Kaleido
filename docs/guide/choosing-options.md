@@ -48,8 +48,9 @@ See [Processes - Concurrent and repeated calls](processes.md#concurrent-and-repe
 | Local evaluation | `AuthorizationMode = None` | [Callers](callers-and-correlation.md#authentication-is-the-hosts-authorization-is-declared) |
 | Signed-in callers, rules where needed | `Authenticated` (default) | [AUTHORIZATION](../AUTHORIZATION.md) |
 | Nothing published without a rule | `ZeroTrust` | [AUTHORIZATION](../AUTHORIZATION.md) |
-| Calls to other services carry the user's token | `ForwardCallerToken()` | [Callers](callers-and-correlation.md#which-credential-a-service-sends) |
-| Exchange the token per call | `AddCallCredentials<T>()` | [ADR 0022](../decisions/0022-call-credentials.md) |
+| Calls to other services carry the user's token | nothing (`Kaleido:OnBehalfOfCalls = Forward`, the default) | [Callers](callers-and-correlation.md#which-token-a-service-sends) |
+| Exchange the user's token (required on an MCP host) | `Kaleido:OnBehalfOfCalls = Exchange` + `AddKaleidoClientHandler<T>()` | [Callers](callers-and-correlation.md#which-token-a-service-sends) |
+| The service's own calls carry its app token | `AddKaleidoClientHandler<T>()` (client credentials, any library) | [Client README](../../src/Kaleido.Http.Client/README.md) |
 
 ## Redaction and observability
 

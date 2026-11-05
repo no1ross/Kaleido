@@ -5,11 +5,10 @@ namespace Kaleido.Http.Client.UnitTests;
 public sealed class KaleidoCallContextTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static KaleidoCallContext CreateSut() =>
-        CreateSut(KaleidoCallPurpose.OnBehalfOfCaller, new ClaimsPrincipal(new ClaimsIdentity([], "test")), "Bearer carol");
+    private static readonly ClaimsPrincipal Carol = new(new ClaimsIdentity([], "test"));
 
-    private static KaleidoCallContext CreateSut(KaleidoCallPurpose purpose, ClaimsPrincipal? caller, string? authorization) =>
-        new(purpose, caller, authorization);
+    private static KaleidoCallContext CreateSut() =>
+        KaleidoCallContext.ForCaller(Carol, "Bearer carol");
 
     [Fact]
     public void Of_ARequestWithoutAContext_IsTheServicesOwnCall()
@@ -33,6 +32,16 @@ public sealed class KaleidoCallContextTests
         Assert.Same(sut, KaleidoCallContext.Of(request));
     }
 
+    [Fact]
+    public void ForCaller_IsACallForThatCaller_WithTheirToken()
+    {
+        var sut = CreateSut();
+
+        Assert.Equal(KaleidoCallPurpose.OnBehalfOfCaller, sut.Purpose);
+        Assert.Same(Carol, sut.Caller);
+        Assert.Equal("Bearer carol", sut.CallerAuthorization);
+    }
+
     // A registry fetch made while handling a caller's request is still the service's own call.
     [Fact]
     public void MarkServiceOwn_ReplacesACallersContext()
@@ -42,6 +51,13 @@ public sealed class KaleidoCallContextTests
 
         KaleidoCallContext.MarkServiceOwn(request);
 
-        Assert.Equal(CreateSut(KaleidoCallPurpose.ServiceOwn, null, null), KaleidoCallContext.Of(request));
+        var context = KaleidoCallContext.Of(request);
+        Assert.Equal(KaleidoCallPurpose.ServiceOwn, context.Purpose);
+        Assert.Null(context.Caller);
+        Assert.Null(context.CallerAuthorization);
     }
+
+    [Fact]
+    public void Of_ANullRequest_Throws() =>
+        Assert.Throws<ArgumentNullException>(() => KaleidoCallContext.Of(null!));
 }

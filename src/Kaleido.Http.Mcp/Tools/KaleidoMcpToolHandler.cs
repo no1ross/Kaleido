@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Kaleido.Http.Client;
 using Kaleido.Http.Mcp.Observability;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
@@ -19,9 +18,9 @@ namespace Kaleido.Http.Mcp.Tools;
 /// result when the user must answer questions, or an empty tool list when the tools cannot be
 /// read. Only the caller's own cancellation propagates (nobody is waiting). Every tool result
 /// carries the call's <c>requestId</c>, the same <c>X-Kaleido-Request-Id</c> sent to Kaleido.
-/// Tools run as the caller: the calls they make are made for the MCP request's caller, so the host's
-/// <see cref="IKaleidoCallCredentialProvider"/> authorizes them as that caller, never with the host's
-/// own credentials (ADR 0022).
+/// Tools run as the caller: the calls they make are made for the MCP request's caller, so they carry the
+/// token the host's handler exchanged for that caller (<c>Kaleido:OnBehalfOfCalls = Exchange</c>), never the
+/// agent's token and never the host's own credentials (#574).
 /// </remarks>
 internal interface IKaleidoMcpToolHandler
 {

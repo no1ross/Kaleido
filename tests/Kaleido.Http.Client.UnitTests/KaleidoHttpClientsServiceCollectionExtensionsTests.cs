@@ -202,38 +202,54 @@ public sealed class KaleidoHttpClientsServiceCollectionExtensionsTests
         Assert.Equal(ServiceLifetime.Scoped, downstream.Lifetime);
         Assert.Single(
             builder.Services,
-            d => d.ServiceType == typeof(IHttpMessageHandlerBuilderFilter) && d.ImplementationType == typeof(KaleidoCallCredentialHandlerFilter));
+            d => d.ServiceType == typeof(IHttpMessageHandlerBuilderFilter) && d.ImplementationType == typeof(KaleidoClientHandlerFilter));
     }
 
-    // ADR 0022: one provider decides every call's credential; a later registration replaces an earlier one.
+    // #574: a host handler is registered once per type, in the order added, with the pipeline filter.
     [Fact]
-    public void AddCallCredentials_RegistersTheProviderAsASingleton_ReplacingAnEarlierOne()
+    public void AddKaleidoClientHandler_RegistersEachHandlerOnce_InTheOrderAdded()
     {
         var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/" });
 
-        var result = builder.ForwardCallerToken().AddCallCredentials<TestCallCredentialProvider>();
+        var result = builder
+            .AddKaleidoClientHandler<FirstHandler>()
+            .AddKaleidoClientHandler<SecondHandler>()
+            .AddKaleidoClientHandler<FirstHandler>();
 
         Assert.Same(builder, result);
-        var provider = Assert.Single(builder.Services, d => d.ServiceType == typeof(IKaleidoCallCredentialProvider));
-        Assert.Equal(typeof(TestCallCredentialProvider), provider.ImplementationType);
-        Assert.Equal(ServiceLifetime.Singleton, provider.Lifetime);
+        Assert.Equal(
+            [typeof(FirstHandler), typeof(SecondHandler)],
+            builder.Services.Select(d => d.ImplementationInstance).OfType<KaleidoClientHandlerRegistration>().Select(x => x.HandlerType));
+        var handler = Assert.Single(builder.Services, d => d.ServiceType == typeof(FirstHandler));
+        Assert.Equal(ServiceLifetime.Transient, handler.Lifetime);
+        Assert.Single(
+            builder.Services,
+            d => d.ServiceType == typeof(IHttpMessageHandlerBuilderFilter) && d.ImplementationType == typeof(KaleidoClientHandlerFilter));
     }
 
-    [Fact]
-    public void ForwardCallerToken_RegistersTheBuiltInPassThrough()
+    [Theory]
+    [InlineData(null, KaleidoOnBehalfOfCalls.Forward)]
+    [InlineData("Forward", KaleidoOnBehalfOfCalls.Forward)]
+    [InlineData("Exchange", KaleidoOnBehalfOfCalls.Exchange)]
+    public void AddHttpClients_ReadsOnBehalfOfCalls_ForwardByDefault(string? configured, KaleidoOnBehalfOfCalls expected)
     {
-        var builder = CreateBuilder(new() { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/" });
+        var settings = new Dictionary<string, string?> { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/" };
 
-        builder.ForwardCallerToken();
+        if (configured is not null)
+        {
+            settings["Kaleido:OnBehalfOfCalls"] = configured;
+        }
 
-        Assert.Equal(typeof(ForwardCallerTokenProvider), Assert.Single(builder.Services, d => d.ServiceType == typeof(IKaleidoCallCredentialProvider)).ImplementationType);
+        var builder = CreateBuilder(settings);
+
+        builder.AddHttpClients();
+
+        Assert.Equal(expected, builder.Services.Select(d => d.ImplementationInstance).OfType<KaleidoClientOptions>().Single().OnBehalfOfCalls);
     }
 
-    private sealed class TestCallCredentialProvider : IKaleidoCallCredentialProvider
-    {
-        public ValueTask<KaleidoCallCredential> GetCredentialAsync(KaleidoCallCredentialRequest request, CancellationToken cancellationToken) =>
-            ValueTask.FromResult(KaleidoCallCredential.None);
-    }
+    private sealed class FirstHandler : DelegatingHandler;
+
+    private sealed class SecondHandler : DelegatingHandler;
 
     [Fact]
     public void AddHttpClients_AClientUsesItsOwnBaseUrl_OrTheSharedOne()
