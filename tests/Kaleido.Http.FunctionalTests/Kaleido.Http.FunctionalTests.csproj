@@ -5,6 +5,11 @@
 		<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
 		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
 		<PackageReference Include="Microsoft.Extensions.Compliance.Redaction" />
+		<!-- Real bearer authentication with the shared test identity (#574). -->
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
