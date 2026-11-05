@@ -148,8 +148,14 @@ public sealed class KaleidoAuthorizerTests
     }
 
     [Fact]
-    public async Task AuthorizeAsync_WhenAllowed_Returns() =>
-        await CreateSut().AuthorizeAsync(new AuthorizationMetadata(null, ["radiology"]), "cap", Cancel);
+    public async Task AuthorizeAsync_WhenAllowed_Returns()
+    {
+        var exception = await Record.ExceptionAsync(() =>
+            CreateSut().AuthorizeAsync(new AuthorizationMetadata(null, ["radiology"]), "cap", Cancel));
+
+        Assert.Null(exception);
+        Assert.Single(_asked);
+    }
 
     // Outside a request nobody is authenticated: the check is asked for an anonymous principal.
     [Fact]
