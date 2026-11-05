@@ -269,6 +269,8 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 {
     ["Kaleido:Clients:host:BaseUrl"] = "http://127.0.0.1:9/",
     ["Kaleido:Clients:host:RoutePrefix"] = "host",
+    // AddMcp() requires it: the agent's token is exchanged, never passed through (#574).
+    ["Kaleido:OnBehalfOfCalls"] = "Exchange",
 });
 
 builder.Services
@@ -280,7 +282,6 @@ builder.Services
     })
     .AddHttp()
     .AddHttpClients()
-    .ForwardCallerToken()
     .AddMcp()
     .AddSqliteContextStore(connection)
     .AddSqliteOutboxStore(connection)
