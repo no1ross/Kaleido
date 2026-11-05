@@ -48,47 +48,56 @@ continue that process (the test: Ben confirms Ann's order); Kaleido has no case-
 handlers' and sources' job: [Queries - Who may query, and which rows](queries.md#who-may-query-and-which-rows),
 [threat model](../AUTHORIZATION.md#threat-model-the-process-id-is-a-bearer-handle).
 
-## Which credential a service sends
+## Which token a service sends
 
 When a service calls another Kaleido service (a handler or delegated source using a Kaleido client,
 the MCP adapter calling for a user), a call made **for a caller** and the service's **own** calls
-(registry refresh, health probe) can carry different credentials
-([ADR 0022](../decisions/0022-call-credentials.md), [client README](../../src/Kaleido.Http.Client/README.md)):
+(registry refresh, heartbeat, health probe) carry different tokens (#574,
+[client README](../../src/Kaleido.Http.Client/README.md)). A call made for a caller is set by
+`Kaleido:OnBehalfOfCalls`, a setting, not a token:
 
-| Registration | A call made for a caller carries | The service's own calls carry |
+| `Kaleido:OnBehalfOfCalls` | A call made for a caller carries | The service's own calls carry |
 |---|---|---|
-| (default) | the service's credential, configured on its HTTP client | the same |
-| `ForwardCallerToken()` | the caller's token, unchanged | the service's credential |
-| `AddCallCredentials<T>()` | what your provider returns | what your provider returns |
+| `Forward` (default) | the caller's token, unchanged | what your handlers set, e.g. a client-credentials token |
+| `Exchange` (required on an MCP host) | the token your handler exchanged for the caller, never the inbound one | the same |
+
+An anonymous caller's calls carry nothing, whatever your handlers set. Your handlers are standard
+`DelegatingHandler`s on the Kaleido clients, from any library; `KaleidoCallContext.Of(request)` tells
+them which call it is and gives them the caller's token to exchange:
 
 <!-- snippet: callers-credentials -->
 ```csharp
-// Decides the credential of every call this service makes to another Kaleido service.
-public sealed class OnBehalfOfCredentials(ITokenExchange exchange) : IKaleidoCallCredentialProvider
+// A standard DelegatingHandler on the Kaleido clients: for a call made for a caller, the caller's token
+// exchanged for one the services accept. Kaleido tells it which call it is; the service's own calls are
+// left to the host's other handlers (e.g. a client-credentials token).
+public sealed class TokenExchangeHandler(ITokenExchange exchange) : DelegatingHandler
 {
-    public async ValueTask<KaleidoCallCredential> GetCredentialAsync(
-        KaleidoCallCredentialRequest request,
-        CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        // A call made for a caller: exchange the caller's token for one the target service accepts.
-        if (request.Purpose == KaleidoCallPurpose.OnBehalfOfCaller && request.CallerAuthorization is { } authorization)
+        var call = KaleidoCallContext.Of(request);
+
+        if (call.Purpose == KaleidoCallPurpose.OnBehalfOfCaller && call.CallerAuthorization is { } authorization)
         {
-            return KaleidoCallCredential.Header(await exchange.ExchangeAsync(authorization, request.ServiceName, cancellationToken));
+            request.Headers.Remove("Authorization");
+            request.Headers.TryAddWithoutValidation("Authorization", await exchange.ExchangeAsync(authorization, cancellationToken));
         }
 
-        // The service's own calls (registry refresh, health probe): its configured credential.
-        return KaleidoCallCredential.Configured;
+        return await base.SendAsync(request, cancellationToken);
     }
 }
 ```
 
 <!-- snippet: callers-credentials-registration -->
 ```csharp
-services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(OnBehalfOfCredentials).Assembly] })
+// Kaleido:OnBehalfOfCalls = Exchange in configuration: a caller's call never carries the inbound token.
+services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(TokenExchangeHandler).Assembly] })
     .AddHttp()
     .AddHttpClients()
-    .AddCallCredentials<OnBehalfOfCredentials>();   // or .ForwardCallerToken(): the caller's token, unchanged
+    .AddKaleidoClientHandler<TokenExchangeHandler>();
 ```
+
+With `Exchange`, a call for a caller that carries no token, or the inbound one unchanged, is refused
+before it is sent (`httpclient_caller_token_not_exchanged`).
 
 ## Following one action across services
 
@@ -124,4 +133,4 @@ sequenceDiagram
 
 The caller's identity is never read from headers: it comes from the authenticated principal, and
 handlers and sources read it from `IKaleidoCorrelationContextAccessor` (`CallerName`, `CallerId`,
-`CallerRoles`).
+`CallerActor`). Who may do what is ASP.NET's authorization, on the principal itself.

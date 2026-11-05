@@ -7,8 +7,9 @@ using Microsoft.Extensions.Options;
 namespace Kaleido.Http.Mcp.FunctionalTests.Infrastructure;
 
 /// <summary>
-/// Test authentication from <c>Authorization: Bearer {user}|{role,role}</c>. The MCP adapter
-/// forwards exactly this header, so the Kaleido host sees the agent's user.
+/// Test authentication from <c>Authorization: Bearer {user}|{role,role}</c>, optionally followed by
+/// <c>|exchanged</c>: the token the MCP host's exchange (<see cref="TestTokenExchangeHandler"/>) sends for the
+/// same user, so the Kaleido host sees the agent's user without receiving the agent's token (#574).
 /// </summary>
 internal sealed class BearerTestAuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -20,6 +21,10 @@ internal sealed class BearerTestAuthHandler(
 
     internal static string Token(string user, params string[] roles) =>
         $"Bearer {user}|{string.Join(",", roles)}";
+
+    /// <summary>The token the MCP host exchanges <paramref name="token"/> for: the same user and roles, a different token.</summary>
+    internal static string Exchanged(string token) =>
+        $"{token}|exchanged";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {

@@ -1,20 +1,18 @@
 using System.Collections.Concurrent;
-using Kaleido.Authorization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Authorization;
 
 /// <summary>
-/// HTTP adapter over <see cref="IKaleidoAuthorizationEvaluator"/> — supplies
-/// the ambient caller from <see cref="IKaleidoCorrelationContextAccessor"/>
-/// and bridges declared policies to ASP.NET's <c>IAuthorizationService</c>.
-/// Used on dynamic code paths where endpoint-level
-/// <c>RequireAuthorization</c> cannot express the requirement
-/// (multi-step execute, resume of a stored step) and to filter discovery
-/// payloads per caller.
+/// Capability authorization on the dynamic paths, where endpoint-level <c>RequireAuthorization</c>
+/// cannot express the requirement (multi-step execute, resume of a stored step) and to filter discovery
+/// payloads per caller. One authorization path (#574): each capability's
+/// <see cref="AuthorizationMetadata"/> becomes the same ASP.NET <see cref="AuthorizationPolicy"/> the
+/// typed routes attach, checked by <see cref="IAuthorizationService"/> on <c>HttpContext.User</c>, so a
+/// role, a policy or the host's own authorization handlers admit the same callers everywhere.
 /// </summary>
 internal interface IKaleidoAuthorizer
 {
@@ -25,10 +23,9 @@ internal interface IKaleidoAuthorizer
 
     /// <summary>
     /// Returns whether the caller may access the capability. Always true when
-    /// <see cref="KaleidoServiceOptions.AuthorizationMode"/> is <c>None</c>.
-    /// A null <paramref name="authorization"/> (undeclared) requires an
-    /// authenticated caller in <c>Authenticated</c> mode and is denied in
-    /// <c>ZeroTrust</c> mode.
+    /// <see cref="KaleidoServiceOptions.AuthorizationMode"/> is <c>None</c>, or the capability declares
+    /// <c>AllowAnonymous</c>. A null or empty <paramref name="authorization"/> (undeclared) requires an
+    /// authenticated caller in <c>Authenticated</c> mode and is denied in <c>ZeroTrust</c> mode.
     /// </summary>
     Task<bool> CanAccessAsync(
         AuthorizationMetadata? authorization,
@@ -55,36 +52,69 @@ internal interface IKaleidoAuthorizer
 }
 
 internal sealed partial class KaleidoAuthorizer(
-    IKaleidoAuthorizationEvaluator evaluator,
-    IKaleidoCorrelationContextAccessor correlationAccessor,
+    KaleidoServiceOptions serviceOptions,
+    IAuthorizationService authorizationService,
+    IAuthorizationPolicyProvider policyProvider,
     IHttpContextAccessor httpContextAccessor,
     ILogger<KaleidoAuthorizer> logger)
     : IKaleidoAuthorizer
 {
+    // An authenticated caller: what an undeclared capability needs in Authenticated mode.
+    private static readonly AuthorizationPolicy Authenticated =
+        new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+
+    // Each declared roles-and-policy requirement's own policy, built once (the role part; a named policy
+    // comes from the host's provider on each check, as ASP.NET resolves it for a typed route).
+    private static readonly ConcurrentDictionary<string, AuthorizationPolicy> RolePolicies = new(StringComparer.Ordinal);
+
     // The policies this process was asked for and does not define, each logged once.
     private static readonly ConcurrentDictionary<string, byte> UnknownPolicies = new(StringComparer.Ordinal);
 
-    public bool IsEnforced => evaluator.IsEnforced;
+    // No request (a call outside one): nobody is authenticated.
+    private static readonly ClaimsPrincipal Nobody = new(new ClaimsIdentity());
 
-    public Task<bool> CanAccessAsync(
+    public bool IsEnforced =>
+        serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.None;
+
+    public async Task<bool> CanAccessAsync(
         AuthorizationMetadata? authorization,
-        CancellationToken cancellationToken) =>
-        evaluator.CanAccessAsync(
-            authorization,
-            correlationAccessor.Current,
-            PolicyEvaluator(),
-            cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        if (!IsEnforced || authorization?.AllowAnonymous == true)
+        {
+            return true;
+        }
 
-    public Task AuthorizeAsync(
+        // Undeclared (or an empty declaration): any authenticated caller in Authenticated mode; denied in
+        // ZeroTrust (fail closed - the startup check normally prevents undeclared capabilities being mapped).
+        if (authorization?.IsExplicit() != true)
+        {
+            return serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
+                && (await authorizationService.AuthorizeAsync(User, resource: null, Authenticated)).Succeeded;
+        }
+
+        if (await PolicyForAsync(authorization) is not { } policy)
+        {
+            return false;
+        }
+
+        return (await authorizationService.AuthorizeAsync(User, resource: null, policy)).Succeeded;
+    }
+
+    public async Task AuthorizeAsync(
         AuthorizationMetadata? authorization,
         string capabilityName,
-        CancellationToken cancellationToken) =>
-        evaluator.AuthorizeAsync(
-            authorization,
-            capabilityName,
-            correlationAccessor.Current,
-            PolicyEvaluator(),
-            cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(capabilityName);
+
+        if (!await CanAccessAsync(authorization, cancellationToken))
+        {
+            throw new KaleidoAuthorizationException(
+                capabilityName,
+                User.Identity?.IsAuthenticated == true);
+        }
+    }
 
     public async Task<IReadOnlyList<T>> FilterAsync<T>(
         IEnumerable<T> items,
@@ -94,13 +124,10 @@ internal sealed partial class KaleidoAuthorizer(
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(authorization);
 
-        if (!evaluator.IsEnforced)
+        if (!IsEnforced)
         {
             return [.. items];
         }
-
-        var caller = correlationAccessor.Current;
-        var policyEvaluator = PolicyEvaluator();
 
         var allowed = new List<T>();
 
@@ -110,11 +137,7 @@ internal sealed partial class KaleidoAuthorizer(
         // thread-safe, so no Task.WhenAll either.
         foreach (var item in items)
         {
-            if (await evaluator.CanAccessAsync(
-                    authorization(item),
-                    caller,
-                    policyEvaluator,
-                    cancellationToken))
+            if (await CanAccessAsync(authorization(item), cancellationToken))
             {
                 allowed.Add(item);
             }
@@ -123,44 +146,39 @@ internal sealed partial class KaleidoAuthorizer(
         return allowed;
     }
 
-    // The policy bridge stays in the transport — ASP.NET policies evaluate
-    // against the live ClaimsPrincipal, which core cannot reconstruct.
-    // A policy this host does not define fails closed (#553): the caller is not allowed, and the policy is
-    // logged once - a host filtering another service's capabilities (the control registry, MCP) may not
-    // define every policy they name, and one of them must not fail the whole read.
-    private Func<string, CancellationToken, Task<bool>>? PolicyEvaluator()
-    {
-        var httpContext = httpContextAccessor.HttpContext;
+    private ClaimsPrincipal User =>
+        httpContextAccessor.HttpContext?.User ?? Nobody;
 
-        if (httpContext is null)
+    // The declaration as the typed routes attach it (AuthorizationConventionExtensions): an authenticated
+    // caller, in one of its roles (any of them), and satisfying its named policy (ANDed). A policy this host
+    // does not define fails closed (#553): the caller is not allowed, and the policy is logged once - a host
+    // filtering another service's capabilities (the control registry, MCP) may not define every policy they
+    // name, and one of them must not fail the whole read.
+    private async Task<AuthorizationPolicy?> PolicyForAsync(AuthorizationMetadata authorization)
+    {
+        var roles = RolePolicies.GetOrAdd(
+            string.Join('\n', authorization.Roles),
+            static (_, declared) => declared.Count > 0
+                ? new AuthorizationPolicyBuilder().RequireAuthenticatedUser().RequireRole(declared).Build()
+                : Authenticated,
+            authorization.Roles);
+
+        if (string.IsNullOrWhiteSpace(authorization.Policy))
         {
+            return roles;
+        }
+
+        if (await policyProvider.GetPolicyAsync(authorization.Policy) is not { } named)
+        {
+            if (UnknownPolicies.TryAdd(authorization.Policy, 0))
+            {
+                LogUnknownPolicy(logger, authorization.Policy);
+            }
+
             return null;
         }
 
-        var authorizationService =
-            httpContext.RequestServices.GetService<IAuthorizationService>();
-        var policies =
-            httpContext.RequestServices.GetService<IAuthorizationPolicyProvider>();
-
-        return authorizationService is null
-            ? null
-            : async (policy, _) =>
-            {
-                if (policies is not null && await policies.GetPolicyAsync(policy) is null)
-                {
-                    if (UnknownPolicies.TryAdd(policy, 0))
-                    {
-                        LogUnknownPolicy(logger, policy);
-                    }
-
-                    return false;
-                }
-
-                return (await authorizationService.AuthorizeAsync(
-                    httpContext.User,
-                    resource: null,
-                    policy)).Succeeded;
-            };
+        return AuthorizationPolicy.Combine(roles, named);
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Authorization policy '{Policy}' is not defined on this host: capabilities requiring it are treated as not allowed. Define it here as the services that name it do.")]

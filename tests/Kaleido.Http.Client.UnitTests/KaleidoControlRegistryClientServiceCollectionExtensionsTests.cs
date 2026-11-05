@@ -45,7 +45,7 @@ public sealed class KaleidoControlRegistryClientServiceCollectionExtensionsTests
         Assert.Same(registrar, provider.GetRequiredService<IControlRegistryRegistrar>());
         var check = Assert.Single(provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<HealthCheckServiceOptions>>().Value.Registrations, x => x.Name == RegistrationHealthCheck.Name);
         Assert.Contains("ready", check.Tags);
-        Assert.Contains(provider.GetServices<IHttpMessageHandlerBuilderFilter>(), x => x is KaleidoCallCredentialHandlerFilter);
+        Assert.Contains(provider.GetServices<IHttpMessageHandlerBuilderFilter>(), x => x is KaleidoClientHandlerFilter);
         Assert.Equal(new Uri("https://registry.internal/"), provider.GetRequiredService<IHttpClientFactory>().CreateClient(CentralRegistrySource.ClientName).BaseAddress);
     }
 

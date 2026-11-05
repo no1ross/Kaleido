@@ -1,4 +1,3 @@
-using Kaleido.Authorization;
 using Microsoft.Extensions.Compliance.Redaction;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -106,7 +105,6 @@ public static class KaleidoServiceCollectionExtensions
 
         AddStores(services);
         AddEventWriting(services);
-        services.TryAddSingleton<IKaleidoAuthorizationEvaluator, KaleidoAuthorizationEvaluator>();
         services.TryAddSingleton<ITypeDescriber, TypeDescriber>();
         services.TryAddSingleton<IConstraintMapper, ConstraintMapper>();
 

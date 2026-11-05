@@ -62,10 +62,7 @@ public sealed class KaleidoCallerContextEndpointFilterTests
             x => x.Initialize(
                 It.Is<KaleidoCorrelationContext>(c =>
                     c.RequestId == "req-1" &&
-                    c.CallerName == "alice" &&
-                    c.CallerIsAuthenticated &&
-                    c.CallerRoles.Count == 1 &&
-                    c.CallerRoles.Contains("internal"))),
+                    c.CallerName == "alice")),
             Times.Once);
     }
 
@@ -91,7 +88,7 @@ public sealed class KaleidoCallerContextEndpointFilterTests
                 It.Is<KaleidoCorrelationContext>(c =>
                     c.RequestId == "req-1" &&
                     c.CallerName == null &&
-                    c.CallerRoles.Count == 0)),
+                    c.CallerId == null)),
             Times.Once);
     }
 
@@ -149,13 +146,12 @@ public sealed class KaleidoCallerContextEndpointFilterTests
 
         Assert.Null(context.CallerName);
         Assert.Null(context.CallerId);
-        Assert.Empty(context.CallerRoles);
     }
 
     // #515: authentication is the principal's, not the presence of a name - a subject-only token is
-    // authenticated and keeps its roles.
+    // a caller, by its subject id.
     [Fact]
-    public async Task InvokeAsync_WhenAuthenticatedWithoutAName_IsAuthenticated_WithItsRoles()
+    public async Task InvokeAsync_WhenAuthenticatedWithoutAName_IsTheCallerBySubject()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim("sub", "sub-42"), new Claim(ClaimTypes.Role, "clerk")],
@@ -165,53 +161,19 @@ public sealed class KaleidoCallerContextEndpointFilterTests
 
         Assert.Null(context.CallerName);
         Assert.Equal("sub-42", context.CallerId);
-        Assert.True(context.CallerIsAuthenticated);
-        Assert.Equal(["clerk"], context.CallerRoles);
+        Assert.Equal(new KaleidoCaller { Id = "sub-42" }, context.Caller);
     }
 
-    // An unauthenticated principal carrying claims (roles included) is anonymous: no flag, no roles.
+    // An unauthenticated principal carrying claims is anonymous: no name, no id.
     [Fact]
-    public async Task InvokeAsync_WhenUnauthenticatedWithClaims_IsNotAuthenticated_AndHasNoRoles()
+    public async Task InvokeAsync_WhenUnauthenticatedWithClaims_IsAnonymous()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "mallory"), new Claim(ClaimTypes.Role, "admin")]));
 
         var context = await InitializedWith(user);
 
-        Assert.False(context.CallerIsAuthenticated);
         Assert.Null(context.CallerName);
-        Assert.Empty(context.CallerRoles);
-    }
-
-    // #433: the roles are what ASP.NET's IsInRole (RequireRole on the typed routes) sees - each identity's
-    // own RoleClaimType - so a JWT handler that keeps "roles" claims is authorized the same everywhere.
-    [Fact]
-    public async Task InvokeAsync_ReadsRolesFromTheIdentitysRoleClaimType()
-    {
-        var user = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim("name", "alice"), new Claim("roles", "radiology"), new Claim(ClaimTypes.Role, "not-a-role-here")],
-            authenticationType: "jwt",
-            nameType: "name",
-            roleType: "roles"));
-
-        var context = await InitializedWith(user);
-
-        Assert.Equal(["radiology"], context.CallerRoles);
-        Assert.True(user.IsInRole("radiology"));
-        Assert.False(user.IsInRole("not-a-role-here"));
-    }
-
-    [Fact]
-    public async Task InvokeAsync_CollectsTheRolesOfEveryIdentity_Once()
-    {
-        var user = new ClaimsPrincipal(
-        [
-            new ClaimsIdentity([new Claim(ClaimTypes.Name, "alice"), new Claim(ClaimTypes.Role, "clerk")], authenticationType: "cookie"),
-            new ClaimsIdentity([new Claim("roles", "radiology"), new Claim("roles", "clerk")], authenticationType: "jwt", nameType: "name", roleType: "roles"),
-        ]);
-
-        var context = await InitializedWith(user);
-
-        Assert.Equal(["clerk", "radiology"], context.CallerRoles.Order(StringComparer.Ordinal));
+        Assert.Null(context.Caller);
     }
 
     // ADR 0022: the application acting for the caller comes from the principal's actor claim, never a header.

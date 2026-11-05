@@ -25,7 +25,7 @@ Correlation has three kinds of fields:
 | Per-hop | `CallingProcessorName` | `X-Kaleido-Calling-Processor` | The processor whose **step** made this call. |
 | Per-hop | `CallingStepName` | `X-Kaleido-Calling-Step` | The step in that processor that made this call. |
 | Local | `ExecutingStepName` | *(none)* | The step this service is executing; set by the runtime for a step handler's scope and used to stamp outbound calls. |
-| Local | `CallerName` / `CallerRoles` | *(none)* | Authenticated caller — from the request principal after authentication, never from headers. |
+| Local | `CallerName` / `CallerId` | *(none)* | Authenticated caller — from the request principal after authentication, never from headers. |
 | Local (per hop) | `CallerActor` | *(none)* | The application acting for the caller on this hop (a calling service, a front door): the principal's `act` claim (its `sub` when it is an object), else `azp`, else `appid`. **Trusted**: from the token, never from headers; each service reads its own caller's. |
 
 The processor **instance id** (`KaleidoServiceOptions.InstanceId`) is local too: each
@@ -105,18 +105,18 @@ Override the predicate to apply a custom policy (e.g. service-account-only trust
 
 ### Caller identity
 
-`CallerName`, `CallerId` and `CallerRoles` are **never** read from headers - they come from the
+`CallerName`, `CallerId` and `CallerActor` are **never** read from headers - they come from the
 authenticated request principal, stamped by `KaleidoCallerContextEndpointFilter` (inside
 endpoint execution, after the correlation filter and the host's authentication) on all Kaleido
 endpoint groups:
 - `CallerName` - `Identity.Name`;
-- `CallerId` - the stable subject id: the `sub` claim, else `ClaimTypes.NameIdentifier`;
-- `CallerRoles` - the role claims.
+- `CallerId` - the stable subject id: the `sub` claim, else `ClaimTypes.NameIdentifier`.
 
-Anonymous requests get `CallerName = null`, `CallerId = null`, `CallerRoles = []`.
+Anonymous requests get `CallerName = null`, `CallerId = null`. The caller's roles are not copied:
+authorization reads them from `HttpContext.User` through ASP.NET ([AUTHORIZATION.md](./AUTHORIZATION.md), #574).
 `KaleidoCorrelationContext.Caller` (`KaleidoCaller { Name, Id }`) is the caller as Kaleido tags it.
 
-These fields feed capability authorization and the **caller tags** - see
+These fields feed the **caller tags** and audit, never authorization - see
 [`AUTHORIZATION.md`](./AUTHORIZATION.md). They are **not** propagated outbound: each hop derives
 its own caller identity from its own authenticated principal. Service-to-service calls must carry
 credentials the next hop can authenticate (e.g. a bearer token) - the transport's job, not Kaleido's.
@@ -192,7 +192,7 @@ A call that came through the MCP adapter stays recognizable on every hop behind 
 | Hop | `Origin` / `OriginTool` (end to end) | `CallerActor` (per hop, from the token) |
 |---|---|---|
 | MCP client → router | *(the router sets them for its tool call)* | the MCP client app (`azp`), if the token names it |
-| Router → Intake (`ForwardCallerToken()`) | `mcp` / `intake_capture_requested_service` | the MCP client app (same token) |
+| Router → Intake (the exchanged token) | `mcp` / `intake_capture_requested_service` | the MCP client app (same token) |
 | Intake → Radiology (handoff) | unchanged | `intake` (the on-behalf-of token's `act`) |
 | Radiology → Member | unchanged | `radiology` |
 

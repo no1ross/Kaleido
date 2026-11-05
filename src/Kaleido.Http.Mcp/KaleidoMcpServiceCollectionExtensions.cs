@@ -35,16 +35,18 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// snapshot and per-caller filtering as <c>GET /{service}/registry</c>. Map the registry with
     /// aggregation (<c>MapKaleidoHttp(new() { AggregateRegistry = true })</c>) to publish the
     /// downstream services' capabilities.</description></item>
-    /// <item><description><b>Calls</b> go through the Kaleido clients of each tool's service, inside
-    /// a caller-forwarding scope: services see the MCP caller's own token and authorize the real
-    /// user, never the host's service credentials.</description></item>
+    /// <item><description><b>Calls</b> go through the Kaleido clients of each tool's service, made for the
+    /// MCP caller: each carries the token the host's handler exchanged for that user
+    /// (<c>Kaleido:OnBehalfOfCalls = Exchange</c>), never the agent's token and never the host's own
+    /// credential, so the services authorize the real user (#574).</description></item>
     /// <item><description><b>Correlation</b> is the host's: the MCP request's
     /// <c>X-Kaleido-Request-Id</c> flows to every call and is returned in each tool result.</description></item>
     /// </list>
     /// </remarks>
     /// <exception cref="KaleidoConfigurationException">
     /// <c>AddHttp()</c> was not called first (<see cref="McpErrorCodes.MissingHttp"/>), no Kaleido
-    /// client is configured (<see cref="McpErrorCodes.MissingClients"/>), the instructions file
+    /// client is configured (<see cref="McpErrorCodes.MissingClients"/>), <c>Kaleido:OnBehalfOfCalls</c> is not
+    /// <c>Exchange</c> (<see cref="McpErrorCodes.OnBehalfOfCallsNotExchanged"/>), the instructions file
     /// is missing (<see cref="McpErrorCodes.MissingInstructionsFile"/>), or a setting is out of
     /// range (<see cref="McpErrorCodes.InvalidOptions"/>).
     /// </exception>
@@ -118,20 +120,20 @@ public static class KaleidoMcpServiceCollectionExtensions
                 "AddMcp() needs the Kaleido HTTP stack: call AddHttp() before AddMcp().");
         }
 
-        if (!services.Any(x => x.ImplementationInstance is KaleidoClientOptions { Clients.Count: > 0 }))
+        if (services.FirstOrDefault(x => x.ImplementationInstance is KaleidoClientOptions { Clients.Count: > 0 })?.ImplementationInstance is not KaleidoClientOptions clients)
         {
             throw new KaleidoConfigurationException(
                 McpErrorCodes.MissingClients,
                 "AddMcp() calls services through the Kaleido clients: configure Kaleido:Clients and call AddHttpClients() before AddMcp().");
         }
 
-        // Fail closed: tool calls are made for the agent's user, and the host must state how they are
-        // authorized - the caller's token unchanged, or exchanged per service (ADR 0022).
-        if (!services.Any(x => x.ServiceType == typeof(IKaleidoCallCredentialProvider)))
+        // Fail closed: tool calls are made for the agent's user, whose token was issued for this MCP server.
+        // The MCP authorization specification forbids passing it through: the host exchanges it (#574).
+        if (clients.OnBehalfOfCalls != KaleidoOnBehalfOfCalls.Exchange)
         {
             throw new KaleidoConfigurationException(
-                McpErrorCodes.MissingCallCredentials,
-                "AddMcp() makes tool calls for the agent's user: register how they are authorized before AddMcp() - ForwardCallerToken() to send the user's token unchanged (every service accepts it), or AddCallCredentials<TProvider>() to exchange it per service.");
+                McpErrorCodes.OnBehalfOfCallsNotExchanged,
+                "AddMcp() makes tool calls for the agent's user, whose token is issued for this MCP server and must not be passed through: set Kaleido:OnBehalfOfCalls to Exchange, and add the handler that exchanges the user's token with AddKaleidoClientHandler<THandler>().");
         }
     }
 

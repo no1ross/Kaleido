@@ -160,17 +160,17 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
     // Every write is a service application's (RegistrantPolicy), registering only what it may (ControlRegistry).
     private static async Task<IResult> RegisterAsync(HttpContext httpContext, KaleidoJsonBody<RegistryInstanceRegistration> body, [FromServices] KaleidoRegistryOptions options, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
         await SatisfiesAsync(httpContext, options.RegistrantPolicy)
-            ? Answer(await registry.RegisterAsync(body.Value, Registrant(caller), cancellationToken))
+            ? Answer(await registry.RegisterAsync(body.Value, Registrant(httpContext, caller), cancellationToken))
             : Answer(RegistrantNotAllowed);
 
     private static async Task<IResult> HeartbeatAsync(HttpContext httpContext, Guid instanceId, KaleidoJsonBody<RegistryHeartbeat> body, [FromServices] KaleidoRegistryOptions options, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
         await SatisfiesAsync(httpContext, options.RegistrantPolicy)
-            ? Answer(await registry.HeartbeatAsync(instanceId, body.Value, Registrant(caller), cancellationToken))
+            ? Answer(await registry.HeartbeatAsync(instanceId, body.Value, Registrant(httpContext, caller), cancellationToken))
             : Answer(RegistrantNotAllowed);
 
     private static async Task<IResult> DeregisterAsync(HttpContext httpContext, Guid instanceId, [FromServices] KaleidoRegistryOptions options, [FromServices] IControlRegistry registry, [FromServices] IKaleidoCorrelationContextAccessor caller, CancellationToken cancellationToken) =>
         await SatisfiesAsync(httpContext, options.RegistrantPolicy)
-            ? Answer(await registry.DeregisterAsync(instanceId, Registrant(caller), cancellationToken))
+            ? Answer(await registry.DeregisterAsync(instanceId, Registrant(httpContext, caller), cancellationToken))
             : Answer(RegistrantNotAllowed);
 
     private static readonly RegistryAnswer RegistrantNotAllowed =
@@ -258,9 +258,16 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
             statusCode: StatusCodes.Status403Forbidden);
 
     // The registering service as its token describes it: its identity (the actor - act/azp/appid - else its
-    // subject) and its roles, read as IsInRole reads them.
-    private static RegistryCaller Registrant(IKaleidoCorrelationContextAccessor caller) =>
-        new(caller.Current.CallerActor ?? caller.Current.CallerId, caller.Current.CallerRoles);
+    // subject) and its roles, read from the principal as IsInRole reads them: each identity's own
+    // RoleClaimType (#433, #574).
+    private static RegistryCaller Registrant(HttpContext httpContext, IKaleidoCorrelationContextAccessor caller) =>
+        new(
+            caller.Current.CallerActor ?? caller.Current.CallerId,
+            [.. httpContext.User.Identities
+                .Where(identity => identity.IsAuthenticated)
+                .SelectMany(identity => identity.FindAll(identity.RoleClaimType))
+                .Select(claim => claim.Value)
+                .Distinct(StringComparer.Ordinal)]);
 
     private static IResult Answer(RegistryAnswer answer) =>
         answer.Kind switch

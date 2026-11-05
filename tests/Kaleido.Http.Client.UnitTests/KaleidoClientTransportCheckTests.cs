@@ -8,11 +8,8 @@ public sealed class KaleidoClientTransportCheckTests
 {
     private readonly RecordingLogger logger = new();
 
-    private KaleidoClientTransportCheck CreateSut(KaleidoClientOptions options, bool withProvider = true) =>
-        new(
-            options,
-            withProvider ? [Mock.Of<IKaleidoCallCredentialProvider>()] : [],
-            logger);
+    private KaleidoClientTransportCheck CreateSut(KaleidoClientOptions options) =>
+        new(options, logger);
 
     private static KaleidoClientOptions Clients(string? sharedBaseUrl, params (string Name, string? BaseUrl)[] clients) =>
         new()
@@ -35,8 +32,8 @@ public sealed class KaleidoClientTransportCheckTests
         Assert.All(logger.Entries, e => Assert.Equal(LogLevel.Warning, e.Level));
         Assert.Equal(
             [
-                "Kaleido client 'Intake' calls http://shared.internal without HTTPS while call credentials are configured: a caller's credential would be sent in clear text. Use an https BaseUrl (Kaleido:Clients:Intake:BaseUrl).",
-                "Kaleido client 'Member' calls http://member.internal:8080 without HTTPS while call credentials are configured: a caller's credential would be sent in clear text. Use an https BaseUrl (Kaleido:Clients:Member:BaseUrl).",
+                "Kaleido client 'Intake' calls http://shared.internal without HTTPS: a caller's credential would be sent in clear text. Use an https BaseUrl (Kaleido:Clients:Intake:BaseUrl).",
+                "Kaleido client 'Member' calls http://member.internal:8080 without HTTPS: a caller's credential would be sent in clear text. Use an https BaseUrl (Kaleido:Clients:Member:BaseUrl).",
             ],
             logger.Entries.Select(e => e.Message).Order(StringComparer.Ordinal));
     }
@@ -67,15 +64,6 @@ public sealed class KaleidoClientTransportCheckTests
         await CreateSut(options).StartAsync(TestContext.Current.CancellationToken);
 
         Assert.Contains("http://shared.internal", Assert.Single(logger.Entries).Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task StartAsync_WithoutACallCredentialProvider_DoesNotWarn()
-    {
-        await CreateSut(Clients(null, ("Member", "http://member.internal/")), withProvider: false)
-            .StartAsync(TestContext.Current.CancellationToken);
-
-        Assert.Empty(logger.Entries);
     }
 
     [Fact]

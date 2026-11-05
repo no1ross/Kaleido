@@ -55,21 +55,23 @@ caller with its own mode, so a router left at `None` returns everything to every
 `AllowAnonymous` cannot be combined with `Roles`/`Policy` — on an attribute or on
 `DefaultAuthorization` — that fails at registration (`conflicting_authorization`).
 
-**Role matching.** A declared role matches exactly as ASP.NET Core's `RequireRole`
-(`ClaimsPrincipal.IsInRole`) matches it, on every surface: the typed step and query routes,
-generic execute (`POST /processes/execute`) and registry/MCP discovery (#433).
-- Role values compare **ordinally** (case-sensitive): `Radiology` does not satisfy `radiology`.
-- A caller's roles are read from each identity's own `RoleClaimType` (`ClaimTypes.Role` by default;
-  for example `roles` when the JWT handler keeps the token's claim names), not from a fixed claim type.
+**One authorization path: ASP.NET Core's (#574).** Kaleido has no authorization logic of its own.
+A capability's declaration becomes an ASP.NET `AuthorizationPolicy` (an authenticated user, plus
+`RequireRole` for its roles, plus its named policy), checked on `HttpContext.User` by
+`IAuthorizationService` on every surface: the typed step and query routes attach it as endpoint
+metadata, and generic execute (`POST /processes/execute`), resumes and registry/MCP discovery check
+the same policy. So a role, a policy, and the host's own `IAuthorizationHandler`s and
+`IClaimsTransformation` admit the same callers everywhere.
+- Role values match as `ClaimsPrincipal.IsInRole` matches them: **ordinally** (case-sensitive),
+  `Radiology` does not satisfy `radiology`, read from each identity's own `RoleClaimType`
+  (`ClaimTypes.Role` by default; for example `roles` when the JWT handler keeps the token's claim names).
+- A host that wants case-insensitive roles normalizes them in its own authentication (for example
+  an `IClaimsTransformation`), or handles `RolesAuthorizationRequirement` itself.
 
-A host that wants case-insensitive roles normalizes them in its own authentication (for example
-an `IClaimsTransformation`), so every surface sees the same values.
-
-**Who is authenticated.** A caller is authenticated when the host's authentication says so:
-the principal's `Identity.IsAuthenticated`, carried as `KaleidoCorrelationContext.CallerIsAuthenticated`. It is set
-by the transport, never from a header. A principal without a name - a subject-only token, a
-client-credentials token for a service - is authenticated all the same, and its roles count (#515). An
-unauthenticated principal is anonymous whatever claims it carries.
+**Who is authenticated.** A caller is authenticated when the host's authentication says so: the
+principal's `Identity.IsAuthenticated`, never a header. A principal without a name - a subject-only
+token, a client-credentials token for a service - is authenticated all the same, and its roles count
+(#515). An unauthenticated principal is anonymous whatever claims it carries.
 
 ## Capability authorization
 
@@ -214,9 +216,10 @@ mechanism-only ([ADR 0001](./decisions/0001-process-engine-not-decision-maker.md
 
 ## Evaluation
 
-`IKaleidoAuthorizationEvaluator` (core, transport-agnostic; internal, shared with the built-in HTTP transport) evaluates
-`AuthorizationMetadata` against the caller fields on
-`KaleidoCorrelationContext`, using `KaleidoServiceOptions.AuthorizationMode`.
-Declared `Policy` names resolve via a transport-supplied evaluator — HTTP bridges to
-`IAuthorizationService`. Transports supply caller identity + policy evaluation; core
-owns the rules.
+The HTTP transport evaluates (#574): `KaleidoServiceOptions.AuthorizationMode` decides whether a
+declaration is enforced (`None`: everything is allowed; `AllowAnonymous`: allowed; undeclared: an
+authenticated caller in `Authenticated`, denied in `ZeroTrust`), and ASP.NET's `IAuthorizationService`
+decides the rest, on `HttpContext.User`. Core carries the declarations (`AuthorizationMetadata`) and
+no rule of its own: it never sees roles. A `Policy` name the host does not define is treated as not
+allowed (logged once), so a host filtering another service's capabilities (the control registry, MCP)
+need not define every policy they name.

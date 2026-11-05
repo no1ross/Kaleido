@@ -5,41 +5,44 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Guide.Examples.Callers;
 
-// Your identity provider's token exchange (on-behalf-of): an assumption of this example.
+// Your identity provider's token exchange (RFC 8693, or On-Behalf-Of): an assumption of this example.
+// A library such as IdentityModel (RequestTokenExchangeTokenAsync) or Microsoft.Identity.Web does the request.
 public interface ITokenExchange
 {
-    Task<string> ExchangeAsync(string callerAuthorization, string audience, CancellationToken cancellationToken);
+    Task<string> ExchangeAsync(string callerAuthorization, CancellationToken cancellationToken);
 }
 
 // snippet: callers-credentials
-// Decides the credential of every call this service makes to another Kaleido service.
-public sealed class OnBehalfOfCredentials(ITokenExchange exchange) : IKaleidoCallCredentialProvider
+// A standard DelegatingHandler on the Kaleido clients: for a call made for a caller, the caller's token
+// exchanged for one the services accept. Kaleido tells it which call it is; the service's own calls are
+// left to the host's other handlers (e.g. a client-credentials token).
+public sealed class TokenExchangeHandler(ITokenExchange exchange) : DelegatingHandler
 {
-    public async ValueTask<KaleidoCallCredential> GetCredentialAsync(
-        KaleidoCallCredentialRequest request,
-        CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        // A call made for a caller: exchange the caller's token for one the target service accepts.
-        if (request.Purpose == KaleidoCallPurpose.OnBehalfOfCaller && request.CallerAuthorization is { } authorization)
+        var call = KaleidoCallContext.Of(request);
+
+        if (call.Purpose == KaleidoCallPurpose.OnBehalfOfCaller && call.CallerAuthorization is { } authorization)
         {
-            return KaleidoCallCredential.Header(await exchange.ExchangeAsync(authorization, request.ServiceName, cancellationToken));
+            request.Headers.Remove("Authorization");
+            request.Headers.TryAddWithoutValidation("Authorization", await exchange.ExchangeAsync(authorization, cancellationToken));
         }
 
-        // The service's own calls (registry refresh, health probe): its configured credential.
-        return KaleidoCallCredential.Configured;
+        return await base.SendAsync(request, cancellationToken);
     }
 }
 // end snippet
 
 public static class CallCredentialsRegistration
 {
-    public static void AddWithOnBehalfOf(IServiceCollection services, IConfiguration configuration)
+    public static void AddWithTokenExchange(IServiceCollection services, IConfiguration configuration)
     {
         // snippet: callers-credentials-registration
-        services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(OnBehalfOfCredentials).Assembly] })
+        // Kaleido:OnBehalfOfCalls = Exchange in configuration: a caller's call never carries the inbound token.
+        services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(TokenExchangeHandler).Assembly] })
             .AddHttp()
             .AddHttpClients()
-            .AddCallCredentials<OnBehalfOfCredentials>();   // or .ForwardCallerToken(): the caller's token, unchanged
+            .AddKaleidoClientHandler<TokenExchangeHandler>();
         // end snippet
     }
 }

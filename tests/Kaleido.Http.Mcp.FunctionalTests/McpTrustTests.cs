@@ -27,7 +27,7 @@ public sealed class McpTrustTests(McpClinicFixture fixture)
 
         Assert.True(result.IsError);
         Assert.Contains(McpErrorCodes.UnknownTool, TextOf(result), StringComparison.Ordinal);
-        Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == nurse && x.Path.Contains("/queryable/", StringComparison.Ordinal));
+        Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == BearerTestAuthHandler.Exchanged(nurse) && x.Path.Contains("/queryable/", StringComparison.Ordinal));
     }
 
     // The user stops waiting: the service call is aborted, and the adapter records one cancellation

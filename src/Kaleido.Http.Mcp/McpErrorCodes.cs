@@ -15,10 +15,11 @@ public static class McpErrorCodes
     public const string MissingClients = "mcp_missing_clients";
 
     /// <summary>
-    /// <c>AddMcp()</c> needs to know how tool calls are authorized for the agent's user: register
-    /// <c>ForwardCallerToken()</c> or <c>AddCallCredentials&lt;TProvider&gt;()</c> before it (ADR 0022).
+    /// <c>AddMcp()</c> requires <c>Kaleido:OnBehalfOfCalls = Exchange</c>: the agent's user's token is issued for
+    /// the MCP server, and the MCP authorization specification forbids passing it through to the services; the
+    /// host exchanges it with its own handler (<c>AddKaleidoClientHandler&lt;THandler&gt;()</c>) (#574).
     /// </summary>
-    public const string MissingCallCredentials = "mcp_call_credentials_not_configured";
+    public const string OnBehalfOfCallsNotExchanged = "mcp_on_behalf_of_calls_not_exchanged";
 
     /// <summary><c>Kaleido:Mcp:InstructionsFile</c> points at a file that does not exist.</summary>
     public const string MissingInstructionsFile = "mcp_missing_instructions_file";

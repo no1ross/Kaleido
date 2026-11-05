@@ -115,6 +115,11 @@ shared fixtures publish.
 
 Both fixtures are in `tests/Kaleido.Http.FunctionalTests`.
 
+### Real authentication: the shared test identity (#574)
+Tests of who may call, and of what a call carries for its caller, authenticate as a production service does: ASP.NET's JWT bearer handler over real signed tokens, not a header-driven test scheme.
+- `tests/Shared/Identity` (compiled into the functional projects that use it): `TestTokenIssuer` signs user tokens (`sub`, `preferred_username`, `roles`, the app as `azp`), app-only tokens (client credentials: `azp`, `client_id`, no user) and forged ones; `AddTestJwtBearer()` makes a host trust it (`MapInboundClaims = false`, roles in `roles`).
+- Such hosts run as Production and are called over `https://` (TestServer ignores the scheme), so production-only checks apply to them. `JwtAuthorizationFixture` is the example.
+
 ### Writing tests that need their own DI container
 
 Some tests (e.g. correlation-header tests) need a fresh `ServiceCollection` with a custom

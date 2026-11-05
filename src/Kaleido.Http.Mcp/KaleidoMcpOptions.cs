@@ -8,7 +8,8 @@ namespace Kaleido.Http.Mcp;
 /// <remarks>
 /// The adapter is a layer on top of the Kaleido HTTP stack: the caller's tools come from the host's
 /// registry (<c>IKaleidoRegistryService</c>, filtered per caller), and tool calls go through the
-/// Kaleido clients (<c>AddHttpClients()</c>) with the caller's own token. It runs in any Kaleido host
+/// Kaleido clients (<c>AddHttpClients()</c>) for the caller, with the token exchanged for them
+/// (<c>Kaleido:OnBehalfOfCalls = Exchange</c>). It runs in any Kaleido host
 /// that aggregates the services it publishes — a router, or a dedicated MCP host.
 /// </remarks>
 public sealed record KaleidoMcpOptions

@@ -378,11 +378,14 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         await client.CallToolAsync("clinic_patient", new Dictionary<string, object?>(), cancellationToken: Cancel);
         await client.CallToolAsync("clinic_start_visit", new Dictionary<string, object?> { ["patientId"] = 1 }, cancellationToken: Cancel);
 
-        var calls = fixture.ServiceRequests.Where(x => x.Authorization == nurse).ToArray();
+        var calls = fixture.ServiceRequests.Where(x => x.Authorization == BearerTestAuthHandler.Exchanged(nurse)).ToArray();
 
         Assert.Contains(calls, x => x.Path.Contains("/queryable/", StringComparison.Ordinal));
         Assert.Contains(calls, x => x.Path.Contains("/processes/steps/", StringComparison.Ordinal));
         Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == McpClinicFixture.HostServiceToken);
+
+        // #574: the agent's token itself never reaches the service (no token passthrough).
+        Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == nurse);
     }
 
     // #402: the service a tool reaches learns the request came through MCP, and which tool started it.
@@ -394,7 +397,7 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
 
         await client.CallToolAsync("clinic_patient", new Dictionary<string, object?>(), cancellationToken: Cancel);
 
-        var call = Assert.Single(fixture.ServiceOrigins, x => x.Authorization == nurse && x.Path.Contains("/queryable/", StringComparison.Ordinal));
+        var call = Assert.Single(fixture.ServiceOrigins, x => x.Authorization == BearerTestAuthHandler.Exchanged(nurse) && x.Path.Contains("/queryable/", StringComparison.Ordinal));
         Assert.Equal(("mcp", "clinic_patient"), (call.Origin, call.OriginTool));
     }
 }

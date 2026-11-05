@@ -168,7 +168,7 @@ Every client code is prefixed `httpclient_`, including its startup configuration
 | `MissingBaseUrl` | `httpclient_missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
 | `InvalidRoutePrefix` | `httpclient_invalid_route_prefix` | A configured client's `RoutePrefix` (or, without one, its lowercased name) is not a service name (`[a-z0-9][a-z0-9_-]*`); it must equal the downstream `ServiceName` (startup, `AddHttpClients()`, `KaleidoConfigurationException`; ADR 0027) |
 | `InvalidClientOptions` | `httpclient_invalid_options` | A client setting in configuration (`Kaleido:RegistryTtl`, `Kaleido:Resilience`, `Kaleido:Clients:{name}`...) is out of range or cannot be read, e.g. a negative registry TTL or a non-positive timeout (startup, `KaleidoConfigurationException`) |
-| `ConfiguredCredentialForCaller` | `httpclient_configured_credential_for_caller` | An `IKaleidoCallCredentialProvider` answered `Configured` for a call made for a caller: a caller's call never goes out with the host's own credentials (`KaleidoConfigurationException`, at the call; ADR 0022) |
+| `CallerTokenNotExchanged` | `httpclient_caller_token_not_exchanged` | `Kaleido:OnBehalfOfCalls = Exchange`, and a call made for a caller carries no token or the caller's inbound token unchanged: the host's handler (`AddKaleidoClientHandler<THandler>()`) must set the exchanged token (`KaleidoConfigurationException`, at the call, before it is sent; #574) |
 | `UnknownClient` | `httpclient_unknown_client` | `GetClient` was asked for a name not configured under `Kaleido:Clients`; the message lists the configured clients (`KaleidoConfigurationException`, at the call) |
 
 ---
@@ -211,7 +211,7 @@ Startup codes surface through `KaleidoConfigurationException`. At request time a
 |---|---|---|
 | `MissingHttp` | `mcp_missing_http` | `AddMcp()` needs `AddHttp()` (the registry) on the same Kaleido builder (startup) |
 | `MissingClients` | `mcp_missing_clients` | `AddMcp()` needs Kaleido clients (`Kaleido:Clients` + `AddHttpClients()`) to call services (startup) |
-| `MissingCallCredentials` | `mcp_call_credentials_not_configured` | `AddMcp()` needs to know how tool calls are authorized: register `ForwardCallerToken()` or `AddCallCredentials<TProvider>()` before it (startup, ADR 0022) |
+| `OnBehalfOfCallsNotExchanged` | `mcp_on_behalf_of_calls_not_exchanged` | `AddMcp()` requires `Kaleido:OnBehalfOfCalls = Exchange`: the agent's user's token is issued for the MCP server and must not be passed through; the host exchanges it with its own handler (startup, #574) |
 | `MissingInstructionsFile` | `mcp_missing_instructions_file` | `Kaleido:Mcp:InstructionsFile` points at a file that does not exist (startup) |
 | `InvalidOptions` | `mcp_invalid_options` | A `Kaleido:Mcp` setting is blank, repeated, conflicting, out of range or unreadable (startup; nothing is clamped or replaced) |
 | `UnknownTool` | `mcp_unknown_tool` | The tool is not (or no longer) offered to this caller |

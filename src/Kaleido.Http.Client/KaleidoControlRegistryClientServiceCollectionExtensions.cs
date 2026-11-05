@@ -31,10 +31,11 @@ public static class KaleidoControlRegistryClientServiceCollectionExtensions
     /// registry once; a later failure never makes the instance not ready.
     /// </para>
     /// <para>
-    /// The calls (named client <c>kaleido-registry</c>) are the service's own: with an
-    /// <see cref="IKaleidoCallCredentialProvider"/> it decides their credential (purpose
-    /// <see cref="KaleidoCallPurpose.ServiceOwn"/>, service <see cref="KaleidoRegistryClientOptions.ServiceName"/>),
-    /// which must satisfy the registry's registrant and reader policies.
+    /// The calls (named client <c>kaleido-registry</c>) are the service's own
+    /// (<see cref="KaleidoCallPurpose.ServiceOwn"/>), never a caller's: they carry what the host's handlers set,
+    /// typically an app-only token (client credentials) added with
+    /// <see cref="KaleidoHttpClientsServiceCollectionExtensions.AddKaleidoClientHandler{THandler}"/>, which must
+    /// satisfy the registry's registrant and reader policies (#574).
     /// </para>
     /// </remarks>
     /// <param name="builder">The Kaleido builder.</param>
@@ -70,8 +71,8 @@ public static class KaleidoControlRegistryClientServiceCollectionExtensions
             client.BaseAddress = new Uri((options.Url ?? string.Empty).TrimEnd('/') + "/");
             client.Timeout = TimeSpan.FromSeconds(10);
         });
-        services.TryAddKeyedTransient<KaleidoCallCredentialHandler>(CentralRegistrySource.ClientName);
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoCallCredentialHandlerFilter>());
+        services.TryAddKeyedTransient<KaleidoOnBehalfOfGuard>(CentralRegistrySource.ClientName);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoClientHandlerFilter>());
 
         services.TryAddSingleton<CentralRegistrySource>();
         services.TryAddSingleton<ICentralRegistrySource>(x => x.GetRequiredService<CentralRegistrySource>());

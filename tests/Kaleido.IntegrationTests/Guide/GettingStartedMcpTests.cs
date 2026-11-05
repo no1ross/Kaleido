@@ -29,6 +29,7 @@ public sealed class GettingStartedMcpTests : IAsyncLifetime
         {
             ["Kaleido:Clients:orders:BaseUrl"] = "http://localhost/",
             ["Kaleido:Clients:orders:RoutePrefix"] = "orders",
+            ["Kaleido:OnBehalfOfCalls"] = "Exchange",
         });
 
         OrdersService.AddOrdersWithMcp(builder.Services, builder.Configuration);

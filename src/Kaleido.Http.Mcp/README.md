@@ -18,8 +18,8 @@ builder.Services
         Assemblies = [typeof(Program).Assembly], // required, even when the router has no capabilities of its own
     })
     .AddHttp()
-    .AddHttpClients()
-    .ForwardCallerToken()          // how tool calls are authorized for the agent's user (see Security)
+    .AddHttpClients()                                // Kaleido:OnBehalfOfCalls = Exchange (required, see Security)
+    .AddKaleidoClientHandler<TokenExchangeHandler>() // exchanges the agent's user's token for the services
     .AddMcp(new() { ServerName = "priorauth" });
 
 app.UseAuthentication();
@@ -29,9 +29,9 @@ app.MapKaleidoMcp("/mcp").RequireAuthorization();
 ```
 
 A complete, tested single-service host is the guide's
-[Publish it to AI agents](../../docs/guide/getting-started.md#6-publish-it-to-ai-agents-mcp); for an
-OAuth-protected endpoint, register a per-service exchange instead of `ForwardCallerToken()` (see
-Security, [ADR 0027](../../docs/decisions/0027-forward-caller-token-kept-with-guards.md)).
+[Publish it to AI agents](../../docs/guide/getting-started.md#6-publish-it-to-ai-agents-mcp); the
+exchange handler is shown in
+[Which token a service sends](../../docs/guide/callers-and-correlation.md#which-token-a-service-sends).
 
 Options (`KaleidoMcpOptions`, passed to `AddMcp(new() { ... })`; the `Kaleido:Mcp` configuration
 section overrides them setting by setting, ADR 0030): `ServerName`, `ServerVersion`, `Instructions`
@@ -44,10 +44,9 @@ Nothing is trimmed or replaced: a blank name, version or instructions setting, a
 listed tool, a negative round count or both instruction settings at once fail startup with
 `mcp_invalid_options`.
 
-Call `AddHttp()`, `AddHttpClients()` (with at least one client under `Kaleido:Clients`) and a
-call-credential registration (`ForwardCallerToken()` or `AddCallCredentials<TProvider>()`)
-**before** `AddMcp()`: it fails startup with `mcp_missing_http`, `mcp_missing_clients` or
-`mcp_call_credentials_not_configured` otherwise. An `InstructionsFile` that does not exist fails with
+Call `AddHttp()` and `AddHttpClients()` (with at least one client under `Kaleido:Clients`, and
+`Kaleido:OnBehalfOfCalls = Exchange`) **before** `AddMcp()`: it fails startup with `mcp_missing_http`,
+`mcp_missing_clients` or `mcp_on_behalf_of_calls_not_exchanged` otherwise. An `InstructionsFile` that does not exist fails with
 `mcp_missing_instructions_file`. The endpoint is stateless Streamable HTTP, so it needs no session
 affinity behind a load balancer.
 
@@ -335,8 +334,8 @@ runs on the server, whatever the agent says or the client shows:
 | retry or abandon a call | idempotency keys on execute calls; a cancellation is recorded as one (a Warning), never a failure | client + service |
 | learn data it should not | which capabilities the caller may use (tools are filtered per caller; each service authorizes its own); which **records** a caller may see within a capability is the service's own logic (no case-level guardrails). Credentials and tool arguments are never written to logs or span tags | adapter + services |
 
-The credential a tool call carries is the host's decision and never the host's own identity
-([ADR 0022](../../docs/decisions/0022-call-credentials.md)); downstream services see that the call came
+A tool call carries the token the host's handler exchanged for the agent's user, never the agent's
+token and never the host's own identity (#574); downstream services see that the call came
 through MCP and which tool started it (`Origin`/`OriginTool`, informational) and which application
 acted (`CallerActor`, from the token) - see [`docs/CORRELATION.md`](../../docs/CORRELATION.md).
 Each row is covered by tests: `McpEndpointTests`, `McpContractTests` and `McpTrustTests` in
@@ -396,7 +395,7 @@ builder.Services
     })
     .AddHttp()
     .AddHttpClients()                                   // Kaleido:Clients:intake, Kaleido:Clients:radiology
-    .AddCallCredentials<OnBehalfOfProvider>()           // a token for the user, per service (Kaleido.Http.Client README)
+    .AddKaleidoClientHandler<OnBehalfOfHandler>()       // the user's token exchanged (Kaleido.Http.Client README)
     .AddMcp(new() { ServerName = "priorauth" });
 
 var app = builder.Build();
@@ -410,6 +409,7 @@ app.Run();
 ```json
 {
   "Kaleido": {
+    "OnBehalfOfCalls": "Exchange",
     "Clients": {
       "intake": { "BaseUrl": "https://intake.internal/" },
       "radiology": { "BaseUrl": "https://radiology.internal/" }
@@ -420,18 +420,17 @@ app.Run();
 ```
 
 An agent connecting to `/mcp` signs the user in, lists the tools that user may use across both
-services, and every call reaches the service with a token for that user and service. The
-[PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth)'s router is a complete, runnable version (with dev tokens and `ForwardCallerToken()`).
+services, and every call reaches the service with a token exchanged for that user. The
+[PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) is a complete, runnable version.
 
 ## Security
 
 - Tools are built from the registry **filtered for the caller**: a caller sees only what it may use.
 - **Tool changes follow deployments within the registry check interval:** the tool list is built from the host's registry snapshot, which an aggregating host rebuilds after `RegistryCacheTtl` (default 30 seconds), checking each downstream with its ETag. On a host taking part in the control registry (`AddControlRegistryClient()`), a deployment, and each capability's status, reach the tools within one availability check (the registry's heartbeat interval, 10 s by default). A removed step that is still called answers 404 and drops that downstream's snapshot at once.
-- Every tool call is made **for the agent's user**: the host's `IKaleidoCallCredentialProvider`
-  decides its credential (the user's token unchanged with `ForwardCallerToken()`, or a token
-  exchanged per service), and Kaleido guarantees it is never the host's own service credential; an
-  anonymous user stays anonymous ([ADR 0022](../../docs/decisions/0022-call-credentials.md),
-  [`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#who-a-call-is-authorized-as-ikaleidocallcredentialprovider)).
+- Every tool call is made **for the agent's user**: it carries the token the host's handler exchanged
+  for that user (`Kaleido:OnBehalfOfCalls = Exchange`, required), and Kaleido guarantees it is never the
+  agent's token and never the host's own service credential; an anonymous user stays anonymous
+  ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#what-a-call-carries-the-callers-token-or-the-services-own-574), #574).
   The services authorize the user, not the adapter.
 - Questions and lookups go to the user through forms where the client supports them; the model
   never answers for the user.
@@ -473,17 +472,13 @@ builder.Services
 app.MapKaleidoMcp("/mcp").RequireAuthorization();
 ```
 
-- **What reaches the services is the host's choice** (ADR 0022): with `ForwardCallerToken()` the
-  user's token unchanged - the services must accept a token issued for the MCP endpoint (one
-  audience); with `AddCallCredentials<TProvider>()` a token the provider exchanges for each service
-  (on-behalf-of), which the services validate against their own audience. Per-caller tool filtering
-  and authorization work the same either way.
-- **For an OAuth-protected MCP endpoint, exchange the token.** The MCP authorization specification
-  forbids passing the access token issued for the MCP server through to downstream APIs ("token
-  passthrough"): such a host registers `AddCallCredentials<TProvider>()`. `ForwardCallerToken()` is
-  for deployments that deliberately share one audience, such as the samples' dev tokens
-  ([ADR 0027](../../docs/decisions/0027-forward-caller-token-kept-with-guards.md)). Configure the
-  clients with `https` base URLs; a non-HTTPS, non-loopback client is reported at startup.
+- **The token is exchanged, never passed through.** The MCP authorization specification forbids passing
+  the access token issued for the MCP server through to downstream APIs ("token passthrough"), so
+  `AddMcp()` requires `Kaleido:OnBehalfOfCalls = Exchange`: the host's handler
+  (`AddKaleidoClientHandler<THandler>()`) exchanges the user's token once for one the services accept
+  (RFC 8693 token exchange, or On-Behalf-Of), and Kaleido refuses a call that would carry the agent's
+  token (`httpclient_caller_token_not_exchanged`) (#574). Configure the clients with `https` base URLs;
+  a non-HTTPS, non-loopback client is reported at startup.
 - **Client registration** (a pre-registered client id, or dynamic client registration) is the
   identity provider's concern; check which one your MCP clients use.
 - Without `RequireAuthorization()` anonymous callers stay allowed and see only anonymous tools; the

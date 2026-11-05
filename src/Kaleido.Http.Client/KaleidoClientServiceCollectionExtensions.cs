@@ -8,7 +8,7 @@ namespace Kaleido.Http.Client;
 internal static class KaleidoClientServiceCollectionExtensions
 {
     // One configured client (#498): its definition in the catalog, its named HttpClient, and its keyed
-    // services - the process and queryable clients, the health check and the credential handler -
+    // services - the process and queryable clients, the health check and the on-behalf-of guard -
     // registered by type, so the container builds every one of them. Registering a name twice is a
     // no-op (AddHttpClients() may be called more than once).
     internal static IKaleidoBuilder AddKaleidoClient(
@@ -50,7 +50,7 @@ internal static class KaleidoClientServiceCollectionExtensions
 
         services.AddKeyedScoped<IKaleidoProcessorClient, KaleidoProcessorClient>(options.Name);
         services.AddKeyedScoped<IKaleidoQueryableClient, KaleidoQueryableClient>(options.Name);
-        services.AddKeyedTransient<KaleidoCallCredentialHandler>(options.Name);
+        services.AddKeyedTransient<KaleidoOnBehalfOfGuard>(options.Name);
         services.AddKeyedTransient<KaleidoClientHealthCheck>(options.Name);
 
         AddClientHealthCheck(services, options.Name);

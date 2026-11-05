@@ -29,7 +29,10 @@ public sealed class CorrelationHeaderStamperTests
 
         CreateSut(SetupContext(new KaleidoCorrelationContext()), inboundCaller: inbound.Object).Stamp(request);
 
-        Assert.Equal(new KaleidoCallContext(KaleidoCallPurpose.OnBehalfOfCaller, principal, "Bearer carol"), KaleidoCallContext.Of(request));
+        var call = KaleidoCallContext.Of(request);
+        Assert.Equal(KaleidoCallPurpose.OnBehalfOfCaller, call.Purpose);
+        Assert.Same(principal, call.Caller);
+        Assert.Equal("Bearer carol", call.CallerAuthorization);
     }
 
     // ADR 0022: the origin is end-to-end - every hop forwards it, as it forwards the request id.

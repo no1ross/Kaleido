@@ -56,8 +56,10 @@ public static class KaleidoHttpServiceCollectionExtensions
         KaleidoHttpOptions.Validate(httpOptions);
         builder.Services.AddSingleton(httpOptions);
 
-        // Capability authorization: runtime evaluator. 401/403 responses are
-        // produced by the host's authentication scheme (standard ASP.NET Core).
+        // Capability authorization is ASP.NET's (#574): the typed routes' policies, and the same policies
+        // checked by IAuthorizationService on the dynamic paths. 401/403 responses are produced by the
+        // host's authentication scheme (standard ASP.NET Core).
+        builder.Services.AddAuthorization();
         builder.Services.TryAddScoped<IKaleidoAuthorizer, KaleidoAuthorizer>();
         builder.Services.TryAddSingleton<Middleware.IKaleidoExceptionHandler, Middleware.KaleidoExceptionHandler>();
 

@@ -11,7 +11,7 @@ internal interface ICorrelationHeaderStamper
 /// the inbound one); calling processor and step are this service and its executing step,
 /// sent only when the call is made from inside a step (never forwarded from inbound). It also attaches
 /// why the call is made and for whom (<see cref="KaleidoCallContext"/>): a call made while handling an
-/// inbound request is made for its caller; the credential handler authorizes it as that caller.
+/// inbound request is made for its caller; the on-behalf-of guard makes it carry that caller's token.
 /// </summary>
 internal sealed class CorrelationHeaderStamper(
     IKaleidoCorrelationContextAccessor correlation,
@@ -28,7 +28,7 @@ internal sealed class CorrelationHeaderStamper(
         {
             request.Options.Set(
                 KaleidoCallContext.Key,
-                new KaleidoCallContext(KaleidoCallPurpose.OnBehalfOfCaller, inboundCaller.Principal, inboundCaller.Credential));
+                KaleidoCallContext.ForCaller(inboundCaller.Principal, inboundCaller.Credential));
         }
 
         if (!string.IsNullOrWhiteSpace(ctx.RequestId))

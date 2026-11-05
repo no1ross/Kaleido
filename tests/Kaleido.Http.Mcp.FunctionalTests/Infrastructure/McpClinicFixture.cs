@@ -164,6 +164,7 @@ public class McpClinicFixture : IAsyncLifetime
                             ["Kaleido:Clients:clinic:BaseUrl"] = "http://localhost/",
                             ["Kaleido:Clients:clinic:RoutePrefix"] = "clinic",
                             ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search.",
+                            ["Kaleido:OnBehalfOfCalls"] = "Exchange",
                             ["Kaleido:Resilience:TotalTimeout"] = ClientTimeout.ToString("c", System.Globalization.CultureInfo.InvariantCulture),
                         };
 
@@ -218,9 +219,9 @@ public class McpClinicFixture : IAsyncLifetime
                             .AddInMemoryStores()
                             .AddHttp()
                             .AddHttpClients()
-                            // Tool calls send the agent's user's token unchanged (ADR 0022); the
-                            // host's service credential below stays on the service's own calls.
-                            .ForwardCallerToken()
+                            // Tool calls carry a token exchanged for the agent's user, never the agent's own
+                            // (#574); the host's service credential below stays on the service's own calls.
+                            .AddKaleidoClientHandler<TestTokenExchangeHandler>()
                             .AddMcp();
 
                         // The clinic client calls this TestServer (in production: the network),

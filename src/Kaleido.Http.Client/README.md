@@ -123,10 +123,9 @@ builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
   per-client fan-out of `AddHttpClients()`, in either order.
 - **When the registry cannot be read,** the last good copy is served, partial (a `RegistryReadError` for
   `registry`), until a read succeeds.
-- **Its calls are the service's own** (named client `kaleido-registry`): with an
-  `IKaleidoCallCredentialProvider`, it decides their credential (purpose `ServiceOwn`, service
-  `KaleidoRegistryClientOptions.ServiceName`, `registry` by default), which must satisfy the registry's
-  reader policy.
+- **Its calls are the service's own** (named client `kaleido-registry`, purpose `ServiceOwn`): they carry
+  what the host's handlers set (`AddKaleidoClientHandler<T>()`), typically its app-only token, which must
+  satisfy the registry's registrant and reader policies.
 
 Settings (`Kaleido:Registry`, `KaleidoRegistryClientOptions`): `Url` (required) and `ServiceName`. Every
 interval is the registry's, and no address is registered: where a version runs is the router's to know.
@@ -286,70 +285,82 @@ Both clients:
 
 A step, source or view the service does not have, or the caller may not use, is the service's own answer: `KaleidoHttpClientException` with `httpclient_request_failed` and status 404 or 403.
 
-### Who a call is authorized as (`IKaleidoCallCredentialProvider`)
+### What a call carries: the caller's token, or the service's own (#574)
 
 Every Kaleido client call - a step handler's handoff or lookup, a delegated query, an MCP tool call,
-a registry fetch - gets its `Authorization` from one host-owned seam when one is registered
-([ADR 0022](../../docs/decisions/0022-call-credentials.md)). Kaleido asks it once per outgoing request,
-naming the destination service and why the call is made:
+a registry fetch, a heartbeat - is one of two kinds, decided by Kaleido (`KaleidoCallPurpose`):
 
-| `KaleidoCallPurpose` | When | Typical answer |
+| `KaleidoCallPurpose` | When | It carries |
 |---|---|---|
-| `OnBehalfOfCaller` | the call is made while handling an inbound request (an MCP tool call, a step handler's call) | a token for **the caller**, addressed to the destination (an on-behalf-of / RFC 8693 token exchange), or the caller's own token |
-| `ServiceOwn` | a registry fetch or refresh (shared by every caller), a health probe, any call outside an inbound request | a service token, or `KaleidoCallCredential.Configured` to keep what the host set on the client |
+| `OnBehalfOfCaller` | the call is made while handling an inbound request (an MCP tool call, a step handler's call) | per `Kaleido:OnBehalfOfCalls`: the caller's token unchanged (`Forward`, the default), or the token the host's handler exchanged for the caller (`Exchange`) |
+| `ServiceOwn` | a registry fetch or refresh (shared by every caller), a heartbeat, a health probe, any call outside an inbound request | what the host's handlers set: typically the service's app-only token (client credentials) |
 
-The provider answers `KaleidoCallCredential.Header(value)`, `None` (anonymous), or - for the
-service's own calls only - `Configured`. **Kaleido enforces one rule whatever it answers: a call made
-for a caller never goes out with the host's own credentials.** An anonymous caller is sent
-anonymously without asking the provider, `Configured` for a caller's call is refused
-(`httpclient_configured_credential_for_caller`), and a provider exception fails the call. The
-provider runs after every handler the host configured on its clients, so its answer is the one sent.
+`Kaleido:OnBehalfOfCalls` (`KaleidoClientOptions.OnBehalfOfCalls`) is a setting, read once at startup,
+not a token: the tokens come from each request, or from the identity provider through the host's handler,
+at the time of the call.
+
+**The host's handlers** are standard `DelegatingHandler`s added to every Kaleido client, and to no other
+`HttpClient` of the host, with `AddKaleidoClientHandler<THandler>()`, from any library (Duende,
+IdentityModel, Microsoft.Identity.Web). `KaleidoCallContext.Of(request)` tells a handler which call it is
+(`Purpose`), for whom (`Caller`) and the caller's token to exchange (`CallerAuthorization`; a credential:
+never log it).
+
+**Kaleido's guard runs last, whatever the handlers set:**
+- an anonymous caller's call carries nothing;
+- with `Forward`, a caller's call carries exactly the caller's token;
+- with `Exchange`, a caller's call must carry a token a handler set that is not the inbound one, or it is
+  refused before it is sent (`httpclient_caller_token_not_exchanged`);
+- the service's own calls keep what the handlers set, and never carry a caller's token.
 
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, new())
     .AddHttp()
     .AddHttpClients()
-    .AddCallCredentials<OnBehalfOfProvider>();   // or .ForwardCallerToken()
+    .AddKaleidoClientHandler<ServiceTokenHandler>()   // the service's own calls
+    .AddKaleidoClientHandler<OnBehalfOfHandler>();    // with Kaleido:OnBehalfOfCalls = Exchange
 
-// A provider exchanging the caller's token for the destination's audience (Entra ID on-behalf-of):
-public sealed class OnBehalfOfProvider(IConfidentialClientApplication app) : IKaleidoCallCredentialProvider
+// The service's own calls: its app-only token (client credentials, Entra ID here).
+public sealed class ServiceTokenHandler(IConfidentialClientApplication app) : DelegatingHandler
 {
-    public async ValueTask<KaleidoCallCredential> GetCredentialAsync(KaleidoCallCredentialRequest request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        string[] scopes = [$"api://{request.ServiceName}/.default"];
-
-        if (request.Purpose == KaleidoCallPurpose.ServiceOwn)
+        if (KaleidoCallContext.Of(request).Purpose == KaleidoCallPurpose.ServiceOwn)
         {
-            var own = await app.AcquireTokenForClient(scopes).ExecuteAsync(cancellationToken);
-            return KaleidoCallCredential.Header($"Bearer {own.AccessToken}");
+            var own = await app.AcquireTokenForClient(["api://kaleido-platform/.default"]).ExecuteAsync(cancellationToken);
+            request.Headers.Authorization = new("Bearer", own.AccessToken);
         }
 
-        var userToken = request.CallerAuthorization?["Bearer ".Length..];
-        if (userToken is null)
+        return await base.SendAsync(request, cancellationToken);
+    }
+}
+
+// A caller's calls: the caller's token exchanged (Entra ID on-behalf-of here; RFC 8693 token exchange elsewhere).
+public sealed class OnBehalfOfHandler(IConfidentialClientApplication app) : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (KaleidoCallContext.Of(request) is { Purpose: KaleidoCallPurpose.OnBehalfOfCaller, CallerAuthorization: { } inbound })
         {
-            return KaleidoCallCredential.None;
+            var exchanged = await app.AcquireTokenOnBehalfOf(["api://kaleido-platform/.default"], new UserAssertion(inbound["Bearer ".Length..]))
+                .ExecuteAsync(cancellationToken);
+            request.Headers.Authorization = new("Bearer", exchanged.AccessToken);
         }
 
-        var exchanged = await app.AcquireTokenOnBehalfOf(scopes, new UserAssertion(userToken)).ExecuteAsync(cancellationToken);
-        return KaleidoCallCredential.Header($"Bearer {exchanged.AccessToken}");
+        return await base.SendAsync(request, cancellationToken);
     }
 }
 ```
 
-- **`ForwardCallerToken()`** registers a built-in provider: a caller's call sends the caller's token
-  unchanged, the service's own calls keep the host's configured credentials. Use it only where every
-  service accepts the caller's token (one audience), as in the PriorAuth router. **Not for an
-  OAuth-protected MCP endpoint**: the MCP authorization specification forbids passing the token issued
-  for the MCP server through to other APIs; there, register a provider that exchanges it per service
-  (`AddCallCredentials<T>()`, [ADR 0027](../../docs/decisions/0027-forward-caller-token-kept-with-guards.md)).
-- **Use `https` base URLs.** With a provider registered, a client whose `BaseUrl` is neither `https`
-  nor loopback is logged as a Warning at startup: it would send a caller's credential in clear text.
+- **`Forward` (the default)** suits services that all accept the same token (one platform audience).
+  **An MCP host requires `Exchange`**: the MCP authorization specification forbids passing the token issued
+  for the MCP server through to other APIs, so `AddMcp()` fails at startup otherwise
+  (`mcp_on_behalf_of_calls_not_exchanged`).
+- Handlers run in the order added, after the handlers configured on the client itself, and are created per
+  client pipeline (transient): keep tokens in a cache they depend on, not in their own fields.
+- **Use `https` base URLs.** A client whose `BaseUrl` is neither `https` nor loopback is logged as a Warning
+  at startup: it would send a caller's credential in clear text.
 - **`RoutePrefix` is a service name** (`[a-z0-9][a-z0-9_-]*`, the downstream `ServiceName`):
   `AddHttpClients()` refuses any other value at startup (`httpclient_invalid_route_prefix`).
-- Register the provider as a singleton (`AddCallCredentials<T>()` does); it is called concurrently and
-  on every request, so cache exchanged tokens yourself.
-- **Without a provider** the host's own client handlers decide, as before. A host with the MCP adapter
-  must register one: `AddMcp()` fails at startup otherwise (`mcp_call_credentials_not_configured`).
 
 ### Front doors: calling for a process
 

@@ -1,6 +1,6 @@
 # 0022. One credential model for every outgoing call, and provenance behind a front door
 
-- **Status:** Accepted
+- **Status:** Superseded by 0038
 - **Date:** 2026-10-20
 - **Related:** #287, #402, #312, ADR 0010, ADR 0021
 

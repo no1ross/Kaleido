@@ -52,7 +52,7 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
             .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
             .AddEndpointFilter<Observability.KaleidoCorrelationEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
-            // Post-auth caller (CallerName/CallerId/CallerRoles) for per-step checks and created-by tags.
+            // Post-auth caller (CallerName/CallerId/CallerActor) for created-by tags and the outgoing calls.
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
         LogEndpointsMapped(logger, routePrefix, registry.Registrations.Count, registry.InitialRegistrations.Count);

@@ -115,27 +115,6 @@ public sealed record KaleidoCorrelationContext
         CallerName is null && CallerId is null
             ? null
             : new KaleidoCaller { Name = CallerName, Id = CallerId };
-    /// <summary>
-    /// Whether the caller is authenticated, set by the transport from the request principal
-    /// (<c>Identity.IsAuthenticated</c>) - <b>never</b> from caller-supplied headers. Authorization
-    /// reads this, not the presence of a name: a principal without a name (a subject-only or a
-    /// client-credentials token) is authenticated all the same (#515).
-    /// </summary>
-    public bool CallerIsAuthenticated
-    {
-        get;
-        init;
-    }
-
-    /// <summary>
-    /// Roles of the authenticated caller, populated by the transport for any authenticated caller,
-    /// named or not (see <see cref="CallerIsAuthenticated"/>). Empty for anonymous requests.
-    /// </summary>
-    public IReadOnlyCollection<string> CallerRoles
-    {
-        get;
-        init;
-    } = [];
 
     /// <summary>
     /// Returns <see langword="true"/> when the correlation context has no meaningful correlation fields set —

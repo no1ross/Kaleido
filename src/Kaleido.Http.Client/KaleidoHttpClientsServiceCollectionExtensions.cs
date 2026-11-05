@@ -43,13 +43,12 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
                     ServiceDescriptor.Scoped<IKaleidoRegistrySource, ClientFanOutRegistrySource>());
             }
 
-            // With an IKaleidoCallCredentialProvider registered, it decides every call's Authorization
-            // (innermost handler); without one the host's own client handlers do, as before.
+            // Every Kaleido client ends with the host's Kaleido client handlers, then the on-behalf-of guard (#574).
             builder.Services.TryAddEnumerable(
-                ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoCallCredentialHandlerFilter>());
+                ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoClientHandlerFilter>());
 
-            // At start (a provider may be registered after this call): warn about a client that would
-            // send a caller's credential over a non-HTTPS, non-loopback connection (#434).
+            // At start: warn about a client that would send a caller's credential over a non-HTTPS,
+            // non-loopback connection (#434).
             builder.Services.TryAddEnumerable(
                 ServiceDescriptor.Singleton<IHostedService, KaleidoClientTransportCheck>());
         }
@@ -58,40 +57,40 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Registers <typeparamref name="TProvider"/> as the <see cref="IKaleidoCallCredentialProvider"/>
-    /// (singleton): it decides the <c>Authorization</c> of every Kaleido client call, for the caller or
-    /// for the service itself (ADR 0022). Replaces a provider registered before.
+    /// Adds <typeparamref name="THandler"/>, a standard <see cref="DelegatingHandler"/>, to every Kaleido client
+    /// (the configured ones and the control registry's), and to no other <c>HttpClient</c> of the host (#574).
+    /// It is where the host sets the calls' credentials, with any library: a client-credentials token on the
+    /// service's own calls, and, with <c>Kaleido:OnBehalfOfCalls = Exchange</c>, the caller's exchanged token on
+    /// the calls made for a caller. <see cref="KaleidoCallContext.Of"/> tells it which call it is.
     /// </summary>
-    /// <typeparam name="TProvider">The host's provider, e.g. an OAuth on-behalf-of token exchange.</typeparam>
+    /// <remarks>
+    /// Handlers run in the order they are added, after the handlers configured on the client itself; Kaleido's
+    /// own guard runs last and enforces <see cref="KaleidoClientOptions.OnBehalfOfCalls"/>: whatever a handler sets,
+    /// an anonymous caller's call carries nothing, a <see cref="KaleidoOnBehalfOfCalls.Forward"/> call carries the
+    /// caller's token, and an <see cref="KaleidoOnBehalfOfCalls.Exchange"/> call never carries it unchanged.
+    /// The handler is created per client pipeline (transient), like any <c>AddHttpMessageHandler</c> handler:
+    /// keep tokens in a cache it depends on, not in its own fields.
+    /// </remarks>
+    /// <typeparam name="THandler">The host's handler.</typeparam>
     /// <param name="builder">The Kaleido builder.</param>
     /// <returns>The same builder.</returns>
-    public static IKaleidoBuilder AddCallCredentials<TProvider>(this IKaleidoBuilder builder)
-        where TProvider : class, IKaleidoCallCredentialProvider
+    public static IKaleidoBuilder AddKaleidoClientHandler<THandler>(this IKaleidoBuilder builder)
+        where THandler : DelegatingHandler
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.Services.Replace(ServiceDescriptor.Singleton<IKaleidoCallCredentialProvider, TProvider>());
+        builder.Services.TryAddTransient<THandler>();
+
+        // One registration per handler type, in the order they are added (a handler added twice runs once).
+        if (!builder.Services.Any(x => x.ImplementationInstance is KaleidoClientHandlerRegistration known && known.HandlerType == typeof(THandler)))
+        {
+            builder.Services.AddSingleton(new KaleidoClientHandlerRegistration(typeof(THandler)));
+        }
+
+        builder.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoClientHandlerFilter>());
         return builder;
     }
-
-    /// <summary>
-    /// Sends a caller's own credential unchanged on every call made for that caller, and keeps the host's
-    /// configured credentials on the service's own calls (registry fetches): for deployments where every
-    /// service accepts the caller's token (one audience). Where services have their own audiences,
-    /// register a provider that exchanges the token instead (<see cref="AddCallCredentials{TProvider}"/>).
-    /// </summary>
-    /// <remarks>
-    /// The token is passed through unchanged. For an OAuth-protected MCP endpoint, the MCP authorization
-    /// specification forbids passing the token issued for the MCP server through to downstream APIs:
-    /// there, use <see cref="AddCallCredentials{TProvider}"/> with a provider that obtains a token for
-    /// each service (for example OAuth on-behalf-of). Configure the clients with <c>https</c> base URLs:
-    /// a client with a non-HTTPS, non-loopback base URL is reported with a warning at startup, since the
-    /// caller's credential would cross the network in clear text (ADR 0027).
-    /// </remarks>
-    /// <param name="builder">The Kaleido builder.</param>
-    /// <returns>The same builder.</returns>
-    public static IKaleidoBuilder ForwardCallerToken(this IKaleidoBuilder builder) =>
-        builder.AddCallCredentials<ForwardCallerTokenProvider>();
 
     // One configured client: a process client and a queryable client for the same service; the
     // entry's settings fall back to the shared ones.
