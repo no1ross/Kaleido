@@ -16,7 +16,7 @@ public sealed class QueryableServiceTests
         RequestId = "req-413",
         ProcessId = Guid.NewGuid(),
         CallerName = "ann",
-        CallerRoles = ["clerk"],
+        CallerActor = "front-door",
     };
 
     // What the query's own scope was initialized with.

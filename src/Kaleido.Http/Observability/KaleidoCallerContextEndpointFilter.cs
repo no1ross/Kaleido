@@ -32,7 +32,7 @@ internal static class KaleidoCallerContextHttpContextExtensions
     private const string SubjectClaimType = "sub";
 
     /// <summary>
-    /// Sets the caller (name, subject id, authentication and roles) on the request's <see cref="KaleidoCorrelationContext"/>
+    /// Sets the caller (name, subject id and acting app) on the request's <see cref="KaleidoCorrelationContext"/>
     /// from the authenticated <c>HttpContext.User</c>. Kaleido's endpoints do this through
     /// <see cref="KaleidoCallerContextEndpointFilter"/>; in-host consumers reached through other
     /// endpoints (e.g. the registry service called by the MCP adapter) do it before authorizing.
@@ -82,22 +82,8 @@ internal static class KaleidoCallerContextHttpContextExtensions
                 CallerName = callerName,
                 CallerId = callerId,
                 CallerActor = callerActor,
-
-                // Authentication is the principal's, not the presence of a display name (#515).
-                CallerIsAuthenticated = authenticated,
-                CallerRoles = authenticated ? RolesOf(user) : [],
             });
     }
-
-    // The roles exactly as ASP.NET's ClaimsPrincipal.IsInRole (RequireRole) sees them: each identity's
-    // own RoleClaimType (ClaimTypes.Role by default, e.g. "roles" for a JWT handler that keeps claim
-    // names), so the typed routes and Kaleido's own evaluation (generic execute, discovery) agree (#433).
-    private static string[] RolesOf(ClaimsPrincipal user) =>
-        user.Identities
-            .SelectMany(identity => identity.FindAll(identity.RoleClaimType))
-            .Select(claim => claim.Value)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
 
     // RFC 8693 "act" (a JSON object naming the actor's "sub", or a plain value), else the authorized
     // party ("azp", OpenID Connect) or Entra ID's "appid".

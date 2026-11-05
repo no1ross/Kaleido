@@ -1,4 +1,5 @@
 using Kaleido.Testing.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -34,6 +35,7 @@ public sealed class JwtAuthorizationFixture
                         services.AddTestJwtBearer();
                         services.AddAuthorization(options =>
                             options.AddPolicy("clinician-only", p => p.RequireRole("clinician")));
+                        services.AddSingleton<IAuthorizationHandler, SuperuserRoleHandler>();
 
                         services.AddKaleido(new ConfigurationBuilder().Build(), new()
                         {

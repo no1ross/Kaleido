@@ -110,6 +110,22 @@ public sealed class JwtAuthorizationTests(JwtAuthorizationFixture fixture)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    // One authorization path (#574): the host's own ASP.NET handler decides a role requirement
+    // wherever Kaleido checks it, not only on the typed route.
+    [Fact]
+    public async Task TheHostsOwnAuthorizationHandler_AdmitsTheSameCallersEverywhere()
+    {
+        var superuser = TestTokenIssuer.User("root", [SuperuserRoleHandler.Role]);
+
+        using var typed = await SendAsync(HttpMethod.Post, InternalStepUrl, StepBody, superuser);
+        using var generic = await SendAsync(HttpMethod.Post, ExecuteUrl, ExecuteBody(AuthorizationStepNames.InternalStep), superuser);
+        var discovered = await StepNamesAsync(superuser);
+
+        Assert.Equal(HttpStatusCode.OK, typed.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, generic.StatusCode);
+        Assert.Contains(AuthorizationStepNames.InternalStep, discovered);
+    }
+
     private async Task<string[]> StepNamesAsync(string token)
     {
         using var response = await SendAsync(HttpMethod.Get, RegistryUrl, body: null, token);

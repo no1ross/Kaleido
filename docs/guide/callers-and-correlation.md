@@ -124,4 +124,4 @@ sequenceDiagram
 
 The caller's identity is never read from headers: it comes from the authenticated principal, and
 handlers and sources read it from `IKaleidoCorrelationContextAccessor` (`CallerName`, `CallerId`,
-`CallerRoles`).
+`CallerActor`). Who may do what is ASP.NET's authorization, on the principal itself.

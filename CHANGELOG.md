@@ -13,6 +13,15 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **One authorization path: ASP.NET Core's** (#574).
+  - Generic execute, resumes and registry/MCP discovery check a capability's declaration as the same
+    ASP.NET `AuthorizationPolicy` the typed routes attach (an authenticated user, `RequireRole` for its
+    roles, its named policy), with `IAuthorizationService` on `HttpContext.User`. The host's own
+    `IAuthorizationHandler`s now decide those paths too, as they already decided the typed routes.
+  - `AddHttp()` registers ASP.NET's authorization services (`AddAuthorization()`).
+  - **Breaking:** `KaleidoCorrelationContext.CallerRoles` and `CallerIsAuthenticated` are removed: roles and
+    authentication are read from the principal, never copied. Code that read them reads
+    `HttpContext.User` (or authorizes with an ASP.NET policy).
 - **Services may share one database; services write events, one relay publishes them** (#552,
   [ADR 0036](docs/decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)).
   - **Every record is scoped by the service and its version:**
