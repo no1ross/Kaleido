@@ -5,7 +5,7 @@ This is the repository-level contributor guide for Kaleido: eight framework proj
 ## Build and test commands
 
 ### SDK and target framework
-- **Building Kaleido needs the .NET 9 SDK** (`global.json`: 9.0.300, `rollForward: latestFeature`), the organization's standard SDK. Moving to a newer SDK is a deliberate change with its own Issue (#424 lists what it would change). That's a requirement for framework contributors only.
+- **Building Kaleido needs the .NET 10 SDK** (`global.json`: 10.0.100, `rollForward: latestFeature`; C# 14). `global.json` searches the running `dotnet`'s own SDKs first, then `C:\dotnet`, where an SDK installed from a zip lives on a machine that allows no installer (#578). Moving to a newer SDK is a deliberate change with its own Issue. That's a requirement for framework contributors only.
 - **The published packages target `net8.0`** (`Directory.Build.props`), so any consumer on .NET 8 or later can use them. Don't raise `TargetFramework` because the SDK is newer; changing it is an explicit owner decision.
 
 ### Build and run tests
@@ -14,7 +14,7 @@ dotnet build Kaleido.slnx
 ./tools/test/Run-Tests.ps1                              # Debug; -Configuration Release to match CI
 ```
 
-Test projects use xUnit v3 on **Microsoft Testing Platform (MTP) v2**: each test project is an executable. The .NET 9 SDK's `dotnet test` cannot run MTP v2, so the script runs every built test project and prints one summary (CI and the release workflow run the same script). A project that fails prints its full output; one that runs no test fails too. To run a single project, run its assembly: `dotnet tests/<Project>/bin/Debug/net8.0/<Project>.dll` (MTP options such as `--filter-class` go after it). A project that fails to run or reports zero tests: see [stale build output](./docs/CONVENTIONS.md#when-a-test-project-fails-to-run-or-reports-zero-tests).
+Test projects use xUnit v3 on **Microsoft Testing Platform (MTP) v2**: each test project is an executable, and `global.json` runs `dotnet test` on MTP (`dotnet test --solution Kaleido.slnx`). The gate is the script: it runs every built test project and prints one summary, with the checks below (CI and the release workflow run the same script). A project that fails prints its full output; one that runs no test fails too. To run a single project, run its assembly: `dotnet tests/<Project>/bin/Debug/net8.0/<Project>.dll` (MTP options such as `--filter-class` go after it). A project that fails to run or reports zero tests: see [stale build output](./docs/CONVENTIONS.md#when-a-test-project-fails-to-run-or-reports-zero-tests).
 
 ### Per-commit quality gate
 

@@ -287,7 +287,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 ### Prerequisites
 
 - **Using the packages:** they target `net8.0`, so a service runs on .NET 8 or later; run it on a supported runtime (.NET 10 after .NET 8 reaches end of support on 10 November 2026) and override the 8.x dependencies to patched versions ([support window](docs/VERSIONING.md#support-window)). `Kaleido.Http` and `Kaleido.Http.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`). Trimmed and NativeAOT publishing are not supported ([deployment modes](docs/VERSIONING.md#deployment-modes)).
-- **Building this repository:** the .NET 9 SDK, pinned in `global.json` (the organization's standard SDK, #424).
+- **Building this repository:** the .NET 10 SDK, pinned in `global.json` (#578).
 
 ### Install
 

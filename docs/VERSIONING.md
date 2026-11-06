@@ -61,7 +61,7 @@ Each package records its public API in two files in its project's `.PublicAPI` f
 
 - The packages target **`net8.0`**: a service runs on .NET 8 or later. `Kaleido.Http` and
   `Kaleido.Http.Mcp` also need ASP.NET Core (`Microsoft.AspNetCore.App`).
-- The repository builds with the **.NET 9 SDK** pinned in [`global.json`](../global.json), the organization's standard SDK. Moving to a newer SDK is a deliberate change with its own issue (#424 lists what it would change); the packages' target framework does not follow the SDK.
+- The repository builds with the **.NET 10 SDK** pinned in [`global.json`](../global.json) (#578). Moving to a newer SDK is a deliberate change with its own issue; the packages' target framework does not follow the SDK.
 - CI builds and tests on Linux with the .NET 8 runtime installed, so the target framework is the
   runtime the tests run on.
 - Changing the target framework, or adding one, is a maintainer decision recorded in an issue.
@@ -77,10 +77,9 @@ The packages depend on the 8.x lines of Microsoft.Extensions.* (and Microsoft.En
 8.0.x for the SQLite provider), which stop getting patches on the same date. **Override them in your
 service** to supported, patched versions - a direct PackageReference, or a version in central package
 management - and NuGet uses the higher version. Choose a version that still ships a build for your
-runtime and for
-et8.0, which Kaleido's assemblies target: some newer majors (EF Core 10, for example)
-need a newer runtime. Adding a
-et10.0 target waits for an SDK that can build it (#424).
+runtime and for `net8.0`, which Kaleido's assemblies target: some newer majors (EF Core 10, for example)
+need a newer runtime. The repository's SDK can now build a `net10.0` target; adding one is a maintainer
+decision (#579).
 
 ### Deployment modes
 

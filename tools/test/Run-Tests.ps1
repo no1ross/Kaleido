@@ -3,8 +3,8 @@
 Runs every test project in tests/ and reports one summary.
 
 .DESCRIPTION
-The test projects are Microsoft.Testing.Platform (MTP v2) executables. The .NET 9 SDK's dotnet test
-cannot run MTP v2, so while the repository builds with it each built test assembly is run directly.
+The test projects are Microsoft.Testing.Platform (MTP v2) executables; each built test assembly is run
+directly (dotnet test runs them on MTP too, through global.json, without the checks below).
 The local gate, CI and the release workflow all run this script.
 
 Build first; the script never builds. It fails (#437):
