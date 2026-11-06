@@ -198,14 +198,18 @@ internal sealed partial class McpObservability(
                 {
                     // The caller's request, refused: answered to the caller, not a failure of the adapter
                     // (as the runtimes mark a refused request), so the span stays Unset.
-                    LogToolRefused(logger, toolName, code, Record(McpTelemetry.OutcomeRefused, code), requestId);
+                    var refusedMs = Record(McpTelemetry.OutcomeRefused, code);
+
+                    LogToolRefused(logger, toolName, code, refusedMs, requestId);
 
                     return;
                 }
 
                 activity?.SetStatus(ActivityStatusCode.Error, code);
 
-                LogToolReturnedError(logger, toolName, code, Record(McpTelemetry.OutcomeError, code), requestId);
+                var errorMs = Record(McpTelemetry.OutcomeError, code);
+
+                LogToolReturnedError(logger, toolName, code, errorMs, requestId);
 
                 return;
             }

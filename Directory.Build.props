@@ -3,7 +3,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <LangVersion>13</LangVersion>
+        <LangVersion>14</LangVersion>
         <Deterministic>true</Deterministic>
         <!-- CI builds map source paths to /_/ so packages and symbols carry no build-machine paths and
              Source Link resolves them (#322); local builds keep real paths for debugging. -->
