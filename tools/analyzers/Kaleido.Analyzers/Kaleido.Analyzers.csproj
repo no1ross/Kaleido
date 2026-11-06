@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<!-- Analyzers run inside the compiler host — must target netstandard2.0 -->
 		<TargetFramework>netstandard2.0</TargetFramework>
-		<LangVersion>13</LangVersion>
+		<LangVersion>14</LangVersion>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<IsRoslynComponent>true</IsRoslynComponent>

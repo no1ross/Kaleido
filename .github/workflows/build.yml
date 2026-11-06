@@ -136,8 +136,8 @@ jobs:
 
     # xunit.v3 runs under Microsoft.Testing.Platform (UseMicrosoftTestingPlatformRunner); coverage
     # uses the MTP extension (Microsoft.Testing.Extensions.CodeCoverage in tests/Directory.Build.props).
-    # The .NET 9 SDK's dotnet test cannot run MTP v2, so the script runs each test project directly
-    # and writes the cobertura files to TestResults/ (#424).
+    # The script runs each test project directly, with the test gate's checks (#437), and writes the
+    # cobertura files to TestResults/.
     - name: Test
       shell: pwsh
       run: ./tools/test/Run-Tests.ps1 -Configuration Release -Coverage

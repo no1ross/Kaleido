@@ -421,8 +421,9 @@ sections.
   preview packages. Here, the consumer guide's compiled examples ([`docs/guide`](docs/guide/README.md))
   are the task-focused examples, and the repository has no `samples/` folder: the SQLite starter
   sample was removed. Database files were removed from the repository's history.
-- **The repository builds with the .NET 9 SDK**, the organization's standard SDK (#424); the tests run
-  per project (`tools/test/Run-Tests.ps1`). The packages still target `net8.0`.
+- **The repository builds with the .NET 10 SDK and C# 14** (#578, after the .NET 9 SDK of #424); the
+  tests run per project (`tools/test/Run-Tests.ps1`), and `dotnet test` runs them on Microsoft.Testing.Platform.
+  The packages still target `net8.0`.
 
 ### Fixed
 - **Release and CI integrity** (#526):

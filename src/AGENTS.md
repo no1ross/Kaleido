@@ -174,7 +174,7 @@ Build the solution (or one project, `dotnet build src/<Project>/<Project>.csproj
 dotnet build Kaleido.slnx
 ```
 
-Run tests (every test project, one summary; the .NET 9 SDK's `dotnet test` cannot run them, #424):
+Run tests (every test project, one summary; the gate's command, see root `AGENTS.md`):
 ```
 ./tools/test/Run-Tests.ps1
 ```

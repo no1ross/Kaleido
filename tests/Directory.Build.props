@@ -18,8 +18,7 @@
         <!-- xUnit v3 test projects are self-executing (Microsoft.Testing.Platform) -->
         <OutputType>Exe</OutputType>
         <!-- The executable runs Microsoft.Testing.Platform (its coverage and filter options), not xunit's own console
-             runner: run each test project directly while the repository builds with the .NET 9 SDK,
-             whose dotnet test cannot run MTP v2. -->
+             runner: global.json's test runner makes dotnet test use it too. -->
         <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
         <!-- xUnit1000 kept enabled: internal test classes are NOT discovered by
              the runner — fixtures must stay public even when the SUT is internal -->
