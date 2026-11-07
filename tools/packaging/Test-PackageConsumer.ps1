@@ -54,11 +54,15 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 # The release set (#436): every shipped package, by id. Adding a package means adding it here.
 $libraries = @(
     "Kaleido",
+    "Kaleido.Platform",
+    "Kaleido.Server",
+    "Kaleido.Client",
     "Kaleido.Http",
-    "Kaleido.Http.Abstractions",
+    "Kaleido.Http.Server",
     "Kaleido.Http.Client",
-    "Kaleido.Http.Mcp",
-    "Kaleido.Http.Registry",
+    "Kaleido.Mcp",
+    "Kaleido.Registry",
+    "Kaleido.Registry.Http",
     "Kaleido.Observability.OpenTelemetry",
     "Kaleido.Provider.SQLite"
 )
@@ -232,7 +236,7 @@ try {
     New-Item -ItemType Directory -Path $hostDir, $coreDir | Out-Null
 
     # --- 6. (project) The host consumer: every runtime package -----------------------------------------
-    $runtimeReferences = ($libraries | Where-Object { $_ -notin "Kaleido", "Kaleido.Http.Abstractions" } |
+    $runtimeReferences = ($libraries | Where-Object { $_ -notin "Kaleido", "Kaleido.Platform" } |
         ForEach-Object { "    <PackageReference Include=""$_"" Version=""$version"" />" }) -join "`n"
 
     @"
@@ -253,7 +257,8 @@ using System.ComponentModel;
 using Kaleido;
 using Kaleido.Http;
 using Kaleido.Http.Client;
-using Kaleido.Http.Mcp;
+using Kaleido.Http.Server;
+using Kaleido.Mcp;
 using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Processor;
 using Kaleido.Processor.Execution;

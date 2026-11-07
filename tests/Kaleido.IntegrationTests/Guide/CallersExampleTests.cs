@@ -1,10 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using Kaleido.Client.Processor;
 using Kaleido.Guide.Examples.Callers;
-using Kaleido.Http;
-using Kaleido.Http.Processor;
 using Kaleido.Observability;
+using Kaleido.Platform;
+using Kaleido.Platform.Processor;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -1,0 +1,21 @@
+#nullable enable
+const Kaleido.Server.KaleidoHttpOptions.SectionName = "Kaleido:Http" -> string!
+Kaleido.Server.KaleidoHttpOptions
+Kaleido.Server.KaleidoHttpOptions.<Clone>$() -> Kaleido.Server.KaleidoHttpOptions!
+Kaleido.Server.KaleidoHttpOptions.Equals(Kaleido.Server.KaleidoHttpOptions? other) -> bool
+Kaleido.Server.KaleidoHttpOptions.IdempotencyLease.get -> System.TimeSpan
+Kaleido.Server.KaleidoHttpOptions.IdempotencyLease.init -> void
+Kaleido.Server.KaleidoHttpOptions.IdempotencyRetention.get -> System.TimeSpan
+Kaleido.Server.KaleidoHttpOptions.IdempotencyRetention.init -> void
+Kaleido.Server.KaleidoHttpOptions.IdempotencyUnknownOutcomeRetention.get -> System.TimeSpan
+Kaleido.Server.KaleidoHttpOptions.IdempotencyUnknownOutcomeRetention.init -> void
+Kaleido.Server.KaleidoHttpOptions.IncludeFrameworkMessages.get -> bool
+Kaleido.Server.KaleidoHttpOptions.IncludeFrameworkMessages.init -> void
+Kaleido.Server.KaleidoHttpOptions.KaleidoHttpOptions() -> void
+Kaleido.Server.KaleidoHttpOptions.TrustCorrelationIdentity.get -> System.Func<Microsoft.AspNetCore.Http.HttpContext!, bool>?
+Kaleido.Server.KaleidoHttpOptions.TrustCorrelationIdentity.init -> void
+override Kaleido.Server.KaleidoHttpOptions.Equals(object? obj) -> bool
+override Kaleido.Server.KaleidoHttpOptions.GetHashCode() -> int
+override Kaleido.Server.KaleidoHttpOptions.ToString() -> string!
+static Kaleido.Server.KaleidoHttpOptions.operator !=(Kaleido.Server.KaleidoHttpOptions? left, Kaleido.Server.KaleidoHttpOptions? right) -> bool
+static Kaleido.Server.KaleidoHttpOptions.operator ==(Kaleido.Server.KaleidoHttpOptions? left, Kaleido.Server.KaleidoHttpOptions? right) -> bool

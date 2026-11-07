@@ -16,7 +16,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />
-		<ProjectReference Include="..\..\src\Kaleido.Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
+		<ProjectReference Include="..\..\src\Providers\Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
     <ProjectReference Include="..\..\docs\guide\examples\Kaleido.Guide.Examples.csproj" />
 	</ItemGroup>
 </Project>

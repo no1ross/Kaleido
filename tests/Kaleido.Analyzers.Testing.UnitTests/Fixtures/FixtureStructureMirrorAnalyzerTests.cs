@@ -48,6 +48,7 @@ public class MissingThingTests
     private static Kaleido.Testing.AnalyzerTest<FixtureStructureMirrorAnalyzer> MetadataTest(string sutCode, string fixturePath, string fixtureCode, params string[] srcFiles)
     {
         var test = Create("");
+        test.AssemblyName = "Sample.UnitTests";
         test.TestState.Sources.Clear();
         test.TestState.Sources.Add((fixturePath, fixtureCode + XunitStub));
         test.TestState.ReferenceSources.Add(("Sample", sutCode));
@@ -92,6 +93,38 @@ public class MissingThingTests
     public async Task AMetadataSut_FileNameInTwoFolders_UsesTheNamespacesFolder()
     {
         await MetadataTest(Widget, "/repo/tests/Sample.UnitTests/Things/WidgetTests.cs", WidgetTests, "/repo/src/Sample/Legacy/Widget.cs", "/repo/src/Sample/Things/Widget.cs").RunAsync();
+    }
+
+    [Fact]
+    public async Task AFamilyFolder_ShortProjectName_IsMirrored()
+    {
+        await MetadataTest(Widget, "/repo/tests/Http/Sample.UnitTests/Things/WidgetTests.cs", WidgetTests,
+            "/repo/src/Http/Sample/Things/Widget.cs").RunAsync();
+    }
+
+    [Fact]
+    public async Task AFamilyFolder_WithShortProjectNames_IsMirrored()
+    {
+        var test = MetadataTest(Widget, "/repo/tests/Http/Http.Server.UnitTests/Things/WidgetTests.cs", WidgetTests,
+            "/repo/src/Http/Http.Server/Things/Widget.cs");
+        test.AssemblyName = "Kaleido.Http.Server.UnitTests";
+        test.TestState.ReferenceSources.Clear();
+        test.TestState.ReferenceSources.Add(("Kaleido.Http.Server", Widget));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task AFamilyFolder_WrongFixtureFolder_Reports()
+    {
+        var test = MetadataTest(Widget, "/repo/tests/Http/Sample.UnitTests/Wrong/WidgetTests.cs", WidgetTests,
+            "/repo/src/Http/Sample/Things/Widget.cs");
+        test.ExpectedDiagnostics.Add(
+            new DiagnosticResult("KAL1003", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("WidgetTests", System.IO.Path.Combine("Things", "WidgetTests.cs"),
+                    System.IO.Path.Combine("Http", "Sample", "Things", "Widget.cs")));
+        await test.RunAsync();
     }
 
     [Fact]

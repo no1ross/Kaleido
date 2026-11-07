@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\src\Registry\Registry\Kaleido.Registry.csproj" />
+		<ProjectReference Include="..\..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+</Project>

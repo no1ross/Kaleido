@@ -201,8 +201,11 @@ jobs:
     # merges; master uploads artifacts. Publishing is the release workflow's (release.yml, RELEASING.md).
     - name: Pack
       run: |
-        for project in src/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do
-          dotnet pack "$project" --configuration Release --no-build -o artifacts
+        for project in src/*/*.csproj src/*/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do
+          [ -f "$project" ] || continue
+          if [ "$(dotnet msbuild "$project" -getProperty:IsPackable)" != false ]; then
+            dotnet pack "$project" --configuration Release --no-build -o artifacts
+          fi
         done
 
     # The packages as a consumer gets them (#319, #436): exactly the release set (manifest of ids,

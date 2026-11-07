@@ -1,0 +1,98 @@
+using Kaleido.Http.Server.Registry;
+using Kaleido.Platform.Registry;
+using Kaleido.Processor.Registry;
+using Kaleido.Server;
+using Kaleido.Server.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Kaleido.Http.Server;
+
+/// <summary>
+/// Registers the Kaleido HTTP transport (routing, middleware pipeline, capability authorization,
+/// HTTP execution services and the unified registry) on an <see cref="IKaleidoBuilder"/>; the entry
+/// point is <see cref="AddHttp"/>. Map the endpoints with <c>MapKaleidoHttp()</c>.
+/// </summary>
+public static class KaleidoHttpServiceCollectionExtensions
+{
+    /// <summary>
+    /// Registers HTTP transport infrastructure for Kaleido: ASP.NET Core routing,
+    /// <see cref="Microsoft.AspNetCore.Http.IHttpContextAccessor"/>, correlation and exception
+    /// middleware, and HTTP-specific execution services.
+    /// </summary>
+    /// <remarks>
+    /// The <c>Kaleido:Http</c> configuration section is laid over a copy of <paramref name="options"/>
+    /// (configuration overrides code, setting by setting; ADR 0030), validated and registered as the
+    /// <see cref="KaleidoHttpOptions"/> singleton.
+    /// </remarks>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <param name="options">The options set in code; <see langword="null"/> uses the defaults.</param>
+    /// <returns>The builder for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">
+    /// <c>AddHttp</c> was already called (<c>duplicate_registration</c>), or a setting is invalid
+    /// (<c>invalid_http_options</c>).
+    /// </exception>
+    public static IKaleidoBuilder AddHttp(
+        this IKaleidoBuilder builder,
+        KaleidoHttpOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        // A second call would silently replace the first one's options (#301).
+        if (builder.Services.Any(x => x.ServiceType == typeof(KaleidoHttpOptions)))
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.DuplicateRegistration,
+                "AddHttp() was called more than once on this Kaleido builder. Configure the HTTP transport in a single AddHttp() call.");
+        }
+
+        // Generic ASP.NET Core infrastructure needed by HTTP transport
+        builder.Services.AddRouting();
+        builder.Services.AddHttpContextAccessor();
+
+        // Transport options — always registered so map-time conventions and
+        // runtime services can resolve it unconditionally.
+        var httpOptions = builder.Configuration
+            .GetSection(KaleidoHttpOptions.SectionName)
+            .BindOver(options ?? new KaleidoHttpOptions(), ConfigurationErrorCodes.InvalidHttpOptions);
+        KaleidoHttpOptions.Validate(httpOptions);
+        builder.Services.AddSingleton(httpOptions);
+
+        // Capability authorization is ASP.NET's (#574): the typed routes' policies, and the same policies
+        // checked by IAuthorizationService on the dynamic paths. 401/403 responses are produced by the
+        // host's authentication scheme (standard ASP.NET Core).
+        builder.Services.AddAuthorization();
+        builder.Services.TryAddScoped<IKaleidoAuthorizer, KaleidoAuthorizer>();
+        builder.Services.TryAddSingleton<Kaleido.Server.Middleware.IKaleidoExceptionHandler, Kaleido.Server.Middleware.KaleidoExceptionHandler>();
+
+        // Register HTTP-specific execution services — only when Process runtime is present
+        if (builder.Services.Any(d => d.ServiceType == typeof(IProcessorRegistry)))
+        {
+            builder.Services.TryAddScoped<IProcessExecutionService, ProcessExecutionService>();
+            builder.Services.TryAddScoped<IProcessStateService, ProcessStateService>();
+            builder.Services.TryAddScoped<IProcessContinuationFilter, ProcessContinuationFilter>();
+            builder.Services.TryAddScoped<IHandOffStepResolver, HandOffStepResolver>();
+        }
+
+        builder.Services.TryAddSingleton<Kaleido.Platform.Registry.IRegistrySnapshotStore, Kaleido.Platform.Registry.InMemoryRegistrySnapshotStore>();
+        builder.Services.TryAddSingleton<IProcessorResponseFactory, ProcessorResponseFactory>();
+        builder.Services.TryAddSingleton<IProcessExecutionResponseFactory, ProcessExecutionResponseFactory>();
+
+        // The unified registry, in process: the registry endpoint and in-host consumers (e.g. the
+        // MCP adapter) both use IKaleidoRegistryService. The full registry comes from a source: nothing
+        // beyond this host's own by default; AddHttpClients() (its clients) or the control registry replace it.
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        builder.Services.TryAddSingleton<IHttpRegistryCache, HttpRegistryCache>();
+        builder.Services.TryAddSingleton<RegistrySnapshot>();
+        builder.Services.TryAddSingleton<LocalRegistrations>();
+        builder.Services.TryAddSingleton<IKaleidoLocalCapabilities>(x => x.GetRequiredService<LocalRegistrations>());
+        builder.Services.TryAddScoped<IKaleidoRegistrySource, LocalRegistrySource>();
+        builder.Services.TryAddScoped<IKaleidoRegistryService, KaleidoRegistryService>();
+
+        // The same registry unfiltered, for in-host consumers that must not depend on one caller's
+        // view (the MCP adapter's stable tool names, #435); never served to a caller.
+        builder.Services.TryAddScoped<IKaleidoUnfilteredRegistry, KaleidoRegistryService>();
+
+        return builder;
+    }
+}

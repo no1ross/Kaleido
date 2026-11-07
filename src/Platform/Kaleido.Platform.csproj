@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido platform model shared by every Kaleido process, with no ASP.NET Core: the request, response and registry records, the error body, the JSON options, the correlation and idempotency header names, and the registry source contract.</Description>
+		<PackageTags>kaleido;contracts;registry</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- IDistributedCache only, for AddDistributedRegistrySnapshots(): the host picks the backend (#275); removed with the per-service registry (#581). -->
+		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The servers, the clients and the registry share the platform model's internal seams (the client catalog, the registry source and local capabilities, the header sanitizer). -->
+		<InternalsVisibleTo Include="Kaleido.Server" />
+		<InternalsVisibleTo Include="Kaleido.Http" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Client" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
+	</ItemGroup>
+</Project>

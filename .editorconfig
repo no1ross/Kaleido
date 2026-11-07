@@ -290,15 +290,15 @@ dotnet_diagnostic.RCS1085.severity = warning   ; Auto-implemented property
 dotnet_diagnostic.RCS1205.severity = warning   ; Named arguments in parameter order
 dotnet_diagnostic.RCS1226.severity = warning   ; Paragraphs in documentation comments
 dotnet_diagnostic.RCS1247.severity = warning   ; Documentation tags: <code> on its own lines, <c> inline
-dotnet_diagnostic.MA0182.severity = warning    ; Unused internal type (off in Kaleido.Http.Abstractions, below)
+dotnet_diagnostic.MA0182.severity = warning    ; Unused internal type (off in the shared bases, below)
 ; Off, with the reason
 dotnet_diagnostic.MA0190.severity = none       ; Partial property for GeneratedRegex - the net8.0 regex generator supports partial methods only
 dotnet_diagnostic.MA0038.severity = none       ; Deprecated duplicate of CA1822 (enforced above); misreports primary-constructor members as static
 dotnet_diagnostic.MA0041.severity = none       ; Deprecated duplicate of CA1822 (enforced above); flags members that are instance by design (an exception's Code)
 dotnet_diagnostic.MA0018.severity = none       ; Deprecated duplicate of CA1000
 
-; Internal types here are used by Kaleido.Http and Kaleido.Http.Client through InternalsVisibleTo,
-; which MA0182 cannot see - every finding is a false positive
+; Internal types in the shared bases (Kaleido.Platform, .Server, .Client, .Http) are used by the servers and the clients through
+; InternalsVisibleTo, which MA0182 cannot see - every finding is a false positive
 ; Naming is enforced in src/ (#329): any violation fails the build there (TreatWarningsAsErrors +
 ; EnforceCodeStyleInBuild in src/Directory.Build.props). Instance fields _camelCase; static and const fields
 ; PascalCase; interfaces IPascal; parameters camelCase. Elsewhere the same rules are suggestions.
@@ -310,11 +310,11 @@ dotnet_naming_rule.camel_case_for_private_internal_fields.severity = warning
 dotnet_naming_rule.interfaces_should_be_i_pascal.severity = warning
 dotnet_naming_rule.parameters_should_be_camel_case.severity = warning
 
-[src/Kaleido.Http.Abstractions/{*.cs,**/*.cs}]
+[src/{Platform,Server,Client,Http/Http}/{*.cs,**/*.cs}]
 dotnet_diagnostic.MA0182.severity = none
 
 ; EF Core entity navigation properties use ICollection<T> by convention
-[src/Kaleido.Provider.SQLite/**/*.cs]
+[src/Providers/Provider.SQLite/**/*.cs]
 dotnet_diagnostic.KAL0015.severity = none
 
 ; ════════════════════════════════════════════════════════════════════════════
@@ -370,13 +370,13 @@ dotnet_diagnostic.xUnit1051.severity = none
 dotnet_diagnostic.MA0002.severity = suggestion
 dotnet_diagnostic.MA0016.severity = suggestion
 
-[tests/Kaleido.Http.FunctionalTests/**/*.cs]
+[tests/Http/Http.FunctionalTests/**/*.cs]
 
 ; KAL1006: functional tests exercise endpoints/clients through TestServer, not a
 ; single SUT — the SutFixture contract is for unit-test fixtures only
 dotnet_diagnostic.KAL1006.severity = none
 
-[tests/Kaleido.Http.Mcp.FunctionalTests/{*.cs,**/*.cs}]
+[tests/Mcp/Mcp.FunctionalTests/{*.cs,**/*.cs}]
 
 ; KAL1006: functional tests drive the MCP endpoint through TestServer, not a single SUT
 dotnet_diagnostic.KAL1006.severity = none

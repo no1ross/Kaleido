@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido gRPC wire format (placeholder: gRPC is not implemented yet).</Description>
+		<PackageTags>kaleido;grpc</PackageTags>
+		<!-- A placeholder until gRPC is implemented (#581): built and checked, never packed. -->
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Platform\Kaleido.Platform.csproj" />
+	</ItemGroup>
+</Project>

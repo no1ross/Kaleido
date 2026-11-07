@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Optional OpenTelemetry provider for Kaleido: one call wires logs, traces and metrics with OTLP export, or registers Kaleido&apos;s activity sources and meters in an existing pipeline.</Description>
+		<PackageTags>kaleido;opentelemetry;otel;observability;tracing;metrics</PackageTags>
+	</PropertyGroup>
+
+<ItemGroup>
+		<ProjectReference Include="..\..\Kaleido\Kaleido.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+	</ItemGroup>
+
+</Project>

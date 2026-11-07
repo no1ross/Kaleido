@@ -268,10 +268,10 @@ public class C
     public async Task CatchException_CallsAKaleidoObservability_Reports()
     {
         await RunAsync(@"
-namespace Kaleido.Http.Mcp.Observability { public interface IMcpObservability { void RegistryRead(string result); } }
+namespace Kaleido.Mcp.Observability { public interface IMcpObservability { void RegistryRead(string result); } }
 public class C
 {
-    public void M(Kaleido.Http.Mcp.Observability.IMcpObservability observability)
+    public void M(Kaleido.Mcp.Observability.IMcpObservability observability)
     {
         try { }
         {|#0:catch|} (System.Exception) { observability.RegistryRead(""failed""); throw; }

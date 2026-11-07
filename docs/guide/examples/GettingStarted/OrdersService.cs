@@ -1,6 +1,6 @@
-using Kaleido.Http;
 using Kaleido.Http.Client;
-using Kaleido.Http.Mcp;
+using Kaleido.Http.Server;
+using Kaleido.Mcp;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;

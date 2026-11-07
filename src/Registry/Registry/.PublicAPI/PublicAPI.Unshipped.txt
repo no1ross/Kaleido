@@ -1,0 +1,115 @@
+#nullable enable
+const Kaleido.Registry.KaleidoRegistryOptions.SectionName = "Registry" -> string!
+Kaleido.Registry.IKaleidoRegistryStore
+Kaleido.Registry.IKaleidoRegistryStore.AddRegistrationAsync(Kaleido.Registry.RegistryRegistrationRecord! registration, string! capabilities, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Registry.IKaleidoRegistryStore.GetCapabilitiesAsync(System.Collections.Generic.IReadOnlyCollection<string!>! revisions, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<string!, string!>!>!
+Kaleido.Registry.IKaleidoRegistryStore.GetOrSetCurrentVersionAsync(string! serviceName, string! serviceVersion, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string!>!
+Kaleido.Registry.IKaleidoRegistryStore.ReadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Registry.RegistryStoreContents!>!
+Kaleido.Registry.IKaleidoRegistryStore.RemoveInstanceAsync(System.Guid instanceId, System.Collections.Generic.IReadOnlyCollection<string!>? allowedServices, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Registry.RegistryInstanceChange>!
+Kaleido.Registry.IKaleidoRegistryStore.RemoveInstancesSeenBeforeAsync(System.DateTimeOffset cutoffUtc, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+Kaleido.Registry.IKaleidoRegistryStore.RenewInstanceAsync(System.Guid instanceId, System.DateTimeOffset heartbeatUtc, bool healthy, System.Collections.Generic.IReadOnlyCollection<string!>? allowedServices, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Registry.RegistryInstanceChange>!
+Kaleido.Registry.IKaleidoRegistryStore.SaveInstanceAsync(Kaleido.Registry.RegistryInstanceRecord! instance, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Registry.IKaleidoRegistryStore.TouchWatchAsync(System.DateTimeOffset nowUtc, System.TimeSpan lease, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.DateTimeOffset>!
+Kaleido.Registry.KaleidoControlRegistryServiceCollectionExtensions
+Kaleido.Registry.KaleidoRegistryExpectedService
+Kaleido.Registry.KaleidoRegistryExpectedService.<Clone>$() -> Kaleido.Registry.KaleidoRegistryExpectedService!
+Kaleido.Registry.KaleidoRegistryExpectedService.Equals(Kaleido.Registry.KaleidoRegistryExpectedService? other) -> bool
+Kaleido.Registry.KaleidoRegistryExpectedService.KaleidoRegistryExpectedService() -> void
+Kaleido.Registry.KaleidoRegistryExpectedService.ServiceName.get -> string!
+Kaleido.Registry.KaleidoRegistryExpectedService.ServiceName.init -> void
+Kaleido.Registry.KaleidoRegistryExpectedService.Versions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Registry.KaleidoRegistryExpectedService.Versions.init -> void
+Kaleido.Registry.KaleidoRegistryOptions
+Kaleido.Registry.KaleidoRegistryOptions.<Clone>$() -> Kaleido.Registry.KaleidoRegistryOptions!
+Kaleido.Registry.KaleidoRegistryOptions.Equals(Kaleido.Registry.KaleidoRegistryOptions? other) -> bool
+Kaleido.Registry.KaleidoRegistryOptions.Expected.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Registry.KaleidoRegistryExpectedService!>!
+Kaleido.Registry.KaleidoRegistryOptions.Expected.init -> void
+Kaleido.Registry.KaleidoRegistryOptions.HeartbeatInterval.get -> System.TimeSpan
+Kaleido.Registry.KaleidoRegistryOptions.HeartbeatInterval.init -> void
+Kaleido.Registry.KaleidoRegistryOptions.KaleidoRegistryOptions() -> void
+Kaleido.Registry.KaleidoRegistryOptions.MissedHeartbeats.get -> int
+Kaleido.Registry.KaleidoRegistryOptions.MissedHeartbeats.init -> void
+Kaleido.Registry.KaleidoRegistryOptions.ReaderPolicy.get -> string?
+Kaleido.Registry.KaleidoRegistryOptions.ReaderPolicy.init -> void
+Kaleido.Registry.KaleidoRegistryOptions.RegistrantPolicy.get -> string?
+Kaleido.Registry.KaleidoRegistryOptions.RegistrantPolicy.init -> void
+Kaleido.Registry.KaleidoRegistryOptions.RegistrantRolePrefix.get -> string!
+Kaleido.Registry.KaleidoRegistryOptions.RegistrantRolePrefix.init -> void
+Kaleido.Registry.KaleidoRegistryOptions.Registrants.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>!
+Kaleido.Registry.KaleidoRegistryOptions.Registrants.init -> void
+Kaleido.Registry.KaleidoRegistryOptions.Retention.get -> System.TimeSpan
+Kaleido.Registry.KaleidoRegistryOptions.Retention.init -> void
+Kaleido.Registry.RegistryInstanceChange
+Kaleido.Registry.RegistryInstanceChange.Done = 0 -> Kaleido.Registry.RegistryInstanceChange
+Kaleido.Registry.RegistryInstanceChange.NotAllowed = 2 -> Kaleido.Registry.RegistryInstanceChange
+Kaleido.Registry.RegistryInstanceChange.Unknown = 1 -> Kaleido.Registry.RegistryInstanceChange
+Kaleido.Registry.RegistryInstanceRecord
+Kaleido.Registry.RegistryInstanceRecord.<Clone>$() -> Kaleido.Registry.RegistryInstanceRecord!
+Kaleido.Registry.RegistryInstanceRecord.Equals(Kaleido.Registry.RegistryInstanceRecord? other) -> bool
+Kaleido.Registry.RegistryInstanceRecord.Healthy.get -> bool
+Kaleido.Registry.RegistryInstanceRecord.Healthy.init -> void
+Kaleido.Registry.RegistryInstanceRecord.InstanceId.get -> System.Guid
+Kaleido.Registry.RegistryInstanceRecord.InstanceId.init -> void
+Kaleido.Registry.RegistryInstanceRecord.LastHeartbeatUtc.get -> System.DateTimeOffset
+Kaleido.Registry.RegistryInstanceRecord.LastHeartbeatUtc.init -> void
+Kaleido.Registry.RegistryInstanceRecord.RegisteredUtc.get -> System.DateTimeOffset
+Kaleido.Registry.RegistryInstanceRecord.RegisteredUtc.init -> void
+Kaleido.Registry.RegistryInstanceRecord.RegistryInstanceRecord() -> void
+Kaleido.Registry.RegistryInstanceRecord.Revision.get -> string!
+Kaleido.Registry.RegistryInstanceRecord.Revision.init -> void
+Kaleido.Registry.RegistryInstanceRecord.ServiceName.get -> string!
+Kaleido.Registry.RegistryInstanceRecord.ServiceName.init -> void
+Kaleido.Registry.RegistryInstanceRecord.ServiceVersion.get -> string!
+Kaleido.Registry.RegistryInstanceRecord.ServiceVersion.init -> void
+Kaleido.Registry.RegistryRegistrationRecord
+Kaleido.Registry.RegistryRegistrationRecord.<Clone>$() -> Kaleido.Registry.RegistryRegistrationRecord!
+Kaleido.Registry.RegistryRegistrationRecord.Equals(Kaleido.Registry.RegistryRegistrationRecord? other) -> bool
+Kaleido.Registry.RegistryRegistrationRecord.RegisteredUtc.get -> System.DateTimeOffset
+Kaleido.Registry.RegistryRegistrationRecord.RegisteredUtc.init -> void
+Kaleido.Registry.RegistryRegistrationRecord.RegistryRegistrationRecord() -> void
+Kaleido.Registry.RegistryRegistrationRecord.Revision.get -> string!
+Kaleido.Registry.RegistryRegistrationRecord.Revision.init -> void
+Kaleido.Registry.RegistryRegistrationRecord.ServiceName.get -> string!
+Kaleido.Registry.RegistryRegistrationRecord.ServiceName.init -> void
+Kaleido.Registry.RegistryRegistrationRecord.ServiceVersion.get -> string!
+Kaleido.Registry.RegistryRegistrationRecord.ServiceVersion.init -> void
+Kaleido.Registry.RegistryStoreContents
+Kaleido.Registry.RegistryStoreContents.<Clone>$() -> Kaleido.Registry.RegistryStoreContents!
+Kaleido.Registry.RegistryStoreContents.CurrentVersions.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Kaleido.Registry.RegistryStoreContents.CurrentVersions.init -> void
+Kaleido.Registry.RegistryStoreContents.Equals(Kaleido.Registry.RegistryStoreContents? other) -> bool
+Kaleido.Registry.RegistryStoreContents.Instances.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryInstanceRecord!>!
+Kaleido.Registry.RegistryStoreContents.Instances.init -> void
+Kaleido.Registry.RegistryStoreContents.Registrations.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryRegistrationRecord!>!
+Kaleido.Registry.RegistryStoreContents.Registrations.init -> void
+Kaleido.Registry.RegistryStoreContents.RegistryStoreContents() -> void
+Kaleido.Registry.RegistryStoreContents.WatchResumedUtc.get -> System.DateTimeOffset?
+Kaleido.Registry.RegistryStoreContents.WatchResumedUtc.init -> void
+override Kaleido.Registry.KaleidoRegistryExpectedService.Equals(object? obj) -> bool
+override Kaleido.Registry.KaleidoRegistryExpectedService.GetHashCode() -> int
+override Kaleido.Registry.KaleidoRegistryExpectedService.ToString() -> string!
+override Kaleido.Registry.KaleidoRegistryOptions.Equals(object? obj) -> bool
+override Kaleido.Registry.KaleidoRegistryOptions.GetHashCode() -> int
+override Kaleido.Registry.KaleidoRegistryOptions.ToString() -> string!
+override Kaleido.Registry.RegistryInstanceRecord.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryInstanceRecord.GetHashCode() -> int
+override Kaleido.Registry.RegistryInstanceRecord.ToString() -> string!
+override Kaleido.Registry.RegistryRegistrationRecord.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryRegistrationRecord.GetHashCode() -> int
+override Kaleido.Registry.RegistryRegistrationRecord.ToString() -> string!
+override Kaleido.Registry.RegistryStoreContents.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryStoreContents.GetHashCode() -> int
+override Kaleido.Registry.RegistryStoreContents.ToString() -> string!
+static Kaleido.Registry.KaleidoControlRegistryServiceCollectionExtensions.AddControlRegistry(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Registry.KaleidoControlRegistryServiceCollectionExtensions.AddInMemoryRegistryStore(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Registry.KaleidoControlRegistryServiceCollectionExtensions.AddRegistryStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Registry.KaleidoRegistryExpectedService.operator !=(Kaleido.Registry.KaleidoRegistryExpectedService? left, Kaleido.Registry.KaleidoRegistryExpectedService? right) -> bool
+static Kaleido.Registry.KaleidoRegistryExpectedService.operator ==(Kaleido.Registry.KaleidoRegistryExpectedService? left, Kaleido.Registry.KaleidoRegistryExpectedService? right) -> bool
+static Kaleido.Registry.KaleidoRegistryOptions.operator !=(Kaleido.Registry.KaleidoRegistryOptions? left, Kaleido.Registry.KaleidoRegistryOptions? right) -> bool
+static Kaleido.Registry.KaleidoRegistryOptions.operator ==(Kaleido.Registry.KaleidoRegistryOptions? left, Kaleido.Registry.KaleidoRegistryOptions? right) -> bool
+static Kaleido.Registry.RegistryInstanceRecord.operator !=(Kaleido.Registry.RegistryInstanceRecord? left, Kaleido.Registry.RegistryInstanceRecord? right) -> bool
+static Kaleido.Registry.RegistryInstanceRecord.operator ==(Kaleido.Registry.RegistryInstanceRecord? left, Kaleido.Registry.RegistryInstanceRecord? right) -> bool
+static Kaleido.Registry.RegistryRegistrationRecord.operator !=(Kaleido.Registry.RegistryRegistrationRecord? left, Kaleido.Registry.RegistryRegistrationRecord? right) -> bool
+static Kaleido.Registry.RegistryRegistrationRecord.operator ==(Kaleido.Registry.RegistryRegistrationRecord? left, Kaleido.Registry.RegistryRegistrationRecord? right) -> bool
+static Kaleido.Registry.RegistryStoreContents.operator !=(Kaleido.Registry.RegistryStoreContents? left, Kaleido.Registry.RegistryStoreContents? right) -> bool
+static Kaleido.Registry.RegistryStoreContents.operator ==(Kaleido.Registry.RegistryStoreContents? left, Kaleido.Registry.RegistryStoreContents? right) -> bool

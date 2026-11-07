@@ -1,8 +1,8 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Kaleido.Client.Processor;
 using Kaleido.Guide.Examples.Events;
 using Kaleido.Guide.Examples.GettingStarted;
-using Kaleido.Http.Processor;
 using Kaleido.Processor;
 using Kaleido.Processor.Execution;
 

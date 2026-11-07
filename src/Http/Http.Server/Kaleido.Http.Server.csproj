@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido HTTP server for ASP.NET Core: publishes a service&apos;s Process and Queryable endpoints, with correlation, capability authorization and idempotent execution.</Description>
+		<PackageTags>kaleido;aspnetcore;http;rest;endpoints</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Server\Kaleido.Server.csproj" />
+		<ProjectReference Include="..\Http\Kaleido.Http.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Until the per-service registry is removed (#581), the in-host registry service lives here: the MCP adapter names its tools from the unfiltered registry (#435), and the control registry configures the shared snapshot and serves it with the registry endpoint's HTTP rules. -->
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
+	</ItemGroup>
+</Project>

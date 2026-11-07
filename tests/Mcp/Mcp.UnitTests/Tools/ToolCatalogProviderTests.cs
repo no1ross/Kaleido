@@ -1,0 +1,244 @@
+using Kaleido.Mcp.Observability;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Kaleido.Mcp.Tools.UnitTests;
+
+public sealed class ToolCatalogProviderTests
+    : Kaleido.UnitTests.SutFixture
+{
+    private readonly string revision = "r-1";
+    private readonly Mock<IKaleidoRegistryService> registry = new();
+    private readonly Mock<IKaleidoUnfilteredRegistry> unfiltered = new();
+    private readonly Mock<IToolCatalogBuilder> builder = new();
+    private readonly Mock<IMcpObservability> observability = new();
+    private readonly string unfilteredRevision = "u-1";
+    private readonly Mock<IToolCatalogCache> cache = new();
+    private readonly Dictionary<string, ToolCatalog> cached = new(StringComparer.Ordinal);
+
+    public ToolCatalogProviderTests()
+    {
+        registry.Setup(x => x.IsMapped).Returns(true);
+        registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new KaleidoRegistry { Revision = revision });
+        unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new KaleidoRegistry { Revision = unfilteredRevision });
+        builder.Setup(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()))
+            .Returns((KaleidoRegistry response, KaleidoRegistry _) => new ToolCatalog { Revision = response.Revision });
+
+        // The cache is ToolCatalogCache's to test; here it remembers what it was given.
+        ToolCatalog? known = null;
+        cache.Setup(x => x.TryGet(It.IsAny<string>(), out known))
+            .Returns(new TryGetCatalog(cached.TryGetValue));
+        cache.Setup(x => x.Add(It.IsAny<string>(), It.IsAny<ToolCatalog>()))
+            .Callback((string key, ToolCatalog catalog) => cached[key] = catalog);
+    }
+
+    private delegate bool TryGetCatalog(string key, out ToolCatalog? catalog);
+
+    private ToolCatalogProvider CreateSut(ILogger<ToolCatalogProvider>? logger = null) =>
+        new(
+            registry.Object,
+            unfiltered.Object,
+            builder.Object,
+            cache.Object,
+            observability.Object,
+            logger ?? NullLogger<ToolCatalogProvider>.Instance);
+
+    private sealed class RecordingLogger : ILogger<ToolCatalogProvider>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Add((logLevel, formatter(state, exception)));
+    }
+
+    private void RegistryRevisionIs(string? value) =>
+        registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KaleidoRegistry { Revision = value });
+
+    [Fact]
+    public async Task GetAsync_ReportsWhatTheOwnerShouldFix_AsWarnings_OncePerRevision()
+    {
+        var logger = new RecordingLogger();
+        builder.Setup(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()))
+            .Returns(new ToolCatalog
+            {
+                MissingDescriptions = ["clinic_patient", "clinic_patient.name"],
+                TruncatedNames = ["clinic_a_very_long_name"],
+                NameCollisions = ["Patient -> clinic_patient_query"],
+                UnresolvedLookups = ["clinic_pick.patientId -> clinic/Patient"],
+                UnknownListedTools = ["clinic_missing"],
+                IsPartial = true,
+                UnavailableServices = ["radiology", "billing"]
+            });
+
+        await CreateSut(logger: logger).GetAsync(Cancel);
+        await CreateSut(logger: logger).GetAsync(Cancel);
+        var firstRevision = logger.Entries.ToArray();
+        RegistryRevisionIs("r-2");
+        await CreateSut(logger: logger).GetAsync(Cancel);
+
+        Assert.All(logger.Entries, x => Assert.Equal(LogLevel.Warning, x.Level));
+        Assert.Equal(firstRevision.Concat(firstRevision), logger.Entries);
+        Assert.Equal(
+            [
+                "Kaleido MCP: 2 tool(s) or argument(s) have no description, so agents must guess what they mean. Add [Description] to: clinic_patient, clinic_patient.name.",
+                "Kaleido MCP: 1 tool name(s) exceeded MCP's 64-character limit and were shortened; rename the capability types (KAL2016): clinic_a_very_long_name.",
+                "Kaleido MCP: 1 capability name(s) collide, so their tools carry a suffix derived from each capability; rename the capability types so each name says what it is: Patient -> clinic_patient_query.",
+                "Kaleido MCP: 1 step input lookup(s) name a query that is not published or not visible to this caller, so agents must ask for the value: clinic_pick.patientId -> clinic/Patient.",
+                "Kaleido MCP: 1 name(s) in Kaleido:Mcp:ListedTools are not tools of this caller, so they are not listed (check the names, or the caller's access): clinic_missing.",
+                "Kaleido MCP: the registry is partial; tools from radiology, billing are missing until those services respond."
+            ],
+            firstRevision.Select(x => x.Message));
+    }
+
+    [Fact]
+    public async Task GetAsync_WithWarningsDisabled_WritesNoReport()
+    {
+        var logger = new Mock<ILogger<ToolCatalogProvider>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(false);
+        builder.Setup(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()))
+            .Returns(new ToolCatalog
+            {
+                MissingDescriptions = ["clinic_patient"],
+                TruncatedNames = ["clinic_a_very_long_name"],
+                NameCollisions = ["Patient -> clinic_patient_query"],
+                UnresolvedLookups = ["clinic_pick.patientId -> clinic/Patient"],
+                UnknownListedTools = ["clinic_missing"],
+                IsPartial = true
+            });
+
+        await CreateSut(logger: logger.Object).GetAsync(Cancel);
+
+        logger.Verify(x => x.IsEnabled(LogLevel.Warning), Times.Exactly(6));
+        Assert.DoesNotContain(logger.Invocations, x => x.Method.Name == nameof(ILogger.Log));
+    }
+
+    [Fact]
+    public async Task GetAsync_ACompleteCatalog_ReportsNothing()
+    {
+        var logger = new RecordingLogger();
+
+        await CreateSut(logger: logger).GetAsync(Cancel);
+
+        Assert.Empty(logger.Entries);
+    }
+
+    // #464: a registry without a revision has no known content: translated every time, never kept.
+    [Fact]
+    public async Task GetAsync_ACallerRegistryWithoutARevision_IsTranslatedEveryTime_AndNotKept()
+    {
+        RegistryRevisionIs(null);
+
+        var first = await CreateSut().GetAsync(Cancel);
+        var second = await CreateSut().GetAsync(Cancel);
+
+        Assert.Null(first.Revision);
+        Assert.NotSame(first, second);
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Exactly(2));
+        cache.Verify(x => x.Add(It.IsAny<string>(), It.IsAny<ToolCatalog>()), Times.Never);
+        observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryFetched, string.Empty), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GetAsync_AnUnfilteredRegistryWithoutARevision_IsTranslatedEveryTime_AndNotKept()
+    {
+        unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KaleidoRegistry { Revision = null });
+
+        await CreateSut().GetAsync(Cancel);
+        await CreateSut().GetAsync(Cancel);
+
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Exactly(2));
+        cache.Verify(x => x.Add(It.IsAny<string>(), It.IsAny<ToolCatalog>()), Times.Never);
+    }
+
+    // The translation is kept under both revisions: the caller's registry and the names' registry.
+    [Fact]
+    public async Task GetAsync_KeepsTheTranslation_UnderBothRevisions()
+    {
+        var catalog = await CreateSut().GetAsync(Cancel);
+
+        cache.Verify(x => x.Add("r-1|u-1", catalog), Times.Once);
+    }
+    private static CancellationToken Cancel => TestContext.Current.CancellationToken;
+
+    [Fact]
+    public async Task GetAsync_TranslatesTheRegistryTheCallerMaySee()
+    {
+        var catalog = await CreateSut().GetAsync(Cancel);
+
+        Assert.Equal(revision, catalog.Revision);
+        registry.Verify(x => x.GetForCallerAsync(false, It.IsAny<CancellationToken>()));
+        observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryFetched, revision));
+    }
+
+    [Fact]
+    public async Task GetAsync_TheSameRevision_ReusesTheTranslation_ButAlwaysAsksTheRegistry()
+    {
+        var first = await CreateSut().GetAsync(Cancel);
+        var second = await CreateSut().GetAsync(Cancel);
+
+        Assert.Same(first, second);
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Once);
+        registry.Verify(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryHit, revision));
+    }
+
+    [Fact]
+    public async Task GetAsync_ADifferentRevision_IsTranslatedAgain()
+    {
+        await CreateSut().GetAsync(Cancel);
+
+        var other = "r-2";
+        registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KaleidoRegistry { Revision = other });
+
+        var catalog = await CreateSut().GetAsync(Cancel);
+
+        Assert.Equal(other, catalog.Revision);
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Exactly(2));
+    }
+
+    // #435: the caller's registry gives the tools, the unfiltered one gives their names.
+    [Fact]
+    public async Task GetAsync_NamesTheToolsFromTheUnfilteredRegistry()
+    {
+        await CreateSut().GetAsync(Cancel);
+
+        builder.Verify(x => x.Build(
+            It.Is<KaleidoRegistry>(r => r.Revision == revision),
+            It.Is<KaleidoRegistry>(r => r.Revision == unfilteredRevision)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAsync_AChangedUnfilteredRegistry_IsTranslatedAgain_ForTheSameCallerRevision()
+    {
+        await CreateSut().GetAsync(Cancel);
+
+        unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KaleidoRegistry { Revision = "u-2" });
+        await CreateSut().GetAsync(Cancel);
+
+        builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GetAsync_BeforeTheRegistryIsMapped_IsUnavailable_AndReadsNothing()
+    {
+        registry.Setup(x => x.IsMapped).Returns(false);
+
+        var catalog = await CreateSut().GetAsync(Cancel);
+
+        Assert.Contains("MapKaleidoHttp", catalog.Unavailable, StringComparison.Ordinal);
+        Assert.Empty(catalog.Tools);
+        registry.Verify(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        unfiltered.Verify(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+}

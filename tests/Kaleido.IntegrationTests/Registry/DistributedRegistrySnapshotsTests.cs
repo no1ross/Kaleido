@@ -1,6 +1,6 @@
 using System.Net;
-using Kaleido.Http;
 using Kaleido.IntegrationTests.Guide;
+using Kaleido.Platform;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;

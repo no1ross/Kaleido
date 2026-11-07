@@ -1,5 +1,6 @@
-using Kaleido.Http;
+using Kaleido.Client;
 using Kaleido.Http.Client;
+using Kaleido.Http.Server;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

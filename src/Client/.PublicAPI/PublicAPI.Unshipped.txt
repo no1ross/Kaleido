@@ -1,0 +1,32 @@
+#nullable enable
+Kaleido.Client.KaleidoCallContext
+Kaleido.Client.KaleidoCallContext.Caller.get -> System.Security.Claims.ClaimsPrincipal?
+Kaleido.Client.KaleidoCallContext.CallerAuthorization.get -> string?
+Kaleido.Client.KaleidoCallContext.Purpose.get -> Kaleido.Client.KaleidoCallPurpose
+Kaleido.Client.KaleidoCallPurpose
+Kaleido.Client.KaleidoCallPurpose.OnBehalfOfCaller = 0 -> Kaleido.Client.KaleidoCallPurpose
+Kaleido.Client.KaleidoCallPurpose.ServiceOwn = 1 -> Kaleido.Client.KaleidoCallPurpose
+Kaleido.Client.KaleidoOnBehalfOfCalls
+Kaleido.Client.KaleidoOnBehalfOfCalls.Exchange = 1 -> Kaleido.Client.KaleidoOnBehalfOfCalls
+Kaleido.Client.KaleidoOnBehalfOfCalls.Forward = 0 -> Kaleido.Client.KaleidoOnBehalfOfCalls
+Kaleido.Client.Processor.IKaleidoProcessorClient
+Kaleido.Client.Processor.IKaleidoProcessorClient.ExecuteAsync(Kaleido.Platform.Processor.ExecuteProcessRequest! request, string? idempotencyKey, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Platform.Processor.ProcessExecutionResponse!>!
+Kaleido.Client.Processor.IKaleidoProcessorClient.ExecuteStepAsync(string! stepName, System.Text.Json.JsonElement processStep, System.Guid? processId, string? idempotencyKey, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Platform.Processor.StepExecutionResponse<System.Text.Json.JsonElement>!>!
+Kaleido.Client.Processor.IKaleidoProcessorClient.ExecuteStepAsync<TStep, TResponse>(TStep! processStep, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Platform.Processor.StepExecutionResponse<TResponse>!>!
+Kaleido.Client.Processor.IKaleidoProcessorClient.ExecuteStepAsync<TStep>(TStep! processStep, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Platform.Processor.StepExecutionResponse!>!
+Kaleido.Client.Processor.IKaleidoProcessorClient.GetProcessStateAsync(System.Guid processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Platform.Processor.ProcessStateResponse?>!
+Kaleido.Client.Processor.IKaleidoProcessorClient.GetRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Kaleido.Platform.Processor.ProcessorRegistryResponse!>!>!
+Kaleido.Client.Processor.IKaleidoProcessorClient.InvalidateRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Client.Processor.IKaleidoProcessorClientFactory
+Kaleido.Client.Processor.IKaleidoProcessorClientFactory.GetClient(string! name) -> Kaleido.Client.Processor.IKaleidoProcessorClient!
+Kaleido.Client.Processor.IKaleidoProcessorClientFactory.TryGetClientForService(string! serviceName, out Kaleido.Client.Processor.IKaleidoProcessorClient? client) -> bool
+Kaleido.Client.Queryable.IKaleidoQueryableClient
+Kaleido.Client.Queryable.IKaleidoQueryableClient.GetRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Kaleido.Platform.Queryable.QueryableSourceResponse!>!>!
+Kaleido.Client.Queryable.IKaleidoQueryableClient.InvalidateRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Client.Queryable.IKaleidoQueryableClient.QuerySourceAsync<TParameters, TResult>(string! source, Kaleido.Platform.Queryable.QueryApiRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
+Kaleido.Client.Queryable.IKaleidoQueryableClient.QuerySourceAsync<TResult>(string! source, Kaleido.Platform.Queryable.QueryApiRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
+Kaleido.Client.Queryable.IKaleidoQueryableClient.QueryViewAsync<TParameters, TView>(string! source, string! view, Kaleido.Platform.Queryable.QueryApiRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TView!>!>!
+Kaleido.Client.Queryable.IKaleidoQueryableClientFactory
+Kaleido.Client.Queryable.IKaleidoQueryableClientFactory.GetClient(string! name) -> Kaleido.Client.Queryable.IKaleidoQueryableClient!
+Kaleido.Client.Queryable.IKaleidoQueryableClientFactory.TryGetClientForService(string! serviceName, out Kaleido.Client.Queryable.IKaleidoQueryableClient? client) -> bool
+static Kaleido.Client.KaleidoCallContext.Of(System.Net.Http.HttpRequestMessage! request) -> Kaleido.Client.KaleidoCallContext!
