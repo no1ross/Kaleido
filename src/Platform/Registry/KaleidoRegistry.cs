@@ -4,11 +4,10 @@ using Kaleido.Platform.Queryable;
 namespace Kaleido.Platform.Registry;
 
 /// <summary>
-/// The registry: every processor and query source a host knows, in one shape everywhere (#553). The
-/// control registry serves it (<c>GET /registry</c>), each participant keeps the copy it read as its own
-/// registry, a client keeps the copy of the service it calls, and a host serving its registry to a caller
-/// (<c>GET /{service}/registry</c>) filters it for that caller. Each service version's status is a
-/// separate document, <see cref="KaleidoRegistryStatus"/>.
+/// The central registry's view of every processor and query source (#553). The registry serves a
+/// caller-filtered view at <c>GET /registry</c>; participants hydrate a full copy and filter it for
+/// in-host consumers such as MCP. Each service version's status is a separate document,
+/// <see cref="KaleidoRegistryStatus"/>.
 /// </summary>
 /// <remarks>
 /// Not sealed: the transport-neutral model is meant to be shared by every transport, each adding how its
@@ -18,8 +17,7 @@ namespace Kaleido.Platform.Registry;
 public record KaleidoRegistry
 {
     /// <summary>
-    /// The processors: on a host reading the control registry, every service version's; on a host with
-    /// none, its own (and, with <c>AddHttpClients()</c>, its clients' services').
+    /// The processors published by the central registry, across every registered service version.
     /// </summary>
     public IReadOnlyCollection<ProcessorRegistryResponse> Processes { get; init; }
         = [];
@@ -29,8 +27,8 @@ public record KaleidoRegistry
         = [];
 
     /// <summary>
-    /// The parts of the registry that could not be read (a client's service, or the control registry). A
-    /// non-empty collection makes the registry partial: <see cref="Processes"/> and
+    /// Registry reads that failed while a participant keeps its last good central copy. A non-empty
+    /// collection makes the registry partial: <see cref="Processes"/> and
     /// <see cref="Queryables"/> hold only what was read.
     /// </summary>
     public IReadOnlyCollection<RegistryReadError> Errors { get; init; }
@@ -52,8 +50,8 @@ public record KaleidoRegistry
     public bool IsPartial { get; init; }
 
     /// <summary>
-    /// UTC timestamp of the snapshot build. When the registry is served from a cache (server or distributed
-    /// snapshot store), this reflects the age of the underlying data — not the time it was sent.
+    /// UTC timestamp of the central registry's view. When served from a cache, it reflects the age
+    /// of the underlying data — not the time it was sent.
     /// </summary>
     public DateTimeOffset GeneratedAt { get; init; }
 
@@ -69,8 +67,7 @@ public record KaleidoRegistry
 public sealed record RegistryReadError
 {
     /// <summary>
-    /// What could not be read: a client's name under <c>Kaleido:Clients</c> (e.g. <c>"Member"</c>), or
-    /// <c>"registry"</c> for the control registry.
+    /// What could not be read: <c>"registry"</c> when a participant cannot refresh its central copy.
     /// </summary>
     public required string Source { get; init; }
 

@@ -1,5 +1,4 @@
 using Kaleido.Client.Processor;
-using Kaleido.Http.Client;
 using Kaleido.Http.FunctionalTests.Processor.Fixtures;
 using Kaleido.Observability;
 using Kaleido.Platform;
@@ -40,7 +39,7 @@ public sealed class ProcessClientHeaderTests(ProcessorAspNetCoreFixture fixture)
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task GetRegistryAsync_InsideStep_StampsEndToEndAndCallingProcessorStep()
+    public async Task GetProcessStateAsync_InsideStep_StampsEndToEndAndCallingProcessorStep()
     {
         var processId = Guid.NewGuid();
         var ctx = new KaleidoCorrelationContext
@@ -54,7 +53,7 @@ public sealed class ProcessClientHeaderTests(ProcessorAspNetCoreFixture fixture)
 
         var (factory, captured) = BuildClientFactory(ctx);
 
-        await factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
+        await factory.GetClient("test").GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var request = Assert.Single(captured);
         Assert.Equal("req-process-header-test",
@@ -69,7 +68,7 @@ public sealed class ProcessClientHeaderTests(ProcessorAspNetCoreFixture fixture)
     }
 
     [Fact]
-    public async Task GetRegistryAsync_OutsideStep_ForwardsEndToEndOnly()
+    public async Task GetProcessStateAsync_OutsideStep_ForwardsEndToEndOnly()
     {
         var ctx = new KaleidoCorrelationContext
         {
@@ -80,7 +79,7 @@ public sealed class ProcessClientHeaderTests(ProcessorAspNetCoreFixture fixture)
 
         var (factory, captured) = BuildClientFactory(ctx);
 
-        await factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
+        await factory.GetClient("test").GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var request = Assert.Single(captured);
         Assert.Equal("req-process-header-test",
@@ -90,11 +89,11 @@ public sealed class ProcessClientHeaderTests(ProcessorAspNetCoreFixture fixture)
     }
 
     [Fact]
-    public async Task GetRegistryAsync_WhenCorrelationContextIsEmpty_StampsNoHeaders()
+    public async Task GetProcessStateAsync_WhenCorrelationContextIsEmpty_StampsNoHeaders()
     {
         var (factory, captured) = BuildClientFactory(new KaleidoCorrelationContext());
 
-        await factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
+        await factory.GetClient("test").GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var request = Assert.Single(captured);
         Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.RequestId));

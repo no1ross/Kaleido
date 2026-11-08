@@ -11,18 +11,10 @@ namespace Kaleido.Http.Client.Queryable;
 internal sealed class KaleidoQueryableClient(
     [ServiceKey] string clientName,
     IKaleidoClientCatalog catalog,
-    IKaleidoClientTransport transport,
-    IKaleidoRemoteRegistry remoteRegistry,
-    ICorrelationHeaderStamper headerStamper)
+    IKaleidoClientTransport transport)
     : IKaleidoQueryableClient
 {
     private readonly KaleidoClientDefinition _client = catalog.Require(clientName);
-
-    public async Task<IReadOnlyList<QueryableSourceResponse>> GetRegistryAsync(CancellationToken cancellationToken) =>
-        [.. (await remoteRegistry.GetAsync(_client, headerStamper, cancellationToken)).Queryables];
-
-    public Task InvalidateRegistryAsync(CancellationToken cancellationToken) =>
-        remoteRegistry.InvalidateAsync(_client.Name, cancellationToken);
 
     public Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
         string source,
@@ -66,7 +58,7 @@ internal sealed class KaleidoQueryableClient(
     private Task<QueryResult<TResult>> QueryAsync<TResult>(string url, string description, object request, CancellationToken cancellationToken)
         where TResult : class =>
         transport.SendAsync<QueryResult<TResult>>(
-            new KaleidoClientRequest(_client, HttpMethod.Post, url, description, request) { InvalidatesRegistryOnNotFound = true },
+            new KaleidoClientRequest(_client, HttpMethod.Post, url, description, request),
             cancellationToken);
 
     // The route segment the service publishes for a source or view: the lower-case name, kept one

@@ -7,7 +7,7 @@ public sealed class KaleidoClientCatalogTests
         new(definitions);
 
     private static KaleidoClientDefinition Client(string name, string routePrefix) =>
-        new(name, routePrefix, RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
+        new(name, routePrefix);
 
     [Fact]
     public void NoDefinitions_HasNoClients()

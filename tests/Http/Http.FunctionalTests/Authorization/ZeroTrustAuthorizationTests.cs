@@ -23,7 +23,7 @@ public sealed class ZeroTrustAuthorizationTests(
     public async Task TheRegistry_OmitsACapabilityWithoutARule_AndKeepsTheDeclaredOnes()
     {
         var response = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, "/kaleido/registry", roles: EveryRole));
+            AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, AuthorizationAspNetCoreFixture.InProcessRegistryUrl, roles: EveryRole));
 
         var registry = await response.Content.ReadAsync<KaleidoRegistry>();
 

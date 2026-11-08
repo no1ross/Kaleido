@@ -20,7 +20,7 @@ public sealed class KaleidoQueryableClientFactoryTests
     }
 
     private static KaleidoClientDefinition Member =>
-        new("MemberService", "member", RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
+        new("MemberService", "member");
 
     [Fact]
     public void GetClient_ForAnUnconfiguredName_FailsWithUnknownClient()

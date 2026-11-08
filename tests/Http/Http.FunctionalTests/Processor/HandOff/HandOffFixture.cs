@@ -1,4 +1,3 @@
-using Kaleido.Http.Client;
 using Kaleido.Http.FunctionalTests.Authorization;
 using Kaleido.Http.Server;
 using Microsoft.AspNetCore.Authentication;
@@ -23,12 +22,14 @@ public sealed class HandOffFixture : IAsyncLifetime
 
     private IHost? _target;
     private IHost? _origin;
+    private TestControlRegistry? _registry;
 
     public HttpClient Origin { get; private set; } = null!;
     public HttpClient Target { get; private set; } = null!;
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
         _target = await StartAsync(TargetService, typeof(Target.OpenReturnStep).Namespace!, KaleidoAuthorizationMode.None, targetServer: null);
         _origin = await StartAsync(OriginService, typeof(Origin.ReturnOrderStep).Namespace!, KaleidoAuthorizationMode.Authenticated, _target.GetTestServer());
 
@@ -36,8 +37,9 @@ public sealed class HandOffFixture : IAsyncLifetime
         Target = _target.GetTestClient();
     }
 
-    private static Task<IHost> StartAsync(string serviceName, string modelNamespace, KaleidoAuthorizationMode authorization, TestServer? targetServer) =>
-        new HostBuilder()
+    private async Task<IHost> StartAsync(string serviceName, string modelNamespace, KaleidoAuthorizationMode authorization, TestServer? targetServer)
+    {
+        var host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
                 web.UseTestServer();
@@ -45,7 +47,7 @@ public sealed class HandOffFixture : IAsyncLifetime
                 {
                     services.AddRouting();
 
-                    var settings = new Dictionary<string, string?>(StringComparer.Ordinal);
+                    var settings = new Dictionary<string, string?>(StringComparer.Ordinal) { ["Kaleido:BaseUrl"] = "http://registry.test/" };
 
                     if (targetServer is not null)
                     {
@@ -58,13 +60,16 @@ public sealed class HandOffFixture : IAsyncLifetime
                     services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new()
                     {
                         ServiceName = serviceName,
+                        ServiceVersion = "1",
                         AuthorizationMode = authorization,
                         Assemblies = [typeof(HandOffFixture).Assembly],
                         TypeFilter = type => string.Equals(type.Namespace, modelNamespace, StringComparison.Ordinal),
                     })
                         .AddInMemoryStores()
                         .AddHttp(new() { IncludeFrameworkMessages = true })
-                        .AddHttpClients();
+                        .AddHttpClients()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
 
                     if (targetServer is not null)
                     {
@@ -85,6 +90,9 @@ public sealed class HandOffFixture : IAsyncLifetime
                 });
             })
             .StartAsync();
+        await _registry!.WaitForRegistrationAsync(host);
+        return host;
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -98,6 +106,11 @@ public sealed class HandOffFixture : IAsyncLifetime
                 await host.StopAsync();
                 host.Dispose();
             }
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 }

@@ -17,12 +17,14 @@ namespace Kaleido.Http.FunctionalTests.Hosting;
 public sealed class MixedHostTests : IAsyncLifetime
 {
     private IHost? _host;
+    private TestControlRegistry? _registry;
     private HttpClient? _client;
 
     private HttpClient Client => _client ?? throw new InvalidOperationException("The host is not started.");
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
         _host = await new HostBuilder()
             .ConfigureWebHost(webBuilder =>
             {
@@ -30,14 +32,20 @@ public sealed class MixedHostTests : IAsyncLifetime
                 webBuilder.ConfigureServices(services =>
                 {
                     services.AddSingleton<FunctionalRecordData>();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = "kaleido",
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(FunctionalRecordContext).Assembly],
                     })
                         .AddInMemoryStores()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                 });
                 webBuilder.Configure(app =>
                 {
@@ -57,6 +65,7 @@ public sealed class MixedHostTests : IAsyncLifetime
             })
             .StartAsync(TestContext.Current.CancellationToken);
 
+        await _registry.WaitForRegistrationAsync(_host);
         _client = _host.GetTestClient();
     }
 
@@ -68,6 +77,11 @@ public sealed class MixedHostTests : IAsyncLifetime
         {
             await _host.StopAsync(CancellationToken.None);
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 
@@ -93,16 +107,16 @@ public sealed class MixedHostTests : IAsyncLifetime
     [Fact]
     public async Task AKaleidoEndpoint_EchoesTheRequestId()
     {
-        using var response = await SendAsync("/kaleido/registry", requestId: "req-1");
+        using var response = await SendAsync("/kaleido/processes/00000000-0000-0000-0000-000000000000", requestId: "req-1");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("req-1", Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
     }
 
     [Fact]
     public async Task AMalformedCorrelationHeader_OnAKaleidoEndpoint_IsKaleidos400()
     {
-        using var response = await SendAsync("/kaleido/registry", processId: "not-a-guid");
+        using var response = await SendAsync("/kaleido/processes/00000000-0000-0000-0000-000000000000", processId: "not-a-guid");
 
         await AssertArgumentErrorAsync(response, KaleidoCorrelationHeaders.ProcessId);
     }

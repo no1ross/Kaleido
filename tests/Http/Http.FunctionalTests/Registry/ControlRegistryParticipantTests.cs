@@ -1,8 +1,6 @@
-using Kaleido.Http.Client;
 using Kaleido.Http.FunctionalTests.Authorization;
 using Kaleido.Http.FunctionalTests.Processor.Behavior;
 using Kaleido.Http.Server;
-using Kaleido.Http.Server.Registry;
 using Kaleido.Platform;
 using Kaleido.Platform.Registry;
 using Kaleido.Registry;
@@ -220,7 +218,7 @@ public sealed class ControlRegistryParticipantTests : IAsyncLifetime
                     services.AddSingleton(switches).AddSingleton(new BehaviorGate());
                     services.AddHealthChecks().AddCheck("local", () => serviceName != BehaviorFixture.ServiceName || behaviorHealthy ? HealthCheckResult.Healthy() : HealthCheckResult.Unhealthy());
                     services.AddKaleido(
-                            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:Registry:Url"] = "http://registry.test/" }).Build(),
+                            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:BaseUrl"] = "http://registry.test/" }).Build(),
                             new()
                             {
                                 ServiceName = serviceName,

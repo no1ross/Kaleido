@@ -11,8 +11,6 @@ public sealed class KaleidoProcessorClientTests
     : Kaleido.UnitTests.SutFixture
 {
     private readonly Mock<IKaleidoClientTransport> transport = new();
-    private readonly Mock<IKaleidoRemoteRegistry> remoteRegistry = new();
-    private readonly ICorrelationHeaderStamper stamper = Mock.Of<ICorrelationHeaderStamper>();
     private readonly List<KaleidoClientRequest> sent = [];
 
     private KaleidoProcessorClient CreateSut(string routePrefix = "radiology")
@@ -29,14 +27,14 @@ public sealed class KaleidoProcessorClientTests
         transport.Setup(x => x.SendAsync<StepExecutionResponse<JsonElement>>(Captured(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StepExecutionResponse<JsonElement> { ProcessId = Guid.NewGuid(), StepName = "MyStep", Result = JsonSerializer.SerializeToElement(new { visitId = "V-1" }) });
 
-        return new("RadiologyClient", catalog.Object, transport.Object, remoteRegistry.Object, stamper);
+        return new("RadiologyClient", catalog.Object, transport.Object);
     }
 
     private KaleidoClientRequest Captured() =>
         Capture.In(sent);
 
     private static KaleidoClientDefinition Definition(string routePrefix) =>
-        new("RadiologyClient", routePrefix, RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
+        new("RadiologyClient", routePrefix);
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -49,30 +47,6 @@ public sealed class KaleidoProcessorClientTests
     private sealed class MyStepResponse
     {
         public string Value { get; init; } = "";
-    }
-
-    // ---------------------------------------------------------------------------
-    // Registry
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task GetRegistryAsync_ReturnsTheProcessesOfTheClientsRemoteRegistry()
-    {
-        var sut = CreateSut();
-        remoteRegistry.Setup(x => x.GetAsync(Definition("radiology"), stamper, Cancel))
-            .ReturnsAsync(new KaleidoRegistry { Processes = [new ProcessorRegistryResponse { Name = "radiology", ServiceName = "radiology" }] });
-
-        var result = await sut.GetRegistryAsync(Cancel);
-
-        Assert.Equal("radiology", Assert.Single(result).Name);
-    }
-
-    [Fact]
-    public async Task InvalidateRegistryAsync_DropsTheClientsRemoteRegistry()
-    {
-        await CreateSut().InvalidateRegistryAsync(Cancel);
-
-        remoteRegistry.Verify(x => x.InvalidateAsync("RadiologyClient", Cancel), Times.Once);
     }
 
     // ---------------------------------------------------------------------------
@@ -96,7 +70,6 @@ public sealed class KaleidoProcessorClientTests
         Assert.Equal(ProcessContractUrls.ProcessState("radiology", processId), request.Url);
         Assert.Null(request.Body);
         Assert.False(request.Idempotent);
-        Assert.False(request.InvalidatesRegistryOnNotFound);
     }
 
     // ---------------------------------------------------------------------------
@@ -118,7 +91,6 @@ public sealed class KaleidoProcessorClientTests
         Assert.Same(body, request.Body);
         Assert.Equal("order-42", request.IdempotencyKey);
         Assert.True(request.Idempotent);
-        Assert.True(request.InvalidatesRegistryOnNotFound);
         Assert.Equal("Process execute request", request.Description);
     }
 
@@ -135,7 +107,6 @@ public sealed class KaleidoProcessorClientTests
         Assert.Equal("/radiology/processes/steps/mystep", request.Url);
         Assert.Same(step, Assert.IsType<ExecuteStepRequest<MyStep>>(request.Body).ProcessStep);
         Assert.True(request.Idempotent);
-        Assert.True(request.InvalidatesRegistryOnNotFound);
         Assert.Null(request.IdempotencyKey);
     }
 
@@ -188,12 +159,11 @@ public sealed class KaleidoProcessorClientTests
 
     // Step URLs come from the route prefix, never from the registry (#381).
     [Fact]
-    public async Task ExecuteStepAsync_WithoutARoutePrefix_UsesTheDefaultUrl_AndReadsNoRegistry()
+    public async Task ExecuteStepAsync_WithoutARoutePrefix_UsesTheDefaultUrl()
     {
         await CreateSut(routePrefix: "").ExecuteStepAsync("MyStep", Json(new { }), null, null, Cancel);
 
         Assert.Equal("/processes/steps/mystep", Assert.Single(sent).Url);
-        remoteRegistry.Verify(x => x.GetAsync(It.IsAny<KaleidoClientDefinition>(), It.IsAny<ICorrelationHeaderStamper>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // A failure is the transport's answer, passed on as it is.

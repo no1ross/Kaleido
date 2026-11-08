@@ -8,13 +8,13 @@ namespace Kaleido.Http.FunctionalTests.Processor.Discovery;
 [Collection(nameof(ProcessorAspNetCoreSuite))]
 public sealed class ProcessDiscoveryTests(ProcessorAspNetCoreFixture fixture)
 {
-    private readonly HttpClient _client = fixture.Client;
+    private readonly HttpClient _client = fixture.RegistryClient;
 
     [Fact]
     public async Task GetRegistry_ReturnsProcessorsWithInitialSteps()
     {
         var response =
-            await _client.GetAsync("/kaleido/registry");
+            await _client.GetAsync("/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -40,7 +40,7 @@ public sealed class ProcessDiscoveryTests(ProcessorAspNetCoreFixture fixture)
     public async Task GetRegistry_StepRecordsCarryDependenciesLinksAndResultMetadata()
     {
         var response =
-            await _client.GetAsync("/kaleido/registry");
+            await _client.GetAsync("/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 

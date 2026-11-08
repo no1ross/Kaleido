@@ -35,7 +35,7 @@ internal sealed partial class HandOffStepResolver(
             return new ProcessContinuation(RequiredStep: null, AvailableSteps: [], processResult.Notice);
         }
 
-        var registry = await source.GetAsync(maxParallelism: null, cancellationToken);
+        var registry = await source.GetAsync(cancellationToken);
 
         if (PublishedSteps(registry, await source.GetAvailabilityAsync(cancellationToken), target) is not { } published)
         {

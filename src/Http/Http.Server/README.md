@@ -40,19 +40,18 @@ Queryable requests use an optional `query.page` object. An omitted page on a pag
 
   Step metadata (inputs, results, relationships, authorization, execute URL) is published by the registry endpoint below; there is no per-step metadata endpoint.
 
-### Registry endpoint mapping
-- `RegistryEndpointRouteBuilderExtensions` — `MapRegistry()` extension (internal; mapped by `MapKaleidoHttp`)
-  - `GET /{prefix}/registry` — unified discovery: local process + queryable registrations; when `MapKaleidoHttp(new() { AggregateRegistry = true })` is used, also merges every downstream client registered via `AddHttpClients()`
+### Central registry participation
+- `MapKaleidoHttp()` publishes capability endpoints but does not publish a registry endpoint. The service must participate with `AddControlRegistryClient()`; the separate `Kaleido.Registry.Http` host serves `GET /registry` through `MapKaleidoControlRegistry()`.
 
 ### URL and route helpers (internal)
-- `ProcessContractUrls` / `ProcessRoutePaths` and `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) build the execute, state and query URLs for both the server and the clients. They are internal, as are the endpoint-name constants (`ProcessEndpointNames`, `QueryableEndpointNames`, `RegistryEndpointNames`): consumers take URLs from the registry (`executeUrl`, `queryUrl`).
+- `ProcessContractUrls` / `ProcessRoutePaths` and `QueryableContractUrls` (in `Kaleido.Http.Abstractions`) build the execute, state and query URLs for both the server and the clients. They are internal, as are the endpoint-name constants (`ProcessEndpointNames`, `QueryableEndpointNames`; the registry host owns `ControlRegistryEndpointNames`): consumers take URLs from the registry (`executeUrl`, `queryUrl`).
 
 ---
 
 ## What this project is for
 
 Reference this project when you need to:
-- publish all Kaleido endpoints with `MapKaleidoHttp()` (it detects the active runtimes, maps their endpoints and the registry; per-surface mapping is internal)
+- publish all Kaleido endpoints with `MapKaleidoHttp()` (it maps the service's capability endpoints; per-surface mapping is internal and the registry runs centrally)
 
 ## What this project is NOT for
 
@@ -192,46 +191,19 @@ A capability declaring `Policy` on a host with no `IAuthorizationService` fails 
 
 ---
 
-## Registry endpoint
+## Central registry participation
 
-`MapKaleidoHttp()` always maps `GET /{service}/registry` when a runtime is present. The endpoint returns an `KaleidoRegistry` (`Processes`, `Queryables`, `Errors`) built from:
-- the local processor's registry (`IProcessorRegistry`)
-- the local queryable registry (`IQueryableRegistry`)
-- when `AggregateRegistry` is set: every downstream client registered via `AddHttpClients()` — one `GET /{downstream}/registry` fetch per named client, deduplicated through a shared cache (`KaleidoRemoteRegistry` in `Kaleido.Http.Client`), so the Process and Queryable halves never issue separate calls
-
-A client whose `RoutePrefix` equals this service's `ServiceName` is skipped (self-fetch would recurse). Aggregation without any registered clients throws a `KaleidoConfigurationException` at map time.
+`MapKaleidoHttp()` maps the service's Process and Queryable endpoints, not a per-service registry endpoint. A host publishing capabilities must configure `Kaleido:BaseUrl` with its gateway and call `AddControlRegistryClient()` before mapping; registration and heartbeat keep its capabilities in the central registry.
 
 **Behavior and sensitivity:** each step carries `destructive`, `external` and `requiresConfirmation` as declared on `[ProcessStep]` (also on step summaries and the required step), and every field - step inputs and outputs, query fields, view outputs and parameters - carries `classifications` (e.g. `["PriorAuth:PHI"]`) from its `DataClassificationAttribute`s ([ADR 0015](../../docs/decisions/0015-declared-step-behavior.md)).
 
-**Partial responses:** when an aggregated registry rebuild encounters an unreachable downstream, the endpoint returns HTTP **200** by default with `isPartial: true` and non-empty `errors`. Append `?strict` for HTTP **502** with the **same partial body**; agents/gateways can still read both the working catalog and the error list. A healthy registry returns 200. `?strict` changes the failure status, not snapshot freshness: cached clean results may still be served, and a matching `If-None-Match` can return 304 before the strict check. Use `?refresh` when a fresh downstream probe is needed, subject to the refresh cooldown.
-
-**Freshness contract:** every response carries `GeneratedAt` (snapshot build time - reflects data age even when served from cache), `Revision` (SHA-256 of the filtered payload, without the build time: a rebuilt but unchanged registry keeps its revision), an `ETag` header, and `Cache-Control: private` with the snapshot's `max-age` (private: the registry is filtered per caller, so a shared cache must not serve it to another caller). Clients may send `If-None-Match` to get a **304** when nothing changed. `Revision` is computed on the per-caller filtered payload, so ETags are correct per persona.
-
-**Caching & TTL:** the built snapshot is stored under the canonical key `kaleido:{ServiceName}` in `IRegistrySnapshotStore` (in-memory by default; on a router with several replicas, `AddDistributedRegistrySnapshots()` stores it in the host's `IDistributedCache`, e.g. Redis, so replicas share one snapshot and one downstream fan-out per `RegistryCacheTtl` - see [Shared snapshots](#shared-snapshots-across-replicas)). Only fully-clean snapshots are committed: a partial result is served but never cached, so every request while degraded naturally re-probes the failed services. Options on `MapKaleidoHttp`:
-- `RegistryCacheTtl` - how long the snapshot is served before the next request rebuilds it (default **30 seconds**; null = never on its own). On an aggregating host the rebuild checks every downstream with its ETag, so an unchanged downstream costs one small request with an empty 304; a deployed one is picked up. This is how a router - and the MCP tool list built from it - learns about deployments without a restart. It also bounds how long a clean snapshot can mask a newly-failing downstream. A host taking part in the control registry (`AddControlRegistryClient()`, ADR 0037) does not use it: its registry is the control registry's, kept in memory, and the snapshot is rebuilt exactly when that registry's revision changes.
-- `RegistryRefreshCooldown` — minimum interval between honored `?refresh` requests (default 30s). Refreshes inside the window serve the cache instead of re-fanning-out; an honored refresh first invalidates each downstream client snapshot so the rebuild re-fetches.
-- `RegistryDownstreamMaxParallelism` — maximum number of downstream registry fetches in flight at once during an aggregate build (default: unbounded). Set it on a router that aggregates many services.
-
-Each of these can also be set per environment in the `Kaleido:Http:Map` configuration section, which overrides the options passed to `MapKaleidoHttp` setting by setting (ADR 0030); the transport options of `AddHttp` (`KaleidoHttpOptions`) likewise in `Kaleido:Http`. A negative duration, a zero parallelism, or a non-positive idempotency lease or retention stops startup with `invalid_http_options`.
-
-In-host consumers (such as the MCP adapter) read the same caller-filtered payload without HTTP through `IKaleidoRegistryService`: `GetForCallerAsync()` returns it with its revision, and `IsMapped` reports whether `MapKaleidoHttp()` has run.
+The separate registry host maps `GET /registry`, `/registry/availability`, `/registry/capabilities`, and `/registry/status` with `MapKaleidoControlRegistry()`. It filters the main read per caller, including authorization; the availability and capabilities documents carry separate ETags for conditional hydration. Each participant holds the full central view in memory, and in-host consumers such as MCP use `IKaleidoRegistryService` to filter that view for their caller. There is no downstream fan-out, per-service cache or `?strict` probe on a service endpoint.
 
 The route prefix is derived from `KaleidoServiceOptions.ServiceName` (set in the options passed to `AddKaleido`; `Kaleido:ServiceName` in configuration overrides it).
 
 **Route-prefix contract:** every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. Downstream consumers address a service through a named client whose `RoutePrefix` must equal that service's `ServiceName`. `RoutePrefix` defaults to the client key lowercased — so a client named `"Member"` expects the Member service to have `Kaleido:ServiceName = "member"`. A mismatch produces silent 404s at call time, not startup errors. `ServiceName` must match `[a-z0-9][a-z0-9_-]*` (lowercase ASCII letters, digits, `-` and `_`, starting with a letter or digit); `AddKaleido` rejects any other value at startup (`invalid_service_name`) and KAL2005 reports constant values at build time.
 
-### Shared snapshots across replicas
-
-`AddDistributedRegistrySnapshots()` (on `IKaleidoBuilder`, from `Kaleido.Http.Abstractions`) replaces the in-memory store with one on the host's `IDistributedCache`; the host registers the cache itself, and Kaleido references no cache technology:
-
-```csharp
-builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConnection);
-builder.Services.AddKaleido(builder.Configuration).AddHttp().AddHttpClients().AddDistributedRegistrySnapshots();
-```
-
-- The router's snapshot (`kaleido:{ServiceName}`) is built by the first replica that finds it stale; the others serve it. Each client's copy of a downstream registry (`kaleido-client:{ServiceName}:{clientName}`) is shared the same way, so a replica that rebuilds merges the copies another stored while they are fresh.
-- Snapshots are stored as JSON without a cache expiry; freshness stays with `RegistryCacheTtl` and the clients' `RegistryTtl`. Without a distributed lock, replicas that find the snapshot stale at the same moment may each rebuild once.
-- **The cache never fails a registry read.** Every snapshot is also kept in memory. While the cache is unreachable, a replica serves and keeps its own snapshots, logs one warning, and tries the cache again 30 seconds later.
+The registry host owns the store for service registrations; participating services never cache downstream registries separately. A failed refresh keeps the last good central copy marked partial, without affecting a service's readiness after its initial registration. The registry store's caching policy will be described with the registry host.
 
 ---
 

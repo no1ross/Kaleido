@@ -16,7 +16,7 @@ public sealed class JwtAuthorizationTests(JwtAuthorizationFixture fixture)
 {
     private const string InternalStepUrl = "kaleido/processes/steps/authorizedinternalstep";
     private const string ExecuteUrl = "kaleido/processes/execute";
-    private const string RegistryUrl = "kaleido/registry";
+    private const string RegistryUrl = "test/registry";
 
     private static readonly object StepBody = new { processStep = new { } };
 

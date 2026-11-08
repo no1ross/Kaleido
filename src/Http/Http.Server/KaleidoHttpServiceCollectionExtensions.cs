@@ -3,6 +3,7 @@ using Kaleido.Platform.Registry;
 using Kaleido.Processor.Registry;
 using Kaleido.Server;
 using Kaleido.Server.Authorization;
+using Kaleido.Server.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -74,19 +75,14 @@ public static class KaleidoHttpServiceCollectionExtensions
             builder.Services.TryAddScoped<IHandOffStepResolver, HandOffStepResolver>();
         }
 
-        builder.Services.TryAddSingleton<Kaleido.Platform.Registry.IRegistrySnapshotStore, Kaleido.Platform.Registry.InMemoryRegistrySnapshotStore>();
         builder.Services.TryAddSingleton<IProcessorResponseFactory, ProcessorResponseFactory>();
         builder.Services.TryAddSingleton<IProcessExecutionResponseFactory, ProcessExecutionResponseFactory>();
 
-        // The unified registry, in process: the registry endpoint and in-host consumers (e.g. the
-        // MCP adapter) both use IKaleidoRegistryService. The full registry comes from a source: nothing
-        // beyond this host's own by default; AddHttpClients() (its clients) or the control registry replace it.
+        // The central registry's hydrated copy is the in-host source for MCP and authorization; this
+        // service's own capabilities are published only when the registry client registers this instance.
         builder.Services.TryAddSingleton(TimeProvider.System);
-        builder.Services.TryAddSingleton<IHttpRegistryCache, HttpRegistryCache>();
-        builder.Services.TryAddSingleton<RegistrySnapshot>();
         builder.Services.TryAddSingleton<LocalRegistrations>();
         builder.Services.TryAddSingleton<IKaleidoLocalCapabilities>(x => x.GetRequiredService<LocalRegistrations>());
-        builder.Services.TryAddScoped<IKaleidoRegistrySource, LocalRegistrySource>();
         builder.Services.TryAddScoped<IKaleidoRegistryService, KaleidoRegistryService>();
 
         // The same registry unfiltered, for in-host consumers that must not depend on one caller's

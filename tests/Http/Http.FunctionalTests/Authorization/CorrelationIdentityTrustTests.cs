@@ -11,7 +11,7 @@ public sealed class CorrelationIdentityTrustTests(
     AuthorizationAspNetCoreFixture fixture)
     : IClassFixture<AuthorizationAspNetCoreFixture>
 {
-    private const string RegistryUrl = "/kaleido/registry";
+    private const string ProcessUrl = "/kaleido/processes/00000000-0000-0000-0000-000000000000";
 
     private async Task<string?> EchoedRequestIdAsync(HttpRequestMessage request)
     {
@@ -27,7 +27,7 @@ public sealed class CorrelationIdentityTrustTests(
     [Fact]
     public async Task AnAuthenticatedCaller_KeepsItsRequestId()
     {
-        using var request = AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, RegistryUrl);
+        using var request = AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, ProcessUrl);
 
         Assert.Equal("req-42", await EchoedRequestIdAsync(request));
     }
@@ -35,7 +35,7 @@ public sealed class CorrelationIdentityTrustTests(
     [Fact]
     public async Task AnAnonymousCaller_GetsANewRequestId()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, RegistryUrl);
+        using var request = new HttpRequestMessage(HttpMethod.Get, ProcessUrl);
 
         var echoed = await EchoedRequestIdAsync(request);
 

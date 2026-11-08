@@ -16,6 +16,7 @@ namespace Kaleido.IntegrationTests.Guide;
 public sealed class GettingStartedMcpTests : IAsyncLifetime
 {
     private WebApplication? _app;
+    private TestControlRegistry? _registry;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -23,16 +24,19 @@ public sealed class GettingStartedMcpTests : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["Kaleido:BaseUrl"] = "http://registry.test/",
             ["Kaleido:Clients:orders:BaseUrl"] = "http://localhost/",
             ["Kaleido:Clients:orders:RoutePrefix"] = "orders",
             ["Kaleido:OnBehalfOfCalls"] = "Exchange",
         });
 
         OrdersService.AddOrdersWithMcp(builder.Services, builder.Configuration);
+        builder.Services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
 
         // The orders client calls this server (in production: the network).
         builder.Services.AddHttpClient("orders")
@@ -41,6 +45,7 @@ public sealed class GettingStartedMcpTests : IAsyncLifetime
         _app = builder.Build();
         OrdersService.MapOrdersWithMcp(_app);
         await _app.StartAsync(Cancel);
+        await _registry.WaitForRegistrationAsync(_app);
     }
 
     public async ValueTask DisposeAsync()
@@ -49,6 +54,11 @@ public sealed class GettingStartedMcpTests : IAsyncLifetime
         {
             await _app.StopAsync(Cancel);
             await _app.DisposeAsync();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 

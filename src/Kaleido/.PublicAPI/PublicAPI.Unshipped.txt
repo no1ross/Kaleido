@@ -22,6 +22,7 @@ const Kaleido.Eventing.KaleidoEventTypes.ProcessPlanBuilt = "process.plan-built.
 const Kaleido.Eventing.KaleidoEventTypes.ProcessStepCompleted = "process.step-completed.v1" -> string!
 const Kaleido.Eventing.KaleidoEventTypes.QueryExecuted = "query.executed.v1" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.AuthenticationNotConfigured = "authentication_not_configured" -> string!
+const Kaleido.Exceptions.ConfigurationErrorCodes.RegistryNotConfigured = "registry_not_configured" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingAuthorization = "conflicting_authorization" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingOutbox = "conflicting_outbox" -> string!
 const Kaleido.Exceptions.ConfigurationErrorCodes.ConflictingStore = "conflicting_store" -> string!

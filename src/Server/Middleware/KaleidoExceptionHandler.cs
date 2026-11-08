@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Kaleido.Platform;
 using Kaleido.Processor.Recovery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;

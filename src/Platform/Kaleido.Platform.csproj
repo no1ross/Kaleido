@@ -6,11 +6,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- IDistributedCache only, for AddDistributedRegistrySnapshots(): the host picks the backend (#275); removed with the per-service registry (#581). -->
-		<PackageReference Include="Microsoft.Extensions.Caching.Abstractions" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<ProjectReference Include="..\Kaleido\Kaleido.csproj" />
 	</ItemGroup>
 
@@ -35,5 +30,6 @@
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.IntegrationTests" />
 	</ItemGroup>
 </Project>

@@ -7,7 +7,6 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Client\Kaleido.Client.csproj" />
 		<ProjectReference Include="..\..\src\Platform\Kaleido.Platform.csproj" />
-		<ProjectReference Include="..\..\src\Http\Http\Kaleido.Http.csproj" />
 		<ProjectReference Include="..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
 	</ItemGroup>
 </Project>

@@ -9,12 +9,12 @@ namespace Kaleido.Http.FunctionalTests.Queryable.Discovery;
 
 public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) : IClassFixture<QueryableAspNetCoreFixture>
 {
-    private readonly HttpClient _client = fixture.Client;
+    private readonly HttpClient _client = fixture.RegistryClient;
 
     [Fact]
     public async Task GetRegistry_ReturnsOk()
     {
-        var response = await _client.GetAsync("/kaleido/registry");
+        var response = await _client.GetAsync("/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -22,19 +22,18 @@ public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) 
     [Fact]
     public async Task GetRegistry_ReturnsFunctionalRecord()
     {
-        var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/kaleido/registry", KaleidoJsonOptions.Options);
+        var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/registry", KaleidoJsonOptions.Options);
 
         var record = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalRecordContextSource");
 
         Assert.Equal("kaleido", record.ServiceName);
         Assert.Equal("Functional records for Queryable HTTP tests.", record.Description);
-        Assert.Equal("/kaleido/registry", record.RegistryUrl);
     }
 
     [Fact]
     public async Task GetRegistry_ReturnsContextAndViewMetadata()
     {
-        var response = await _client.GetAsync("/kaleido/registry");
+        var response = await _client.GetAsync("/registry");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -54,7 +53,7 @@ public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) 
     [Fact]
     public async Task GetRegistry_PublishesEachFieldsDeclaredCapabilities()
     {
-        var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/kaleido/registry", KaleidoJsonOptions.Options);
+        var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/registry", KaleidoJsonOptions.Options);
         var record = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalRecordContextSource");
         QueryableFieldMetadata Field(string name) => Assert.Single(record.Fields, x => x.Name == name);
 
@@ -81,7 +80,7 @@ public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) 
     [Fact]
     public async Task GetRegistry_PublishesAViewsOwnPaging_NotItsSources()
     {
-        var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/kaleido/registry", KaleidoJsonOptions.Options);
+        var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/registry", KaleidoJsonOptions.Options);
         var source = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalAsyncRecordSource");
         var view = Assert.Single(source.Views, x => x.Name == "FunctionalCodeListView");
 

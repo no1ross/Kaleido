@@ -1,10 +1,10 @@
+using System.Globalization;
 using Kaleido.Http.Registry;
-using Kaleido.Http.Server;
-using Kaleido.Http.Server.Registry;
 using Kaleido.Platform;
 using Kaleido.Platform.Registry;
 using Kaleido.Server;
 using Kaleido.Server.Authorization;
+using Kaleido.Server.Registry;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -52,7 +52,7 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
         ArgumentNullException.ThrowIfNull(endpoints);
 
         var services = endpoints.ServiceProvider;
-        var options = services.GetService<KaleidoRegistryOptions>()
+        _ = services.GetService<KaleidoRegistryOptions>()
             ?? throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidOptions, "MapKaleidoControlRegistry() requires AddControlRegistry() on the Kaleido builder.");
 
         if (services.GetService<IServiceProviderIsService>()?.IsService(typeof(IKaleidoRegistryStore)) != true)
@@ -61,14 +61,6 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
                 ConfigurationErrorCodes.StoresNotChosen,
                 "The control registry has no store. Register a durable one (e.g. AddSqliteRegistryStore, or AddRegistryStore<T>()), or choose memory explicitly with AddInMemoryRegistryStore() (development and tests).");
         }
-
-        // The host's registry is the store's view: always "aggregated", kept no longer than a heartbeat.
-        services.GetRequiredService<RegistrySnapshot>().Configure(new KaleidoHttpMapOptions
-        {
-            AggregateRegistry = true,
-            RegistryCacheTtl = options.HeartbeatInterval,
-            RegistryRefreshCooldown = options.HeartbeatInterval,
-        });
 
         var group = endpoints.MapGroup(ControlRegistryRoutePaths.Group)
             .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
@@ -191,7 +183,7 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
             ? await httpContext.RequestServices.GetRequiredService<IKaleidoUnfilteredRegistry>().GetUnfilteredAsync(cancellationToken)
             : await httpContext.RequestServices.GetRequiredService<IKaleidoRegistryService>().GetForCallerAsync(refresh: false, cancellationToken);
 
-        return httpContext.RegistryResult(registry, options.HeartbeatInterval);
+        return RegistryResult(httpContext, registry, options.HeartbeatInterval);
     }
 
     private static async Task<IResult> StatusAsync(HttpContext httpContext, [FromServices] KaleidoRegistryOptions options, [FromServices] IRegistryStatusReader statuses, CancellationToken cancellationToken)
@@ -242,6 +234,45 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
         return httpContext.Request.Headers.IfNoneMatch.Any(x => string.Equals(x, etag, StringComparison.Ordinal))
             ? Results.StatusCode(StatusCodes.Status304NotModified)
             : Results.Ok(value);
+    }
+
+    /// <summary>
+    /// The registry's HTTP answer, shared with the control registry (#553): the ETag (the revision) and
+    /// <c>Cache-Control</c>, 304 when <c>If-None-Match</c> matches, and 502 with the body for a partial
+    /// response under <c>?strict</c>.
+    /// </summary>
+    private static IResult RegistryResult(HttpContext httpContext, KaleidoRegistry response, TimeSpan? cacheTtl)
+    {
+        var strict = httpContext.Request.Query.ContainsKey("strict");
+
+        // Freshness contract: Revision hashes the per-caller filtered payload (same
+        // content → same ETag); Cache-Control advertises the configured staleness window. Private:
+        // the registry is filtered per caller, so a shared cache must never serve it to another one.
+        var etag = $"\"{response.Revision}\"";
+        httpContext.Response.Headers.ETag = etag;
+        httpContext.Response.Headers.CacheControl =
+            cacheTtl is { } ttl
+                ? string.Create(CultureInfo.InvariantCulture, $"private, max-age={(int)ttl.TotalSeconds}")
+                : "private, no-cache";
+
+        if (httpContext.Request.Headers.IfNoneMatch.Any(
+                value => string.Equals(value, etag, StringComparison.Ordinal)
+                    || string.Equals(value, "*", StringComparison.Ordinal)))
+        {
+            return Results.StatusCode(StatusCodes.Status304NotModified);
+        }
+
+        // ?strict — agents/gateways get a real failure signal when
+        // the aggregate is partial; the full body is still included.
+        if (strict && response.IsPartial)
+        {
+            return Results.Json(
+                response,
+                KaleidoJsonOptions.Options,
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+
+        return Results.Ok(response);
     }
 
     private static Task<bool> IsReaderAsync(HttpContext httpContext, KaleidoRegistryOptions options) =>

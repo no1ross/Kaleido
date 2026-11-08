@@ -13,9 +13,11 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Include="..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
+		<Compile Include="..\Shared\Registry\TestControlRegistry.cs" Link="Hosting\TestControlRegistry.cs" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\src\Registry\Registry.Http\Kaleido.Registry.Http.csproj" />
 		<ProjectReference Include="..\..\src\Providers\Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
     <ProjectReference Include="..\..\docs\guide\examples\Kaleido.Guide.Examples.csproj" />
 	</ItemGroup>

@@ -426,7 +426,7 @@ services, and every call reaches the service with a token exchanged for that use
 ## Security
 
 - Tools are built from the registry **filtered for the caller**: a caller sees only what it may use.
-- **Tool changes follow deployments within the registry check interval:** the tool list is built from the host's registry snapshot, which an aggregating host rebuilds after `RegistryCacheTtl` (default 30 seconds), checking each downstream with its ETag. On a host taking part in the control registry (`AddControlRegistryClient()`), a deployment, and each capability's status, reach the tools within one availability check (the registry's heartbeat interval, 10 s by default). A removed step that is still called answers 404 and drops that downstream's snapshot at once.
+- **Tool changes follow deployments within the registry check interval:** the host hydrates one full copy of the central registry with separate ETags for availability and capabilities. A deployment and each capability's status reach the tools within one availability check (the registry's interval), without probing every downstream service.
 - Every tool call is made **for the agent's user**: it carries the token the host's handler exchanged
   for that user (`Kaleido:OnBehalfOfCalls = Exchange`, required), and Kaleido guarantees it is never the
   agent's token and never the host's own service credential; an anonymous user stays anonymous

@@ -136,11 +136,13 @@ services.AddSingleton<OrderBook>();
 services.AddKaleido(configuration, new()
 {
     ServiceName = "orders",
+    ServiceVersion = "1",
     Assemblies = [typeof(OrderSource).Assembly],
     AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
 })
     .AddInMemoryStores()   // local evaluation only: nothing survives a restart
-    .AddHttp();
+    .AddHttp()
+    .AddControlRegistryClient();
 ```
 
 `AddInMemoryStores()` is a choice: the process state and idempotency records live in this process
@@ -188,8 +190,8 @@ sequenceDiagram
 - **Query the orders:** `POST /orders/queryable/OrderSource/query` with
   `{ "query": { "searchText": "Book" } }`, or a `filter`, `sort` and `page`
   ([Queries](queries.md#the-query-a-caller-sends)).
-- **Discover everything:** `GET /orders/registry` lists the steps, the source, their inputs and
-  descriptions, and the URLs to call. Clients and the MCP adapter read it.
+- **Discover everything:** `GET /registry` lists the steps, the source, their inputs and
+  descriptions, and the URLs to call. Clients and the MCP adapter hydrate their copy from it.
 
 The routes, the body shapes and the error answers are in the
 [`Kaleido.Http` README](../../src/Kaleido.Http/README.md).
@@ -207,12 +209,14 @@ services.AddSingleton<OrderBook>();
 services.AddKaleido(configuration, new()
 {
     ServiceName = "orders",
+    ServiceVersion = "1",
     Assemblies = [typeof(OrderSource).Assembly],
     AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
 })
     .AddInMemoryStores()   // local evaluation only: nothing survives a restart
     .AddHttp()
     .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
+    .AddControlRegistryClient()
     .AddMcp();
 ```
 
@@ -232,7 +236,7 @@ app.MapKaleidoMcp("/mcp");
 The client the tools call through is configured like any Kaleido client:
 
 ```json
-{ "Kaleido": { "OnBehalfOfCalls": "Exchange", "Clients": { "orders": { "BaseUrl": "http://localhost:5100", "RoutePrefix": "orders" } } } }
+{ "Kaleido": { "BaseUrl": "http://localhost:5100", "OnBehalfOfCalls": "Exchange", "Clients": { "orders": { "BaseUrl": "http://localhost:5100", "RoutePrefix": "orders" } } } }
 ```
 
 An agent connected to `/mcp` sees one tool per capability, named `orders_<capability>` (the

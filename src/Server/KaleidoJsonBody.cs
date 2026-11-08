@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Kaleido.Platform;
 using Microsoft.AspNetCore.Http;
 
 namespace Kaleido.Server;

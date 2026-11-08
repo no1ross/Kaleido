@@ -1,6 +1,6 @@
-using Kaleido.Mcp;
 using Kaleido.Eventing;
 using Kaleido.Exceptions;
+using Kaleido.Mcp;
 using Kaleido.Processor.Observability;
 using Kaleido.Provider.SQLite;
 using Kaleido.Queryable.Observability;

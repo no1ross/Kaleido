@@ -25,6 +25,7 @@ public sealed class EventPublisherFailureTests
     private static async Task AssertQuerySucceedsAsync<TPublisher>()
         where TPublisher : class, IEventPublisher
     {
+        await using var registry = await TestControlRegistry.StartAsync();
         using var host = await new HostBuilder()
             .ConfigureWebHost(webBuilder =>
             {
@@ -32,15 +33,21 @@ public sealed class EventPublisherFailureTests
                 webBuilder.ConfigureServices(services =>
                 {
                     services.AddSingleton<FunctionalRecordData>();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = "kaleido",
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(FunctionalRecordContext).Assembly],
                     })
                         .AddInMemoryStores()
                         .AddOutboxRelay<TPublisher>()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(registry.CreateHandler);
                 });
                 webBuilder.Configure(app =>
                 {
@@ -50,6 +57,7 @@ public sealed class EventPublisherFailureTests
             })
             .StartAsync(TestContext.Current.CancellationToken);
 
+        await registry.WaitForRegistrationAsync(host);
         using var content = new StringContent("""{ "query": {} }""", Encoding.UTF8, "application/json");
         using var response = await host.GetTestClient().PostAsync(
             "/kaleido/queryable/functionalrecordcontextsource/query",

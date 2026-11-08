@@ -11,18 +11,10 @@ namespace Kaleido.Http.Client.Processor;
 internal sealed class KaleidoProcessorClient(
     [ServiceKey] string clientName,
     IKaleidoClientCatalog catalog,
-    IKaleidoClientTransport transport,
-    IKaleidoRemoteRegistry remoteRegistry,
-    ICorrelationHeaderStamper headerStamper)
+    IKaleidoClientTransport transport)
     : IKaleidoProcessorClient
 {
     private readonly KaleidoClientDefinition _client = catalog.Require(clientName);
-
-    public async Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(CancellationToken cancellationToken) =>
-        [.. (await remoteRegistry.GetAsync(_client, headerStamper, cancellationToken)).Processes];
-
-    public Task InvalidateRegistryAsync(CancellationToken cancellationToken) =>
-        remoteRegistry.InvalidateAsync(_client.Name, cancellationToken);
 
     // 404 is an unknown process here, which says nothing about the registry.
     public Task<ProcessStateResponse?> GetProcessStateAsync(Guid processId, CancellationToken cancellationToken) =>
@@ -66,10 +58,10 @@ internal sealed class KaleidoProcessorClient(
             cancellationToken);
     }
 
-    // Every execute call is idempotent (the caller's key, else its own), and a 404 means the service
-    // does not have that step: the discovery snapshot is dropped.
+    // Every execute call is idempotent (the caller's key, else its own); the central registry owns
+    // the discovery copy, so a 404 never invalidates a per-service registry.
     private KaleidoClientRequest Execute(string url, string description, object body) =>
-        new(_client, HttpMethod.Post, url, description, body) { Idempotent = true, InvalidatesRegistryOnNotFound = true };
+        new(_client, HttpMethod.Post, url, description, body) { Idempotent = true };
 
     // The URL the service publishes for the step: its route segment is the lower-case name, kept one
     // segment whatever the caller passes.

@@ -2,9 +2,8 @@ namespace Kaleido.Platform;
 
 /// <summary>
 /// The Kaleido clients configured for this host (<c>Kaleido:Clients</c>), by name: the remote
-/// service each one calls and its registry settings. Filled at registration by <c>AddHttpClients()</c>
-/// from one <see cref="KaleidoClientDefinition"/> per client; read by the clients, their factories,
-/// the registry aggregation and the per-client health checks and credential handlers (#498).
+/// service each one calls. Filled at registration by <c>AddHttpClients()</c> from one
+/// <see cref="KaleidoClientDefinition"/> per client; read by their factories and credential handlers (#498).
 /// </summary>
 internal interface IKaleidoClientCatalog
 {
@@ -37,12 +36,4 @@ internal sealed class KaleidoClientCatalog(IEnumerable<KaleidoClientDefinition> 
 /// <summary>One configured Kaleido client: the settings <c>AddHttpClients()</c> resolved for it.</summary>
 /// <param name="Name">The client name (the key under <c>Kaleido:Clients</c>), also the name of its <c>HttpClient</c>.</param>
 /// <param name="RoutePrefix">The remote service's name, the first segment of its routes.</param>
-/// <param name="RegistryTtl">How often the remote registry is checked again; null = until invalidated.</param>
-/// <param name="StrictRegistryProbe">The health check probes <c>?strict</c>.</param>
-/// <param name="HealthCheckTimeout">The health check's own timeout.</param>
-internal sealed record KaleidoClientDefinition(
-    string Name,
-    string RoutePrefix,
-    TimeSpan? RegistryTtl,
-    bool StrictRegistryProbe,
-    TimeSpan HealthCheckTimeout);
+internal sealed record KaleidoClientDefinition(string Name, string RoutePrefix);

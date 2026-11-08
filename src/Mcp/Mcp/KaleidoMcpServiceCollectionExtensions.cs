@@ -1,5 +1,4 @@
-using Kaleido.Client;
-using Kaleido.Http.Client;
+using Kaleido.Client.Registry;
 using Kaleido.Mcp.Observability;
 using Kaleido.Mcp.Tools;
 using Kaleido.Server.Observability;
@@ -33,9 +32,8 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// <para>The adapter reuses the HTTP stack instead of reimplementing it:</para>
     /// <list type="bullet">
     /// <item><description><b>Tools</b> come from <see cref="IKaleidoRegistryService"/> — the same
-    /// snapshot and per-caller filtering as <c>GET /{service}/registry</c>. Map the registry with
-    /// aggregation (<c>MapKaleidoHttp(new() { AggregateRegistry = true })</c>) to publish the
-    /// downstream services' capabilities.</description></item>
+    /// central registry's hydrated copy, filtered per caller. Every host gets the complete
+    /// registry through its registered central registry client.</description></item>
     /// <item><description><b>Calls</b> go through the Kaleido clients of each tool's service, made for the
     /// MCP caller: each carries the token the host's handler exchanged for that user
     /// (<c>Kaleido:OnBehalfOfCalls = Exchange</c>), never the agent's token and never the host's own
@@ -119,6 +117,13 @@ public static class KaleidoMcpServiceCollectionExtensions
             throw new KaleidoConfigurationException(
                 McpErrorCodes.MissingHttp,
                 "AddMcp() needs the Kaleido HTTP stack: call AddHttp() before AddMcp().");
+        }
+
+        if (!services.Any(x => x.ServiceType == typeof(IKaleidoRegistryClient)))
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.RegistryNotConfigured,
+                "AddMcp() requires the central registry client. Configure Kaleido:BaseUrl and call AddControlRegistryClient() before AddMcp().");
         }
 
         if (services.FirstOrDefault(x => x.ImplementationInstance is KaleidoClientOptions { Clients.Count: > 0 })?.ImplementationInstance is not KaleidoClientOptions clients)

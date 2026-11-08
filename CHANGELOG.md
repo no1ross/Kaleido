@@ -325,7 +325,7 @@ sections.
   cannot contradict itself (e.g. succeeded and rejected at once).
 - **Cancellation tokens are required** (#313): no public async API defaults its `CancellationToken`
   any more (handlers, async sources and views, delegated sources, `IEventPublisher`, the store
-  contracts, `IKaleidoOutbox`, `IKaleidoTransactions`, the Kaleido clients, `IRegistrySnapshotStore`),
+  contracts, `IKaleidoOutbox`, `IKaleidoTransactions`, the Kaleido clients, IRegistrySnapshotStore),
   so a caller cannot silently drop cancellation. Callers pass their token; an implementation may keep
   a default. Parameters that preceded the token became required too: the by-name
   `ExecuteStepAsync(stepName, processStep, processId, cancellationToken)` (pass `null` for no
@@ -386,7 +386,7 @@ sections.
   define is treated as not allowed, and the policy is logged once at Warning; it no longer fails the whole
   read.
 - **A host reading a full registry rebuilds its snapshot when that registry changes** (#553), not on
-  `RegistryCacheTtl`: the control registry's changes reach MCP and lookups at once.
+  RegistryCacheTtl: the control registry's changes reach MCP and lookups at once.
 - **The 1.0 runtime support window is stated** (#528, ADR 0035): the packages stay on `net8.0`; Kaleido supports a
   runtime while Microsoft does (.NET 8 and 9 end on 10 November 2026), and services override the 8.x dependencies
   to patched versions (VERSIONING, SUPPORT, README).

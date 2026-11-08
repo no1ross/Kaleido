@@ -40,7 +40,6 @@ Kaleido.Platform.KaleidoErrorResponse.Errors.init -> void
 Kaleido.Platform.KaleidoErrorResponse.KaleidoErrorResponse(System.Collections.Generic.IReadOnlyList<Kaleido.Platform.KaleidoError!>! Errors) -> void
 Kaleido.Platform.KaleidoIdempotencyHeaders
 Kaleido.Platform.KaleidoJsonOptions
-Kaleido.Platform.KaleidoRegistrySnapshotServiceCollectionExtensions
 Kaleido.Platform.Processor.ExecuteProcessRequest
 Kaleido.Platform.Processor.ExecuteProcessRequest.<Clone>$() -> Kaleido.Platform.Processor.ExecuteProcessRequest!
 Kaleido.Platform.Processor.ExecuteProcessRequest.Equals(Kaleido.Platform.Processor.ExecuteProcessRequest? other) -> bool
@@ -133,8 +132,6 @@ Kaleido.Platform.Processor.ProcessorRegistryResponse.IsEntryProcessor.init -> vo
 Kaleido.Platform.Processor.ProcessorRegistryResponse.Name.get -> string!
 Kaleido.Platform.Processor.ProcessorRegistryResponse.Name.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.ProcessorRegistryResponse() -> void
-Kaleido.Platform.Processor.ProcessorRegistryResponse.RegistryUrl.get -> string!
-Kaleido.Platform.Processor.ProcessorRegistryResponse.RegistryUrl.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.ServiceName.get -> string!
 Kaleido.Platform.Processor.ProcessorRegistryResponse.ServiceName.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.ServiceVersion.get -> string?
@@ -366,8 +363,6 @@ Kaleido.Platform.Queryable.QueryableSourceResponse.Parameters.init -> void
 Kaleido.Platform.Queryable.QueryableSourceResponse.QueryableSourceResponse() -> void
 Kaleido.Platform.Queryable.QueryableSourceResponse.QueryUrl.get -> string?
 Kaleido.Platform.Queryable.QueryableSourceResponse.QueryUrl.init -> void
-Kaleido.Platform.Queryable.QueryableSourceResponse.RegistryUrl.get -> string!
-Kaleido.Platform.Queryable.QueryableSourceResponse.RegistryUrl.init -> void
 Kaleido.Platform.Queryable.QueryableSourceResponse.ServiceName.get -> string!
 Kaleido.Platform.Queryable.QueryableSourceResponse.ServiceName.init -> void
 Kaleido.Platform.Queryable.QueryableSourceResponse.ServiceVersion.get -> string?
@@ -510,10 +505,6 @@ Kaleido.Platform.Registry.EnumValueMetadata.Name.get -> string!
 Kaleido.Platform.Registry.EnumValueMetadata.Name.init -> void
 Kaleido.Platform.Registry.EnumValueMetadata.Value.get -> int
 Kaleido.Platform.Registry.EnumValueMetadata.Value.init -> void
-Kaleido.Platform.Registry.IRegistrySnapshotStore
-Kaleido.Platform.Registry.IRegistrySnapshotStore.GetAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Kaleido.Platform.Registry.KaleidoRegistry?>
-Kaleido.Platform.Registry.IRegistrySnapshotStore.RemoveAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
-Kaleido.Platform.Registry.IRegistrySnapshotStore.SetAsync(string! key, Kaleido.Platform.Registry.KaleidoRegistry! snapshot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 Kaleido.Platform.Registry.KaleidoRegistry
 Kaleido.Platform.Registry.KaleidoRegistry.Errors.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Platform.Registry.RegistryReadError!>!
 Kaleido.Platform.Registry.KaleidoRegistry.Errors.init -> void
@@ -813,7 +804,6 @@ static Kaleido.Platform.KaleidoError.operator !=(Kaleido.Platform.KaleidoError? 
 static Kaleido.Platform.KaleidoError.operator ==(Kaleido.Platform.KaleidoError? left, Kaleido.Platform.KaleidoError? right) -> bool
 static Kaleido.Platform.KaleidoErrorResponse.operator !=(Kaleido.Platform.KaleidoErrorResponse? left, Kaleido.Platform.KaleidoErrorResponse? right) -> bool
 static Kaleido.Platform.KaleidoErrorResponse.operator ==(Kaleido.Platform.KaleidoErrorResponse? left, Kaleido.Platform.KaleidoErrorResponse? right) -> bool
-static Kaleido.Platform.KaleidoRegistrySnapshotServiceCollectionExtensions.AddDistributedRegistrySnapshots(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Platform.Processor.ExecuteProcessRequest.operator !=(Kaleido.Platform.Processor.ExecuteProcessRequest? left, Kaleido.Platform.Processor.ExecuteProcessRequest? right) -> bool
 static Kaleido.Platform.Processor.ExecuteProcessRequest.operator ==(Kaleido.Platform.Processor.ExecuteProcessRequest? left, Kaleido.Platform.Processor.ExecuteProcessRequest? right) -> bool
 static Kaleido.Platform.Processor.ExecuteStepRequest<TProcessStep>.operator !=(Kaleido.Platform.Processor.ExecuteStepRequest<TProcessStep>? left, Kaleido.Platform.Processor.ExecuteStepRequest<TProcessStep>? right) -> bool

@@ -25,8 +25,7 @@ public sealed class AuthorizationEndpointTests(
     private const string ExecuteUrl =
         "/kaleido/processes/execute";
 
-    private const string RegistryUrl =
-        "/kaleido/registry";
+    private const string RegistryUrl = AuthorizationAspNetCoreFixture.InProcessRegistryUrl;
 
     private static string ProcessStateUrl(Guid processId) =>
         $"/kaleido/processes/{processId}";

@@ -1,9 +1,6 @@
 using System.ComponentModel;
 using System.Net;
-using System.Net.Http.Json;
-using Kaleido.Client;
 using Kaleido.Client.Processor;
-using Kaleido.Http.Client;
 using Kaleido.Http.Server;
 using Kaleido.Platform;
 using Kaleido.Platform.Processor;
@@ -99,10 +96,12 @@ public sealed class HandlerAndSourceCallTests
     private sealed class RelayHost : IAsyncDisposable
     {
         private readonly IHost _host;
+        private readonly TestControlRegistry _registry;
 
-        private RelayHost(IHost host, CaptureHandler wire)
+        private RelayHost(IHost host, TestControlRegistry registry, CaptureHandler wire)
         {
             _host = host;
+            _registry = registry;
             Wire = wire;
         }
 
@@ -111,8 +110,10 @@ public sealed class HandlerAndSourceCallTests
         public static async Task<RelayHost> StartAsync(string? onBehalfOfCalls)
         {
             var wire = new CaptureHandler();
+            var registry = await TestControlRegistry.StartAsync();
             var settings = new Dictionary<string, string?>
             {
+                ["Kaleido:BaseUrl"] = "http://registry.test/",
                 ["Kaleido:Clients:Downstream:BaseUrl"] = "https://downstream.test/",
                 ["Kaleido:Clients:Downstream:RoutePrefix"] = "downstream",
             };
@@ -137,6 +138,7 @@ public sealed class HandlerAndSourceCallTests
                         s.AddKaleido(configuration, new()
                         {
                             ServiceName = "relay",
+                            ServiceVersion = "1",
                             Assemblies = [typeof(HandlerAndSourceCallTests).Assembly],
                             TypeFilter = type => type.Namespace == typeof(HandlerAndSourceCallTests).Namespace,
                             AuthorizationMode = KaleidoAuthorizationMode.None,
@@ -144,7 +146,10 @@ public sealed class HandlerAndSourceCallTests
                             .AddInMemoryStores()
                             .AddHttp()
                             .AddHttpClients()
-                            .AddKaleidoClientHandler<NameExchangeHandler>();
+                            .AddKaleidoClientHandler<NameExchangeHandler>()
+                            .AddControlRegistryClient();
+
+                        s.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(registry.CreateHandler);
 
                         s.AddHttpClient("Downstream").ConfigurePrimaryHttpMessageHandler(() => wire);
                     });
@@ -158,7 +163,8 @@ public sealed class HandlerAndSourceCallTests
                 })
                 .StartAsync(Cancel);
 
-            return new RelayHost(host, wire);
+            await registry.WaitForRegistrationAsync(host);
+            return new RelayHost(host, registry, wire);
         }
 
         public Task<HttpStatusCode> ExecuteRelayStepAsync(string? token) =>
@@ -189,6 +195,7 @@ public sealed class HandlerAndSourceCallTests
         {
             await _host.StopAsync(Cancel);
             _host.Dispose();
+            await _registry.DisposeAsync();
         }
     }
 

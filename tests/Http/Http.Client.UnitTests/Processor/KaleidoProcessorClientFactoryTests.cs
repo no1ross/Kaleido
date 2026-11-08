@@ -20,7 +20,7 @@ public sealed class KaleidoProcessorClientFactoryTests
     }
 
     private static KaleidoClientDefinition Intake =>
-        new("IntakeService", "intake", RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
+        new("IntakeService", "intake");
 
     [Fact]
     public void GetClient_ForAnUnconfiguredName_FailsWithUnknownClient()

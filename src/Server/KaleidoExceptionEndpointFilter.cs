@@ -1,4 +1,3 @@
-using Kaleido.Platform;
 using Kaleido.Server.Middleware;
 using Microsoft.AspNetCore.Http;
 

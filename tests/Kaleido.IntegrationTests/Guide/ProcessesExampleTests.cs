@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Kaleido.Http.Client;
 using Kaleido.IntegrationTests.Guide.Returns;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -108,7 +107,8 @@ public sealed class ProcessesExampleTests
             {
                 ["Kaleido:Clients:returns:BaseUrl"] = "http://returns.test/",
                 ["Kaleido:Clients:returns:RoutePrefix"] = "returns",
-            });
+            },
+            registry: returns.Registry);
         var processId = await ConfirmedOrderAsync(host);
         await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "1 Main St" }, processId);
 

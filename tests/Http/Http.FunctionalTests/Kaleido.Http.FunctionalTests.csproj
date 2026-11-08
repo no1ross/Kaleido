@@ -10,6 +10,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Include="..\..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
+		<Compile Include="..\..\Shared\Registry\TestControlRegistry.cs" Link="Hosting\TestControlRegistry.cs" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Http\Http.Server\Kaleido.Http.Server.csproj" />

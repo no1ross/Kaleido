@@ -1,4 +1,3 @@
-using Kaleido.Http.Server.Registry;
 using Kaleido.Platform.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,12 +46,11 @@ public sealed class KaleidoControlRegistryServiceCollectionExtensionsTests
         Assert.DoesNotContain("ready", checks.Single(x => x.Name == "kaleido-registry-completeness").Tags);
     }
 
-    // AddHttp() registers the "nothing beyond this host" default; the store's registry replaces it.
+    // The registry host's own store is its only full source; it does not participate as a client.
     [Fact]
-    public void AddControlRegistry_ReplacesTheLocalDefault()
+    public void AddControlRegistry_RegistersTheStoreAsTheOnlyRegistrySource()
     {
         var services = new ServiceCollection();
-        services.AddScoped<IKaleidoRegistrySource, LocalRegistrySource>();
 
         Builder(services).AddControlRegistry();
 

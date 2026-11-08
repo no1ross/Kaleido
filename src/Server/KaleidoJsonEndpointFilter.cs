@@ -1,4 +1,3 @@
-using Kaleido.Platform;
 using Microsoft.AspNetCore.Http;
 
 namespace Kaleido.Server;

@@ -24,16 +24,21 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
     private const string RootStepUrl = "/kaleido/processes/steps/runtimerootstep";
 
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"kaleido-idempotency-{Guid.NewGuid():N}.db");
+    private TestControlRegistry? _registry;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
+        }
+
         SqliteConnection.ClearAllPools();
         File.Delete(_databasePath);
-        return ValueTask.CompletedTask;
     }
 
     [Fact]
@@ -55,7 +60,7 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
 
         // One process (the step ran once) and one stored answer, keyed per service and caller.
         Assert.Equal(1L, await ScalarAsync("SELECT COUNT(*) FROM ProcessContexts"));
-        Assert.Equal(KaleidoIdempotencyEndpointFilter.RecordKey("kaleido", null, "anonymous", string.Empty, "key-1-0a1b2c3d4e5f"), await ScalarAsync("SELECT Key FROM IdempotentResults"));
+        Assert.Equal(KaleidoIdempotencyEndpointFilter.RecordKey("kaleido", "1", "anonymous", string.Empty, "key-1-0a1b2c3d4e5f"), await ScalarAsync("SELECT Key FROM IdempotentResults"));
         Assert.Equal(ProcessIdOf(firstBody), ProcessIdOf((string)(await ScalarAsync("SELECT Response FROM IdempotentResults"))!));
 
         // #514: the replay of a new process's answer carries its id in the header too, as the first did.
@@ -196,23 +201,31 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
         return host;
     }
 
-    private async Task<IHost> BuildHostAsync() =>
-        await new HostBuilder()
+    private async Task<IHost> BuildHostAsync()
+    {
+        _registry = await TestControlRegistry.StartAsync();
+        var host = await new HostBuilder()
             .ConfigureWebHost(webBuilder =>
             {
                 webBuilder.UseTestServer();
                 webBuilder.ConfigureServices(services =>
                 {
                     services.AddRouting();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = FunctionalProcessorNames.TestProcessor,
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(RuntimeRootStep).Assembly],
                     })
                         .AddInMemoryStores()
                         .AddHttp()
+                        .AddControlRegistryClient()
                         .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                 });
                 webBuilder.Configure(app =>
                 {
@@ -221,6 +234,9 @@ public sealed class IdempotentExecutionTests : IAsyncLifetime
                 });
             })
             .StartAsync(Cancel);
+        await _registry.WaitForRegistrationAsync(host);
+        return host;
+    }
 
     private static async Task<HttpResponseMessage> PostAsync(HttpClient client, string? key, Guid? processId = null)
     {

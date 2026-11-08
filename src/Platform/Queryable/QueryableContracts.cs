@@ -206,10 +206,6 @@ public sealed record QueryableSourceResponse
     /// </summary>
     public AuthorizationMetadata? Authorization { get; init; }
 
-    /// <summary>The service's registry URL.</summary>
-    public string RegistryUrl { get; init; }
-        = string.Empty;
-
     /// <summary>
     /// The URL to query this source directly. Every source has one; it is <see langword="null"/> only in a
     /// caller-filtered registry when the caller may use some of the source's views but is not

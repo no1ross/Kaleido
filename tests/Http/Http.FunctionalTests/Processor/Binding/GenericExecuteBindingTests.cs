@@ -20,12 +20,14 @@ public sealed class GenericExecuteBindingTests : IAsyncLifetime
     private const string ServiceName = "binding";
 
     private IHost? _host;
+    private TestControlRegistry? _registry;
     private HttpClient _client = null!;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
         _host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -34,15 +36,21 @@ public sealed class GenericExecuteBindingTests : IAsyncLifetime
                 {
                     services.AddRouting();
                     services.ConfigureHttpJsonOptions(options => options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = ServiceName,
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(GenericExecuteBindingTests).Assembly],
                         TypeFilter = type => type.Namespace == typeof(GenericExecuteBindingTests).Namespace,
                     })
                         .AddInMemoryStores()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                 });
                 web.Configure(app =>
                 {
@@ -52,6 +60,7 @@ public sealed class GenericExecuteBindingTests : IAsyncLifetime
             })
             .StartAsync(Cancel);
 
+        await _registry.WaitForRegistrationAsync(_host);
         _client = _host.GetTestClient();
     }
 
@@ -63,6 +72,11 @@ public sealed class GenericExecuteBindingTests : IAsyncLifetime
         {
             await _host.StopAsync(CancellationToken.None);
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 

@@ -26,6 +26,7 @@ public class AuthorizationAspNetCoreFixture
 
     private readonly KaleidoAuthorizationMode _mode;
     private IHost? _host;
+    private TestControlRegistry? _registry;
 
     public AuthorizationAspNetCoreFixture()
         : this(KaleidoAuthorizationMode.Authenticated)
@@ -69,6 +70,7 @@ public class AuthorizationAspNetCoreFixture
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
         _host =
             await new HostBuilder()
                 .ConfigureWebHost(webBuilder =>
@@ -92,6 +94,7 @@ public class AuthorizationAspNetCoreFixture
                         var serverConfig = new ConfigurationBuilder()
                             .AddInMemoryCollection(new Dictionary<string, string?>
                             {
+                                ["Kaleido:BaseUrl"] = "http://registry.test/",
                                 ["Kaleido:Clients:self:BaseUrl"] = "http://localhost/",
                             })
                             .Build();
@@ -99,12 +102,15 @@ public class AuthorizationAspNetCoreFixture
                         services.AddKaleido(serverConfig, new()
                         {
                             ServiceName = "kaleido",
+                            ServiceVersion = "1",
                             DisplayName = "Auth Test Processor",
                             Assemblies = new[] { typeof(AuthorizationAspNetCoreFixture).Assembly },
                             AuthorizationMode = _mode,
                         })
                             .AddInMemoryStores()
-                            .AddHttp();
+                            .AddHttp()
+                            .AddControlRegistryClient();
+                        services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                     });
 
                     webBuilder.Configure(app =>
@@ -121,13 +127,14 @@ public class AuthorizationAspNetCoreFixture
                             // IKaleidoRegistryService directly instead of the registry endpoint.
                             endpoints.MapGet(
                                 InProcessRegistryUrl,
-                                async (Kaleido.Http.Server.Registry.IKaleidoRegistryService registry, CancellationToken cancellationToken) =>
+                                async (Kaleido.Server.Registry.IKaleidoRegistryService registry, CancellationToken cancellationToken) =>
                                     Results.Json(await registry.GetForCallerAsync(refresh: false, cancellationToken: cancellationToken), KaleidoJsonOptions.Options));
                         });
                     });
                 })
                 .StartAsync();
 
+        await _registry.WaitForRegistrationAsync(_host);
         Client = _host.GetTestClient();
     }
 
@@ -139,6 +146,11 @@ public class AuthorizationAspNetCoreFixture
         {
             await _host.StopAsync();
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
 
         GC.SuppressFinalize(this);

@@ -18,7 +18,8 @@ public sealed class DefaultAuthorizationModeTests
     [Fact]
     public async Task AHostThatChoosesNoMode_AndHasNoAuthentication_DoesNotStart_AndSaysWhatToChoose()
     {
-        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(withAuthentication: false));
+        await using var registry = await TestControlRegistry.StartAsync();
+        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(withAuthentication: false, registry));
 
         Assert.Equal(ConfigurationErrorCodes.AuthenticationNotConfigured, exception.Code);
         Assert.Contains("AuthorizationMode = None", exception.Message, StringComparison.Ordinal);
@@ -27,7 +28,8 @@ public sealed class DefaultAuthorizationModeTests
     [Fact]
     public async Task AHostThatChoosesNoMode_RefusesAnonymousCallers_AndAdmitsAuthenticatedOnes()
     {
-        using var host = await StartAsync(withAuthentication: true);
+        await using var registry = await TestControlRegistry.StartAsync();
+        using var host = await StartAsync(withAuthentication: true, registry);
         var client = host.GetTestClient();
 
         using var anonymous = await client.SendAsync(StartStep(user: null), TestContext.Current.CancellationToken);
@@ -55,8 +57,9 @@ public sealed class DefaultAuthorizationModeTests
         return request;
     }
 
-    private static async Task<IHost> StartAsync(bool withAuthentication) =>
-        await new HostBuilder()
+    private static async Task<IHost> StartAsync(bool withAuthentication, TestControlRegistry registry)
+    {
+        var host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
                 web.UseTestServer();
@@ -72,14 +75,20 @@ public sealed class DefaultAuthorizationModeTests
                     }
 
                     // No AuthorizationMode: the default applies.
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = "defaultmode",
+                        ServiceVersion = "1",
                         Assemblies = [typeof(DefaultAuthorizationModeTests).Assembly],
                         TypeFilter = type => type.Namespace == "Kaleido.Http.FunctionalTests.Processor.Behavior",
                     })
                         .AddInMemoryStores()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(registry.CreateHandler);
                 });
                 web.Configure(app =>
                 {
@@ -95,4 +104,7 @@ public sealed class DefaultAuthorizationModeTests
                 });
             })
             .StartAsync(TestContext.Current.CancellationToken);
+        await registry.WaitForRegistrationAsync(host);
+        return host;
+    }
 }

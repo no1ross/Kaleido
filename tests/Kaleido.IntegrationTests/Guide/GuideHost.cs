@@ -1,13 +1,15 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Kaleido.Guide.Examples.GettingStarted;
 using Kaleido.Http.Server;
+using Kaleido.Platform;
+using Kaleido.Server.Registry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,8 +26,15 @@ namespace Kaleido.IntegrationTests.Guide;
 public sealed class GuideHost : IAsyncDisposable
 {
     private readonly IHost _host;
+    private readonly TestControlRegistry _registry;
+    private readonly bool _ownsRegistry;
 
-    private GuideHost(IHost host) => _host = host;
+    private GuideHost(IHost host, TestControlRegistry registry, bool ownsRegistry)
+    {
+        _host = host;
+        _registry = registry;
+        _ownsRegistry = ownsRegistry;
+    }
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -35,8 +44,10 @@ public sealed class GuideHost : IAsyncDisposable
         KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.None,
         Action<IKaleidoBuilder>? configure = null,
         Action<IServiceCollection>? services = null,
-        IReadOnlyDictionary<string, string?>? settings = null)
+        IReadOnlyDictionary<string, string?>? settings = null,
+        TestControlRegistry? registry = null)
     {
+        var central = registry ?? await TestControlRegistry.StartAsync();
         var host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -50,14 +61,18 @@ public sealed class GuideHost : IAsyncDisposable
                     s.AddSingleton<OrderBook>();
                     services?.Invoke(s);
 
-                    var kaleido = s.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings ?? new Dictionary<string, string?>()).Build(), new()
+                    var configuration = new Dictionary<string, string?>(settings ?? new Dictionary<string, string?>()) { ["Kaleido:BaseUrl"] = "http://registry.test/" };
+                    var kaleido = s.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build(), new()
                     {
                         ServiceName = "orders",
+                        ServiceVersion = "1",
                         Assemblies = [typeof(OrderSource).Assembly],
                         AuthorizationMode = mode,
                     })
                         .AddInMemoryStores()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    s.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(central.CreateHandler);
                     configure?.Invoke(kaleido);
                 });
                 web.Configure(app =>
@@ -65,12 +80,18 @@ public sealed class GuideHost : IAsyncDisposable
                     app.UseRouting();
                     app.UseAuthentication();
                     app.UseAuthorization();
-                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp());
+                    app.UseEndpoints(endpoints =>
+                    {
+                        endpoints.MapKaleidoHttp();
+                        endpoints.MapGet("/test/in-process-registry", async (IKaleidoRegistryService registry, CancellationToken ct) =>
+                            Results.Json(await registry.GetForCallerAsync(refresh: false, ct), KaleidoJsonOptions.Options));
+                    });
                 });
             })
             .StartAsync(Cancel);
 
-        return new GuideHost(host);
+        await central.WaitForRegistrationAsync(host);
+        return new GuideHost(host, central, ownsRegistry: registry is null);
     }
 
     public async Task<(HttpStatusCode Status, JsonElement Body)> SendAsync(
@@ -119,6 +140,10 @@ public sealed class GuideHost : IAsyncDisposable
     {
         await _host.StopAsync(Cancel);
         _host.Dispose();
+        if (_ownsRegistry)
+        {
+            await _registry.DisposeAsync();
+        }
     }
 
     private sealed class TestAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)

@@ -1,5 +1,4 @@
 using Kaleido.Http.Registry;
-using Kaleido.Http.Server.Registry;
 using Kaleido.Platform;
 using Kaleido.Platform.Registry;
 using Microsoft.AspNetCore.Builder;
@@ -18,8 +17,6 @@ public sealed class ControlRegistryEndpointRouteBuilderExtensionsTests
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = "registry" });
-        builder.Services.AddSingleton(Mock.Of<IHttpRegistryCache>());
-        builder.Services.AddSingleton<RegistrySnapshot>();
 
         if (options)
         {
@@ -65,20 +62,6 @@ public sealed class ControlRegistryEndpointRouteBuilderExtensionsTests
         Assert.Equal(
             [("/registry/instances", "POST"), ("/registry/instances/{instanceId:guid}/heartbeat", "PUT"), ("/registry/instances/{instanceId:guid}", "DELETE"), ("/registry/", "GET"), ("/registry/status", "GET"), ("/registry/availability", "GET"), ("/registry/capabilities", "GET")],
             routes);
-    }
-
-    // The host's registry is the store's view: aggregated, kept no longer than a heartbeat.
-    [Fact]
-    public void Map_ConfiguresTheSnapshot_AsTheStoresView()
-    {
-        var app = CreateEndpoints();
-
-        app.MapKaleidoControlRegistry();
-
-        var snapshot = app.Services.GetRequiredService<RegistrySnapshot>();
-        Assert.True(snapshot.IsMapped);
-        Assert.True(snapshot.Aggregate);
-        Assert.Equal(TimeSpan.FromSeconds(5), snapshot.CacheTtl);
     }
 
     [Fact]

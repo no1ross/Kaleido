@@ -27,6 +27,7 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
     private readonly RequestCancellation _cancellation = new();
     private readonly RecordingPublisher _publisher = new();
     private IHost? _host;
+    private TestControlRegistry? _registry;
     private HttpClient _client = null!;
 
     public static TheoryData<string> Stores => ["memory", "sqlite"];
@@ -43,6 +44,11 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
         {
             await _host.StopAsync(CancellationToken.None);
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
 
         _cancellation.Dispose();
@@ -106,6 +112,7 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
 
     private async Task StartHostAsync(string store)
     {
+        _registry = await TestControlRegistry.StartAsync();
         _host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -114,16 +121,22 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
                 {
                     services.AddRouting();
                     services.AddSingleton(_cancellation);
-                    var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    var kaleido = services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = ServiceName,
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(CancellationFinalizationTests).Assembly],
                         TypeFilter = type => type.Namespace == typeof(CancellationFinalizationTests).Namespace,
                         Events = new() { Resilience = new() { RetryDelay = TimeSpan.FromMilliseconds(50) } },
                     })
                         .AddInMemoryStores()
-                        .AddHttp(new() { IncludeFrameworkMessages = true });
+                        .AddHttp(new() { IncludeFrameworkMessages = true })
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
 
                     if (store == "sqlite")
                     {
@@ -147,6 +160,7 @@ public sealed class CancellationFinalizationTests : IAsyncLifetime
             })
             .StartAsync(Cancel);
 
+        await _registry.WaitForRegistrationAsync(_host);
         if (store == "sqlite")
         {
             await using var scope = _host.Services.CreateAsyncScope();

@@ -1,4 +1,3 @@
-using Kaleido.Http.Registry;
 using Kaleido.Http.Server.Registry;
 using Kaleido.Processor;
 using Kaleido.Processor.Registry;
@@ -48,7 +47,6 @@ internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Description = serviceOptions.Description,
             DisplayName = serviceOptions.DisplayName,
             IsEntryProcessor = registration.IsEntryProcessor,
-            RegistryUrl = RegistryContractUrls.Registry(serviceName),
             InitialSteps = registration.InitialSteps
                 .Select(x => CreateStepSummary(x, serviceName))
                 .ToArray(),

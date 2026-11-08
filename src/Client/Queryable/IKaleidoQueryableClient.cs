@@ -10,25 +10,6 @@ namespace Kaleido.Client.Queryable;
 /// </summary>
 public interface IKaleidoQueryableClient
 {
-    /// <summary>
-    /// Gets the remote service's query sources, for discovery (queries do not use it): fetched once, as
-    /// filtered for the identity the client's request carries, and cached per client name.
-    /// </summary>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The remote query sources with their views.</returns>
-    Task<IReadOnlyList<QueryableSourceResponse>> GetRegistryAsync(
-        CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Drops the cached registry snapshot of this client's service so the next operation re-fetches
-    /// it from the remote endpoint. With a distributed <see cref="Kaleido.Platform.Registry.IRegistrySnapshotStore"/>
-    /// the shared snapshot is removed for every instance using that store.
-    /// </summary>
-    /// <param name="cancellationToken">Cancels the removal from the snapshot store.</param>
-    /// <returns>A task that completes once the snapshot has been removed.</returns>
-    Task InvalidateRegistryAsync(
-        CancellationToken cancellationToken);
-
     /// <summary>Queries a view of a remote query source.</summary>
     /// <typeparam name="TParameters">The view's parameters record (a local mirror is fine).</typeparam>
     /// <typeparam name="TView">The view's record type (a local mirror is fine).</typeparam>

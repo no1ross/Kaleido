@@ -34,6 +34,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"kaleido-outbox-{Guid.NewGuid():N}.db");
 
     private readonly List<IHost> _hosts = [];
+    private TestControlRegistry? _registry;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -46,6 +47,11 @@ public sealed class EventOutboxTests : IAsyncLifetime
         {
             await host.StopAsync(CancellationToken.None);
             host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
 
         SqliteConnection.ClearAllPools();
@@ -316,6 +322,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
     // only writes its events (#552).
     private async Task<IHost> StartHostAsync(IEventPublisher? publisher, TimeSpan? retryDelay = null, Action<IKaleidoBuilder>? configureKaleido = null, string serviceName = FunctionalProcessorNames.TestProcessor)
     {
+        _registry ??= await TestControlRegistry.StartAsync();
         var host = await new HostBuilder()
             .ConfigureWebHost(webBuilder =>
             {
@@ -324,16 +331,22 @@ public sealed class EventOutboxTests : IAsyncLifetime
                 {
                     services.AddRouting();
                     services.AddSingleton<FunctionalRecordData>();
-                    var kaleido = services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    var kaleido = services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = serviceName,
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(RuntimeRootStep).Assembly],
                         Events = new() { Resilience = new() { RetryDelay = retryDelay ?? TimeSpan.FromMilliseconds(50) } },
                     })
                         .AddInMemoryStores()
                         .AddHttp()
+                        .AddControlRegistryClient()
                         .AddSqliteContextStore($"Data Source={_databasePath}").AddSqliteOutboxStore($"Data Source={_databasePath}").AddSqliteIdempotencyStore($"Data Source={_databasePath}");
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                     // This host writes its events, and with a publisher runs the relay that publishes them (#552).
                     if (publisher is not null)
                     {
@@ -352,6 +365,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
             .StartAsync(Cancel);
 
         _hosts.Add(host);
+        await _registry.WaitForRegistrationAsync(host);
 
         await using var scope = host.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>().Database.EnsureCreatedAsync(Cancel);

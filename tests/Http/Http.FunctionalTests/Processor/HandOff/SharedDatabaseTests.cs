@@ -1,5 +1,4 @@
 using System.Net;
-using Kaleido.Http.Client;
 using Kaleido.Http.FunctionalTests.Processor.HandOff.Origin;
 using Kaleido.Http.FunctionalTests.Processor.HandOff.Target;
 using Kaleido.Http.Processor;
@@ -27,6 +26,7 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
 
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"kaleido-shared-{Guid.NewGuid():N}.db");
     private readonly List<IHost> _hosts = [];
+    private TestControlRegistry? _registry;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -40,6 +40,11 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
         {
             await host.StopAsync(CancellationToken.None);
             host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
 
         SqliteConnection.ClearAllPools();
@@ -104,6 +109,7 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
 
     private async Task<IHost> StartAsync(string serviceName, string modelNamespace, string? serviceVersion, TestServer? targetServer)
     {
+        _registry ??= await TestControlRegistry.StartAsync();
         var host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -111,7 +117,7 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
                 web.ConfigureServices(services =>
                 {
                     services.AddRouting();
-                    var settings = new Dictionary<string, string?>(StringComparer.Ordinal);
+                    var settings = new Dictionary<string, string?>(StringComparer.Ordinal) { ["Kaleido:BaseUrl"] = "http://registry.test/" };
 
                     if (targetServer is not null)
                     {
@@ -121,7 +127,7 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
                     services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new()
                     {
                         ServiceName = serviceName,
-                        ServiceVersion = serviceVersion,
+                        ServiceVersion = serviceVersion ?? Version1,
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(SharedDatabaseTests).Assembly],
                         TypeFilter = type => string.Equals(type.Namespace, modelNamespace, StringComparison.Ordinal),
@@ -130,7 +136,9 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
                         .AddSqliteOutboxStore(ConnectionString)
                         .AddSqliteIdempotencyStore(ConnectionString)
                         .AddHttp()
-                        .AddHttpClients();
+                        .AddHttpClients()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
 
                     if (targetServer is not null)
                     {
@@ -146,6 +154,7 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
             .StartAsync(Cancel);
 
         _hosts.Add(host);
+        await _registry.WaitForRegistrationAsync(host);
 
         await using var scope = host.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>().Database.EnsureCreatedAsync(Cancel);

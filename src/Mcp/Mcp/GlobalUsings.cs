@@ -1,9 +1,13 @@
 global using System.Diagnostics.CodeAnalysis;
+global using Kaleido.Client.Calls;
 global using Kaleido.Client.Processor;
 global using Kaleido.Client.Queryable;
 global using Kaleido.Exceptions;
-global using Kaleido.Http.Server.Registry;
+global using Kaleido.Http.Client.Configuration;
+global using Kaleido.Http.Client.Processor;
+global using Kaleido.Http.Client.Transport;
 global using Kaleido.Observability;
 global using Kaleido.Platform.Processor;
 global using Kaleido.Platform.Queryable;
 global using Kaleido.Platform.Registry;
+global using Kaleido.Server.Registry;

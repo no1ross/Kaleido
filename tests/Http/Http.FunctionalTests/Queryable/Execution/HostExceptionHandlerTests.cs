@@ -35,7 +35,9 @@ public sealed class HostExceptionHandlerTests
     [Fact]
     public async Task MalformedParameters_WithTheDeveloperExceptionPage_Returns400WithTheKaleidoError()
     {
-        using var host = await StartAsync(app => app.UseDeveloperExceptionPage());
+        var (host, registry) = await StartAsync(app => app.UseDeveloperExceptionPage());
+        using var service = host;
+        await using var central = registry;
 
         using var content = new StringContent("""{"parameters":{"category":42}}""", Encoding.UTF8, "application/json");
         using var response = await host.GetTestClient().PostAsync(
@@ -51,22 +53,30 @@ public sealed class HostExceptionHandlerTests
         await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
-    private static async Task<IHost> StartAsync(Action<IApplicationBuilder> hostExceptionHandling) =>
-        await new HostBuilder()
+    private static async Task<(IHost Host, TestControlRegistry Registry)> StartAsync(Action<IApplicationBuilder> hostExceptionHandling)
+    {
+        var registry = await TestControlRegistry.StartAsync();
+        var host = await new HostBuilder()
             .ConfigureWebHost(webBuilder =>
             {
                 webBuilder.UseTestServer();
                 webBuilder.ConfigureServices(services =>
                 {
                     services.AddSingleton<FunctionalRecordData>();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = "kaleido",
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(FunctionalRecordContext).Assembly],
                     })
                         .AddInMemoryStores()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(registry.CreateHandler);
                 });
                 webBuilder.Configure(app =>
                 {
@@ -76,33 +86,15 @@ public sealed class HostExceptionHandlerTests
                 });
             })
             .StartAsync(TestContext.Current.CancellationToken);
+        await registry.WaitForRegistrationAsync(host);
+        return (host, registry);
+    }
 
     private static async Task AssertPagingNotSupportedAsync(Action<IApplicationBuilder> hostExceptionHandling)
     {
-        using var host = await new HostBuilder()
-            .ConfigureWebHost(webBuilder =>
-            {
-                webBuilder.UseTestServer();
-                webBuilder.ConfigureServices(services =>
-                {
-                    services.AddSingleton<FunctionalRecordData>();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
-                    {
-                        ServiceName = "kaleido",
-                        AuthorizationMode = KaleidoAuthorizationMode.None,
-                        Assemblies = [typeof(FunctionalRecordContext).Assembly],
-                    })
-                        .AddInMemoryStores()
-                        .AddHttp();
-                });
-                webBuilder.Configure(app =>
-                {
-                    hostExceptionHandling(app);
-                    app.UseRouting();
-                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp());
-                });
-            })
-            .StartAsync(TestContext.Current.CancellationToken);
+        var (host, registry) = await StartAsync(hostExceptionHandling);
+        using var service = host;
+        await using var central = registry;
 
         using var content = new StringContent("""{"query":{"page":{"size":50,"offset":0}}}""", Encoding.UTF8, "application/json");
         using var response = await host.GetTestClient().PostAsync(

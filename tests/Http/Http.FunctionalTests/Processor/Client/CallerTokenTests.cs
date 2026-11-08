@@ -1,9 +1,8 @@
 using System.Net;
 using System.Security.Claims;
-using Kaleido.Client;
 using Kaleido.Client.Processor;
+using Kaleido.Client.Registry;
 using Kaleido.Exceptions;
-using Kaleido.Http.Client;
 using Kaleido.Observability;
 using Kaleido.Platform;
 using Kaleido.Platform.Processor;
@@ -103,11 +102,13 @@ public sealed class CallerTokenTests
     private static (ServiceProvider Provider, CaptureHandler Wire) Build(
         Action<IKaleidoBuilder> handlers,
         string? onBehalfOfCalls = null,
-        bool hostCredentialsHandler = false)
+        bool hostCredentialsHandler = false,
+        bool registryClient = false)
     {
         var settings = new Dictionary<string, string?>
         {
             ["Kaleido:ServiceName"] = "router",
+            ["Kaleido:BaseUrl"] = "https://registry.test/",
             ["Kaleido:Clients:Intake:BaseUrl"] = "https://intake.test/",
             ["Kaleido:Clients:Intake:RoutePrefix"] = "intake",
             ["Kaleido:Clients:Member:BaseUrl"] = "https://member.test/",
@@ -124,12 +125,16 @@ public sealed class CallerTokenTests
 
         services.AddLogging();
         // No capabilities of its own: only the client pipeline is under test.
-        var kaleido = services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new() { Assemblies = [typeof(CallerTokenTests).Assembly], TypeFilter = _ => false })
+        var kaleido = services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new() { ServiceVersion = "1", Assemblies = [typeof(CallerTokenTests).Assembly], TypeFilter = _ => false })
             .AddInMemoryStores()
             .AddHttpClients();
         handlers(kaleido);
+        if (registryClient)
+        {
+            kaleido.AddControlRegistryClient();
+        }
 
-        foreach (var name in new[] { "Intake", "Member" })
+        foreach (var name in registryClient ? new[] { "Intake", "Member", "kaleido-registry" } : ["Intake", "Member"])
         {
             var client = services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => wire);
 
@@ -242,13 +247,13 @@ public sealed class CallerTokenTests
     [Fact]
     public async Task ARegistryFetch_InsideACallersRequest_IsTheServicesOwnCall()
     {
-        var (provider, wire) = Build(k => k.AddKaleidoClientHandler<ServiceTokenHandler>(), "Exchange");
+        var (provider, wire) = Build(k => k.AddKaleidoClientHandler<ServiceTokenHandler>(), "Exchange", registryClient: true);
         using var _ = provider;
         using var scope = provider.CreateScope();
         scope.ServiceProvider.GetRequiredService<IKaleidoInboundCallerAccessor>().Set(Carol, InboundToken);
 
-        await scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient("Member")
-            .GetRegistryAsync(TestContext.Current.CancellationToken);
+        await scope.ServiceProvider.GetRequiredService<IKaleidoRegistryClient>()
+            .GetCapabilitiesAsync(null, TestContext.Current.CancellationToken);
 
         Assert.Equal([ServiceToken], wire.Sent[^1].Headers.GetValues("Authorization"));
     }

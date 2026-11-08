@@ -9,8 +9,6 @@ public sealed class KaleidoQueryableClientTests
     : Kaleido.UnitTests.SutFixture
 {
     private readonly Mock<IKaleidoClientTransport> transport = new();
-    private readonly Mock<IKaleidoRemoteRegistry> remoteRegistry = new();
-    private readonly ICorrelationHeaderStamper stamper = Mock.Of<ICorrelationHeaderStamper>();
     private readonly List<KaleidoClientRequest> sent = [];
 
     private static readonly QueryResult<FakeView> Answer = new(1, 0, 1, [new FakeView { Id = 42 }]);
@@ -23,14 +21,14 @@ public sealed class KaleidoQueryableClientTests
         transport.Setup(x => x.SendAsync<QueryResult<FakeView>>(Captured(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Answer);
 
-        return new("MemberClient", catalog.Object, transport.Object, remoteRegistry.Object, stamper);
+        return new("MemberClient", catalog.Object, transport.Object);
     }
 
     private KaleidoClientRequest Captured() =>
         Capture.In(sent);
 
     private static KaleidoClientDefinition Definition(string routePrefix) =>
-        new("MemberClient", routePrefix, RegistryTtl: null, StrictRegistryProbe: false, HealthCheckTimeout: TimeSpan.FromSeconds(5));
+        new("MemberClient", routePrefix);
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -42,30 +40,6 @@ public sealed class KaleidoQueryableClientTests
     private sealed class FakeParams
     {
         public string ProcessId { get; init; } = "";
-    }
-
-    // ---------------------------------------------------------------------------
-    // Registry
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task GetRegistryAsync_ReturnsTheQueryablesOfTheClientsRemoteRegistry()
-    {
-        var sut = CreateSut();
-        remoteRegistry.Setup(x => x.GetAsync(Definition("member"), stamper, Cancel))
-            .ReturnsAsync(new KaleidoRegistry { Queryables = [new QueryableSourceResponse { Name = "my-context", ServiceName = "member" }] });
-
-        var result = await sut.GetRegistryAsync(Cancel);
-
-        Assert.Equal("my-context", Assert.Single(result).Name);
-    }
-
-    [Fact]
-    public async Task InvalidateRegistryAsync_DropsTheClientsRemoteRegistry()
-    {
-        await CreateSut().InvalidateRegistryAsync(Cancel);
-
-        remoteRegistry.Verify(x => x.InvalidateAsync("MemberClient", Cancel), Times.Once);
     }
 
     // ---------------------------------------------------------------------------
@@ -87,7 +61,6 @@ public sealed class KaleidoQueryableClientTests
         Assert.Equal("/member/queryable/my-context/grid/query", request.Url);
         Assert.Same(body, request.Body);
         Assert.False(request.Idempotent);
-        Assert.True(request.InvalidatesRegistryOnNotFound);
         Assert.Equal("Query of view 'Grid' on source 'My-Context' in 'member'", request.Description);
     }
 
@@ -103,7 +76,6 @@ public sealed class KaleidoQueryableClientTests
         var request = Assert.Single(sent);
         Assert.Equal("/member/queryable/my-context/query", request.Url);
         Assert.Same(body, request.Body);
-        Assert.True(request.InvalidatesRegistryOnNotFound);
         Assert.Equal("Query of source 'My-Context' in 'member'", request.Description);
     }
 
@@ -127,7 +99,6 @@ public sealed class KaleidoQueryableClientTests
         await CreateSut(routePrefix: "").QuerySourceAsync<FakeView>("my-context", new QueryApiRequest(new QueryApiBody()), Cancel);
 
         Assert.Equal("/queryable/my-context/query", Assert.Single(sent).Url);
-        remoteRegistry.Verify(x => x.GetAsync(It.IsAny<KaleidoClientDefinition>(), It.IsAny<ICorrelationHeaderStamper>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

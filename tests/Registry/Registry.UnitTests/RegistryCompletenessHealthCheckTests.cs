@@ -16,7 +16,7 @@ public sealed class RegistryCompletenessHealthCheckTests
 
     private void View(RegistryServiceStatus[] services, RegistryMissingService[] missing)
     {
-        registrations.Setup(x => x.GetAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistry { Missing = missing });
+        registrations.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistry { Missing = missing });
         statuses.Setup(x => x.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistryStatus { Services = services });
     }
 

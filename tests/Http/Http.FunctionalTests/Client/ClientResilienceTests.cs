@@ -1,5 +1,4 @@
 using System.Net;
-using Kaleido.Http.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -47,7 +46,7 @@ public sealed class ClientResilienceTests
         var (factory, handler, provider) = Build([]);
         using var _ = provider;
 
-        using var response = await factory.CreateClient("member").GetAsync("/member/registry", Cancel);
+        using var response = await factory.CreateClient("member").GetAsync("/member/processes/00000000-0000-0000-0000-000000000000", Cancel);
 
         // One attempt plus the one configured retry - not four, which two stacked pipelines would make.
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
@@ -60,7 +59,7 @@ public sealed class ClientResilienceTests
         var (factory, handler, provider) = Build(new() { ["Kaleido:Clients:legacy:Resilience:Enabled"] = "false" });
         using var _ = provider;
 
-        using var response = await factory.CreateClient("legacy").GetAsync("/legacy/registry", Cancel);
+        using var response = await factory.CreateClient("legacy").GetAsync("/legacy/processes/00000000-0000-0000-0000-000000000000", Cancel);
 
         Assert.Equal(1, handler.Attempts);
     }
@@ -71,9 +70,9 @@ public sealed class ClientResilienceTests
         var (factory, handler, provider) = Build(new() { ["Kaleido:Clients:legacy:Resilience:MaxRetryAttempts"] = "3" });
         using var _ = provider;
 
-        using var legacy = await factory.CreateClient("legacy").GetAsync("/legacy/registry", Cancel);
+        using var legacy = await factory.CreateClient("legacy").GetAsync("/legacy/processes/00000000-0000-0000-0000-000000000000", Cancel);
         var legacyAttempts = handler.Attempts;
-        using var member = await factory.CreateClient("member").GetAsync("/member/registry", Cancel);
+        using var member = await factory.CreateClient("member").GetAsync("/member/processes/00000000-0000-0000-0000-000000000000", Cancel);
 
         Assert.Equal(4, legacyAttempts);
         Assert.Equal(2, handler.Attempts - legacyAttempts);

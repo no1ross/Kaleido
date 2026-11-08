@@ -1,5 +1,4 @@
 using Kaleido.Client.Queryable;
-using Kaleido.Http.Client;
 using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 using Kaleido.Http.Server;
 using Kaleido.Observability;
@@ -16,14 +15,18 @@ public sealed class QueryableAspNetCoreFixture
     : IAsyncLifetime
 {
     private IHost? _host;
+    private TestControlRegistry? _registry;
     private ServiceProvider? _clientProvider;
 
     public HttpClient Client { get; private set; } = null!;
+    public HttpClient RegistryClient { get; private set; } = null!;
     public IKaleidoQueryableClientFactory ClientFactory { get; private set; } = null!;
     public TestServer TestServer { get; private set; } = null!;
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
+        RegistryClient = _registry.CreateClient();
         _host =
             await new HostBuilder()
                 .ConfigureWebHost(webBuilder =>
@@ -36,14 +39,20 @@ public sealed class QueryableAspNetCoreFixture
 
                         services.AddSingleton<FunctionalRecordData>();
 
-                        services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                        services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                        {
+                            ["Kaleido:BaseUrl"] = "http://registry.test/",
+                        }).Build(), new()
                         {
                             ServiceName = "kaleido",
+                            ServiceVersion = "1",
                             AuthorizationMode = KaleidoAuthorizationMode.None,
                             Assemblies = new[] { typeof(FunctionalRecordContext).Assembly },
                         })
                             .AddInMemoryStores()
-                            .AddHttp();
+                            .AddHttp()
+                            .AddControlRegistryClient();
+                        services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                     });
 
                     webBuilder.Configure(app =>
@@ -58,6 +67,7 @@ public sealed class QueryableAspNetCoreFixture
                 })
                 .StartAsync();
 
+        await _registry.WaitForRegistrationAsync(_host);
         Client = _host.GetTestClient();
 
         // Wire the Queryable client factory against the test server.
@@ -99,12 +109,18 @@ public sealed class QueryableAspNetCoreFixture
     public async ValueTask DisposeAsync()
     {
         Client.Dispose();
+        RegistryClient.Dispose();
         _clientProvider?.Dispose();
 
         if (_host is not null)
         {
             await _host.StopAsync();
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 

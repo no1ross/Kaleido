@@ -14,6 +14,7 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 | `KaleidoConcurrencyException` | `Kaleido.Exceptions` | 409 Conflict | `ProcessorErrorCodes.ProcessConflict` (`pro_process_conflict`) |
 | `KaleidoAuthorizationException` | `Kaleido.Exceptions` | 401 (unauthenticated) or 403 (denied), answered by the host's authentication scheme (challenge / forbid) | none: carries `Capability` and `CallerIsAuthenticated` ([`AUTHORIZATION.md`](./AUTHORIZATION.md)) |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
+| `KaleidoRegistryClientException` | `Kaleido.Client.Registry` | — (client-side) | `RegistryClientErrorCodes` |
 
 Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them. Every failed Kaleido endpoint answers with the same body, `KaleidoErrorResponse`: `{ "errors": [{ "code", "message" }] }`. The MCP adapter's `mcp_*` codes are returned inside tool results and are listed in the [MCP README](../src/Kaleido.Http.Mcp/README.md#when-a-call-fails).
 
@@ -119,6 +120,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
 | `ConflictingAuthorization` | `conflicting_authorization` | `[KaleidoAuthorization]` declares `AllowAnonymous` together with `Roles`/`Policy` |
 | `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization (`Authenticated` is the default) but no authentication scheme is registered: add host authentication, or set `AuthorizationMode = None` explicitly |
+| `RegistryNotConfigured` | `registry_not_configured` | The host maps Kaleido capabilities or MCP without a central-registry participant; configure the gateway base address and register the registry client |
 | `InvalidAuthorizationMode` | `invalid_authorization_mode` | `AuthorizationMode` is not a defined value |
 | `InvalidEventOptions` | `invalid_event_options` | a `Kaleido:Events` setting is out of range (e.g. a non-positive `BatchSize` or `Resilience:AttemptTimeout`) |
 | `InvalidOptions` | `invalid_options` | A configured value in the `Kaleido` section cannot be read as its setting's type (e.g. text where a number or a duration is expected, or an unknown enum name); startup, ADR 0030 |
@@ -167,9 +169,19 @@ Every client code is prefixed `httpclient_`, including its startup configuration
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
 | `MissingBaseUrl` | `httpclient_missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
 | `InvalidRoutePrefix` | `httpclient_invalid_route_prefix` | A configured client's `RoutePrefix` (or, without one, its lowercased name) is not a service name (`[a-z0-9][a-z0-9_-]*`); it must equal the downstream `ServiceName` (startup, `AddHttpClients()`, `KaleidoConfigurationException`; ADR 0027) |
-| `InvalidClientOptions` | `httpclient_invalid_options` | A client setting in configuration (`Kaleido:RegistryTtl`, `Kaleido:Resilience`, `Kaleido:Clients:{name}`...) is out of range or cannot be read, e.g. a negative registry TTL or a non-positive timeout (startup, `KaleidoConfigurationException`) |
+| `InvalidClientOptions` | `httpclient_invalid_options` | A client setting (`Kaleido:BaseUrl`, `Kaleido:Resilience`, `Kaleido:Clients:{name}`...) is out of range or cannot be read, e.g. an invalid gateway URL or non-positive timeout (startup, `KaleidoConfigurationException`) |
 | `CallerTokenNotExchanged` | `httpclient_caller_token_not_exchanged` | `Kaleido:OnBehalfOfCalls = Exchange`, and a call made for a caller carries no token or the caller's inbound token unchanged: the host's handler (`AddKaleidoClientHandler<THandler>()`) must set the exchanged token (`KaleidoConfigurationException`, at the call, before it is sent; #574) |
 | `UnknownClient` | `httpclient_unknown_client` | `GetClient` was asked for a name not configured under `Kaleido:Clients`; the message lists the configured clients (`KaleidoConfigurationException`, at the call) |
+
+---
+
+## `RegistryClientErrorCodes` — neutral central-registry client diagnostics
+
+| Constant | Code | Meaning |
+|---|---|---|
+| `RequestFailed` | `registryclient_request_failed` | A registry call failed; the transport status is present if it answered |
+| `EmptyResponse` | `registryclient_empty_response` | The central registry answered successfully without a required document |
+| `InvalidResponse` | `registryclient_invalid_response` | The central registry answered with an invalid document |
 
 ---
 

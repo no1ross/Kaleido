@@ -1,13 +1,12 @@
 using Kaleido.Exceptions;
-using Kaleido.Http.Registry.Contracts;
 using Kaleido.Http.Server.Queryable;
+using Kaleido.Platform.Registry;
 using Kaleido.Queryable.Registry;
 using Kaleido.Registry;
 using Kaleido.Server;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -22,6 +21,16 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         Assert.Throws<ArgumentNullException>(() =>
             KaleidoEndpointRouteBuilderExtensions.MapKaleidoHttp(null!));
+    }
+
+    [Fact]
+    public void MapKaleidoHttp_WithoutCentralRegistry_RefusesToMap()
+    {
+        var endpoints = CreateEmptyEndpoints(centralRegistry: false);
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(endpoints.MapKaleidoHttp);
+
+        Assert.Equal(ConfigurationErrorCodes.RegistryNotConfigured, exception.Code);
     }
 
     [Fact]
@@ -43,7 +52,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
-        Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
+        Assert.DoesNotContain(((IEndpointRouteBuilder)endpoints).DataSources.SelectMany(x => x.Endpoints).OfType<RouteEndpoint>(), x => x.RoutePattern.RawText?.EndsWith("/registry", StringComparison.Ordinal) == true);
         Assert.Null(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
     }
 
@@ -55,7 +64,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         endpoints.MapKaleidoHttp();
 
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
-        Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
+        Assert.DoesNotContain(((IEndpointRouteBuilder)endpoints).DataSources.SelectMany(x => x.Endpoints).OfType<RouteEndpoint>(), x => x.RoutePattern.RawText?.EndsWith("/registry", StringComparison.Ordinal) == true);
         Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
     }
 
@@ -68,7 +77,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         Assert.NotNull(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
-        Assert.NotNull(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
+        Assert.DoesNotContain(((IEndpointRouteBuilder)endpoints).DataSources.SelectMany(x => x.Endpoints).OfType<RouteEndpoint>(), x => x.RoutePattern.RawText?.EndsWith("/registry", StringComparison.Ordinal) == true);
     }
 
     [Fact]
@@ -80,40 +89,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         Assert.NotNull(result);
         Assert.Null(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
-        Assert.Null(FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName));
-    }
-
-    [Fact]
-    public void MapKaleidoHttp_WithAggregateRegistryWithoutClients_Throws()
-    {
-        var endpoints = CreateEmptyEndpoints();
-
-        Assert.Throws<KaleidoConfigurationException>(() =>
-            endpoints.MapKaleidoHttp(new() { AggregateRegistry = true }));
-    }
-
-    // ADR 0030: the host's Kaleido:Http:Map section overrides the options from code (here it turns off
-    // the aggregation that would otherwise fail without clients).
-    [Fact]
-    public void MapKaleidoHttp_TheKaleidoHttpMapSection_OverridesTheOptionsFromCode()
-    {
-        var endpoints = CreateEmptyEndpoints();
-        endpoints.Configuration["Kaleido:Http:Map:AggregateRegistry"] = "false";
-
-        var result = endpoints.MapKaleidoHttp(new() { AggregateRegistry = true });
-
-        Assert.NotNull(result);
-    }
-
-    [Fact]
-    public void MapKaleidoHttp_AnInvalidSetting_IsAConfigurationError()
-    {
-        var endpoints = CreateEmptyEndpoints();
-        endpoints.Configuration["Kaleido:Http:Map:RegistryDownstreamMaxParallelism"] = "0";
-
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => endpoints.MapKaleidoHttp());
-
-        Assert.Equal(ConfigurationErrorCodes.InvalidHttpOptions, exception.Code);
+        Assert.Empty(((IEndpointRouteBuilder)endpoints).DataSources.SelectMany(x => x.Endpoints));
     }
 
     [Fact]
@@ -195,31 +171,11 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task MapKaleidoHttp_Authenticated_WithoutHttpAuthorizer_RegistryFailsClosed()
-    {
-        var endpoints = CreateProcessOnlyEndpoints(mode: KaleidoAuthorizationMode.Authenticated);
-        endpoints.MapKaleidoHttp();
-
-        var registry = FindEndpoint(endpoints, RegistryEndpointNames.RegistryEndpointName);
-        Assert.NotNull(registry?.RequestDelegate);
-
-        var context = new DefaultHttpContext
-        {
-            RequestServices = endpoints.Services
-        };
-        context.Response.Body = new MemoryStream();
-
-        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(
-            () => registry.RequestDelegate(context));
-        Assert.Equal(ConfigurationErrorCodes.AuthenticationNotConfigured, exception.Code);
-    }
-
-    [Fact]
     public void MapKaleidoHttp_ZeroTrust_WithoutAuthenticationScheme_ThrowsBeforeMapping()
     {
         var endpoints = CreateEmptyEndpoints(mode: KaleidoAuthorizationMode.ZeroTrust, registerScheme: false);
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => endpoints.MapKaleidoHttp());
+        var exception = Assert.Throws<KaleidoConfigurationException>(endpoints.MapKaleidoHttp);
 
         Assert.Equal(ConfigurationErrorCodes.AuthenticationNotConfigured, exception.Code);
     }
@@ -238,10 +194,15 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     private static WebApplication CreateEmptyEndpoints(
         string serviceName = "test",
         KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.None,
-        bool registerScheme = true)
+        bool registerScheme = true,
+        bool centralRegistry = true)
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        if (centralRegistry)
+        {
+            AddCentralRegistry(builder);
+        }
         builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = mode });
         if (registerScheme)
@@ -251,6 +212,9 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
 
         return builder.Build();
     }
+
+    private static void AddCentralRegistry(WebApplicationBuilder builder) =>
+        builder.Services.AddSingleton(Mock.Of<IKaleidoRegistrySource>());
 
     private static void AddTestScheme(WebApplicationBuilder builder)
     {
@@ -266,6 +230,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        AddCentralRegistry(builder);
         builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = mode });
         AddTestScheme(builder);
@@ -289,6 +254,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        AddCentralRegistry(builder);
         builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = mode });
         AddTestScheme(builder);
@@ -301,6 +267,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
+        AddCentralRegistry(builder);
         builder.Services.AddSingleton(new KaleidoHttpOptions());
         builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = KaleidoAuthorizationMode.None });
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());

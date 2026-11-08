@@ -14,21 +14,21 @@ See also:
 
 ## What lives here
 
-### Shared registry fetch
-- `KaleidoRemoteRegistry` — singleton that fetches `GET /{routePrefix}/registry` once per named client and caches the combined `KaleidoRegistry` under the client's own key `kaleido-client:{ServiceName}:{clientName}` in `IRegistrySnapshotStore`; both typed clients project their half (`Processes` / `Queryables`) from it for discovery (`GetRegistryAsync`, a router's aggregation), so a service's registry is only ever fetched once regardless of how many client types consume it. Capability calls never use it: they go to the contract URL built from the route prefix. `InvalidateRegistryAsync()` drops the snapshot — with a distributed store this propagates across all instances sharing it.
+### Central registry HTTP client
+- `KaleidoHttpRegistryClient` implements the neutral `IKaleidoRegistryClient` from `Kaleido.Client`: registration, heartbeat, deregistration and ETag-aware reads use the gateway's fixed `/registry` paths. The neutral `ControlRegistryRegistrar` and `CentralRegistrySource` own registration and the hydrated in-host copy. Named Process and Queryable clients do not fetch per-service registries.
 
 ### Process client
-- `IKaleidoProcessorClient` (in `Kaleido.Http.Abstractions`) — typed interface for the registry, process state, and step execution
-- `IKaleidoProcessorClientFactory` (in `Kaleido.Http.Abstractions`) — resolves a client by its registered name, or by the downstream's service name (`TryGetClientForService`)
+- `IKaleidoProcessorClient` (in `Kaleido.Client`) — typed interface for process state and step execution
+- `IKaleidoProcessorClientFactory` (in `Kaleido.Client`) — resolves a client by its registered name, or by the downstream's service name (`TryGetClientForService`)
 - `KaleidoProcessorClient` — concrete HTTP client implementation
 
 ### Queryable client
-- `IKaleidoQueryableClient` (in `Kaleido.Http.Abstractions`) — interface for the registry, view queries, and direct source queries (sources and views are addressed by their published names)
-- `IKaleidoQueryableClientFactory` (in `Kaleido.Http.Abstractions`) — resolves a client by its registered name, or by the downstream's service name (`TryGetClientForService`)
+- `IKaleidoQueryableClient` (in `Kaleido.Client`) — interface for view and source queries (addressed by their published names)
+- `IKaleidoQueryableClientFactory` (in `Kaleido.Client`) — resolves a client by its registered name, or by the downstream's service name (`TryGetClientForService`)
 - `KaleidoQueryableClient` — concrete HTTP client implementation
 
 ### Shared
-- `KaleidoHttpClientException` — the one exception both clients throw: non-success responses (`StatusCode`, the service's `Errors`) and registry lookup failures, with an `httpclient_*` `Code`
+- `KaleidoHttpClientException` — reports non-success Process and Queryable responses (`StatusCode` and the service's `Errors`); registry calls raise the neutral `KaleidoRegistryClientException`.
 - `KaleidoClientServiceCollectionExtensions` — internal `AddKaleidoClient(...)` builder extension (consumers register via `AddHttpClients`): each configured client's Process and Queryable clients are keyed services under its name, built by the container (#498)
 
 ---
@@ -39,7 +39,7 @@ Use this project when a service needs to:
 - invoke process steps on a remote processor over HTTP
 - check the state of a remote process instance
 - query a remote query source or view
-- fetch the registry (step and query metadata) of a remote Kaleido service
+- read the central registry through the gateway or hydrate an in-host copy of its metadata
 
 Typical scenarios:
 - one processor's handler must signal a required step on another processor
@@ -77,11 +77,7 @@ The per-client `AddKaleidoClient` builder extension is internal — `AddHttpClie
 
 **Route-prefix contract:** `RoutePrefix` must equal the downstream service's `Kaleido:ServiceName` — every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. The default (client key lowercased) works when the service sets `ServiceName` to the same lowercase name. A mismatch produces 404s at call time, not a startup error.
 
-**Registry freshness:** a service's registry is filtered for the caller that fetches it, so the cached copy is the view of the identity the client's requests carry (a router's registry clients use its service identity). It is keyed `kaleido-client:{ServiceName}:{clientName}` with the consuming service's own name (so two services with a client of the same name never share a copy), never the remote service's own `kaleido:{ServiceName}` (where the service keeps its unfiltered snapshot), so with `AddDistributedRegistrySnapshots()` (the host's `IDistributedCache`, e.g. Redis; see the [Http README](../Kaleido.Http/README.md#shared-snapshots-across-replicas)) replicas of the consuming host share one copy per client without ever overwriting a service's snapshot. Step and query calls do not read it, so one caller's view never decides what another caller can call. Options, settable per client or as `Kaleido:RegistryTtl` / `Kaleido:StrictRegistryProbe` defaults:
-- `RegistryTtl` - how often the client checks whether the remote registry changed (default **30 seconds**). A check sends the known revision as `If-None-Match`; an unchanged registry answers an empty **304** and the snapshot is kept, so a short interval is cheap. A capability call answered **404** (the service was deployed without that step, source or view) drops the snapshot at once, so the next read loads the current registry. Null = never checked again until `InvalidateRegistryAsync()` or a 404.
-- `StrictRegistryProbe` — the `kaleido-{name}` health check probes `/{prefix}/registry?strict` so a partially-degraded aggregating downstream reports `Unhealthy`.
-
-Failed fetches are never cached - the next call retries naturally.
+**Registry freshness:** there is no per-client registry cache or remote registry health probe. Each participating host hydrates the central registry from `/registry/availability` and `/registry/capabilities` using separate conditional ETags. The registry gives the heartbeat and availability intervals; unchanged documents return **304**. A failed read leaves the host's last good in-memory copy marked partial and is retried, without probing every configured client.
 
 ---
 
@@ -94,7 +90,7 @@ registry is the control registry's, not one it builds:
 builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
     .AddHttp()
     .AddHttpClients()             // still how this host calls other services
-    .AddControlRegistryClient();  // Kaleido:Registry:Url = "https://registry.internal"
+    .AddControlRegistryClient();  // Kaleido:BaseUrl = "https://gateway.internal"
 ```
 
 - **Registering.** At startup the instance registers (its `ServiceName`, `ServiceVersion` - required -,
@@ -117,18 +113,17 @@ builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
   availability names other capabilities than those held (`CapabilitiesRevision`): a deployment shows on
   every host, capabilities and status together, within one check, and otherwise they are never read
   again. Until it has read the registry, and after a failed call, it retries at 1 s doubling, at most 30 s.
-- **Served as it is.** It is the full registry: this host serves it, filtered per caller, and its lookups,
-  hand-offs and MCP read it; nothing is merged in. Its revision follows both documents, so the host
-  rebuilds what it serves the moment either changes, whatever `RegistryCacheTtl`. It replaces the
-  per-client fan-out of `AddHttpClients()`, in either order.
+- **Read in-process.** The full registry remains in the host's memory; in-host lookups, hand-offs and MCP
+  filter it for their caller. The revision follows both documents, so readers observe either change at
+  the registry's pace. `MapKaleidoHttp()` no longer serves a per-service registry endpoint.
 - **When the registry cannot be read,** the last good copy is served, partial (a `RegistryReadError` for
   `registry`), until a read succeeds.
 - **Its calls are the service's own** (named client `kaleido-registry`, purpose `ServiceOwn`): they carry
   what the host's handlers set (`AddKaleidoClientHandler<T>()`), typically its app-only token, which must
   satisfy the registry's registrant and reader policies.
 
-Settings (`Kaleido:Registry`, `KaleidoRegistryClientOptions`): `Url` (required) and `ServiceName`. Every
-interval is the registry's, and no address is registered: where a version runs is the router's to know.
+Settings: `Kaleido:BaseUrl` is the required gateway address, and `ServiceVersion` identifies this
+instance's registration. Every interval is the registry's; the router owns where a version runs.
 
 ## Resilience
 
@@ -275,12 +270,10 @@ Sources and views are addressed by their **published names**, the remote type na
 ## Client behavior
 
 Both clients:
-- share `KaleidoRemoteRegistry` — one `GET /{routePrefix}/registry` call per named client, cached as `KaleidoRegistry`; each client projects its half for discovery
-- send step and query calls to the contract URL built from the route prefix (`/{routePrefix}/processes/steps/{step}`, `/{routePrefix}/queryable/{source}[/{view}]/query`), never to a URL read from the registry
-- a non-success registry response (including 404 — every Kaleido service is expected to publish `/{service}/registry`) throws `KaleidoHttpClientException`
+- send step and query calls to the contract URL built from the configured route prefix (`/{routePrefix}/processes/steps/{step}`, `/{routePrefix}/queryable/{source}[/{view}]/query`); published capability routes will replace that configuration in the next change
+- do not fetch or cache a registry per downstream: the central registry is read by `KaleidoHttpRegistryClient` and hydrated once per participating host
 - automatically forward Kaleido correlation headers on outbound requests
-- throw `KaleidoHttpClientException` on non-success HTTP responses (a 409 conflict: `httpclient_conflict`)
-- drop the cached registry when a capability call answers **404** (the service does not have it, perhaps deployed without it), so the next discovery read loads the current one
+- throw `KaleidoHttpClientException` on non-success capability responses (a 409 conflict: `httpclient_conflict`)
 - run every call through the resilience pipeline (see [Resilience](#resilience))
 
 A step, source or view the service does not have, or the caller may not use, is the service's own answer: `KaleidoHttpClientException` with `httpclient_request_failed` and status 404 or 403.

@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Security.Claims;
 using Kaleido.Client.Processor;
 using Kaleido.Guide.Examples.Callers;
@@ -17,7 +16,7 @@ public sealed class CallersExampleTests
 {
     private static async Task<string> RegistryAsync(GuideHost host, string? caller)
     {
-        var (status, body) = await host.SendAsync(HttpMethod.Get, "/orders/registry", caller: caller);
+        var (status, body) = await host.SendAsync(HttpMethod.Get, "/test/in-process-registry", caller: caller);
         Assert.Equal(HttpStatusCode.OK, status);
         return body.ToString();
     }

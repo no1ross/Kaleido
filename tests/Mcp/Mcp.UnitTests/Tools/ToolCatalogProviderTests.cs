@@ -18,7 +18,6 @@ public sealed class ToolCatalogProviderTests
 
     public ToolCatalogProviderTests()
     {
-        registry.Setup(x => x.IsMapped).Returns(true);
         registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => new KaleidoRegistry { Revision = revision });
         unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
@@ -229,16 +228,4 @@ public sealed class ToolCatalogProviderTests
         builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Exactly(2));
     }
 
-    [Fact]
-    public async Task GetAsync_BeforeTheRegistryIsMapped_IsUnavailable_AndReadsNothing()
-    {
-        registry.Setup(x => x.IsMapped).Returns(false);
-
-        var catalog = await CreateSut().GetAsync(Cancel);
-
-        Assert.Contains("MapKaleidoHttp", catalog.Unavailable, StringComparison.Ordinal);
-        Assert.Empty(catalog.Tools);
-        registry.Verify(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
-        unfiltered.Verify(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
 }

@@ -5,8 +5,8 @@ namespace Kaleido.Mcp.Tools;
 
 /// <summary>
 /// Gives the current caller their tools: the host's registry as this caller may see it
-/// (<see cref="IKaleidoRegistryService"/> — the same shared snapshot and per-caller filtering as
-/// <c>GET /{service}/registry</c>), translated into MCP tools.
+/// (<see cref="IKaleidoRegistryService"/> — the central registry's hydrated copy filtered per caller),
+/// translated into MCP tools.
 /// </summary>
 /// <remarks>
 /// Nothing is cached per caller. The translation is reused per registry revision: the revision
@@ -32,14 +32,6 @@ internal sealed partial class ToolCatalogProvider(
 {
     public async Task<ToolCatalog> GetAsync(CancellationToken cancellationToken)
     {
-        if (!registry.IsMapped)
-        {
-            return new ToolCatalog
-            {
-                Unavailable = "The host has not mapped its Kaleido registry; call MapKaleidoHttp(new() { AggregateRegistry = true }) before MapKaleidoMcp().",
-            };
-        }
-
         var response = await registry.GetForCallerAsync(refresh: false, cancellationToken: cancellationToken);
         var nameScope = await unfilteredRegistry.GetUnfilteredAsync(cancellationToken);
         var revision = response.Revision ?? string.Empty;

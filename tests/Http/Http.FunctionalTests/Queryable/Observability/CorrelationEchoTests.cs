@@ -49,7 +49,7 @@ public sealed class CorrelationEchoTests(
             callingProcessor: "intake",
             callingStep: "Capture");
 
-        var response = await client.GetAsync("/kaleido/registry");
+        var response = await client.PostAsJsonAsync("/kaleido/queryable/functionalrecordcontextsource/query", new { query = new { } });
 
         response.EnsureSuccessStatusCode();
 
@@ -66,7 +66,7 @@ public sealed class CorrelationEchoTests(
     {
         var client = fixture.TestServer.CreateClient();
 
-        var response = await client.GetAsync("/kaleido/registry");
+        var response = await client.PostAsJsonAsync("/kaleido/queryable/functionalrecordcontextsource/query", new { query = new { } });
 
         response.EnsureSuccessStatusCode();
 

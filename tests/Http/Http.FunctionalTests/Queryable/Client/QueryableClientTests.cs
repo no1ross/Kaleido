@@ -10,27 +10,6 @@ public sealed class QueryableClientTests(QueryableAspNetCoreFixture fixture) : I
     private readonly IKaleidoQueryableClientFactory _factory = fixture.ClientFactory;
 
     // ---------------------------------------------------------------------------
-    // GetRegistryAsync
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task GetRegistryAsync_ReturnsAllSources()
-    {
-        var registry = await _factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
-
-        Assert.Contains(registry, r => r.Name == "FunctionalRecordContextSource");
-    }
-
-    [Fact]
-    public async Task GetRegistryAsync_ContainsExpectedQueryUrls()
-    {
-        var registry = await _factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
-
-        var record = Assert.Single(registry, r => r.Name == "FunctionalRecordContextSource");
-        Assert.Equal("/kaleido/queryable/functionalrecordcontextsource/query", record.QueryUrl);
-    }
-
-    // ---------------------------------------------------------------------------
     // QueryViewAsync
     // ---------------------------------------------------------------------------
 
@@ -93,7 +72,7 @@ public sealed class QueryableClientTests(QueryableAspNetCoreFixture fixture) : I
         };
 
         var exception =
-            await Assert.ThrowsAsync<Kaleido.Http.Client.KaleidoHttpClientException>(() =>
+            await Assert.ThrowsAsync<Kaleido.Http.Client.Transport.KaleidoHttpClientException>(() =>
                 _factory.GetClient("test").QuerySourceAsync<FunctionalRecordContext>("FunctionalRecordContextSource", new QueryApiRequest(body), TestContext.Current.CancellationToken));
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, exception.StatusCode);

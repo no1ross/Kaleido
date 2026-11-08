@@ -15,7 +15,7 @@ internal sealed class RegistryCompletenessHealthCheck(IKaleidoRegistrySource reg
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var registry = await registrations.GetAsync(maxParallelism: null, cancellationToken);
+        var registry = await registrations.GetAsync(cancellationToken);
         var status = await statuses.GetStatusAsync(cancellationToken);
         var unavailable = Versions(status, RegistryCapabilityStatus.Unavailable);
         var unknown = Versions(status, RegistryCapabilityStatus.Unknown);

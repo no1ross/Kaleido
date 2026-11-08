@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Kaleido.Platform.Registry;
 using Kaleido.Observability;
+using Kaleido.Platform.Registry;
 
 namespace Kaleido.Platform.Processor;
 
@@ -416,7 +416,7 @@ public sealed record ProcessStepHistory
 // ── Registry / step responses ────────────────────────────────────────────────
 
 /// <summary>
-/// A service's processor as published in the registry (<c>GET /{service}/registry</c>): the
+/// A service's processor as published in the central registry (<c>GET /registry</c>): the
 /// service's identity, the steps that can start a process, and the full detail of every step.
 /// </summary>
 /// <remarks>
@@ -459,10 +459,6 @@ public sealed record ProcessorRegistryResponse
     /// system should set it.
     /// </summary>
     public bool IsEntryProcessor { get; init; }
-
-    /// <summary>The service's registry URL (<c>/{service}/registry</c>).</summary>
-    public string RegistryUrl { get; init; }
-        = string.Empty;
 
     /// <summary>
     /// The steps that can start a new process (no dependencies and no availability preconditions;

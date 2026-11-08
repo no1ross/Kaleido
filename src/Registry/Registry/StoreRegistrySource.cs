@@ -44,10 +44,8 @@ internal sealed class StoreRegistrySource(
     private RegistryView? _view;
 
     // The store's registry is the whole registry: every participant registered its own capabilities.
-    public bool IsFullRegistry => true;
-
     // The registry a consumer reads: every capability with its version's overall status.
-    public async Task<KaleidoRegistry> GetAsync(int? maxParallelism, CancellationToken cancellationToken) =>
+    public async Task<KaleidoRegistry> GetAsync(CancellationToken cancellationToken) =>
         (await ViewAsync(cancellationToken)).Contents;
 
     // The capabilities alone, for the hosts that keep their copy fresh: they change only with a deployment.

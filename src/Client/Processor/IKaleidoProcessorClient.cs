@@ -22,35 +22,6 @@ namespace Kaleido.Client.Processor;
 public interface IKaleidoProcessorClient
 {
     /// <summary>
-    /// Gets the remote service's processor registry, for discovery (step calls do not use it). The
-    /// registry is fetched on first use, as filtered for the identity the client's request carries,
-    /// and cached per client name. With a registry time to live configured for the client, the snapshot is
-    /// revalidated with the remote once it expires; without one it is kept until it is invalidated
-    /// (<see cref="InvalidateRegistryAsync"/>, or a step call answered 404).
-    /// </summary>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>
-    /// The processors published by the remote registry, as filtered for the caller: usually one,
-    /// more when the remote aggregates other services' registries.
-    /// </returns>
-    /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the registry
-    /// request fails or returns no payload.
-    /// </remarks>
-    Task<IReadOnlyList<ProcessorRegistryResponse>> GetRegistryAsync(
-        CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Drops the cached registry snapshot of this client's service so the next operation re-fetches
-    /// it from the remote endpoint. With a distributed <see cref="Kaleido.Platform.Registry.IRegistrySnapshotStore"/>
-    /// the shared snapshot is removed for every instance using that store.
-    /// </summary>
-    /// <param name="cancellationToken">Cancels the removal from the snapshot store.</param>
-    /// <returns>A task that completes once the snapshot has been removed.</returns>
-    Task InvalidateRegistryAsync(
-        CancellationToken cancellationToken);
-
-    /// <summary>
     /// Gets the current state of a remote process (<c>GET /{service}/processes/{processId}</c>).
     /// Reading the state never executes a step.
     /// </summary>

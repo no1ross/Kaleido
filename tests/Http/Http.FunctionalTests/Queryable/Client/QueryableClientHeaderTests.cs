@@ -1,8 +1,8 @@
 using Kaleido.Client.Queryable;
-using Kaleido.Http.Client;
 using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
 using Kaleido.Observability;
 using Kaleido.Platform;
+using Kaleido.Platform.Queryable;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -40,7 +40,7 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task GetRegistryAsync_InsideStep_StampsEndToEndAndCallingProcessorStep()
+    public async Task QuerySourceAsync_InsideStep_StampsEndToEndAndCallingProcessorStep()
     {
         var processId = Guid.NewGuid();
         var ctx = new KaleidoCorrelationContext
@@ -54,7 +54,8 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
 
         var (factory, captured) = BuildClientFactory(ctx);
 
-        await factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
+            factory.GetClient("test").QuerySourceAsync<object>("not-present", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
 
         var request = Assert.Single(captured);
         Assert.Equal("req-queryable-header-test",
@@ -69,7 +70,7 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
     }
 
     [Fact]
-    public async Task GetRegistryAsync_OutsideStep_ForwardsEndToEndOnly()
+    public async Task QuerySourceAsync_OutsideStep_ForwardsEndToEndOnly()
     {
         var ctx = new KaleidoCorrelationContext
         {
@@ -80,7 +81,8 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
 
         var (factory, captured) = BuildClientFactory(ctx);
 
-        await factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
+            factory.GetClient("test").QuerySourceAsync<object>("not-present", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
 
         var request = Assert.Single(captured);
         Assert.Equal("req-queryable-header-test",
@@ -90,11 +92,12 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
     }
 
     [Fact]
-    public async Task GetRegistryAsync_WhenCorrelationContextIsEmpty_StampsNoHeaders()
+    public async Task QuerySourceAsync_WhenCorrelationContextIsEmpty_StampsNoHeaders()
     {
         var (factory, captured) = BuildClientFactory(new KaleidoCorrelationContext());
 
-        await factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
+        await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
+            factory.GetClient("test").QuerySourceAsync<object>("not-present", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
 
         var request = Assert.Single(captured);
         Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.RequestId));

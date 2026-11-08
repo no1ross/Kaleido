@@ -1,5 +1,4 @@
 using System.Text;
-using Kaleido.Http.Client;
 using Kaleido.Platform;
 using Kaleido.Queryable.Query;
 using Microsoft.Extensions.Logging;

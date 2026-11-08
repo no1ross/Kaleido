@@ -1,4 +1,5 @@
-using Kaleido.Http.Client;
+using Kaleido.Http.Client.Registration;
+using Kaleido.Http.Client.Registry;
 using Kaleido.Http.Server;
 using Kaleido.Mcp;
 using Microsoft.AspNetCore.Builder;
@@ -19,11 +20,13 @@ public static class OrdersService
         services.AddKaleido(configuration, new()
         {
             ServiceName = "orders",
+            ServiceVersion = "1",
             Assemblies = [typeof(OrderSource).Assembly],
             AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
         })
             .AddInMemoryStores()   // local evaluation only: nothing survives a restart
-            .AddHttp();
+            .AddHttp()
+            .AddControlRegistryClient();
         // end snippet
     }
 
@@ -44,12 +47,14 @@ public static class OrdersService
         services.AddKaleido(configuration, new()
         {
             ServiceName = "orders",
+            ServiceVersion = "1",
             Assemblies = [typeof(OrderSource).Assembly],
             AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
         })
             .AddInMemoryStores()   // local evaluation only: nothing survives a restart
             .AddHttp()
             .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
+            .AddControlRegistryClient()
             .AddMcp();
         // end snippet
     }

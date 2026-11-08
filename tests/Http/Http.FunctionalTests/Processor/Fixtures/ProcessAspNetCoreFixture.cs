@@ -1,5 +1,4 @@
 using Kaleido.Client.Processor;
-using Kaleido.Http.Client;
 using Kaleido.Http.Server;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Builder;
@@ -15,14 +14,18 @@ public sealed class ProcessorAspNetCoreFixture
     : IAsyncLifetime
 {
     private IHost? _host;
+    private TestControlRegistry? _registry;
     private ServiceProvider? _clientProvider;
 
     public HttpClient Client { get; private set; } = null!;
+    public HttpClient RegistryClient { get; private set; } = null!;
     public IKaleidoProcessorClientFactory ClientFactory { get; private set; } = null!;
     public TestServer TestServer { get; private set; } = null!;
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
+        RegistryClient = _registry.CreateClient();
         _host =
             await new HostBuilder()
                 .ConfigureWebHost(webBuilder =>
@@ -36,6 +39,7 @@ public sealed class ProcessorAspNetCoreFixture
                         var serverConfig = new ConfigurationBuilder()
                             .AddInMemoryCollection(new Dictionary<string, string?>
                             {
+                                ["Kaleido:BaseUrl"] = "http://registry.test/",
                                 ["Kaleido:Clients:self:BaseUrl"] = "http://localhost/",
                                 ["Kaleido:Clients:self:RoutePrefix"] = "kaleido",
                             })
@@ -44,6 +48,7 @@ public sealed class ProcessorAspNetCoreFixture
                         services.AddKaleido(serverConfig, new()
                         {
                             ServiceName = "kaleido",
+                            ServiceVersion = "1",
                             AuthorizationMode = KaleidoAuthorizationMode.None,
                             DisplayName = "Test Processor",
                             Description = "Test processor.",
@@ -51,7 +56,9 @@ public sealed class ProcessorAspNetCoreFixture
                         })
                             .AddInMemoryStores()
                             .AddHttp()
-                            .AddHttpClients();
+                            .AddHttpClients()
+                            .AddControlRegistryClient();
+                        services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                     });
 
                     webBuilder.Configure(app =>
@@ -59,12 +66,13 @@ public sealed class ProcessorAspNetCoreFixture
                         app.UseRouting();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleidoHttp(new() { AggregateRegistry = true });
+                            endpoints.MapKaleidoHttp();
                         });
                     });
                 })
                 .StartAsync();
 
+        await _registry.WaitForRegistrationAsync(_host);
         Client = _host.GetTestClient();
 
         // Wire the Process client factory against the test server.
@@ -105,12 +113,18 @@ public sealed class ProcessorAspNetCoreFixture
     public async ValueTask DisposeAsync()
     {
         Client.Dispose();
+        RegistryClient.Dispose();
         _clientProvider?.Dispose();
 
         if (_host is not null)
         {
             await _host.StopAsync();
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 

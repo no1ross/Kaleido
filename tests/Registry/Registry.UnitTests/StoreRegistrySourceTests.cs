@@ -71,7 +71,7 @@ public sealed class StoreRegistrySourceTests
 
         var sut = CreateSut(options);
 
-        return new View(await sut.GetAsync(maxParallelism: null, Cancel), await sut.GetStatusAsync(Cancel));
+        return new View(await sut.GetAsync(Cancel), await sut.GetStatusAsync(Cancel));
     }
 
     [Fact]
@@ -214,19 +214,19 @@ public sealed class StoreRegistrySourceTests
         var v1 = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
         var v2 = Stored("radiology", "2", Entry([ProcessorWith("radiology", "ReviewStep")], []));
         contents = new() { Registrations = [v1], Instances = [Instance(v1, Now)] };
-        await sut.GetAsync(null, Cancel);
+        await sut.GetAsync(Cancel);
 
         time.Advance(StoreRegistrySource.ViewTtl);
         contents = new() { Registrations = [v1, v2], Instances = [Instance(v1, Now), Instance(v2, Now)] };
-        await sut.GetAsync(null, Cancel);
+        await sut.GetAsync(Cancel);
 
         time.Advance(StoreRegistrySource.ViewTtl);
         contents = new() { Registrations = [v2], Instances = [Instance(v2, Now)] };
-        await sut.GetAsync(null, Cancel);
+        await sut.GetAsync(Cancel);
 
         time.Advance(StoreRegistrySource.ViewTtl);
         contents = new() { Registrations = [v1, v2], Instances = [Instance(v1, Now), Instance(v2, Now)] };
-        var view = await sut.GetAsync(null, Cancel);
+        var view = await sut.GetAsync(Cancel);
 
         store.Verify(x => x.GetCapabilitiesAsync(It.Is<IReadOnlyCollection<string>>(r => r.SequenceEqual(new[] { v1.Revision })), It.IsAny<CancellationToken>()), Times.Exactly(2));
         store.Verify(x => x.GetCapabilitiesAsync(It.Is<IReadOnlyCollection<string>>(r => r.SequenceEqual(new[] { v2.Revision })), It.IsAny<CancellationToken>()), Times.Once);
@@ -241,7 +241,7 @@ public sealed class StoreRegistrySourceTests
     {
         var sut = CreateSut();
 
-        await sut.GetAsync(null, Cancel);
+        await sut.GetAsync(Cancel);
         time.Advance(StoreRegistrySource.ViewTtl + TimeSpan.FromTicks(ticksFromTheTtl));
         await sut.GetStatusAsync(Cancel);
 
@@ -252,10 +252,10 @@ public sealed class StoreRegistrySourceTests
     public async Task Refresh_DropsTheView()
     {
         var sut = CreateSut();
-        await sut.GetAsync(null, Cancel);
+        await sut.GetAsync(Cancel);
 
         await sut.RefreshAsync(Cancel);
-        await sut.GetAsync(null, Cancel);
+        await sut.GetAsync(Cancel);
 
         store.Verify(x => x.ReadAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
@@ -290,13 +290,6 @@ public sealed class StoreRegistrySourceTests
         Assert.Empty(view.Processes);
         Assert.Empty(view.Services);
         store.Verify(x => x.GetCapabilitiesAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    // The store's registry is the whole registry: every participant registered its own capabilities.
-    [Fact]
-    public void TheStoresRegistry_IsTheFullRegistry()
-    {
-        Assert.True(CreateSut().IsFullRegistry);
     }
 
     // A heartbeat alone (a later time, the same state) does not change the status revision.
@@ -366,7 +359,7 @@ public sealed class StoreRegistrySourceTests
         var resumed = Now - TimeSpan.FromSeconds(5);
         contents = new() { Registrations = [old, rolled], Instances = [Instance(old, Now), Instance(rolled, resumed - TimeSpan.FromMinutes(1))], WatchResumedUtc = resumed };
 
-        var registry = await CreateSut().GetAsync(null, Cancel);
+        var registry = await CreateSut().GetAsync(Cancel);
 
         Assert.Equal(["OrderScanStep"], Assert.Single(registry.Processes).Steps!.Select(x => x.Name));
     }
@@ -380,7 +373,7 @@ public sealed class StoreRegistrySourceTests
         var sut = CreateSut();
         contents = new() { Registrations = [registration], Instances = [Instance(registration, Now)] };
 
-        var registry = await sut.GetAsync(null, Cancel);
+        var registry = await sut.GetAsync(Cancel);
         var capabilities = await sut.GetCapabilitiesAsync(Cancel);
         time.Advance(StoreRegistrySource.ViewTtl);
         contents = contents with { Instances = [Instance(registration, Now, healthy: false)] };
@@ -453,7 +446,7 @@ public sealed class StoreRegistrySourceTests
         var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
         contents = new() { Registrations = [registration], Instances = [Instance(registration, Now)] };
 
-        var registry = await CreateSut().GetAsync(maxParallelism: null, Cancel);
+        var registry = await CreateSut().GetAsync(Cancel);
 
         Assert.Matches("^[0-9a-f]{64}$", registry.Revision!);
     }

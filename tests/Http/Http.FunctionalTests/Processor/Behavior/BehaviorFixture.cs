@@ -1,5 +1,4 @@
 using Kaleido.Client.Processor;
-using Kaleido.Http.Client;
 using Kaleido.Http.Server;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Builder;
@@ -18,6 +17,7 @@ public sealed class BehaviorFixture : IAsyncLifetime
     public const string ServiceName = "behavior";
 
     private IHost? _host;
+    private TestControlRegistry? _registry;
     private ServiceProvider? _clientProvider;
 
     public HttpClient Client { get; private set; } = null!;
@@ -27,6 +27,7 @@ public sealed class BehaviorFixture : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
         _host =
             await new HostBuilder()
                 .ConfigureWebHost(web =>
@@ -37,15 +38,21 @@ public sealed class BehaviorFixture : IAsyncLifetime
                         services.AddRouting();
                         services.AddSingleton(Switches);
                         services.AddSingleton(Gate);
-                        services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                        services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                        {
+                            ["Kaleido:BaseUrl"] = "http://registry.test/",
+                        }).Build(), new()
                         {
                             ServiceName = ServiceName,
+                            ServiceVersion = "1",
                             AuthorizationMode = KaleidoAuthorizationMode.None,
                             Assemblies = [typeof(BehaviorFixture).Assembly],
                             TypeFilter = type => type.Namespace == typeof(BehaviorFixture).Namespace,
                         })
                             .AddInMemoryStores()
-                            .AddHttp(new() { IncludeFrameworkMessages = true });
+                            .AddHttp(new() { IncludeFrameworkMessages = true })
+                            .AddControlRegistryClient();
+                        services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                     });
                     web.Configure(app =>
                     {
@@ -55,6 +62,7 @@ public sealed class BehaviorFixture : IAsyncLifetime
                 })
                 .StartAsync();
 
+        await _registry.WaitForRegistrationAsync(_host);
         Client = _host.GetTestClient();
 
         (ProcessClient, _clientProvider) = CreateProcessClient(server => server);
@@ -98,6 +106,11 @@ public sealed class BehaviorFixture : IAsyncLifetime
         {
             await _host.StopAsync();
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 

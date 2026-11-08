@@ -26,12 +26,14 @@ public sealed class QueryValidationTests : IAsyncLifetime
 
     private readonly ConcurrentQueue<(LogLevel Level, string Text)> _logs = new();
     private IHost? _host;
+    private TestControlRegistry? _registry;
     private HttpClient _client = null!;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
         _host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -40,15 +42,21 @@ public sealed class QueryValidationTests : IAsyncLifetime
                 {
                     services.AddRouting();
                     services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug).AddProvider(new CapturingLoggerProvider(_logs)));
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = ServiceName,
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(QueryValidationTests).Assembly],
                         TypeFilter = type => type.Namespace == typeof(QueryValidationTests).Namespace,
                     })
                         .AddInMemoryStores()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                 });
                 web.Configure(app =>
                 {
@@ -58,6 +66,7 @@ public sealed class QueryValidationTests : IAsyncLifetime
             })
             .StartAsync(Cancel);
 
+        await _registry.WaitForRegistrationAsync(_host);
         _client = _host.GetTestClient();
     }
 
@@ -69,6 +78,11 @@ public sealed class QueryValidationTests : IAsyncLifetime
         {
             await _host.StopAsync(CancellationToken.None);
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 

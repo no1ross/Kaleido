@@ -56,7 +56,7 @@ public sealed class HandOffStepResolverTests
 
     private void Registry(KaleidoRegistry contents, KaleidoRegistryAvailability? status = null)
     {
-        source.Setup(x => x.GetAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(contents);
+        source.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(contents);
         source.Setup(x => x.GetAvailabilityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(status ?? new KaleidoRegistryAvailability());
     }
 

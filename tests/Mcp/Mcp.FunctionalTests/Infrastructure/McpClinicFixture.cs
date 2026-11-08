@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Kaleido.Http.Client;
 using Kaleido.Http.Server;
 using Kaleido.Platform;
 using Microsoft.AspNetCore.Authentication;
@@ -51,6 +50,7 @@ public class McpClinicFixture : IAsyncLifetime
 
     private IHost? host;
     private IHost? wardHost;
+    private TestControlRegistry? registry;
 
     /// <summary>The Authorization header of every request the clinic service received (path, header).</summary>
     public System.Collections.Concurrent.ConcurrentQueue<(string Path, string Authorization)> ServiceRequests { get; } = new();
@@ -121,6 +121,7 @@ public class McpClinicFixture : IAsyncLifetime
             },
         };
         ActivitySource.AddActivityListener(spanListener);
+        registry = await TestControlRegistry.StartAsync();
 
         if (withWard)
         {
@@ -163,6 +164,7 @@ public class McpClinicFixture : IAsyncLifetime
 
                         var settings = new Dictionary<string, string?>
                         {
+                            ["Kaleido:BaseUrl"] = "http://registry.test/",
                             ["Kaleido:Clients:clinic:BaseUrl"] = "http://localhost/",
                             ["Kaleido:Clients:clinic:RoutePrefix"] = "clinic",
                             ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search.",
@@ -206,6 +208,7 @@ public class McpClinicFixture : IAsyncLifetime
                         services.AddKaleido(configuration, new()
                         {
                             ServiceName = "clinic",
+                            ServiceVersion = "1",
                             DisplayName = "Clinic",
                             Assemblies = [typeof(McpClinicFixture).Assembly],
 
@@ -224,7 +227,9 @@ public class McpClinicFixture : IAsyncLifetime
                             // Tool calls carry a token exchanged for the agent's user, never the agent's own
                             // (#574); the host's service credential below stays on the service's own calls.
                             .AddKaleidoClientHandler<TestTokenExchangeHandler>()
+                            .AddControlRegistryClient()
                             .AddMcp();
+                        services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => registry!.CreateHandler());
 
                         // The clinic client calls this TestServer (in production: the network),
                         // with the host's service credential on every call.
@@ -278,7 +283,7 @@ public class McpClinicFixture : IAsyncLifetime
                         app.UseAuthorization();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleidoHttp(new() { AggregateRegistry = withDownstreamThatIsDown || withWard });
+                            endpoints.MapKaleidoHttp();
                             var mcp = endpoints.MapKaleidoMcp("/mcp");
 
                             if (withSignIn)
@@ -289,27 +294,35 @@ public class McpClinicFixture : IAsyncLifetime
                     });
                 })
                 .StartAsync();
+        await registry.WaitForRegistrationAsync(host);
     }
 
     // The ward: a second Kaleido service on its own TestServer, with only the ward's steps. It does not
     // authenticate (the clinic host and its tools do); it is reached through the clinic's ward client.
-    private Task<IHost> StartWardAsync() =>
-        new HostBuilder()
+    private async Task<IHost> StartWardAsync()
+    {
+        var ward = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
                 web.UseTestServer();
                 web.ConfigureServices(services =>
                 {
                     services.AddRouting();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = WardService,
+                        ServiceVersion = "1",
                         Assemblies = [typeof(McpClinicFixture).Assembly],
                         TypeFilter = type => type.Namespace == WardNamespace,
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                     })
                         .AddInMemoryStores()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => registry!.CreateHandler());
                 });
                 web.Configure(app =>
                 {
@@ -323,6 +336,9 @@ public class McpClinicFixture : IAsyncLifetime
                 });
             })
             .StartAsync();
+        await registry!.WaitForRegistrationAsync(ward);
+        return ward;
+    }
 
     /// <summary>
     /// An MCP client connected as <paramref name="authorization"/> (null = anonymous). Pass an
@@ -419,6 +435,11 @@ public class McpClinicFixture : IAsyncLifetime
         {
             await wardHost.StopAsync();
             wardHost.Dispose();
+        }
+
+        if (registry is not null)
+        {
+            await registry.DisposeAsync();
         }
 
         GC.SuppressFinalize(this);

@@ -18,7 +18,7 @@ Canonical vocabulary — type names, namespaces, and docs must follow it:
 | **Step** | A unit of work inside a Processor — identified by `IProcessStep`, described by `[ProcessStep]`, named by its type name (it marks the work, not the executor) |
 | **Source / View / Query context** | Queryable-side (`Queryable` is the feature namespace). Names are type names. <br>- **Query source** (`IQuerySource<T>`, described by `[QuerySource]`): the published capability. <br>- **Query view** (`IQueryViewSource<TSource, …>`, `[QueryView]`): projects a source. <br>- **Query context** (`IQueryContext`): the record that describes how a source is queried. |
 | **Delegated** | A query source that fulfils queries downstream (a facade): `IDelegatedQuerySource`, `DelegatedQuerySourceEngine`. Not visible to consumers |
-| **Registry / Snapshot** | Discovery envelope (`KaleidoRegistry`); cached under `kaleido:{serviceName}` in `IRegistrySnapshotStore` |
+| **Central registry** | Service-version registration and discovery (`KaleidoRegistry`); each participant hydrates a full in-memory copy from the control registry |
 
 Rule of thumb: if a name refers to *who runs the work* (runtime, registries, planner, executor, stores, telemetry identity) it's `Processor*`; if it refers to *one executing instance* (request/response/state, routes, events) it's `Process*`. Transport namespaces (`Kaleido.Http.Processor`, `Kaleido.Http.Client.Processor`, `Kaleido.Http.Abstractions.Processor`) organize the processor-facing API surface even though the wire resource is `processes`.
 
@@ -126,12 +126,11 @@ Public seams consumers are expected to implement or replace:
 - `POST /{prefix}/processes/steps/{step}` — per-step execute
 - Step metadata is published by the registry endpoint (no per-step metadata endpoint)
 
-**Registry endpoint** (`RegistryEndpointRouteBuilderExtensions` — internal; mapped by `MapKaleidoHttp`)
-- `GET /{prefix}/registry` — unified discovery envelope (`KaleidoRegistry`: `Processes`, `Queryables`, `Errors`)
-- Leaf mode returns this service's local registrations; `MapKaleidoHttp(new() { AggregateRegistry = true })` also fans out to every `AddHttpClients()` client — one `GET /{svc}/registry` fetch per client, shared via `KaleidoRemoteRegistry`
-- Freshness: `GeneratedAt`, `Revision` (SHA-256 of the filtered payload), `IsPartial`; `ETag`/`Cache-Control` headers, `If-None-Match` → 304; `?strict` → 502 when partial (body still included); `?refresh` forces rebuild, throttled by `KaleidoHttpMapOptions.RegistryRefreshCooldown`
-- Snapshots live in `IRegistrySnapshotStore` (in-memory default; `AddDistributedRegistrySnapshots()` puts them in the host's `IDistributedCache`, mirrored in memory so an unreachable cache never fails a read) under canonical key `kaleido:{ServiceName}` (`kaleido:{ServiceName}@{ServiceVersion}` for a versioned service, #552) (the unfiltered union, filtered per caller on every request); consumers' client copies use their own `kaleido-client:{ServiceName}:{clientName}` keys, so a shared store never mixes them; only clean snapshots are committed, so degraded states are re-probed per request
-- Always returns HTTP 200 unless `?strict` is requested; unreachable downstream clients populate `Errors`
+**Central registry** (`ControlRegistryEndpointRouteBuilderExtensions` — mapped by `MapKaleidoControlRegistry`)
+- Services register their own capabilities through `POST /registry/instances`, renew leases and deregister; the registry store owns the merged service-version view.
+- `GET /registry` is filtered for the caller; `GET /registry/availability` and `GET /registry/capabilities` are separate ETag-aware documents for participants to hydrate. `GET /registry/status` exposes service-version availability.
+- `MapKaleidoHttp()` publishes only the service's capability endpoints. It requires a central-registry participant; it does not publish a per-service registry or fan out to configured clients.
+- The hydrated in-host copy is filtered for each local reader (lookups and MCP). Failed reads preserve its last good copy marked partial; the central registry is the source of truth.
 
 **URL generation**
 - `ProcessContractUrls` / `ProcessRoutePaths` (`Kaleido.Http.Abstractions/Processor/ProcessRoutes.cs`)
@@ -174,27 +173,25 @@ Public seams consumers are expected to implement or replace:
 ### Internal structure
 
 **Process client**
-- `IKaleidoProcessorClient` — typed interface: `GetRegistryAsync`, `InvalidateRegistryAsync`, `GetProcessStateAsync`, `ExecuteAsync`, `ExecuteStepAsync<TStep>`, `ExecuteStepAsync<TStep, TResult>` (the step name is `typeof(TStep).Name`)
-- `KaleidoProcessorClient` — concrete implementation: builds each call (URL, body, idempotency) and hands it to the transport; the registry comes from `KaleidoRemoteRegistry`
-- `KaleidoHttpClientException` — thrown on non-success responses and on registry lookup failures
+- `IKaleidoProcessorClient` is the neutral contract for process state and step execution; `KaleidoProcessorClient` adapts it to HTTP, including correlation and idempotency. Failed HTTP calls raise `KaleidoHttpClientException`.
 
 **Queryable client**
-- `IKaleidoQueryableClient` — interface: `GetRegistryAsync`, `InvalidateRegistryAsync`, `QueryViewAsync(source, view, …)`, `QuerySourceAsync(source, …)` (with and without parameters). Sources and views are addressed by their published names (strings): the caller cannot reference the remote types
-- `KaleidoQueryableClient` — concrete implementation: builds each query and hands it to the transport, as the Process client does
-- Non-success responses and registry lookup failures throw `KaleidoHttpClientException`, as for the Process client
+- `IKaleidoQueryableClient` is the neutral contract for direct source and view queries by published name; `KaleidoQueryableClient` builds and sends the HTTP queries.
+
+**Central registry participation**
+- `Kaleido.Client` owns `IKaleidoRegistryClient`, the registration/heartbeat loop (`ControlRegistryRegistrar`), the hydrated copy (`CentralRegistrySource` and `CentralRegistrySync`) and its readiness check (`RegistrationHealthCheck`). None of these orchestrators knows HTTP routes or response types.
+- `Kaleido.Http.Client` implements the wire client as `KaleidoHttpRegistryClient` and wires it with `AddControlRegistryClient()`, using the gateway address in `Kaleido:BaseUrl`. Registry call failures cross the neutral seam as `KaleidoRegistryClientException`.
 
 **Shared services (#498)** — every piece is built by the container; no service creates another
-- `IKaleidoClientCatalog` (in `Kaleido.Http.Abstractions`) — the configured clients by name: one `KaleidoClientDefinition` (route prefix, registry TTL, health-check settings) per entry in `Kaleido:Clients`
-- Per client, keyed services under its name (`[ServiceKey]`): the Process and Queryable clients, its `KaleidoClientHealthCheck` and its `KaleidoOnBehalfOfGuard` (the innermost handler: what a call made for a caller carries, #574; `KaleidoClientHandlerFilter` puts the host's `AddKaleidoClientHandler<T>()` handlers, then the guard, on every Kaleido client). Code that knows the name injects `[FromKeyedServices("name")]`; the factories (`IKaleidoProcessorClientFactory`, `IKaleidoQueryableClientFactory`) resolve a name chosen at runtime
-- `IKaleidoClientTransport` — sends one call through the client's named `HttpClient`: correlation headers, idempotency key, logging, failure mapping, deserialization, and dropping the registry snapshot when a capability call answers 404
-- `IKaleidoRemoteRegistry` and `IHttpClientRegistryCache` — singletons for every client: the remote registry fetch (ETag revalidation) and its snapshot cache, keyed per client
-- `KaleidoClientServiceCollectionExtensions` — internal `AddKaleidoClient(...)` registration used by `AddHttpClients`
+- `IKaleidoClientCatalog` (in `Kaleido.Platform`) holds configured clients by name, one `KaleidoClientDefinition` per entry in `Kaleido:Clients`.
+- Per client, keyed Process and Queryable clients and `KaleidoOnBehalfOfGuard` enforce what an outbound call carries; `KaleidoClientHandlerFilter` adds the host's `AddKaleidoClientHandler<T>()` handlers. The factories (`IKaleidoProcessorClientFactory`, `IKaleidoQueryableClientFactory`) resolve a name chosen at runtime.
+- `IKaleidoClientTransport` sends through the named `HttpClient`: correlation headers, idempotency key, logging, failure mapping and deserialization.
 
 ### Key design invariants
-- Both clients share one cached registry per downstream (`KaleidoRemoteRegistry`, keyed `kaleido-client:{ServiceName}:{clientName}`) for discovery and aggregation, revalidated every `RegistryTtl` (default 30 s) with `If-None-Match` and dropped when a capability call answers 404. Capability calls never read it: a registry is filtered per caller, so step and query URLs are built from the route prefix (#381).
+- Clients do not discover or cache registries independently. The host's one central-registry copy supplies lookups and MCP. Capability calls currently build their URLs from each configured client's route prefix; published capability routes will replace that configuration in the next change.
 - Both clients automatically forward Kaleido correlation headers on outbound requests.
-- `AddHttpClients()` (in `KaleidoHttpClientsServiceCollectionExtensions`) registers both a Process and a Queryable client per entry in `Kaleido:Clients`, reading base URLs from `Kaleido:Clients:<Name>:BaseUrl` with a `Kaleido:BaseUrl` fallback.
-- The route prefix defaults to the client name lowercased (`RoutePrefix` overrides it) and must equal the remote server's `Kaleido:ServiceName`.
+- `AddHttpClients()` registers a Process and a Queryable client per `Kaleido:Clients` entry, reading its base URL with a `Kaleido:BaseUrl` gateway fallback.
+- Until published routes drive calls, `RoutePrefix` defaults to the client name lowercased and must match the target service's `Kaleido:ServiceName`.
 
 ---
 

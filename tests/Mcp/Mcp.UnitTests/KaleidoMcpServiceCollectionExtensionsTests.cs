@@ -1,6 +1,5 @@
-using Kaleido.Client;
+using Kaleido.Client.Registry;
 using Kaleido.Exceptions;
-using Kaleido.Http.Client;
 using Kaleido.Mcp.Observability;
 using Kaleido.Mcp.Tools;
 using Kaleido.Observability;
@@ -32,6 +31,7 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
         services.AddScoped(_ => Mock.Of<IKaleidoRegistryService>());
         // AddHttp() registers the unfiltered registry the tool names come from (#435).
         services.AddScoped(_ => Mock.Of<IKaleidoUnfilteredRegistry>());
+        services.AddScoped(_ => Mock.Of<IKaleidoRegistryClient>());
         // What AddHttpClients() registers with a client configured, and AddKaleido() the inbound caller.
         services.AddSingleton(Clients(KaleidoOnBehalfOfCalls.Exchange));
         services.AddScoped(_ => Mock.Of<IKaleidoInboundCallerAccessor>());
@@ -104,10 +104,22 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddMcp_WithoutCentralRegistryClient_FailsWithItsCode()
+    {
+        var services = HostServices();
+        services.RemoveAll<IKaleidoRegistryClient>();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => Builder(services).Object.AddMcp());
+
+        Assert.Equal(ConfigurationErrorCodes.RegistryNotConfigured, exception.Code);
+    }
+
+    [Fact]
     public void AddMcp_WithoutKaleidoClients_FailsWithItsCode()
     {
         var services = new ServiceCollection();
         services.AddScoped(_ => Mock.Of<IKaleidoRegistryService>());
+        services.AddScoped(_ => Mock.Of<IKaleidoRegistryClient>());
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() => Builder(services).Object.AddMcp());
 

@@ -1,6 +1,5 @@
-using Kaleido.Client;
-using Kaleido.Http.Client;
-using Kaleido.Http.Server;
+using Kaleido.Client.Calls;
+using Kaleido.Http.Client.Registration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -41,7 +40,6 @@ public static class CallCredentialsRegistration
         // snippet: callers-credentials-registration
         // Kaleido:OnBehalfOfCalls = Exchange in configuration: a caller's call never carries the inbound token.
         services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(TokenExchangeHandler).Assembly] })
-            .AddHttp()
             .AddHttpClients()
             .AddKaleidoClientHandler<TokenExchangeHandler>();
         // end snippet

@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Kaleido.Http.Client;
 using Kaleido.Platform;
 using Kaleido.Processor;
 using Microsoft.Extensions.Logging;

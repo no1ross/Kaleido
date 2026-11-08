@@ -1,6 +1,8 @@
 #nullable enable
 const Kaleido.Server.KaleidoHttpOptions.SectionName = "Kaleido:Http" -> string!
 Kaleido.Server.KaleidoHttpOptions
+Kaleido.Server.Registry.IKaleidoRegistryService
+Kaleido.Server.Registry.IKaleidoRegistryService.GetForCallerAsync(bool refresh, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Platform.Registry.KaleidoRegistry!>!
 Kaleido.Server.KaleidoHttpOptions.<Clone>$() -> Kaleido.Server.KaleidoHttpOptions!
 Kaleido.Server.KaleidoHttpOptions.Equals(Kaleido.Server.KaleidoHttpOptions? other) -> bool
 Kaleido.Server.KaleidoHttpOptions.IdempotencyLease.get -> System.TimeSpan

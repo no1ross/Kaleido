@@ -1,19 +1,16 @@
 using Kaleido.Http.FunctionalTests.Processor.Infrastructure;
-using Kaleido.Http.Server.Registry;
 using Kaleido.Platform.Registry;
 
 namespace Kaleido.Http.FunctionalTests.Authorization;
 
 /// <summary>
-/// <see cref="IKaleidoRegistryService"/> called in process sees exactly what the registry endpoint
-/// serves to the same caller: the same per-caller filtering, the same revision.
+/// <see cref="IKaleidoRegistryService"/> filters the hydrated central registry per caller,
+/// so the MCP adapter's in-process view never exposes another caller's capabilities.
 /// </summary>
 public sealed class InProcessRegistryTests(
     AuthorizationAspNetCoreFixture fixture)
     : IClassFixture<AuthorizationAspNetCoreFixture>
 {
-    private const string RegistryUrl = "/kaleido/registry";
-
     private async Task<KaleidoRegistry> ReadAsync(string url, string? user, params string[] roles)
     {
         using var request = user is null
@@ -25,22 +22,6 @@ public sealed class InProcessRegistryTests(
 
         return await response.Content.ReadAsync<KaleidoRegistry>()
             ?? throw new InvalidOperationException("No registry.");
-    }
-
-    [Theory]
-    [InlineData(null, new string[0])]
-    [InlineData("alice", new[] { "viewer" })]
-    [InlineData("alice", new[] { "internal" })]
-    [InlineData("alice", new[] { "admin" })]
-    public async Task TheServiceInProcess_MatchesTheEndpoint_ForTheSameCaller(string? user, string[] roles)
-    {
-        var endpoint = await ReadAsync(RegistryUrl, user, roles);
-        var inProcess = await ReadAsync(AuthorizationAspNetCoreFixture.InProcessRegistryUrl, user, roles);
-
-        Assert.Equal(endpoint.Revision, inProcess.Revision);
-        Assert.Equal(
-            endpoint.Processes.SelectMany(x => x.Steps ?? []).Select(x => x.Name).Order(),
-            inProcess.Processes.SelectMany(x => x.Steps ?? []).Select(x => x.Name).Order());
     }
 
     [Fact]

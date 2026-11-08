@@ -1,4 +1,3 @@
-using Kaleido.Http.Registry;
 using Kaleido.Http.Server.Registry;
 
 namespace Kaleido.Http.Server.Queryable;
@@ -28,7 +27,6 @@ internal static class QueryableRegistryItemExtensions
             Source = item.Source,
             Pageable = item.Pageable.ToWire(),
             Authorization = item.Authorization,
-            RegistryUrl = RegistryContractUrls.Registry(serviceName),
             QueryUrl = QueryableContractUrls.QuerySourceQuery(serviceName, sourceName),
             Fields = [.. item.Fields.Select(f => f.ToWire())],
             Parameters = [.. item.Parameters.Select(p => p.ToWire())],

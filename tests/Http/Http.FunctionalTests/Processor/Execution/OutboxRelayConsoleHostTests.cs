@@ -28,6 +28,7 @@ public sealed class OutboxRelayConsoleHostTests : IAsyncLifetime
 
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"kaleido-relay-{Guid.NewGuid():N}.db");
     private readonly List<IHost> _hosts = [];
+    private TestControlRegistry? _registry;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -42,6 +43,11 @@ public sealed class OutboxRelayConsoleHostTests : IAsyncLifetime
         {
             await host.StopAsync(CancellationToken.None);
             host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
 
         SqliteConnection.ClearAllPools();
@@ -136,6 +142,7 @@ public sealed class OutboxRelayConsoleHostTests : IAsyncLifetime
     // A service that only writes its events: no publisher, no relay.
     private async Task<IHost> StartWriterAsync(string serviceName)
     {
+        _registry ??= await TestControlRegistry.StartAsync();
         var host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -143,15 +150,21 @@ public sealed class OutboxRelayConsoleHostTests : IAsyncLifetime
                 web.ConfigureServices(services =>
                 {
                     services.AddRouting();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = serviceName,
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                         Assemblies = [typeof(RuntimeRootStep).Assembly],
                     })
                         .AddInMemoryStores()
                         .AddHttp()
+                        .AddControlRegistryClient()
                         .AddSqliteContextStore(ConnectionString).AddSqliteOutboxStore(ConnectionString).AddSqliteIdempotencyStore(ConnectionString);
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                 });
                 web.Configure(app =>
                 {
@@ -162,6 +175,7 @@ public sealed class OutboxRelayConsoleHostTests : IAsyncLifetime
             .StartAsync(Cancel);
 
         _hosts.Add(host);
+        await _registry.WaitForRegistrationAsync(host);
 
         await using var scope = host.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>().Database.EnsureCreatedAsync(Cancel);

@@ -6,6 +6,7 @@ using Kaleido.Platform;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,12 +22,14 @@ public sealed class CallerVisibilityTests : IAsyncLifetime
     private const string ServiceName = "kaleido";
 
     private IHost? _host;
+    private TestControlRegistry? _registry;
     private HttpClient _client = null!;
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     public async ValueTask InitializeAsync()
     {
+        _registry = await TestControlRegistry.StartAsync();
         _host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -37,26 +40,38 @@ public sealed class CallerVisibilityTests : IAsyncLifetime
                     services.AddAuthentication(TestAuthHandler.SchemeName)
                         .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
                     services.AddAuthorization();
-                    services.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = ServiceName,
+                        ServiceVersion = "1",
                         AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
                         Assemblies = [typeof(CallerVisibilityTests).Assembly],
                         TypeFilter = type => type.Namespace == typeof(CallerVisibilityTests).Namespace,
                     })
                         .AddInMemoryStores()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                 });
                 web.Configure(app =>
                 {
                     app.UseRouting();
                     app.UseAuthentication();
                     app.UseAuthorization();
-                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp());
+                    app.UseEndpoints(endpoints =>
+                    {
+                        endpoints.MapKaleidoHttp();
+                        endpoints.MapGet("/test/in-process-registry", async (IKaleidoRegistryService registry, CancellationToken ct) =>
+                            Results.Json(await registry.GetForCallerAsync(refresh: false, ct), KaleidoJsonOptions.Options));
+                    });
                 });
             })
             .StartAsync(Cancel);
 
+        await _registry.WaitForRegistrationAsync(_host);
         _client = _host.GetTestClient();
     }
 
@@ -68,6 +83,11 @@ public sealed class CallerVisibilityTests : IAsyncLifetime
         {
             await _host.StopAsync(CancellationToken.None);
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 
@@ -130,7 +150,7 @@ public sealed class CallerVisibilityTests : IAsyncLifetime
 
     private async Task<JsonElement> RegistryAsync(string role)
     {
-        using var request = AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, $"/{ServiceName}/registry", role, role);
+        using var request = AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, "/test/in-process-registry", role, role);
         using var response = await _client.SendAsync(request, Cancel);
         return Parse(await response.Content.ReadAsStringAsync(Cancel));
     }

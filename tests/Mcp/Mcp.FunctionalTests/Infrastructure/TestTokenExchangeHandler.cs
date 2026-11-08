@@ -1,5 +1,3 @@
-using Kaleido.Client;
-
 namespace Kaleido.Mcp.FunctionalTests.Infrastructure;
 
 /// <summary>

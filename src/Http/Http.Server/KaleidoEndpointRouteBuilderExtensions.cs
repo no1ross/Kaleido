@@ -1,10 +1,9 @@
-using Kaleido.Http.Server.Registry;
+using Kaleido.Platform.Registry;
 using Kaleido.Processor.Registry;
 using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -20,32 +19,21 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
     /// <summary>
     /// Maps all registered Kaleido endpoints in one call.
     /// The framework auto-detects which runtimes are active (Process and/or Queryable)
-    /// and maps only those, plus the unified <c>GET /{service}/registry</c> endpoint.
-    /// Set <see cref="KaleidoHttpMapOptions.AggregateRegistry"/> to also fan out to
-    /// downstream services registered via <c>AddHttpClients()</c> (routers/gateways).
+    /// and maps only those. Registry reads and writes go through the central registry.
     /// Returns an <see cref="IEndpointConventionBuilder"/> that
     /// propagates conventions (e.g. <c>.RequireAuthorization()</c>) to all mapped endpoints.
     /// </summary>
-    /// <remarks>
-    /// The <c>Kaleido:Http:Map</c> configuration section (from the host's <see cref="IConfiguration"/>) is
-    /// laid over a copy of <paramref name="options"/>: configuration overrides code, setting by setting
-    /// (ADR 0030). The result is validated; an invalid setting throws <c>invalid_http_options</c>.
-    /// </remarks>
     /// <param name="endpoints">The host's endpoint route builder.</param>
-    /// <param name="options">The options set in code; <see langword="null"/> uses the defaults.</param>
     /// <returns>A convention builder for every mapped Kaleido endpoint.</returns>
-    public static IEndpointConventionBuilder MapKaleidoHttp(
-        this IEndpointRouteBuilder endpoints,
-        KaleidoHttpMapOptions? options = null)
+    public static IEndpointConventionBuilder MapKaleidoHttp(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-
-        var mapOptions = ResolveMapOptions(endpoints.ServiceProvider, options ?? new KaleidoHttpMapOptions());
 
         var logger = endpoints.ServiceProvider
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger("Kaleido.Startup");
 
+        ValidateCentralRegistry(endpoints.ServiceProvider);
         ValidateAuthorization(endpoints.ServiceProvider, logger);
 
         var hasProcess = endpoints.ServiceProvider.GetService<IProcessorStepRegistry>() is not null;
@@ -84,27 +72,18 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
                 endpoints.MapQueryable());
         }
 
-        // Every Kaleido host exposes its registry; aggregation mode fans out to
-        // downstream clients (validated inside MapRegistry).
-        if (hasProcess || hasQueryable || mapOptions.AggregateRegistry)
-        {
-            builders.Add(
-                endpoints.MapRegistry(mapOptions));
-        }
-
         return new RouteHandlerBuilder(builders);
     }
 
-    // The host's Kaleido:Http:Map section over the options from code (ADR 0030), validated.
-    private static KaleidoHttpMapOptions ResolveMapOptions(IServiceProvider services, KaleidoHttpMapOptions options)
+    private static void ValidateCentralRegistry(IServiceProvider services)
     {
-        var resolved = services.GetService<IConfiguration>() is { } configuration
-            ? configuration.GetSection(KaleidoHttpMapOptions.SectionName).BindOver(options, ConfigurationErrorCodes.InvalidHttpOptions)
-            : options;
-
-        KaleidoHttpMapOptions.Validate(resolved);
-
-        return resolved;
+        using var scope = services.CreateScope();
+        if (scope.ServiceProvider.GetService<IKaleidoRegistrySource>() is null)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.RegistryNotConfigured,
+                "A Kaleido HTTP host requires the central registry. Configure Kaleido:BaseUrl with the gateway address and call AddControlRegistryClient() before MapKaleidoHttp().");
+        }
     }
 
     // Startup authorization checks, by mode:

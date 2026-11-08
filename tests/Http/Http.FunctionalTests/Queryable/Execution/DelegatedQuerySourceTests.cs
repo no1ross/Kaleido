@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.Json;
 using Kaleido.Client.Queryable;
 using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
 using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
@@ -15,34 +14,6 @@ public sealed class DelegatedQuerySourceTests(QueryableAspNetCoreFixture fixture
 
     private readonly HttpClient _client = fixture.Client;
     private readonly IKaleidoQueryableClientFactory _factory = fixture.ClientFactory;
-
-    [Fact]
-    public async Task Registry_PublishesDelegatedSourceLikeAnyOtherSource()
-    {
-        var registry = await _factory.GetClient("test").GetRegistryAsync(TestContext.Current.CancellationToken);
-
-        var source = Assert.Single(registry, r => r.Name == nameof(FunctionalRecordSummarySource));
-
-        Assert.Equal(QueryUrl, source.QueryUrl);
-        Assert.Empty(source.Views);
-        Assert.Equal(nameof(FunctionalRecordSummaryParameters.Category), Assert.Single(source.Parameters).Name);
-        Assert.Equal(nameof(FunctionalRecordSummary.Label), Assert.Single(source.OutputFields).Name);
-        Assert.Contains(source.Fields, f => f.Name == nameof(FunctionalRecordContext.Code) && f.IsFilterable);
-    }
-
-    [Fact]
-    public async Task Registry_DoesNotPublishHowTheSourceIsFulfilled()
-    {
-        var json = await _client.GetStringAsync("/kaleido/registry");
-
-        using var document = JsonDocument.Parse(json);
-        var source =
-            document.RootElement.GetProperty("queryables")
-                .EnumerateArray()
-                .Single(x => x.GetProperty("name").GetString() == nameof(FunctionalRecordSummarySource));
-
-        Assert.False(source.TryGetProperty("kind", out _));
-    }
 
     [Fact]
     public async Task Query_ReturnsSourceResultsWithDownstreamPagingUntouched()
