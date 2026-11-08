@@ -59,6 +59,9 @@ public sealed record KaleidoRegistryOptions
     /// </summary>
     public IReadOnlyList<KaleidoRegistryExpectedService> Expected { get; init; } = [];
 
+    /// <summary>Cache settings for immutable revisions and the merged view.</summary>
+    public KaleidoRegistryCacheOptions Cache { get; init; } = new();
+
     /// <summary>
     /// How often an instance heartbeats, handed out in every lease; also how often the Kaleido hosts check
     /// each version's availability (it cannot change faster than heartbeats arrive). Default 10 seconds.
@@ -80,6 +83,7 @@ public sealed record KaleidoRegistryOptions
         Require(options.MissedHeartbeats > 0, nameof(MissedHeartbeats), "must be positive");
         Require(options.Retention > options.Lease, nameof(Retention), "must be longer than HeartbeatInterval x MissedHeartbeats");
         Require(!string.IsNullOrWhiteSpace(options.RegistrantRolePrefix), nameof(RegistrantRolePrefix), "must not be empty");
+        KaleidoRegistryCacheOptions.Validate(options.Cache);
 
         foreach (var (service, clients) in options.Registrants)
         {

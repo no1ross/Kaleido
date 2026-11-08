@@ -13,7 +13,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Include="..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
-		<Compile Include="..\Shared\Registry\TestControlRegistry.cs" Link="Hosting\TestControlRegistry.cs" />
+		<Compile Include="..\Shared\Registry\*.cs" Link="Hosting\%(Filename)%(Extension)" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />

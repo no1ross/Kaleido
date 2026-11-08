@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
 using Kaleido.Platform;
 using Kaleido.Platform.Processor;
@@ -8,9 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Registry;
 
-// The control registry's full registry, from its store (#553). One per host: it keeps each revision's
-// parsed capabilities (a revision never changes, so only new ones are read), and the view it built for
-// ViewTtl, so the registry, the status endpoint and the health check share one read.
+// The control registry's full registry, from its store (#553). HybridCache shares each immutable
+// revision's parsed capabilities and the briefly cached view across the registry, status and health reads.
+// The store remains the source of truth after a cache miss.
 // The rules, worked out on every build from what the instances reported - nothing writes a state:
 // - each instance's state: Unknown while it has not been heard from since the registry's watch resumed
 //   (every registry node was down), for one lease; else Ready (healthy, a heartbeat within its lease)
@@ -33,15 +32,11 @@ internal interface IRegistryStatusReader
 
 internal sealed class StoreRegistrySource(
     IServiceScopeFactory scopeFactory,
+    IRegistryCache cache,
     KaleidoRegistryOptions options,
     TimeProvider time)
-    : IKaleidoRegistrySource, IRegistryStatusReader, IDisposable
+    : IKaleidoRegistrySource, IRegistryStatusReader
 {
-    internal static readonly TimeSpan ViewTtl = TimeSpan.FromSeconds(1);
-
-    private readonly ConcurrentDictionary<string, KaleidoRegistry> _capabilities = new(StringComparer.Ordinal);
-    private readonly SemaphoreSlim _gate = new(1, 1);
-    private RegistryView? _view;
 
     // The store's registry is the whole registry: every participant registered its own capabilities.
     // The registry a consumer reads: every capability with its version's overall status.
@@ -59,44 +54,19 @@ internal sealed class StoreRegistrySource(
     public async Task<KaleidoRegistryAvailability> GetAvailabilityAsync(CancellationToken cancellationToken) =>
         (await ViewAsync(cancellationToken)).Availability;
 
-    public Task RefreshAsync(CancellationToken cancellationToken)
-    {
-        _view = null;
-        return Task.CompletedTask;
-    }
+    public Task RefreshAsync(CancellationToken cancellationToken) => cache.InvalidateViewAsync(cancellationToken);
 
-    public void Dispose() => _gate.Dispose();
-
-    private async Task<RegistryView> ViewAsync(CancellationToken cancellationToken)
-    {
-        if (Fresh(_view) is { } view)
-        {
-            return view;
-        }
-
-        await _gate.WaitAsync(cancellationToken);
-        try
-        {
-            return Fresh(_view) ?? (_view = await BuildAsync(cancellationToken));
-        }
-        finally
-        {
-            _gate.Release();
-        }
-    }
-
-    private RegistryView? Fresh(RegistryView? view) =>
-        view is not null && time.GetUtcNow() - view.BuiltUtc < ViewTtl ? view : null;
+    private Task<RegistryView> ViewAsync(CancellationToken cancellationToken) => cache.GetViewAsync(BuildAsync, cancellationToken);
 
     private async Task<RegistryView> BuildAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var store = scope.ServiceProvider.GetRequiredService<IKaleidoRegistryStore>();
         var contents = await store.ReadAsync(cancellationToken);
-        await LoadCapabilitiesAsync(store, contents, cancellationToken);
+        var published = await LoadCapabilitiesAsync(store, contents, cancellationToken);
 
         var now = time.GetUtcNow();
-        var (capabilities, statuses) = Build(contents, now);
+        var (capabilities, statuses) = Build(contents, now, published);
         var status = new KaleidoRegistryStatus { Services = statuses, GeneratedAt = now, Revision = RevisionOf(statuses) };
         List<RegistryServiceAvailability> versions = [.. statuses.Select(x => new RegistryServiceAvailability { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, IsCurrent = x.IsCurrent, Status = x.Status })];
         var revisioned = capabilities with { Revision = capabilities.ToEntryJson().ToRevision() };
@@ -117,8 +87,7 @@ internal sealed class StoreRegistrySource(
             revisioned,
             revisioned.WithAvailability(availability),
             status,
-            availability,
-            now);
+            availability);
     }
 
     // The states and statuses, without the heartbeat times: a heartbeat alone changes nothing a reader acts on.
@@ -127,27 +96,30 @@ internal sealed class StoreRegistrySource(
             statuses.Select(x => x with { Instances = [.. x.Instances.Select(i => i with { LastHeartbeatUtc = default })] }),
             KaleidoJsonOptions.Options).ToRevision();
 
-    // Reads only the revisions not parsed yet, and forgets those the store no longer has.
-    private async Task LoadCapabilitiesAsync(IKaleidoRegistryStore store, RegistryStoreContents contents, CancellationToken cancellationToken)
+    // Revisions are immutable: a cached entry stays valid when an instance stops or a version rolls back.
+    private async Task<IReadOnlyDictionary<string, KaleidoRegistry>> LoadCapabilitiesAsync(IKaleidoRegistryStore store, RegistryStoreContents contents, CancellationToken cancellationToken)
     {
-        var stored = contents.Registrations.Select(x => x.Revision).ToHashSet(StringComparer.Ordinal);
-        var missing = stored.Where(x => !_capabilities.ContainsKey(x)).ToList();
-
-        if (missing.Count > 0)
+        var published = new Dictionary<string, KaleidoRegistry>(StringComparer.Ordinal);
+        foreach (var revision in contents.Registrations.Select(x => x.Revision).Distinct(StringComparer.Ordinal))
         {
-            foreach (var (revision, json) in await store.GetCapabilitiesAsync(missing, cancellationToken))
+            try
             {
-                _capabilities[revision] = json.ToRegistryEntry();
+                published[revision] = await cache.GetCapabilitiesAsync(revision, async token =>
+                {
+                    var stored = await store.GetCapabilitiesAsync([revision], token);
+                    return stored[revision].ToRegistryEntry();
+                }, cancellationToken);
+            }
+            catch (KeyNotFoundException)
+            {
+                continue;
             }
         }
 
-        foreach (var gone in _capabilities.Keys.Where(x => !stored.Contains(x)).ToList())
-        {
-            _capabilities.TryRemove(gone, out _);
-        }
+        return published;
     }
 
-    private (KaleidoRegistry Registry, List<RegistryServiceStatus> Statuses) Build(RegistryStoreContents contents, DateTimeOffset now)
+    private (KaleidoRegistry Registry, List<RegistryServiceStatus> Statuses) Build(RegistryStoreContents contents, DateTimeOffset now, IReadOnlyDictionary<string, KaleidoRegistry> published)
     {
         var versions = contents.Registrations.Select(x => (x.ServiceName, x.ServiceVersion))
             .Concat(contents.Instances.Select(x => (x.ServiceName, x.ServiceVersion)))
@@ -167,11 +139,11 @@ internal sealed class StoreRegistrySource(
                 .Select(x => (Record: x, State: StateOf(x, now, contents.WatchResumedUtc)))
                 .ToList();
             var live = instances.Where(x => x.State != RegistryInstanceState.NotReady).Select(x => x.Record).ToList();
-            var published = Published(contents.Registrations.Where(x => Is(x.ServiceName, x.ServiceVersion, service, version)), live.Count > 0 ? live : [.. instances.Select(x => x.Record)]);
+            var shared = Published(contents.Registrations.Where(x => Is(x.ServiceName, x.ServiceVersion, service, version)), live.Count > 0 ? live : [.. instances.Select(x => x.Record)], published);
 
             // Each entry is the version it was registered under, whatever the stored copy says.
-            processes.AddRange(published.Processes.Select(x => x with { ServiceVersion = version }));
-            queryables.AddRange(published.Queryables.Select(x => x with { ServiceVersion = version }));
+            processes.AddRange(shared.Processes.Select(x => x with { ServiceVersion = version }));
+            queryables.AddRange(shared.Queryables.Select(x => x with { ServiceVersion = version }));
             statuses.Add(StatusOf(service, version, instances, contents.CurrentVersions));
         }
 
@@ -210,13 +182,13 @@ internal sealed class StoreRegistrySource(
     }
 
     // The registrations the instances run, oldest first; with no instance, every registration kept.
-    private KaleidoRegistry Published(IEnumerable<RegistryRegistrationRecord> registrations, List<RegistryInstanceRecord> instances)
+    private static KaleidoRegistry Published(IEnumerable<RegistryRegistrationRecord> registrations, List<RegistryInstanceRecord> instances, IReadOnlyDictionary<string, KaleidoRegistry> capabilities)
     {
         var running = instances.Select(x => x.Revision).ToHashSet(StringComparer.Ordinal);
         var all = registrations.OrderBy(x => x.RegisteredUtc).ToList();
         var used = all.Where(x => running.Contains(x.Revision)).ToList();
 
-        return Shared([.. (used.Count > 0 ? used : all).Select(x => _capabilities.GetValueOrDefault(x.Revision)).OfType<KaleidoRegistry>()]);
+        return Shared([.. (used.Count > 0 ? used : all).Select(x => capabilities.GetValueOrDefault(x.Revision)).OfType<KaleidoRegistry>()]);
     }
 
     // The rolling-deployment rule: a capability every revision has, as the oldest one defines it.
@@ -277,5 +249,6 @@ internal sealed class StoreRegistrySource(
 
     private static bool SameName(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
-    private sealed record RegistryView(KaleidoRegistry Capabilities, KaleidoRegistry Contents, KaleidoRegistryStatus Status, KaleidoRegistryAvailability Availability, DateTimeOffset BuiltUtc);
 }
+
+internal sealed record RegistryView(KaleidoRegistry Capabilities, KaleidoRegistry Contents, KaleidoRegistryStatus Status, KaleidoRegistryAvailability Availability);

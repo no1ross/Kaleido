@@ -274,6 +274,7 @@ var connection = "Data Source=" + database;
 var registryBuilder = WebApplication.CreateBuilder(args);
 var registryTime = new ManualTimeProvider();
 registryBuilder.Services.AddSingleton<TimeProvider>(registryTime);
+registryBuilder.Services.Configure<Microsoft.Extensions.Caching.Memory.MemoryCacheOptions>(options => options.Clock = registryTime);
 registryBuilder.WebHost.UseUrls("http://127.0.0.1:0");
 registryBuilder.Services.AddKaleido(registryBuilder.Configuration, new()
 {
@@ -291,6 +292,7 @@ registryApp.MapKaleidoControlRegistry();
 await registryApp.StartAsync();
 
 var registered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+var availabilityRead = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://127.0.0.1:0");
 builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -322,6 +324,7 @@ builder.Services
 builder.Services.AddTransient<RegistryRegistrationSignal>();
 builder.Services.AddHttpClient("kaleido-registry").AddHttpMessageHandler<RegistryRegistrationSignal>();
 builder.Services.AddSingleton(registered);
+builder.Services.AddSingleton(availabilityRead);
 
 var app = builder.Build();
 
@@ -338,6 +341,7 @@ await app.StartAsync();
 try
 {
     await registered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+    await availabilityRead.Task.WaitAsync(TimeSpan.FromSeconds(15));
     registryTime.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
     using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
     using var registryHttp = new HttpClient { BaseAddress = new Uri(registryApp.Urls.First()) };
@@ -378,7 +382,7 @@ finally
     File.Delete(database);
 }
 
-public sealed class RegistryRegistrationSignal(TaskCompletionSource registered) : DelegatingHandler
+public sealed class RegistryRegistrationSignal(TaskCompletionSource registered, TaskCompletionSource<bool> availabilityRead) : DelegatingHandler
 {
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -388,15 +392,26 @@ public sealed class RegistryRegistrationSignal(TaskCompletionSource registered) 
             registered.TrySetResult();
         }
 
+        if (request.Method == HttpMethod.Get && request.RequestUri?.AbsolutePath == "/registry/availability" && response.IsSuccessStatusCode)
+        {
+            availabilityRead.TrySetResult(true);
+        }
+
         return response;
     }
 }
 
-public sealed class ManualTimeProvider : TimeProvider
+public sealed class ManualTimeProvider : TimeProvider, Microsoft.Extensions.Internal.ISystemClock
 {
     private long ticks = DateTimeOffset.UtcNow.Ticks;
 
     public override DateTimeOffset GetUtcNow() => new(Interlocked.Read(ref ticks), TimeSpan.Zero);
+
+    public override long GetTimestamp() => Interlocked.Read(ref ticks);
+
+    public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+    public DateTimeOffset UtcNow => GetUtcNow();
 
     public void Advance(TimeSpan amount) => Interlocked.Add(ref ticks, amount.Ticks);
 }

@@ -143,13 +143,28 @@ a production guard and the host-side docs are #566.
 
 `KaleidoRegistryOptions`: `RegistrantPolicy`, `ReaderPolicy`, `RegistrantRolePrefix`
 (`Kaleido.Registrant.`), `Registrants` (optional), `Expected`, `HeartbeatInterval` (10 s),
-`MissedHeartbeats` (3), `Retention` (24 h). An invalid value stops startup (`invalid_options`).
+`MissedHeartbeats` (3), `Retention` (24 h), and `Cache`. An invalid value stops startup (`invalid_options`).
 
 The registry sets every participant's pace: the heartbeat interval in each lease, and the interval at
 which the hosts check the availability (`HeartbeatInterval`) with each availability. The availability
 also names the capabilities' revision (`CapabilitiesRevision`): a host reads the capabilities exactly
 when they changed, so a deployment shows on every host within one check. A change reaches every host at
 its next check.
+
+### Cache (`Kaleido:Registry:Cache`)
+
+`AddControlRegistry()` registers HybridCache with a local in-memory tier. If the host registers an
+`IDistributedCache` (for example Redis), HybridCache also shares entries across registry nodes;
+the registry store is still the source of truth. `KaleidoRegistryCacheOptions` binds these settings:
+
+- `KeyPrefix` defaults to `kaleido:registry`; give environments sharing a distributed cache distinct prefixes.
+- `ViewTtl` defaults to one second. The registry, status, availability and capabilities reads share this merged view; `ViewLocalTtl` may shorten its local lifetime.
+- `CapabilitiesTtl` defaults to one year. Each immutable capability revision has its own key and is read again from the store after expiry; `CapabilitiesLocalTtl` may shorten its local lifetime.
+
+Both local lifetimes default to their overall TTL and cannot exceed it. All durations must be positive.
+A failed distributed read or write falls back to the registry store; a failed shared invalidation is logged
+and the short view TTL bounds staleness. HybridCache does not support an unlimited lifetime safely on
+all distributed backends, so revisions use a long finite TTL instead of literal no-expiry.
 
 ## Health
 
@@ -169,8 +184,8 @@ registration is insert-if-absent, the current version set-if-absent, a heartbeat
 checking the instance's service against what the caller may register; the watch touch
 (`TouchWatchAsync`) one statement too, resuming the watch when no node touched it within the lease; a
 sweep is idempotent. Reads
-leave the capabilities out (`ReadAsync`); the registry reads each revision's once
-(`GetCapabilitiesAsync`), since a revision never changes. Choose it explicitly:
+leave the capabilities out (`ReadAsync`); the registry reads each revision on a HybridCache miss
+(`GetCapabilitiesAsync`). Choose the store explicitly:
 `AddInMemoryRegistryStore()` (development and tests: lost on restart, not shared between registry
 instances), or a durable one: `AddSqliteRegistryStore(connectionString)` (`Kaleido.Provider.SQLite`, one node) or your own with `AddRegistryStore<T>()`, tested by deriving from the shared contract suite `IKaleidoRegistryStoreTests`. Without one, `MapKaleidoControlRegistry()`
 stops startup (`stores_not_chosen`).
@@ -179,8 +194,9 @@ stops startup (`stores_not_chosen`).
 
 - `ControlRegistry.cs` - registration, heartbeats, deregistration and their trust
 - `StoreRegistrySource.cs` - the full registry from the store: instance states, the rolling-deployment
-  rule, each version's status (on each capability, and in detail) and what is missing; each revision's
-  capabilities read once, one view shared for a second
+  rule, each version's status (on each capability, and in detail) and what is missing
+- `RegistryHybridCache.cs` - the merged view and revision-keyed capabilities through HybridCache, with
+  cache lifetimes and key namespace from `KaleidoRegistryCacheOptions`
 - `RegistryHousekeeping.cs` - each node's watch touch and the retention sweep
 - `RegistryRegistrants.cs` - who may register which service
 - `ControlRegistryEndpointRouteBuilderExtensions.cs` - the endpoints

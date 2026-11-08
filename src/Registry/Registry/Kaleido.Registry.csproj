@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<Description>Kaleido control registry: the central registry every Kaleido service registers with and heartbeats to, serving the merged registry of every service version and its instances&apos; status (#553).</Description>
+		<Description>Kaleido control registry: the central registry every Kaleido service registers with and heartbeats to, serving the merged registry of every service version and its instances' status (#553).</Description>
 		<PackageTags>kaleido;registry;discovery;aspnetcore</PackageTags>
 	</PropertyGroup>
 
@@ -10,8 +10,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Until the per-service registry is removed (#581), the registry serves the shared snapshot of the HTTP server's in-host registry service; then it builds on Kaleido.Server. -->
-		<ProjectReference Include="..\..\Http\Http.Server\Kaleido.Http.Server.csproj" />
+		<ProjectReference Include="..\..\Server\Kaleido.Server.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -21,5 +20,9 @@
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 		<InternalsVisibleTo Include="Kaleido.Provider.SQLite.UnitTests" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
 	</ItemGroup>
 </Project>

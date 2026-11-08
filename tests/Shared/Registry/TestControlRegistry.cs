@@ -7,6 +7,7 @@ using Kaleido.Registry.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -35,6 +36,7 @@ public sealed class TestControlRegistry : IAsyncDisposable
                 {
                     services.AddRouting();
                     services.AddSingleton<TimeProvider>(registry.time);
+                    services.Configure<MemoryCacheOptions>(options => options.Clock = new RegistryFakeClock(registry.time));
                     services.AddKaleido(new ConfigurationBuilder().Build(), new()
                     {
                         ServiceName = "registry",

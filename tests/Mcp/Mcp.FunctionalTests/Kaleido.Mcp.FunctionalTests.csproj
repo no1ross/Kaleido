@@ -6,7 +6,7 @@
 		<PackageReference Include="ModelContextProtocol.AspNetCore" />
 	</ItemGroup>
 	<ItemGroup>
-		<Compile Include="..\..\Shared\Registry\TestControlRegistry.cs" Link="Infrastructure\TestControlRegistry.cs" />
+		<Compile Include="..\..\Shared\Registry\*.cs" Link="Infrastructure\%(Filename)%(Extension)" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Registry\Registry.Http\Kaleido.Registry.Http.csproj" />

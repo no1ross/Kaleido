@@ -11,6 +11,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Registry\Kaleido.Registry.csproj" />
+		<ProjectReference Include="..\..\Http\Http.Server\Kaleido.Http.Server.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

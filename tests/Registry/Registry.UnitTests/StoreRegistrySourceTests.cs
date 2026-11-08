@@ -5,8 +5,7 @@ using static Kaleido.Registry.UnitTests.RegistryTestData;
 namespace Kaleido.Registry.UnitTests;
 
 // #553: the control registry's full registry from its store - capabilities per service version (the
-// rolling rule), each version's status, what is missing - and how it reads the store: each revision's
-// capabilities once, and one view shared for a second.
+// rolling rule), each version's status and what is missing. The cache collaborator owns freshness.
 public sealed class StoreRegistrySourceTests
     : SutFixture
 {
@@ -14,6 +13,7 @@ public sealed class StoreRegistrySourceTests
     private static readonly DateTimeOffset Now = Start.AddHours(1);
 
     private readonly Mock<IKaleidoRegistryStore> store = new();
+    private readonly Mock<IRegistryCache> cache = new();
     private readonly Dictionary<string, string> capabilities = new(StringComparer.Ordinal);
     private readonly FakeTimeProvider time = new(Now);
     private RegistryStoreContents contents = new();
@@ -23,6 +23,10 @@ public sealed class StoreRegistrySourceTests
         store.Setup(x => x.ReadAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => contents);
         store.Setup(x => x.GetCapabilitiesAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyCollection<string> revisions, CancellationToken _) => revisions.Where(capabilities.ContainsKey).ToDictionary(x => x, x => capabilities[x], StringComparer.Ordinal));
+        cache.Setup(x => x.GetViewAsync(It.IsAny<Func<CancellationToken, Task<RegistryView>>>(), It.IsAny<CancellationToken>()))
+            .Returns((Func<CancellationToken, Task<RegistryView>> build, CancellationToken token) => build(token));
+        cache.Setup(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<Func<CancellationToken, Task<KaleidoRegistry>>>(), It.IsAny<CancellationToken>()))
+            .Returns((string _, Func<CancellationToken, Task<KaleidoRegistry>> load, CancellationToken token) => load(token));
     }
 
     private StoreRegistrySource CreateSut(KaleidoRegistryOptions? options = null)
@@ -34,7 +38,7 @@ public sealed class StoreRegistrySourceTests
         var factory = new Mock<IServiceScopeFactory>();
         factory.Setup(x => x.CreateScope()).Returns(scope.Object);
 
-        return new StoreRegistrySource(factory.Object, options ?? Defaults, time);
+        return new StoreRegistrySource(factory.Object, cache.Object, options ?? Defaults, time);
     }
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
@@ -206,9 +210,8 @@ public sealed class StoreRegistrySourceTests
             view.Missing);
     }
 
-    // A revision never changes: its capabilities are read once, and forgotten when the store drops it.
     [Fact]
-    public async Task EachRevisionsCapabilities_AreReadOnce_AndForgottenWhenGone()
+    public async Task EachRevision_IsRequestedByItsCacheKey_EvenAfterARollback()
     {
         var sut = CreateSut();
         var v1 = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
@@ -216,48 +219,46 @@ public sealed class StoreRegistrySourceTests
         contents = new() { Registrations = [v1], Instances = [Instance(v1, Now)] };
         await sut.GetAsync(Cancel);
 
-        time.Advance(StoreRegistrySource.ViewTtl);
+        time.Advance(Defaults.Cache.ViewTtl);
         contents = new() { Registrations = [v1, v2], Instances = [Instance(v1, Now), Instance(v2, Now)] };
         await sut.GetAsync(Cancel);
 
-        time.Advance(StoreRegistrySource.ViewTtl);
+        time.Advance(Defaults.Cache.ViewTtl);
         contents = new() { Registrations = [v2], Instances = [Instance(v2, Now)] };
         await sut.GetAsync(Cancel);
 
-        time.Advance(StoreRegistrySource.ViewTtl);
+        time.Advance(Defaults.Cache.ViewTtl);
         contents = new() { Registrations = [v1, v2], Instances = [Instance(v1, Now), Instance(v2, Now)] };
         var view = await sut.GetAsync(Cancel);
 
-        store.Verify(x => x.GetCapabilitiesAsync(It.Is<IReadOnlyCollection<string>>(r => r.SequenceEqual(new[] { v1.Revision })), It.IsAny<CancellationToken>()), Times.Exactly(2));
-        store.Verify(x => x.GetCapabilitiesAsync(It.Is<IReadOnlyCollection<string>>(r => r.SequenceEqual(new[] { v2.Revision })), It.IsAny<CancellationToken>()), Times.Once);
+        cache.Verify(x => x.GetCapabilitiesAsync(v1.Revision, It.IsAny<Func<CancellationToken, Task<KaleidoRegistry>>>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+        cache.Verify(x => x.GetCapabilitiesAsync(v2.Revision, It.IsAny<Func<CancellationToken, Task<KaleidoRegistry>>>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         Assert.Equal(2, view.Processes.Count);
     }
 
-    // One view serves every read for ViewTtl; a refresh drops it.
-    [Theory]
-    [InlineData(-1, 1)]
-    [InlineData(0, 2)]
-    public async Task TheView_IsSharedForItsTtl(long ticksFromTheTtl, int reads)
+    [Fact]
+    public async Task ARevisionRemovedBetweenTheStoreReads_IsNotCachedOrPublished()
     {
         var sut = CreateSut();
+        var registration = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []));
+        contents = new() { Registrations = [registration], Instances = [Instance(registration, Now)] };
+        capabilities.Remove(registration.Revision);
 
-        await sut.GetAsync(Cancel);
-        time.Advance(StoreRegistrySource.ViewTtl + TimeSpan.FromTicks(ticksFromTheTtl));
-        await sut.GetStatusAsync(Cancel);
+        var registry = await sut.GetAsync(Cancel);
 
-        store.Verify(x => x.ReadAsync(It.IsAny<CancellationToken>()), Times.Exactly(reads));
+        Assert.Empty(registry.Processes);
+        cache.Verify(x => x.GetCapabilitiesAsync(registration.Revision, It.IsAny<Func<CancellationToken, Task<KaleidoRegistry>>>(), Cancel), Times.Once);
     }
 
     [Fact]
-    public async Task Refresh_DropsTheView()
+    public async Task Refresh_InvalidatesTheMergedView()
     {
         var sut = CreateSut();
-        await sut.GetAsync(Cancel);
 
         await sut.RefreshAsync(Cancel);
-        await sut.GetAsync(Cancel);
 
-        store.Verify(x => x.ReadAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        cache.Verify(x => x.InvalidateViewAsync(Cancel), Times.Once);
+        store.Verify(x => x.ReadAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // The statuses, apart: their revision follows their states only.
@@ -270,13 +271,13 @@ public sealed class StoreRegistrySourceTests
         contents = new() { Registrations = [registration], Instances = [instance] };
 
         var first = await sut.GetStatusAsync(Cancel);
-        time.Advance(StoreRegistrySource.ViewTtl);
+        time.Advance(Defaults.Cache.ViewTtl);
         var same = await sut.GetStatusAsync(Cancel);
-        time.Advance(StoreRegistrySource.ViewTtl);
+        time.Advance(Defaults.Cache.ViewTtl);
         contents = contents with { Instances = [instance, Instance(registration, Now)] };
         var changed = await sut.GetStatusAsync(Cancel);
 
-        Assert.Equal((1, time.GetUtcNow() - (StoreRegistrySource.ViewTtl * 2)), (Assert.Single(first.Services).Instances.Count, first.GeneratedAt));
+        Assert.Equal((1, time.GetUtcNow() - (Defaults.Cache.ViewTtl * 2)), (Assert.Single(first.Services).Instances.Count, first.GeneratedAt));
         Assert.Equal(first.Revision, same.Revision);
         Assert.NotEqual(first.Revision, changed.Revision);
         Assert.Matches("^[0-9a-f]{64}$", first.Revision!);
@@ -302,12 +303,12 @@ public sealed class StoreRegistrySourceTests
         contents = new() { Registrations = [registration], Instances = [instance] };
 
         var first = await sut.GetStatusAsync(Cancel);
-        time.Advance(StoreRegistrySource.ViewTtl);
-        contents = contents with { Instances = [instance with { LastHeartbeatUtc = Now + StoreRegistrySource.ViewTtl }] };
+        time.Advance(Defaults.Cache.ViewTtl);
+        contents = contents with { Instances = [instance with { LastHeartbeatUtc = Now + Defaults.Cache.ViewTtl }] };
         var later = await sut.GetStatusAsync(Cancel);
 
         Assert.Equal(first.Revision, later.Revision);
-        Assert.Equal(Now + StoreRegistrySource.ViewTtl, Assert.Single(Assert.Single(later.Services).Instances).LastHeartbeatUtc);
+        Assert.Equal(Now + Defaults.Cache.ViewTtl, Assert.Single(Assert.Single(later.Services).Instances).LastHeartbeatUtc);
     }
 
     // The overall status of a version, from its instances' states.
@@ -375,7 +376,7 @@ public sealed class StoreRegistrySourceTests
 
         var registry = await sut.GetAsync(Cancel);
         var capabilities = await sut.GetCapabilitiesAsync(Cancel);
-        time.Advance(StoreRegistrySource.ViewTtl);
+        time.Advance(Defaults.Cache.ViewTtl);
         contents = contents with { Instances = [Instance(registration, Now, healthy: false)] };
         var afterAFailure = await sut.GetCapabilitiesAsync(Cancel);
 
@@ -396,10 +397,10 @@ public sealed class StoreRegistrySourceTests
         contents = new() { Registrations = [registration], Instances = [Instance(registration, Now)], CurrentVersions = new Dictionary<string, string> { ["radiology"] = "1" } };
 
         var first = await sut.GetAvailabilityAsync(Cancel);
-        time.Advance(StoreRegistrySource.ViewTtl);
+        time.Advance(Defaults.Cache.ViewTtl);
         contents = contents with { Instances = [.. contents.Instances, Instance(registration, Now)] };
         var anotherInstance = await sut.GetAvailabilityAsync(Cancel);
-        time.Advance(StoreRegistrySource.ViewTtl);
+        time.Advance(Defaults.Cache.ViewTtl);
         contents = contents with { Instances = [.. contents.Instances, Instance(registration, Now, healthy: false)] };
         var degraded = await sut.GetAvailabilityAsync(Cancel);
 
@@ -423,7 +424,7 @@ public sealed class StoreRegistrySourceTests
 
         var standard = await sut.GetAvailabilityAsync(Cancel);
         var slower = await CreateSut(Defaults with { HeartbeatInterval = TimeSpan.FromSeconds(20) }).GetAvailabilityAsync(Cancel);
-        time.Advance(StoreRegistrySource.ViewTtl);
+        time.Advance(Defaults.Cache.ViewTtl);
         // A new build of the same version: the versions and their statuses are as they were, the capabilities are not.
         var rebuilt = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep", "CancelScanStep")], []));
         contents = contents with { Registrations = [rebuilt], Instances = [Instance(rebuilt, Now)] };

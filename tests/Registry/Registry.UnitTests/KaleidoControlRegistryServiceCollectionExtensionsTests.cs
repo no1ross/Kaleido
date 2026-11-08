@@ -1,4 +1,5 @@
 using Kaleido.Platform.Registry;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -46,6 +47,17 @@ public sealed class KaleidoControlRegistryServiceCollectionExtensionsTests
         Assert.DoesNotContain("ready", checks.Single(x => x.Name == "kaleido-registry-completeness").Tags);
     }
 
+    [Fact]
+    public void AddControlRegistry_RegistersHybridCache()
+    {
+        var services = new ServiceCollection();
+
+        Builder(services).AddControlRegistry();
+
+        using var provider = services.BuildServiceProvider();
+        Assert.NotNull(provider.GetRequiredService<HybridCache>());
+    }
+
     // The registry host's own store is its only full source; it does not participate as a client.
     [Fact]
     public void AddControlRegistry_RegistersTheStoreAsTheOnlyRegistrySource()
@@ -75,6 +87,40 @@ public sealed class KaleidoControlRegistryServiceCollectionExtensionsTests
         Assert.Equal(throws, exception is KaleidoConfigurationException { Code: ConfigurationErrorCodes.InvalidOptions });
         Assert.Equal(throws, exception is not null);
         Assert.Equal(throws, exception?.Message.Contains(policy, StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public void AddControlRegistry_BindsCacheSettings_AndInjectsThem()
+    {
+        var services = new ServiceCollection();
+        Builder(services, new()
+        {
+            ["Kaleido:Registry:Cache:KeyPrefix"] = "environment:registry",
+            ["Kaleido:Registry:Cache:ViewTtl"] = "00:00:04",
+            ["Kaleido:Registry:Cache:ViewLocalTtl"] = "00:00:02",
+            ["Kaleido:Registry:Cache:CapabilitiesTtl"] = "20.00:00:00",
+            ["Kaleido:Registry:Cache:CapabilitiesLocalTtl"] = "05.00:00:00",
+        }).AddControlRegistry();
+
+        using var provider = services.BuildServiceProvider();
+        var cache = provider.GetRequiredService<KaleidoRegistryCacheOptions>();
+        Assert.Same(provider.GetRequiredService<KaleidoRegistryOptions>().Cache, cache);
+        Assert.Equal("environment:registry", cache.KeyPrefix);
+        Assert.Equal(TimeSpan.FromSeconds(4), cache.ViewTtl);
+        Assert.Equal(TimeSpan.FromSeconds(2), cache.ViewLocalTtl);
+        Assert.Equal(TimeSpan.FromDays(20), cache.CapabilitiesTtl);
+        Assert.Equal(TimeSpan.FromDays(5), cache.CapabilitiesLocalTtl);
+    }
+
+    [Theory]
+    [InlineData("ViewTtl", "00:00:00")]
+    [InlineData("CapabilitiesLocalTtl", "400.00:00:00")]
+    public void AddControlRegistry_AnInvalidCacheSetting_StopsRegistration(string setting, string value)
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => Builder(new ServiceCollection(), new() { [$"Kaleido:Registry:Cache:{setting}"] = value }).AddControlRegistry());
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidOptions, exception.Code);
+        Assert.Contains($"Kaleido:Registry:Cache:{setting}", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -169,6 +170,7 @@ public sealed class ControlRegistryParticipantTests : IAsyncLifetime
                 web.ConfigureServices(services =>
                 {
                     services.AddSingleton<TimeProvider>(time);
+                    services.Configure<MemoryCacheOptions>(options => options.Clock = new RegistryFakeClock(time));
                     services.AddRouting();
                     services.AddAuthentication(TestAuthHandler.SchemeName).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
                     services.AddAuthorization(o =>

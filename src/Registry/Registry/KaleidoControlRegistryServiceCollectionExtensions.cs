@@ -58,7 +58,11 @@ public static class KaleidoControlRegistryServiceCollectionExtensions
 
         var services = builder.Services;
         services.AddSingleton(options);
+        services.AddSingleton(options.Cache);
         services.TryAddSingleton(TimeProvider.System);
+        services.AddLogging();
+        services.AddHybridCache();
+        services.TryAddSingleton<IRegistryCache, RegistryHybridCache>();
         services.TryAddSingleton<IRegistryRegistrants, RegistryRegistrants>();
         services.TryAddScoped<IControlRegistry, ControlRegistry>();
 
