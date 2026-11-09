@@ -1,7 +1,6 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
-using Kaleido.Http;
+using Kaleido.Http.Server;
 using Kaleido.Processor;
 using Kaleido.Processor.Execution;
 using Microsoft.AspNetCore.Builder;
@@ -18,31 +17,44 @@ namespace Kaleido.IntegrationTests.Guide.Returns;
 public sealed class ReturnsHost : IAsyncDisposable
 {
     private readonly IHost _host;
+    internal TestControlRegistry Registry { get; }
 
-    private ReturnsHost(IHost host) => _host = host;
+    private ReturnsHost(IHost host, TestControlRegistry registry)
+    {
+        _host = host;
+        Registry = registry;
+    }
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     /// <summary>A handler for the orders service's "returns" client: its calls reach this server.</summary>
     public HttpMessageHandler CreateHandler() => _host.GetTestServer().CreateHandler();
 
-    public static async Task<ReturnsHost> StartAsync() =>
-        new(await new HostBuilder()
+    public static async Task<ReturnsHost> StartAsync()
+    {
+        var registry = await TestControlRegistry.StartAsync();
+        var host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
                 web.UseTestServer();
                 web.ConfigureServices(s =>
                 {
                     s.AddRouting();
-                    s.AddKaleido(new ConfigurationBuilder().Build(), new()
+                    s.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build(), new()
                     {
                         ServiceName = "returns",
+                        ServiceVersion = "1",
                         Assemblies = [typeof(ReturnsHost).Assembly],
                         TypeFilter = type => type.Namespace == typeof(ReturnsHost).Namespace,
                         AuthorizationMode = KaleidoAuthorizationMode.None,
                     })
                         .AddInMemoryStores()
-                        .AddHttp();
+                        .AddHttp()
+                        .AddControlRegistryClient();
+                    s.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(registry.CreateHandler);
                 });
                 web.Configure(app =>
                 {
@@ -50,7 +62,10 @@ public sealed class ReturnsHost : IAsyncDisposable
                     app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp());
                 });
             })
-            .StartAsync(Cancel));
+            .StartAsync(Cancel);
+        await registry.WaitForRegistrationAsync(host);
+        return new ReturnsHost(host, registry);
+    }
 
     public async Task<(HttpStatusCode Status, JsonElement Body)> SendAsync(HttpMethod method, string url, Guid processId, object? body = null)
     {
@@ -72,6 +87,7 @@ public sealed class ReturnsHost : IAsyncDisposable
     {
         await _host.StopAsync(Cancel);
         _host.Dispose();
+        await Registry.DisposeAsync();
     }
 }
 

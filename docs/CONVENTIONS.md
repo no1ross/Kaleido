@@ -43,11 +43,11 @@ Information logs must stay minimal — treat them as the "normal operations" vie
   - `QueryableErrorCodes` (`Queryable/QueryableErrorCodes.cs`) — `qry_*` codes for Queryable startup registration and request validation
   - `ConfigurationErrorCodes` (`KaleidoConfigurationException.cs`) — core service-setup and authorization-settings codes only
   - `FrameworkErrorCodes` (`KaleidoFrameworkException.cs`) — cross-cutting integrity violation codes
-  - `HttpClientErrorCodes` (`Kaleido.Http.Client/KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures and the client's startup checks (`httpclient_missing_base_url`)
+  - `HttpClientErrorCodes` (`src/Http/Http.Client/Transport/KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures and the client's startup checks (`httpclient_missing_base_url`)
   - `SqliteErrorCodes` (`Kaleido.Provider.SQLite`) — the provider's own codes; providers never add codes to core
-  - `McpErrorCodes` (`Kaleido.Http.Mcp/McpErrorCodes.cs`) — `mcp_*` codes for the MCP adapter's startup and tool-call failures
+  - `McpErrorCodes` (`src/Mcp/Mcp/McpErrorCodes.cs`) — `mcp_*` codes for the MCP adapter's startup and tool-call failures
   - `OpenTelemetryErrorCodes` (`Kaleido.Observability.OpenTelemetry`) — `otel_*` codes for the provider's startup failures
-  - `KaleidoErrorCodes` (`Kaleido.Http.Abstractions/KaleidoErrorResponse.cs`) — shared HTTP error codes (`argument_error`, `framework_error`)
+  - `KaleidoErrorCodes` (`src/Platform/KaleidoErrorResponse.cs`) — shared HTTP error codes (`argument_error`, `framework_error`)
 
 ## OperationCanceledException and observability
 **A cancellation is the caller's token firing, not an exception type (#517).** An

@@ -53,7 +53,7 @@ handlers' and sources' job: [Queries - Who may query, and which rows](queries.md
 When a service calls another Kaleido service (a handler or delegated source using a Kaleido client,
 the MCP adapter calling for a user), a call made **for a caller** and the service's **own** calls
 (registry refresh, heartbeat, health probe) carry different tokens (#574,
-[client README](../../src/Kaleido.Http.Client/README.md)). A call made for a caller is set by
+[client README](../../src/Http/Http.Client/README.md)). A call made for a caller is set by
 `Kaleido:OnBehalfOfCalls`, a setting, not a token:
 
 | `Kaleido:OnBehalfOfCalls` | A call made for a caller carries | The service's own calls carry |
@@ -90,9 +90,9 @@ public sealed class TokenExchangeHandler(ITokenExchange exchange) : DelegatingHa
 <!-- snippet: callers-credentials-registration -->
 ```csharp
 // Kaleido:OnBehalfOfCalls = Exchange in configuration: a caller's call never carries the inbound token.
-services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(TokenExchangeHandler).Assembly] })
-    .AddHttp()
+services.AddKaleido(configuration, new() { ServiceName = "orders", ServiceVersion = "1", Assemblies = [typeof(TokenExchangeHandler).Assembly] })
     .AddHttpClients()
+    .AddControlRegistryClient()
     .AddKaleidoClientHandler<TokenExchangeHandler>();
 ```
 

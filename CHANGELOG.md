@@ -13,6 +13,33 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Package boundaries, central registry and versioned gateway routes** (#581,
+  [ADR 0039](docs/decisions/0039-protocol-neutral-package-boundaries.md),
+  [ADR 0040](docs/decisions/0040-central-registry-only-and-versioned-routes.md)):
+  - `Kaleido.Http.Abstractions` becomes `Kaleido.Platform` (published contracts); the old HTTP
+    endpoint package `Kaleido.Http` becomes `Kaleido.Http.Server`, while `Kaleido.Http` now owns only
+    shared route/URL shapes. Neutral clients and registration move to `Kaleido.Client`; shared ASP.NET
+    services move to `Kaleido.Server`. `Kaleido.Http.Mcp` becomes `Kaleido.Mcp`; the control registry
+    becomes `Kaleido.Registry` plus `Kaleido.Registry.Http`. Update package references, namespaces,
+    DI extensions and public API baselines together. The gRPC projects are non-packable placeholders,
+    not implemented transports.
+  - An HTTP service must set `ServiceVersion`, call `AddControlRegistryClient()` and supply the gateway
+    `Kaleido:BaseUrl` before `MapKaleidoHttp()`. It maps only `/{service}/{version}/processes/...`
+    and `/{service}/{version}/queryable/...`, with no unversioned alias or `/{service}/registry`.
+    `MapKaleidoHttp()` takes no `AggregateRegistry` option; discovery is central `GET /registry`.
+  - `AddHttpClients()` requires an absolute HTTP(S) `Kaleido:BaseUrl`, registers one gateway client,
+    resolves published service/version/capability routes from the hydrated central registry, and
+    rejects any `Kaleido:Clients` section (`httpclient_invalid_options`). Per-client addresses,
+    `RoutePrefix`, resilience overrides and `kaleido-{name}` health probes are removed. Factories
+    accept `GetClient(serviceName[, serviceVersion])`; an unavailable route fails locally
+    (`registryclient_route_unavailable`). MCP requires `AddControlRegistryClient()`, `AddHttpClients()`
+    and `Kaleido:OnBehalfOfCalls = Exchange`; versioned continuations remain pinned to their origin.
+  - The registry host uses HybridCache (`Kaleido:Registry:Cache`) over its authoritative store, with
+    an optional distributed tier. `AddDistributedRegistrySnapshots()`, the old public
+    registry snapshot-store seam and per-host fan-out are removed; a failed cache read falls back
+    to the store. Registrations publish only logical versioned gateway routes, never instance
+    addresses. The neutral selector has tested seams for gRPC preference and safe fallback;
+    shipped clients still use HTTP only, without cross-protocol fallback.
 - **What a call made for a caller carries: forwarded, or exchanged by the host's own handler** (#574,
   [ADR 0038](docs/decisions/0038-the-authentication-model.md)).
   - `Kaleido:OnBehalfOfCalls` (`KaleidoClientOptions.OnBehalfOfCalls`): `Forward` (the default) sends the
@@ -48,7 +75,7 @@ sections.
       before do not replay) and name their `ProcessorName`/`ProcessorVersion`.
     - Events carry `ServiceVersion`, and process events carry `ProcessVersion`, the version of the state
       they describe. There is no ordering guarantee: order a process's events by it.
-    - Registry snapshot keys include the version.
+    - Central registry records and capability revisions include the version (old host snapshot keys were removed by #581).
   - **Every service writes every event** to its outbox store (entries tagged `ServiceName`/`ServiceVersion`)
     and needs no publisher. `AddOutboxRelay<TPublisher>()` runs the relay on one host per outbox database
     (a service, or a host with nothing else), which drains every service's entries.
@@ -235,11 +262,11 @@ sections.
   [ADR 0030](docs/decisions/0030-options-are-immutable-configuration-overrides-code.md)): every options
   type is a record with `init` properties, and the registrations take an optional options object
   instead of a configure lambda: `AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [...] })`,
-  `AddHttp(new() { ... })`, `MapKaleidoHttp(new() { ... })`, `AddOpenTelemetry(new() { ... })`,
-  `AddMcp(new() { ... })`. The service and MCP options builders are removed.
+  `AddHttp(new() { ... })`, `AddOpenTelemetry(new() { ... })`, `AddMcp(new() { ... })`.
+  The service and MCP options builders are removed; `MapKaleidoHttp()` no longer takes options (#581).
   Each registration lays its configuration section over a copy of the object from code, so
   **configuration now wins over code** setting by setting (it was the other way round); `Kaleido:Http`
-  and `Kaleido:Http:Map` are new sections. Kaleido no longer adjusts what it is given: a blank MCP
+  is the HTTP options section (`Kaleido:Http:Map` was removed with the map options in #581). Kaleido no longer adjusts what it is given: a blank MCP
   `ServerName`/`ServerVersion`, a blank or repeated `ListedTools` name and `Instructions` together
   with `InstructionsFile` now fail startup (`mcp_invalid_options`) instead of being replaced, trimmed
   or ignored; HTTP and client settings are validated at startup (`invalid_http_options`,
@@ -315,7 +342,7 @@ sections.
 - **Error responses:** 500 bodies and span status never carry exception text (#393); `/execute` answers
   400 for a step it cannot build (#392).
 - **Public API surface:** core runtime internals and registry descriptors made internal; wire contracts
-  self-contained in `Kaleido.Http.Abstractions` ([ADR 0017](docs/decisions/0017-transport-contract-placement.md), #389, #390).
+  first placed in `Kaleido.Http.Abstractions` ([ADR 0017](docs/decisions/0017-transport-contract-placement.md), #389, #390); they are now in `Kaleido.Platform` (#581).
 - **Public API baseline** (#313): each package's public API is recorded in `PublicAPI.Shipped.txt` /
   `PublicAPI.Unshipped.txt`; an unrecorded change fails the build. `KaleidoHttpClientException` has
   one constructor: `(code, message, statusCode, errors = null, innerException = null)`.
@@ -325,7 +352,7 @@ sections.
   cannot contradict itself (e.g. succeeded and rejected at once).
 - **Cancellation tokens are required** (#313): no public async API defaults its `CancellationToken`
   any more (handlers, async sources and views, delegated sources, `IEventPublisher`, the store
-  contracts, `IKaleidoOutbox`, `IKaleidoTransactions`, the Kaleido clients, `IRegistrySnapshotStore`),
+  contracts, `IKaleidoOutbox`, `IKaleidoTransactions` and the Kaleido clients; the former registry snapshot-store interface was removed in #581),
   so a caller cannot silently drop cancellation. Callers pass their token; an implementation may keep
   a default. Parameters that preceded the token became required too: the by-name
   `ExecuteStepAsync(stepName, processStep, processId, cancellationToken)` (pass `null` for no
@@ -338,8 +365,9 @@ sections.
   - test: KAL1012 and KAL1013 are now KAL1011 and KAL1012.
 
 ### Added
-- **The control registry** (#553, [ADR 0037](docs/decisions/0037-the-control-registry.md)): a new package,
-  `Kaleido.Http.Registry`, and one registry for every service version.
+- **The control registry** (#553, [ADR 0037](docs/decisions/0037-the-control-registry.md)):
+  first introduced as `Kaleido.Http.Registry`, now split into `Kaleido.Registry` and
+  `Kaleido.Registry.Http` (#581), and one registry for every service version.
   - **A registry host** (`AddControlRegistry()`, `MapKaleidoControlRegistry()`, a registry store:
     in-memory, `AddSqliteRegistryStore`, or the host's own `IKaleidoRegistryStore`) that services register
     with and heartbeat to; it never calls out. Several nodes share one store; after all nodes were down,
@@ -348,10 +376,10 @@ sections.
     `GET /registry`, which is unfiltered for Kaleido hosts (`Kaleido:Registry:ReaderPolicy`) and filtered
     for anyone else to what they may use. `GET /registry/availability` and `/registry/capabilities` keep
     a host's copy fresh; `GET /registry/status` lists every instance.
-  - **Services take part with `AddControlRegistryClient()`** (`Kaleido:Registry:Url`, the gateway): each
-    instance registers its own capabilities, heartbeats at the interval the registry hands out, is ready
-    (`kaleido-registration`) once registered and read, and serves the control registry's registry as its
-    own. A deployment shows on every host within one availability check.
+  - **Services take part with `AddControlRegistryClient()`** (`Kaleido:BaseUrl`, the gateway): each
+    instance registers its own capabilities and heartbeats at the registry's interval, is ready
+    (`kaleido-registration`) once registered and read, and hydrates the unfiltered registry for local
+    reads and route selection. A deployment shows on every host within one availability check.
   - **Trust:** registering needs `Kaleido:Registry:RegistrantPolicy` (an app-only token) and the app role
     naming the service (`Kaleido.Registrant.{service}`), or the optional `Registrants` map. The registry
     knows no address: the gateway routes each version.
@@ -371,7 +399,7 @@ sections.
   (no stored API key) as well as to GitHub Packages; every package has a signed build provenance
   attestation (`gh attestation verify`) and carries the `LICENSE` text next to `NOTICE`
   ([RELEASING.md](RELEASING.md)).
-- Shared registry snapshots: `AddDistributedRegistrySnapshots()` stores registry snapshots in the host's `IDistributedCache` (e.g. Redis), so the replicas of a router share one snapshot and one round of downstream checks; an unreachable cache never fails a registry read. Client copies are keyed per consuming service (`kaleido-client:{ServiceName}:{clientName}`) (#275).
+- Registry caching is now at the authority (#581): `AddControlRegistry()` wires HybridCache for short-lived views and immutable revisioned capabilities, with optional `IDistributedCache` on the registry host and a store fallback. The earlier `AddDistributedRegistrySnapshots()` host cache (#275) and per-client snapshots were removed.
 - Consumer guide (`docs/guide`): concepts, events and the outbox, persistence, deployment and choosing options, around one orders service whose examples are compiled, checked against the pages in CI (`tools/docs/check-guide-snippets.py`) and run by tests (#409).
 - Warnings fail the build in `tests/` and in the samples; IDE code-style rules run in `tests/` and `tools/` (#406).
 - The samples count full query pages with one `SELECT COUNT`; the documented EF Core executor also serves non-EF sources in the same host (#352).
@@ -385,8 +413,9 @@ sections.
   caller (MCP, the control registry), a capability whose authorization names a policy the host does not
   define is treated as not allowed, and the policy is logged once at Warning; it no longer fails the whole
   read.
-- **A host reading a full registry rebuilds its snapshot when that registry changes** (#553), not on
-  `RegistryCacheTtl`: the control registry's changes reach MCP and lookups at once.
+- **A host reading the central registry hydrates availability and capabilities separately** (#553,
+  #581), with conditional ETags at the interval the registry names. MCP and lookups read the same
+  in-host view; no downstream registry snapshots or per-client TTL remain.
 - **The 1.0 runtime support window is stated** (#528, ADR 0035): the packages stay on `net8.0`; Kaleido supports a
   runtime while Microsoft does (.NET 8 and 9 end on 10 November 2026), and services override the 8.x dependencies
   to patched versions (VERSIONING, SUPPORT, README).
@@ -396,14 +425,11 @@ sections.
   register its own first. Recorded timestamps (`CreatedUtc`, `OccurredOn`) keep the wall clock: the
   clock is a dependency only where Kaleido's behavior depends on the time. KAL0021 reports a
   wall-clock read in `src/` that is compared or used in date arithmetic (#501).
-- **The Kaleido clients are built by the container** (#498): each client configured under
-  `Kaleido:Clients` is registered once, and its Process and Queryable clients, health check and
-  credential handler are keyed services under its name, so a fixed client can be injected with
-  `[FromKeyedServices("Radiology")]`; the factories resolve a name chosen at runtime. Sending a call
-  is one shared transport, and the registry caches are singletons; no Kaleido service creates
-  another. Log messages of client calls now name the client and the service ("Sending POST ... through
-  Kaleido client 'Radiology' to service 'radiology'"). KAL0006 accepts a keyed resolution whose key is
-  only known at runtime.
+- **The Kaleido clients are built by the container** (#498, #581): `AddHttpClients()` creates one
+  named gateway HTTP client and shared resilience/credential pipeline. The neutral factories resolve
+  service names and optional versions from the hydrated registry; keyed Process/Queryable injection
+  uses the service name (`[FromKeyedServices("radiology")]`). No per-client address, health check or
+  registry snapshot remains. KAL0006 accepts keyed resolution when the key is known only at runtime.
 - **The MCP server reports the host's version** (#463): `KaleidoMcpOptions.ServerVersion` is optional;
   left unset, the initialize response carries the host application's version (the entry assembly's
   informational version without its `+commit` suffix, else its assembly version) instead of a fixed
@@ -413,8 +439,8 @@ sections.
   `InformationRequest`, `ProcessMessage`, `KaleidoCaller`, the Process state enums,
   `AuthorizationMetadata`, `FilterOperator`/`MatchMode` and `QueryResult<T>` travel as they are and
   change additively only after 1.0; snapshot tests fix their JSON. The behavior
-  `Kaleido.Http.Abstractions` holds on purpose (registry snapshot stores, header sanitizing,
-  `ToApiBody()`) is recorded, and the contributor guides match the code.
+  `Kaleido.Platform` retains (header sanitizing and `ToApiBody()`) is recorded in ADR 0039; the
+  old snapshot-store seam from ADR 0017 is gone (#581).
 - **The full samples live in their own repositories** (#95):
   [Kaleido-Samples-PriorAuth](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and
   [Kaleido-Samples-ECommerce](https://github.com/no1ross/Kaleido-Samples-ECommerce), consuming the
@@ -465,11 +491,11 @@ sections.
   messages now name the field and what was expected (the type, or the accepted values), and keep their
   codes.
 - **HTTP edges** (#521):
-  - `POST /{service}/processes/execute` binds its body with Kaleido's own JSON rules, like the per-step
+  - `POST /{service}/{version}/processes/execute` binds its body with Kaleido's own JSON rules, like the per-step
     routes: a malformed body gets Kaleido's 400 with an error body (not the host's page or a bare 400),
     and a host's `HttpJsonOptions` naming no longer rewrites the endpoint's request contract.
-  - A client `BaseUrl` that is not an absolute `http`/`https` URL fails at startup with
-    `httpclient_invalid_options`, naming the client and the key, instead of a raw `UriFormatException`.
+  - `Kaleido:BaseUrl` must be an absolute `http`/`https` gateway URL; it fails at startup with
+    `httpclient_missing_base_url` or `httpclient_invalid_options`, instead of a raw `UriFormatException`.
 - **Idempotency keys: an unambiguous scope, random keys for callers without an identity, the process id on a replay** (#514):
   - The scope is the tuple {service, identity kind, identity, key}, length-framed and hashed (`v1:` +
     SHA-256), so a separator in a name or a key can no longer join two callers' keys (`alice` +

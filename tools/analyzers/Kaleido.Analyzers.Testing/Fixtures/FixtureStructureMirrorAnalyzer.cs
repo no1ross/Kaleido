@@ -9,7 +9,10 @@ namespace Kaleido.Analyzers.Testing.Fixtures;
 
 /// <summary>
 /// KAL1003 — the fixture's file location mirrors the SUT's location:
-/// src/{Project}/{path}/Sut.cs — tests/{TestProject}/{path}/SutTests.cs.
+/// src/{...}/{Project}/{path}/Sut.cs — tests/{...}/{TestProject}/{path}/SutTests.cs.
+/// A project's folder is named after its assembly, with or without the assembly's first segment
+/// (src/Http/Http.Server for Kaleido.Http.Server, tests/Http/Http.Server.UnitTests for its tests), and may
+/// sit in a family folder (#581).
 /// Scoped to unit-test assemblies (*.UnitTests, FixtureConventions.IsUnitTestAssembly). A SUT in a referenced
 /// assembly (every src/ project, for a unit-test project) has no syntax in the
 /// compilation: its file is found among the src/ paths tests/Directory.Build.props
@@ -76,9 +79,9 @@ public sealed class FixtureStructureMirrorAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        // Strip {Project}/ then compare directory + file name
-        var fixtureDir = Path.GetDirectoryName(DropFirstSegment(fixtureRel));
-        var sutDir = Path.GetDirectoryName(DropFirstSegment(sutRel));
+        // Strip the path up to the project's folder, then compare directory + file name
+        var fixtureDir = Path.GetDirectoryName(InProject(fixtureRel, context.Compilation.AssemblyName));
+        var sutDir = Path.GetDirectoryName(InProject(sutRel, sut.ContainingAssembly.Name));
         var expectedFile = TypeBehavior.ConventionName(sut) + "Tests.cs";
 
         if (!string.Equals(fixtureDir, sutDir, System.StringComparison.OrdinalIgnoreCase) ||
@@ -107,15 +110,16 @@ public sealed class FixtureStructureMirrorAnalyzer : DiagnosticAnalyzer
         }
 
         var separator = Path.DirectorySeparatorChar;
-        var project = separator + "src" + separator + sut.ContainingAssembly.Name + separator;
+        var assemblyName = sut.ContainingAssembly.Name;
         var fileName = TypeBehavior.ConventionName(sut) + ".cs";
 
         var candidates =
             context.Options.AdditionalFiles
                 .Select(f => f.Path.Replace('/', separator))
                 .Where(p =>
-                    p.IndexOf(project, System.StringComparison.OrdinalIgnoreCase) >= 0 &&
-                    string.Equals(Path.GetFileName(p), fileName, System.StringComparison.OrdinalIgnoreCase))
+                    string.Equals(Path.GetFileName(p), fileName, System.StringComparison.OrdinalIgnoreCase) &&
+                    RelativeAfterRoot(p, "src") is { } rel &&
+                    ProjectFolderIndex(rel, assemblyName) >= 0)
                 .ToList();
 
         if (candidates.Count <= 1)
@@ -124,7 +128,6 @@ public sealed class FixtureStructureMirrorAnalyzer : DiagnosticAnalyzer
         }
 
         // The same file name in several folders: the one whose folder matches the namespace.
-        var assemblyName = sut.ContainingAssembly.Name;
         var ns = sut.ContainingNamespace.ToDisplayString();
         var folder = ns.StartsWith(assemblyName + ".", System.StringComparison.Ordinal)
             ? ns.Substring(assemblyName.Length + 1).Replace('.', separator)
@@ -132,10 +135,50 @@ public sealed class FixtureStructureMirrorAnalyzer : DiagnosticAnalyzer
 
         return candidates.FirstOrDefault(p =>
                 string.Equals(
-                    Path.GetDirectoryName(DropFirstSegment(RelativeAfterRoot(p, "src") ?? p)),
+                    Path.GetDirectoryName(InProject(RelativeAfterRoot(p, "src") ?? p, assemblyName)),
                     folder,
                     System.StringComparison.OrdinalIgnoreCase))
             ?? candidates[0];
+    }
+
+    /// <summary>
+    /// The path inside the project's folder: after the last folder named after the assembly (its full name,
+    /// or without its first segment); after the first segment when no folder is (the flat layout).
+    /// </summary>
+    private static string InProject(string relativePath, string? assemblyName)
+    {
+        var index = ProjectFolderIndex(relativePath, assemblyName);
+        var segments = relativePath.Split(Path.DirectorySeparatorChar);
+
+        return index < 0
+            ? DropFirstSegment(relativePath)
+            : string.Join(Path.DirectorySeparatorChar.ToString(), segments.Skip(index + 1));
+    }
+
+    /// <summary>The index of the last folder of the path named after the assembly; -1 when none is.</summary>
+    private static int ProjectFolderIndex(string relativePath, string? assemblyName)
+    {
+        if (assemblyName is not { Length: > 0 })
+        {
+            return -1;
+        }
+
+        var dot = assemblyName.IndexOf('.');
+        var shortName = dot > 0 ? assemblyName.Substring(dot + 1) : null;
+        var segments = relativePath.Split(Path.DirectorySeparatorChar);
+
+        // Folders only: the last segment is the file.
+        for (var i = segments.Length - 2; i >= 0; i--)
+        {
+            if (string.Equals(segments[i], assemblyName, System.StringComparison.OrdinalIgnoreCase) ||
+                (shortName is not null && !string.Equals(shortName, "UnitTests", System.StringComparison.Ordinal) &&
+                    string.Equals(segments[i], shortName, System.StringComparison.OrdinalIgnoreCase)))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>Returns the path after the first {root}/{anything}/ segment pair.</summary>

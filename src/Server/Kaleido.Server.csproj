@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido server base for ASP.NET Core, shared by every Kaleido server: who the caller is, capability authorization on ASP.NET&apos;s path, correlation, and the endpoint filters and error body every Kaleido endpoint uses.</Description>
+		<PackageTags>kaleido;aspnetcore;server</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Platform\Kaleido.Platform.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The servers built on this base use its internal filters, authorizer and caller seams. -->
+		<InternalsVisibleTo Include="Kaleido.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Http.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
+	</ItemGroup>
+</Project>

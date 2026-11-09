@@ -1,6 +1,7 @@
-using Kaleido.Http;
-using Kaleido.Http.Client;
-using Kaleido.Http.Mcp;
+using Kaleido.Http.Client.Registration;
+using Kaleido.Http.Client.Registry;
+using Kaleido.Http.Server;
+using Kaleido.Mcp;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -19,11 +20,13 @@ public static class OrdersService
         services.AddKaleido(configuration, new()
         {
             ServiceName = "orders",
+            ServiceVersion = "1",
             Assemblies = [typeof(OrderSource).Assembly],
             AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
         })
             .AddInMemoryStores()   // local evaluation only: nothing survives a restart
-            .AddHttp();
+            .AddHttp()
+            .AddControlRegistryClient();
         // end snippet
     }
 
@@ -35,7 +38,7 @@ public static class OrdersService
     }
 
     // The same service, also published to AI agents: the MCP adapter builds its tools from the
-    // registry and calls the service through a Kaleido client (Kaleido:Clients:orders in configuration).
+    // registry and calls the service's published route through the single gateway client (Kaleido:BaseUrl).
     public static void AddOrdersWithMcp(IServiceCollection services, IConfiguration configuration)
     {
         // snippet: getting-started-mcp
@@ -44,12 +47,14 @@ public static class OrdersService
         services.AddKaleido(configuration, new()
         {
             ServiceName = "orders",
+            ServiceVersion = "1",
             Assemblies = [typeof(OrderSource).Assembly],
             AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
         })
             .AddInMemoryStores()   // local evaluation only: nothing survives a restart
             .AddHttp()
             .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
+            .AddControlRegistryClient()
             .AddMcp();
         // end snippet
     }

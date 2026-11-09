@@ -8,17 +8,25 @@ other.
 
 | I want to | Register | See |
 |---|---|---|
-| Publish the service over HTTP | `AddHttp()` + `MapKaleidoHttp()` | [Getting started](getting-started.md#4-publish-it-over-http) |
-| Call other Kaleido services | `AddHttpClients()` (configured under `Kaleido:Clients`) | [client README](../../src/Kaleido.Http.Client/README.md) |
-| Publish to AI agents | `AddMcp()` + `MapKaleidoMcp("/mcp")` (needs `AddHttpClients()`) | [Getting started](getting-started.md#6-publish-it-to-ai-agents-mcp) |
-| Publish several services to agents in one place | a router host: `AddHttpClients()` + `AddMcp()`, `AggregateRegistry = true` | [README quick start](../../README.md#expose-configured-services-through-an-mcp-router) |
+| Publish a versioned service over HTTP | `AddHttp()` + `AddControlRegistryClient()` + `MapKaleidoHttp()`; set `ServiceVersion` and `Kaleido:BaseUrl` | [Getting started](getting-started.md#4-publish-it-over-http) |
+| Call other Kaleido services | `AddHttpClients()` + `AddControlRegistryClient()`; one gateway at `Kaleido:BaseUrl`, targets from the registry | [Client README](../../src/Http/Http.Client/README.md) |
+| Publish to AI agents | `AddHttp()` + `AddHttpClients()` + `AddControlRegistryClient()` + `AddMcp()` and `MapKaleidoMcp("/mcp")` | [Getting started](getting-started.md#6-publish-it-to-ai-agents-mcp) |
+| Publish several services to agents in one place | a separate MCP host reading the central registry; configure gateway routes per service version, not clients per service | [README quick start](../../README.md#expose-registered-services-through-an-mcp-host) |
+
+## Central registry
+
+| I want to | Register or configure | See |
+|---|---|---|
+| Host the control registry over HTTP | `AddControlRegistry()` + `AddRegistryStore<T>()` + `MapKaleidoControlRegistry()` | [Registry README](../../src/Registry/Registry/README.md) |
+| Share cached views across registry nodes | register `IDistributedCache` on the registry host; tune `Kaleido:Registry:Cache` | [Registry cache](../../src/Registry/Registry/README.md#cache-kaleidoregistrycache) |
+| Participate as a service or MCP host | `AddControlRegistryClient()` with the gateway `Kaleido:BaseUrl` | [Client README](../../src/Http/Http.Client/README.md#taking-part-in-the-control-registry) |
 
 ## Process state
 
 | Situation | Register | See |
 |---|---|---|
-| Tests, local evaluation | nothing (in memory) | [Persistence](persistence.md#the-defaults-are-in-memory) |
-| Samples, local development, a reference | `AddSqliteContextStore(connectionString)` | [SQLite README](../../src/Kaleido.Provider.SQLite/README.md) |
+| Tests, local evaluation | `AddInMemoryStores()` explicitly (lost on restart) | [Persistence](persistence.md#the-defaults-are-in-memory) |
+| Samples, local development, a reference | `AddSqliteContextStore(connectionString)` | [SQLite README](../../src/Providers/Provider.SQLite/README.md) |
 | Production | `AddContextStore<T>()` on your database | [Persistence](persistence.md#your-own-stores-on-ef-core) |
 
 ## Events
@@ -36,7 +44,7 @@ See [Events and the outbox](events-and-outbox.md).
 
 | Situation | Register |
 |---|---|
-| One instance, tests | nothing (in memory) |
+| One instance, tests | `AddInMemoryStores()` or a chosen idempotency store |
 | Several instances, or retries across restarts | `AddIdempotencyStore<T>()` (or `AddSqliteIdempotencyStore`) |
 
 See [Processes - Concurrent and repeated calls](processes.md#concurrent-and-repeated-calls).
@@ -50,14 +58,14 @@ See [Processes - Concurrent and repeated calls](processes.md#concurrent-and-repe
 | Nothing published without a rule | `ZeroTrust` | [AUTHORIZATION](../AUTHORIZATION.md) |
 | Calls to other services carry the user's token | nothing (`Kaleido:OnBehalfOfCalls = Forward`, the default) | [Callers](callers-and-correlation.md#which-token-a-service-sends) |
 | Exchange the user's token (required on an MCP host) | `Kaleido:OnBehalfOfCalls = Exchange` + `AddKaleidoClientHandler<T>()` | [Callers](callers-and-correlation.md#which-token-a-service-sends) |
-| The service's own calls carry its app token | `AddKaleidoClientHandler<T>()` (client credentials, any library) | [Client README](../../src/Kaleido.Http.Client/README.md) |
+| The service's own calls carry its app token | `AddKaleidoClientHandler<T>()` (client credentials, any library) | [Client README](../../src/Http/Http.Client/README.md) |
 
 ## Redaction and observability
 
 | Situation | Register | See |
 |---|---|---|
 | Classified fields in events | `AddEventRedaction(...)` or `AddEventRedactor<T>()` | [Events - Redaction](events-and-outbox.md#redaction) |
-| Export traces and metrics | `AddOpenTelemetry()` | [OpenTelemetry README](../../src/Kaleido.Observability.OpenTelemetry/README.md) |
+| Export traces and metrics | `AddOpenTelemetry()` | [OpenTelemetry README](../../src/Observability/Observability.OpenTelemetry/README.md) |
 
 ## Queries on EF Core
 

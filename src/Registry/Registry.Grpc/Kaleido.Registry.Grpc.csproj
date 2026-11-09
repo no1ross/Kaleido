@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>The Kaleido control registry&apos;s gRPC API (placeholder: gRPC is not implemented yet).</Description>
+		<PackageTags>kaleido;registry;grpc</PackageTags>
+		<!-- A placeholder until gRPC is implemented (#581): built and checked, never packed. -->
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Registry\Kaleido.Registry.csproj" />
+		<ProjectReference Include="..\..\Grpc\Grpc.Server\Kaleido.Grpc.Server.csproj" />
+	</ItemGroup>
+</Project>

@@ -1,0 +1,218 @@
+# Kaleido.Provider.SQLite
+
+> **This project is a reference implementation, not a production provider.**
+>
+> - `IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore` and `IKaleidoTransactions` are the **contracts** your deployment implements.
+> - `SqliteKaleidoContextStore`, `SqliteKaleidoOutboxStore`, `SqliteKaleidoIdempotencyStore` and `SqliteKaleidoTransactions` are a **worked example** of those contracts on one database — a single-file embedded database that demonstrates correct `ProcessorContext` round-trip fidelity.
+> - **Production deployments are expected to write their own implementation** against their real infrastructure (SQL Server, Postgres, Redis, document store, whatever the process actually needs).
+> - SQLite's single-writer file model is deliberately unsuitable for the multi-node, multi-instance scenarios durable process state is designed for. Shipping it to production is an anti-pattern.
+> - The `Kaleido.Provider.SQLite.UnitTests` suite is the **executable contract specification**: if your implementation passes equivalent round-trip fidelity, update, and multi-instance tests, it satisfies the contracts.
+
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../../docs/guide/README.md). This README is the reference for the project.
+
+See also:
+- [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
+- [`../../Kaleido/README.md`](../../Kaleido/README.md)
+
+---
+
+## What lives here
+
+- `SqliteKaleidoContextStore` — example `IKaleidoContextStore` implementation (process state only)
+- `SqliteKaleidoOutboxStore` — example `IKaleidoOutboxStore` implementation (the storage of Kaleido's built-in outbox, same database)
+- `SqliteKaleidoIdempotencyStore` — example `IKaleidoIdempotencyStore` implementation (idempotent requests, same database)
+- `SqliteKaleidoTransactions` — `IKaleidoTransactions`: one transaction on the shared `DbContext` per process-state transition, so state and events commit together
+- `ISqliteKaleidoTransaction` - the open transaction of the current transition, for an outbox store of the host's own on the same database to join
+- `SqliteKaleidoRegistryStore` - example `IKaleidoRegistryStore` implementation (the control registry's state, #553), on the registry host's own database (`SqliteKaleidoRegistryDbContext`), registered with `AddSqliteRegistryStore`
+- `SqliteKaleidoContextDbContext` — the one EF Core context all of them share (scoped: one per request)
+- `SqliteKaleidoServiceCollectionExtensions` — `AddSqliteContextStore`, `AddSqliteOutboxStore`, `AddSqliteIdempotencyStore`
+
+---
+
+## Implementing your own store
+
+Each concern is its own contract ([ADR 0020](../../../docs/decisions/0020-three-store-contracts.md), [ADR 0023](../../../docs/decisions/0023-outbox-integration.md), [ADR 0036](../../../docs/decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)). `AddKaleido()` registers an in-memory default for each (every service gets them, and every service writes its events to the outbox, a queryable-only one included), but a host that leaves a store it uses at that default does not start (`stores_not_chosen`) unless it calls `AddInMemoryStores()` ([ADR 0028](../../../docs/decisions/0028-stores-are-chosen-explicitly.md)); replace them on the builder: `AddContextStore<T>()`, `AddIdempotencyStore<T>()`, `AddOutboxStore<T>()` and `AddTransactions<T>()`. Every record is scoped by the service and its version, so several services, and versions of one, may share one database.
+
+**How state and events stay together.** The context store saves state only; Kaleido adds a transition's event (a new process's `ProcessCreated`, a step's `ProcessStepCompleted`) to the outbox itself. Both happen inside one transaction from `IKaleidoTransactions`: begin, `SaveAsync`, `AddAsync`, commit. A failure before the commit keeps neither. That is atomic when your context store and your outbox write to the database the transaction covers (e.g. one scoped `DbContext`: write in the open transaction when there is one, on your own otherwise). Without `IKaleidoTransactions` each write stands alone. The idempotency store needs no shared transaction.
+
+```csharp
+public interface IKaleidoContextStore
+{
+    Task<ProcessorContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken);   // processor, version, process id
+    Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken);
+}
+
+public interface IKaleidoTransactions   // optional
+{
+    Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken);   // IKaleidoTransaction: CommitAsync; disposing without a commit rolls back
+}
+
+public interface IKaleidoIdempotencyStore
+{
+    Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken);
+    Task<bool> CompleteAsync(IdempotentResult result, CancellationToken cancellationToken);
+    Task<bool> ReleaseAsync(string key, Guid admissionId, CancellationToken cancellationToken);
+}
+
+public interface IKaleidoOutboxStore
+{
+    Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken);
+    Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken);
+    Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken);
+    Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken);
+    Task RecordRelayAsync(KaleidoOutboxRelay relay, CancellationToken cancellationToken);               // a relay's heartbeat
+    Task<KaleidoOutboxStatus> GetStatusAsync(DateTimeOffset now, CancellationToken cancellationToken); // for the health check
+}
+```
+
+### Process state
+
+**Every process is stored under its key** (`ProcessKey`: `ProcessorName`, `ProcessorVersion`, `ProcessId`; a context's own is `context.Key`), and every read and write must match all three parts (#552). Several services, and several versions of one, may then share one database: a hand-off keeps the process id, so the origin and the target each keep their own process under it, and a process of one version is not found by another. The SQLite store makes the three its composite primary key on `ProcessContexts` and on every child table, and stores an unversioned processor's version as an empty string (key columns are never null).
+
+Your implementation must preserve, with full fidelity:
+
+- `ProcessId`, `ProcessorName`, `ProcessorVersion`, `LatestRequestId`, `CreatedBy`, `UpdatedBy` (caller tags: `KaleidoCaller` name and id; the SQLite store keeps them as `...Name`/`...Id` columns)
+- `Version` - the optimistic-concurrency version (see below)
+- `State` (`ProcessExecutionState` enum, stored by name - Active, Complete, BusinessFailure, HandOff, AwaitingRequiredStep, AwaitingStepSelection, AwaitingInformation; a store created before #536 may hold `ProcessViolation`, `Exception` or `Canceled`, which no longer load: recreate it)
+- `RequiredStep` and `TargetProcessorName`, each on its own: a hand-off has a target and no required step, a cross-processor required step has both, and a hand-back clears the target (the SQLite store keeps the target in its own `TargetProcessorName` column on `ProcessContexts`, #513)
+- `RequiredInformationRequest` - the pending information request for `RequiredStep`, stored whole (the SQLite store keeps it as JSON on the required-step row)
+- `AvailableSteps` (collection - order not significant)
+- `Steps` - every `StepContext` including `StepName`, `Status`, `LatestRequestId`, `FirstExecuted`, `StartedBy`, `LastExecuted`, `LastUpdatedBy`
+- `CreatedUtc` / `UpdatedUtc` timestamps
+
+`LoadAsync` returns `null` when no process exists under that key - never throws for a missing instance.
+
+### Saving: optimistic concurrency
+
+`SaveAsync` is **conditional**, so two concurrent requests for the same process can never overwrite each other:
+
+- Save only when the stored version still equals `context.Version`. A `Version` of `0` means a new process: save only when no process with that key exists.
+- Store the context with `Version + 1` and **return the saved context** (with the new version) - the runtime continues with it.
+- Otherwise throw `KaleidoConcurrencyException(context.ProcessId)` and save nothing. Kaleido then adds no event and rolls the transition back. The caller gets **409** `pro_process_conflict`.
+
+The compare and the write must be one step: a row version / ETag / `WHERE Version = @expected` in the `UPDATE`, a conditional put, or a lock - whatever your storage offers. The SQLite store uses an EF Core concurrency token on a `Version` column (the `UPDATE` is conditional on the version the row was read with) and turns a duplicate insert of a new process into a conflict too: a new process's row is inserted in a statement of its own, so a primary-key violation there can only be the process id - other constraint failures stay store failures, and no error message is read (#513). When a transition rolls back, the store's `DbContext` forgets what it tracked in it, so a later save in the same scope reads the stored state again instead of a phantom conflict.
+
+### Idempotent results
+
+`IKaleidoIdempotencyStore` (`AdmitAsync` / `CompleteAsync` / `ReleaseAsync`) keeps the lifecycle of execute requests sent with an `Idempotency-Key`: the key is admitted before the step runs, so a retry never runs alongside the first attempt and gets its answer instead of running the step again ([`Kaleido.Http`](../../Http/Http.Server/README.md#idempotent-execution-idempotency-key), [ADR 0019](../../../docs/decisions/0019-idempotent-execution-admission.md)). The SQLite store keeps them next to the process state, in the same database - no extra store for the integrator:
+
+- `AdmitAsync(admission)` stores the record (state `InProgress`, with its `AdmissionId` and `LeaseUntilUtc`) when no record exists for the key, or only an expired one, and returns `null`; otherwise it stores nothing and returns the existing record. It must be **one atomic insert-if-absent** - two admissions of the same key at once never both get `null` (a unique key with `INSERT ... ON CONFLICT DO NOTHING`, a conditional put). Delete expired records here (or in a background job) so they do not pile up.
+- `CompleteAsync(result)` replaces the record with `result` - state `Completed` (the answer) or `OutcomeUnknown` (the attempt failed after it may have run) - **only while the record is still `InProgress` under the same `AdmissionId`**, and returns whether it did. Never an insert.
+- `ReleaseAsync(key, admissionId)` removes the record **only while it is still `InProgress` under that `AdmissionId`** (the request was refused before anything ran, so the key may be used again), and returns whether it did.
+- The `AdmissionId` check is the fencing (#441): an attempt that outlived its record - it expired, and the key was admitted again - is refused, so it can neither overwrite nor delete the newer admission. The compare and the write must be one step (`UPDATE`/`DELETE ... WHERE Key = @key AND AdmissionId = @id AND State = InProgress`, a conditional put).
+- Keep `Key`, `ProcessorName`, `ProcessorVersion`, `AdmissionId`, `RequestHash`, `State`, `LeaseUntilUtc`, `StatusCode`, `Response` (the JSON answer - plan for responses of several KB) and `ExpiresUtc` as given, and keep records across restarts: a record still `InProgress` after its lease, or one marked `OutcomeUnknown`, is how Kaleido knows an attempt may have run. Such a key is refused (`pro_idempotency_outcome_unknown`) until its record expires (`KaleidoHttpOptions.IdempotencyUnknownOutcomeRetention`, default 7 days); an operator resolves it sooner by reading the process state and deleting the record.
+
+The SQLite store keeps them in its own `IdempotentResults` table (`Key` primary key - a fixed-length `v2:` hash of the caller's scope, which the logs name next to the header's key; `ProcessorName` and `ProcessorVersion` as given, indexed, so an operator finds a service's records in a shared database (#552); `AdmissionId` as text, times as UTC ticks, an index on `ExpiresUtc`). An admission is one `INSERT ... ON CONFLICT(Key) DO NOTHING` after deleting expired rows; a completion is `UPDATE ... WHERE Key = @key AND AdmissionId = @id AND State = InProgress` and a release the matching `DELETE`, each reporting from its row count whether it applied - so the fencing holds across instances sharing the database file.
+
+### Event outbox
+
+Every service adds its events to its outbox store, and the relay (`AddOutboxRelay<TPublisher>()`, on one host per outbox database: one of the services, or a host with nothing else) hands every entry in that database to `IEventPublisher`, retrying until it succeeds (at least once - [ADR 0012](../../../docs/decisions/0012-events-at-least-once-through-the-store.md), [ADR 0036](../../../docs/decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)). `IKaleidoOutboxStore` keeps the entries, each with the `ServiceName` and `ServiceVersion` of its writer as given, and makes sure **an entry is in one relay instance's hands at a time**.
+
+- `AddAsync` adds entries: a transition's event inside its transaction (write in the open transaction when there is one on your database), others (`PlanBuilt`, `ExecutionCompleted`, `QueryExecuted`) on their own.
+- `ClaimEventsAsync(maxCount, lease)` leases up to `maxCount` entries - of any service writing to the database - that are due (not parked, `NextAttemptUtc` reached) and not leased, to **this instance** (the store knows its identity, e.g. `KaleidoServiceOptions.InstanceId`) until now + `lease`, oldest first, and returns exactly those. It must be an **atomic compare-and-set** - two instances claiming at once never get the same entry (a write transaction, a row lock, `UPDATE ... WHERE lease expired`, a conditional put). An entry whose lease expired (its instance stopped) can be claimed again: that is the failover.
+- `CompleteEventAsync` removes a published entry and `FailEventAsync` records a failed attempt (`Attempts` + 1, `LastError`, `NextAttemptUtc` = `retryAtUtc`; `null` parks it - kept, never claimed again) and releases the lease. **Both only while this instance still holds the lease**, so an instance whose lease expired cannot touch an entry another instance has taken over.
+- `RecordRelayAsync` stores a relay instance's heartbeat (one record per `InstanceId`, replaced each time), and `GetStatusAsync(now)` returns when a relay was last seen, how many entries are due and when the oldest due one occurred: every service's `kaleido-outbox` health check reads them in this database, so a missing or stuck relay shows without a call between services (#552). Records of relays not seen for a long time may be removed.
+- Keep every `KaleidoOutboxEvent` member as given and treat `Payload` as opaque text (it includes a step's request and response - plan for several KB). Classified values are already redacted when the payload reaches the store ([ADR 0013](../../../docs/decisions/0013-event-payloads-classified-and-redacted.md)).
+
+The SQLite store keeps them in an `OutboxEvents` table (`EventId` primary key, `ServiceName`/`ServiceVersion` columns with an index, times as UTC ticks, `LeaseOwner`/`LeaseUntil` columns). A claim selects due entries and leases them with one `UPDATE` that re-checks the lease (SQLite serializes writers, so two claims cannot overlap); complete and fail are `DELETE`/`UPDATE ... WHERE LeaseOwner = @me AND LeaseUntil > @now`. Parked entries stay in the table: inspect them, fix the cause, and set `IsParked = 0, NextAttemptUtc = 0` to retry them. Relays' heartbeats are in `OutboxRelays` (`InstanceId` primary key, `SeenUtc` as UTC ticks): a row is upserted at each heartbeat, and rows not seen for seven days are deleted.
+
+### Control registry
+
+The control registry (`Kaleido.Registry`, #553, #581) keeps its state in an `IKaleidoRegistryStore`: registrations per service, version and revision (capabilities and logical transport routes in opaque revisioned JSON), instances with their last heartbeat, and each service's current version. Several registry nodes share one store, and a few hundred service instances heartbeat into it, so **every write is atomic on its own**: a registration is inserted only if absent, the current version is set only if absent, a heartbeat (`RenewInstanceAsync`) and a deregistration (`RemoveInstanceAsync`) are each one conditional statement that also checks the instance's service against the services the caller may register, and a sweep (`RemoveInstancesSeenBeforeAsync`) may run on every registry node at once. `ReadAsync` leaves the capabilities out; the registry reads each revision's once with `GetCapabilitiesAsync`, since a revision never changes.
+
+The SQLite store keeps them in `RegistryRegistrations` (`Revision` primary key), `RegistryInstances` (`InstanceId` primary key, indexed on `LastHeartbeatUtc` and `Revision`) and `RegistryCurrentVersions` (`ServiceName` primary key), and the registry's watch in `RegistryWatch` (one row, `Id` 1: `ResumedUtc`, `LastSeenUtc`), service names compared without case, times as UTC ticks. Registrations and the current version use `INSERT ... ON CONFLICT DO NOTHING`; the watch touch is one `INSERT ... ON CONFLICT DO UPDATE` that resumes the watch when `LastSeenUtc` is older than the lease and never moves `LastSeenUtc` back; a renewal is `UPDATE ... WHERE InstanceId = @id AND ServiceName IN (@allowed)`. Its database is the registry host's own (`AddSqliteRegistryStore(connectionString)`, created with `SqliteKaleidoRegistryDbContext.Database.EnsureCreatedAsync()`), apart from any service's process database. Registry nodes on one machine may share the file; on several machines, use a server database (a store of your own, `AddRegistryStore<T>()`). The shared contract suite (`IKaleidoRegistryStoreTests`, in `Kaleido.Registry.UnitTests`) runs against both the in-memory and the SQLite store, concurrent writers included: derive from it to test your own.
+
+### Schema changes
+
+The host creates the schema (see [Using the example implementation](#using-the-example-implementation)) with `EnsureCreated`, which does not migrate an existing database. **Recreate development databases created before** the `Version` column, or with the step `Version` column in `ProcessStepContexts` (removed, #474), the `IdempotentResults` and `OutboxEvents` tables, the `IdempotentResults` `State`/`LeaseUntilUtc` columns (#285) or its `AdmissionId` column (#441), the caller-tag columns (`CreatedBy*`/`UpdatedBy*`, which replaced `Owner`, and the step `FirstExecuted`/`StartedBy*`/`LastUpdatedBy*` columns) existed, before the `ProcessContexts.TargetProcessorName` column (`ProcessRequiredSteps.ProcessorName` removed, #513), or before the process tables were keyed by `ProcessorName`, `ProcessorVersion` and `ProcessId`, `IdempotentResults` and `OutboxEvents` had their service columns and `OutboxRelays` existed (#552) (delete the file; the host's `EnsureCreated` call recreates it at startup). A production store manages its own schema migrations.
+
+---
+
+## Using the example implementation
+
+For samples, demos, and local development:
+
+```csharp
+builder.Services.AddKaleido(builder.Configuration, new() { ServiceName = "myservice", Assemblies = [typeof(Program).Assembly] })
+    .AddSqliteContextStore("Data Source=my-process.sqlite")
+    .AddSqliteOutboxStore("Data Source=my-process.sqlite")
+    .AddSqliteIdempotencyStore("Data Source=my-process.sqlite");
+
+var app = builder.Build();
+
+// The store does not create its tables: the host does, once, at startup.
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    await scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>().Database.EnsureCreatedAsync();
+}
+```
+
+Each call registers one store, scoped, on one `SqliteKaleidoContextDbContext`, replacing its in-memory default; take only the ones you want (e.g. SQLite state with an outbox store of your own). `AddSqliteContextStore` also registers `SqliteKaleidoTransactions`: with `AddSqliteOutboxStore` on the same database, a step's state and its event commit together. Registration does not touch the database: without the `EnsureCreatedAsync()` call the first save fails because the tables do not exist. (This exact sequence is tested against a fresh database file: `tests/Kaleido.IntegrationTests/SqliteReadmeTests.cs`.)
+
+**How a step's state and event commit together.** The stores never call each other: they share the request's `DbContext`, and the transaction Kaleido begins through `SqliteKaleidoTransactions` covers both writes. The sequence diagram is in [ADR 0023](../../../docs/decisions/0023-outbox-integration.md#a-step-completes-sqlite-state-kaleidos-outbox-on-sqlite); `tests/Kaleido.IntegrationTests/Transitions/SqliteTransitionTests.cs` proves it (a conflict or a failed event write keeps neither).
+
+Registration fails at startup with `KaleidoConfigurationException`:
+- a malformed, non-blank connection string: `SqliteErrorCodes.InvalidConnectionString` (`invalid_connection_string`), before anything is registered (syntax only: no database is opened);
+- a different connection string than another SQLite store's: `SqliteErrorCodes.ConnectionStringMismatch` (`connection_string_mismatch`) - they share one database;
+- another context store, idempotency store or transactions already registered (`conflicting_store`), or another outbox store (`conflicting_outbox`).
+
+### Your own outbox store on the same database
+
+A host that keeps its outbox in its own table keeps SQLite for the state and registers its own `IKaleidoOutboxStore` with `AddOutboxStore<T>()`; to commit with the state, its writes join the SQLite transaction through `ISqliteKaleidoTransaction` (the claims are the relay's, as the contract above describes):
+
+```csharp
+builder.Services.AddKaleido(builder.Configuration, new())
+    .AddSqliteContextStore(connectionString)       // state + the SQLite transaction
+    .AddOutboxStore<IntakeOutboxStore>();          // the host's outbox table, same database file
+
+public sealed class IntakeOutboxStore(IntakeDbContext db, ISqliteKaleidoTransaction transaction) : IKaleidoOutboxStore
+{
+    public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
+    {
+        if (transaction.Current is { } current)                        // inside a transition: join it
+        {
+            db.Database.SetDbConnection(current.Connection);
+            await db.Database.UseTransactionAsync(current, cancellationToken);
+        }
+
+        db.OutboxMessages.AddRange(events.Select(e => new OutboxMessage(e.EventId, e.EventType, e.Payload, e.OccurredUtc)));
+        await db.SaveChangesAsync(cancellationToken);                  // committed with the state
+    }
+
+    // ClaimEventsAsync, CompleteEventAsync, FailEventAsync: leased claims for the relay (see above).
+}
+```
+
+Only on the same database file: an outbox in another database cannot join, and its writes stand alone.
+
+**Health check.** None is registered. To report the database's reachability, add the Entity Framework Core check (package `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore`) and map an endpoint:
+
+```csharp
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<SqliteKaleidoContextDbContext>("kaleido-sqlite");
+
+app.MapHealthChecks("/health");
+```
+
+**Telemetry.** The store traces process-state reads and writes and counts their failures: activities `kaleido.sqlite.context.load` / `kaleido.sqlite.context.save` (source `Kaleido.Provider.SQLite`, tagged with the process id) and the counters `kaleido.sqlite.context.load_failures` / `kaleido.sqlite.context.save_failures` (meter `Kaleido.Provider.SQLite`; a concurrency conflict or a cancellation is not a failure). The idempotent-result and outbox methods are not instrumented by the store: event delivery is measured by core's `Kaleido.Events` meter (`kaleido.events.published`, `failed`, `parked`, `enqueue_failures`), and EF Core's own diagnostics cover individual commands. `AddKaleidoInstrumentation()` in [`Kaleido.Observability.OpenTelemetry`](../../Observability/Observability.OpenTelemetry/README.md) subscribes to both.
+
+The default in-memory stores are sufficient for tests and single-request processes; each logs a warning when it is created (on first use) precisely because production without durable stores is a configuration smell.
+
+---
+
+## What this project does NOT do
+
+- it is not a production-grade store (see header)
+- the Process runtime itself (see [`Kaleido`](../../Kaleido/README.md))
+- HTTP endpoint publication (see [`Kaleido.Http`](../../Http/Http.Server/README.md))
+- other persistence providers (EF Core, Redis, etc.) — write your own per the contract above
+
+---
+
+## Where to look
+
+- `SqliteKaleidoContextStore.cs`, `SqliteKaleidoOutboxStore.cs`, `SqliteKaleidoIdempotencyStore.cs`, `SqliteKaleidoTransactions.cs` — the reference implementations of the contracts
+- `SqliteKaleidoTransaction.cs` - `ISqliteKaleidoTransaction`, for an outbox store of the host's own to join
+- `SqliteKaleidoRegistryStore.cs`, `SqliteKaleidoRegistryDbContext.cs` - the control registry's store and its database
+- `SqliteKaleidoServiceCollectionExtensions.cs` — the three registrations
+- `tests/Kaleido.Provider.SQLite.UnitTests` — the executable contract specification to mirror for your own store

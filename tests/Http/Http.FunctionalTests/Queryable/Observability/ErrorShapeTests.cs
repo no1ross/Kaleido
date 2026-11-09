@@ -1,0 +1,70 @@
+using System.Net;
+using System.Text.Json;
+using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
+using Kaleido.Platform.Queryable;
+
+namespace Kaleido.Http.FunctionalTests.Queryable.Observability;
+
+public sealed class ErrorShapeTests(
+    QueryableAspNetCoreFixture fixture)
+    : IClassFixture<QueryableAspNetCoreFixture>
+{
+    [Fact]
+    public async Task Request_WhenQueryBodyIsInvalid_ReturnsValidationErrorShape()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/kaleido/1/queryable/functionalrecordcontextsource/query")
+        {
+            Content = JsonContent.Create(
+                new QueryApiRequest(
+                    new QueryApiBody
+                    {
+                        Filter = new QueryApiFilterNode
+                        {
+                            Condition = new QueryApiFilterCondition
+                            {
+                                Field = "bogus-field",
+                                Operator = "equals",
+                                Values = [System.Text.Json.JsonSerializer.SerializeToElement("1")]
+                            }
+                        }
+                    }))
+        };
+
+        var response = await fixture.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+
+        var raw = await response.Content.ReadAsStringAsync();
+
+        using var body = JsonDocument.Parse(raw);
+
+        var error = body.RootElement
+            .GetProperty("errors")[0];
+
+        Assert.StartsWith("qry_", error.GetProperty("code").GetString());
+        Assert.False(
+            string.IsNullOrWhiteSpace(
+                error.GetProperty("message").GetString()));
+    }
+
+    [Fact]
+    public async Task Request_WhenBodyIsMalformedJson_ReturnsBadRequest()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/kaleido/1/queryable/functionalrecordcontextsource/query")
+        {
+            Content = new StringContent(
+                "{ not json }",
+                System.Text.Encoding.UTF8,
+                "application/json")
+        };
+
+        var response = await fixture.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+}

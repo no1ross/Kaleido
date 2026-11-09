@@ -1,0 +1,16 @@
+global using System.Net;
+global using System.Text.Json;
+global using System.Text.Json.Nodes;
+global using Kaleido.Client.Calls;
+global using Kaleido.Client.Processor;
+global using Kaleido.Client.Queryable;
+global using Kaleido.Http.Client.Configuration;
+global using Kaleido.Http.Client.Processor;
+global using Kaleido.Http.Client.Transport;
+global using Kaleido.Platform.Processor;
+global using Kaleido.Platform.Queryable;
+global using Kaleido.Platform.Registry;
+global using Kaleido.Processor;
+global using Kaleido.Queryable;
+global using Kaleido.Server.Registry;
+global using Moq;

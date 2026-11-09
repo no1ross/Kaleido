@@ -86,8 +86,11 @@ jobs:
 
     - name: Pack
       run: |
-        for project in src/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do
-          dotnet pack "$project" --configuration Release --no-build -o artifacts
+        for project in src/*/*.csproj src/*/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do
+          [ -f "$project" ] || continue
+          if [ "$(dotnet msbuild "$project" -getProperty:IsPackable)" != false ]; then
+            dotnet pack "$project" --configuration Release --no-build -o artifacts
+          fi
         done
 
     # The complete release set (its manifest: ids, one version, symbols), contents and metadata, and

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido gRPC server for ASP.NET Core (placeholder: gRPC is not implemented yet).</Description>
+		<PackageTags>kaleido;grpc;aspnetcore;server</PackageTags>
+		<!-- A placeholder until gRPC is implemented (#581): built and checked, never packed. -->
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Server\Kaleido.Server.csproj" />
+		<ProjectReference Include="..\Grpc\Kaleido.Grpc.csproj" />
+	</ItemGroup>
+</Project>

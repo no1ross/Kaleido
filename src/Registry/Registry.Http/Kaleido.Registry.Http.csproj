@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>The Kaleido control registry&apos;s HTTP API: registration, heartbeats, deregistration and the reads, on ASP.NET Core.</Description>
+		<PackageTags>kaleido;registry;discovery;aspnetcore;http</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Registry\Kaleido.Registry.csproj" />
+		<ProjectReference Include="..\..\Http\Http.Server\Kaleido.Http.Server.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+	</ItemGroup>
+</Project>

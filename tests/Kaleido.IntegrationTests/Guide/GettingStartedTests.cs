@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using System.Text.Json;
 using Kaleido.Guide.Examples.GettingStarted;
 using Microsoft.AspNetCore.Builder;
@@ -15,12 +14,15 @@ namespace Kaleido.IntegrationTests.Guide;
 public sealed class GettingStartedTests : IAsyncLifetime
 {
     private IHost? _host;
+    private TestControlRegistry? _registry;
 
     private HttpClient Client => (_host ?? throw new InvalidOperationException("Not started.")).GetTestClient();
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
-    public async ValueTask InitializeAsync() =>
+    public async ValueTask InitializeAsync()
+    {
+        _registry = await TestControlRegistry.StartAsync();
         _host = await new HostBuilder()
             .ConfigureWebHost(web =>
             {
@@ -28,7 +30,11 @@ public sealed class GettingStartedTests : IAsyncLifetime
                 web.ConfigureServices(services =>
                 {
                     services.AddRouting();
-                    OrdersService.AddOrders(services, new ConfigurationBuilder().Build());
+                    OrdersService.AddOrders(services, new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                    }).Build());
+                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
                 });
                 web.Configure(app =>
                 {
@@ -37,6 +43,8 @@ public sealed class GettingStartedTests : IAsyncLifetime
                 });
             })
             .StartAsync(Cancel);
+        await _registry.WaitForRegistrationAsync(_host);
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -44,6 +52,11 @@ public sealed class GettingStartedTests : IAsyncLifetime
         {
             await _host.StopAsync(Cancel);
             _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
         }
     }
 
@@ -65,19 +78,19 @@ public sealed class GettingStartedTests : IAsyncLifetime
     [Fact]
     public async Task PlacingAnOrder_StartsAProcess_ThatRequiresTheConfirmation_AndTheOrderCanBeQueried()
     {
-        await PostAsync("/orders/processes/steps/PlaceOrderStep", new { processStep = new { item = "Pen" } });
-        var placed = await PostAsync("/orders/processes/steps/PlaceOrderStep", new { processStep = new { item = "Book", quantity = 2 } });
+        await PostAsync("/orders/1/processes/steps/PlaceOrderStep", new { processStep = new { item = "Pen" } });
+        var placed = await PostAsync("/orders/1/processes/steps/PlaceOrderStep", new { processStep = new { item = "Book", quantity = 2 } });
 
         Assert.Equal("completed", placed.GetProperty("status").GetString());
         Assert.Equal(2, placed.GetProperty("result").GetProperty("number").GetInt32());
         Assert.Equal("ConfirmOrderStep", placed.GetProperty("requiredStep").GetProperty("name").GetString());
 
         var processId = placed.GetProperty("processId").GetGuid();
-        var confirmed = await PostAsync("/orders/processes/steps/ConfirmOrderStep", new { processStep = new { } }, processId);
+        var confirmed = await PostAsync("/orders/1/processes/steps/ConfirmOrderStep", new { processStep = new { } }, processId);
 
         Assert.Equal("completed", confirmed.GetProperty("status").GetString());
 
-        var orders = await PostAsync("/orders/queryable/OrderSource/query", new { query = new { searchText = "Book" } });
+        var orders = await PostAsync("/orders/1/queryable/OrderSource/query", new { query = new { searchText = "Book" } });
         var order = Assert.Single(orders.GetProperty("results").EnumerateArray());
         Assert.Equal("Book", order.GetProperty("item").GetString());
         Assert.Equal(2, order.GetProperty("quantity").GetInt32());
@@ -86,7 +99,8 @@ public sealed class GettingStartedTests : IAsyncLifetime
     [Fact]
     public async Task TheRegistry_PublishesTheStepsAndTheSource()
     {
-        using var response = await Client.GetAsync("/orders/registry", Cancel);
+        using var registryClient = _registry!.CreateClient();
+        using var response = await registryClient.GetAsync("/registry", Cancel);
         var registry = await response.Content.ReadAsStringAsync(Cancel);
 
         Assert.True(response.IsSuccessStatusCode, registry);

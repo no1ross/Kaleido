@@ -73,6 +73,9 @@ public static class ConfigurationErrorCodes
     /// <summary>Authorization is enforced (AuthorizationMode is not None) but the host has no authentication scheme registered.</summary>
     public const string AuthenticationNotConfigured = "authentication_not_configured";
 
+    /// <summary>A Kaleido host maps capabilities or MCP without participating in the central registry.</summary>
+    public const string RegistryNotConfigured = "registry_not_configured";
+
     /// <summary>KaleidoServiceOptions.AuthorizationMode is not a defined value.</summary>
     public const string InvalidAuthorizationMode = "invalid_authorization_mode";
 

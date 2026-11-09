@@ -34,19 +34,29 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Transports are built into the solution: the HTTP transport uses core's transport seams (authorization evaluation, correlation initialization) without making them public API; the outgoing clients and the MCP adapter read the inbound caller the transport set (ADR 0022). -->
+		<!-- The servers, clients and front doors are built into the solution: they use core's transport seams (authorization evaluation, correlation initialization) without making them public API; the outgoing clients and the MCP adapter read the inbound caller the server set (ADR 0022). -->
+		<InternalsVisibleTo Include="Kaleido.Platform" />
+		<InternalsVisibleTo Include="Kaleido.Server" />
+		<InternalsVisibleTo Include="Kaleido.Client" />
 		<InternalsVisibleTo Include="Kaleido.Http" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Http.Client" />
-		<InternalsVisibleTo Include="Kaleido.Http.Mcp" />
-		<InternalsVisibleTo Include="Kaleido.Http.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
 		<!-- The OpenTelemetry provider lays its configuration section over the options from code with core's overlay (ADR 0030). -->
 		<InternalsVisibleTo Include="Kaleido.Observability.OpenTelemetry" />
 		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Platform.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Client.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.UnitTests" />
-		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.Client.UnitTests" />
-		<InternalsVisibleTo Include="Kaleido.Http.Mcp.UnitTests" />
-		<InternalsVisibleTo Include="Kaleido.Http.Registry.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 		<InternalsVisibleTo Include="Kaleido.IntegrationTests" />
 	</ItemGroup>
 </Project>

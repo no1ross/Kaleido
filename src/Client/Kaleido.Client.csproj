@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido client base, with no ASP.NET Core: the processor and queryable client contracts libraries call, and what a call made for a caller is (call context, purpose, on-behalf-of modes).</Description>
+		<PackageTags>kaleido;client</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Platform\Kaleido.Platform.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The protocol clients and the MCP adapter use the call context's internal seams. -->
+		<InternalsVisibleTo Include="Kaleido.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Http.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
+	</ItemGroup>
+</Project>

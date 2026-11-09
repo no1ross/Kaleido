@@ -1,0 +1,211 @@
+using Kaleido.Processor;
+using Kaleido.Processor.Registry;
+using Kaleido.Server;
+
+namespace Kaleido.Http.Server.Processor;
+
+// Wire shapes (ProcessExecutionResponse, StepExecutionResponse, etc.)
+// are defined in Kaleido.Http.Abstractions.
+// Factory methods and mapping logic that depend on server-side types live here.
+
+internal interface IProcessExecutionResponseFactory
+{
+    ProcessExecutionResponse CreateExecutionResponse(
+        ProcessResult processResult,
+        IProcessorStepRegistry registry);
+
+    StepExecutionResponse CreateStepResponse(
+        ProcessResult processResult,
+        ProcessStepResult stepResult,
+        IProcessorStepRegistry registry);
+
+    StepExecutionResponse<TResponse> CreateStepResponse<TResponse>(
+        ProcessResult processResult,
+        ProcessStepResult stepResult,
+        IProcessorStepRegistry registry);
+}
+
+internal sealed class ProcessExecutionResponseFactory(
+    IProcessorResponseFactory responseFactory,
+    KaleidoHttpOptions options)
+    : IProcessExecutionResponseFactory
+{
+    public ProcessExecutionResponse CreateExecutionResponse(
+        ProcessResult processResult,
+        IProcessorStepRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(processResult);
+        ArgumentNullException.ThrowIfNull(registry);
+
+        return new ProcessExecutionResponse
+        {
+            ProcessId =
+                processResult.ProcessId,
+
+            // RequiredStep is null when TargetProcessorName is set —
+            // consumer must call the target processor's state endpoint instead.
+            RequiredStep =
+                CreateRequiredStep(processResult, registry),
+
+            TargetProcessorName =
+                processResult.TargetProcessorName,
+
+            // After a hand-off the next steps are the target's names, resolved against the target's
+            // registry by the caller of this factory (#198); local ones are this registry's.
+            AvailableSteps =
+                LocalSteps(processResult)
+                    .Select(stepName =>
+                        {
+                            var registration = registry.Find(stepName)
+                                ?? throw new KaleidoFrameworkException(
+                                    FrameworkErrorCodes.MissingRegistration,
+                                    $"Available step '{stepName}' was not found in the local registry.");
+                            return responseFactory.CreateStepSummary(registration.ToSummary());
+                        })
+                    .ToArray(),
+
+            Results =
+                processResult.Steps
+                    .Where(x =>
+                        x.ExecutionStatus != StepExecutionStatus.Pending ||
+                        x.RuntimeMessages.Count > 0 ||
+                        x.BusinessMessages.Count > 0)
+                    .Select(CreateStepResult)
+                    .ToArray(),
+        };
+    }
+
+    public StepExecutionResponse CreateStepResponse(
+        ProcessResult processResult,
+        ProcessStepResult stepResult,
+        IProcessorStepRegistry registry)
+    {
+        return new StepExecutionResponse
+        {
+            ProcessId =
+                processResult.ProcessId,
+
+            StepName =
+                stepResult.StepName,
+
+            // RequiredStep is null when TargetProcessorName is set —
+            // consumer must call the target processor's state endpoint instead.
+            RequiredStep =
+                CreateRequiredStep(processResult, registry),
+
+            TargetProcessorName =
+                processResult.TargetProcessorName,
+
+            Status = stepResult.ExecutionStatus,
+
+            // After a hand-off the next steps are the target's names, resolved against the target's
+            // registry by the caller of this factory (#198); local ones are this registry's.
+            AvailableSteps =
+                LocalSteps(processResult)
+                    .Select(stepName =>
+                        {
+                            var registration = registry.Find(stepName)
+                                ?? throw new KaleidoFrameworkException(
+                                    FrameworkErrorCodes.MissingRegistration,
+                                    $"Available step '{stepName}' was not found in the local registry.");
+                            return responseFactory.CreateStepSummary(registration.ToSummary());
+                        })
+                    .ToList(),
+
+            BusinessMessages =
+                stepResult.BusinessMessages.ToArray(),
+
+            FrameworkMessages =
+                ToFrameworkMessages(stepResult),
+        };
+    }
+
+    public StepExecutionResponse<TResponse> CreateStepResponse<TResponse>(
+        ProcessResult processResult,
+        ProcessStepResult stepResult,
+        IProcessorStepRegistry registry)
+    {
+        var response =
+            CreateStepResponse(processResult, stepResult, registry);
+
+        return new StepExecutionResponse<TResponse>
+        {
+            ProcessId =
+                response.ProcessId,
+
+            StepName =
+                response.StepName,
+
+            RequiredStep =
+                response.RequiredStep,
+
+            TargetProcessorName =
+                response.TargetProcessorName,
+
+            Status =
+                response.Status,
+
+            AvailableSteps =
+                response.AvailableSteps,
+
+            BusinessMessages =
+                response.BusinessMessages,
+
+            FrameworkMessages =
+                response.FrameworkMessages,
+
+            Result =
+                (TResponse?)stepResult.Response,
+        };
+    }
+
+    private ProcessExecutionStepResponse CreateStepResult(
+        ProcessStepResult stepResult)
+    {
+        return new ProcessExecutionStepResponse
+        {
+            StepName = stepResult.StepName,
+            Response = stepResult.Response ?? new { },
+            BusinessMessages = stepResult.BusinessMessages.ToArray(),
+            FrameworkMessages = ToFrameworkMessages(stepResult),
+        };
+    }
+
+    // The next steps that are this processor's: none after a hand-off, whose steps are the target's.
+    private static IReadOnlyCollection<string> LocalSteps(ProcessResult processResult) =>
+        processResult.TargetProcessorName is null
+            ? processResult.AvailableSteps
+            : [];
+
+    private ProcessRequiredStep? CreateRequiredStep(
+        ProcessResult processResult,
+        IProcessorStepRegistry registry)
+    {
+        if (processResult.TargetProcessorName is not null ||
+            processResult.RequiredStep is not { } requiredStep)
+        {
+            return null;
+        }
+
+        var registration = registry.Find(requiredStep)
+            ?? throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.MissingRegistration,
+                $"Required step '{requiredStep}' was not found in the local registry.");
+
+        return responseFactory.CreateRequiredStep(registration.ToSummary(), processResult.RequiredInformationRequest);
+    }
+
+    private ProcessMessage[] ToFrameworkMessages(
+        ProcessStepResult stepResult) =>
+        options.IncludeFrameworkMessages
+            ? stepResult.RuntimeMessages
+                .Select(message =>
+                    new ProcessMessage
+                    {
+                        Type = message.Type,
+                        Message = message.Message,
+                        Code = message.Code,
+                    })
+                .ToArray()
+            : [];
+}

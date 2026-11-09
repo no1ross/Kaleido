@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido MCP adapter: publishes a Kaleido host&apos;s capabilities to AI agents as Model Context Protocol tools.</Description>
+		<PackageTags>mcp;model-context-protocol;ai;agents;kaleido</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ModelContextProtocol.AspNetCore" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Until the per-service registry is removed and the client errors and options are protocol-neutral (#581), the adapter builds on the HTTP server's in-host registry and calls through the HTTP clients. -->
+		<ProjectReference Include="..\..\Http\Http.Server\Kaleido.Http.Server.csproj" />
+		<ProjectReference Include="..\..\Http\Http.Client\Kaleido.Http.Client.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Default agent instructions: Markdown, overridable or extendable through Kaleido:Mcp. -->
+		<EmbeddedResource Include="Instructions\DefaultInstructions.md" LogicalName="Kaleido.Mcp.Instructions.DefaultInstructions.md" />
+		<!-- Appended when Kaleido:Mcp:ToolListing is FrontDoor: how unlisted tools are reached. -->
+		<EmbeddedResource Include="Instructions\FrontDoorInstructions.md" LogicalName="Kaleido.Mcp.Instructions.FrontDoorInstructions.md" />
+	</ItemGroup>
+	<ItemGroup>
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Observability.OpenTelemetry.UnitTests" />
+	</ItemGroup>
+</Project>

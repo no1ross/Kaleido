@@ -1,0 +1,5 @@
+#nullable enable
+Kaleido.Http.Server.KaleidoEndpointRouteBuilderExtensions
+Kaleido.Http.Server.KaleidoHttpServiceCollectionExtensions
+static Kaleido.Http.Server.KaleidoEndpointRouteBuilderExtensions.MapKaleidoHttp(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints) -> Microsoft.AspNetCore.Builder.IEndpointConventionBuilder!
+static Kaleido.Http.Server.KaleidoHttpServiceCollectionExtensions.AddHttp(this Kaleido.IKaleidoBuilder! builder, Kaleido.Server.KaleidoHttpOptions? options = null) -> Kaleido.IKaleidoBuilder!

@@ -1,0 +1,133 @@
+using Kaleido.Client.Queryable;
+using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
+using Kaleido.Http.Server;
+using Kaleido.Observability;
+using Kaleido.Platform.Registry;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace Kaleido.Http.FunctionalTests.Queryable.Fixtures;
+
+public sealed class QueryableAspNetCoreFixture
+    : IAsyncLifetime
+{
+    private IHost? _host;
+    private TestControlRegistry? _registry;
+    private ServiceProvider? _clientProvider;
+
+    public HttpClient Client { get; private set; } = null!;
+    public HttpClient RegistryClient { get; private set; } = null!;
+    public IKaleidoQueryableClientFactory ClientFactory { get; private set; } = null!;
+    public TestServer TestServer { get; private set; } = null!;
+
+    public async ValueTask InitializeAsync()
+    {
+        _registry = await TestControlRegistry.StartAsync();
+        RegistryClient = _registry.CreateClient();
+        _host =
+            await new HostBuilder()
+                .ConfigureWebHost(webBuilder =>
+                {
+                    webBuilder.UseTestServer();
+
+                    webBuilder.ConfigureServices(services =>
+                    {
+                        services.AddRouting();
+
+                        services.AddSingleton<FunctionalRecordData>();
+
+                        services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                        {
+                            ["Kaleido:BaseUrl"] = "http://registry.test/",
+                        }).Build(), new()
+                        {
+                            ServiceName = "kaleido",
+                            ServiceVersion = "1",
+                            AuthorizationMode = KaleidoAuthorizationMode.None,
+                            Assemblies = new[] { typeof(FunctionalRecordContext).Assembly },
+                        })
+                            .AddInMemoryStores()
+                            .AddHttp()
+                            .AddControlRegistryClient();
+                        services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
+                    });
+
+                    webBuilder.Configure(app =>
+                    {
+                        app.UseRouting();
+
+                        app.UseEndpoints(endpoints =>
+                        {
+                            endpoints.MapKaleidoHttp();
+                        });
+                    });
+                })
+                .StartAsync();
+
+        await _registry.WaitForRegistrationAsync(_host);
+        Client = _host.GetTestClient();
+
+        // Wire the Queryable client factory against the test server.
+        // The named HttpClient uses the TestServer's handler so requests stay in-process.
+        TestServer = _host.GetTestServer();
+        var testHandler = TestServer.CreateHandler();
+
+        var clientConfig = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Kaleido:BaseUrl"] = "http://localhost/",
+            })
+            .Build();
+
+        var clientServices = new ServiceCollection();
+        clientServices.AddSingleton<IKaleidoRegistrySource>(_host.Services.GetRequiredService<IKaleidoRegistrySource>());
+        clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
+        // Client container needs no type scanning; under xUnit v3 the entry assembly
+        // is this test project (it was testhost under v2), so the fallback would
+        // register functional test sources without their dependencies.
+        clientServices.AddKaleido(clientConfig, new()
+        {
+            ServiceName = "test-queryable-client",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(KaleidoServiceOptions).Assembly],
+        })
+            .AddHttpClients();
+
+        // Override the named HttpClient to use the TestServer handler instead of a real socket
+        clientServices.AddHttpClient(KaleidoClientTransport.ClientName)
+            .ConfigurePrimaryHttpMessageHandler(() => testHandler);
+
+        _clientProvider = clientServices.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+
+        ClientFactory = _clientProvider.CreateScope().ServiceProvider.GetRequiredService<IKaleidoQueryableClientFactory>();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Client.Dispose();
+        RegistryClient.Dispose();
+        _clientProvider?.Dispose();
+
+        if (_host is not null)
+        {
+            await _host.StopAsync();
+            _host.Dispose();
+        }
+
+        if (_registry is not null)
+        {
+            await _registry.DisposeAsync();
+        }
+    }
+
+    // Provides a no-op correlation context for the client factory used in tests
+    private sealed class NullKaleidoCorrelationContextAccessor : IKaleidoCorrelationContextAccessor
+    {
+        public KaleidoCorrelationContext Current => new();
+    }
+}

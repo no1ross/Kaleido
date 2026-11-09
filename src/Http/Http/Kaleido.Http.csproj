@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido HTTP API shape shared by the HTTP server (Kaleido.Http.Server), the HTTP clients (Kaleido.Http.Client) and the registry&apos;s HTTP API: the route paths, URLs and endpoint names.</Description>
+		<PackageTags>kaleido;http;contracts</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Platform\Kaleido.Platform.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The HTTP server, the HTTP clients and the registry's HTTP API share the internal routes. -->
+		<InternalsVisibleTo Include="Kaleido.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Http.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
+	</ItemGroup>
+</Project>

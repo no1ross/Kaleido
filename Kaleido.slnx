@@ -27,16 +27,34 @@
     <File Path="src/AGENTS.md" />
     <File Path="src/ARCHITECTURE.md" />
     <File Path="src/Directory.Build.props" />
-    <Project Path="src/Kaleido.Observability.OpenTelemetry/Kaleido.Observability.OpenTelemetry.csproj" />
-    <Project Path="src/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
+    <Project Path="src/Client/Kaleido.Client.csproj" />
     <Project Path="src/Kaleido/Kaleido.csproj" />
+    <Project Path="src/Platform/Kaleido.Platform.csproj" />
+    <Project Path="src/Server/Kaleido.Server.csproj" />
+  </Folder>
+  <Folder Name="/src/Grpc/">
+    <Project Path="src/Grpc/Grpc/Kaleido.Grpc.csproj" />
+    <Project Path="src/Grpc/Grpc.Client/Kaleido.Grpc.Client.csproj" />
+    <Project Path="src/Grpc/Grpc.Server/Kaleido.Grpc.Server.csproj" />
   </Folder>
   <Folder Name="/src/Http/">
-    <Project Path="src/Kaleido.Http.Abstractions/Kaleido.Http.Abstractions.csproj" />
-    <Project Path="src/Kaleido.Http.Client/Kaleido.Http.Client.csproj" />
-    <Project Path="src/Kaleido.Http.Mcp/Kaleido.Http.Mcp.csproj" />
-    <Project Path="src/Kaleido.Http.Registry/Kaleido.Http.Registry.csproj" />
-    <Project Path="src/Kaleido.Http/Kaleido.Http.csproj" />
+    <Project Path="src/Http/Http/Kaleido.Http.csproj" />
+    <Project Path="src/Http/Http.Client/Kaleido.Http.Client.csproj" />
+    <Project Path="src/Http/Http.Server/Kaleido.Http.Server.csproj" />
+  </Folder>
+  <Folder Name="/src/Mcp/">
+    <Project Path="src/Mcp/Mcp/Kaleido.Mcp.csproj" />
+  </Folder>
+  <Folder Name="/src/Observability/">
+    <Project Path="src/Observability/Observability.OpenTelemetry/Kaleido.Observability.OpenTelemetry.csproj" />
+  </Folder>
+  <Folder Name="/src/Providers/">
+    <Project Path="src/Providers/Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
+  </Folder>
+  <Folder Name="/src/Registry/">
+    <Project Path="src/Registry/Registry/Kaleido.Registry.csproj" />
+    <Project Path="src/Registry/Registry.Grpc/Kaleido.Registry.Grpc.csproj" />
+    <Project Path="src/Registry/Registry.Http/Kaleido.Registry.Http.csproj" />
   </Folder>
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />
@@ -45,17 +63,31 @@
     <Project Path="tests/Kaleido.Analyzers.Source.UnitTests/Kaleido.Analyzers.Source.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Analyzers.Testing.UnitTests/Kaleido.Analyzers.Testing.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Analyzers.UnitTests/Kaleido.Analyzers.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.Http.Abstractions.UnitTests/Kaleido.Http.Abstractions.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.Http.Client.UnitTests/Kaleido.Http.Client.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.Http.FunctionalTests/Kaleido.Http.FunctionalTests.csproj" />
-    <Project Path="tests/Kaleido.Http.Mcp.FunctionalTests/Kaleido.Http.Mcp.FunctionalTests.csproj" />
-    <Project Path="tests/Kaleido.Http.Mcp.UnitTests/Kaleido.Http.Mcp.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.Http.Registry.UnitTests/Kaleido.Http.Registry.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.Http.UnitTests/Kaleido.Http.UnitTests.csproj" />
+    <Project Path="tests/Client.UnitTests/Kaleido.Client.UnitTests.csproj" />
     <Project Path="tests/Kaleido.IntegrationTests/Kaleido.IntegrationTests.csproj" />
-    <Project Path="tests/Kaleido.Observability.OpenTelemetry.UnitTests/Kaleido.Observability.OpenTelemetry.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
     <Project Path="tests/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
+    <Project Path="tests/Platform.UnitTests/Kaleido.Platform.UnitTests.csproj" />
+    <Project Path="tests/Server.UnitTests/Kaleido.Server.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/test/Http/">
+    <Project Path="tests/Http/Http.Client.UnitTests/Kaleido.Http.Client.UnitTests.csproj" />
+    <Project Path="tests/Http/Http.FunctionalTests/Kaleido.Http.FunctionalTests.csproj" />
+    <Project Path="tests/Http/Http.Server.UnitTests/Kaleido.Http.Server.UnitTests.csproj" />
+    <Project Path="tests/Http/Http.UnitTests/Kaleido.Http.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/test/Mcp/">
+    <Project Path="tests/Mcp/Mcp.FunctionalTests/Kaleido.Mcp.FunctionalTests.csproj" />
+    <Project Path="tests/Mcp/Mcp.UnitTests/Kaleido.Mcp.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/test/Observability/">
+    <Project Path="tests/Observability/Observability.OpenTelemetry.UnitTests/Kaleido.Observability.OpenTelemetry.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/test/Providers/">
+    <Project Path="tests/Providers/Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/test/Registry/">
+    <Project Path="tests/Registry/Registry.Http.UnitTests/Kaleido.Registry.Http.UnitTests.csproj" />
+    <Project Path="tests/Registry/Registry.UnitTests/Kaleido.Registry.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <File Path="tools/Directory.Packages.props" />

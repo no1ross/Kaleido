@@ -25,9 +25,9 @@
        repository-only diagnostic (KAL0xxx, KAL1xxx, MA, RCS), and a deliberate violation (a
        [ProcessStep] with an empty Description) fails with KAL2001: the consumer analyzer flows through the
        package dependency.
-    6. A clean host consumer of every runtime package (Kaleido.Http, .Http.Client, .Http.Mcp, .Http.Registry,
-       .Provider.SQLite, .Observability.OpenTelemetry) builds, starts, answers its registry and MCP
-       endpoints, and stops.
+    6. A clean host consumer of every runtime package builds a standalone central registry and a
+       participating HTTP/MCP service, discovers the service through the central registry, runs a
+       step and maps MCP, then stops both hosts.
     The consumers live outside the repository and restore Kaleido packages from the local feed only,
     into their own package folder. Test-PackageConsumer.Tests.ps1 proves the gate fails for each
     broken release set.
@@ -54,11 +54,15 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 # The release set (#436): every shipped package, by id. Adding a package means adding it here.
 $libraries = @(
     "Kaleido",
+    "Kaleido.Platform",
+    "Kaleido.Server",
+    "Kaleido.Client",
     "Kaleido.Http",
-    "Kaleido.Http.Abstractions",
+    "Kaleido.Http.Server",
     "Kaleido.Http.Client",
-    "Kaleido.Http.Mcp",
-    "Kaleido.Http.Registry",
+    "Kaleido.Mcp",
+    "Kaleido.Registry",
+    "Kaleido.Registry.Http",
     "Kaleido.Observability.OpenTelemetry",
     "Kaleido.Provider.SQLite"
 )
@@ -232,7 +236,7 @@ try {
     New-Item -ItemType Directory -Path $hostDir, $coreDir | Out-Null
 
     # --- 6. (project) The host consumer: every runtime package -----------------------------------------
-    $runtimeReferences = ($libraries | Where-Object { $_ -notin "Kaleido", "Kaleido.Http.Abstractions" } |
+    $runtimeReferences = ($libraries | Where-Object { $_ -notin "Kaleido", "Kaleido.Platform" } |
         ForEach-Object { "    <PackageReference Include=""$_"" Version=""$version"" />" }) -join "`n"
 
     @"
@@ -251,24 +255,52 @@ $runtimeReferences
     @"
 using System.ComponentModel;
 using Kaleido;
+using Kaleido.Client.Processor;
 using Kaleido.Http;
-using Kaleido.Http.Client;
-using Kaleido.Http.Mcp;
+using Kaleido.Http.Client.Registration;
+using Kaleido.Http.Client.Registry;
+using Kaleido.Http.Server;
+using Kaleido.Mcp;
 using Kaleido.Observability.OpenTelemetry;
 using Kaleido.Processor;
 using Kaleido.Processor.Execution;
 using Kaleido.Provider.SQLite;
+using Kaleido.Registry;
+using Kaleido.Registry.Http;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-// Every runtime package in one host: HTTP, a Kaleido client, MCP, the SQLite stores, OpenTelemetry.
+// Every runtime package in a clean consumer: a standalone registry and a service with HTTP, MCP and SQLite.
 var database = Path.Combine(Path.GetTempPath(), "kaleido-consumer-" + Guid.NewGuid().ToString("N") + ".db");
 var connection = "Data Source=" + database;
 
+var registryBuilder = WebApplication.CreateBuilder(args);
+var registryTime = new ManualTimeProvider();
+registryBuilder.Services.AddSingleton<TimeProvider>(registryTime);
+registryBuilder.Services.Configure<Microsoft.Extensions.Caching.Memory.MemoryCacheOptions>(options => options.Clock = registryTime);
+registryBuilder.WebHost.UseUrls("http://127.0.0.1:0");
+registryBuilder.Services.AddKaleido(registryBuilder.Configuration, new()
+{
+    ServiceName = "registry",
+    Assemblies = [typeof(StartStep).Assembly],
+    TypeFilter = _ => false,
+    AuthorizationMode = KaleidoAuthorizationMode.None,
+})
+    .AddInMemoryStores()
+    .AddHttp()
+    .AddControlRegistry()
+    .AddInMemoryRegistryStore();
+var registryApp = registryBuilder.Build();
+registryApp.MapKaleidoControlRegistry();
+await registryApp.StartAsync();
+
+var registered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+var availabilityRead = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+var gatewayTarget = new TaskCompletionSource<Uri>(TaskCreationOptions.RunContinuationsAsynchronously);
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://127.0.0.1:0");
 builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 {
-    ["Kaleido:Clients:host:BaseUrl"] = "http://127.0.0.1:9/",
-    ["Kaleido:Clients:host:RoutePrefix"] = "host",
+    ["Kaleido:BaseUrl"] = registryApp.Urls.First(),
     // AddMcp() requires it: the agent's token is exchanged, never passed through (#574).
     ["Kaleido:OnBehalfOfCalls"] = "Exchange",
 });
@@ -277,16 +309,26 @@ builder.Services
     .AddKaleido(builder.Configuration, new()
     {
         ServiceName = "host",
+        ServiceVersion = "1",
         Assemblies = [typeof(StartStep).Assembly],
         AuthorizationMode = KaleidoAuthorizationMode.None,
     })
     .AddHttp()
     .AddHttpClients()
+    .AddControlRegistryClient()
     .AddMcp()
     .AddSqliteContextStore(connection)
     .AddSqliteOutboxStore(connection)
     .AddSqliteIdempotencyStore(connection)
     .AddOpenTelemetry();
+
+builder.Services.AddTransient<RegistryRegistrationSignal>();
+builder.Services.AddHttpClient("kaleido-registry").AddHttpMessageHandler<RegistryRegistrationSignal>();
+builder.Services.AddTransient<GatewayRouteToService>();
+builder.Services.AddHttpClient("kaleido-gateway").AddHttpMessageHandler<GatewayRouteToService>();
+builder.Services.AddSingleton(registered);
+builder.Services.AddSingleton(availabilityRead);
+builder.Services.AddSingleton(gatewayTarget);
 
 var app = builder.Build();
 
@@ -299,24 +341,54 @@ app.MapKaleidoHttp();
 app.MapKaleidoMcp("/mcp");
 
 await app.StartAsync();
+gatewayTarget.TrySetResult(new Uri(app.Urls.First()));
 
 try
 {
-    using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
-
-    var registry = await http.GetAsync("/host/registry");
-    var body = await registry.Content.ReadAsStringAsync();
-    if (!registry.IsSuccessStatusCode || !body.Contains("StartStep", StringComparison.Ordinal))
+    await registered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+    await availabilityRead.Task.WaitAsync(TimeSpan.FromSeconds(15));
+    registryTime.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
+    var healthChecks = app.Services.GetRequiredService<HealthCheckService>();
+    using var readyTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+    while ((await healthChecks.CheckHealthAsync(check => check.Name == "kaleido-registration", readyTimeout.Token)).Status != HealthStatus.Healthy)
     {
-        Console.Error.WriteLine("registry: " + (int)registry.StatusCode + " " + body);
+        await Task.Delay(50, readyTimeout.Token);
+    }
+
+    using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
+    using var registryHttp = new HttpClient { BaseAddress = new Uri(registryApp.Urls.First()) };
+
+    using var registryResponse = await registryHttp.GetAsync("/registry");
+    var body = await registryResponse.Content.ReadAsStringAsync();
+    if (!registryResponse.IsSuccessStatusCode || !body.Contains("StartStep", StringComparison.Ordinal))
+    {
+        Console.Error.WriteLine("registry: " + (int)registryResponse.StatusCode + " " + body);
         return 1;
     }
 
-    var started = await http.PostAsJsonAsync("/host/processes/steps/StartStep", new { processStep = new { } });
+    var started = await http.PostAsJsonAsync("/host/1/processes/steps/StartStep", new { processStep = new { } });
     if (!started.IsSuccessStatusCode)
     {
         Console.Error.WriteLine("step: " + (int)started.StatusCode + " " + await started.Content.ReadAsStringAsync());
         return 1;
+    }
+
+    using var unversioned = await http.PostAsJsonAsync("/host/processes/steps/StartStep", new { processStep = new { } });
+    if (unversioned.StatusCode != System.Net.HttpStatusCode.NotFound)
+    {
+        Console.Error.WriteLine("unversioned route unexpectedly mapped");
+        return 1;
+    }
+
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        var client = scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient("host", "1");
+        var called = await client.ExecuteStepAsync(new StartStep(), CancellationToken.None);
+        if (called.Status != StepExecutionStatus.Completed)
+        {
+            Console.Error.WriteLine("registry-published gateway route did not complete the step");
+            return 1;
+        }
     }
 
     // Any answer but 404 means the MCP endpoint is mapped (a GET without a session is refused).
@@ -327,14 +399,64 @@ try
         return 1;
     }
 
-    Console.WriteLine("consumer host: registry, step and MCP endpoint answered");
+    Console.WriteLine("consumer host: registry, versioned-only step, gateway client and MCP endpoint answered");
     return 0;
 }
 finally
 {
     await app.StopAsync();
+    await app.DisposeAsync();
+    await registryApp.StopAsync();
+    await registryApp.DisposeAsync();
     Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
     File.Delete(database);
+}
+
+public sealed class RegistryRegistrationSignal(TaskCompletionSource registered, TaskCompletionSource<bool> availabilityRead) : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var response = await base.SendAsync(request, cancellationToken);
+        if (request.Method == HttpMethod.Post && request.RequestUri?.AbsolutePath == "/registry/instances" && response.IsSuccessStatusCode)
+        {
+            registered.TrySetResult();
+        }
+
+        if (request.Method == HttpMethod.Get && request.RequestUri?.AbsolutePath == "/registry/availability" && response.IsSuccessStatusCode)
+        {
+            availabilityRead.TrySetResult(true);
+        }
+
+        return response;
+    }
+}
+
+public sealed class GatewayRouteToService(TaskCompletionSource<Uri> target) : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (request.RequestUri?.AbsolutePath.StartsWith("/host/1/", StringComparison.Ordinal) == true)
+        {
+            request.RequestUri = new Uri(await target.Task.WaitAsync(cancellationToken), request.RequestUri.PathAndQuery);
+        }
+
+        return await base.SendAsync(request, cancellationToken);
+    }
+}
+
+public sealed class ManualTimeProvider : TimeProvider, Microsoft.Extensions.Internal.ISystemClock
+{
+    private long ticks = DateTimeOffset.UtcNow.Ticks;
+
+    public override DateTimeOffset GetUtcNow() => new(Interlocked.Read(ref ticks), TimeSpan.Zero);
+
+    public override long GetTimestamp() => Interlocked.Read(ref ticks);
+
+    public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+    public DateTimeOffset UtcNow => GetUtcNow();
+
+    public void Advance(TimeSpan amount) => Interlocked.Add(ref ticks, amount.Ticks);
 }
 
 [ProcessStep(DisplayName = "Start", Description = "Starts the case.")]

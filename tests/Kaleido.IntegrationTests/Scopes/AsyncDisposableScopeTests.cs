@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Net;
-using System.Net.Http.Json;
-using Kaleido.Http;
+using Kaleido.Http.Server;
+using Kaleido.Platform;
 using Kaleido.Processor;
 using Kaleido.Processor.Execution;
 using Microsoft.AspNetCore.Builder;
@@ -31,7 +31,7 @@ public sealed class AsyncDisposableScopeTests
     {
         await using var host = await ScopeHost.StartAsync();
 
-        using var response = await host.PostAsync($"/scopes/processes/steps/{step}", new { processStep = new { } }, Cancel);
+        using var response = await host.PostAsync($"/scopes/1/processes/steps/{step}", new { processStep = new { } }, Cancel);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(status, (await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(Cancel)).GetProperty("status").GetString());
@@ -45,7 +45,7 @@ public sealed class AsyncDisposableScopeTests
         await using var host = await ScopeHost.StartAsync();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
 
-        var call = host.PostAsync($"/scopes/processes/steps/{nameof(ScopedWaitStep)}", new { processStep = new { } }, cancellation.Token);
+        var call = host.PostAsync($"/scopes/1/processes/steps/{nameof(ScopedWaitStep)}", new { processStep = new { } }, cancellation.Token);
         await host.Disposals.Started.Task.WaitAsync(Cancel);
         await cancellation.CancelAsync();
 
@@ -63,7 +63,7 @@ public sealed class AsyncDisposableScopeTests
     {
         await using var host = await ScopeHost.StartAsync();
 
-        using var response = await host.PostAsync($"/scopes/queryable/{source}/query", new { }, Cancel);
+        using var response = await host.PostAsync($"/scopes/1/queryable/{source}/query", new { }, Cancel);
 
         Assert.Equal(expected, response.StatusCode);
         Assert.Equal(1, host.Disposals.Async);
@@ -73,10 +73,12 @@ public sealed class AsyncDisposableScopeTests
     private sealed class ScopeHost : IAsyncDisposable
     {
         private readonly IHost _host;
+        private readonly TestControlRegistry _registry;
 
-        private ScopeHost(IHost host, Disposals disposals)
+        private ScopeHost(IHost host, TestControlRegistry registry, Disposals disposals)
         {
             _host = host;
+            _registry = registry;
             Disposals = disposals;
         }
 
@@ -85,6 +87,7 @@ public sealed class AsyncDisposableScopeTests
         public static async Task<ScopeHost> StartAsync()
         {
             var disposals = new Disposals();
+            var registry = await TestControlRegistry.StartAsync();
 
             var host = await new HostBuilder()
                 .ConfigureWebHost(web =>
@@ -93,15 +96,21 @@ public sealed class AsyncDisposableScopeTests
                     web.ConfigureServices(s =>
                     {
                         s.AddRouting();
-                        s.AddKaleido(new ConfigurationBuilder().Build(), new()
+                        s.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                        {
+                            ["Kaleido:BaseUrl"] = "http://registry.test/",
+                        }).Build(), new()
                         {
                             ServiceName = "scopes",
+                            ServiceVersion = "1",
                             Assemblies = [typeof(AsyncDisposableScopeTests).Assembly],
                             TypeFilter = type => type.Namespace == typeof(AsyncDisposableScopeTests).Namespace,
                             AuthorizationMode = KaleidoAuthorizationMode.None,
                         })
                             .AddInMemoryStores()
-                            .AddHttp();
+                            .AddHttp()
+                            .AddControlRegistryClient();
+                        s.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(registry.CreateHandler);
 
                         s.AddSingleton(disposals);
                         s.AddScoped<AsyncOnlyResource>();
@@ -115,7 +124,8 @@ public sealed class AsyncDisposableScopeTests
                 })
                 .StartAsync(Cancel);
 
-            return new ScopeHost(host, disposals);
+            await registry.WaitForRegistrationAsync(host);
+            return new ScopeHost(host, registry, disposals);
         }
 
         public async Task<HttpResponseMessage> PostAsync(string url, object body, CancellationToken cancellationToken)
@@ -128,6 +138,7 @@ public sealed class AsyncDisposableScopeTests
         {
             await _host.StopAsync(Cancel);
             _host.Dispose();
+            await _registry.DisposeAsync();
         }
     }
 }

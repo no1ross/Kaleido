@@ -21,7 +21,7 @@ only its own. Fine for tests and local evaluation; choose real stores before pro
 
 | Choice | Registration | For |
 |---|---|---|
-| SQLite reference provider | `AddSqliteContextStore`, `AddSqliteOutboxStore`, `AddSqliteIdempotencyStore` (one database) | samples, local development, a reference to copy ([README](../../src/Kaleido.Provider.SQLite/README.md)) |
+| SQLite reference provider | `AddSqliteContextStore`, `AddSqliteOutboxStore`, `AddSqliteIdempotencyStore` (one database) | samples, local development, a reference to copy ([README](../../src/Providers/Provider.SQLite/README.md)) |
 | Your own stores | `AddContextStore<T>()`, `AddOutboxStore<T>()`, `AddIdempotencyStore<T>()`, `AddTransactions<T>()` | production, on your database |
 | In memory (default) | nothing | tests, local evaluation |
 

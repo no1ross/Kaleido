@@ -1,0 +1,177 @@
+using Kaleido.Platform.Registry;
+using Kaleido.Processor.Registry;
+using Kaleido.Queryable.Registry;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace Kaleido.Http.Server;
+
+/// <summary>
+/// Maps the Kaleido HTTP endpoints registered by <c>AddHttp()</c>: Process, Queryable and the
+/// unified registry. The entry point is <see cref="MapKaleidoHttp"/>, which also runs the startup
+/// authorization checks.
+/// </summary>
+public static partial class KaleidoEndpointRouteBuilderExtensions
+{
+    /// <summary>
+    /// Maps all registered Kaleido endpoints in one call.
+    /// The framework auto-detects which runtimes are active (Process and/or Queryable)
+    /// and maps only those. Registry reads and writes go through the central registry.
+    /// Returns an <see cref="IEndpointConventionBuilder"/> that
+    /// propagates conventions (e.g. <c>.RequireAuthorization()</c>) to all mapped endpoints.
+    /// </summary>
+    /// <param name="endpoints">The host's endpoint route builder.</param>
+    /// <returns>A convention builder for every mapped Kaleido endpoint.</returns>
+    public static IEndpointConventionBuilder MapKaleidoHttp(this IEndpointRouteBuilder endpoints)
+    {
+        ArgumentNullException.ThrowIfNull(endpoints);
+
+        var logger = endpoints.ServiceProvider
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Kaleido.Startup");
+
+        ValidateCentralRegistry(endpoints.ServiceProvider);
+        ValidateAuthorization(endpoints.ServiceProvider, logger);
+
+        var hasProcess = endpoints.ServiceProvider.GetService<IProcessorStepRegistry>() is not null;
+        var hasQueryable = endpoints.ServiceProvider.GetService<IQueryableRegistry>() is not null;
+
+        var stepCount = hasProcess
+            ? endpoints.ServiceProvider.GetRequiredService<IProcessorStepRegistry>().Registrations.Count
+            : 0;
+
+        var contextCount = 0;
+        var viewCount = 0;
+
+        if (hasQueryable)
+        {
+            var registrations = endpoints.ServiceProvider
+                .GetRequiredService<IQueryableRegistry>()
+                .Registrations;
+
+            contextCount = registrations.Count;
+            viewCount = registrations.Sum(c => c.Views.Count);
+        }
+
+        LogStarted(logger, stepCount, contextCount, viewCount);
+
+        var builders = new List<IEndpointConventionBuilder>();
+
+        if (hasProcess)
+        {
+            builders.Add(
+                endpoints.MapProcessor());
+        }
+
+        if (hasQueryable)
+        {
+            builders.Add(
+                endpoints.MapQueryable());
+        }
+
+        return new RouteHandlerBuilder(builders);
+    }
+
+    private static void ValidateCentralRegistry(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        if (scope.ServiceProvider.GetService<IKaleidoRegistrySource>() is null)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.RegistryNotConfigured,
+                "A Kaleido HTTP host requires the central registry. Configure Kaleido:BaseUrl with the gateway address and call AddControlRegistryClient() before MapKaleidoHttp().");
+        }
+    }
+
+    // Startup authorization checks, by mode:
+    // - None: warn once that capability authorization is disabled.
+    // - Authenticated / ZeroTrust: fail if no authentication scheme is registered
+    //   (every request would otherwise fail at runtime with no scheme to challenge).
+    // - ZeroTrust: omit capabilities without an explicit authorization rule.
+    private static void ValidateAuthorization(
+        IServiceProvider services,
+        ILogger logger)
+    {
+        var mode = services.GetRequiredService<KaleidoServiceOptions>().AuthorizationMode;
+        var capabilities = ExposedCapabilities(services);
+
+        if (mode == KaleidoAuthorizationMode.None)
+        {
+            LogAuthorizationDisabled(logger);
+            return;
+        }
+
+        var schemes =
+            services.GetService<IAuthenticationSchemeProvider>()?
+                .GetAllSchemesAsync()
+                .GetAwaiter()
+                .GetResult();
+
+        if (schemes?.Any() != true)
+        {
+            throw new KaleidoConfigurationException(
+                ConfigurationErrorCodes.AuthenticationNotConfigured,
+                $"AuthorizationMode is {mode} but no authentication scheme is registered. " +
+                "Call AddAuthentication(...) with at least one scheme, plus UseAuthentication()/UseAuthorization(), " +
+                "or set AuthorizationMode = None.");
+        }
+
+        if (mode != KaleidoAuthorizationMode.ZeroTrust)
+        {
+            return;
+        }
+
+        var undeclared =
+            capabilities
+                .Where(c => !c.Authorization.IsExplicit())
+                .Select(c => c.Name)
+                .ToArray();
+
+        if (undeclared.Length > 0)
+        {
+            LogZeroTrustOmits(logger, undeclared.Length, string.Join(", ", undeclared));
+        }
+    }
+
+    // Every capability that gets an endpoint: process steps, query sources,
+    // and query views (views already carry their effective rule: their own
+    // declaration, else their source's).
+    private static List<(string Name, AuthorizationMetadata Authorization)> ExposedCapabilities(
+        IServiceProvider services)
+    {
+        var capabilities = new List<(string Name, AuthorizationMetadata Authorization)>();
+
+        if (services.GetService<IProcessorStepRegistry>() is { } steps)
+        {
+            capabilities.AddRange(
+                steps.Registrations.Select(s =>
+                    ($"step '{s.Metadata.Name}'", s.Metadata.Authorization)));
+        }
+
+        if (services.GetService<IQueryableRegistry>() is { } queryables)
+        {
+            foreach (var source in queryables.Registrations)
+            {
+                capabilities.Add(($"source '{source.Name}'", source.Authorization));
+
+                capabilities.AddRange(
+                    source.Views.Select(v =>
+                        ($"view '{source.Name}/{v.Name}'", v.Authorization)));
+            }
+        }
+
+        return capabilities;
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido started: {StepCount} process step(s), {ContextCount} query context(s), {ViewCount} query view(s).")]
+    private static partial void LogStarted(ILogger logger, int stepCount, int contextCount, int viewCount);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "AuthorizationMode is None: Kaleido capability authorization, registry filtering, and process ownership are disabled. Set AuthorizationMode to Authenticated or ZeroTrust for enforcement.")]
+    private static partial void LogAuthorizationDisabled(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "ZeroTrust omits {OmittedCount} capability(ies) without an explicit authorization rule: {Capabilities}. Declare a service default or a capability rule to publish them.")]
+    private static partial void LogZeroTrustOmits(ILogger logger, int omittedCount, string capabilities);
+}

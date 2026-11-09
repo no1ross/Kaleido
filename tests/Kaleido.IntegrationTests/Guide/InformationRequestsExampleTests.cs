@@ -60,7 +60,7 @@ public sealed class InformationRequestsExampleTests
 
         var (status, body) = await host.SendAsync(
             HttpMethod.Post,
-            "/orders/processes/steps/GiftWrapAnswersStep",
+            "/orders/1/processes/steps/GiftWrapAnswersStep",
             new { processStep = Answers(asked, ("wrap", "false"), ("paper", "red")) },
             processId);
 

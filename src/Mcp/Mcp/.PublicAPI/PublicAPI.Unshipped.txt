@@ -1,0 +1,50 @@
+#nullable enable
+const Kaleido.Mcp.KaleidoMcpOptions.SectionName = "Kaleido:Mcp" -> string!
+const Kaleido.Mcp.McpErrorCodes.ConfirmationRequired = "mcp_confirmation_required" -> string!
+const Kaleido.Mcp.McpErrorCodes.InternalError = "mcp_internal_error" -> string!
+const Kaleido.Mcp.McpErrorCodes.InvalidArguments = "mcp_invalid_arguments" -> string!
+const Kaleido.Mcp.McpErrorCodes.InvalidOptions = "mcp_invalid_options" -> string!
+const Kaleido.Mcp.McpErrorCodes.MissingClients = "mcp_missing_clients" -> string!
+const Kaleido.Mcp.McpErrorCodes.MissingHttp = "mcp_missing_http" -> string!
+const Kaleido.Mcp.McpErrorCodes.MissingInstructionsFile = "mcp_missing_instructions_file" -> string!
+const Kaleido.Mcp.McpErrorCodes.NoPendingInformationRequest = "mcp_no_pending_information_request" -> string!
+const Kaleido.Mcp.McpErrorCodes.OnBehalfOfCallsNotExchanged = "mcp_on_behalf_of_calls_not_exchanged" -> string!
+const Kaleido.Mcp.McpErrorCodes.ProcessConflict = "mcp_process_conflict" -> string!
+const Kaleido.Mcp.McpErrorCodes.ServiceError = "mcp_service_error" -> string!
+const Kaleido.Mcp.McpErrorCodes.ServiceUnavailable = "mcp_service_unavailable" -> string!
+const Kaleido.Mcp.McpErrorCodes.UnknownTool = "mcp_unknown_tool" -> string!
+Kaleido.Mcp.KaleidoMcpEndpointRouteBuilderExtensions
+Kaleido.Mcp.KaleidoMcpOptions
+Kaleido.Mcp.KaleidoMcpOptions.<Clone>$() -> Kaleido.Mcp.KaleidoMcpOptions!
+Kaleido.Mcp.KaleidoMcpOptions.AdditionalInstructions.get -> string?
+Kaleido.Mcp.KaleidoMcpOptions.AdditionalInstructions.init -> void
+Kaleido.Mcp.KaleidoMcpOptions.Equals(Kaleido.Mcp.KaleidoMcpOptions? other) -> bool
+Kaleido.Mcp.KaleidoMcpOptions.Instructions.get -> string?
+Kaleido.Mcp.KaleidoMcpOptions.Instructions.init -> void
+Kaleido.Mcp.KaleidoMcpOptions.InstructionsFile.get -> string?
+Kaleido.Mcp.KaleidoMcpOptions.InstructionsFile.init -> void
+Kaleido.Mcp.KaleidoMcpOptions.KaleidoMcpOptions() -> void
+Kaleido.Mcp.KaleidoMcpOptions.ListedTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Mcp.KaleidoMcpOptions.ListedTools.init -> void
+Kaleido.Mcp.KaleidoMcpOptions.MaxElicitationRounds.get -> int
+Kaleido.Mcp.KaleidoMcpOptions.MaxElicitationRounds.init -> void
+Kaleido.Mcp.KaleidoMcpOptions.RequireConfirmation.get -> bool
+Kaleido.Mcp.KaleidoMcpOptions.RequireConfirmation.init -> void
+Kaleido.Mcp.KaleidoMcpOptions.ServerName.get -> string!
+Kaleido.Mcp.KaleidoMcpOptions.ServerName.init -> void
+Kaleido.Mcp.KaleidoMcpOptions.ServerVersion.get -> string?
+Kaleido.Mcp.KaleidoMcpOptions.ServerVersion.init -> void
+Kaleido.Mcp.KaleidoMcpOptions.ToolListing.get -> Kaleido.Mcp.McpToolListing
+Kaleido.Mcp.KaleidoMcpOptions.ToolListing.init -> void
+Kaleido.Mcp.KaleidoMcpServiceCollectionExtensions
+Kaleido.Mcp.McpErrorCodes
+Kaleido.Mcp.McpToolListing
+Kaleido.Mcp.McpToolListing.All = 0 -> Kaleido.Mcp.McpToolListing
+Kaleido.Mcp.McpToolListing.FrontDoor = 1 -> Kaleido.Mcp.McpToolListing
+override Kaleido.Mcp.KaleidoMcpOptions.Equals(object? obj) -> bool
+override Kaleido.Mcp.KaleidoMcpOptions.GetHashCode() -> int
+override Kaleido.Mcp.KaleidoMcpOptions.ToString() -> string!
+static Kaleido.Mcp.KaleidoMcpEndpointRouteBuilderExtensions.MapKaleidoMcp(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! pattern = "/mcp") -> Microsoft.AspNetCore.Builder.IEndpointConventionBuilder!
+static Kaleido.Mcp.KaleidoMcpOptions.operator !=(Kaleido.Mcp.KaleidoMcpOptions? left, Kaleido.Mcp.KaleidoMcpOptions? right) -> bool
+static Kaleido.Mcp.KaleidoMcpOptions.operator ==(Kaleido.Mcp.KaleidoMcpOptions? left, Kaleido.Mcp.KaleidoMcpOptions? right) -> bool
+static Kaleido.Mcp.KaleidoMcpServiceCollectionExtensions.AddMcp(this Kaleido.IKaleidoBuilder! builder, Kaleido.Mcp.KaleidoMcpOptions? options = null) -> Kaleido.IKaleidoBuilder!

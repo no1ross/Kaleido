@@ -12,8 +12,8 @@ public static class Operations
     public static void AddOperations(IServiceCollection services, IKaleidoBuilder kaleido)
     {
         // snippet: deployment-health
-        // Downstream Kaleido services are checked by AddHttpClients() (kaleido-{name}); your database
-        // is yours to check.
+        // AddControlRegistryClient() adds kaleido-registration; no client probes another service.
+        // Your database is yours to check.
         services.AddHealthChecks()
             .AddDbContextCheck<OrdersDbContext>("orders-database");
         // end snippet

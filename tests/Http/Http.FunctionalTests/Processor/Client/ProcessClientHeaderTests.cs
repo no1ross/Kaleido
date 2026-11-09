@@ -1,0 +1,179 @@
+using Kaleido.Client.Processor;
+using Kaleido.Http.FunctionalTests.Processor.Fixtures;
+using Kaleido.Observability;
+using Kaleido.Platform;
+using Kaleido.Platform.Registry;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Kaleido.Http.FunctionalTests.Processor.Client;
+
+/// <summary>
+/// Validates that <see cref="IKaleidoProcessorClientFactory"/> and its dependencies are correctly
+/// wired through DI (no captive-dependency lifetime errors) and that outbound requests carry the
+/// expected correlation headers.
+/// </summary>
+public sealed class ProcessClientHeaderTests(ProcessorAspNetCoreFixture fixture) : IClassFixture<ProcessorAspNetCoreFixture>
+{
+    private readonly ProcessorAspNetCoreFixture _fixture = fixture;
+
+    // ---------------------------------------------------------------------------
+    // DI lifetime validation
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void AddProcessClient_ValidateOnBuild_DoesNotThrowCaptiveDependencyError()
+    {
+        var services = BuildClientServices(new KaleidoCorrelationContext());
+
+        // Must not throw AggregateException for captive dependency
+        using var provider = services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+
+        using var scope = provider.CreateScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>();
+        Assert.NotNull(factory);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Correlation header propagation
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetProcessStateAsync_InsideStep_StampsEndToEndAndCallingProcessorStep()
+    {
+        var processId = Guid.NewGuid();
+        var ctx = new KaleidoCorrelationContext
+        {
+            RequestId = "req-process-header-test",
+            ProcessId = processId,
+            CallingProcessorName = "upstream",
+            CallingStepName = "upstream-step",
+            ExecutingStepName = "validate",
+        };
+
+        var (factory, captured) = BuildClientFactory(ctx);
+
+        await factory.GetClient("kaleido").GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(captured);
+        Assert.Equal("req-process-header-test",
+            request.Headers.GetValues(KaleidoCorrelationHeaders.RequestId).First());
+        Assert.Equal(processId.ToString(),
+            request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId).First());
+        // per-hop: this service and its executing step, never the inbound caller
+        Assert.Equal("test-client",
+            request.Headers.GetValues(KaleidoCorrelationHeaders.CallingProcessor).First());
+        Assert.Equal("validate",
+            request.Headers.GetValues(KaleidoCorrelationHeaders.CallingStep).First());
+    }
+
+    [Fact]
+    public async Task GetProcessStateAsync_OutsideStep_ForwardsEndToEndOnly()
+    {
+        var ctx = new KaleidoCorrelationContext
+        {
+            RequestId = "req-process-header-test",
+            CallingProcessorName = "upstream",
+            CallingStepName = "upstream-step",
+        };
+
+        var (factory, captured) = BuildClientFactory(ctx);
+
+        await factory.GetClient("kaleido").GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(captured);
+        Assert.Equal("req-process-header-test",
+            request.Headers.GetValues(KaleidoCorrelationHeaders.RequestId).First());
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingProcessor));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingStep));
+    }
+
+    [Fact]
+    public async Task GetProcessStateAsync_WhenCorrelationContextIsEmpty_StampsNoHeaders()
+    {
+        var (factory, captured) = BuildClientFactory(new KaleidoCorrelationContext());
+
+        await factory.GetClient("kaleido").GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(captured);
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.RequestId));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.ProcessId));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingProcessor));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingStep));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------------
+
+    private (IKaleidoProcessorClientFactory factory, List<HttpRequestMessage> captured)
+        BuildClientFactory(KaleidoCorrelationContext ctx)
+    {
+        var captured = new List<HttpRequestMessage>();
+        var captureHandler = new CaptureHandler(captured, _fixture.TestServer.CreateHandler());
+        var httpClient = new HttpClient(captureHandler) { BaseAddress = new Uri("http://localhost/") };
+
+        var services = BuildClientServices(ctx);
+        services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(KaleidoClientTransport.ClientName, httpClient));
+
+        var provider = services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+
+        var scope = provider.CreateScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>();
+        return (factory, captured);
+    }
+
+    private ServiceCollection BuildClientServices(KaleidoCorrelationContext ctx)
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Kaleido:BaseUrl"] = "http://localhost/",
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IKaleidoRegistrySource>(_fixture.TestServer.Services.GetRequiredService<IKaleidoRegistrySource>());
+        // Register before AddKaleido so TryAddScoped is skipped and this accessor wins
+        services.AddSingleton<IKaleidoCorrelationContextAccessor>(
+            new FixedCorrelationContextAccessor(ctx));
+        // Client container needs no type scanning; under xUnit v3 the entry assembly
+        // is this test project (it was testhost under v2), so the fallback would
+        // register functional test sources without their dependencies.
+        services.AddKaleido(config, new()
+        {
+            ServiceName = "test-client",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(KaleidoServiceOptions).Assembly],
+        })
+                .AddInMemoryStores()
+                .AddHttpClients();
+        return services;
+    }
+
+    private sealed class FixedCorrelationContextAccessor(KaleidoCorrelationContext context)
+        : IKaleidoCorrelationContextAccessor
+    {
+        public KaleidoCorrelationContext Current => context;
+    }
+
+    private sealed class FixedHttpClientFactory(string name, HttpClient client)
+        : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string n) =>
+            n == name ? client : throw new InvalidOperationException($"Unknown client name: {n}");
+    }
+
+    private sealed class CaptureHandler(List<HttpRequestMessage> captured, HttpMessageHandler inner)
+        : DelegatingHandler(inner)
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            captured.Add(request);
+            return base.SendAsync(request, cancellationToken);
+        }
+    }
+}

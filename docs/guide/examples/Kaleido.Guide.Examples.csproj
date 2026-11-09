@@ -19,9 +19,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\Kaleido.Http\Kaleido.Http.csproj" />
-        <ProjectReference Include="..\..\..\src\Kaleido.Http.Mcp\Kaleido.Http.Mcp.csproj" />
-        <ProjectReference Include="..\..\..\src\Kaleido.Observability.OpenTelemetry\Kaleido.Observability.OpenTelemetry.csproj" />
+        <ProjectReference Include="..\..\..\src\Http\Http.Server\Kaleido.Http.Server.csproj" />
+        <ProjectReference Include="..\..\..\src\Mcp\Mcp\Kaleido.Mcp.csproj" />
+        <ProjectReference Include="..\..\..\src\Observability\Observability.OpenTelemetry\Kaleido.Observability.OpenTelemetry.csproj" />
         <ProjectReference Include="..\..\..\tools\analyzers\Kaleido.Analyzers\Kaleido.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
     </ItemGroup>
 

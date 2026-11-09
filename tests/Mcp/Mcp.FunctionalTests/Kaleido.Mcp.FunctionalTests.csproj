@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
+		<PackageReference Include="ModelContextProtocol.AspNetCore" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\..\Shared\Registry\*.cs" Link="Infrastructure\%(Filename)%(Extension)" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\src\Registry\Registry.Http\Kaleido.Registry.Http.csproj" />
+		<ProjectReference Include="..\..\..\src\Http\Http.Server\Kaleido.Http.Server.csproj" />
+		<ProjectReference Include="..\..\..\src\Mcp\Mcp\Kaleido.Mcp.csproj" />
+		<ProjectReference Include="..\..\..\src\Platform\Kaleido.Platform.csproj" />
+		<ProjectReference Include="..\..\..\src\Http\Http\Kaleido.Http.csproj" />
+	</ItemGroup>
+</Project>

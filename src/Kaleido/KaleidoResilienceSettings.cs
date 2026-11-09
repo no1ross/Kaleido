@@ -3,7 +3,7 @@ namespace Kaleido;
 /// <summary>
 /// The resilience settings Kaleido uses wherever it calls something that can fail transiently: a
 /// timeout per attempt, retries with exponential backoff, and a circuit breaker. One vocabulary for
-/// the HTTP clients (<c>Kaleido:Resilience</c>, <c>Kaleido:Clients:{name}:Resilience</c>) and the
+/// gateway and registry HTTP clients (<c>Kaleido:Resilience</c>) and the
 /// event relay (<c>Kaleido:Events:Resilience</c>); each section has its own defaults and is bound
 /// independently.
 /// </summary>

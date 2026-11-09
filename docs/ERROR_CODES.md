@@ -14,8 +14,9 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 | `KaleidoConcurrencyException` | `Kaleido.Exceptions` | 409 Conflict | `ProcessorErrorCodes.ProcessConflict` (`pro_process_conflict`) |
 | `KaleidoAuthorizationException` | `Kaleido.Exceptions` | 401 (unauthenticated) or 403 (denied), answered by the host's authentication scheme (challenge / forbid) | none: carries `Capability` and `CallerIsAuthenticated` ([`AUTHORIZATION.md`](./AUTHORIZATION.md)) |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
+| `KaleidoRegistryClientException` | `Kaleido.Client.Registry` | — (client-side) | `RegistryClientErrorCodes` |
 
-Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them. Every failed Kaleido endpoint answers with the same body, `KaleidoErrorResponse`: `{ "errors": [{ "code", "message" }] }`. The MCP adapter's `mcp_*` codes are returned inside tool results and are listed in the [MCP README](../src/Kaleido.Http.Mcp/README.md#when-a-call-fails).
+Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them. Every failed Kaleido endpoint answers with the same body, `KaleidoErrorResponse`: `{ "errors": [{ "code", "message" }] }`. The MCP adapter's `mcp_*` codes are returned inside tool results and are listed in the [MCP README](../src/Mcp/Mcp/README.md#when-a-call-fails).
 
 A request the HTTP layer cannot read (a body that is not JSON, a value that does not fit its type, a C# `required` member left out) is answered 400 `argument_error` (415 for a non-JSON content type) with a message naming the JSON path, by Kaleido's error handling on the per-step and query endpoints; a `JsonException` is never a 500.
 
@@ -119,6 +120,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
 | `ConflictingAuthorization` | `conflicting_authorization` | `[KaleidoAuthorization]` declares `AllowAnonymous` together with `Roles`/`Policy` |
 | `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization (`Authenticated` is the default) but no authentication scheme is registered: add host authentication, or set `AuthorizationMode = None` explicitly |
+| `RegistryNotConfigured` | `registry_not_configured` | The host maps Kaleido capabilities or MCP without a central-registry participant; configure the gateway base address and register the registry client |
 | `InvalidAuthorizationMode` | `invalid_authorization_mode` | `AuthorizationMode` is not a defined value |
 | `InvalidEventOptions` | `invalid_event_options` | a `Kaleido:Events` setting is out of range (e.g. a non-positive `BatchSize` or `Resilience:AttemptTimeout`) |
 | `InvalidOptions` | `invalid_options` | A configured value in the `Kaleido` section cannot be read as its setting's type (e.g. text where a number or a duration is expected, or an unknown enum name); startup, ADR 0030 |
@@ -146,18 +148,18 @@ These indicate a framework bug or broken DI wiring, not a user error.
 
 ## `KaleidoErrorCodes` - shared HTTP error-body codes
 
-Declared in `Kaleido.Http.Abstractions` (`Kaleido.Http` namespace), next to the error body `KaleidoErrorResponse` (ADR 0017).
+Declared in `Kaleido.Platform` alongside `KaleidoErrorResponse` ([ADR 0039](./decisions/0039-protocol-neutral-package-boundaries.md)).
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `ArgumentError` | `argument_error` | 400 (415 for a non-JSON content type): a body Kaleido cannot read - malformed JSON, a value that does not fit its type, a `required` member left out (on `POST /processes/execute` the message names the step and the JSON path, and nothing runs), a malformed correlation header such as a non-GUID `X-Kaleido-Process-Id` |
+| `ArgumentError` | `argument_error` | 400 (415 for a non-JSON content type): a body Kaleido cannot read - malformed JSON, a value that does not fit its type, a `required` member left out (on `POST /{service}/{version}/processes/execute` the message names the step and JSON path, and nothing runs), a malformed correlation header such as a non-GUID `X-Kaleido-Process-Id` |
 | `FrameworkError` | `framework_error` | 500 for an unexpected failure; the message is generic and never carries the exception's detail |
 
 ---
 
 ## `HttpClientErrorCodes` — client-side (never an HTTP response)
 
-Every client code is prefixed `httpclient_`, including its startup configuration codes (`httpclient_missing_base_url`, `httpclient_invalid_route_prefix`, `httpclient_invalid_options`).
+Every HTTP client code is prefixed `httpclient_`; startup validates the one gateway URL and shared client settings.
 
 | Constant | Code | Meaning |
 |---|---|---|
@@ -165,11 +167,21 @@ Every client code is prefixed `httpclient_`, including its startup configuration
 | `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status (including a step, source or view the service does not have, 404, or the caller may not use, 403); the service's own errors are in `Errors` when its body carried any, whatever the status |
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors (400 with a Kaleido error body) |
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
-| `MissingBaseUrl` | `httpclient_missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
-| `InvalidRoutePrefix` | `httpclient_invalid_route_prefix` | A configured client's `RoutePrefix` (or, without one, its lowercased name) is not a service name (`[a-z0-9][a-z0-9_-]*`); it must equal the downstream `ServiceName` (startup, `AddHttpClients()`, `KaleidoConfigurationException`; ADR 0027) |
-| `InvalidClientOptions` | `httpclient_invalid_options` | A client setting in configuration (`Kaleido:RegistryTtl`, `Kaleido:Resilience`, `Kaleido:Clients:{name}`...) is out of range or cannot be read, e.g. a negative registry TTL or a non-positive timeout (startup, `KaleidoConfigurationException`) |
+| `MissingBaseUrl` | `httpclient_missing_base_url` | The gateway URL `Kaleido:BaseUrl` is missing (startup, `KaleidoConfigurationException`) |
+| `InvalidClientOptions` | `httpclient_invalid_options` | The gateway URL or shared resilience settings are invalid, or obsolete `Kaleido:Clients` entries remain (startup, `KaleidoConfigurationException`) |
 | `CallerTokenNotExchanged` | `httpclient_caller_token_not_exchanged` | `Kaleido:OnBehalfOfCalls = Exchange`, and a call made for a caller carries no token or the caller's inbound token unchanged: the host's handler (`AddKaleidoClientHandler<THandler>()`) must set the exchanged token (`KaleidoConfigurationException`, at the call, before it is sent; #574) |
-| `UnknownClient` | `httpclient_unknown_client` | `GetClient` was asked for a name not configured under `Kaleido:Clients`; the message lists the configured clients (`KaleidoConfigurationException`, at the call) |
+| `UnknownClient` | `httpclient_unknown_client` | A keyed Process or Queryable client was requested without a service name (`KaleidoConfigurationException`, before the call) |
+
+---
+
+## `RegistryClientErrorCodes` — neutral central-registry client diagnostics
+
+| Constant | Code | Meaning |
+|---|---|---|
+| `RequestFailed` | `registryclient_request_failed` | A registry call failed; the transport status is present if it answered |
+| `EmptyResponse` | `registryclient_empty_response` | The central registry answered successfully without a required document |
+| `InvalidResponse` | `registryclient_invalid_response` | The central registry answered with an invalid document |
+| `RouteUnavailable` | `registryclient_route_unavailable` | The hydrated registry has no usable route for the requested service, version, transport or capability |
 
 ---
 
@@ -192,25 +204,25 @@ The reference provider owns its own code; core knows nothing about it.
 
 ---
 
-## `RegistryErrorCodes` - control registry (`Kaleido.Http.Abstractions`)
+## `RegistryErrorCodes` - control registry (`Kaleido.Platform`)
 
-Answered by the control registry's endpoints (`Kaleido.Http.Registry`) in a `KaleidoErrorResponse` (#553), and shared so the participants that register with it and read it recognize them; see [the registry's README](../src/Kaleido.Http.Registry/README.md).
+Answered by the control registry's HTTP endpoints (`Kaleido.Registry.Http`) in a `KaleidoErrorResponse` (#553), and shared so the participants that register with it and read it recognize them; see [the registry's README](../src/Registry/Registry/README.md).
 
 | Constant | Code | Meaning |
 |---|---|---|
 | `RegistrantNotAllowed` | `registry_registrant_not_allowed` | 403: the caller is not a service application (`Kaleido:Registry:RegistrantPolicy`), or may not register, renew or remove an instance of that service (no app role naming it, `Kaleido:Registry:RegistrantRolePrefix`, and not in `Kaleido:Registry:Registrants`) |
 | `ReaderNotAllowed` | `registry_reader_not_allowed` | 403: only Kaleido hosts (`Kaleido:Registry:ReaderPolicy`) read the documents for keeping a copy fresh (`/registry/capabilities`, `/registry/availability`) and the status (`/registry/status`); anyone else reads `GET /registry`, filtered for them |
 | `InstanceUnknown` | `registry_instance_unknown` | 404: the registry does not know the instance (it restarted, failed over or removed it); the instance registers again |
-| `InvalidRegistration` | `registry_invalid_registration` | 400: no service version, an invalid service name or version, an empty instance id, or a capability of another service |
+| `InvalidRegistration` | `registry_invalid_registration` | 400: invalid service identity/version or instance id, a capability of another service, or an unsupported transport or unsafe published logical route |
 
-## `McpErrorCodes` - MCP adapter (`Kaleido.Http.Mcp`)
+## `McpErrorCodes` - MCP adapter (`Kaleido.Mcp`)
 
-Startup codes surface through `KaleidoConfigurationException`. At request time a tool-call problem is a tool result with `isError: true` and one of these codes, never an HTTP or protocol error; what the agent does with each is in [the adapter's README](../src/Kaleido.Http.Mcp/README.md).
+Startup codes surface through `KaleidoConfigurationException`. At request time a tool-call problem is a tool result with `isError: true` and one of these codes, never an HTTP or protocol error; what the agent does with each is in [the adapter's README](../src/Mcp/Mcp/README.md).
 
 | Constant | Code | Meaning |
 |---|---|---|
-| `MissingHttp` | `mcp_missing_http` | `AddMcp()` needs `AddHttp()` (the registry) on the same Kaleido builder (startup) |
-| `MissingClients` | `mcp_missing_clients` | `AddMcp()` needs Kaleido clients (`Kaleido:Clients` + `AddHttpClients()`) to call services (startup) |
+| `MissingHttp` | `mcp_missing_http` | `AddMcp()` needs `AddHttp()` on the same builder (startup) |
+| `MissingClients` | `mcp_missing_clients` | `AddMcp()` needs `AddHttpClients()` and its one gateway client at `Kaleido:BaseUrl` (startup) |
 | `OnBehalfOfCallsNotExchanged` | `mcp_on_behalf_of_calls_not_exchanged` | `AddMcp()` requires `Kaleido:OnBehalfOfCalls = Exchange`: the agent's user's token is issued for the MCP server and must not be passed through; the host exchanges it with its own handler (startup, #574) |
 | `MissingInstructionsFile` | `mcp_missing_instructions_file` | `Kaleido:Mcp:InstructionsFile` points at a file that does not exist (startup) |
 | `InvalidOptions` | `mcp_invalid_options` | A `Kaleido:Mcp` setting is blank, repeated, conflicting, out of range or unreadable (startup; nothing is clamped or replaced) |
@@ -218,7 +230,7 @@ Startup codes surface through `KaleidoConfigurationException`. At request time a
 | `InvalidArguments` | `mcp_invalid_arguments` | The tool arguments are missing a required value or have the wrong shape |
 | `ServiceError` | `mcp_service_error` | The Kaleido service refused or failed the call (its status and errors are included) |
 | `ProcessConflict` | `mcp_process_conflict` | The process was changed by another call (409); nothing was saved. Read the state again and decide with the user |
-| `ServiceUnavailable` | `mcp_service_unavailable` | The Kaleido service could not be reached, or no Kaleido client is configured for it |
+| `ServiceUnavailable` | `mcp_service_unavailable` | The service could not be reached, or its service/version/transport route is not published in the hydrated registry |
 | `InternalError` | `mcp_internal_error` | The adapter failed unexpectedly while running a tool; the tool did not complete |
 | `NoPendingInformationRequest` | `mcp_no_pending_information_request` | An answer was submitted but the process has no pending information request |
 | `ConfirmationRequired` | `mcp_confirmation_required` | The step needs the user's confirmation and the client cannot show a form; nothing was run |
@@ -229,4 +241,4 @@ Startup codes surface through `KaleidoConfigurationException`. At request time a
 
 The `Kaleido` package bundles compile-time checks (`KAL2xxx`) that catch most startup registration failures above in consumer code before it runs. They are build diagnostics, not runtime codes; see [consumer rules in `ANALYZERS.md`](./ANALYZERS.md#consumer-rules--kal2xxx) for the rules, severities and the runtime code each one mirrors.
 
-Aggregate registries (`MapKaleidoHttp(new() { AggregateRegistry = true })`) require `AddHttpClients()` — enforced at map time by a `KaleidoConfigurationException`, so no analyzer rule covers it.
+`MapKaleidoHttp()` requires central-registry participation (`registry_not_configured`) and maps no service registry endpoint. `AddHttpClients()` rejects obsolete `Kaleido:Clients` entries at startup (`httpclient_invalid_options`); the linked analyzer rules do not replace these runtime checks.

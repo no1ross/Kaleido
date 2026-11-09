@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido gRPC clients (placeholder: gRPC is not implemented yet).</Description>
+		<PackageTags>kaleido;grpc;client</PackageTags>
+		<!-- A placeholder until gRPC is implemented (#581): built and checked, never packed. -->
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Client\Kaleido.Client.csproj" />
+		<ProjectReference Include="..\Grpc\Kaleido.Grpc.csproj" />
+	</ItemGroup>
+</Project>

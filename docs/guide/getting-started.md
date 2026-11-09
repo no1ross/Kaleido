@@ -125,9 +125,12 @@ public sealed class ConfirmOrderHandler : IProcessStepHandler<ConfirmOrderStep>
 
 ## 4. Publish it over HTTP
 
-Register Kaleido with the assemblies to scan, then map the endpoints. Kaleido finds the source, the
-steps and the handlers, and checks them at startup (a step without a handler, a broken relationship,
-missing metadata all fail before the first request).
+Run a separate [control registry host](../../src/Registry/Registry/README.md#a-registry-host) and
+configure `Kaleido:BaseUrl` with the gateway's URL. Map `/registry` to the registry host and
+`/orders/1` to the Orders host; the registry carries logical routes, never host addresses.
+Register Kaleido with the assemblies to scan, then map its endpoints. Kaleido finds the source,
+steps and handlers and checks them at startup (a step without a handler, a broken relationship
+or missing metadata fails before the first request).
 
 <!-- snippet: getting-started-host -->
 ```csharp
@@ -136,11 +139,13 @@ services.AddSingleton<OrderBook>();
 services.AddKaleido(configuration, new()
 {
     ServiceName = "orders",
+    ServiceVersion = "1",
     Assemblies = [typeof(OrderSource).Assembly],
     AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
 })
     .AddInMemoryStores()   // local evaluation only: nothing survives a restart
-    .AddHttp();
+    .AddHttp()
+    .AddControlRegistryClient();
 ```
 
 `AddInMemoryStores()` is a choice: the process state and idempotency records live in this process
@@ -166,39 +171,41 @@ sequenceDiagram
 
     rect rgba(70, 130, 180, 0.25)
         Note over C,S: Start a process
-        C->>S: POST /orders/processes/steps/PlaceOrderStep { processStep: { item, quantity } }
+        C->>S: POST /orders/1/processes/steps/PlaceOrderStep { processStep: { item, quantity } }
         S-->>C: status completed, result { number }, processId, requiredStep ConfirmOrderStep
     end
 
     rect rgba(70, 130, 180, 0.25)
         Note over C,S: Continue it
-        C->>S: POST /orders/processes/steps/ConfirmOrderStep (X-Kaleido-Process-Id)
+        C->>S: POST /orders/1/processes/steps/ConfirmOrderStep (X-Kaleido-Process-Id)
         S-->>C: status completed, nothing required next
     end
 
-    C->>S: POST /orders/queryable/OrderSource/query { query: { searchText: "Book" } }
+    C->>S: POST /orders/1/queryable/OrderSource/query { query: { searchText: "Book" } }
     S-->>C: results, totalCount
 ```
 
-- **Place an order:** `POST /orders/processes/steps/PlaceOrderStep` with
+- **Place an order:** `POST /orders/1/processes/steps/PlaceOrderStep` with
   `{ "processStep": { "item": "Book", "quantity": 2 } }`. The answer carries the new `processId`, the
   handler's `result`, and `requiredStep`: the step to call next.
-- **Continue the process:** `POST /orders/processes/steps/ConfirmOrderStep`, with the process id in
+- **Continue the process:** `POST /orders/1/processes/steps/ConfirmOrderStep`, with the process id in
   the `X-Kaleido-Process-Id` header.
-- **Query the orders:** `POST /orders/queryable/OrderSource/query` with
+- **Query the orders:** `POST /orders/1/queryable/OrderSource/query` with
   `{ "query": { "searchText": "Book" } }`, or a `filter`, `sort` and `page`
   ([Queries](queries.md#the-query-a-caller-sends)).
-- **Discover everything:** `GET /orders/registry` lists the steps, the source, their inputs and
-  descriptions, and the URLs to call. Clients and the MCP adapter read it.
+- **Discover everything:** `GET /registry` on the separate registry host lists the steps, sources,
+  versioned routes, inputs and descriptions (filtered for the caller). Kaleido hosts keep an
+  unfiltered copy fresh from `/registry/availability` and revisioned `/registry/capabilities`.
 
 The routes, the body shapes and the error answers are in the
-[`Kaleido.Http` README](../../src/Kaleido.Http/README.md).
+[`Kaleido.Http.Server` README](../../src/Http/Http.Server/README.md).
 
 ## 6. Publish it to AI agents (MCP)
 
 The MCP adapter turns the registry into tools and calls the service through a Kaleido client, as
-the caller. Here the service publishes its own tools; a router can also publish several services
-([README quick start](../../README.md#expose-configured-services-through-an-mcp-router)).
+the caller. Here the service publishes its own tools; a separate MCP host can present the
+caller-visible capabilities of several registered services without per-service client configuration
+([README quick start](../../README.md#expose-registered-services-through-an-mcp-host)).
 
 <!-- snippet: getting-started-mcp -->
 ```csharp
@@ -207,12 +214,14 @@ services.AddSingleton<OrderBook>();
 services.AddKaleido(configuration, new()
 {
     ServiceName = "orders",
+    ServiceVersion = "1",
     Assemblies = [typeof(OrderSource).Assembly],
     AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
 })
     .AddInMemoryStores()   // local evaluation only: nothing survives a restart
     .AddHttp()
     .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
+    .AddControlRegistryClient()
     .AddMcp();
 ```
 
@@ -229,16 +238,17 @@ app.MapKaleidoHttp();
 app.MapKaleidoMcp("/mcp");
 ```
 
-The client the tools call through is configured like any Kaleido client:
+The one gateway client used for registry hydration and service calls needs only the gateway address.
+Its routes map `/registry` to the registry host and `/orders/1` to the Orders host:
 
 ```json
-{ "Kaleido": { "OnBehalfOfCalls": "Exchange", "Clients": { "orders": { "BaseUrl": "http://localhost:5100", "RoutePrefix": "orders" } } } }
+{ "Kaleido": { "BaseUrl": "http://localhost:5100", "OnBehalfOfCalls": "Exchange" } }
 ```
 
 An agent connected to `/mcp` sees one tool per capability, named `orders_<capability>` (the
-service name, then the source or step; [naming](../../src/Kaleido.Http.Mcp/README.md#tools)). After
+service name, then the source or step; [naming](../../src/Mcp/Mcp/README.md#tools)). After
 "Place order" it is told that "Confirm order" is next, and that it should ask the user to
-confirm (`RequiresConfirmation`). See the [MCP adapter README](../../src/Kaleido.Http.Mcp/README.md).
+confirm (`RequiresConfirmation`). See the [MCP adapter README](../../src/Mcp/Mcp/README.md).
 
 ## Next
 
