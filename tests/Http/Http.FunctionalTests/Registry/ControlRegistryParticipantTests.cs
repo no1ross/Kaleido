@@ -52,7 +52,9 @@ public sealed class ControlRegistryParticipantTests : IAsyncLifetime
         await UntilAsync(async () => await ReadyAsync(behavior) && await ReadyAsync(consumer));
 
         // The registry's view of its store is at most a second old: within one check every host sees both.
-        await AdvanceUntilAsync(WithinOneCheck, async () => BehaviorStatus(await ConsumerRegistryAsync()) == RegistryCapabilityStatus.Available);
+        await AdvanceUntilAsync(WithinOneCheck, async () =>
+            BehaviorStatus(await ConsumerRegistryAsync()) == RegistryCapabilityStatus.Available
+            && (await RegistryStatusAsync()).Services.Any(x => x.ServiceName == Consumer && x.Status == RegistryCapabilityStatus.Available));
     }
 
     public async ValueTask DisposeAsync()
