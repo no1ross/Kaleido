@@ -28,6 +28,8 @@ internal sealed partial class KaleidoClientTransport(
     ILogger<KaleidoClientTransport> logger)
     : IKaleidoClientTransport
 {
+    internal const string ClientName = "kaleido-gateway";
+
     public async Task<TResponse> SendAsync<TResponse>(KaleidoClientRequest request, CancellationToken cancellationToken)
         where TResponse : class =>
         await SendCoreAsync<TResponse>(request, notFoundIsNull: false, cancellationToken)
@@ -105,14 +107,14 @@ internal sealed partial class KaleidoClientTransport(
         HttpRequestMessage message,
         CancellationToken cancellationToken)
     {
-        LogSending(logger, request.Method, request.Url, request.Client.Name, request.Client.RoutePrefix);
+        LogSending(logger, request.Method, request.Url, ClientName, request.ServiceName);
 
         // IHttpClientFactory owns the client lifetime - never dispose it.
-        var response = await httpClientFactory.CreateClient(request.Client.Name).SendAsync(message, cancellationToken);
+        var response = await httpClientFactory.CreateClient(ClientName).SendAsync(message, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
-            LogRemoteNonSuccess(logger, request.Client.RoutePrefix, (int)response.StatusCode, response.StatusCode, request.Method, request.Url);
+            LogRemoteNonSuccess(logger, request.ServiceName, (int)response.StatusCode, response.StatusCode, request.Method, request.Url);
         }
 
         return response;
@@ -126,13 +128,13 @@ internal sealed partial class KaleidoClientTransport(
 }
 
 /// <summary>One request a Kaleido client sends; see <see cref="IKaleidoClientTransport"/>.</summary>
-/// <param name="Client">The configured client it goes through.</param>
+/// <param name="ServiceName">The published service this request targets.</param>
 /// <param name="Method">The HTTP method.</param>
-/// <param name="Url">The URL, relative to the client's base address.</param>
+/// <param name="Url">The published URL under the gateway's base address.</param>
 /// <param name="Description">What the call is, for messages: "Process execute request".</param>
 /// <param name="Body">The JSON body, or null.</param>
 internal sealed record KaleidoClientRequest(
-    KaleidoClientDefinition Client,
+    string ServiceName,
     HttpMethod Method,
     string Url,
     string Description,

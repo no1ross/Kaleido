@@ -1,25 +1,21 @@
-using Kaleido.Platform;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace Kaleido.Http.Client.Processor;
 
-// For a client name chosen at runtime (an MCP tool call, the registry aggregation): the configured
-// client of that name, as the container built it (a keyed service, #498). Code that knows the name
-// injects [FromKeyedServices("name")] IKaleidoProcessorClient instead.
 internal sealed class KaleidoProcessorClientFactory(
-    IServiceProvider services,
-    IKaleidoClientCatalog catalog)
+    IKaleidoRegistryTargetResolver targets,
+    IKaleidoClientTransport transport)
     : IKaleidoProcessorClientFactory
 {
-    public IKaleidoProcessorClient GetClient(string name) =>
-        services.GetRequiredKeyedService<IKaleidoProcessorClient>(catalog.Require(name).Name);
+    public IKaleidoProcessorClient GetClient(string serviceName) => CreateClient(serviceName, serviceVersion: null);
 
-    public bool TryGetClientForService(string serviceName, [NotNullWhen(true)] out IKaleidoProcessorClient? client)
+    public IKaleidoProcessorClient GetClient(string serviceName, string serviceVersion)
     {
-        client = catalog.FindByService(serviceName) is { } found
-            ? services.GetRequiredKeyedService<IKaleidoProcessorClient>(found.Name)
-            : null;
+        ArgumentException.ThrowIfNullOrWhiteSpace(serviceVersion);
+        return CreateClient(serviceName, serviceVersion);
+    }
 
-        return client is not null;
+    private KaleidoProcessorClient CreateClient(string serviceName, string? serviceVersion)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(serviceName);
+        return new KaleidoProcessorClient(serviceName, serviceVersion, targets, transport);
     }
 }

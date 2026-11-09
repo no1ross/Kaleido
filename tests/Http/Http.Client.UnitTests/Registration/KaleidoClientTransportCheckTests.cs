@@ -3,86 +3,56 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Registration.UnitTests;
 
-public sealed class KaleidoClientTransportCheckTests
-    : SutFixture
+public sealed class KaleidoClientTransportCheckTests : SutFixture
 {
     private readonly RecordingLogger logger = new();
 
-    private KaleidoClientTransportCheck CreateSut(KaleidoClientOptions options) =>
-        new(options, logger);
-
-    private static KaleidoClientOptions Clients(string? sharedBaseUrl, params (string Name, string? BaseUrl)[] clients) =>
-        new()
-        {
-            BaseUrl = sharedBaseUrl,
-            Clients = clients.ToDictionary(c => c.Name, c => new KaleidoClientEntry { BaseUrl = c.BaseUrl }, StringComparer.OrdinalIgnoreCase),
-        };
+    private KaleidoClientTransportCheck CreateSut(string? gateway) => new(new KaleidoClientOptions { BaseUrl = gateway }, logger);
 
     [Fact]
-    public async Task StartAsync_WarnsOnce_ForEachClientWithANonHttpsRemoteBaseUrl()
+    public async Task StartAsync_WarnsOnce_WhenTheGatewayUsesPlainHttp()
     {
-        var sut = CreateSut(Clients(
-            sharedBaseUrl: "http://shared.internal/",
-            ("Member", "http://member.internal:8080/api"),
-            ("Radiology", "https://radiology.internal/"),
-            ("Intake", null)));
+        await CreateSut("http://gateway.internal:8080/api").StartAsync(TestContext.Current.CancellationToken);
 
-        await sut.StartAsync(TestContext.Current.CancellationToken);
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal("Kaleido client 'kaleido-gateway' calls http://gateway.internal:8080 without HTTPS: a caller's credential would be sent in clear text. Use an https Kaleido:BaseUrl for the gateway.", entry.Message);
+    }
 
-        Assert.All(logger.Entries, e => Assert.Equal(LogLevel.Warning, e.Level));
-        Assert.Equal(
-            [
-                "Kaleido client 'Intake' calls http://shared.internal without HTTPS: a caller's credential would be sent in clear text. Use an https BaseUrl (Kaleido:Clients:Intake:BaseUrl).",
-                "Kaleido client 'Member' calls http://member.internal:8080 without HTTPS: a caller's credential would be sent in clear text. Use an https BaseUrl (Kaleido:Clients:Member:BaseUrl).",
-            ],
-            logger.Entries.Select(e => e.Message).Order(StringComparer.Ordinal));
+    [Fact]
+    public async Task StartAsync_AnEmbeddedCredentialIsNeverLogged()
+    {
+        await CreateSut("http://user:secret@gateway.internal:8080/").StartAsync(TestContext.Current.CancellationToken);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.DoesNotContain("user:secret", entry.Message, StringComparison.Ordinal);
+        Assert.Contains("http://gateway.internal:8080", entry.Message, StringComparison.Ordinal);
     }
 
     [Theory]
     [InlineData("http://localhost:5101/")]
     [InlineData("http://127.0.0.1/")]
     [InlineData("http://[::1]/")]
-    [InlineData("https://member.internal/")]
-    [InlineData("HTTPS://member.internal/")]
-    public async Task StartAsync_HttpsOrLoopback_DoesNotWarn(string baseUrl)
+    [InlineData("https://gateway.internal/")]
+    [InlineData("HTTPS://gateway.internal/")]
+    public async Task StartAsync_HttpsOrLoopback_DoesNotWarn(string gateway)
     {
-        await CreateSut(Clients(null, ("Member", baseUrl))).StartAsync(TestContext.Current.CancellationToken);
-
+        await CreateSut(gateway).StartAsync(TestContext.Current.CancellationToken);
         Assert.Empty(logger.Entries);
-    }
-
-    // A client configured without settings (Kaleido:Clients:Member with no value) uses the shared BaseUrl.
-    [Fact]
-    public async Task StartAsync_AClientWithoutAnEntry_IsCheckedWithTheSharedBaseUrl()
-    {
-        var options = new KaleidoClientOptions
-        {
-            BaseUrl = "http://shared.internal/",
-            Clients = new Dictionary<string, KaleidoClientEntry> { ["Member"] = null! },
-        };
-
-        await CreateSut(options).StartAsync(TestContext.Current.CancellationToken);
-
-        Assert.Contains("http://shared.internal", Assert.Single(logger.Entries).Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task StopAsync_Completes()
     {
-        await CreateSut(Clients(null)).StopAsync(TestContext.Current.CancellationToken);
-
+        await CreateSut(null).StopAsync(TestContext.Current.CancellationToken);
         Assert.Empty(logger.Entries);
     }
 
     private sealed class RecordingLogger : ILogger<KaleidoClientTransportCheck>
     {
         public List<(LogLevel Level, string Message)> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull => null;
-
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
         public bool IsEnabled(LogLevel logLevel) => true;
-
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
             Entries.Add((logLevel, formatter(state, exception)));
     }

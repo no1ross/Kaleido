@@ -10,34 +10,26 @@ namespace Kaleido.Http.Server.Processor;
 /// </summary>
 internal interface IProcessorResponseFactory
 {
-    ProcessorRegistryResponse CreateRegistryResponse(
-        ProcessorRegistryItem registration,
-        KaleidoServiceOptions serviceOptions);
+    ProcessorRegistryResponse CreateRegistryResponse(ProcessorRegistryItem registration);
 
-    ProcessStepResponse CreateStepResponse(
-        ProcessorStepRegistryItem registration,
-        string serviceName);
+    ProcessStepResponse CreateStepResponse(ProcessorStepRegistryItem registration);
 
-    ProcessStepSummary CreateStepSummary(
-        ProcessorStepSummary registration,
-        string serviceName);
+    ProcessStepSummary CreateStepSummary(ProcessorStepSummary registration);
 
-    ProcessRequiredStep CreateRequiredStep(
-        ProcessorStepSummary registration,
-        InformationRequest? informationRequest,
-        string serviceName);
+    ProcessRequiredStep CreateRequiredStep(ProcessorStepSummary registration, InformationRequest? informationRequest);
 }
 
-internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
+internal sealed class ProcessorResponseFactory(KaleidoServiceOptions serviceOptions) : IProcessorResponseFactory
 {
-    public ProcessorRegistryResponse CreateRegistryResponse(
-        ProcessorRegistryItem registration,
-        KaleidoServiceOptions serviceOptions)
+    private string Version => serviceOptions.ServiceVersion ?? throw new KaleidoConfigurationException(
+        ConfigurationErrorCodes.InvalidServiceVersion, "A Kaleido HTTP service must name the version in its published routes.");
+
+    public ProcessorRegistryResponse CreateRegistryResponse(ProcessorRegistryItem registration)
     {
         ArgumentNullException.ThrowIfNull(registration);
-        ArgumentNullException.ThrowIfNull(serviceOptions);
 
         var serviceName = serviceOptions.ServiceName;
+        var version = Version;
 
         return new ProcessorRegistryResponse
         {
@@ -47,18 +39,18 @@ internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
             Description = serviceOptions.Description,
             DisplayName = serviceOptions.DisplayName,
             IsEntryProcessor = registration.IsEntryProcessor,
+            ExecuteUrl = ProcessContractUrls.Execute(serviceName, version),
+            ProcessStateUrlTemplate = ProcessContractUrls.ProcessStateTemplate(serviceName, version),
             InitialSteps = registration.InitialSteps
-                .Select(x => CreateStepSummary(x, serviceName))
+                .Select(CreateStepSummary)
                 .ToArray(),
             Steps = registration.Steps
-                .Select(x => CreateStepResponse(x, serviceName))
+                .Select(CreateStepResponse)
                 .ToArray(),
         };
     }
 
-    public ProcessStepResponse CreateStepResponse(
-        ProcessorStepRegistryItem registration,
-        string serviceName)
+    public ProcessStepResponse CreateStepResponse(ProcessorStepRegistryItem registration)
     {
         ArgumentNullException.ThrowIfNull(registration);
 
@@ -84,26 +76,24 @@ internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
                 .ToArray(),
             Dependencies = registration.Dependencies
                 .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(x => CreateStepSummary(x, serviceName))
+                .Select(CreateStepSummary)
                 .ToArray(),
             AvailableAfter = registration.AvailableAfter
                 .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(x => CreateStepSummary(x, serviceName))
+                .Select(CreateStepSummary)
                 .ToArray(),
             AvailableUntil = registration.AvailableUntil
                 .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(x => CreateStepSummary(x, serviceName))
+                .Select(CreateStepSummary)
                 .ToArray(),
             Result = registration.Result is null
                 ? null
                 : CreateResultMetadata(registration.Result),
-            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceOptions.ServiceName, Version, stepName),
         };
     }
 
-    public ProcessStepSummary CreateStepSummary(
-        ProcessorStepSummary registration,
-        string serviceName)
+    public ProcessStepSummary CreateStepSummary(ProcessorStepSummary registration)
     {
         ArgumentNullException.ThrowIfNull(registration);
 
@@ -121,19 +111,15 @@ internal sealed class ProcessorResponseFactory : IProcessorResponseFactory
             External = registration.External,
             RequiresConfirmation = registration.RequiresConfirmation,
             Authorization = registration.Authorization,
-            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceName, stepName),
+            ExecuteUrl = ProcessContractUrls.ExecuteStep(serviceOptions.ServiceName, Version, stepName),
         };
     }
 
     public ProcessRequiredStep CreateRequiredStep(
         ProcessorStepSummary registration,
-        InformationRequest? informationRequest,
-        string serviceName)
+        InformationRequest? informationRequest)
     {
-        var summary =
-            CreateStepSummary(
-                registration,
-                serviceName);
+        var summary = CreateStepSummary(registration);
 
         return new ProcessRequiredStep
         {

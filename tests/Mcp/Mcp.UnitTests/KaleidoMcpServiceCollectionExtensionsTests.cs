@@ -32,7 +32,7 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
         // AddHttp() registers the unfiltered registry the tool names come from (#435).
         services.AddScoped(_ => Mock.Of<IKaleidoUnfilteredRegistry>());
         services.AddScoped(_ => Mock.Of<IKaleidoRegistryClient>());
-        // What AddHttpClients() registers with a client configured, and AddKaleido() the inbound caller.
+        // What AddHttpClients() registers for the gateway, and AddKaleido() the inbound caller.
         services.AddSingleton(Clients(KaleidoOnBehalfOfCalls.Exchange));
         services.AddScoped(_ => Mock.Of<IKaleidoInboundCallerAccessor>());
         services.AddScoped(_ => Mock.Of<IKaleidoCorrelationContextInitializer>());
@@ -40,7 +40,7 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     }
 
     private static KaleidoClientOptions Clients(KaleidoOnBehalfOfCalls onBehalfOfCalls) =>
-        new() { Clients = new Dictionary<string, KaleidoClientEntry> { ["Clinic"] = new() }, OnBehalfOfCalls = onBehalfOfCalls };
+        new() { BaseUrl = "https://gateway.test/", OnBehalfOfCalls = onBehalfOfCalls };
 
     private static KaleidoMcpOptions RegisteredOptions(ServiceCollection services) =>
         Assert.IsType<KaleidoMcpOptions>(Assert.Single(services, x => x.ServiceType == typeof(KaleidoMcpOptions)).ImplementationInstance);

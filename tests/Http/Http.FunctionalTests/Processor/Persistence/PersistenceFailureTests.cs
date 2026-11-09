@@ -228,7 +228,7 @@ public sealed class PersistenceFailureTests : IAsyncLifetime
 
     private async Task<(HttpStatusCode Status, JsonElement Body)> PostStepAsync(string step, Guid? processId, string? idempotencyKey = null)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"/{ServiceName}/processes/steps/{step.ToLowerInvariant()}")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/{ServiceName}/1/processes/steps/{step.ToLowerInvariant()}")
         {
             Content = new StringContent("""{"processStep":{}}""", Encoding.UTF8, "application/json"),
         };
@@ -249,7 +249,7 @@ public sealed class PersistenceFailureTests : IAsyncLifetime
 
     private async Task<JsonElement> StateAsync(Guid processId)
     {
-        using var response = await _client.GetAsync($"/{ServiceName}/processes/{processId}", Cancel);
+        using var response = await _client.GetAsync($"/{ServiceName}/1/processes/{processId}", Cancel);
         var body = await response.Content.ReadAsStringAsync(Cancel);
         Assert.True(response.IsSuccessStatusCode, $"State read failed ({(int)response.StatusCode}): {body}");
         return Parse(body);

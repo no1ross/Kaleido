@@ -24,12 +24,12 @@ See also:
 
 ### Queryable client
 - `IKaleidoQueryableClient` (in `Kaleido.Client`) — interface for view and source queries (addressed by their published names)
-- `IKaleidoQueryableClientFactory` (in `Kaleido.Client`) — resolves a client by its registered name, or by the downstream's service name (`TryGetClientForService`)
+- `IKaleidoQueryableClientFactory` (in `Kaleido.Client`) — resolves a client by published service name, optionally pinned to a version
 - `KaleidoQueryableClient` — concrete HTTP client implementation
 
 ### Shared
 - `KaleidoHttpClientException` — reports non-success Process and Queryable responses (`StatusCode` and the service's `Errors`); registry calls raise the neutral `KaleidoRegistryClientException`.
-- `KaleidoClientServiceCollectionExtensions` — internal `AddKaleidoClient(...)` builder extension (consumers register via `AddHttpClients`): each configured client's Process and Queryable clients are keyed services under its name, built by the container (#498)
+- `KaleidoHttpClientsServiceCollectionExtensions` — registers one gateway HTTP client via `AddHttpClients()`; Process and Queryable factories resolve the service and version from the central registry, with keyed injection available by service name
 
 ---
 

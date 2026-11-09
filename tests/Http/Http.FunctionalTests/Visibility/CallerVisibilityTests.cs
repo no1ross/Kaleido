@@ -157,7 +157,7 @@ public sealed class CallerVisibilityTests : IAsyncLifetime
 
     private async Task<(HttpStatusCode Status, JsonElement Body)> PostAsync(string step, string role, Guid? processId)
     {
-        using var request = AuthorizationAspNetCoreFixture.AuthenticatedJson($"/{ServiceName}/processes/steps/{step.ToLowerInvariant()}", new { processStep = new { } }, role, role);
+        using var request = AuthorizationAspNetCoreFixture.AuthenticatedJson($"/{ServiceName}/1/processes/steps/{step.ToLowerInvariant()}", new { processStep = new { } }, role, role);
 
         if (processId is { } id)
         {
@@ -170,7 +170,7 @@ public sealed class CallerVisibilityTests : IAsyncLifetime
 
     private async Task<JsonElement> StateAsync(Guid processId, string role)
     {
-        using var request = AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, $"/{ServiceName}/processes/{processId}", role, role);
+        using var request = AuthorizationAspNetCoreFixture.AuthenticatedRequest(HttpMethod.Get, $"/{ServiceName}/1/processes/{processId}", role, role);
         using var response = await _client.SendAsync(request, Cancel);
         var body = await response.Content.ReadAsStringAsync(Cancel);
         Assert.True(response.IsSuccessStatusCode, $"State read failed ({(int)response.StatusCode}): {body}");

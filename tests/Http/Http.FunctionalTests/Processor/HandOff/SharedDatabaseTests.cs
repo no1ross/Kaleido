@@ -1,10 +1,12 @@
 using System.Net;
+using Kaleido.Client.Processor;
 using Kaleido.Http.FunctionalTests.Processor.HandOff.Origin;
 using Kaleido.Http.FunctionalTests.Processor.HandOff.Target;
 using Kaleido.Http.Processor;
 using Kaleido.Http.Server;
 using Kaleido.Platform;
 using Kaleido.Platform.Processor;
+using Kaleido.Platform.Registry;
 using Kaleido.Provider.SQLite;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -87,6 +89,39 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
         Assert.Equal([Version1], await VersionsOfAsync(opened.ProcessId));
     }
 
+    [Fact]
+    public async Task ARegistryDrivenClient_RoutesEachVersionToItsOwnHost()
+    {
+        var v1 = await StartAsync(HandOffFixture.TargetService, typeof(OpenReturnStep).Namespace!, Version1, targetServer: null);
+        var v2 = await StartAsync(HandOffFixture.TargetService, typeof(OpenReturnStep).Namespace!, Version2, targetServer: null);
+        var opened = await ReadAsync<StepExecutionResponse>(await PostAsync(v1, HandOffFixture.TargetService, nameof(OpenReturnStep), new { next = ReturnAnswers.Ordinary }, processId: null));
+        var gateway = new VersionRouter(v1.GetTestServer().CreateHandler(), v2.GetTestServer().CreateHandler());
+        var services = new ServiceCollection();
+        services.AddSingleton<IKaleidoRegistrySource>(v2.Services.GetRequiredService<IKaleidoRegistrySource>());
+        services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Kaleido:BaseUrl"] = "http://gateway.test/",
+        }).Build(), new()
+        {
+            ServiceName = "client",
+            ServiceVersion = "1",
+            AuthorizationMode = KaleidoAuthorizationMode.None,
+            Assemblies = [typeof(KaleidoServiceOptions).Assembly],
+            TypeFilter = _ => false,
+        }).AddInMemoryStores().AddHttpClients();
+        services.AddHttpClient(KaleidoClientTransport.ClientName).ConfigurePrimaryHttpMessageHandler(() => gateway);
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        using var scope = provider.CreateScope();
+        var clients = scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>();
+
+        var fromV1 = await clients.GetClient(HandOffFixture.TargetService, Version1).GetProcessStateAsync(opened.ProcessId, Cancel);
+        var fromV2 = await clients.GetClient(HandOffFixture.TargetService, Version2).GetProcessStateAsync(opened.ProcessId, Cancel);
+
+        Assert.Equal(opened.ProcessId, fromV1?.ProcessId);
+        Assert.Null(fromV2);
+        Assert.Equal(["/returns/1", "/returns/2"], gateway.RoutedTo);
+    }
+
     // The same key and request sent to another version runs there: a key never replays across versions.
     [Fact]
     public async Task AnIdempotencyKey_ReplaysOnItsVersion_NotOnAnother()
@@ -107,6 +142,42 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
             (await onVersion2.Content.ReadFromJsonAsync<StepExecutionResponse>(KaleidoJsonOptions.Options, Cancel))!.ProcessId);
     }
 
+    private sealed class VersionRouter(HttpMessageHandler first, HttpMessageHandler second) : HttpMessageHandler
+    {
+        private readonly HttpMessageInvoker v1 = new(first);
+        private readonly HttpMessageInvoker v2 = new(second);
+        public List<string> RoutedTo { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var path = request.RequestUri?.AbsolutePath;
+            if (path?.StartsWith("/returns/1/", StringComparison.Ordinal) == true)
+            {
+                RoutedTo.Add("/returns/1");
+                return v1.SendAsync(request, cancellationToken);
+            }
+
+            if (path?.StartsWith("/returns/2/", StringComparison.Ordinal) == true)
+            {
+                RoutedTo.Add("/returns/2");
+                return v2.SendAsync(request, cancellationToken);
+            }
+
+            throw new HttpRequestException($"No gateway route for '{path}'.");
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                v1.Dispose();
+                v2.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
     private async Task<IHost> StartAsync(string serviceName, string modelNamespace, string? serviceVersion, TestServer? targetServer)
     {
         _registry ??= await TestControlRegistry.StartAsync();
@@ -118,11 +189,6 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
                 {
                     services.AddRouting();
                     var settings = new Dictionary<string, string?>(StringComparer.Ordinal) { ["Kaleido:BaseUrl"] = "http://registry.test/" };
-
-                    if (targetServer is not null)
-                    {
-                        settings[$"Kaleido:Clients:{HandOffFixture.TargetService}:BaseUrl"] = "http://returns.test/";
-                    }
 
                     services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new()
                     {
@@ -142,7 +208,7 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
 
                     if (targetServer is not null)
                     {
-                        services.AddHttpClient(HandOffFixture.TargetService).ConfigurePrimaryHttpMessageHandler(targetServer.CreateHandler);
+                        services.AddHttpClient(KaleidoClientTransport.ClientName).ConfigurePrimaryHttpMessageHandler(targetServer.CreateHandler);
                     }
                 });
                 web.Configure(app =>
@@ -164,7 +230,8 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
 
     private static async Task<HttpResponseMessage> PostAsync(IHost host, string serviceName, string stepName, object processStep, Guid? processId, string? idempotencyKey = null)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, ProcessContractUrls.ExecuteStep(serviceName, stepName.ToLowerInvariant()))
+        var version = host.Services.GetRequiredService<KaleidoServiceOptions>().ServiceVersion ?? throw new InvalidOperationException("The host has no service version.");
+        using var request = new HttpRequestMessage(HttpMethod.Post, ProcessContractUrls.ExecuteStep(serviceName, version, stepName.ToLowerInvariant()))
         {
             Content = JsonContent.Create(new { processStep }, options: KaleidoJsonOptions.Options),
         };
@@ -193,9 +260,12 @@ public sealed class SharedDatabaseTests : IAsyncLifetime
         }
     }
 
-    private static async Task<ProcessStateResponse> StateAsync(IHost host, string serviceName, Guid processId) =>
-        await host.GetTestClient().GetFromJsonAsync<ProcessStateResponse>(ProcessContractUrls.ProcessState(serviceName, processId), KaleidoJsonOptions.Options, Cancel)
+    private static async Task<ProcessStateResponse> StateAsync(IHost host, string serviceName, Guid processId)
+    {
+        var version = host.Services.GetRequiredService<KaleidoServiceOptions>().ServiceVersion ?? throw new InvalidOperationException("The host has no service version.");
+        return await host.GetTestClient().GetFromJsonAsync<ProcessStateResponse>(ProcessContractUrls.ProcessState(serviceName, version, processId), KaleidoJsonOptions.Options, Cancel)
             ?? throw new InvalidOperationException("No state.");
+    }
 
     private Task<List<string>> ProcessorsOfAsync(Guid processId) => ColumnAsync("ProcessorName", processId);
 

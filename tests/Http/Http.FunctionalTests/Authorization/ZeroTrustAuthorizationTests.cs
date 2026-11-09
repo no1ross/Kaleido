@@ -37,7 +37,7 @@ public sealed class ZeroTrustAuthorizationTests(
     public async Task ACapabilityWithoutARule_IsNotMapped()
     {
         var response = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedJson("/kaleido/processes/steps/authorizedopenstep", StepBody, roles: EveryRole));
+            AuthorizationAspNetCoreFixture.AuthenticatedJson("/kaleido/1/processes/steps/authorizedopenstep", StepBody, roles: EveryRole));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -46,7 +46,7 @@ public sealed class ZeroTrustAuthorizationTests(
     public async Task ACapabilityWithoutARule_IsDeniedInGenericExecute()
     {
         var response = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedJson("/kaleido/processes/execute", ExecuteBody(AuthorizationStepNames.OpenStep), roles: EveryRole));
+            AuthorizationAspNetCoreFixture.AuthenticatedJson("/kaleido/1/processes/execute", ExecuteBody(AuthorizationStepNames.OpenStep), roles: EveryRole));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -55,9 +55,9 @@ public sealed class ZeroTrustAuthorizationTests(
     public async Task ADeclaredCapability_RunsForTheDeclaredRole_AndOnlyForIt()
     {
         var allowed = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedJson("/kaleido/processes/steps/authorizedinternalstep", StepBody, roles: ["internal"]));
+            AuthorizationAspNetCoreFixture.AuthenticatedJson("/kaleido/1/processes/steps/authorizedinternalstep", StepBody, roles: ["internal"]));
         var refused = await fixture.Client.SendAsync(
-            AuthorizationAspNetCoreFixture.AuthenticatedJson("/kaleido/processes/steps/authorizedinternalstep", StepBody, roles: ["viewer"]));
+            AuthorizationAspNetCoreFixture.AuthenticatedJson("/kaleido/1/processes/steps/authorizedinternalstep", StepBody, roles: ["viewer"]));
 
         Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);

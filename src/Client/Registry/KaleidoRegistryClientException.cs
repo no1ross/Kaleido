@@ -27,4 +27,7 @@ public static class RegistryClientErrorCodes
 
     /// <summary>The central registry answered with an invalid document.</summary>
     public const string InvalidResponse = "registryclient_invalid_response";
+
+    /// <summary>The requested service, version, transport or capability route is absent from the hydrated registry.</summary>
+    public const string RouteUnavailable = "registryclient_route_unavailable";
 }

@@ -84,9 +84,7 @@ internal sealed partial class ProcessStateService(
                 FrameworkErrorCodes.MissingRegistration,
                 $"Available step '{stepName}' was not found in the local registry.");
 
-        return responseFactory.CreateStepSummary(
-            registration.ToSummary(),
-            serviceOptions.ServiceName);
+        return responseFactory.CreateStepSummary(registration.ToSummary());
     }
 
     // Never builds an information request: it returns the pending one stored with the state.
@@ -104,10 +102,7 @@ internal sealed partial class ProcessStateService(
                 FrameworkErrorCodes.MissingRegistration,
                 $"Required step '{requiredStep}' was not found in the local registry.");
 
-        return responseFactory.CreateRequiredStep(
-            registration.ToSummary(),
-            context.RequiredInformationRequest,
-            serviceOptions.ServiceName);
+        return responseFactory.CreateRequiredStep(registration.ToSummary(), context.RequiredInformationRequest);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Loading process state for processor {ProcessorName} process {ProcessId}.")]

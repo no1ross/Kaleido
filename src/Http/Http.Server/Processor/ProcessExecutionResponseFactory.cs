@@ -12,20 +12,17 @@ internal interface IProcessExecutionResponseFactory
 {
     ProcessExecutionResponse CreateExecutionResponse(
         ProcessResult processResult,
-        IProcessorStepRegistry registry,
-        string serviceName);
+        IProcessorStepRegistry registry);
 
     StepExecutionResponse CreateStepResponse(
         ProcessResult processResult,
         ProcessStepResult stepResult,
-        IProcessorStepRegistry registry,
-        string serviceName);
+        IProcessorStepRegistry registry);
 
     StepExecutionResponse<TResponse> CreateStepResponse<TResponse>(
         ProcessResult processResult,
         ProcessStepResult stepResult,
-        IProcessorStepRegistry registry,
-        string serviceName);
+        IProcessorStepRegistry registry);
 }
 
 internal sealed class ProcessExecutionResponseFactory(
@@ -35,8 +32,7 @@ internal sealed class ProcessExecutionResponseFactory(
 {
     public ProcessExecutionResponse CreateExecutionResponse(
         ProcessResult processResult,
-        IProcessorStepRegistry registry,
-        string serviceName)
+        IProcessorStepRegistry registry)
     {
         ArgumentNullException.ThrowIfNull(processResult);
         ArgumentNullException.ThrowIfNull(registry);
@@ -49,10 +45,7 @@ internal sealed class ProcessExecutionResponseFactory(
             // RequiredStep is null when TargetProcessorName is set —
             // consumer must call the target processor's state endpoint instead.
             RequiredStep =
-                CreateRequiredStep(
-                    processResult,
-                    registry,
-                    serviceName),
+                CreateRequiredStep(processResult, registry),
 
             TargetProcessorName =
                 processResult.TargetProcessorName,
@@ -67,9 +60,7 @@ internal sealed class ProcessExecutionResponseFactory(
                                 ?? throw new KaleidoFrameworkException(
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
-                            return responseFactory.CreateStepSummary(
-                                registration.ToSummary(),
-                                serviceName);
+                            return responseFactory.CreateStepSummary(registration.ToSummary());
                         })
                     .ToArray(),
 
@@ -87,8 +78,7 @@ internal sealed class ProcessExecutionResponseFactory(
     public StepExecutionResponse CreateStepResponse(
         ProcessResult processResult,
         ProcessStepResult stepResult,
-        IProcessorStepRegistry registry,
-        string serviceName)
+        IProcessorStepRegistry registry)
     {
         return new StepExecutionResponse
         {
@@ -101,10 +91,7 @@ internal sealed class ProcessExecutionResponseFactory(
             // RequiredStep is null when TargetProcessorName is set —
             // consumer must call the target processor's state endpoint instead.
             RequiredStep =
-                CreateRequiredStep(
-                    processResult,
-                    registry,
-                    serviceName),
+                CreateRequiredStep(processResult, registry),
 
             TargetProcessorName =
                 processResult.TargetProcessorName,
@@ -121,9 +108,7 @@ internal sealed class ProcessExecutionResponseFactory(
                                 ?? throw new KaleidoFrameworkException(
                                     FrameworkErrorCodes.MissingRegistration,
                                     $"Available step '{stepName}' was not found in the local registry.");
-                            return responseFactory.CreateStepSummary(
-                                registration.ToSummary(),
-                                serviceName);
+                            return responseFactory.CreateStepSummary(registration.ToSummary());
                         })
                     .ToList(),
 
@@ -138,15 +123,10 @@ internal sealed class ProcessExecutionResponseFactory(
     public StepExecutionResponse<TResponse> CreateStepResponse<TResponse>(
         ProcessResult processResult,
         ProcessStepResult stepResult,
-        IProcessorStepRegistry registry,
-        string serviceName)
+        IProcessorStepRegistry registry)
     {
         var response =
-            CreateStepResponse(
-                processResult,
-                stepResult,
-                registry,
-                serviceName);
+            CreateStepResponse(processResult, stepResult, registry);
 
         return new StepExecutionResponse<TResponse>
         {
@@ -199,8 +179,7 @@ internal sealed class ProcessExecutionResponseFactory(
 
     private ProcessRequiredStep? CreateRequiredStep(
         ProcessResult processResult,
-        IProcessorStepRegistry registry,
-        string serviceName)
+        IProcessorStepRegistry registry)
     {
         if (processResult.TargetProcessorName is not null ||
             processResult.RequiredStep is not { } requiredStep)
@@ -213,10 +192,7 @@ internal sealed class ProcessExecutionResponseFactory(
                 FrameworkErrorCodes.MissingRegistration,
                 $"Required step '{requiredStep}' was not found in the local registry.");
 
-        return responseFactory.CreateRequiredStep(
-            registration.ToSummary(),
-            processResult.RequiredInformationRequest,
-            serviceName);
+        return responseFactory.CreateRequiredStep(registration.ToSummary(), processResult.RequiredInformationRequest);
     }
 
     private ProcessMessage[] ToFrameworkMessages(

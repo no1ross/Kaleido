@@ -10,8 +10,8 @@ namespace Kaleido.Http.FunctionalTests.Processor.Execution;
 [Collection(nameof(ProcessorAspNetCoreSuite))]
 public sealed class StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixture)
 {
-    private const string RootStepUrl = "/kaleido/processes/steps/runtimerootstep";
-    private const string InputStepUrl = "/kaleido/processes/steps/runtimeinputstep";
+    private const string RootStepUrl = "/kaleido/1/processes/steps/runtimerootstep";
+    private const string InputStepUrl = "/kaleido/1/processes/steps/runtimeinputstep";
 
     private readonly HttpClient _client = fixture.Client;
 
@@ -78,14 +78,14 @@ public sealed class StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixtur
 
         using var executeResponse =
             await PostAsync(
-                "/kaleido/processes/steps/runtimestepa",
+                "/kaleido/1/processes/steps/runtimestepa",
                 new ExecuteStepRequest<RuntimeStepA> { ProcessStep = new RuntimeStepA() },
                 processId);
 
         Assert.Equal(HttpStatusCode.OK, executeResponse.StatusCode);
 
         using var stateResponse =
-            await _client.GetAsync($"/kaleido/processes/{processId}");
+            await _client.GetAsync($"/kaleido/1/processes/{processId}");
 
         Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
 
@@ -117,7 +117,7 @@ public sealed class StepExecutionEndpointTests(ProcessorAspNetCoreFixture fixtur
         Assert.Contains(error.Errors, x => x.Code == ProcessorErrorCodes.ProcessNotFound);
 
         using var stateResponse =
-            await _client.GetAsync($"/kaleido/processes/{unknownProcessId}");
+            await _client.GetAsync($"/kaleido/1/processes/{unknownProcessId}");
 
         Assert.Equal(HttpStatusCode.NotFound, stateResponse.StatusCode);
     }

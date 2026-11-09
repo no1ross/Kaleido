@@ -501,7 +501,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
     public async Task AnUnexpectedServerFailure_IsABare500_WithTheErrorShape_AndTheRequestId()
     {
         var requestId = $"req-{Guid.NewGuid():N}";
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"/{BehaviorFixture.ServiceName}/queryable/behaviorbrokensource/query")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/{BehaviorFixture.ServiceName}/1/queryable/behaviorbrokensource/query")
         {
             Content = new StringContent("""{"query":{}}""", Encoding.UTF8, "application/json"),
         };
@@ -659,7 +659,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
         Assert.Contains(exception.Errors, x => x.Code == "pro_process_not_found");
     }
 
-    private static string StepUrl(string step) => $"/{BehaviorFixture.ServiceName}/processes/steps/{step.ToLowerInvariant()}";
+    private static string StepUrl(string step) => $"/{BehaviorFixture.ServiceName}/1/processes/steps/{step.ToLowerInvariant()}";
 
     private async Task<Guid> StartAsync()
     {
@@ -697,7 +697,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
 
     private async Task<HttpResponseMessage> PostExecuteAsync(string json, Guid? processId = null, string? idempotencyKey = null, CancellationToken cancellationToken = default)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"/{BehaviorFixture.ServiceName}/processes/execute")
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/{BehaviorFixture.ServiceName}/1/processes/execute")
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };
@@ -718,7 +718,7 @@ public sealed class ProcessBehaviorTests(BehaviorFixture fixture) : IClassFixtur
 
     private async Task<JsonElement> StateAsync(Guid processId)
     {
-        using var response = await _client.GetAsync($"/{BehaviorFixture.ServiceName}/processes/{processId}", TestContext.Current.CancellationToken);
+        using var response = await _client.GetAsync($"/{BehaviorFixture.ServiceName}/1/processes/{processId}", TestContext.Current.CancellationToken);
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.StatusCode == HttpStatusCode.OK, $"State read failed ({(int)response.StatusCode}): {body}");
         return Parse(body);

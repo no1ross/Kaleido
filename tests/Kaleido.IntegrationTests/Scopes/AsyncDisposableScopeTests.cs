@@ -31,7 +31,7 @@ public sealed class AsyncDisposableScopeTests
     {
         await using var host = await ScopeHost.StartAsync();
 
-        using var response = await host.PostAsync($"/scopes/processes/steps/{step}", new { processStep = new { } }, Cancel);
+        using var response = await host.PostAsync($"/scopes/1/processes/steps/{step}", new { processStep = new { } }, Cancel);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(status, (await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(Cancel)).GetProperty("status").GetString());
@@ -45,7 +45,7 @@ public sealed class AsyncDisposableScopeTests
         await using var host = await ScopeHost.StartAsync();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
 
-        var call = host.PostAsync($"/scopes/processes/steps/{nameof(ScopedWaitStep)}", new { processStep = new { } }, cancellation.Token);
+        var call = host.PostAsync($"/scopes/1/processes/steps/{nameof(ScopedWaitStep)}", new { processStep = new { } }, cancellation.Token);
         await host.Disposals.Started.Task.WaitAsync(Cancel);
         await cancellation.CancelAsync();
 
@@ -63,7 +63,7 @@ public sealed class AsyncDisposableScopeTests
     {
         await using var host = await ScopeHost.StartAsync();
 
-        using var response = await host.PostAsync($"/scopes/queryable/{source}/query", new { }, Cancel);
+        using var response = await host.PostAsync($"/scopes/1/queryable/{source}/query", new { }, Cancel);
 
         Assert.Equal(expected, response.StatusCode);
         Assert.Equal(1, host.Disposals.Async);

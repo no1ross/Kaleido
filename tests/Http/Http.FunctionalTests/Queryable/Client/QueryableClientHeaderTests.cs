@@ -3,6 +3,7 @@ using Kaleido.Http.FunctionalTests.Queryable.Fixtures;
 using Kaleido.Observability;
 using Kaleido.Platform;
 using Kaleido.Platform.Queryable;
+using Kaleido.Platform.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -54,8 +55,7 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
 
         var (factory, captured) = BuildClientFactory(ctx);
 
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
-            factory.GetClient("test").QuerySourceAsync<object>("not-present", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+        await factory.GetClient("kaleido").QuerySourceAsync<object>("FunctionalRecordContextSource", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken);
 
         var request = Assert.Single(captured);
         Assert.Equal("req-queryable-header-test",
@@ -81,8 +81,7 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
 
         var (factory, captured) = BuildClientFactory(ctx);
 
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
-            factory.GetClient("test").QuerySourceAsync<object>("not-present", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+        await factory.GetClient("kaleido").QuerySourceAsync<object>("FunctionalRecordContextSource", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken);
 
         var request = Assert.Single(captured);
         Assert.Equal("req-queryable-header-test",
@@ -96,8 +95,7 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
     {
         var (factory, captured) = BuildClientFactory(new KaleidoCorrelationContext());
 
-        await Assert.ThrowsAsync<KaleidoHttpClientException>(() =>
-            factory.GetClient("test").QuerySourceAsync<object>("not-present", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken));
+        await factory.GetClient("kaleido").QuerySourceAsync<object>("FunctionalRecordContextSource", new QueryApiRequest(new QueryApiBody()), TestContext.Current.CancellationToken);
 
         var request = Assert.Single(captured);
         Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.RequestId));
@@ -118,7 +116,7 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
         var httpClient = new HttpClient(captureHandler) { BaseAddress = new Uri("http://localhost/") };
 
         var services = BuildClientServices(ctx);
-        services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("test", httpClient));
+        services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(KaleidoClientTransport.ClientName, httpClient));
 
         var provider = services.BuildServiceProvider(
             new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
@@ -128,17 +126,17 @@ public sealed class QueryableClientHeaderTests(QueryableAspNetCoreFixture fixtur
         return (factory, captured);
     }
 
-    private static ServiceCollection BuildClientServices(KaleidoCorrelationContext ctx)
+    private ServiceCollection BuildClientServices(KaleidoCorrelationContext ctx)
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Kaleido:Clients:test:BaseUrl"] = "http://localhost/",
-                ["Kaleido:Clients:test:RoutePrefix"] = "kaleido",
+                ["Kaleido:BaseUrl"] = "http://localhost/",
             })
             .Build();
 
         var services = new ServiceCollection();
+        services.AddSingleton<IKaleidoRegistrySource>(_fixture.TestServer.Services.GetRequiredService<IKaleidoRegistrySource>());
         // Register before AddKaleido so TryAddScoped is skipped and this accessor wins
         services.AddSingleton<IKaleidoCorrelationContextAccessor>(
             new FixedCorrelationContextAccessor(ctx));

@@ -8,7 +8,7 @@ namespace Kaleido.Http.FunctionalTests.Queryable.Execution;
 
 public sealed class DelegatedQuerySourceTests(QueryableAspNetCoreFixture fixture) : IClassFixture<QueryableAspNetCoreFixture>
 {
-    private const string QueryUrl = "/kaleido/queryable/functionalrecordsummarysource/query";
+    private const string QueryUrl = "/kaleido/1/queryable/functionalrecordsummarysource/query";
 
     private static readonly string[] EastRegion = ["East"];
 
@@ -19,7 +19,7 @@ public sealed class DelegatedQuerySourceTests(QueryableAspNetCoreFixture fixture
     public async Task Query_ReturnsSourceResultsWithDownstreamPagingUntouched()
     {
         var result =
-            await _factory.GetClient("test")
+            await _factory.GetClient("kaleido")
                 .QuerySourceAsync<FunctionalRecordSummaryParameters, FunctionalRecordSummary>(
                     nameof(FunctionalRecordSummarySource),
                     new QueryApiRequest<FunctionalRecordSummaryParameters>(

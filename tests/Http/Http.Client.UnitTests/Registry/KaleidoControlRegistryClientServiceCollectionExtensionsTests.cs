@@ -50,13 +50,13 @@ public sealed class KaleidoControlRegistryClientServiceCollectionExtensionsTests
         Assert.Equal(new Uri("https://gateway.internal/"), provider.GetRequiredService<IHttpClientFactory>().CreateClient(KaleidoHttpRegistryClient.ClientName).BaseAddress);
     }
 
-    // Clients configured too: the control registry's registry stays the full one, whichever call came first.
+    // Registering the gateway client before or after the registry client keeps one hydrated source.
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void WithClients_TheControlRegistrysSource_IsKept(bool registryFirst)
+    public void WithGatewayClient_TheControlRegistrysSource_IsKept(bool registryFirst)
     {
-        var builder = CreateBuilder(new Dictionary<string, string?>(Registry) { ["Kaleido:Clients:Member:BaseUrl"] = "http://member/" });
+        var builder = CreateBuilder(new Dictionary<string, string?>(Registry));
 
         if (registryFirst)
         {
@@ -79,6 +79,17 @@ public sealed class KaleidoControlRegistryClientServiceCollectionExtensionsTests
 
         Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
         Assert.Contains("Kaleido:BaseUrl", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddControlRegistryClient_RejectsAUrlWithEmbeddedCredentials()
+    {
+        var settings = new Dictionary<string, string?> { ["Kaleido:BaseUrl"] = "http://user:secret@gateway.internal/" };
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateBuilder(settings).AddControlRegistryClient());
+
+        Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
+        Assert.DoesNotContain("secret", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

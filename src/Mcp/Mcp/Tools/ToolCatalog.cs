@@ -40,6 +40,9 @@ internal sealed record KaleidoTool
     /// <summary>The Kaleido service that owns the capability.</summary>
     public string Service { get; init; } = string.Empty;
 
+    /// <summary>The published service version whose route this tool calls.</summary>
+    public string? ServiceVersion { get; init; }
+
     /// <summary>The capability name in the registry (source, view or step type name).</summary>
     public string CapabilityName { get; init; } = string.Empty;
 
@@ -51,7 +54,7 @@ internal sealed record KaleidoTool
 
     /// <summary>
     /// The capability's URL as published (<c>queryUrl</c> or <c>executeUrl</c>); used to map a
-    /// process's next steps back to tool names. Calls go through the Kaleido clients by name.
+    /// process's next steps back to version-pinned tool names.
     /// </summary>
     public string Url { get; init; } = string.Empty;
 
@@ -156,6 +159,9 @@ internal sealed record ToolCatalog
     /// <summary>Services with processes (the values of the built-in tools' <c>service</c> argument).</summary>
     public IReadOnlyList<string> ProcessServices { get; init; } = [];
 
+    /// <summary>Published logical routes of the visible services, used to pin process continuations to their versions.</summary>
+    public IReadOnlyCollection<RegistryServiceRoute> Routes { get; init; } = [];
+
     /// <summary>Capabilities and inputs without a description ("tool" or "tool.argument").</summary>
     public IReadOnlyList<string> MissingDescriptions { get; init; } = [];
 
@@ -190,6 +196,7 @@ internal sealed record ToolCatalog
         IsPartial = original.IsPartial;
         UnavailableServices = original.UnavailableServices;
         ProcessServices = original.ProcessServices;
+        Routes = original.Routes;
         MissingDescriptions = original.MissingDescriptions;
         TruncatedNames = original.TruncatedNames;
         UnresolvedLookups = original.UnresolvedLookups;
@@ -205,12 +212,13 @@ internal sealed record ToolCatalog
         return _byName.TryGetValue(toolName, out var tool) ? tool : null;
     }
 
-    /// <summary>The tool of step <paramref name="stepName"/> on <paramref name="service"/>, if the caller has it.</summary>
-    public KaleidoTool? FindStep(string service, string stepName) =>
+    /// <summary>The tool of step <paramref name="stepName"/> on <paramref name="service"/> and its version, if visible.</summary>
+    public KaleidoTool? FindStep(string service, string stepName, string? serviceVersion = null) =>
         Tools.FirstOrDefault(x =>
             x.Kind == KaleidoToolKind.Step &&
             string.Equals(x.Service, service, StringComparison.Ordinal) &&
-            string.Equals(x.CapabilityName, stepName, StringComparison.Ordinal));
+            string.Equals(x.CapabilityName, stepName, StringComparison.Ordinal) &&
+            (serviceVersion is null || string.Equals(x.ServiceVersion, serviceVersion, StringComparison.Ordinal)));
 
     /// <summary>The tool that calls <paramref name="url"/> (maps next steps back to tool names).</summary>
     public KaleidoTool? FindByUrl(string? url)
@@ -227,4 +235,9 @@ internal sealed record ToolCatalog
 
         return _byUrl.TryGetValue(url, out var tool) ? tool : null;
     }
+
+    public string? VersionOf(string service, string? url) =>
+        string.IsNullOrWhiteSpace(url) ? null : Routes.FirstOrDefault(route =>
+            string.Equals(route.ServiceName, service, StringComparison.OrdinalIgnoreCase)
+            && route.Transports.Any(transport => url.StartsWith(transport.GatewayRoute + "/", StringComparison.Ordinal)))?.ServiceVersion;
 }

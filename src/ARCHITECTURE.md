@@ -183,15 +183,14 @@ Public seams consumers are expected to implement or replace:
 - `Kaleido.Http.Client` implements the wire client as `KaleidoHttpRegistryClient` and wires it with `AddControlRegistryClient()`, using the gateway address in `Kaleido:BaseUrl`. Registry call failures cross the neutral seam as `KaleidoRegistryClientException`.
 
 **Shared services (#498)** — every piece is built by the container; no service creates another
-- `IKaleidoClientCatalog` (in `Kaleido.Platform`) holds configured clients by name, one `KaleidoClientDefinition` per entry in `Kaleido:Clients`.
-- Per client, keyed Process and Queryable clients and `KaleidoOnBehalfOfGuard` enforce what an outbound call carries; `KaleidoClientHandlerFilter` adds the host's `AddKaleidoClientHandler<T>()` handlers. The factories (`IKaleidoProcessorClientFactory`, `IKaleidoQueryableClientFactory`) resolve a name chosen at runtime.
-- `IKaleidoClientTransport` sends through the named `HttpClient`: correlation headers, idempotency key, logging, failure mapping and deserialization.
+- `KaleidoRegistryTargetResolver` reads the hydrated unfiltered registry and selects the current service version, or the explicit version for an existing process. `KaleidoTransportSelector` chooses a transport published for that version.
+- `AddHttpClients()` registers one named gateway `HttpClient` using `Kaleido:BaseUrl`. `IKaleidoProcessorClientFactory` and `IKaleidoQueryableClientFactory` create clients by service name, optionally pinned to a version; keyed injection also resolves by service name without an endpoint list.
+- `KaleidoOnBehalfOfGuard` enforces what an outbound call carries; `KaleidoClientHandlerFilter` adds the host's `AddKaleidoClientHandler<T>()` handlers to the gateway and registry clients. `IKaleidoClientTransport` sends through the gateway with correlation headers, idempotency, logging, failure mapping and deserialization.
 
 ### Key design invariants
-- Clients do not discover or cache registries independently. The host's one central-registry copy supplies lookups and MCP. Capability calls currently build their URLs from each configured client's route prefix; published capability routes will replace that configuration in the next change.
+- Clients do not discover or cache registries independently. The host's one central-registry copy supplies the published routes for Process and Queryable calls and MCP; the HTTP adapter validates each relative URL under its version's logical gateway route before sending.
 - Both clients automatically forward Kaleido correlation headers on outbound requests.
-- `AddHttpClients()` registers a Process and a Queryable client per `Kaleido:Clients` entry, reading its base URL with a `Kaleido:BaseUrl` gateway fallback.
-- Until published routes drive calls, `RoutePrefix` defaults to the client name lowercased and must match the target service's `Kaleido:ServiceName`.
+- A service maps only `/{service}/{version}/...`; the router maps each versioned public route to that version's host, without putting instance addresses in the registry.
 
 ---
 

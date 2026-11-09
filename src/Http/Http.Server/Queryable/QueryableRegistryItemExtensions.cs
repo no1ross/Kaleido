@@ -15,6 +15,8 @@ internal static class QueryableRegistryItemExtensions
         ArgumentNullException.ThrowIfNull(serviceOptions);
 
         var serviceName = serviceOptions.ServiceName;
+        var version = serviceOptions.ServiceVersion ?? throw new KaleidoConfigurationException(
+            ConfigurationErrorCodes.InvalidServiceVersion, "A Kaleido HTTP service must name the version in its published routes.");
         var sourceName = item.Name.ToLowerInvariant();
 
         return new QueryableSourceResponse
@@ -27,18 +29,19 @@ internal static class QueryableRegistryItemExtensions
             Source = item.Source,
             Pageable = item.Pageable.ToWire(),
             Authorization = item.Authorization,
-            QueryUrl = QueryableContractUrls.QuerySourceQuery(serviceName, sourceName),
+            QueryUrl = QueryableContractUrls.QuerySourceQuery(serviceName, version, sourceName),
             Fields = [.. item.Fields.Select(f => f.ToWire())],
             Parameters = [.. item.Parameters.Select(p => p.ToWire())],
             OutputFields = [.. item.OutputFields.Select(o => o.ToWire())],
-            Views = [.. item.Views.Select(view => view.ToResponse(sourceName, serviceName))],
+            Views = [.. item.Views.Select(view => view.ToResponse(sourceName, serviceName, version))],
         };
     }
 
     public static QueryableViewResponse ToResponse(
         this QueryableViewRegistryItem item,
         string sourceName,
-        string serviceName)
+        string serviceName,
+        string serviceVersion)
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceName);
@@ -50,7 +53,7 @@ internal static class QueryableRegistryItemExtensions
             DisplayName = item.DisplayName,
             Pageable = item.Pageable.ToWire(),
             Authorization = item.Authorization,
-            QueryUrl = QueryableContractUrls.QueryViewQuery(serviceName, sourceName, item.Name.ToLowerInvariant()),
+            QueryUrl = QueryableContractUrls.QueryViewQuery(serviceName, serviceVersion, sourceName, item.Name.ToLowerInvariant()),
             Parameters = [.. item.Parameters.Select(p => p.ToWire())],
             OutputFields = [.. item.OutputFields.Select(o => o.ToWire())],
         };

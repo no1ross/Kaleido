@@ -99,7 +99,7 @@ public sealed class QueryValidationTests : IAsyncLifetime
     public async Task ARefusal_NamesWhatWasExpected_ButNotWhatWasSent(string what, string body, string guidance)
     {
         using var response = await _client.PostAsync(
-            QueryableContractUrls.QuerySourceQuery(ServiceName, nameof(VmMemberSource)),
+            QueryableContractUrls.QuerySourceQuery(ServiceName, "1", nameof(VmMemberSource)),
             new StringContent(body, Encoding.UTF8, "application/json"),
             Cancel);
         var text = await response.Content.ReadAsStringAsync(Cancel);
@@ -153,7 +153,7 @@ public sealed class QueryValidationTests : IAsyncLifetime
     public async Task TheLargestUnsignedValue_ReachesTheQuery(string field, string value)
     {
         using var response = await _client.PostAsync(
-            QueryableContractUrls.QuerySourceQuery(ServiceName, nameof(VmMemberSource)),
+            QueryableContractUrls.QuerySourceQuery(ServiceName, "1", nameof(VmMemberSource)),
             new StringContent($$$"""{ "query": { "filter": { "condition": { "field":"{{{field}}}", "operator":"equals", "values":[{{{value}}}] } } } }""", Encoding.UTF8, "application/json"),
             Cancel);
 
@@ -165,7 +165,7 @@ public sealed class QueryValidationTests : IAsyncLifetime
     private async Task<(HttpStatusCode Status, string? Code)> QueryAsync(string body)
     {
         using var response = await _client.PostAsync(
-            QueryableContractUrls.QuerySourceQuery(ServiceName, nameof(VmMemberSource)),
+            QueryableContractUrls.QuerySourceQuery(ServiceName, "1", nameof(VmMemberSource)),
             new StringContent(body, Encoding.UTF8, "application/json"),
             Cancel);
         var text = await response.Content.ReadAsStringAsync(Cancel);

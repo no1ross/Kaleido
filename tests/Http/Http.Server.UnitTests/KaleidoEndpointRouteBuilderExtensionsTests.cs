@@ -204,7 +204,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
             AddCentralRegistry(builder);
         }
         builder.Services.AddSingleton(new KaleidoHttpOptions());
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = mode });
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1", AuthorizationMode = mode });
         if (registerScheme)
         {
             AddTestScheme(builder);
@@ -232,7 +232,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         builder.Services.AddRouting();
         AddCentralRegistry(builder);
         builder.Services.AddSingleton(new KaleidoHttpOptions());
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = mode });
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1", AuthorizationMode = mode });
         AddTestScheme(builder);
         if (startupLogger is not null)
         {
@@ -256,7 +256,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         builder.Services.AddRouting();
         AddCentralRegistry(builder);
         builder.Services.AddSingleton(new KaleidoHttpOptions());
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = mode });
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1", AuthorizationMode = mode });
         AddTestScheme(builder);
         builder.Services.AddSingleton(Mock.Of<IQueryableService>());
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry(viewAuthorization));
@@ -269,7 +269,7 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests
         builder.Services.AddRouting();
         AddCentralRegistry(builder);
         builder.Services.AddSingleton(new KaleidoHttpOptions());
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = KaleidoAuthorizationMode.None });
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1", AuthorizationMode = KaleidoAuthorizationMode.None });
         builder.Services.AddSingleton<IProcessExecutionService>(Mock.Of<IProcessExecutionService>());
         builder.Services.AddSingleton<IProcessStateService>(Mock.Of<IProcessStateService>());
         builder.Services.AddSingleton<IProcessorStepRegistry>(CreateProcessStepRegistry());

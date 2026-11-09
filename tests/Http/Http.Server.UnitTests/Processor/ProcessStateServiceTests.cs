@@ -94,7 +94,7 @@ public sealed class ProcessStateServiceTests
         Assert.Null(result.RequiredStep);
         Assert.Equal("radiology", result.TargetProcessorName);
         responseFactory.Verify(
-            x => x.CreateRequiredStep(It.IsAny<ProcessorStepSummary>(), It.IsAny<InformationRequest?>(), It.IsAny<string>()),
+            x => x.CreateRequiredStep(It.IsAny<ProcessorStepSummary>(), It.IsAny<InformationRequest?>()),
             Times.Never);
     }
 
@@ -279,9 +279,7 @@ public sealed class ProcessStateServiceTests
 
         var responseFactory = new Mock<IProcessorResponseFactory>();
         responseFactory
-            .Setup(x => x.CreateStepSummary(
-                It.IsAny<ProcessorStepSummary>(),
-                Processor))
+            .Setup(x => x.CreateStepSummary(It.IsAny<ProcessorStepSummary>()))
             .Returns(expectedSummary);
 
         var expectedRequired = new ProcessRequiredStep
@@ -292,9 +290,7 @@ public sealed class ProcessStateServiceTests
 
         responseFactory
             .Setup(x => x.CreateRequiredStep(
-                It.Is<ProcessorStepSummary>(s => s.Name == "Step-B"),
-                PendingRequest,
-                Processor))
+                It.Is<ProcessorStepSummary>(s => s.Name == "Step-B"), PendingRequest))
             .Returns(expectedRequired);
 
         var service =

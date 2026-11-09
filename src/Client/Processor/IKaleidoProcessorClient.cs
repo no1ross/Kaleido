@@ -4,10 +4,9 @@ using Kaleido.Platform.Processor;
 namespace Kaleido.Client.Processor;
 
 /// <summary>
-/// Client for a remote service's Process capabilities: its processor registry, process state, and
-/// step execution. Steps are addressed by their published names: a step call goes to
-/// <c>/{routePrefix}/processes/steps/{step}</c> without consulting the registry, which is filtered
-/// per caller and serves discovery only. Obtain one from <see cref="IKaleidoProcessorClientFactory"/>.
+/// Client for a remote service's Process capabilities. The service and optional version come from
+/// <see cref="IKaleidoProcessorClientFactory"/>; each step, state or execute call uses the URL in the
+/// host's unfiltered hydrated central registry, never a route prefix assembled by the client.
 /// </summary>
 /// <remarks>
 /// Calls carry the ambient correlation headers. Every execute call is sent with an
@@ -22,7 +21,7 @@ namespace Kaleido.Client.Processor;
 public interface IKaleidoProcessorClient
 {
     /// <summary>
-    /// Gets the current state of a remote process (<c>GET /{service}/processes/{processId}</c>).
+    /// Gets the current state of a remote process at the versioned route published by the central registry.
     /// Reading the state never executes a step.
     /// </summary>
     /// <param name="processId">The id of the process on the remote service.</param>
@@ -33,7 +32,7 @@ public interface IKaleidoProcessorClient
     /// </returns>
     /// <remarks>
     /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> for any other
-    /// non-success status or an empty payload. A 404 here does not invalidate the cached registry.
+    /// non-success status or an empty payload. A 404 here does not change the hydrated registry.
     /// </remarks>
     Task<ProcessStateResponse?> GetProcessStateAsync(
         Guid processId,
@@ -41,7 +40,7 @@ public interface IKaleidoProcessorClient
 
     /// <summary>
     /// Executes one or more steps in a single call to the remote multi-step execute endpoint
-    /// (<c>POST /{service}/processes/execute</c>).
+    /// whose URL is published by the central registry.
     /// </summary>
     /// <param name="request">The steps to submit, each with its JSON input.</param>
     /// <param name="idempotencyKey">
@@ -109,8 +108,7 @@ public interface IKaleidoProcessorClient
     /// <summary>
     /// Executes a process step by its published name with a JSON payload — for callers that
     /// discover steps at runtime and have no compile-time step type (gateways, AI-tool adapters).
-    /// The step URL is built from the route prefix and the name, exactly as for the typed
-    /// overloads.
+    /// The step's published URL is found by name in the unfiltered registry, as for the typed overloads.
     /// </summary>
     /// <param name="stepName">The step's published name (routes match it case-insensitively).</param>
     /// <param name="processStep">The step input, as the step's JSON object.</param>

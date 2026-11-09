@@ -29,9 +29,12 @@ public sealed class ToolCatalogTests
     {
         var step = new KaleidoTool { Definition = new Tool { Name = "clinic_start_visit" }, Kind = KaleidoToolKind.Step, Service = "clinic", CapabilityName = "StartVisitStep" };
         var query = new KaleidoTool { Definition = new Tool { Name = "clinic_start" }, Kind = KaleidoToolKind.Query, Service = "clinic", CapabilityName = "StartVisitStep" };
-        var sut = CreateSut(query, step);
+        var v2 = step with { Definition = new Tool { Name = "clinic_start_v2" }, ServiceVersion = "2" };
+        var sut = CreateSut(query, step, v2);
 
         Assert.Same(step, sut.FindStep("clinic", "StartVisitStep"));
+        Assert.Same(v2, sut.FindStep("clinic", "StartVisitStep", "2"));
+        Assert.Null(sut.FindStep("clinic", "StartVisitStep", "3"));
         Assert.Null(sut.FindStep("radiology", "StartVisitStep"));
         Assert.Null(sut.FindStep("clinic", "startvisitstep"));
     }
@@ -74,6 +77,19 @@ public sealed class ToolCatalogTests
         Assert.Null(copy.Find(Patient.Definition.Name));
         Assert.Null(copy.FindByUrl(Patient.Url));
         Assert.Same(StartVisit, copy.Find(StartVisit.Definition.Name));
+    }
+
+    [Fact]
+    public void VersionOf_MatchesThePublishedRouteOfTheCorrectServiceVersion()
+    {
+        var v1 = new RegistryServiceRoute { ServiceName = "clinic", ServiceVersion = "1", Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/clinic/1" }] };
+        var v2 = new RegistryServiceRoute { ServiceName = "clinic", ServiceVersion = "2", Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/clinic/2" }] };
+        var sut = CreateSut() with { Routes = [v1, v2] };
+
+        Assert.Equal("1", sut.VersionOf("CLINIC", "/clinic/1/processes/steps/ask"));
+        Assert.Equal("2", sut.VersionOf("clinic", "/clinic/2/processes/steps/ask"));
+        Assert.Null(sut.VersionOf("clinic", "/ward/1/processes/steps/ask"));
+        Assert.Equal("1", (sut with { Tools = [] }).VersionOf("clinic", "/clinic/1/processes/steps/ask"));
     }
 
     [Fact]

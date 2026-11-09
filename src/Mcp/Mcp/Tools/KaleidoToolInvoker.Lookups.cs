@@ -206,7 +206,7 @@ internal sealed partial class KaleidoToolInvoker
             parameters,
             new QueryApiBody { SearchText = searchText, Page = new QueryApiPage { Size = LookupPageSize } });
 
-        var client = Queryable(lookup.Service);
+        var client = query is null ? Queryable(lookup.Service) : Queryable(query);
 
         // The search belongs to the step's process: it is recorded with it (X-Kaleido-Process-Id).
         using var forwarded = processId is null ? null : processForwarding.ForwardProcess(processId);

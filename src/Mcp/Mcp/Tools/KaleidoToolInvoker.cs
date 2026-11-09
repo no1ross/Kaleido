@@ -178,7 +178,7 @@ internal sealed partial class KaleidoToolInvoker(
         {
             return ServiceAnswered(tool, exception);
         }
-        catch (MissingClientException exception)
+        catch (KaleidoRegistryClientException exception)
         {
             return Error(McpErrorCodes.ServiceUnavailable, exception.Message);
         }
@@ -305,7 +305,7 @@ internal sealed partial class KaleidoToolInvoker(
             parameters[ToolCatalogBuilder.ProcessIdArgument] = scoped.ToString();
         }
 
-        var client = Queryable(tool.Service);
+        var client = Queryable(tool);
         var request = new QueryApiRequest<JsonObject>(parameters, body);
         var source = tool.SourceName ?? tool.CapabilityName;
 
@@ -509,14 +509,14 @@ internal sealed partial class KaleidoToolInvoker(
                 : null;
 
         var response =
-            await Processor(tool.Service).ExecuteStepAsync(
+            await Processor(tool).ExecuteStepAsync(
                 tool.CapabilityName,
                 body,
                 processId,
                 idempotencyKey,
                 cancellationToken);
 
-        return await FollowUpAsync(tool.Service, response, catalog, call, [], round: 0, cancellationToken);
+        return await FollowUpAsync(tool.Service, response, catalog, call, [], round: 0, cancellationToken, serviceVersion: tool.ServiceVersion);
     }
 
     private async Task<ToolOutcome> AnswerAsync(
@@ -533,7 +533,10 @@ internal sealed partial class KaleidoToolInvoker(
             return Error(McpErrorCodes.InvalidArguments, "Pass service, processId, informationRequestId and answers.");
         }
 
-        var pending = await PendingAsync(service, processId, cancellationToken);
+        var requestedVersion = Text(arguments, "serviceVersion");
+        var token = DecodeAnswers(Text(arguments, AnswersTokenArgument), processId, service, requestedVersion, informationRequestId);
+        var version = requestedVersion ?? token?.ServiceVersion;
+        var pending = await PendingAsync(service, version, processId, cancellationToken);
 
         if (pending.Error is { } error)
         {
@@ -542,8 +545,6 @@ internal sealed partial class KaleidoToolInvoker(
 
         // The answers of earlier rounds of the same request come back in the token (ADR 0024), with the
         // exchange the questions were shown for (#442).
-        var token = DecodeAnswers(Text(arguments, AnswersTokenArgument), processId, informationRequestId);
-
         if (NotThePendingQuestions(pending.Request, informationRequestId, token) is { } notPending)
         {
             return notPending;
@@ -573,14 +574,14 @@ internal sealed partial class KaleidoToolInvoker(
 
         var submitted = Submitted(pending.Request, earlier, given, merged);
 
-        if (await ConfirmAnswersAsync(pending.Step, processId, new ConfirmedAnswers(service, informationRequestId, exchangeId, submitted, Round: 0, Answered: []), call, cancellationToken) is { } unconfirmed)
+        if (await ConfirmAnswersAsync(pending.Step, processId, new ConfirmedAnswers(service, informationRequestId, exchangeId, submitted, Round: 0, Answered: [], ServiceVersion: version), call, cancellationToken) is { } unconfirmed)
         {
             return unconfirmed;
         }
 
-        var response = await SubmitAsync(service, pending.Step, pending.Request, exchangeId, submitted, processId, cancellationToken);
+        var response = await SubmitAsync(service, version, pending.Step, pending.Request, exchangeId, submitted, processId, cancellationToken);
 
-        return await FollowUpAsync(service, response, catalog, call, [], round: 0, cancellationToken);
+        return await FollowUpAsync(service, response, catalog, call, [], round: 0, cancellationToken, serviceVersion: version);
     }
 
     // #516: answers are submitted only with the token issued with the questions - never under the
@@ -645,6 +646,7 @@ internal sealed partial class KaleidoToolInvoker(
             ? null
             : await StateAsync(
                 state.Service,
+                state.ServiceVersion,
                 state.ProcessId,
                 catalog,
                 "The process is now asking different questions; the answered form was not submitted.",
@@ -699,13 +701,14 @@ internal sealed partial class KaleidoToolInvoker(
         {
             return await StateAsync(
                 state.Service,
+                state.ServiceVersion,
                 state.ProcessId,
                 catalog,
                 $"The user did not answer the questions ({elicited?.Action ?? "no answer"}). Nothing was submitted; the process is still waiting for them.",
                 cancellationToken);
         }
 
-        var pending = await PendingAsync(state.Service, state.ProcessId, cancellationToken);
+        var pending = await PendingAsync(state.Service, state.ServiceVersion, state.ProcessId, cancellationToken);
 
         if (pending.Error is { } error)
         {
@@ -724,7 +727,7 @@ internal sealed partial class KaleidoToolInvoker(
         // The answers decide further questions of the same request: the next form, nothing submitted yet.
         if (pending.Request.NextRound(merged) is not null)
         {
-            return AskForAnswers(state.Service, state.ProcessId, pending.Request, state.Round, answered, merged);
+            return AskForAnswers(state.Service, state.ServiceVersion, state.ProcessId, pending.Request, state.Round, answered, merged);
         }
 
         return await SubmitFormAnswersAsync(state, pending, Enabled(pending.Request, merged), call with { InputResponses = null, RequestState = null }, catalog, cancellationToken);
@@ -746,14 +749,15 @@ internal sealed partial class KaleidoToolInvoker(
             state.ExchangeId,
             items,
             state.Round + 1,
-            [.. state.Answered, state.InformationRequestId]);
+            [.. state.Answered, state.InformationRequestId],
+            state.ServiceVersion);
 
         if (await ConfirmAnswersAsync(pending.Step, state.ProcessId, confirmed, call, cancellationToken) is { } unconfirmed)
         {
             return unconfirmed;
         }
 
-        var response = await SubmitAsync(state.Service, pending.Step, pending.Request, state.ExchangeId, items, state.ProcessId, cancellationToken);
+        var response = await SubmitAsync(state.Service, state.ServiceVersion, pending.Step, pending.Request, state.ExchangeId, items, state.ProcessId, cancellationToken);
 
         return await FollowUpAsync(
             state.Service,
@@ -762,7 +766,8 @@ internal sealed partial class KaleidoToolInvoker(
             call,
             new JsonArray([.. confirmed.Answered.Select(x => (JsonNode?)x)]),
             confirmed.Round,
-            cancellationToken);
+            cancellationToken,
+            state.ServiceVersion);
     }
 
     private async Task<CallToolResult> StateAsync(
@@ -776,24 +781,25 @@ internal sealed partial class KaleidoToolInvoker(
             return Error(McpErrorCodes.InvalidArguments, "Pass service and processId.");
         }
 
-        return await StateAsync(service, processId, catalog, note: null, cancellationToken);
+        return await StateAsync(service, Text(arguments, "serviceVersion"), processId, catalog, note: null, cancellationToken);
     }
 
     private async Task<CallToolResult> StateAsync(
         string service,
+        string? version,
         Guid processId,
         ToolCatalog catalog,
         string? note,
         CancellationToken cancellationToken)
     {
-        if (await Processor(service).GetProcessStateAsync(processId, cancellationToken) is not { } state)
+        if (await Processor(service, version).GetProcessStateAsync(processId, cancellationToken) is not { } state)
         {
             return Error(McpErrorCodes.ServiceError, $"Process {processId} was not found on '{service}', or you may not see it.", Serialize(new { status = 404 }));
         }
 
         if (!string.IsNullOrWhiteSpace(state.TargetProcessorName))
         {
-            return await StateAsync(state.TargetProcessorName, processId, catalog, note, cancellationToken);
+            return await StateAsync(state.TargetProcessorName, version: null, processId, catalog, note, cancellationToken);
         }
 
         var summary = new JsonObject
@@ -811,6 +817,11 @@ internal sealed partial class KaleidoToolInvoker(
                 .ToArray()),
             ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false, processId, notice: state.Notice),
         };
+        var selectedVersion = version ?? summary["next"]?["serviceVersion"]?.GetValue<string>();
+        if (!string.IsNullOrWhiteSpace(selectedVersion))
+        {
+            summary["serviceVersion"] = selectedVersion;
+        }
 
         if (state.Notice is not null)
         {
@@ -834,7 +845,7 @@ internal sealed partial class KaleidoToolInvoker(
         {
             return (await Processor(target).GetProcessStateAsync(processId, cancellationToken), null);
         }
-        catch (Exception exception) when (exception is KaleidoHttpClientException or HttpRequestException or MissingClientException)
+        catch (Exception exception) when (exception is KaleidoHttpClientException or KaleidoRegistryClientException or HttpRequestException)
         {
             LogTargetStateUnread(logger, exception, target, processId);
 
@@ -876,7 +887,8 @@ internal sealed partial class KaleidoToolInvoker(
         KaleidoToolCall call,
         JsonArray answered,
         int round,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? serviceVersion = null)
     {
         string? note = null;
 
@@ -899,15 +911,16 @@ internal sealed partial class KaleidoToolInvoker(
                 else if (mode == Elicitation.Mrtr)
                 {
                     // Return the form; the client shows it and calls this tool again with the answers.
-                    return AskForAnswers(pendingService, step.ProcessId, pending, round, answered, new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal));
+                    return AskForAnswers(pendingService, catalog.VersionOf(pendingService, required.ExecuteUrl), step.ProcessId, pending, round, answered, new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal));
                 }
                 else
                 {
-                    var (next, unanswered) = await AnswerInSessionAsync(call, pendingService, required, pending, step.ProcessId, cancellationToken);
+                    var (next, unanswered) = await AnswerInSessionAsync(call, pendingService, catalog.VersionOf(pendingService, required.ExecuteUrl), required, pending, step.ProcessId, cancellationToken);
 
                     if (next is not null)
                     {
                         answered.Add(pending.InformationRequestId);
+                        serviceVersion = catalog.VersionOf(pendingService, required.ExecuteUrl) ?? serviceVersion;
                         service = pendingService;
                         step = next;
 
@@ -919,7 +932,7 @@ internal sealed partial class KaleidoToolInvoker(
             }
 
             return Success(
-                Summary(service, pendingService, step, new Continuation(required, available, notice), answered, note, catalog),
+                Summary(service, pendingService, step, new Continuation(required, available, notice), answered, note, catalog, serviceVersion),
                 step.BusinessMessages.Select(x => x.Message));
         }
     }
@@ -929,6 +942,7 @@ internal sealed partial class KaleidoToolInvoker(
     private async Task<(StepExecutionResponse<JsonElement>? Next, string? Note)> AnswerInSessionAsync(
         KaleidoToolCall call,
         string service,
+        string? version,
         ProcessRequiredStep required,
         InformationRequest pending,
         Guid processId,
@@ -960,7 +974,7 @@ internal sealed partial class KaleidoToolInvoker(
 
         try
         {
-            return (await SubmitAsync(service, required, pending, pending.ExchangeId, items, processId, cancellationToken), null);
+            return (await SubmitAsync(service, version, required, pending, pending.ExchangeId, items, processId, cancellationToken), null);
         }
         catch (Exception exception) when (!(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
@@ -1051,6 +1065,7 @@ internal sealed partial class KaleidoToolInvoker(
     // earlier exchange are then refused by the service, not taken for answers to the current one (#442).
     private Task<StepExecutionResponse<JsonElement>> SubmitAsync(
         string service,
+        string? version,
         ProcessRequiredStep step,
         InformationRequest request,
         string exchangeId,
@@ -1069,7 +1084,7 @@ internal sealed partial class KaleidoToolInvoker(
 
         // An information request is answered once: the same answers to the same request are one call,
         // however often the agent sends them (#440).
-        return Processor(service).ExecuteStepAsync(
+        return Processor(service, version).ExecuteStepAsync(
             step.Name,
             body,
             processId,
@@ -1099,10 +1114,11 @@ internal sealed partial class KaleidoToolInvoker(
     // The questions a process is waiting for, read fresh from Kaleido (never from the client).
     private async Task<PendingQuestions> PendingAsync(
         string service,
+        string? version,
         Guid processId,
         CancellationToken cancellationToken)
     {
-        var state = await Processor(service).GetProcessStateAsync(processId, cancellationToken);
+        var state = await Processor(service, version).GetProcessStateAsync(processId, cancellationToken);
 
         return state?.RequiredStep is { InformationRequest: { } request } step
             ? new PendingQuestions(step, request, Error: null)
@@ -1144,7 +1160,8 @@ internal sealed partial class KaleidoToolInvoker(
         Continuation continuation,
         JsonArray answered,
         string? note,
-        ToolCatalog catalog)
+        ToolCatalog catalog,
+        string? serviceVersion)
     {
         var (required, available, notice) = continuation;
         var summary = new JsonObject
@@ -1158,7 +1175,7 @@ internal sealed partial class KaleidoToolInvoker(
         if (step.Result.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
         {
             summary["result"] = JsonNode.Parse(step.Result.GetRawText());
-            AddFieldDescriptions(summary, catalog.FindStep(service, step.StepName), summary["result"]);
+            AddFieldDescriptions(summary, catalog.FindStep(service, step.StepName, serviceVersion), summary["result"]);
         }
 
         // Two streams, kept apart as the step response keeps them: business messages are the
@@ -1188,6 +1205,7 @@ internal sealed partial class KaleidoToolInvoker(
         }
 
         summary["next"] = Next(pendingService, required, available, catalog, elicited: answered.Count > 0, step.ProcessId, notice: notice);
+        CopyServiceVersion(summary, service, pendingService, serviceVersion);
 
         if (notice is not null)
         {
@@ -1205,6 +1223,17 @@ internal sealed partial class KaleidoToolInvoker(
         return summary;
     }
 
+    private static void CopyServiceVersion(JsonObject summary, string service, string pendingService, string? serviceVersion)
+    {
+        var version = string.Equals(service, pendingService, StringComparison.Ordinal)
+            ? serviceVersion ?? summary["next"]?["serviceVersion"]?.GetValue<string>()
+            : null;
+        if (version is not null)
+        {
+            summary["serviceVersion"] = version;
+        }
+    }
+
     // A rejected or unfinished step (invalid input, a defect, a cancellation) changed nothing: the user
     // can correct the input and retry, or choose another step.
     private static string? UnfinishedNote(StepExecutionStatus status, bool canContinue) =>
@@ -1220,6 +1249,7 @@ internal sealed partial class KaleidoToolInvoker(
     // The form of the round the answers so far decide; the state carries those answers to the next call.
     private ToolOutcome AskForAnswers(
         string service,
+        string? version,
         Guid processId,
         InformationRequest pending,
         int round,
@@ -1240,9 +1270,23 @@ internal sealed partial class KaleidoToolInvoker(
                     pending.ExchangeId,
                     round,
                     answered.Select(x => x?.GetValue<string>()).OfType<string>().ToArray(),
-                    answersSoFar)),
+                    answersSoFar,
+                    version)),
             },
         };
+
+    private static JsonObject NextEnvelope(string service, ProcessRequiredStep? required, IReadOnlyCollection<ProcessStepSummary> available, ToolCatalog catalog)
+    {
+        var next = new JsonObject { ["service"] = service };
+        var version = catalog.VersionOf(service, required?.ExecuteUrl)
+            ?? available.Select(x => catalog.VersionOf(service, x.ExecuteUrl)).FirstOrDefault(x => x is not null);
+        if (version is not null)
+        {
+            next["serviceVersion"] = version;
+        }
+
+        return next;
+    }
 
     private JsonObject Next(
         string service,
@@ -1254,7 +1298,7 @@ internal sealed partial class KaleidoToolInvoker(
         IReadOnlyDictionary<string, IReadOnlyList<string>>? answersSoFar = null,
         KaleidoNotice? notice = null)
     {
-        var next = new JsonObject { ["service"] = service };
+        var next = NextEnvelope(service, required, available, catalog);
 
         if (required is { InformationRequest: { } request })
         {
@@ -1276,7 +1320,7 @@ internal sealed partial class KaleidoToolInvoker(
             // the answers of earlier rounds.
             if (processId is { } id)
             {
-                next[AnswersTokenArgument] = EncodeAnswers(id, request.InformationRequestId, request.ExchangeId, given);
+                next[AnswersTokenArgument] = EncodeAnswers(id, service, next["serviceVersion"]?.GetValue<string>(), request.InformationRequestId, request.ExchangeId, given);
             }
 
             next["instruction"] = AnswerInstruction(pending, elicited, moreRounds, withToken: processId is not null);
@@ -1400,15 +1444,17 @@ internal sealed partial class KaleidoToolInvoker(
     // The answers of earlier rounds of one request, for the agent to send back with the next round
     // (ADR 0024), protected like the continuation state (#516). It must also name this process and
     // request, and Kaleido validates the full set of answers when they are submitted.
-    private string EncodeAnswers(Guid processId, string informationRequestId, string exchangeId, IReadOnlyDictionary<string, IReadOnlyList<string>> answers) =>
-        states.Protect(McpStateKind.Answers, new AnswersState(processId, informationRequestId, exchangeId, answers));
+    private string EncodeAnswers(Guid processId, string service, string? version, string informationRequestId, string exchangeId, IReadOnlyDictionary<string, IReadOnlyList<string>> answers) =>
+        states.Protect(McpStateKind.Answers, new AnswersState(processId, informationRequestId, exchangeId, answers, service, version));
 
     // The token's earlier answers and the exchange it was issued for; null when there is no usable
     // token (none, refused by the protector, or for another process or questionnaire).
-    private AnswersState? DecodeAnswers(string? value, Guid processId, string informationRequestId) =>
+    private AnswersState? DecodeAnswers(string? value, Guid processId, string service, string? version, string informationRequestId) =>
         value is not null &&
         states.Unprotect<AnswersState>(McpStateKind.Answers, value) is { } state &&
         state.ProcessId == processId &&
+        (state.Service is null || string.Equals(state.Service, service, StringComparison.OrdinalIgnoreCase)) &&
+        (state.ServiceVersion is null || version is null || string.Equals(state.ServiceVersion, version, StringComparison.Ordinal)) &&
         string.Equals(state.InformationRequestId, informationRequestId, StringComparison.Ordinal)
             ? state
             : null;
@@ -1418,18 +1464,18 @@ internal sealed partial class KaleidoToolInvoker(
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    // The service's Kaleido clients. A tool's service always comes from the registry, so a missing
-    // client means the host publishes capabilities it cannot call (e.g. its own, without a client
-    // for itself).
-    private IKaleidoProcessorClient Processor(string service) =>
-        processors.TryGetClientForService(service, out var client)
-            ? client
-            : throw new MissingClientException(service);
+    // A tool's service version comes from the registry; process-state reads may select a version explicitly.
+    private IKaleidoProcessorClient Processor(KaleidoTool tool) => Processor(tool.Service, tool.ServiceVersion);
 
-    private IKaleidoQueryableClient Queryable(string service) =>
-        queryables.TryGetClientForService(service, out var client)
-            ? client
-            : throw new MissingClientException(service);
+    private IKaleidoProcessorClient Processor(string service, string? version = null) =>
+        version is { Length: > 0 } ? processors.GetClient(service, version) : processors.GetClient(service);
+
+    private IKaleidoQueryableClient Queryable(string service) => queryables.GetClient(service);
+
+    private IKaleidoQueryableClient Queryable(KaleidoTool tool) =>
+        tool.ServiceVersion is { Length: > 0 } version
+            ? queryables.GetClient(tool.Service, version)
+            : queryables.GetClient(tool.Service);
 
     private static string? Text(
         IReadOnlyDictionary<string, JsonElement> arguments,
@@ -1558,9 +1604,6 @@ internal sealed partial class KaleidoToolInvoker(
                 !string.IsNullOrWhiteSpace(x.Message))
             .Select(x => x.Message);
 
-    private sealed class MissingClientException(string service)
-        : Exception($"No Kaleido client is configured for service '{service}' on this host, so its tools cannot be called. Add it under Kaleido:Clients.");
-
     private enum Elicitation
     {
         None,
@@ -1575,13 +1618,16 @@ internal sealed partial class KaleidoToolInvoker(
         string ExchangeId,
         int Round,
         IReadOnlyList<string> Answered,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? Answers = null);
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? Answers = null,
+        string? ServiceVersion = null);
 
     private sealed record AnswersState(
         Guid ProcessId,
         string InformationRequestId,
         string ExchangeId,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> Answers);
+        IReadOnlyDictionary<string, IReadOnlyList<string>> Answers,
+        string? Service = null,
+        string? ServiceVersion = null);
 
     private sealed record SessionAnswers(
         IReadOnlyDictionary<string, IReadOnlyList<string>>? Answers,

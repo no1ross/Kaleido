@@ -65,6 +65,7 @@ internal sealed partial class ToolCatalogBuilder(
         var processServices = processors
             .Where(x => (x.Steps ?? []).Count > 0)
             .Select(x => x.ServiceName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         // Queries take a processId only where processes exist: it records the query with the process.
@@ -108,6 +109,7 @@ internal sealed partial class ToolCatalogBuilder(
             IsPartial = registry.IsPartial || registry.Errors.Count > 0,
             UnavailableServices = registry.Errors.Select(x => x.Source).ToArray(),
             ProcessServices = processServices,
+            Routes = registry.Routes,
             MissingDescriptions = context.MissingDescriptions,
             TruncatedNames = context.TruncatedNames,
             UnresolvedLookups = context.UnresolvedLookups,
@@ -121,7 +123,7 @@ internal sealed partial class ToolCatalogBuilder(
         BuildContext context,
         QueryableSourceResponse source)
     {
-        var name = Name(context, source.ServiceName, source.Name, "source");
+        var name = Name(context, source.ServiceName, source.Name, "source", serviceVersion: source.ServiceVersion);
         var query = QuerySchema(context, name, FieldOwner(source), source.Fields, source.Parameters, source.Pageable);
 
         var description =
@@ -140,6 +142,7 @@ internal sealed partial class ToolCatalogBuilder(
                 query.Schema),
             Kind = KaleidoToolKind.Query,
             Service = source.ServiceName,
+            ServiceVersion = source.ServiceVersion,
             CapabilityName = source.Name,
             SourceName = source.Name,
             Url = source.QueryUrl ?? string.Empty,
@@ -153,7 +156,7 @@ internal sealed partial class ToolCatalogBuilder(
         QueryableSourceResponse source,
         QueryableViewResponse view)
     {
-        var name = Name(context, source.ServiceName, view.Name, "view", owner: source.Name);
+        var name = Name(context, source.ServiceName, view.Name, "view", owner: source.Name, serviceVersion: source.ServiceVersion);
         var query = QuerySchema(context, name, FieldOwner(source), source.Fields, view.Parameters, view.Pageable);
 
         var description =
@@ -172,6 +175,7 @@ internal sealed partial class ToolCatalogBuilder(
                 query.Schema),
             Kind = KaleidoToolKind.Query,
             Service = source.ServiceName,
+            ServiceVersion = source.ServiceVersion,
             CapabilityName = view.Name,
             SourceName = source.Name,
             ViewName = view.Name,
@@ -434,7 +438,7 @@ internal sealed partial class ToolCatalogBuilder(
         ProcessorRegistryResponse processor,
         ProcessStepResponse step)
     {
-        var name = Name(context, processor.ServiceName, step.Name, "step");
+        var name = Name(context, processor.ServiceName, step.Name, "step", serviceVersion: processor.ServiceVersion);
 
         var lookups = Lookups(context, name, step.Fields);
         var schema = StepInputSchema(context, name, step, lookups);
@@ -473,6 +477,7 @@ internal sealed partial class ToolCatalogBuilder(
             },
             Kind = KaleidoToolKind.Step,
             Service = processor.ServiceName,
+            ServiceVersion = processor.ServiceVersion,
             CapabilityName = step.Name,
             Url = step.ExecuteUrl,
             IsInitial = step.IsInitial,
@@ -685,6 +690,7 @@ internal sealed partial class ToolCatalogBuilder(
                     ["properties"] = new JsonObject
                     {
                         ["service"] = serviceSchema.DeepClone(),
+                        ["serviceVersion"] = new JsonObject { ["type"] = "string", ["description"] = "The process's service version; omit only to read the current version." },
                         ["processId"] = processIdSchema.DeepClone(),
                     },
                     ["required"] = new JsonArray("service", "processId"),
@@ -702,6 +708,7 @@ internal sealed partial class ToolCatalogBuilder(
             ["properties"] = new JsonObject
             {
                 ["service"] = serviceSchema.DeepClone(),
+                ["serviceVersion"] = new JsonObject { ["type"] = "string", ["description"] = "The service version of the process being answered; pass next.serviceVersion when provided." },
                 ["processId"] = processIdSchema.DeepClone(),
                 ["informationRequestId"] = new JsonObject
                 {
@@ -739,7 +746,8 @@ internal sealed partial class ToolCatalogBuilder(
         string service,
         string capabilityTypeName,
         string kind,
-        string? owner = null)
+        string? owner = null,
+        string? serviceVersion = null)
     {
         var built = nameBuilder.Build(service, capabilityTypeName);
 
@@ -748,7 +756,7 @@ internal sealed partial class ToolCatalogBuilder(
             context.TruncatedNames.Add($"{service}/{capabilityTypeName} -> {built.Value}");
         }
 
-        var identity = Identity(service, kind, capabilityTypeName, owner);
+        var identity = Identity(service, kind, capabilityTypeName, owner, serviceVersion);
 
         // Named from the unfiltered registry (AllocateNames). A capability missing there (the snapshot
         // changed between the two reads) is named by the same rule within this catalog.
@@ -783,11 +791,11 @@ internal sealed partial class ToolCatalogBuilder(
 
         foreach (var source in scope.Queryables)
         {
-            capabilities.Add((Identity(source.ServiceName, "source", source.Name, owner: null), nameBuilder.Build(source.ServiceName, source.Name).Value));
+            capabilities.Add((Identity(source.ServiceName, "source", source.Name, owner: null, serviceVersion: source.ServiceVersion), nameBuilder.Build(source.ServiceName, source.Name).Value));
 
             foreach (var view in source.Views)
             {
-                capabilities.Add((Identity(source.ServiceName, "view", view.Name, source.Name), nameBuilder.Build(source.ServiceName, view.Name).Value));
+                capabilities.Add((Identity(source.ServiceName, "view", view.Name, source.Name, source.ServiceVersion), nameBuilder.Build(source.ServiceName, view.Name).Value));
             }
         }
 
@@ -795,7 +803,7 @@ internal sealed partial class ToolCatalogBuilder(
         {
             foreach (var step in (processor.Steps ?? []).Where(x => !x.IsInformationStep))
             {
-                capabilities.Add((Identity(processor.ServiceName, "step", step.Name, owner: null), nameBuilder.Build(processor.ServiceName, step.Name).Value));
+                capabilities.Add((Identity(processor.ServiceName, "step", step.Name, owner: null, serviceVersion: processor.ServiceVersion), nameBuilder.Build(processor.ServiceName, step.Name).Value));
             }
         }
 
@@ -835,10 +843,13 @@ internal sealed partial class ToolCatalogBuilder(
         CallToolTool,
     };
 
-    private static string Identity(string service, string kind, string capabilityTypeName, string? owner) =>
-        owner is null
-            ? $"{service}|{kind}|{capabilityTypeName}"
-            : $"{service}|{kind}|{owner}|{capabilityTypeName}";
+    private static string Identity(string service, string kind, string capabilityTypeName, string? owner, string? serviceVersion)
+    {
+        var prefix = string.IsNullOrWhiteSpace(serviceVersion) ? service : $"{service}|{serviceVersion}";
+        return owner is null
+            ? $"{prefix}|{kind}|{capabilityTypeName}"
+            : $"{prefix}|{kind}|{owner}|{capabilityTypeName}";
+    }
 
     private static string Suffixed(string baseName, string identity) =>
         WithTail(baseName, "_" + ToolNameBuilder.Hash(identity));

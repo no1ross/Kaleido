@@ -123,7 +123,7 @@ public sealed class GuideHost : IAsyncDisposable
     /// <summary>Executes a step; fails the test unless the call succeeds (2xx).</summary>
     public async Task<JsonElement> StepAsync(string step, object input, Guid? processId = null, string? caller = null)
     {
-        var (status, body) = await SendAsync(HttpMethod.Post, $"/orders/processes/steps/{step}", new { processStep = input }, processId, caller);
+        var (status, body) = await SendAsync(HttpMethod.Post, $"/orders/1/processes/steps/{step}", new { processStep = input }, processId, caller);
         Assert.True((int)status < 300, $"{step}: {(int)status} {body}");
         return body;
     }
@@ -131,7 +131,7 @@ public sealed class GuideHost : IAsyncDisposable
     /// <summary>Runs a query; fails the test unless the call succeeds (2xx).</summary>
     public async Task<JsonElement> QueryAsync(string path, object body, string? caller = null)
     {
-        var (status, result) = await SendAsync(HttpMethod.Post, $"/orders/queryable/{path}/query", body, caller: caller);
+        var (status, result) = await SendAsync(HttpMethod.Post, $"/orders/1/queryable/{path}/query", body, caller: caller);
         Assert.True((int)status < 300, $"{path}: {(int)status} {result}");
         return result;
     }

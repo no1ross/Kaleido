@@ -5,6 +5,7 @@ using Kaleido.Guide.Examples.Callers;
 using Kaleido.Observability;
 using Kaleido.Platform;
 using Kaleido.Platform.Processor;
+using Kaleido.Platform.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -49,8 +50,8 @@ public sealed class CallersExampleTests
         await using var host = await GuideHost.StartAsync(KaleidoAuthorizationMode.Authenticated);
         var processId = await ShippedOrderAsync(host, "cleo|clerk");
 
-        var (clerk, _) = await host.SendAsync(HttpMethod.Post, "/orders/processes/steps/RefundOrderStep", new { processStep = new { } }, processId, "cleo|clerk");
-        var (anonymous, _) = await host.SendAsync(HttpMethod.Post, "/orders/processes/steps/PlaceOrderStep", new { processStep = new { item = "Book" } });
+        var (clerk, _) = await host.SendAsync(HttpMethod.Post, "/orders/1/processes/steps/RefundOrderStep", new { processStep = new { } }, processId, "cleo|clerk");
+        var (anonymous, _) = await host.SendAsync(HttpMethod.Post, "/orders/1/processes/steps/PlaceOrderStep", new { processStep = new { item = "Book" } });
         var refunded = await host.StepAsync("RefundOrderStep", new { }, processId, "max|manager");
 
         Assert.Equal(HttpStatusCode.Forbidden, clerk);
@@ -81,12 +82,23 @@ public sealed class CallersExampleTests
         services.AddLogging();
         services.AddSingleton<ITokenExchange, PrefixingTokenExchange>();
         services.AddSingleton<Kaleido.Guide.Examples.GettingStarted.OrderBook>();
+        var route = new RegistryTransportRoute { Transport = "http", GatewayRoute = "/member/1" };
+        var source = new Mock<IKaleidoRegistrySource>();
+        source.Setup(x => x.GetAvailabilityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistryAvailability
+        {
+            Services = [new RegistryServiceAvailability { ServiceName = "member", ServiceVersion = "1", IsCurrent = true, Transports = [route] }],
+        });
+        source.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new KaleidoRegistry
+        {
+            Processes = [new ProcessorRegistryResponse { Name = "member", ServiceName = "member", ServiceVersion = "1", ProcessStateUrlTemplate = "/member/1/processes/{processId}" }],
+        });
         CallCredentialsRegistration.AddWithTokenExchange(services, new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["Kaleido:BaseUrl"] = "https://gateway.test/",
             ["Kaleido:OnBehalfOfCalls"] = "Exchange",
-            ["Kaleido:Clients:member:BaseUrl"] = "https://member.test/",
         }).Build());
-        services.AddHttpClient("member").ConfigurePrimaryHttpMessageHandler(() => wire);
+        services.AddSingleton<IKaleidoRegistrySource>(source.Object);
+        services.AddHttpClient("kaleido-gateway").ConfigurePrimaryHttpMessageHandler(() => wire);
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
         using (var request = provider.CreateScope())

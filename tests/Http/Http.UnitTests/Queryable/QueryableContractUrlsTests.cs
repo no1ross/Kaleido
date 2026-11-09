@@ -1,28 +1,26 @@
 namespace Kaleido.Http.Queryable.UnitTests;
 
-public sealed class QueryableContractUrlsTests
-    : Kaleido.UnitTests.SutFixture
+public sealed class QueryableContractUrlsTests : Kaleido.UnitTests.SutFixture
 {
     [Theory]
-    [InlineData(null, "/queryable")]
-    [InlineData("", "/queryable")]
-    [InlineData("   ", "/queryable")]
-    [InlineData("members", "/members/queryable")]
-    [InlineData(" /members/ ", "/members/queryable")]
-    public void QueryablePrefix_NormalizesTheServiceName(string? serviceName, string expected)
+    [InlineData("members", "1", "/members/1/queryable")]
+    [InlineData(" /members/ ", " /2026-11/ ", "/members/2026-11/queryable")]
+    public void QueryablePrefix_AlwaysIncludesTheServiceVersion(string service, string version, string expected)
     {
-        Assert.Equal(expected, QueryableContractUrls.QueryablePrefix(serviceName!));
+        Assert.Equal(expected, QueryableContractUrls.QueryablePrefix(service, version));
     }
 
     [Fact]
-    public void QuerySourceQuery_AppendsTheSourceQueryRoute()
+    public void VersionedRoutes_PinEachQueryToItsServiceVersion()
     {
-        Assert.Equal("/members/queryable/Member/query", QueryableContractUrls.QuerySourceQuery("members", "Member"));
+        Assert.Equal("/members/2026-11/queryable/Member/query", QueryableContractUrls.QuerySourceQuery("members", "2026-11", "Member"));
+        Assert.Equal("/members/2026-11/queryable/Member/Summary/query", QueryableContractUrls.QueryViewQuery("members", "2026-11", "Member", "Summary"));
     }
 
     [Fact]
-    public void QueryViewQuery_AppendsTheViewQueryRouteUnderItsSource()
+    public void VersionedRoutes_RequireAServiceAndVersion()
     {
-        Assert.Equal("/queryable/Member/Summary/query", QueryableContractUrls.QueryViewQuery("", "Member", "Summary"));
+        Assert.Throws<ArgumentException>(() => QueryableContractUrls.QueryablePrefix("", "1"));
+        Assert.Throws<ArgumentException>(() => QueryableContractUrls.QueryablePrefix("members", ""));
     }
 }

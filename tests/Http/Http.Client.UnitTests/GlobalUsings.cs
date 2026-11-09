@@ -7,7 +7,6 @@ global using Kaleido.Http.Client.Pipeline;
 global using Kaleido.Http.Client.Processor;
 global using Kaleido.Http.Client.Registration;
 global using Kaleido.Http.Client.Registry;
-global using Kaleido.Http.Client.Resilience;
 global using Kaleido.Http.Client.Transport;
 global using Kaleido.Platform.Registry;
 global using Kaleido.Queryable.Query;

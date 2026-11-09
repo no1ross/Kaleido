@@ -41,7 +41,7 @@ public sealed class HostExceptionHandlerTests
 
         using var content = new StringContent("""{"parameters":{"category":42}}""", Encoding.UTF8, "application/json");
         using var response = await host.GetTestClient().PostAsync(
-            "/kaleido/queryable/functionalrecordcontextsource/functionalrecordgridview/query",
+            "/kaleido/1/queryable/functionalrecordcontextsource/functionalrecordgridview/query",
             content,
             TestContext.Current.CancellationToken);
 
@@ -98,7 +98,7 @@ public sealed class HostExceptionHandlerTests
 
         using var content = new StringContent("""{"query":{"page":{"size":50,"offset":0}}}""", Encoding.UTF8, "application/json");
         using var response = await host.GetTestClient().PostAsync(
-            "/kaleido/queryable/functionalunpagedrecordsource/query",
+            "/kaleido/1/queryable/functionalunpagedrecordsource/query",
             content,
             TestContext.Current.CancellationToken);
 

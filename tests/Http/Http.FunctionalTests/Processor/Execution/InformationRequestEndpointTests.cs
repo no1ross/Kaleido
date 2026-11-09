@@ -12,8 +12,8 @@ namespace Kaleido.Http.FunctionalTests.Processor.Execution;
 [Collection(nameof(ProcessorAspNetCoreSuite))]
 public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture fixture)
 {
-    private const string AskUrl = "/kaleido/processes/steps/runtimeaskstep";
-    private const string AnswerUrl = "/kaleido/processes/steps/runtimeanswerstep";
+    private const string AskUrl = "/kaleido/1/processes/steps/runtimeaskstep";
+    private const string AnswerUrl = "/kaleido/1/processes/steps/runtimeanswerstep";
 
     [Fact]
     public async Task RequireInformation_ReturnsTheRequestOnTheRequiredStep_AndPersistsIt()
@@ -24,7 +24,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
         Assert.NotNull(asked.RequiredStep);
         Assert.Equal(RuntimeStepNames.Answer, asked.RequiredStep.Name);
         Assert.True(asked.RequiredStep.IsInformationStep);
-        Assert.Equal("/kaleido/processes/steps/runtimeanswerstep", asked.RequiredStep.ExecuteUrl);
+        Assert.Equal("/kaleido/1/processes/steps/runtimeanswerstep", asked.RequiredStep.ExecuteUrl);
         Assert.Equal(RuntimeInformationRequests.FirstRound, asked.RequiredStep.InformationRequest?.InformationRequestId);
         Assert.Equal(InformationItemType.Choice, asked.RequiredStep.InformationRequest!.Items[2].Type);
 
@@ -279,7 +279,7 @@ public sealed class InformationRequestEndpointTests(ProcessorAspNetCoreFixture f
 
     private async Task<ProcessStateResponse> GetStateAsync(Guid processId)
     {
-        using var response = await fixture.Client.GetAsync($"/kaleido/processes/{processId}");
+        using var response = await fixture.Client.GetAsync($"/kaleido/1/processes/{processId}");
 
         return await response.Content.ReadAsync<ProcessStateResponse>()
             ?? throw new InvalidOperationException("Empty state response.");

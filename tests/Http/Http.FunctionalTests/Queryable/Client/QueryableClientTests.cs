@@ -16,7 +16,7 @@ public sealed class QueryableClientTests(QueryableAspNetCoreFixture fixture) : I
     [Fact]
     public async Task QueryViewAsync_ReturnsResults()
     {
-        var result = await _factory.GetClient("test").QueryViewAsync<FunctionalRecordViewParameters, FunctionalRecordView>(
+        var result = await _factory.GetClient("kaleido").QueryViewAsync<FunctionalRecordViewParameters, FunctionalRecordView>(
             "FunctionalRecordContextSource",
             "FunctionalRecordGridView",
             new QueryApiRequest<FunctionalRecordViewParameters>(
@@ -37,7 +37,7 @@ public sealed class QueryableClientTests(QueryableAspNetCoreFixture fixture) : I
     [Fact]
     public async Task QuerySourceAsync_ReturnsTheRecordsTheSourceHolds_ValueForValue()
     {
-        var result = await _factory.GetClient("test").QuerySourceAsync<FunctionalRecordContext>(
+        var result = await _factory.GetClient("kaleido").QuerySourceAsync<FunctionalRecordContext>(
             "FunctionalRecordContextSource",
             new QueryApiRequest(new QueryApiBody { Page = new QueryApiPage { Size = 10 } }), TestContext.Current.CancellationToken);
 
@@ -73,7 +73,7 @@ public sealed class QueryableClientTests(QueryableAspNetCoreFixture fixture) : I
 
         var exception =
             await Assert.ThrowsAsync<Kaleido.Http.Client.Transport.KaleidoHttpClientException>(() =>
-                _factory.GetClient("test").QuerySourceAsync<FunctionalRecordContext>("FunctionalRecordContextSource", new QueryApiRequest(body), TestContext.Current.CancellationToken));
+                _factory.GetClient("kaleido").QuerySourceAsync<FunctionalRecordContext>("FunctionalRecordContextSource", new QueryApiRequest(body), TestContext.Current.CancellationToken));
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, exception.StatusCode);
         Assert.Contains(exception.Errors, x => x.Code == "qry_field_not_filterable");

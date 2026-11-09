@@ -103,6 +103,29 @@ public sealed class KaleidoRegistryServiceTests : Kaleido.UnitTests.SutFixture
     }
 
     [Fact]
+    public async Task GetForCaller_DoesNotExposeARouteOfAHiddenService()
+    {
+        source.Setup(x => x.GetAsync(Cancel)).ReturnsAsync(Registry(
+            [new ProcessorRegistryResponse { Name = "radiology", ServiceName = "radiology", ServiceVersion = "1", Steps = [new ProcessStepResponse { Name = "CaptureScanStep", Authorization = Radiology }] }],
+            [new QueryableSourceResponse { Name = "MemberSource", ServiceName = "member", ServiceVersion = "1", QueryUrl = "/member/1/q" }]) with
+        {
+            Routes =
+            [
+                new RegistryServiceRoute { ServiceName = "radiology", ServiceVersion = "1" },
+                new RegistryServiceRoute { ServiceName = "member", ServiceVersion = "1" },
+            ],
+        });
+        AllowEverything();
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IReadOnlyCollection<ProcessStepResponse>>(), It.IsAny<Func<ProcessStepResponse, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyCollection<ProcessStepResponse> items, Func<ProcessStepResponse, AuthorizationMetadata?> rule, CancellationToken _) => items.Where(x => rule(x) != Radiology).ToArray());
+
+        var filtered = await CreateSut().GetForCallerAsync(refresh: false, Cancel);
+
+        Assert.Empty(filtered.Processes);
+        Assert.Equal("member", Assert.Single(filtered.Routes).ServiceName);
+    }
+
+    [Fact]
     public async Task GetForCaller_AnUnauthorizedLookup_IsRemovedButItsFieldStays()
     {
         source.Setup(x => x.GetAsync(Cancel)).ReturnsAsync(Registry(

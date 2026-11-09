@@ -1,25 +1,21 @@
-using Kaleido.Platform;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace Kaleido.Http.Client.Queryable;
 
-// For a client name chosen at runtime (an MCP tool call, the registry aggregation): the configured
-// client of that name, as the container built it (a keyed service, #498). Code that knows the name
-// injects [FromKeyedServices("name")] IKaleidoQueryableClient instead.
 internal sealed class KaleidoQueryableClientFactory(
-    IServiceProvider services,
-    IKaleidoClientCatalog catalog)
+    IKaleidoRegistryTargetResolver targets,
+    IKaleidoClientTransport transport)
     : IKaleidoQueryableClientFactory
 {
-    public IKaleidoQueryableClient GetClient(string name) =>
-        services.GetRequiredKeyedService<IKaleidoQueryableClient>(catalog.Require(name).Name);
+    public IKaleidoQueryableClient GetClient(string serviceName) => CreateClient(serviceName, serviceVersion: null);
 
-    public bool TryGetClientForService(string serviceName, [NotNullWhen(true)] out IKaleidoQueryableClient? client)
+    public IKaleidoQueryableClient GetClient(string serviceName, string serviceVersion)
     {
-        client = catalog.FindByService(serviceName) is { } found
-            ? services.GetRequiredKeyedService<IKaleidoQueryableClient>(found.Name)
-            : null;
+        ArgumentException.ThrowIfNullOrWhiteSpace(serviceVersion);
+        return CreateClient(serviceName, serviceVersion);
+    }
 
-        return client is not null;
+    private KaleidoQueryableClient CreateClient(string serviceName, string? serviceVersion)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(serviceName);
+        return new KaleidoQueryableClient(serviceName, serviceVersion, targets, transport);
     }
 }

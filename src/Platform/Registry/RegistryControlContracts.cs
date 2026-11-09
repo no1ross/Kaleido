@@ -30,6 +30,34 @@ public sealed record RegistryInstanceRegistration
     /// <summary>The instance's query sources, as its own registry publishes them.</summary>
     public IReadOnlyCollection<QueryableSourceResponse> Queryables { get; init; }
         = [];
+
+    /// <summary>The protocols and public gateway routes for this service version; defaults to HTTP when empty.</summary>
+    public IReadOnlyCollection<RegistryTransportRoute> Transports { get; init; } = [];
+}
+
+/// <summary>One protocol and its public logical gateway route, never an instance address.</summary>
+[ExcludeFromCodeCoverage]
+public sealed record RegistryTransportRoute
+{
+    /// <summary>The protocol name, such as <c>http</c> or <c>grpc</c>.</summary>
+    public required string Transport { get; init; }
+
+    /// <summary>The versioned gateway path that routes to this service, without an origin or query.</summary>
+    public required string GatewayRoute { get; init; }
+}
+
+/// <summary>A service version and the public gateway routes its instances declare.</summary>
+[ExcludeFromCodeCoverage]
+public sealed record RegistryServiceRoute
+{
+    /// <summary>The service.</summary>
+    public required string ServiceName { get; init; }
+
+    /// <summary>The version.</summary>
+    public required string ServiceVersion { get; init; }
+
+    /// <summary>The version's published protocols and their gateway paths.</summary>
+    public IReadOnlyCollection<RegistryTransportRoute> Transports { get; init; } = [];
 }
 
 /// <summary>
@@ -102,6 +130,9 @@ public sealed record RegistryServiceStatus
     /// <summary>The version's overall status, as each of its capabilities carries it.</summary>
     public RegistryCapabilityStatus Status { get; init; }
 
+    /// <summary>The version's published protocols and gateway paths.</summary>
+    public IReadOnlyCollection<RegistryTransportRoute> Transports { get; init; } = [];
+
     /// <summary>The instances ready: alive (leased) and reporting themselves healthy.</summary>
     public int ReadyInstances { get; init; }
 
@@ -162,6 +193,9 @@ public sealed record RegistryServiceAvailability
 
     /// <summary>The version's overall status, as each of its capabilities carries it.</summary>
     public RegistryCapabilityStatus Status { get; init; }
+
+    /// <summary>The version's published protocols and gateway paths.</summary>
+    public IReadOnlyCollection<RegistryTransportRoute> Transports { get; init; } = [];
 }
 
 /// <summary>An instance of a service version, as the control registry last heard from it (#553).</summary>

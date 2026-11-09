@@ -23,7 +23,6 @@ public sealed class RouterShapedHostTests
         });
         builder.Configuration["Kaleido:ServiceName"] = "mcp-reader";
         builder.Configuration["Kaleido:BaseUrl"] = "http://registry.test/";
-        builder.Configuration["Kaleido:Clients:intake:BaseUrl"] = "http://intake.test/";
         builder.Configuration["Kaleido:OnBehalfOfCalls"] = "Exchange";
 
         builder.Services.AddKaleido(builder.Configuration, new()

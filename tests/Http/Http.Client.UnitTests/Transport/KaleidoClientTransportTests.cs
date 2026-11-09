@@ -9,8 +9,7 @@ namespace Kaleido.Http.Client.Transport.UnitTests;
 public sealed class KaleidoClientTransportTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static readonly KaleidoClientDefinition Radiology =
-        new("RadiologyClient", "radiology");
+    private const string Radiology = "radiology";
 
     private readonly List<(HttpRequestMessage Request, string? Body)> sent = [];
     private readonly Mock<IHttpClientFactory> httpClientFactory = new();
@@ -28,7 +27,7 @@ public sealed class KaleidoClientTransportTests
                 sent.Add((request, request.Content?.ReadAsStringAsync(CancellationToken.None).GetAwaiter().GetResult()));
                 return respond(request);
             });
-        httpClientFactory.Setup(x => x.CreateClient(Radiology.Name))
+        httpClientFactory.Setup(x => x.CreateClient(KaleidoClientTransport.ClientName))
             .Returns(() => new HttpClient(handler.Object, disposeHandler: false) { BaseAddress = new Uri("http://localhost") });
 
         return new(httpClientFactory.Object, stamper.Object, logger ?? NullLogger<KaleidoClientTransport>.Instance);
@@ -39,11 +38,11 @@ public sealed class KaleidoClientTransportTests
 
     private static HttpResponseMessage Status(HttpStatusCode status) => new(status);
 
-    private static KaleidoClientRequest Get(string url = "/radiology/processes/1") =>
+    private static KaleidoClientRequest Get(string url = "/radiology/1/processes/1") =>
         new(Radiology, HttpMethod.Get, url, "Process state request");
 
     private static KaleidoClientRequest Post(object body) =>
-        new(Radiology, HttpMethod.Post, "/radiology/processes/execute", "Process execute request", body);
+        new(Radiology, HttpMethod.Post, "/radiology/1/processes/execute", "Process execute request", body);
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -59,9 +58,9 @@ public sealed class KaleidoClientTransportTests
         Assert.Equal("ok", answer.Value);
         var (request, body) = Assert.Single(sent);
         Assert.Equal(HttpMethod.Post, request.Method);
-        Assert.Equal("/radiology/processes/execute", request.RequestUri!.AbsolutePath);
+        Assert.Equal("/radiology/1/processes/execute", request.RequestUri!.AbsolutePath);
         Assert.Equal("{\"memberId\":\"M1\"}", body);
-        httpClientFactory.Verify(x => x.CreateClient("RadiologyClient"), Times.Once);
+        httpClientFactory.Verify(x => x.CreateClient(KaleidoClientTransport.ClientName), Times.Once);
     }
 
     [Fact]
@@ -229,7 +228,7 @@ public sealed class KaleidoClientTransportTests
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(LogLevel.Debug, entry.Level);
-        Assert.Equal("Sending POST /radiology/processes/execute through Kaleido client 'RadiologyClient' to service 'radiology'.", entry.Message);
+        Assert.Equal("Sending POST /radiology/1/processes/execute through Kaleido client 'kaleido-gateway' to service 'radiology'.", entry.Message);
     }
 
     [Fact]
@@ -246,7 +245,7 @@ public sealed class KaleidoClientTransportTests
             failed =>
             {
                 Assert.Equal(LogLevel.Warning, failed.Level);
-                Assert.Equal("Remote Kaleido service 'radiology' returned 503 (ServiceUnavailable) for GET /radiology/processes/1.", failed.Message);
+                Assert.Equal("Remote Kaleido service 'radiology' returned 503 (ServiceUnavailable) for GET /radiology/1/processes/1.", failed.Message);
             });
     }
 

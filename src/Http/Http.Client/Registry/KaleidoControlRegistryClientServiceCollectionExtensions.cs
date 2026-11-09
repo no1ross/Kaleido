@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Kaleido.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -33,7 +32,7 @@ public static class KaleidoControlRegistryClientServiceCollectionExtensions
     /// Registration, heartbeat and hydration calls (named client <c>kaleido-registry</c>) are the
     /// service's own (<see cref="KaleidoCallPurpose.ServiceOwn"/>): they carry what the host's handlers set,
     /// typically an app-only token from
-    /// <see cref="KaleidoHttpClientsServiceCollectionExtensions.AddKaleidoClientHandler{THandler}"/>, which must
+    /// <see cref="Kaleido.Http.Client.Registration.KaleidoHttpClientsServiceCollectionExtensions.AddKaleidoClientHandler{THandler}"/>, which must
     /// satisfy the registry's registrant and reader policies (#574). A separate caller-filtered read
     /// through <see cref="IKaleidoRegistryClient.GetRegistryAsync"/> uses the inbound caller.
     /// </para>
@@ -49,11 +48,11 @@ public static class KaleidoControlRegistryClientServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         var gateway = builder.Configuration[$"{KaleidoServiceOptions.SectionName}:{nameof(KaleidoClientOptions.BaseUrl)}"];
-        if (!Uri.TryCreate(gateway, UriKind.Absolute, out var address) || address.Scheme is not ("http" or "https"))
+        if (!Uri.TryCreate(gateway, UriKind.Absolute, out var address) || address.Scheme is not ("http" or "https") || address.UserInfo.Length > 0)
         {
             throw new KaleidoConfigurationException(
                 HttpClientErrorCodes.InvalidClientOptions,
-                "Kaleido:BaseUrl must be the gateway's absolute http or https URL to use the central registry client.");
+                "Kaleido:BaseUrl must be the gateway's absolute http or https URL without embedded credentials to use the central registry client.");
         }
 
         if (string.IsNullOrWhiteSpace(builder.ServiceOptions.ServiceVersion))
@@ -66,7 +65,6 @@ public static class KaleidoControlRegistryClientServiceCollectionExtensions
         var services = builder.Services;
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<IKaleidoInboundCallerAccessor, KaleidoInboundCallerAccessor>();
-        services.TryAddSingleton<IKaleidoClientCatalog, KaleidoClientCatalog>();
 
         AddRegistryHttpClient(builder, gateway);
 
@@ -100,8 +98,8 @@ public static class KaleidoControlRegistryClientServiceCollectionExtensions
         // Its own short timeout and the shared safe-call resilience; the sync tries again at its next check.
         var resilience = builder.Configuration
             .GetSection($"{KaleidoServiceOptions.SectionName}:{nameof(KaleidoClientOptions.Resilience)}")
-            .BindOver(new KaleidoResilienceOptions(), HttpClientErrorCodes.InvalidClientOptions)
-            .ForClient(builder.Configuration, KaleidoHttpRegistryClient.ClientName);
+            .BindOver(new KaleidoResilienceOptions(), HttpClientErrorCodes.InvalidClientOptions);
+        KaleidoResilienceOptions.Validate(resilience, "Kaleido:Resilience");
         var httpClient = services.AddHttpClient(KaleidoHttpRegistryClient.ClientName, client =>
         {
             client.BaseAddress = new Uri(gateway.TrimEnd('/') + "/");

@@ -188,7 +188,7 @@ public sealed class OutboxRelayConsoleHostTests : IAsyncLifetime
         for (var i = 0; i < StepsPerService; i++)
         {
             using var content = new StringContent("""{"processStep":{}}""", Encoding.UTF8, "application/json");
-            using var response = await writer.GetTestClient().PostAsync($"/{serviceName}/processes/steps/{nameof(RuntimeRootStep).ToLowerInvariant()}", content, Cancel);
+            using var response = await writer.GetTestClient().PostAsync($"/{serviceName}/1/processes/steps/{nameof(RuntimeRootStep).ToLowerInvariant()}", content, Cancel);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
     }

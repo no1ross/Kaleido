@@ -1,4 +1,3 @@
-using Kaleido.Client.Registry;
 using Kaleido.Mcp.Observability;
 using Kaleido.Mcp.Tools;
 using Kaleido.Server.Observability;
@@ -126,11 +125,11 @@ public static class KaleidoMcpServiceCollectionExtensions
                 "AddMcp() requires the central registry client. Configure Kaleido:BaseUrl and call AddControlRegistryClient() before AddMcp().");
         }
 
-        if (services.FirstOrDefault(x => x.ImplementationInstance is KaleidoClientOptions { Clients.Count: > 0 })?.ImplementationInstance is not KaleidoClientOptions clients)
+        if (services.FirstOrDefault(x => x.ImplementationInstance is KaleidoClientOptions)?.ImplementationInstance is not KaleidoClientOptions clients)
         {
             throw new KaleidoConfigurationException(
                 McpErrorCodes.MissingClients,
-                "AddMcp() calls services through the Kaleido clients: configure Kaleido:Clients and call AddHttpClients() before AddMcp().");
+                "AddMcp() calls services through the gateway client: configure Kaleido:BaseUrl and call AddHttpClients() before AddMcp().");
         }
 
         // Fail closed: tool calls are made for the agent's user, whose token was issued for this MCP server.

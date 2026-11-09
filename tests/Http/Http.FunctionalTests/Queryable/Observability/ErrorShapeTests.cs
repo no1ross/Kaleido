@@ -14,7 +14,7 @@ public sealed class ErrorShapeTests(
     {
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
-            "/kaleido/queryable/functionalrecordcontextsource/query")
+            "/kaleido/1/queryable/functionalrecordcontextsource/query")
         {
             Content = JsonContent.Create(
                 new QueryApiRequest(
@@ -55,7 +55,7 @@ public sealed class ErrorShapeTests(
     {
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
-            "/kaleido/queryable/functionalrecordcontextsource/query")
+            "/kaleido/1/queryable/functionalrecordcontextsource/query")
         {
             Content = new StringContent(
                 "{ not json }",

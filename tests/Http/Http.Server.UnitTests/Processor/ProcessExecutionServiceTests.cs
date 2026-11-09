@@ -65,14 +65,14 @@ public sealed class ProcessExecutionServiceTests
     {
         var factory = new Mock<IProcessExecutionResponseFactory>();
         factory
-            .Setup(x => x.CreateExecutionResponse(It.IsAny<ProcessResult>(), It.IsAny<IProcessorStepRegistry>(), It.IsAny<string>()))
-            .Returns((ProcessResult result, IProcessorStepRegistry _, string _) => new ProcessExecutionResponse { ProcessId = result.ProcessId });
+            .Setup(x => x.CreateExecutionResponse(It.IsAny<ProcessResult>(), It.IsAny<IProcessorStepRegistry>()))
+            .Returns((ProcessResult result, IProcessorStepRegistry _) => new ProcessExecutionResponse { ProcessId = result.ProcessId });
         factory
-            .Setup(x => x.CreateStepResponse(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>(), It.IsAny<string>()))
-            .Returns((ProcessResult result, ProcessStepResult step, IProcessorStepRegistry _, string _) => new StepExecutionResponse { ProcessId = result.ProcessId, StepName = step.StepName });
+            .Setup(x => x.CreateStepResponse(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>()))
+            .Returns((ProcessResult result, ProcessStepResult step, IProcessorStepRegistry _) => new StepExecutionResponse { ProcessId = result.ProcessId, StepName = step.StepName });
         factory
-            .Setup(x => x.CreateStepResponse<TestResponse>(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>(), It.IsAny<string>()))
-            .Returns((ProcessResult result, ProcessStepResult step, IProcessorStepRegistry _, string _) => new StepExecutionResponse<TestResponse> { ProcessId = result.ProcessId, StepName = step.StepName });
+            .Setup(x => x.CreateStepResponse<TestResponse>(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>()))
+            .Returns((ProcessResult result, ProcessStepResult step, IProcessorStepRegistry _) => new StepExecutionResponse<TestResponse> { ProcessId = result.ProcessId, StepName = step.StepName });
         return factory.Object;
     }
 
@@ -238,7 +238,7 @@ public sealed class ProcessExecutionServiceTests
         var expected = new ProcessExecutionResponse { ProcessId = processResult.ProcessId };
         var responseFactory = new Mock<IProcessExecutionResponseFactory>();
         responseFactory
-            .Setup(x => x.CreateExecutionResponse(processResult, registry, "test-processor"))
+            .Setup(x => x.CreateExecutionResponse(processResult, registry))
             .Returns(expected);
 
         var response = await CreateSut(
@@ -285,8 +285,8 @@ public sealed class ProcessExecutionServiceTests
         ProcessStepResult? reported = null;
         var responseFactory = new Mock<IProcessExecutionResponseFactory>();
         responseFactory
-            .Setup(x => x.CreateStepResponse(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>(), It.IsAny<string>()))
-            .Callback((ProcessResult _, ProcessStepResult step, IProcessorStepRegistry _, string _) => reported = step)
+            .Setup(x => x.CreateStepResponse(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>()))
+            .Callback((ProcessResult _, ProcessStepResult step, IProcessorStepRegistry _) => reported = step)
             .Returns(new StepExecutionResponse { ProcessId = processResult.ProcessId, StepName = registration.Metadata.Name });
 
         await CreateSut(CreateRegistry(registration), runtime.Object, responseFactory.Object)
@@ -338,8 +338,7 @@ public sealed class ProcessExecutionServiceTests
         responseFactory
             .Setup(x => x.CreateExecutionResponse(
                 processResult,
-                registry,
-                "test-processor"))
+                registry))
             .Returns(expectedResponse);
 
         var service = CreateSut(registry, runtime.Object, responseFactory.Object, contextProcessId);
@@ -366,8 +365,7 @@ public sealed class ProcessExecutionServiceTests
         responseFactory.Verify(
             x => x.CreateExecutionResponse(
                 processResult,
-                registry,
-                "test-processor"),
+                registry),
             Times.Once);
     }
 
@@ -396,8 +394,7 @@ public sealed class ProcessExecutionServiceTests
             .Setup(x => x.CreateStepResponse<TestResponse>(
                 It.IsAny<ProcessResult>(),
                 It.IsAny<ProcessStepResult>(),
-                registry,
-                "test-processor"))
+                registry))
             .Returns(expectedResponse);
 
         var service = CreateSut(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());
@@ -437,8 +434,7 @@ public sealed class ProcessExecutionServiceTests
             .Setup(x => x.CreateStepResponse(
                 It.IsAny<ProcessResult>(),
                 It.IsAny<ProcessStepResult>(),
-                registry,
-                "test-processor"))
+                registry))
             .Returns(expectedResponse);
 
         var service = CreateSut(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());

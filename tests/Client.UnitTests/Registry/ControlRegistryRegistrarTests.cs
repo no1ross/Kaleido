@@ -78,7 +78,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
         return new ControlRegistryRegistrar(
             factory.Object,
             new KaleidoServiceOptions { ServiceName = "code-sets", ServiceVersion = "3", InstanceId = InstanceId },
-            [local.Object], registry.Object, health is null ? [] : [health], time,
+            [local.Object], [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/code-sets/3" }], registry.Object, health is null ? [] : [health], time,
             NullLogger<ControlRegistryRegistrar>.Instance)
         {
             Jitter = () => jitter,
@@ -112,6 +112,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
         Assert.Equal(RegistryOperation.Register, operation);
         Assert.Equal(("code-sets", "3", InstanceId), (registration?.ServiceName, registration?.ServiceVersion, registration?.InstanceId));
         Assert.Equal("CodeSetSource", Assert.Single(registration!.Queryables).Name);
+        Assert.Equal(new RegistryTransportRoute { Transport = "http", GatewayRoute = "/code-sets/3" }, Assert.Single(registration.Transports));
         Assert.True(sut.HasRegistered);
         registry.Verify(x => x.RefreshAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

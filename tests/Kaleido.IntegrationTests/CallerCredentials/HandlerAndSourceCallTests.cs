@@ -4,6 +4,7 @@ using Kaleido.Client.Processor;
 using Kaleido.Http.Server;
 using Kaleido.Platform;
 using Kaleido.Platform.Processor;
+using Kaleido.Platform.Registry;
 using Kaleido.Processor;
 using Kaleido.Processor.Execution;
 using Kaleido.Testing.Identity;
@@ -111,11 +112,21 @@ public sealed class HandlerAndSourceCallTests
         {
             var wire = new CaptureHandler();
             var registry = await TestControlRegistry.StartAsync();
+            using (var registryClient = registry.CreateClient())
+            {
+                using var registered = await registryClient.PostAsJsonAsync("/registry/instances", new RegistryInstanceRegistration
+                {
+                    ServiceName = "downstream",
+                    ServiceVersion = "1",
+                    InstanceId = Guid.NewGuid(),
+                    Processes = [new ProcessorRegistryResponse { Name = "downstream", ServiceName = "downstream", ServiceVersion = "1", ProcessStateUrlTemplate = "/downstream/1/processes/{processId}" }],
+                }, KaleidoJsonOptions.Options, Cancel);
+                registered.EnsureSuccessStatusCode();
+            }
+
             var settings = new Dictionary<string, string?>
             {
                 ["Kaleido:BaseUrl"] = "http://registry.test/",
-                ["Kaleido:Clients:Downstream:BaseUrl"] = "https://downstream.test/",
-                ["Kaleido:Clients:Downstream:RoutePrefix"] = "downstream",
             };
 
             if (onBehalfOfCalls is not null)
@@ -151,7 +162,7 @@ public sealed class HandlerAndSourceCallTests
 
                         s.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(registry.CreateHandler);
 
-                        s.AddHttpClient("Downstream").ConfigurePrimaryHttpMessageHandler(() => wire);
+                        s.AddHttpClient("kaleido-gateway").ConfigurePrimaryHttpMessageHandler(() => wire);
                     });
                     web.Configure(app =>
                     {
@@ -168,10 +179,10 @@ public sealed class HandlerAndSourceCallTests
         }
 
         public Task<HttpStatusCode> ExecuteRelayStepAsync(string? token) =>
-            PostAsync($"/relay/processes/steps/{nameof(RelayToDownstreamStep)}", new { processStep = new { } }, token);
+            PostAsync($"/relay/1/processes/steps/{nameof(RelayToDownstreamStep)}", new { processStep = new { } }, token);
 
         public Task<HttpStatusCode> QueryRelaySourceAsync(string? token) =>
-            PostAsync($"/relay/queryable/{nameof(DownstreamRecordSource)}/query", new { }, token);
+            PostAsync($"/relay/1/queryable/{nameof(DownstreamRecordSource)}/query", new { }, token);
 
         private async Task<HttpStatusCode> PostAsync(string url, object body, string? token)
         {

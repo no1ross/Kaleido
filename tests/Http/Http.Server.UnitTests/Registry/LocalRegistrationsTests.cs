@@ -22,8 +22,8 @@ public sealed class LocalRegistrationsTests
         queryableRegistry.Setup(x => x.Registrations).Returns(queryables);
 
         var responses = new Mock<IProcessorResponseFactory>();
-        responses.Setup(x => x.CreateRegistryResponse(It.IsAny<ProcessorRegistryItem>(), ServiceOptions))
-            .Returns((ProcessorRegistryItem _, KaleidoServiceOptions options) => new ProcessorRegistryResponse { Name = options.ServiceName, ServiceName = options.ServiceName });
+        responses.Setup(x => x.CreateRegistryResponse(It.IsAny<ProcessorRegistryItem>()))
+            .Returns((ProcessorRegistryItem _) => new ProcessorRegistryResponse { Name = ServiceOptions.ServiceName, ServiceName = ServiceOptions.ServiceName });
 
         return new LocalRegistrations([processorRegistry.Object], [queryableRegistry.Object], responses.Object, ServiceOptions);
     }

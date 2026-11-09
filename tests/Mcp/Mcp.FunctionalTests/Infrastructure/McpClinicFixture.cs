@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Kaleido.Http.Client.Transport;
 using Kaleido.Http.Server;
 using Kaleido.Platform;
 using Microsoft.AspNetCore.Authentication;
@@ -20,8 +21,8 @@ namespace Kaleido.Mcp.FunctionalTests.Infrastructure;
 
 /// <summary>
 /// One TestServer hosting the "clinic" Kaleido service with the MCP adapter on top: the tools come
-/// from the host's registry, and tool calls go through a Kaleido client for "clinic" (pointing back
-/// at this server) as the MCP caller. MCP clients are the SDK's own <see cref="McpClient"/>, so
+/// from the host's registry, and tool calls go through the one gateway client to each version's
+/// test host as the MCP caller. MCP clients are the SDK's own <see cref="McpClient"/>, so
 /// the protocol is exercised end to end.
 /// </summary>
 public class McpClinicFixture : IAsyncLifetime
@@ -165,8 +166,6 @@ public class McpClinicFixture : IAsyncLifetime
                         var settings = new Dictionary<string, string?>
                         {
                             ["Kaleido:BaseUrl"] = "http://registry.test/",
-                            ["Kaleido:Clients:clinic:BaseUrl"] = "http://localhost/",
-                            ["Kaleido:Clients:clinic:RoutePrefix"] = "clinic",
                             ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search.",
                             ["Kaleido:OnBehalfOfCalls"] = "Exchange",
                             ["Kaleido:Resilience:TotalTimeout"] = ClientTimeout.ToString("c", System.Globalization.CultureInfo.InvariantCulture),
@@ -181,17 +180,6 @@ public class McpClinicFixture : IAsyncLifetime
                         {
                             settings["Kaleido:Mcp:ToolListing"] = "FrontDoor";
                             settings["Kaleido:Mcp:ListedTools:0"] = "clinic_patient";
-                        }
-
-                        if (withDownstreamThatIsDown)
-                        {
-                            settings["Kaleido:Clients:radiology:BaseUrl"] = "http://radiology.test/";
-                            settings["Kaleido:Clients:radiology:RoutePrefix"] = "radiology";
-                        }
-
-                        if (withWard)
-                        {
-                            settings[$"Kaleido:Clients:{WardService}:BaseUrl"] = "http://ward.test/";
                         }
 
                         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
@@ -231,30 +219,19 @@ public class McpClinicFixture : IAsyncLifetime
                             .AddMcp();
                         services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => registry!.CreateHandler());
 
-                        // The clinic client calls this TestServer (in production: the network),
-                        // with the host's service credential on every call.
-                        services.AddHttpClient("clinic", client => client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", HostServiceToken))
-                            .ConfigurePrimaryHttpMessageHandler(sp =>
-                                ((TestServer)sp.GetRequiredService<IServer>()).CreateHandler());
-
-                        if (withDownstreamThatIsDown)
-                        {
-                            services.AddHttpClient("radiology")
-                                .ConfigurePrimaryHttpMessageHandler(() => new UnreachableHandler());
-                        }
-
-                        if (wardHost is { } ward)
-                        {
-                            services.AddHttpClient(WardService)
-                                .ConfigurePrimaryHttpMessageHandler(() => ward.GetTestServer().CreateHandler());
-                        }
+                        // One gateway client routes each version's published path to its test host.
+                        services.AddHttpClient(KaleidoClientTransport.ClientName,
+                                client => client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", HostServiceToken))
+                            .ConfigurePrimaryHttpMessageHandler(sp => new GatewayTestRouter(
+                                ((TestServer)sp.GetRequiredService<IServer>()).CreateHandler(),
+                                wardHost?.GetTestServer().CreateHandler(), withDownstreamThatIsDown));
                     });
 
                     web.Configure(app =>
                     {
                         app.Use(async (context, next) =>
                         {
-                            if (context.Request.Path.StartsWithSegments("/clinic"))
+                            if (context.Request.Path.StartsWithSegments("/clinic/1"))
                             {
                                 ServiceRequests.Enqueue((context.Request.Path, context.Request.Headers.Authorization.ToString()));
                                 ServiceProcessIds.Enqueue((context.Request.Path, context.Request.Headers[KaleidoCorrelationHeaders.ProcessId].ToString()));
@@ -413,6 +390,46 @@ public class McpClinicFixture : IAsyncLifetime
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
             logs.Enqueue((logLevel, formatter(state, exception) + (exception is null ? string.Empty : " " + exception)));
+    }
+
+    private sealed class GatewayTestRouter(HttpMessageHandler clinicHandler, HttpMessageHandler? wardHandler, bool radiologyDown) : HttpMessageHandler
+    {
+        private readonly HttpMessageInvoker clinic = new(clinicHandler);
+        private readonly HttpMessageInvoker? ward = wardHandler is null ? null : new(wardHandler);
+        private readonly HttpMessageInvoker? radiology = radiologyDown ? new(new UnreachableHandler()) : null;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var path = request.RequestUri?.AbsolutePath;
+            if (path?.StartsWith("/clinic/1/", StringComparison.Ordinal) == true)
+            {
+                return clinic.SendAsync(request, cancellationToken);
+            }
+
+            if (path?.StartsWith("/ward/1/", StringComparison.Ordinal) == true && ward is not null)
+            {
+                return ward.SendAsync(request, cancellationToken);
+            }
+
+            if (path?.StartsWith("/radiology/1/", StringComparison.Ordinal) == true && radiology is not null)
+            {
+                return radiology.SendAsync(request, cancellationToken);
+            }
+
+            throw new HttpRequestException($"No test gateway route for '{path}'.");
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                clinic.Dispose();
+                ward?.Dispose();
+                radiology?.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
     }
 
     private sealed class UnreachableHandler : HttpMessageHandler

@@ -20,6 +20,16 @@ public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) 
     }
 
     [Fact]
+    public async Task AService_MapsOnlyItsVersionedQueryRoute()
+    {
+        using var versioned = await fixture.Client.PostAsJsonAsync("/kaleido/1/queryable/functionalrecordcontextsource/query", new { query = new { } });
+        using var unversioned = await fixture.Client.PostAsJsonAsync("/kaleido/queryable/functionalrecordcontextsource/query", new { query = new { } });
+
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unversioned.StatusCode);
+    }
+
+    [Fact]
     public async Task GetRegistry_ReturnsFunctionalRecord()
     {
         var registry = await _client.GetFromJsonAsync<KaleidoRegistry>("/registry", KaleidoJsonOptions.Options);
@@ -41,9 +51,9 @@ public sealed class QueryableDiscoveryTests(QueryableAspNetCoreFixture fixture) 
         var record = Assert.Single(registry!.Queryables, x => x.Name == "FunctionalRecordContextSource");
         var view = Assert.Single(record.Views, x => x.Name == "FunctionalRecordGridView");
 
-        Assert.Equal("/kaleido/queryable/functionalrecordcontextsource/query", record.QueryUrl);
+        Assert.Equal("/kaleido/1/queryable/functionalrecordcontextsource/query", record.QueryUrl);
         Assert.Equal("Grid View", view.DisplayName);
-        Assert.Equal("/kaleido/queryable/functionalrecordcontextsource/functionalrecordgridview/query", view.QueryUrl);
+        Assert.Equal("/kaleido/1/queryable/functionalrecordcontextsource/functionalrecordgridview/query", view.QueryUrl);
         Assert.Single(view.Parameters!);
         Assert.NotEmpty(view.OutputFields);
     }

@@ -189,7 +189,7 @@ public sealed class ControlRegistryCacheTests : IAsyncLifetime
             ServiceName = "clinic",
             ServiceVersion = "1",
             InstanceId = Guid.NewGuid(),
-            Queryables = [new QueryableSourceResponse { ServiceName = "clinic", Name = "PatientSource", QueryUrl = "/clinic/queryable/patientsource/query" }],
+            Queryables = [new QueryableSourceResponse { ServiceName = "clinic", Name = "PatientSource", QueryUrl = "/clinic/1/queryable/patientsource/query" }],
         }, KaleidoJsonOptions.Options, Cancel);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

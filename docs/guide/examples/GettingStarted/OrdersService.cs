@@ -38,7 +38,7 @@ public static class OrdersService
     }
 
     // The same service, also published to AI agents: the MCP adapter builds its tools from the
-    // registry and calls the service through a Kaleido client (Kaleido:Clients:orders in configuration).
+    // registry and calls the service's published route through the single gateway client (Kaleido:BaseUrl).
     public static void AddOrdersWithMcp(IServiceCollection services, IConfiguration configuration)
     {
         // snippet: getting-started-mcp

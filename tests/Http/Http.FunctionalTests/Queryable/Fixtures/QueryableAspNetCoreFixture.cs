@@ -2,6 +2,7 @@ using Kaleido.Client.Queryable;
 using Kaleido.Http.FunctionalTests.Queryable.Infrastructure;
 using Kaleido.Http.Server;
 using Kaleido.Observability;
+using Kaleido.Platform.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -78,12 +79,12 @@ public sealed class QueryableAspNetCoreFixture
         var clientConfig = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Kaleido:Clients:test:BaseUrl"] = "http://localhost/",
-                ["Kaleido:Clients:test:RoutePrefix"] = "kaleido",
+                ["Kaleido:BaseUrl"] = "http://localhost/",
             })
             .Build();
 
         var clientServices = new ServiceCollection();
+        clientServices.AddSingleton<IKaleidoRegistrySource>(_host.Services.GetRequiredService<IKaleidoRegistrySource>());
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
         // Client container needs no type scanning; under xUnit v3 the entry assembly
         // is this test project (it was testhost under v2), so the fallback would
@@ -97,7 +98,7 @@ public sealed class QueryableAspNetCoreFixture
             .AddHttpClients();
 
         // Override the named HttpClient to use the TestServer handler instead of a real socket
-        clientServices.AddHttpClient("test")
+        clientServices.AddHttpClient(KaleidoClientTransport.ClientName)
             .ConfigurePrimaryHttpMessageHandler(() => testHandler);
 
         _clientProvider = clientServices.BuildServiceProvider(

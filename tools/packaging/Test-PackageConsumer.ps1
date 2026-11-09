@@ -298,8 +298,6 @@ builder.WebHost.UseUrls("http://127.0.0.1:0");
 builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 {
     ["Kaleido:BaseUrl"] = registryApp.Urls.First(),
-    ["Kaleido:Clients:host:BaseUrl"] = "http://127.0.0.1:9/",
-    ["Kaleido:Clients:host:RoutePrefix"] = "host",
     // AddMcp() requires it: the agent's token is exchanged, never passed through (#574).
     ["Kaleido:OnBehalfOfCalls"] = "Exchange",
 });
@@ -354,7 +352,7 @@ try
         return 1;
     }
 
-    var started = await http.PostAsJsonAsync("/host/processes/steps/StartStep", new { processStep = new { } });
+    var started = await http.PostAsJsonAsync("/host/1/processes/steps/StartStep", new { processStep = new { } });
     if (!started.IsSuccessStatusCode)
     {
         Console.Error.WriteLine("step: " + (int)started.StatusCode + " " + await started.Content.ReadAsStringAsync());

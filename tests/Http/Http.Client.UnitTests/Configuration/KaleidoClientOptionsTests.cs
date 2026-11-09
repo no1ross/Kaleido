@@ -12,7 +12,7 @@ public sealed class KaleidoClientOptionsTests
     {
         KaleidoClientOptions.Validate(Sut);
 
-        Assert.Empty(Sut.Clients);
+        Assert.Null(Sut.BaseUrl);
     }
 
     // Nothing is adjusted: an out-of-range shared setting stops startup, naming the setting.

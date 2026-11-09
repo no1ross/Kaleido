@@ -5,8 +5,7 @@ namespace Kaleido.Client.Queryable;
 /// <summary>
 /// Client for a remote service's Queryable capabilities. Sources and views are addressed by their
 /// published names (strings): the caller lives in another service and cannot reference the remote
-/// types. A query goes to <c>/{routePrefix}/queryable/{source}[/{view}]/query</c> without consulting the
-/// registry, which is filtered per caller and serves discovery only.
+/// types. Each query uses its published URL from the host's unfiltered hydrated central registry.
 /// </summary>
 public interface IKaleidoQueryableClient
 {

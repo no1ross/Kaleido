@@ -1,5 +1,6 @@
 using Kaleido.Client.Processor;
 using Kaleido.Http.Server;
+using Kaleido.Platform.Registry;
 using Kaleido.Observability;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -74,13 +75,15 @@ public sealed class BehaviorFixture : IAsyncLifetime
         Func<HttpMessageHandler, HttpMessageHandler> wrapServer,
         IReadOnlyDictionary<string, string?>? settings = null)
     {
-        var handler = wrapServer(_host!.GetTestServer().CreateHandler());
+        var host = _host ?? throw new InvalidOperationException("The behavior host is not started.");
+        var handler = wrapServer(host.GetTestServer().CreateHandler());
         var configuration = new Dictionary<string, string?>(settings ?? new Dictionary<string, string?>(), StringComparer.Ordinal)
         {
-            [$"Kaleido:Clients:{ServiceName}:BaseUrl"] = "http://localhost/",
+            ["Kaleido:BaseUrl"] = "http://localhost/",
         };
 
         var clientServices = new ServiceCollection();
+        clientServices.AddSingleton<IKaleidoRegistrySource>(host.Services.GetRequiredService<IKaleidoRegistrySource>());
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor>(new EmptyCorrelation());
         clientServices.AddKaleido(
                 new ConfigurationBuilder().AddInMemoryCollection(configuration).Build(),
@@ -91,7 +94,7 @@ public sealed class BehaviorFixture : IAsyncLifetime
                     Assemblies = [typeof(KaleidoServiceOptions).Assembly],
                 })
             .AddHttpClients();
-        clientServices.AddHttpClient(ServiceName).ConfigurePrimaryHttpMessageHandler(() => handler);
+        clientServices.AddHttpClient(KaleidoClientTransport.ClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
 
         var provider = clientServices.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         return (provider.CreateScope().ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient(ServiceName), provider);

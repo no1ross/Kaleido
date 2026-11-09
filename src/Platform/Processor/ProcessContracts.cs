@@ -460,6 +460,12 @@ public sealed record ProcessorRegistryResponse
     /// </summary>
     public bool IsEntryProcessor { get; init; }
 
+    /// <summary>The published route for multi-step execution, including this processor's service version.</summary>
+    public string ExecuteUrl { get; init; } = string.Empty;
+
+    /// <summary>The published process-state route template; replace <c>{processId}</c> with the process id.</summary>
+    public string ProcessStateUrlTemplate { get; init; } = string.Empty;
+
     /// <summary>
     /// The steps that can start a new process (no dependencies and no availability preconditions;
     /// never an information step), ordered by name, each with its <c>ExecuteUrl</c>.

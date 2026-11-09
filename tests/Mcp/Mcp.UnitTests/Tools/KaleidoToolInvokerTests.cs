@@ -1,4 +1,5 @@
 using System.Text;
+using Kaleido.Client.Registry;
 using Kaleido.Platform;
 using Kaleido.Queryable.Query;
 using Microsoft.Extensions.Logging;
@@ -13,10 +14,6 @@ public sealed class KaleidoToolInvokerTests
     : Kaleido.UnitTests.SutFixture
 {
     private static readonly Guid ProcessId = Guid.Parse("11111111-2222-3333-4444-555555555555");
-
-    private delegate bool TryGetProcessor(string service, out IKaleidoProcessorClient? client);
-
-    private delegate bool TryGetQueryable(string service, out IKaleidoQueryableClient? client);
 
     private readonly Mock<IKaleidoProcessorClientFactory> processors = new();
     private readonly Mock<IKaleidoQueryableClientFactory> queryables = new();
@@ -113,20 +110,28 @@ public sealed class KaleidoToolInvokerTests
         InformationRequest = Questions
     };
 
+    private static ToolCatalog VersionedCatalog() => Catalog with
+    {
+        Routes = [new RegistryServiceRoute
+        {
+            ServiceName = "clinic", ServiceVersion = "1",
+            Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/clinic/1" }],
+        }],
+    };
+
+    private static ProcessRequiredStep VersionedQuestions() =>
+        QuestionsRequired with { ExecuteUrl = "/clinic/1/processes/steps/visitquestionsstep" };
+
     public KaleidoToolInvokerTests()
     {
-        processors.Setup(x => x.TryGetClientForService(It.IsAny<string>(), out It.Ref<IKaleidoProcessorClient?>.IsAny))
-            .Returns(new TryGetProcessor((string service, out IKaleidoProcessorClient? client) =>
-            {
-                client = services.TryGetValue(service, out var mock) ? mock.Object : null;
-                return client is not null;
-            }));
-        queryables.Setup(x => x.TryGetClientForService(It.IsAny<string>(), out It.Ref<IKaleidoQueryableClient?>.IsAny))
-            .Returns(new TryGetQueryable((string service, out IKaleidoQueryableClient? client) =>
-            {
-                client = service == "clinic" ? clinicQueries.Object : null;
-                return client is not null;
-            }));
+        processors.Setup(x => x.GetClient(It.IsAny<string>()))
+            .Returns((string service) => services.TryGetValue(service, out var mock)
+                ? mock.Object
+                : throw new KaleidoRegistryClientException(RegistryClientErrorCodes.RouteUnavailable, $"Service '{service}' is not published."));
+        queryables.Setup(x => x.GetClient(It.IsAny<string>()))
+            .Returns((string service) => string.Equals(service, "clinic", StringComparison.OrdinalIgnoreCase)
+                ? clinicQueries.Object
+                : throw new KaleidoRegistryClientException(RegistryClientErrorCodes.RouteUnavailable, $"Service '{service}' is not published."));
 
         clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
             .Callback((string source, QueryApiRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
@@ -319,6 +324,17 @@ public sealed class KaleidoToolInvokerTests
     }
 
     [Fact]
+    public async Task AVersionedQueryTool_UsesTheClientPinnedToItsPublishedVersion()
+    {
+        queryables.Setup(x => x.GetClient("clinic", "2")).Returns(clinicQueries.Object);
+
+        await CreateSut().InvokeAsync(Search with { ServiceVersion = "2" }, Call(), Catalog, Cancel);
+
+        queryables.Verify(x => x.GetClient("clinic", "2"), Times.Once);
+        queryables.Verify(x => x.GetClient("clinic"), Times.Never);
+    }
+
+    [Fact]
     public async Task AViewQuery_RunsTheViewOfItsSource()
     {
         await CreateSut().InvokeAsync(SearchView, Call(), Catalog, Cancel);
@@ -375,6 +391,17 @@ public sealed class KaleidoToolInvokerTests
         var outcome = await CreateSut().InvokeAsync(Search, Call(), Catalog, Cancel);
 
         Assert.Equal(["Capture the member first."], ForTheUser(outcome));
+    }
+
+    [Fact]
+    public async Task AVersionedStepTool_UsesTheClientPinnedToItsPublishedVersion()
+    {
+        processors.Setup(x => x.GetClient("clinic", "1")).Returns(services["clinic"].Object);
+
+        await CreateSut().InvokeAsync(Start with { ServiceVersion = "1" }, Call(), Catalog, Cancel);
+
+        processors.Verify(x => x.GetClient("clinic", "1"), Times.Once);
+        processors.Verify(x => x.GetClient("clinic"), Times.Never);
     }
 
     // The JSON summary is the agent's; each business message is also a block for the user, so a
@@ -1282,6 +1309,77 @@ public sealed class KaleidoToolInvokerTests
     // ── answer_information_request / get_process_state ───────────────────────
 
     [Fact]
+    public async Task AnswerInformationRequest_UsesTheVersionProtectedInTheIssuedToken()
+    {
+        var required = VersionedQuestions();
+        var catalog = VersionedCatalog();
+        StateIs("clinic", StateResponse(required));
+        var shown = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", processId = ProcessId }), catalog, Cancel));
+        var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
+        Assert.Equal("1", shown["next"]?["serviceVersion"]?.GetValue<string>());
+        processors.Setup(x => x.GetClient("clinic", "1")).Returns(services["clinic"].Object);
+        processors.Invocations.Clear();
+
+        await CreateSut().InvokeAsync(Answer, Call(new
+        {
+            service = "clinic",
+            processId = ProcessId,
+            informationRequestId = "visit-intake",
+            answers = new[] { new { itemId = "urgent", values = new List<string> { "true" } } },
+            answersToken = token,
+        }), catalog, Cancel);
+
+        Assert.Single(posts);
+        processors.Verify(x => x.GetClient("clinic", "1"), Times.AtLeast(2));
+        processors.Verify(x => x.GetClient("clinic"), Times.Never);
+    }
+
+    [Fact]
+    public async Task AnswerInformationRequest_ARequestForAnotherVersion_CannotReuseTheIssuedToken()
+    {
+        StateIs("clinic", StateResponse(VersionedQuestions()));
+        var catalog = VersionedCatalog();
+        var shown = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", processId = ProcessId }), catalog, Cancel));
+        var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
+        processors.Setup(x => x.GetClient("clinic", "2")).Returns(services["clinic"].Object);
+
+        var outcome = await CreateSut().InvokeAsync(Answer, Call(new
+        {
+            service = "clinic",
+            serviceVersion = "2",
+            processId = ProcessId,
+            informationRequestId = "visit-intake",
+            answers = new[] { new { itemId = "urgent", values = new List<string> { "true" } } },
+            answersToken = token,
+        }), catalog, Cancel);
+
+        Assert.Equal(McpErrorCodes.InvalidArguments, Body(outcome)["code"]?.GetValue<string>());
+        Assert.Empty(posts);
+    }
+
+    [Fact]
+    public async Task MrtrFormContinuation_UsesTheVersionProtectedWhenTheFormWasShown()
+    {
+        var required = VersionedQuestions();
+        var catalog = VersionedCatalog();
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+        StepReturns(StepResponse(required: required));
+        StateIs("clinic", StateResponse(required));
+        processors.Setup(x => x.GetClient("clinic", "1")).Returns(services["clinic"].Object);
+        var round = await CreateSut().InvokeAsync(Start with { ServiceVersion = "1" }, Call(), catalog, Cancel);
+        Assert.StartsWith("kaleido-mcp-state:", round.InputRequired?.RequestState, StringComparison.Ordinal);
+        posts.Clear();
+        processors.Invocations.Clear();
+
+        await CreateSut().InvokeAsync(Start, Call(requestState: round.InputRequired?.RequestState, inputResponses: Answered("accept")), catalog, Cancel);
+
+        Assert.Equal(VersionedQuestions().Name, Assert.Single(posts).Step);
+        processors.Verify(x => x.GetClient("clinic", "1"), Times.AtLeast(2));
+        processors.Verify(x => x.GetClient("clinic"), Times.Never);
+    }
+
+    [Fact]
     public async Task AnswerInformationRequest_SubmitsTheAnswers_ToThePendingStep()
     {
         StateIs("clinic", StateResponse(QuestionsRequired));
@@ -1356,6 +1454,19 @@ public sealed class KaleidoToolInvokerTests
             Assert.Equal("pro_not_permitted", body["notice"]?["code"]?.GetValue<string>());
             Assert.Contains("do not have access to continue", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public async Task GetProcessState_WithAnExplicitVersion_StaysOnThatProcessVersion()
+    {
+        StateIs("clinic", StateResponse(null));
+        processors.Setup(x => x.GetClient("clinic", "1")).Returns(services["clinic"].Object);
+
+        var body = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", serviceVersion = "1", processId = ProcessId }), Catalog, Cancel));
+
+        Assert.Equal("1", body["serviceVersion"]?.GetValue<string>());
+        processors.Verify(x => x.GetClient("clinic", "1"), Times.Once);
+        processors.Verify(x => x.GetClient("clinic"), Times.Never);
     }
 
     [Fact]
@@ -2155,6 +2266,37 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(submitted, posts.Count);
     }
 
+    [Fact]
+    public async Task ConfirmedAnswersContinuation_RetainsTheVersionProtectedWithTheAnswers()
+    {
+        var required = ConfirmedQuestions with { ExecuteUrl = VersionedQuestions().ExecuteUrl };
+        var catalog = VersionedCatalog();
+        StateIs("clinic", StateResponse(required));
+        var shown = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", processId = ProcessId }), catalog, Cancel));
+        var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
+        processors.Setup(x => x.GetClient("clinic", "1")).Returns(services["clinic"].Object);
+        ClientShowsForms();
+        server.Setup(x => x.IsMrtrSupported).Returns(true);
+        var answers = Call(new
+        {
+            service = "clinic",
+            processId = ProcessId,
+            informationRequestId = "visit-intake",
+            answers = new[] { new { itemId = "urgent", values = new List<string> { "true" } } },
+            answersToken = token,
+        });
+        var round = await CreateSut(requireConfirmation: true).InvokeAsync(Answer, answers, catalog, Cancel);
+        Assert.StartsWith("kaleido-mcp-confirm:", round.InputRequired?.RequestState, StringComparison.Ordinal);
+        processors.Invocations.Clear();
+
+        await CreateSut(requireConfirmation: true).InvokeAsync(
+            Answer, Call(requestState: round.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation("accept", confirm: true))), catalog, Cancel);
+
+        Assert.Single(posts);
+        processors.Verify(x => x.GetClient("clinic", "1"), Times.AtLeast(2));
+        processors.Verify(x => x.GetClient("clinic"), Times.Never);
+    }
+
     // The confirmed answers belong to the questions the user saw: when the process asks something else by
     // the time the user confirms, nothing is submitted.
     [Fact]
@@ -2279,6 +2421,20 @@ public sealed class KaleidoToolInvokerTests
         // #440: the start of a new process has no key of its own; the answers to one request do.
         Assert.Null(posts[0].IdempotencyKey);
         Assert.StartsWith("mcp-", posts[1].IdempotencyKey, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Questions_InASession_SubmitTheAnswersOnTheVersionThatAsked()
+    {
+        UserAnswersInASession(Accepted());
+        StepsReturn(StepResponse(required: VersionedQuestions()), StepResponse(required: null));
+        processors.Setup(x => x.GetClient("clinic", "1")).Returns(services["clinic"].Object);
+
+        await CreateSut().InvokeAsync(Start with { ServiceVersion = "1" }, Call(), VersionedCatalog(), Cancel);
+
+        Assert.Equal(2, posts.Count);
+        processors.Verify(x => x.GetClient("clinic", "1"), Times.Exactly(2));
+        processors.Verify(x => x.GetClient("clinic"), Times.Never);
     }
 
     [Theory]
@@ -2422,6 +2578,31 @@ public sealed class KaleidoToolInvokerTests
         var body = Body(await CreateSut().InvokeAsync(start, Call(), new ToolCatalog { Tools = [start, Close, Answer, State] }, Cancel));
 
         Assert.Equal("The visit opened.", body["fieldDescriptions"]?["visitId"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task AVersionedStepResult_DescribesTheFieldsOfThatVersion()
+    {
+        var older = Start with
+        {
+            Definition = new Tool { Name = "clinic_start_old" },
+            ServiceVersion = "1",
+            OutputDescriptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["VisitId"] = "The old result." },
+        };
+        var newer = Start with
+        {
+            Definition = new Tool { Name = "clinic_start_new" },
+            ServiceVersion = "2",
+            OutputDescriptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["VisitId"] = "The new result." },
+        };
+        processors.Setup(x => x.GetClient("clinic", "2")).Returns(services["clinic"].Object);
+        StepReturns(StepResponse() with { Result = JsonSerializer.SerializeToElement(new { visitId = "v-2" }) });
+        var catalog = new ToolCatalog { Tools = [older, newer, Close, Answer, State] };
+
+        var body = Body(await CreateSut().InvokeAsync(newer, Call(), catalog, Cancel));
+
+        Assert.Equal("The new result.", body["fieldDescriptions"]?["visitId"]?.GetValue<string>());
+        Assert.Equal("2", body["serviceVersion"]?.GetValue<string>());
     }
 
     // ── Questions: conditional (EnableWhen, ADR 0024) ─────────────────────────

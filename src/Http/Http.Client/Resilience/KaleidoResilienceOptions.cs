@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Microsoft.Extensions.Configuration;
 
 namespace Kaleido.Http.Client.Resilience;
 
@@ -10,9 +9,8 @@ namespace Kaleido.Http.Client.Resilience;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Three layers: the framework defaults below, the shared <c>Kaleido:Resilience</c> section for all
-/// clients, and <c>Kaleido:Clients:{name}:Resilience</c> per client - a client's section overrides only
-/// the settings it names, the rest come from the shared section.
+/// Framework defaults are overridden by the shared <c>Kaleido:Resilience</c> section for the gateway
+/// and registry clients.
 /// </para>
 /// <para>
 /// <strong>Only safe requests are retried:</strong> reads (GET, HEAD) and requests that carry an
@@ -35,21 +33,10 @@ public sealed record KaleidoResilienceOptions : KaleidoResilienceSettings
     /// <summary>The time for a whole call, all attempts and delays included. Default 30 seconds.</summary>
     public TimeSpan TotalTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
-    // A request with this option set is never retried (the client health check).
+    // A request with this option set is never retried.
     internal static readonly HttpRequestOptionsKey<bool> NoRetry = new("Kaleido.NoRetry");
 
-    // These (shared) settings with the ones the client's own Resilience section names laid over a copy
-    // (ADR 0030), validated.
-    internal KaleidoResilienceOptions ForClient(IConfiguration configuration, string clientName)
-    {
-        var section = $"{KaleidoServiceOptions.SectionName}:Clients:{clientName}:Resilience";
-        var resilience = configuration.GetSection(section).BindOver(this, HttpClientErrorCodes.InvalidClientOptions);
-        Validate(resilience, section);
-
-        return resilience;
-    }
-
-    // The shared rules, then the client-only timeouts; nothing is adjusted, an invalid value stops startup.
+    // The shared rules and timeouts; an invalid value stops startup.
     internal static void Validate(KaleidoResilienceOptions resilience, string section)
     {
         Validate(resilience, section, HttpClientErrorCodes.InvalidClientOptions);

@@ -3,19 +3,21 @@ namespace Kaleido.Http.Server.Processor.UnitTests;
 public sealed class ProcessorResponseFactoryTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static ProcessorResponseFactory CreateSut() => new();
+    private static ProcessorResponseFactory CreateSut(string serviceName = "billing", string version = "1") =>
+        new(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = version });
 
     [Fact]
     public void CreateRegistryResponse_WithEmptyRegistration_ReturnsResponse()
     {
-        var sut = CreateSut();
+        var sut = CreateSut("test-svc", "2");
         var registration = new ProcessorRegistryItem();
-        var options = new KaleidoServiceOptions { ServiceName = "test-svc", ServiceVersion = "2" };
 
-        var result = sut.CreateRegistryResponse(registration, options);
+        var result = sut.CreateRegistryResponse(registration);
 
         Assert.Equal("test-svc", result.ServiceName);
         Assert.Equal("2", result.ServiceVersion);
+        Assert.Equal("/test-svc/2/processes/execute", result.ExecuteUrl);
+        Assert.Equal("/test-svc/2/processes/{processId}", result.ProcessStateUrlTemplate);
         Assert.Empty(result.Steps ?? []);
     }
 
@@ -43,7 +45,7 @@ public sealed class ProcessorResponseFactoryTests
             ]
         };
 
-        var result = CreateSut().CreateRegistryResponse(registration, new KaleidoServiceOptions { ServiceName = "intake" });
+        var result = CreateSut("intake").CreateRegistryResponse(registration);
 
         var published = Assert.Single(Assert.Single(result.Steps ?? []).Fields).Lookup;
         Assert.NotNull(published);
@@ -78,7 +80,7 @@ public sealed class ProcessorResponseFactoryTests
             InitialSteps = [DeclaredSummary()],
         };
 
-        var result = CreateSut().CreateRegistryResponse(registration, new KaleidoServiceOptions { ServiceName = "billing" });
+        var result = CreateSut().CreateRegistryResponse(registration);
 
         var step = Assert.Single(result.Steps ?? []);
         Assert.True(step.Destructive && step.External && step.RequiresConfirmation);
@@ -101,14 +103,14 @@ public sealed class ProcessorResponseFactoryTests
             AvailableUntil = [new ProcessorStepSummary { Name = "CloseStep" }, new ProcessorStepSummary { Name = "ArchiveStep" }],
         };
 
-        var response = CreateSut().CreateStepResponse(registration, "billing");
+        var response = CreateSut().CreateStepResponse(registration);
 
         Assert.False(response.IsInitial);
         Assert.Equal(["CaptureStep", "ReviewStep"], response.Dependencies.Select(x => x.Name));
         Assert.Equal(["AlphaStep", "ZetaStep"], response.AvailableAfter.Select(x => x.Name));
         Assert.Equal(["ArchiveStep", "CloseStep"], response.AvailableUntil.Select(x => x.Name));
         Assert.Null(response.Result);
-        Assert.Equal(ProcessContractUrls.ExecuteStep("billing", "approvestep"), response.ExecuteUrl);
+        Assert.Equal(ProcessContractUrls.ExecuteStep("billing", "1", "approvestep"), response.ExecuteUrl);
     }
 
     [Fact]
@@ -120,7 +122,7 @@ public sealed class ProcessorResponseFactoryTests
             AvailableAfter = [new ProcessorStepSummary { Name = "IntakeStep" }],
         };
 
-        var response = CreateSut().CreateStepResponse(registration, "billing");
+        var response = CreateSut().CreateStepResponse(registration);
 
         Assert.False(response.IsInitial);
         Assert.Empty(response.Dependencies);
@@ -129,7 +131,7 @@ public sealed class ProcessorResponseFactoryTests
     [Fact]
     public void CreateStepResponse_AStepWithoutRelationships_IsInitial()
     {
-        var response = CreateSut().CreateStepResponse(new ProcessorStepRegistryItem { Name = "IntakeStep" }, "billing");
+        var response = CreateSut().CreateStepResponse(new ProcessorStepRegistryItem { Name = "IntakeStep" });
 
         Assert.True(response.IsInitial);
     }
@@ -139,8 +141,8 @@ public sealed class ProcessorResponseFactoryTests
     {
         var sut = CreateSut();
 
-        var summary = sut.CreateStepSummary(DeclaredSummary(), "billing");
-        var required = sut.CreateRequiredStep(DeclaredSummary(), informationRequest: null, "billing");
+        var summary = sut.CreateStepSummary(DeclaredSummary());
+        var required = sut.CreateRequiredStep(DeclaredSummary(), informationRequest: null);
 
         Assert.True(summary.Destructive && summary.External && summary.RequiresConfirmation);
         Assert.True(required.Destructive && required.External && required.RequiresConfirmation);

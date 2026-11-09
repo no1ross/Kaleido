@@ -60,7 +60,7 @@ public sealed class EventPublisherFailureTests
         await registry.WaitForRegistrationAsync(host);
         using var content = new StringContent("""{ "query": {} }""", Encoding.UTF8, "application/json");
         using var response = await host.GetTestClient().PostAsync(
-            "/kaleido/queryable/functionalrecordcontextsource/query",
+            "/kaleido/1/queryable/functionalrecordcontextsource/query",
             content,
             TestContext.Current.CancellationToken);
 

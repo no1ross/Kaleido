@@ -1,43 +1,23 @@
-using Kaleido.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 
 namespace Kaleido.Http.Client.Pipeline.UnitTests;
 
-public sealed class KaleidoClientHandlerFilterTests
-    : Kaleido.UnitTests.SutFixture
+public sealed class KaleidoClientHandlerFilterTests : Kaleido.UnitTests.SutFixture
 {
     private sealed class FirstHandler : DelegatingHandler;
-
     private sealed class SecondHandler : DelegatingHandler;
 
-    private static KaleidoClientDefinition Client(string name) =>
-        new(name, name.ToLowerInvariant());
-
-    private static readonly IKaleidoClientCatalog Catalog = CreateCatalog();
-
-    private static IKaleidoClientCatalog CreateCatalog()
-    {
-        var catalog = new Mock<IKaleidoClientCatalog>();
-        catalog.Setup(x => x.Find(It.IsAny<string>())).Returns((string name) =>
-            new[] { Client("Intake"), Client("Member") }.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)));
-        return catalog.Object;
-    }
-
     private static KaleidoClientHandlerFilter CreateSut(params Type[] handlers) =>
-        new(Catalog, handlers.Select(x => new KaleidoClientHandlerRegistration(x)));
+        new(handlers.Select(x => new KaleidoClientHandlerRegistration(x)));
 
-    // The pipeline's services, where the filter resolves the host's handlers and the client's guard.
     private static Mock<HttpMessageHandlerBuilder> Builder(string? name)
     {
         var services = new ServiceCollection();
         services.AddTransient<FirstHandler>();
         services.AddTransient<SecondHandler>();
-
-        foreach (var client in new[] { "Intake", "intake", "Member", KaleidoHttpRegistryClient.ClientName })
-        {
-            services.AddKeyedTransient<KaleidoOnBehalfOfGuard>(client);
-        }
+        services.AddKeyedTransient<KaleidoOnBehalfOfGuard>(KaleidoClientTransport.ClientName);
+        services.AddKeyedTransient<KaleidoOnBehalfOfGuard>(KaleidoHttpRegistryClient.ClientName);
 
         var handlers = new List<DelegatingHandler>();
         var builder = new Mock<HttpMessageHandlerBuilder>();
@@ -47,30 +27,25 @@ public sealed class KaleidoClientHandlerFilterTests
         return builder;
     }
 
-    [Theory]
-    [InlineData("Intake")]
-    [InlineData("intake")]
-    [InlineData("Member")]
-    public void AKaleidoClient_GetsTheHostsHandlers_ThenTheGuard_AfterItsOwnHandlers(string name)
+    [Fact]
+    public void TheGatewayClient_GetsTheHostsHandlers_ThenTheGuard_AfterItsOwnHandlers()
     {
-        var builder = Builder(name);
+        var builder = Builder(KaleidoClientTransport.ClientName);
         var configured = new Mock<DelegatingHandler>().Object;
 
-        CreateSut(typeof(FirstHandler), typeof(SecondHandler)).Configure(b => b.AdditionalHandlers.Add(configured))(builder.Object);
+        CreateSut(typeof(FirstHandler), typeof(SecondHandler)).Configure(x => x.AdditionalHandlers.Add(configured))(builder.Object);
 
-        Assert.Collection(
-            builder.Object.AdditionalHandlers,
+        Assert.Collection(builder.Object.AdditionalHandlers,
             x => Assert.Same(configured, x),
             x => Assert.IsType<FirstHandler>(x),
             x => Assert.IsType<SecondHandler>(x),
             x => Assert.IsType<KaleidoOnBehalfOfGuard>(x));
     }
 
-    // Without host handlers the guard is still there: Forward is the default, every caller's call is guarded.
     [Fact]
-    public void WithoutHostHandlers_AKaleidoClient_StillGetsTheGuard()
+    public void WithoutHostHandlers_TheGatewayStillGetsTheGuard()
     {
-        var builder = Builder("Intake");
+        var builder = Builder(KaleidoClientTransport.ClientName);
 
         CreateSut().Configure(_ => { })(builder.Object);
 
@@ -80,7 +55,7 @@ public sealed class KaleidoClientHandlerFilterTests
     [Fact]
     public void AHandlerRegisteredTwice_RunsOnce()
     {
-        var builder = Builder("Intake");
+        var builder = Builder(KaleidoClientTransport.ClientName);
 
         CreateSut(typeof(FirstHandler), typeof(FirstHandler)).Configure(_ => { })(builder.Object);
 
@@ -88,6 +63,7 @@ public sealed class KaleidoClientHandlerFilterTests
     }
 
     [Theory]
+    [InlineData("Intake")]
     [InlineData("PriorAuthEventCollector")]
     [InlineData(null)]
     public void OtherClients_AreLeftAlone(string? name)
@@ -99,7 +75,6 @@ public sealed class KaleidoClientHandlerFilterTests
         Assert.Empty(builder.Object.AdditionalHandlers);
     }
 
-    // #553: the control registry's client is a Kaleido client too, though it is not in the catalog.
     [Fact]
     public void TheControlRegistrysClient_GetsTheHostsHandlersAndTheGuard()
     {
@@ -107,8 +82,7 @@ public sealed class KaleidoClientHandlerFilterTests
 
         CreateSut(typeof(FirstHandler)).Configure(_ => { })(builder.Object);
 
-        Assert.Collection(
-            builder.Object.AdditionalHandlers,
+        Assert.Collection(builder.Object.AdditionalHandlers,
             x => Assert.IsType<FirstHandler>(x),
             x => Assert.IsType<KaleidoOnBehalfOfGuard>(x));
     }

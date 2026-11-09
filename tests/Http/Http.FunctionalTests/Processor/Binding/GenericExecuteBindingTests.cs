@@ -103,7 +103,7 @@ public sealed class GenericExecuteBindingTests : IAsyncLifetime
     }
 
     private Task<HttpResponseMessage> PostAsync(string json) =>
-        _client.PostAsync($"/{ServiceName}/processes/execute", new StringContent(json, Encoding.UTF8, "application/json"), Cancel);
+        _client.PostAsync($"/{ServiceName}/1/processes/execute", new StringContent(json, Encoding.UTF8, "application/json"), Cancel);
 }
 
 [ProcessStep(DisplayName = "Start", Description = "Starts the case.")]

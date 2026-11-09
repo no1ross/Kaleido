@@ -29,7 +29,7 @@ namespace Kaleido.Http.FunctionalTests.Processor.Execution;
 // until it succeeds - across publisher failures, restarts and several hosts on one database.
 public sealed class EventOutboxTests : IAsyncLifetime
 {
-    private const string RootStepUrl = "/kaleido/processes/steps/runtimerootstep";
+    private const string RootStepUrl = "/kaleido/1/processes/steps/runtimerootstep";
 
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"kaleido-outbox-{Guid.NewGuid():N}.db");
 
@@ -166,7 +166,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
         var host = await StartHostAsync(publisher);
 
         using var content = new StringContent("""{ "query": {} }""", Encoding.UTF8, "application/json");
-        using var response = await host.GetTestClient().PostAsync("/kaleido/queryable/functionalrecordcontextsource/query", content, Cancel);
+        using var response = await host.GetTestClient().PostAsync("/kaleido/1/queryable/functionalrecordcontextsource/query", content, Cancel);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         await WaitUntilAsync(() => Task.FromResult(publisher.Published.Any(x => x.EventType == KaleidoEventTypes.QueryExecuted)));
@@ -228,7 +228,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
             $$$"""{"processStep":{"itemId":"{{{Guid.NewGuid()}}}","remark":"{{{remark}}}"}}""",
             Encoding.UTF8,
             "application/json");
-        using var response = await host.GetTestClient().PostAsync("/kaleido/processes/steps/runtimeinputstep", content, Cancel);
+        using var response = await host.GetTestClient().PostAsync("/kaleido/1/processes/steps/runtimeinputstep", content, Cancel);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         await WaitUntilAsync(() => Task.FromResult(publisher.Events.Any(x => x.EventType == KaleidoEventTypes.ProcessStepCompleted)));
@@ -246,7 +246,7 @@ public sealed class EventOutboxTests : IAsyncLifetime
     private static async Task<List<string>> QueryNamesAsync(IHost host)
     {
         using var content = new StringContent("""{ "query": {} }""", Encoding.UTF8, "application/json");
-        using var response = await host.GetTestClient().PostAsync("/kaleido/queryable/functionalrecordcontextsource/query", content, Cancel);
+        using var response = await host.GetTestClient().PostAsync("/kaleido/1/queryable/functionalrecordcontextsource/query", content, Cancel);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var body = JsonNode.Parse(await response.Content.ReadAsStringAsync(Cancel))!;

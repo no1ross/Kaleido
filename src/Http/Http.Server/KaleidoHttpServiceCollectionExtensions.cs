@@ -58,6 +58,7 @@ public static class KaleidoHttpServiceCollectionExtensions
             .BindOver(options ?? new KaleidoHttpOptions(), ConfigurationErrorCodes.InvalidHttpOptions);
         KaleidoHttpOptions.Validate(httpOptions);
         builder.Services.AddSingleton(httpOptions);
+        RegisterTransport(builder);
 
         // Capability authorization is ASP.NET's (#574): the typed routes' policies, and the same policies
         // checked by IAuthorizationService on the dynamic paths. 401/403 responses are produced by the
@@ -90,5 +91,17 @@ public static class KaleidoHttpServiceCollectionExtensions
         builder.Services.TryAddScoped<IKaleidoUnfilteredRegistry, KaleidoRegistryService>();
 
         return builder;
+    }
+
+    private static void RegisterTransport(IKaleidoBuilder builder)
+    {
+        if (builder.ServiceOptions.ServiceVersion is { Length: > 0 } version)
+        {
+            builder.Services.AddSingleton(new RegistryTransportRoute
+            {
+                Transport = "http",
+                GatewayRoute = KaleidoHttpRoutePrefix.Service(builder.ServiceOptions.ServiceName, version),
+            });
+        }
     }
 }

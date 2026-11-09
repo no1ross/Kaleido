@@ -37,6 +37,16 @@ public sealed class ProcessDiscoveryTests(ProcessorAspNetCoreFixture fixture)
     }
 
     [Fact]
+    public async Task AService_MapsOnlyItsVersionedStepRoute()
+    {
+        using var versioned = await fixture.Client.PostAsJsonAsync("/kaleido/1/processes/steps/runtimerootstep", new { processStep = new { } });
+        using var unversioned = await fixture.Client.PostAsJsonAsync("/kaleido/processes/steps/runtimerootstep", new { processStep = new { } });
+
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unversioned.StatusCode);
+    }
+
+    [Fact]
     public async Task GetRegistry_StepRecordsCarryDependenciesLinksAndResultMetadata()
     {
         var response =
@@ -55,6 +65,6 @@ public sealed class ProcessDiscoveryTests(ProcessorAspNetCoreFixture fixture)
         Assert.Contains(contract.Dependencies, x => x.Name == RuntimeStepNames.StepB);
         Assert.NotNull(contract.Result);
         Assert.NotEmpty(contract.Result!.OutputFields);
-        Assert.Equal("/kaleido/processes/steps/runtimemergestep", contract.ExecuteUrl);
+        Assert.Equal("/kaleido/1/processes/steps/runtimemergestep", contract.ExecuteUrl);
     }
 }

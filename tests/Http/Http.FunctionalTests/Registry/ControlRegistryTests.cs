@@ -135,7 +135,7 @@ public sealed class ControlRegistryTests : IAsyncLifetime
             ServiceName = "member",
             ServiceVersion = "1",
             InstanceId = Guid.NewGuid(),
-            Queryables = [new QueryableSourceResponse { ServiceName = "member", Name = "MemberSource", QueryUrl = "/member/queryable/membersource/query", Authorization = new AuthorizationMetadata(null, ["clerk"]) }],
+            Queryables = [new QueryableSourceResponse { ServiceName = "member", Name = "MemberSource", QueryUrl = "/member/1/queryable/membersource/query", Authorization = new AuthorizationMetadata(null, ["clerk"]) }],
         };
 
     private HttpRequestMessage Request(HttpMethod method, string url, string? subject = null, string? roles = null, object? body = null)
@@ -301,7 +301,7 @@ public sealed class ControlRegistryTests : IAsyncLifetime
     {
         var member = Member() with
         {
-            Queryables = [.. Member().Queryables, new QueryableSourceResponse { ServiceName = "member", Name = "AuditSource", QueryUrl = "/member/queryable/auditsource/query", Authorization = new AuthorizationMetadata("member-auditors", []) }],
+            Queryables = [.. Member().Queryables, new QueryableSourceResponse { ServiceName = "member", Name = "AuditSource", QueryUrl = "/member/1/queryable/auditsource/query", Authorization = new AuthorizationMetadata("member-auditors", []) }],
         };
         (await RegisterAsync(member, MemberClient)).Dispose();
 
@@ -484,7 +484,7 @@ public sealed class ControlRegistryTests : IAsyncLifetime
         {
             ServiceName = "code-sets",
             Processes = [],
-            Queryables = [new QueryableSourceResponse { ServiceName = "code-sets", Name = "CodeSetSource", QueryUrl = "/code-sets/queryable/codesetsource/query" }],
+            Queryables = [new QueryableSourceResponse { ServiceName = "code-sets", Name = "CodeSetSource", QueryUrl = "/code-sets/2026-11/queryable/codesetsource/query" }],
         };
 
         using var registered = await RegisterAsync(codeSets, "code-sets-app", $"{ServiceRole},Kaleido.Registrant.code-sets");

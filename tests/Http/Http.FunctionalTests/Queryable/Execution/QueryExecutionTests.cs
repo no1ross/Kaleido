@@ -189,7 +189,7 @@ public sealed class QueryExecutionTests(QueryableAspNetCoreFixture fixture) : IC
     {
         using var content = new StringContent("{\"query\":{\"page\":{\"size\":50,\"offset\":0}}}", Encoding.UTF8, "application/json");
 
-        var response = await _client.PostAsync("/kaleido/queryable/functionalunpagedrecordsource/query", content);
+        var response = await _client.PostAsync("/kaleido/1/queryable/functionalunpagedrecordsource/query", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("qry_paging_not_supported", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
@@ -277,7 +277,7 @@ public sealed class QueryExecutionTests(QueryableAspNetCoreFixture fixture) : IC
     }
 
     private Task<HttpResponseMessage> PostContextQueryAsync(QueryRequest request) =>
-        PostJsonAsync("/kaleido/queryable/functionalrecordcontextsource/query", request);
+        PostJsonAsync("/kaleido/1/queryable/functionalrecordcontextsource/query", request);
 
     private async Task<JsonElement[]> PostContextQueryForRecordsAsync(QueryRequest request)
     {
@@ -290,7 +290,7 @@ public sealed class QueryExecutionTests(QueryableAspNetCoreFixture fixture) : IC
     // request's "viewParameters".
     private Task<HttpResponseMessage> PostViewQueryAsync(QueryRequest<FunctionalRecordViewParameters> request) =>
         PostJsonAsync(
-            "/kaleido/queryable/functionalrecordcontextsource/functionalrecordgridview/query",
+            "/kaleido/1/queryable/functionalrecordcontextsource/functionalrecordgridview/query",
             new { parameters = request.ViewParameters, query = request.Query });
 
     private Task<HttpResponseMessage> PostJsonAsync<T>(string url, T request) where T : class =>
@@ -299,7 +299,7 @@ public sealed class QueryExecutionTests(QueryableAspNetCoreFixture fixture) : IC
     private async Task<HttpResponseMessage> PostRawContextQueryAsync(string json)
     {
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
-        return await _client.PostAsync("/kaleido/queryable/functionalrecordcontextsource/query", content);
+        return await _client.PostAsync("/kaleido/1/queryable/functionalrecordcontextsource/query", content);
     }
 
     private static async Task AssertStatusCodeAsync(HttpStatusCode expected, HttpResponseMessage response)

@@ -19,7 +19,7 @@ public sealed class ProcessHandOffTests(HandOffFixture fixture)
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     private static string TargetUrl(string stepName) =>
-        ProcessContractUrls.ExecuteStep(HandOffFixture.TargetService, stepName.ToLowerInvariant());
+        ProcessContractUrls.ExecuteStep(HandOffFixture.TargetService, "1", stepName.ToLowerInvariant());
 
     private static async Task<HttpResponseMessage> PostAsync(HttpClient client, string url, object processStep, Guid? processId, string? roles)
     {
@@ -55,13 +55,13 @@ public sealed class ProcessHandOffTests(HandOffFixture fixture)
 
     private async Task<StepExecutionResponse<ReturnOrderResult>> OriginStepAsync(string next, Guid processId, string? roles) =>
         await ReadAsync<StepExecutionResponse<ReturnOrderResult>>(
-            await PostAsync(fixture.Origin, ProcessContractUrls.ExecuteStep(HandOffFixture.OriginService, nameof(ReturnOrderStep).ToLowerInvariant()), new { next }, processId, roles));
+            await PostAsync(fixture.Origin, ProcessContractUrls.ExecuteStep(HandOffFixture.OriginService, "1", nameof(ReturnOrderStep).ToLowerInvariant()), new { next }, processId, roles));
 
     // Places an order on the origin and returns it, asking the target to answer with next.
     private async Task<StepExecutionResponse<ReturnOrderResult>> ReturnAsync(string next, string? roles = null)
     {
         var placed = await ReadAsync<StepExecutionResponse>(
-            await PostAsync(fixture.Origin, ProcessContractUrls.ExecuteStep(HandOffFixture.OriginService, nameof(PlaceOrderStep).ToLowerInvariant()), new { }, processId: null, roles));
+            await PostAsync(fixture.Origin, ProcessContractUrls.ExecuteStep(HandOffFixture.OriginService, "1", nameof(PlaceOrderStep).ToLowerInvariant()), new { }, processId: null, roles));
 
         return await OriginStepAsync(next, placed.ProcessId, roles);
     }
@@ -188,7 +188,7 @@ public sealed class ProcessHandOffTests(HandOffFixture fixture)
 
     private async Task<ProcessStateResponse> StateAsync(Guid processId)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, ProcessContractUrls.ProcessState(HandOffFixture.OriginService, processId));
+        using var request = new HttpRequestMessage(HttpMethod.Get, ProcessContractUrls.ProcessState(HandOffFixture.OriginService, "1", processId));
         request.Headers.Add(TestAuthHandler.UserHeader, User);
 
         return await ReadAsync<ProcessStateResponse>(await fixture.Origin.SendAsync(request, Cancel));

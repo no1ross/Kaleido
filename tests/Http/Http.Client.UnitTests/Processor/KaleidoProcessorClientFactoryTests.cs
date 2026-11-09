@@ -1,60 +1,35 @@
-using Kaleido.Client.Processor;
-using Kaleido.Exceptions;
-using Kaleido.Platform;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace Kaleido.Http.Client.Processor.UnitTests;
 
-public sealed class KaleidoProcessorClientFactoryTests
-    : Kaleido.UnitTests.SutFixture
+public sealed class KaleidoProcessorClientFactoryTests : Kaleido.UnitTests.SutFixture
 {
-    private readonly Mock<IKaleidoClientCatalog> catalog = new();
-    private readonly IKaleidoProcessorClient intake = Mock.Of<IKaleidoProcessorClient>();
+    private readonly Mock<IKaleidoRegistryTargetResolver> targets = new();
+    private readonly Mock<IKaleidoClientTransport> transport = new();
 
-    private KaleidoProcessorClientFactory CreateSut()
-    {
-        var services = new ServiceCollection();
-        services.AddKeyedSingleton("IntakeService", intake);
-
-        return new(services.BuildServiceProvider(), catalog.Object);
-    }
-
-    private static KaleidoClientDefinition Intake =>
-        new("IntakeService", "intake");
+    private KaleidoProcessorClientFactory CreateSut() => new(targets.Object, transport.Object);
 
     [Fact]
-    public void GetClient_ForAnUnconfiguredName_FailsWithUnknownClient()
+    public void GetClient_CreatesAClientForAnyServiceNameWithoutEndpointConfiguration()
     {
-        catalog.Setup(x => x.Clients).Returns([]);
-
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateSut().GetClient("Radiolgy"));
-
-        Assert.Equal(HttpClientErrorCodes.UnknownClient, exception.Code);
-    }
-
-    // The catalog matches the name case-insensitively; the keyed client is resolved under the
-    // configured name.
-    [Fact]
-    public void GetClient_ResolvesTheClientRegisteredUnderTheConfiguredName()
-    {
-        catalog.Setup(x => x.Find("intakeservice")).Returns(Intake);
-
-        Assert.Same(intake, CreateSut().GetClient("intakeservice"));
+        Assert.IsType<KaleidoProcessorClient>(CreateSut().GetClient("radiology"));
     }
 
     [Fact]
-    public void TryGetClientForService_FindsTheClientByItsRoutePrefix()
+    public void GetClient_WithAVersion_CreatesAVersionPinnedClient()
     {
-        catalog.Setup(x => x.FindByService("Intake")).Returns(Intake);
+        Assert.IsType<KaleidoProcessorClient>(CreateSut().GetClient("radiology", "2026-11"));
+    }
 
-        Assert.True(CreateSut().TryGetClientForService("Intake", out var client));
-        Assert.Same(intake, client);
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void GetClient_RequiresAServiceName(string serviceName)
+    {
+        Assert.Throws<ArgumentException>(() => CreateSut().GetClient(serviceName));
     }
 
     [Fact]
-    public void TryGetClientForService_ForAServiceWithoutAClient_ReturnsFalse()
+    public void GetClient_WithAVersion_RequiresAVersion()
     {
-        Assert.False(CreateSut().TryGetClientForService("radiology", out var client));
-        Assert.Null(client);
+        Assert.Throws<ArgumentException>(() => CreateSut().GetClient("radiology", " "));
     }
 }

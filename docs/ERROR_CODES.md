@@ -159,7 +159,7 @@ Declared in `Kaleido.Http.Abstractions` (`Kaleido.Http` namespace), next to the 
 
 ## `HttpClientErrorCodes` — client-side (never an HTTP response)
 
-Every client code is prefixed `httpclient_`, including its startup configuration codes (`httpclient_missing_base_url`, `httpclient_invalid_route_prefix`, `httpclient_invalid_options`).
+Every HTTP client code is prefixed `httpclient_`; startup validates the one gateway URL and shared client settings.
 
 | Constant | Code | Meaning |
 |---|---|---|
@@ -167,11 +167,10 @@ Every client code is prefixed `httpclient_`, including its startup configuration
 | `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status (including a step, source or view the service does not have, 404, or the caller may not use, 403); the service's own errors are in `Errors` when its body carried any, whatever the status |
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors (400 with a Kaleido error body) |
 | `Conflict` | `httpclient_conflict` | The remote process was changed by another request (409, `pro_process_conflict` in `Errors`); nothing was saved - read the state again instead of repeating the call |
-| `MissingBaseUrl` | `httpclient_missing_base_url` | A configured client has no `BaseUrl` (startup, `KaleidoConfigurationException`) |
-| `InvalidRoutePrefix` | `httpclient_invalid_route_prefix` | A configured client's `RoutePrefix` (or, without one, its lowercased name) is not a service name (`[a-z0-9][a-z0-9_-]*`); it must equal the downstream `ServiceName` (startup, `AddHttpClients()`, `KaleidoConfigurationException`; ADR 0027) |
-| `InvalidClientOptions` | `httpclient_invalid_options` | A client setting (`Kaleido:BaseUrl`, `Kaleido:Resilience`, `Kaleido:Clients:{name}`...) is out of range or cannot be read, e.g. an invalid gateway URL or non-positive timeout (startup, `KaleidoConfigurationException`) |
+| `MissingBaseUrl` | `httpclient_missing_base_url` | The gateway URL `Kaleido:BaseUrl` is missing (startup, `KaleidoConfigurationException`) |
+| `InvalidClientOptions` | `httpclient_invalid_options` | The gateway URL or shared resilience settings are invalid, or obsolete `Kaleido:Clients` entries remain (startup, `KaleidoConfigurationException`) |
 | `CallerTokenNotExchanged` | `httpclient_caller_token_not_exchanged` | `Kaleido:OnBehalfOfCalls = Exchange`, and a call made for a caller carries no token or the caller's inbound token unchanged: the host's handler (`AddKaleidoClientHandler<THandler>()`) must set the exchanged token (`KaleidoConfigurationException`, at the call, before it is sent; #574) |
-| `UnknownClient` | `httpclient_unknown_client` | `GetClient` was asked for a name not configured under `Kaleido:Clients`; the message lists the configured clients (`KaleidoConfigurationException`, at the call) |
+| `UnknownClient` | `httpclient_unknown_client` | A keyed Process or Queryable client was requested without a service name (`KaleidoConfigurationException`, before the call) |
 
 ---
 
@@ -182,6 +181,7 @@ Every client code is prefixed `httpclient_`, including its startup configuration
 | `RequestFailed` | `registryclient_request_failed` | A registry call failed; the transport status is present if it answered |
 | `EmptyResponse` | `registryclient_empty_response` | The central registry answered successfully without a required document |
 | `InvalidResponse` | `registryclient_invalid_response` | The central registry answered with an invalid document |
+| `RouteUnavailable` | `registryclient_route_unavailable` | The hydrated registry has no usable route for the requested service, version, transport or capability |
 
 ---
 

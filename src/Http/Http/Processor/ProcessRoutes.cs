@@ -15,19 +15,21 @@ internal static class ProcessRoutePaths
 
 internal static class ProcessContractUrls
 {
-    internal static string ProcessesPrefix(string serviceName) =>
-        string.IsNullOrWhiteSpace(serviceName)
-            ? "/processes"
-            : $"/{serviceName.Trim().Trim('/')}/processes";
+    internal static string ProcessesPrefix(string serviceName, string serviceVersion) =>
+        $"{KaleidoHttpRoutePrefix.Service(serviceName, serviceVersion)}/processes";
 
-    public static string ExecuteStep(string serviceName, string stepName)
-        => $"{ProcessesPrefix(serviceName)}/steps/{stepName}";
+    public static string ExecuteStep(string serviceName, string serviceVersion, string stepName) =>
+        $"{ProcessesPrefix(serviceName, serviceVersion)}/steps/{stepName}";
 
-    public static string Execute(string serviceName)
-        => $"{ProcessesPrefix(serviceName)}/execute";
+    public static string Execute(string serviceName, string serviceVersion) =>
+        $"{ProcessesPrefix(serviceName, serviceVersion)}/execute";
 
-    public static string ProcessState(string serviceName, Guid processId)
-        => $"{ProcessesPrefix(serviceName)}/{processId}";
+    public static string ProcessState(string serviceName, string serviceVersion, Guid processId) =>
+        $"{ProcessesPrefix(serviceName, serviceVersion)}/{processId}";
+
+    internal static string ProcessStateTemplate(string serviceName, string serviceVersion) =>
+        $"{ProcessesPrefix(serviceName, serviceVersion)}/{{processId}}";
+
 }
 
 internal static class ProcessEndpointNames

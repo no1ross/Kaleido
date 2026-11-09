@@ -11,27 +11,27 @@ public sealed class AuthorizationEndpointTests(
     : IClassFixture<AuthorizationAspNetCoreFixture>
 {
     private const string InternalStepExecuteUrl =
-        "/kaleido/processes/steps/authorizedinternalstep";
+        "/kaleido/1/processes/steps/authorizedinternalstep";
 
     private const string PolicyStepExecuteUrl =
-        "/kaleido/processes/steps/authorizedpolicystep";
+        "/kaleido/1/processes/steps/authorizedpolicystep";
 
     private const string OpenStepExecuteUrl =
-        "/kaleido/processes/steps/authorizedopenstep";
+        "/kaleido/1/processes/steps/authorizedopenstep";
 
     private const string AnonymousStepExecuteUrl =
-        "/kaleido/processes/steps/authorizedanonymousstep";
+        "/kaleido/1/processes/steps/authorizedanonymousstep";
 
     private const string ExecuteUrl =
-        "/kaleido/processes/execute";
+        "/kaleido/1/processes/execute";
 
     private const string RegistryUrl = AuthorizationAspNetCoreFixture.InProcessRegistryUrl;
 
     private static string ProcessStateUrl(Guid processId) =>
-        $"/kaleido/processes/{processId}";
+        $"/kaleido/1/processes/{processId}";
 
     private const string SecuredContextQueryUrl =
-        "/kaleido/queryable/securedrecordcontextsource/query";
+        "/kaleido/1/queryable/securedrecordcontextsource/query";
 
     private static readonly object StepBody =
         new { processStep = new { } };

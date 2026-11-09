@@ -125,6 +125,8 @@ Kaleido.Platform.Processor.ProcessorRegistryResponse.Description.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.DisplayName.get -> string?
 Kaleido.Platform.Processor.ProcessorRegistryResponse.DisplayName.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.Equals(Kaleido.Platform.Processor.ProcessorRegistryResponse? other) -> bool
+Kaleido.Platform.Processor.ProcessorRegistryResponse.ExecuteUrl.get -> string!
+Kaleido.Platform.Processor.ProcessorRegistryResponse.ExecuteUrl.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.InitialSteps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Platform.Processor.ProcessStepSummary!>!
 Kaleido.Platform.Processor.ProcessorRegistryResponse.InitialSteps.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.IsEntryProcessor.get -> bool
@@ -132,6 +134,8 @@ Kaleido.Platform.Processor.ProcessorRegistryResponse.IsEntryProcessor.init -> vo
 Kaleido.Platform.Processor.ProcessorRegistryResponse.Name.get -> string!
 Kaleido.Platform.Processor.ProcessorRegistryResponse.Name.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.ProcessorRegistryResponse() -> void
+Kaleido.Platform.Processor.ProcessorRegistryResponse.ProcessStateUrlTemplate.get -> string!
+Kaleido.Platform.Processor.ProcessorRegistryResponse.ProcessStateUrlTemplate.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.ServiceName.get -> string!
 Kaleido.Platform.Processor.ProcessorRegistryResponse.ServiceName.init -> void
 Kaleido.Platform.Processor.ProcessorRegistryResponse.ServiceVersion.get -> string?
@@ -522,6 +526,8 @@ Kaleido.Platform.Registry.KaleidoRegistry.Queryables.get -> System.Collections.G
 Kaleido.Platform.Registry.KaleidoRegistry.Queryables.init -> void
 Kaleido.Platform.Registry.KaleidoRegistry.Revision.get -> string?
 Kaleido.Platform.Registry.KaleidoRegistry.Revision.init -> void
+Kaleido.Platform.Registry.KaleidoRegistry.Routes.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Platform.Registry.RegistryServiceRoute!>!
+Kaleido.Platform.Registry.KaleidoRegistry.Routes.init -> void
 Kaleido.Platform.Registry.KaleidoRegistryAvailability
 Kaleido.Platform.Registry.KaleidoRegistryAvailability.<Clone>$() -> Kaleido.Platform.Registry.KaleidoRegistryAvailability!
 Kaleido.Platform.Registry.KaleidoRegistryAvailability.AvailabilityInterval.get -> System.TimeSpan
@@ -573,6 +579,8 @@ Kaleido.Platform.Registry.RegistryInstanceRegistration.ServiceName.get -> string
 Kaleido.Platform.Registry.RegistryInstanceRegistration.ServiceName.init -> void
 Kaleido.Platform.Registry.RegistryInstanceRegistration.ServiceVersion.get -> string!
 Kaleido.Platform.Registry.RegistryInstanceRegistration.ServiceVersion.init -> void
+Kaleido.Platform.Registry.RegistryInstanceRegistration.Transports.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Platform.Registry.RegistryTransportRoute!>!
+Kaleido.Platform.Registry.RegistryInstanceRegistration.Transports.init -> void
 Kaleido.Platform.Registry.RegistryInstanceState
 Kaleido.Platform.Registry.RegistryInstanceState.NotReady = 2 -> Kaleido.Platform.Registry.RegistryInstanceState
 Kaleido.Platform.Registry.RegistryInstanceState.Ready = 1 -> Kaleido.Platform.Registry.RegistryInstanceState
@@ -627,6 +635,18 @@ Kaleido.Platform.Registry.RegistryServiceAvailability.ServiceVersion.get -> stri
 Kaleido.Platform.Registry.RegistryServiceAvailability.ServiceVersion.init -> void
 Kaleido.Platform.Registry.RegistryServiceAvailability.Status.get -> Kaleido.Platform.Registry.RegistryCapabilityStatus
 Kaleido.Platform.Registry.RegistryServiceAvailability.Status.init -> void
+Kaleido.Platform.Registry.RegistryServiceAvailability.Transports.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Platform.Registry.RegistryTransportRoute!>!
+Kaleido.Platform.Registry.RegistryServiceAvailability.Transports.init -> void
+Kaleido.Platform.Registry.RegistryServiceRoute
+Kaleido.Platform.Registry.RegistryServiceRoute.<Clone>$() -> Kaleido.Platform.Registry.RegistryServiceRoute!
+Kaleido.Platform.Registry.RegistryServiceRoute.Equals(Kaleido.Platform.Registry.RegistryServiceRoute? other) -> bool
+Kaleido.Platform.Registry.RegistryServiceRoute.RegistryServiceRoute() -> void
+Kaleido.Platform.Registry.RegistryServiceRoute.ServiceName.get -> string!
+Kaleido.Platform.Registry.RegistryServiceRoute.ServiceName.init -> void
+Kaleido.Platform.Registry.RegistryServiceRoute.ServiceVersion.get -> string!
+Kaleido.Platform.Registry.RegistryServiceRoute.ServiceVersion.init -> void
+Kaleido.Platform.Registry.RegistryServiceRoute.Transports.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Platform.Registry.RegistryTransportRoute!>!
+Kaleido.Platform.Registry.RegistryServiceRoute.Transports.init -> void
 Kaleido.Platform.Registry.RegistryServiceStatus
 Kaleido.Platform.Registry.RegistryServiceStatus.<Clone>$() -> Kaleido.Platform.Registry.RegistryServiceStatus!
 Kaleido.Platform.Registry.RegistryServiceStatus.Equals(Kaleido.Platform.Registry.RegistryServiceStatus? other) -> bool
@@ -643,8 +663,18 @@ Kaleido.Platform.Registry.RegistryServiceStatus.ServiceVersion.get -> string!
 Kaleido.Platform.Registry.RegistryServiceStatus.ServiceVersion.init -> void
 Kaleido.Platform.Registry.RegistryServiceStatus.Status.get -> Kaleido.Platform.Registry.RegistryCapabilityStatus
 Kaleido.Platform.Registry.RegistryServiceStatus.Status.init -> void
+Kaleido.Platform.Registry.RegistryServiceStatus.Transports.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Platform.Registry.RegistryTransportRoute!>!
+Kaleido.Platform.Registry.RegistryServiceStatus.Transports.init -> void
 Kaleido.Platform.Registry.RegistryServiceStatus.UnknownInstances.get -> int
 Kaleido.Platform.Registry.RegistryServiceStatus.UnknownInstances.init -> void
+Kaleido.Platform.Registry.RegistryTransportRoute
+Kaleido.Platform.Registry.RegistryTransportRoute.<Clone>$() -> Kaleido.Platform.Registry.RegistryTransportRoute!
+Kaleido.Platform.Registry.RegistryTransportRoute.Equals(Kaleido.Platform.Registry.RegistryTransportRoute? other) -> bool
+Kaleido.Platform.Registry.RegistryTransportRoute.GatewayRoute.get -> string!
+Kaleido.Platform.Registry.RegistryTransportRoute.GatewayRoute.init -> void
+Kaleido.Platform.Registry.RegistryTransportRoute.RegistryTransportRoute() -> void
+Kaleido.Platform.Registry.RegistryTransportRoute.Transport.get -> string!
+Kaleido.Platform.Registry.RegistryTransportRoute.Transport.init -> void
 override Kaleido.Platform.KaleidoError.Equals(object? obj) -> bool
 override Kaleido.Platform.KaleidoError.GetHashCode() -> int
 override Kaleido.Platform.KaleidoError.ToString() -> string!
@@ -793,9 +823,15 @@ override Kaleido.Platform.Registry.RegistryReadError.ToString() -> string!
 override Kaleido.Platform.Registry.RegistryServiceAvailability.Equals(object? obj) -> bool
 override Kaleido.Platform.Registry.RegistryServiceAvailability.GetHashCode() -> int
 override Kaleido.Platform.Registry.RegistryServiceAvailability.ToString() -> string!
+override Kaleido.Platform.Registry.RegistryServiceRoute.Equals(object? obj) -> bool
+override Kaleido.Platform.Registry.RegistryServiceRoute.GetHashCode() -> int
+override Kaleido.Platform.Registry.RegistryServiceRoute.ToString() -> string!
 override Kaleido.Platform.Registry.RegistryServiceStatus.Equals(object? obj) -> bool
 override Kaleido.Platform.Registry.RegistryServiceStatus.GetHashCode() -> int
 override Kaleido.Platform.Registry.RegistryServiceStatus.ToString() -> string!
+override Kaleido.Platform.Registry.RegistryTransportRoute.Equals(object? obj) -> bool
+override Kaleido.Platform.Registry.RegistryTransportRoute.GetHashCode() -> int
+override Kaleido.Platform.Registry.RegistryTransportRoute.ToString() -> string!
 override sealed Kaleido.Platform.Processor.ProcessRequiredStep.Equals(Kaleido.Platform.Processor.ProcessStepContract? other) -> bool
 override sealed Kaleido.Platform.Processor.ProcessStepResponse.Equals(Kaleido.Platform.Processor.ProcessStepContract? other) -> bool
 override sealed Kaleido.Platform.Processor.ProcessStepSummary.Equals(Kaleido.Platform.Processor.ProcessStepContract? other) -> bool
@@ -895,8 +931,12 @@ static Kaleido.Platform.Registry.RegistryReadError.operator !=(Kaleido.Platform.
 static Kaleido.Platform.Registry.RegistryReadError.operator ==(Kaleido.Platform.Registry.RegistryReadError? left, Kaleido.Platform.Registry.RegistryReadError? right) -> bool
 static Kaleido.Platform.Registry.RegistryServiceAvailability.operator !=(Kaleido.Platform.Registry.RegistryServiceAvailability? left, Kaleido.Platform.Registry.RegistryServiceAvailability? right) -> bool
 static Kaleido.Platform.Registry.RegistryServiceAvailability.operator ==(Kaleido.Platform.Registry.RegistryServiceAvailability? left, Kaleido.Platform.Registry.RegistryServiceAvailability? right) -> bool
+static Kaleido.Platform.Registry.RegistryServiceRoute.operator !=(Kaleido.Platform.Registry.RegistryServiceRoute? left, Kaleido.Platform.Registry.RegistryServiceRoute? right) -> bool
+static Kaleido.Platform.Registry.RegistryServiceRoute.operator ==(Kaleido.Platform.Registry.RegistryServiceRoute? left, Kaleido.Platform.Registry.RegistryServiceRoute? right) -> bool
 static Kaleido.Platform.Registry.RegistryServiceStatus.operator !=(Kaleido.Platform.Registry.RegistryServiceStatus? left, Kaleido.Platform.Registry.RegistryServiceStatus? right) -> bool
 static Kaleido.Platform.Registry.RegistryServiceStatus.operator ==(Kaleido.Platform.Registry.RegistryServiceStatus? left, Kaleido.Platform.Registry.RegistryServiceStatus? right) -> bool
+static Kaleido.Platform.Registry.RegistryTransportRoute.operator !=(Kaleido.Platform.Registry.RegistryTransportRoute? left, Kaleido.Platform.Registry.RegistryTransportRoute? right) -> bool
+static Kaleido.Platform.Registry.RegistryTransportRoute.operator ==(Kaleido.Platform.Registry.RegistryTransportRoute? left, Kaleido.Platform.Registry.RegistryTransportRoute? right) -> bool
 static readonly Kaleido.Platform.KaleidoJsonOptions.Options -> System.Text.Json.JsonSerializerOptions!
 virtual Kaleido.Platform.Processor.ProcessStepContract.EqualityContract.get -> System.Type!
 virtual Kaleido.Platform.Processor.ProcessStepContract.Equals(Kaleido.Platform.Processor.ProcessStepContract? other) -> bool

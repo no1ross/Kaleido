@@ -1,6 +1,7 @@
 using Kaleido.Client.Processor;
 using Kaleido.Http.Server;
 using Kaleido.Observability;
+using Kaleido.Platform.Registry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -40,8 +41,6 @@ public sealed class ProcessorAspNetCoreFixture
                             .AddInMemoryCollection(new Dictionary<string, string?>
                             {
                                 ["Kaleido:BaseUrl"] = "http://registry.test/",
-                                ["Kaleido:Clients:self:BaseUrl"] = "http://localhost/",
-                                ["Kaleido:Clients:self:RoutePrefix"] = "kaleido",
                             })
                             .Build();
 
@@ -82,12 +81,12 @@ public sealed class ProcessorAspNetCoreFixture
         var clientConfig = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Kaleido:Clients:test:BaseUrl"] = "http://localhost/",
-                ["Kaleido:Clients:test:RoutePrefix"] = "kaleido",
+                ["Kaleido:BaseUrl"] = "http://localhost/",
             })
             .Build();
 
         var clientServices = new ServiceCollection();
+        clientServices.AddSingleton<IKaleidoRegistrySource>(_host.Services.GetRequiredService<IKaleidoRegistrySource>());
         clientServices.AddSingleton<IKaleidoCorrelationContextAccessor, NullKaleidoCorrelationContextAccessor>();
         // Client container needs no type scanning; under xUnit v3 the entry assembly
         // is this test project (it was testhost under v2), so the fallback would
@@ -101,7 +100,7 @@ public sealed class ProcessorAspNetCoreFixture
             .AddHttpClients();
 
         // Override the named HttpClient to use the TestServer handler instead of a real socket
-        clientServices.AddHttpClient("test")
+        clientServices.AddHttpClient(KaleidoClientTransport.ClientName)
             .ConfigurePrimaryHttpMessageHandler(() => testHandler);
 
         _clientProvider = clientServices.BuildServiceProvider(

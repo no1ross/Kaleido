@@ -95,6 +95,42 @@ public sealed class ToolCatalogBuilderTests
     }
 
     [Fact]
+    public void Build_TwoVersionsOfOneCapability_HaveDistinctToolsPinnedToTheirPublishedRoutes()
+    {
+        static ProcessorRegistryResponse VersionedVisits(string version) => Visits() with
+        {
+            ServiceVersion = version,
+            Steps = [.. (Visits().Steps ?? []).Select(x => x with { ExecuteUrl = $"/clinic/{version}/processes/steps/{x.Name.ToLowerInvariant()}" })],
+        };
+        var catalog = Build(new KaleidoRegistry { Processes = [VersionedVisits("1"), VersionedVisits("2")] });
+
+        var tools = catalog.Tools.Where(x => x.Kind == KaleidoToolKind.Step && x.CapabilityName == "StartVisitStep").OrderBy(x => x.ServiceVersion, StringComparer.Ordinal).ToArray();
+
+        Assert.Equal(["1", "2"], tools.Select(x => x.ServiceVersion));
+        Assert.Equal(2, tools.Select(x => x.Definition.Name).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(["/clinic/1/processes/steps/startvisitstep", "/clinic/2/processes/steps/startvisitstep"], tools.Select(x => x.Url));
+        Assert.Equal(["clinic"], catalog.ProcessServices);
+    }
+
+    [Fact]
+    public void AnswerInformationRequest_AcceptsTheVersionPublishedWithThePendingQuestions()
+    {
+        var catalog = Build(new KaleidoRegistry { Processes = [Visits() with { ServiceVersion = "1" }] });
+        var properties = Tool(catalog, ToolCatalogBuilder.AnswerInformationRequestTool).Definition.InputSchema.GetProperty("properties");
+
+        Assert.Equal("string", properties.GetProperty("serviceVersion").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public void GetProcessState_AllowsAnExplicitServiceVersionForOlderProcesses()
+    {
+        var catalog = Build(new KaleidoRegistry { Processes = [Visits() with { ServiceVersion = "1" }] });
+        var properties = Tool(catalog, ToolCatalogBuilder.GetProcessStateTool).Definition.InputSchema.GetProperty("properties");
+
+        Assert.Equal("string", properties.GetProperty("serviceVersion").GetProperty("type").GetString());
+    }
+
+    [Fact]
     public void Build_InformationSteps_AreNeverTools()
     {
         var catalog = Build(new KaleidoRegistry { Processes = [Visits()] });

@@ -125,11 +125,18 @@ internal sealed partial class KaleidoRegistryService(
         CancellationToken cancellationToken)
     {
         var lookups = new LookupSources(response.Queryables);
+        var processes = await FilterProcessesAsync(response.Processes, lookups, cancellationToken);
+        var queryables = await FilterQueryablesAsync(response.Queryables, cancellationToken);
+        static string Key(string service, string? version) => $"{service.ToLowerInvariant()}/{version}";
+        var visible = processes.Select(x => Key(x.ServiceName, x.ServiceVersion))
+            .Concat(queryables.Select(x => Key(x.ServiceName, x.ServiceVersion)))
+            .ToHashSet(StringComparer.Ordinal);
 
         return response with
         {
-            Processes = await FilterProcessesAsync(response.Processes, lookups, cancellationToken),
-            Queryables = await FilterQueryablesAsync(response.Queryables, cancellationToken),
+            Processes = processes,
+            Queryables = queryables,
+            Routes = [.. response.Routes.Where(x => visible.Contains(Key(x.ServiceName, x.ServiceVersion)))],
         };
     }
 

@@ -39,13 +39,14 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
                 .GetRequiredService<KaleidoServiceOptions>();
 
         var serviceName = serviceOptions.ServiceName;
+        var version = serviceOptions.ServiceVersion ?? throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidServiceVersion, "A Kaleido HTTP service must name the version in its routes.");
 
         var logger =
             endpoints.ServiceProvider
                 .GetRequiredService<ILoggerFactory>()
                 .CreateLogger("Kaleido.Processor.Startup");
 
-        var routePrefix = ProcessContractUrls.ProcessesPrefix(serviceName);
+        var routePrefix = ProcessContractUrls.ProcessesPrefix(serviceName, version);
 
         var group =
             endpoints.MapGroup(

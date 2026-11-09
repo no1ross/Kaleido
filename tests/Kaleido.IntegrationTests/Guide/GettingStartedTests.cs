@@ -78,19 +78,19 @@ public sealed class GettingStartedTests : IAsyncLifetime
     [Fact]
     public async Task PlacingAnOrder_StartsAProcess_ThatRequiresTheConfirmation_AndTheOrderCanBeQueried()
     {
-        await PostAsync("/orders/processes/steps/PlaceOrderStep", new { processStep = new { item = "Pen" } });
-        var placed = await PostAsync("/orders/processes/steps/PlaceOrderStep", new { processStep = new { item = "Book", quantity = 2 } });
+        await PostAsync("/orders/1/processes/steps/PlaceOrderStep", new { processStep = new { item = "Pen" } });
+        var placed = await PostAsync("/orders/1/processes/steps/PlaceOrderStep", new { processStep = new { item = "Book", quantity = 2 } });
 
         Assert.Equal("completed", placed.GetProperty("status").GetString());
         Assert.Equal(2, placed.GetProperty("result").GetProperty("number").GetInt32());
         Assert.Equal("ConfirmOrderStep", placed.GetProperty("requiredStep").GetProperty("name").GetString());
 
         var processId = placed.GetProperty("processId").GetGuid();
-        var confirmed = await PostAsync("/orders/processes/steps/ConfirmOrderStep", new { processStep = new { } }, processId);
+        var confirmed = await PostAsync("/orders/1/processes/steps/ConfirmOrderStep", new { processStep = new { } }, processId);
 
         Assert.Equal("completed", confirmed.GetProperty("status").GetString());
 
-        var orders = await PostAsync("/orders/queryable/OrderSource/query", new { query = new { searchText = "Book" } });
+        var orders = await PostAsync("/orders/1/queryable/OrderSource/query", new { query = new { searchText = "Book" } });
         var order = Assert.Single(orders.GetProperty("results").EnumerateArray());
         Assert.Equal("Book", order.GetProperty("item").GetString());
         Assert.Equal(2, order.GetProperty("quantity").GetInt32());

@@ -26,6 +26,9 @@ public record KaleidoRegistry
     public IReadOnlyCollection<QueryableSourceResponse> Queryables { get; init; }
         = [];
 
+    /// <summary>The logical gateway routes registered for each service version.</summary>
+    public IReadOnlyCollection<RegistryServiceRoute> Routes { get; init; } = [];
+
     /// <summary>
     /// Registry reads that failed while a participant keeps its last good central copy. A non-empty
     /// collection makes the registry partial: <see cref="Processes"/> and

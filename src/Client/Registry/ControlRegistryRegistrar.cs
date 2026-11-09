@@ -27,6 +27,7 @@ internal sealed partial class ControlRegistryRegistrar(
     IServiceScopeFactory scopeFactory,
     KaleidoServiceOptions serviceOptions,
     IEnumerable<IKaleidoLocalCapabilities> capabilities,
+    IEnumerable<RegistryTransportRoute> transports,
     ICentralRegistrySource registry,
     IEnumerable<HealthCheckService> health,
     TimeProvider time,
@@ -101,6 +102,7 @@ internal sealed partial class ControlRegistryRegistrar(
             InstanceId = serviceOptions.InstanceId,
             Processes = own.Processes,
             Queryables = own.Queryables,
+            Transports = [.. transports],
         };
 
         var (lease, statusCode, completed) = await CallAsync(

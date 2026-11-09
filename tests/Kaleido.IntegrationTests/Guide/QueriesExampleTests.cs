@@ -66,7 +66,7 @@ public sealed class QueriesExampleTests
     {
         await using var host = await GuideHost.StartAsync();
 
-        var (status, body) = await host.SendAsync(HttpMethod.Post, "/orders/queryable/OrderSource/query", new
+        var (status, body) = await host.SendAsync(HttpMethod.Post, "/orders/1/queryable/OrderSource/query", new
         {
             query = new { filter = new { condition = new { field = "Quantity", @operator = "Equals", values = new List<int> { 2 } } } },
         });

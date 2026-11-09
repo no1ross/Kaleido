@@ -14,8 +14,8 @@ namespace Kaleido.Http.FunctionalTests.Authorization;
 public sealed class JwtAuthorizationTests(JwtAuthorizationFixture fixture)
     : IClassFixture<JwtAuthorizationFixture>
 {
-    private const string InternalStepUrl = "kaleido/processes/steps/authorizedinternalstep";
-    private const string ExecuteUrl = "kaleido/processes/execute";
+    private const string InternalStepUrl = "kaleido/1/processes/steps/authorizedinternalstep";
+    private const string ExecuteUrl = "kaleido/1/processes/execute";
     private const string RegistryUrl = "test/registry";
 
     private static readonly object StepBody = new { processStep = new { } };

@@ -6,6 +6,7 @@ using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Platform;
 using Kaleido.Platform.Processor;
+using Kaleido.Platform.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -99,6 +100,32 @@ public sealed class CallerTokenTests
         }
     }
 
+    private static IKaleidoRegistrySource PublishedServices()
+    {
+        var routes = new[]
+        {
+            new RegistryServiceRoute { ServiceName = "intake", ServiceVersion = "1", Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/intake/1" }] },
+            new RegistryServiceRoute { ServiceName = "member", ServiceVersion = "1", Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/member/1" }] },
+        };
+        var registry = new KaleidoRegistry
+        {
+            Routes = routes,
+            Processes = [.. routes.Select(x => new ProcessorRegistryResponse
+            {
+                Name = x.ServiceName, ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion,
+                ProcessStateUrlTemplate = $"/{x.ServiceName}/{x.ServiceVersion}/processes/{{processId}}",
+            })],
+        };
+        var availability = new KaleidoRegistryAvailability
+        {
+            Services = [.. routes.Select(x => new RegistryServiceAvailability { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, IsCurrent = true, Transports = x.Transports })],
+        };
+        var source = new Mock<IKaleidoRegistrySource>();
+        source.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(registry);
+        source.Setup(x => x.GetAvailabilityAsync(It.IsAny<CancellationToken>())).ReturnsAsync(availability);
+        return source.Object;
+    }
+
     private static (ServiceProvider Provider, CaptureHandler Wire) Build(
         Action<IKaleidoBuilder> handlers,
         string? onBehalfOfCalls = null,
@@ -109,10 +136,6 @@ public sealed class CallerTokenTests
         {
             ["Kaleido:ServiceName"] = "router",
             ["Kaleido:BaseUrl"] = "https://registry.test/",
-            ["Kaleido:Clients:Intake:BaseUrl"] = "https://intake.test/",
-            ["Kaleido:Clients:Intake:RoutePrefix"] = "intake",
-            ["Kaleido:Clients:Member:BaseUrl"] = "https://member.test/",
-            ["Kaleido:Clients:Member:RoutePrefix"] = "member",
         };
 
         if (onBehalfOfCalls is not null)
@@ -124,6 +147,7 @@ public sealed class CallerTokenTests
         var services = new ServiceCollection();
 
         services.AddLogging();
+        services.AddSingleton(PublishedServices());
         // No capabilities of its own: only the client pipeline is under test.
         var kaleido = services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new() { ServiceVersion = "1", Assemblies = [typeof(CallerTokenTests).Assembly], TypeFilter = _ => false })
             .AddInMemoryStores()
@@ -134,7 +158,7 @@ public sealed class CallerTokenTests
             kaleido.AddControlRegistryClient();
         }
 
-        foreach (var name in registryClient ? new[] { "Intake", "Member", "kaleido-registry" } : ["Intake", "Member"])
+        foreach (var name in registryClient ? new[] { KaleidoClientTransport.ClientName, KaleidoHttpRegistryClient.ClientName } : [KaleidoClientTransport.ClientName])
         {
             var client = services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => wire);
 
@@ -214,8 +238,8 @@ public sealed class CallerTokenTests
         var toIntake = await GetStateAsync(provider, wire, "Intake", Carol);
         var toMember = await GetStateAsync(provider, wire, "Member", Carol);
 
-        Assert.Equal(["Bearer carol-for-intake.test"], toIntake.Headers.GetValues("Authorization"));
-        Assert.Equal(["Bearer carol-for-member.test"], toMember.Headers.GetValues("Authorization"));
+        Assert.Equal(["Bearer carol-for-registry.test"], toIntake.Headers.GetValues("Authorization"));
+        Assert.Equal(["Bearer carol-for-registry.test"], toMember.Headers.GetValues("Authorization"));
     }
 
     // Exchange never lets the inbound token out unchanged (the MCP rule: no token passthrough).

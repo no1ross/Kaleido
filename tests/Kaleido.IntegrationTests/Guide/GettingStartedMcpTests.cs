@@ -30,16 +30,14 @@ public sealed class GettingStartedMcpTests : IAsyncLifetime
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Kaleido:BaseUrl"] = "http://registry.test/",
-            ["Kaleido:Clients:orders:BaseUrl"] = "http://localhost/",
-            ["Kaleido:Clients:orders:RoutePrefix"] = "orders",
             ["Kaleido:OnBehalfOfCalls"] = "Exchange",
         });
 
         OrdersService.AddOrdersWithMcp(builder.Services, builder.Configuration);
         builder.Services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => _registry!.CreateHandler());
 
-        // The orders client calls this server (in production: the network).
-        builder.Services.AddHttpClient("orders")
+        // The gateway client routes the published orders version back to this test host.
+        builder.Services.AddHttpClient("kaleido-gateway")
             .ConfigurePrimaryHttpMessageHandler(sp => ((TestServer)sp.GetRequiredService<IServer>()).CreateHandler());
 
         _app = builder.Build();

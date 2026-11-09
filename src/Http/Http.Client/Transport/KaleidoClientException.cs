@@ -71,21 +71,12 @@ public static class HttpClientErrorCodes
     /// </summary>
     public const string Conflict = "httpclient_conflict";
 
-    /// <summary>A configured Kaleido client is missing a BaseUrl (neither client-level nor shared Kaleido:BaseUrl). Raised at startup as a configuration error.</summary>
+    /// <summary>The gateway's Kaleido:BaseUrl is missing. Raised by AddHttpClients() at startup.</summary>
     public const string MissingBaseUrl = "httpclient_missing_base_url";
 
     /// <summary>
-    /// A configured Kaleido client's <c>RoutePrefix</c> (or, without one, its lowercased client name) is
-    /// not a valid service name (<c>[a-z0-9][a-z0-9_-]*</c>): the prefix must equal the downstream
-    /// service's <c>ServiceName</c>, so any other value can only produce failed calls. Raised at startup
-    /// by <c>AddHttpClients()</c> as a configuration error.
-    /// </summary>
-    public const string InvalidRoutePrefix = "httpclient_invalid_route_prefix";
-
-    /// <summary>
-    /// A client setting in configuration (<c>Kaleido:BaseUrl</c>, <c>Kaleido:Resilience</c>,
-    /// <c>Kaleido:Clients:{name}</c>...) is out of range or cannot be read, e.g. a non-positive timeout.
-    /// Raised at startup by client registration.
+    /// A gateway setting (<c>Kaleido:BaseUrl</c> or <c>Kaleido:Resilience</c>) is out of range,
+    /// or obsolete per-service <c>Kaleido:Clients</c> entries are present. Raised at startup.
     /// </summary>
     public const string InvalidClientOptions = "httpclient_invalid_options";
 
@@ -97,8 +88,8 @@ public static class HttpClientErrorCodes
     public const string CallerTokenNotExchanged = "httpclient_caller_token_not_exchanged";
 
     /// <summary>
-    /// <c>GetClient</c> was asked for a client name that is not configured under <c>Kaleido:Clients</c>.
-    /// Raised as a configuration error at the call; the message lists the configured clients.
+    /// A keyed Process or Queryable client was requested without a nonempty service name.
+    /// Raised as a configuration error when the keyed client is resolved.
     /// </summary>
     public const string UnknownClient = "httpclient_unknown_client";
 }

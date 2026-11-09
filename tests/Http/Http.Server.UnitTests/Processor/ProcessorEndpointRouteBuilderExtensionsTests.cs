@@ -76,9 +76,9 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
 
         endpoints.MapProcessor();
 
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/execute"));
-        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/processes/{processId}"));
-        Assert.Single(FindEndpointsByRoute(endpoints, "/workflows/processes/steps/test-step"));
+        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/1/processes/execute"));
+        Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/1/processes/{processId}"));
+        Assert.Single(FindEndpointsByRoute(endpoints, "/workflows/1/processes/steps/test-step"));
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         var log = Assert.Single(logger.Invocations, x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
         Assert.Equal(LogLevel.Information, log.Arguments[0]);
         Assert.Equal(
-            "Process endpoints mapped at route prefix /workflows/processes with 1 process steps and 1 initial steps.",
+            "Process endpoints mapped at route prefix /workflows/1/processes with 1 process steps and 1 initial steps.",
             log.Arguments[2]?.ToString());
     }
 
@@ -143,7 +143,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
 
         var endpoint = FindEndpoint(endpoints, ProcessEndpointNames.StepExecutionEndpointName("untyped-step"));
         Assert.NotNull(endpoint);
-        Assert.Single(FindEndpointsByRoute(endpoints, "/test-processor/processes/steps/untyped-step"));
+        Assert.Single(FindEndpointsByRoute(endpoints, "/test-processor/1/processes/steps/untyped-step"));
         var produces = endpoint.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>();
         Assert.Contains(produces, x => x.Type == typeof(StepExecutionResponse));
         Assert.Contains("Untyped Step", endpoint.Metadata.GetMetadata<ITagsMetadata>()!.Tags);
@@ -418,7 +418,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         builder.Services.AddSingleton<IProcessorStepRegistry>(CreateRegistry(
             registrations ?? [CreateRegistration(typeof(TestStep), typeof(TestResponse), "Test-Step", stepAuthorization ?? AuthorizationMetadata.Unspecified)]));
         builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessorRegistry());
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, DisplayName = "Test Processor", AuthorizationMode = mode });
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1", DisplayName = "Test Processor", AuthorizationMode = mode });
         builder.Services.AddSingleton(Mock.Of<IKaleidoIdempotencyStore>());
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton(Mock.Of<IKaleidoCorrelationContextAccessor>(x => x.Current == new KaleidoCorrelationContext()));

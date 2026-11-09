@@ -69,6 +69,7 @@ public sealed class ControlRegistryTests
         var capabilities = json.ToRegistryEntry();
         Assert.Equal("2026-11", Assert.Single(capabilities.Processes).ServiceVersion);
         Assert.Equal("2026-11", Assert.Single(capabilities.Queryables).ServiceVersion);
+        Assert.Equal(new RegistryTransportRoute { Transport = "http", GatewayRoute = "/radiology/2026-11" }, Assert.Single(Assert.Single(capabilities.Routes).Transports));
         Assert.Equal(new RegistryInstanceRecord { InstanceId = registration.InstanceId, ServiceName = "radiology", ServiceVersion = "2026-11", Revision = stored.Revision, RegisteredUtc = Start, LastHeartbeatUtc = Start }, instance);
         store.Verify(x => x.GetOrSetCurrentVersionAsync("radiology", "2026-11", Cancel), Times.Once);
     }
@@ -86,6 +87,74 @@ public sealed class ControlRegistryTests
         await CreateSut().RegisterAsync(Registration(), RadiologyCaller, Cancel);
 
         Assert.Single(revisions.Distinct(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Register_DifferentTransportBindings_CreateDifferentRevisions()
+    {
+        var revisions = new List<string>();
+        store.Setup(x => x.AddRegistrationAsync(It.IsAny<RegistryRegistrationRecord>(), It.IsAny<string>(), Cancel))
+            .Callback((RegistryRegistrationRecord record, string _, CancellationToken _) => revisions.Add(record.Revision))
+            .Returns(Task.CompletedTask);
+
+        await CreateSut().RegisterAsync(Registration(), RadiologyCaller, Cancel);
+        await CreateSut().RegisterAsync(Registration() with
+        {
+            Transports =
+            [
+                new RegistryTransportRoute { Transport = "http", GatewayRoute = "/radiology/2026-11" },
+                new RegistryTransportRoute { Transport = "grpc", GatewayRoute = "/grpc/radiology/2026-11" },
+            ],
+        }, RadiologyCaller, Cancel);
+
+        Assert.Equal(2, revisions.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Theory]
+    [InlineData("http", "https://other.test/radiology/2026-11")]
+    [InlineData("http", "//other.test/radiology/2026-11")]
+    [InlineData("http", "/other/2026-11")]
+    [InlineData("http", "/radiology/2026-11/extra")]
+    [InlineData("http", "/radiology/%2e%2e/2026-11")]
+    [InlineData("grpc", "/grpc/radiology/../2026-11")]
+    [InlineData("other", "/radiology/2026-11")]
+    public async Task Register_AnUnsafeOrUnknownTransportRoute_IsRefused(string transport, string route)
+    {
+        var registration = Registration() with
+        {
+            Transports = [new RegistryTransportRoute { Transport = transport, GatewayRoute = route }],
+        };
+
+        var answer = await CreateSut().RegisterAsync(registration, RadiologyCaller, Cancel);
+
+        Assert.Equal((RegistryAnswerKind.Invalid, RegistryErrorCodes.InvalidRegistration), (answer.Kind, answer.Code));
+        store.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("step", "https://other.test/radiology/2026-11/processes/steps/scan")]
+    [InlineData("source", "//other.test/radiology/2026-11/queryable/scan/query")]
+    [InlineData("view", "/other/2026-11/queryable/scan/view/query")]
+    [InlineData("state", "/radiology/2026-11/processes/../registry")]
+    [InlineData("execute", "/radiology/2026-11/%2e%2e/registry")]
+    public async Task Register_AnUnsafePublishedCapabilityUrl_IsRefused(string kind, string url)
+    {
+        var registration = Registration();
+        var process = Assert.Single(registration.Processes);
+        var query = Assert.Single(registration.Queryables);
+        registration = kind switch
+        {
+            "step" => registration with { Processes = [process with { Steps = [new ProcessStepResponse { Name = "OrderScanStep", ExecuteUrl = url }] }] },
+            "source" => registration with { Queryables = [query with { QueryUrl = url }] },
+            "view" => registration with { Queryables = [query with { Views = [new QueryableViewResponse { Name = "ScanView", QueryUrl = url }] }] },
+            "state" => registration with { Processes = [process with { ProcessStateUrlTemplate = url }] },
+            _ => registration with { Processes = [process with { ExecuteUrl = url }] },
+        };
+
+        var answer = await CreateSut().RegisterAsync(registration, RadiologyCaller, Cancel);
+
+        Assert.Equal((RegistryAnswerKind.Invalid, RegistryErrorCodes.InvalidRegistration), (answer.Kind, answer.Code));
+        store.VerifyNoOtherCalls();
     }
 
     public static TheoryData<string> InvalidRegistrations() => ["no version", "bad version", "bad name", "empty instance", "another service"];

@@ -1,5 +1,6 @@
 using Kaleido.Exceptions;
 using Kaleido.Server;
+using Kaleido.Platform.Registry;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -36,6 +37,18 @@ public sealed class KaleidoHttpServiceCollectionExtensionsTests
         var result = builder.AddHttp();
 
         Assert.Same(builder, result);
+    }
+
+    [Fact]
+    public void AddHttp_PublishesItsVersionedGatewayRoute()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddKaleido(new ConfigurationBuilder().Build(), ConfigureKaleido("clinic") with { ServiceVersion = "2" });
+
+        builder.AddHttp();
+
+        var route = Assert.IsType<RegistryTransportRoute>(Assert.Single(services, x => x.ServiceType == typeof(RegistryTransportRoute)).ImplementationInstance);
+        Assert.Equal(new RegistryTransportRoute { Transport = "http", GatewayRoute = "/clinic/2" }, route);
     }
 
     [Fact]

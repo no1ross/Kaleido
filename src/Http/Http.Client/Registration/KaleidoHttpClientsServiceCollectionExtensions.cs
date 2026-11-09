@@ -21,35 +21,42 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
+        if (builder.Configuration.GetSection($"{KaleidoServiceOptions.SectionName}:Clients").GetChildren().Any())
+        {
+            throw new KaleidoConfigurationException(HttpClientErrorCodes.InvalidClientOptions,
+                "Kaleido:Clients is no longer a list of downstream endpoints. Configure only Kaleido:BaseUrl with the gateway address.");
+        }
+
         var config = builder.Configuration
             .GetSection(KaleidoServiceOptions.SectionName)
             .BindOver(new KaleidoClientOptions(), HttpClientErrorCodes.InvalidClientOptions);
         KaleidoClientOptions.Validate(config);
-        builder.Services.AddSingleton(config);
-
-        foreach (var (name, entry) in config.Clients)
+        if (string.IsNullOrWhiteSpace(config.BaseUrl))
         {
-            AddClients(builder, config, name, entry);
+            throw new KaleidoConfigurationException(HttpClientErrorCodes.MissingBaseUrl,
+                "Kaleido:BaseUrl must name the gateway before AddHttpClients() registers the HTTP client.");
         }
 
-        if (config.Clients.Count > 0)
+        if (!Uri.TryCreate(config.BaseUrl, UriKind.Absolute, out var gateway) || gateway.Scheme is not ("http" or "https") || gateway.UserInfo.Length > 0)
         {
-            // Every Kaleido client ends with the host's Kaleido client handlers, then the on-behalf-of guard (#574).
-            builder.Services.TryAddEnumerable(
-                ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoClientHandlerFilter>());
-
-            // At start: warn about a client that would send a caller's credential over a non-HTTPS,
-            // non-loopback connection (#434).
-            builder.Services.TryAddEnumerable(
-                ServiceDescriptor.Singleton<IHostedService, KaleidoClientTransportCheck>());
+            throw new KaleidoConfigurationException(HttpClientErrorCodes.InvalidClientOptions,
+                "Kaleido:BaseUrl must be the gateway's absolute http or https URL without embedded credentials.");
         }
 
+        var services = builder.Services;
+        if (services.Any(x => x.ServiceType == typeof(KaleidoClientOptions)))
+        {
+            return builder;
+        }
+
+        services.AddSingleton(config);
+        RegisterGateway(services, gateway, config);
         return builder;
     }
 
     /// <summary>
     /// Adds <typeparamref name="THandler"/>, a standard <see cref="DelegatingHandler"/>, to every Kaleido client
-    /// (the configured ones and the control registry's), and to no other <c>HttpClient</c> of the host (#574).
+    /// (the one gateway client and the control registry's), and to no other <c>HttpClient</c> of the host (#574).
     /// It is where the host sets the calls' credentials, with any library: a client-credentials token on the
     /// service's own calls, and, with <c>Kaleido:OnBehalfOfCalls = Exchange</c>, the caller's exchanged token on
     /// the calls made for a caller. <see cref="KaleidoCallContext.Of"/> tells it which call it is.
@@ -83,55 +90,38 @@ public static class KaleidoHttpClientsServiceCollectionExtensions
         return builder;
     }
 
-    // One configured client: a process client and a queryable client for the same service; the
-    // entry's settings fall back to the shared ones.
-    private static void AddClients(IKaleidoBuilder builder, KaleidoClientOptions config, string name, KaleidoClientEntry? entry)
+    private static void RegisterGateway(IServiceCollection services, Uri gateway, KaleidoClientOptions config)
     {
-        var baseUrl = !string.IsNullOrWhiteSpace(entry?.BaseUrl)
-            ? entry.BaseUrl
-            : config.BaseUrl;
-
-        if (string.IsNullOrWhiteSpace(baseUrl))
+        var httpClient = services.AddHttpClient(KaleidoClientTransport.ClientName, client =>
         {
-            throw new KaleidoConfigurationException(
-                HttpClientErrorCodes.MissingBaseUrl,
-                $"Kaleido client '{name}' has no BaseUrl configured. " +
-                $"Set 'Kaleido:Clients:{name}:BaseUrl' or the shared 'Kaleido:BaseUrl' fallback.");
+            client.BaseAddress = new Uri(gateway.ToString().TrimEnd('/') + "/");
+            client.Timeout = config.Resilience.Enabled ? Timeout.InfiniteTimeSpan : config.Resilience.TotalTimeout;
+        });
+        if (config.Resilience.Enabled)
+        {
+            httpClient.AddResilienceHandler("kaleido", pipeline => pipeline.AddKaleidoResilience(config.Resilience));
         }
 
-        // A relative or malformed URL (or another scheme) is refused here, naming the client and the key,
-        // instead of a raw UriFormatException when the HTTP client is built (#521).
-        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var address) ||
-            address.Scheme is not ("http" or "https"))
-        {
-            var key = !string.IsNullOrWhiteSpace(entry?.BaseUrl) ? $"Kaleido:Clients:{name}:BaseUrl" : "Kaleido:BaseUrl";
-
-            throw new KaleidoConfigurationException(
-                HttpClientErrorCodes.InvalidClientOptions,
-                $"Kaleido client '{name}' has BaseUrl '{baseUrl}' ({key}), which is not an absolute http or https URL, e.g. 'https://radiology:8080'.");
-        }
-
-        var prefix = entry?.RoutePrefix ?? name.ToLowerInvariant();
-
-        // The prefix is the downstream service's ServiceName in every route; anything else can only
-        // fail at call time (and a '..' or '/' would leave the prefix), so refuse it at startup.
-        if (!KaleidoServiceOptions.IsValidServiceName(prefix))
-        {
-            throw new KaleidoConfigurationException(
-                HttpClientErrorCodes.InvalidRoutePrefix,
-                $"Kaleido client '{name}' has route prefix '{prefix}', which is not a service name: it must equal the " +
-                "downstream service's ServiceName ([a-z0-9][a-z0-9_-]*). " +
-                $"Set 'Kaleido:Clients:{name}:RoutePrefix' to that service name.");
-        }
-
-        var client = new KaleidoHttpClientOptions
-        {
-            Name = name,
-            BaseUrl = baseUrl,
-            RoutePrefix = prefix,
-            Resilience = config.Resilience.ForClient(builder.Configuration, name),
-        };
-
-        builder.AddKaleidoClient(client);
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddScoped<IKaleidoInboundCallerAccessor, KaleidoInboundCallerAccessor>();
+        services.TryAddScoped<IKaleidoProcessForwarding, KaleidoProcessForwarding>();
+        services.TryAddScoped<ICorrelationHeaderStamper, CorrelationHeaderStamper>();
+        services.TryAddScoped<IKaleidoClientTransport, KaleidoClientTransport>();
+        services.TryAddScoped<IKaleidoProcessorClientFactory, KaleidoProcessorClientFactory>();
+        services.TryAddScoped<IKaleidoQueryableClientFactory, KaleidoQueryableClientFactory>();
+        services.TryAddSingleton<IKaleidoTransportSelector, KaleidoTransportSelector>();
+        services.TryAddScoped<IKaleidoRegistryTargetResolver, KaleidoRegistryTargetResolver>();
+        services.AddKeyedScoped<IKaleidoProcessorClient>(KeyedService.AnyKey,
+            (provider, key) => provider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient(ServiceName(key)));
+        services.AddKeyedScoped<IKaleidoQueryableClient>(KeyedService.AnyKey,
+            (provider, key) => provider.GetRequiredService<IKaleidoQueryableClientFactory>().GetClient(ServiceName(key)));
+        services.TryAddKeyedTransient<KaleidoOnBehalfOfGuard>(KaleidoClientTransport.ClientName);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoClientHandlerFilter>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, KaleidoClientTransportCheck>());
     }
+
+    private static string ServiceName(object? key) =>
+        key is string name && !string.IsNullOrWhiteSpace(name)
+            ? name
+            : throw new KaleidoConfigurationException(HttpClientErrorCodes.UnknownClient, "A keyed Kaleido client requires a service name.");
 }

@@ -10,7 +10,7 @@ public sealed class IdempotencyPerCallerTests(
     AuthorizationAspNetCoreFixture fixture)
     : IClassFixture<AuthorizationAspNetCoreFixture>
 {
-    private const string OpenStepUrl = "/kaleido/processes/steps/authorizedopenstep";
+    private const string OpenStepUrl = "/kaleido/1/processes/steps/authorizedopenstep";
 
     private async Task<Guid> StartAsAsync(string user, string key)
     {

@@ -43,7 +43,7 @@ public sealed class ProcessesExampleTests
         var processId = await ConfirmedOrderAsync(host);
 
         var failed = await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "Base 1, Antarctica" }, processId);
-        var (_, state) = await host.SendAsync(HttpMethod.Get, $"/orders/processes/{processId}");
+        var (_, state) = await host.SendAsync(HttpMethod.Get, $"/orders/1/processes/{processId}");
 
         Assert.Equal("failed", failed.GetProperty("status").GetString());
         Assert.Equal("businessFailure", state.GetProperty("state").GetString());
@@ -102,12 +102,7 @@ public sealed class ProcessesExampleTests
         await using var returns = await ReturnsHost.StartAsync();
         await using var host = await GuideHost.StartAsync(
             configure: kaleido => kaleido.AddHttpClients(),
-            services: s => s.AddHttpClient("returns").ConfigurePrimaryHttpMessageHandler(returns.CreateHandler),
-            settings: new Dictionary<string, string?>
-            {
-                ["Kaleido:Clients:returns:BaseUrl"] = "http://returns.test/",
-                ["Kaleido:Clients:returns:RoutePrefix"] = "returns",
-            },
+            services: s => s.AddHttpClient("kaleido-gateway").ConfigurePrimaryHttpMessageHandler(returns.CreateHandler),
             registry: returns.Registry);
         var processId = await ConfirmedOrderAsync(host);
         await host.StepAsync("ShipOrderStep", new { carrier = "post", address = "1 Main St" }, processId);
@@ -117,14 +112,14 @@ public sealed class ProcessesExampleTests
         Assert.Equal("completed", returned.GetProperty("status").GetString());
         Assert.Equal("returns", returned.GetProperty("targetProcessorName").GetString());
 
-        var (stateStatus, state) = await returns.SendAsync(HttpMethod.Get, $"/returns/processes/{processId}", processId);
+        var (stateStatus, state) = await returns.SendAsync(HttpMethod.Get, $"/returns/1/processes/{processId}", processId);
         Assert.Equal(System.Net.HttpStatusCode.OK, stateStatus);
         Assert.Contains(
             state.GetProperty("steps").EnumerateArray(),
             x => x.GetProperty("stepName").GetString() == nameof(Returns.OpenReturnStep) && x.GetProperty("status").GetString() == "completed");
 
         var (receivedStatus, received) = await returns.SendAsync(
-            HttpMethod.Post, $"/returns/processes/steps/{nameof(Returns.ReceiveReturnStep)}", processId, new { processStep = new { } });
+            HttpMethod.Post, $"/returns/1/processes/steps/{nameof(Returns.ReceiveReturnStep)}", processId, new { processStep = new { } });
         Assert.Equal(System.Net.HttpStatusCode.OK, receivedStatus);
         Assert.Equal("completed", received.GetProperty("status").GetString());
         Assert.Equal(processId, received.GetProperty("processId").GetGuid());

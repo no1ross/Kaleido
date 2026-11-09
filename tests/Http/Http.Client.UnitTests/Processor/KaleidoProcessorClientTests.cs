@@ -1,23 +1,34 @@
 using System.Text.Json;
 using Kaleido.Http.Processor;
-using Kaleido.Platform;
 using Kaleido.Platform.Processor;
 
 namespace Kaleido.Http.Client.Processor.UnitTests;
 
-// What the processor client sends (#498): each call's URL, body and flags, handed to the transport,
-// which is tested in KaleidoClientTransportTests.
-public sealed class KaleidoProcessorClientTests
-    : Kaleido.UnitTests.SutFixture
+public sealed class KaleidoProcessorClientTests : Kaleido.UnitTests.SutFixture
 {
+    private static readonly RegistryTransportRoute HttpRoute = new() { Transport = "http", GatewayRoute = "/radiology/1" };
+    private readonly Mock<IKaleidoRegistryTargetResolver> targets = new();
     private readonly Mock<IKaleidoClientTransport> transport = new();
     private readonly List<KaleidoClientRequest> sent = [];
 
-    private KaleidoProcessorClient CreateSut(string routePrefix = "radiology")
+    private KaleidoProcessorClient CreateSut(string? version = null)
     {
-        var catalog = new Mock<IKaleidoClientCatalog>();
-        catalog.Setup(x => x.Find("RadiologyClient")).Returns(Definition(routePrefix));
-
+        var processor = new ProcessorRegistryResponse
+        {
+            Name = "radiology",
+            ServiceName = "radiology",
+            ServiceVersion = "1",
+            ExecuteUrl = "/radiology/1/processes/execute",
+            ProcessStateUrlTemplate = "/radiology/1/processes/{processId}",
+            Steps =
+            [
+                new ProcessStepResponse { Name = "MyStep", ExecuteUrl = "/radiology/1/processes/steps/published-step" },
+                new ProcessStepResponse { Name = "FakeStepRequest", ExecuteUrl = "/radiology/1/processes/steps/fakesteprequest" },
+            ],
+        };
+        targets.Setup(x => x.ResolveAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KaleidoRegistryTarget(new KaleidoRegistry { Processes = [processor] },
+                new RegistryServiceAvailability { ServiceName = "radiology", ServiceVersion = "1", IsCurrent = true, Transports = [HttpRoute] }, HttpRoute));
         transport.Setup(x => x.SendAsync<ProcessExecutionResponse>(Captured(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessExecutionResponse { ProcessId = Guid.NewGuid() });
         transport.Setup(x => x.SendAsync<StepExecutionResponse>(Captured(), It.IsAny<CancellationToken>()))
@@ -26,147 +37,106 @@ public sealed class KaleidoProcessorClientTests
             .ReturnsAsync(new StepExecutionResponse<MyStepResponse> { ProcessId = Guid.NewGuid(), StepName = "MyStep", Result = new MyStepResponse { Value = "typed" } });
         transport.Setup(x => x.SendAsync<StepExecutionResponse<JsonElement>>(Captured(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StepExecutionResponse<JsonElement> { ProcessId = Guid.NewGuid(), StepName = "MyStep", Result = JsonSerializer.SerializeToElement(new { visitId = "V-1" }) });
-
-        return new("RadiologyClient", catalog.Object, transport.Object);
+        return new KaleidoProcessorClient("radiology", version, targets.Object, transport.Object);
     }
 
-    private KaleidoClientRequest Captured() =>
-        Capture.In(sent);
-
-    private static KaleidoClientDefinition Definition(string routePrefix) =>
-        new("RadiologyClient", routePrefix);
-
+    private KaleidoClientRequest Captured() => Capture.In(sent);
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
-
     private static JsonElement Json(object value) => JsonSerializer.SerializeToElement(value);
-
     private sealed class MyStep;
-
     private sealed record FakeStepRequest;
+    private sealed class MyStepResponse { public string Value { get; init; } = ""; }
 
-    private sealed class MyStepResponse
-    {
-        public string Value { get; init; } = "";
-    }
-
-    // ---------------------------------------------------------------------------
-    // Process state
-    // ---------------------------------------------------------------------------
-
-    // 404 is an unknown process here: answered null, and the registry is left alone.
     [Fact]
-    public async Task GetProcessStateAsync_GetsTheStateUrl_AsANotFoundCall_WithoutAKey()
+    public async Task GetProcessStateAsync_ExpandsThePublishedTemplate_AsANotFoundCall_WithoutAKey()
     {
         var processId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
         var state = new ProcessStateResponse { ProcessId = processId, AvailableSteps = [], Steps = [] };
         transport.Setup(x => x.SendOrNotFoundAsync<ProcessStateResponse>(Captured(), Cancel)).ReturnsAsync(state);
-        var sut = CreateSut();
 
-        var result = await sut.GetProcessStateAsync(processId, Cancel);
+        var result = await CreateSut().GetProcessStateAsync(processId, Cancel);
 
         Assert.Same(state, result);
         var request = Assert.Single(sent);
         Assert.Equal(HttpMethod.Get, request.Method);
-        Assert.Equal(ProcessContractUrls.ProcessState("radiology", processId), request.Url);
+        Assert.Equal(ProcessContractUrls.ProcessState("radiology", "1", processId), request.Url);
+        Assert.Equal("radiology", request.ServiceName);
         Assert.Null(request.Body);
         Assert.False(request.Idempotent);
     }
 
-    // ---------------------------------------------------------------------------
-    // Execute
-    // ---------------------------------------------------------------------------
-
-    // Every execute call is idempotent (the caller's key, else its own) and a 404 drops the snapshot.
     [Fact]
-    public async Task ExecuteAsync_PostsTheRequestToTheExecuteUrl_WithTheCallersKey()
+    public async Task ExecuteAsync_UsesThePublishedExecuteUrl_WithTheCallersKey()
     {
         var body = new ExecuteProcessRequest();
-        var sut = CreateSut();
 
-        await sut.ExecuteAsync(body, "order-42", Cancel);
+        await CreateSut().ExecuteAsync(body, "order-42", Cancel);
 
         var request = Assert.Single(sent);
         Assert.Equal(HttpMethod.Post, request.Method);
-        Assert.Equal(ProcessContractUrls.Execute("radiology"), request.Url);
+        Assert.Equal("/radiology/1/processes/execute", request.Url);
         Assert.Same(body, request.Body);
         Assert.Equal("order-42", request.IdempotencyKey);
         Assert.True(request.Idempotent);
-        Assert.Equal("Process execute request", request.Description);
     }
 
     [Fact]
-    public async Task ExecuteStepAsync_PostsTheStepToItsUrl_NamedByItsType()
+    public async Task ExecuteStepAsync_UsesThePublishedStepUrl_NotTheStepNameAsAPath()
     {
         var step = new MyStep();
-        var sut = CreateSut();
 
-        var result = await sut.ExecuteStepAsync(step, Cancel);
+        var result = await CreateSut().ExecuteStepAsync(step, Cancel);
 
         Assert.Equal("MyStep", result.StepName);
         var request = Assert.Single(sent);
-        Assert.Equal("/radiology/processes/steps/mystep", request.Url);
+        Assert.Equal("/radiology/1/processes/steps/published-step", request.Url);
         Assert.Same(step, Assert.IsType<ExecuteStepRequest<MyStep>>(request.Body).ProcessStep);
         Assert.True(request.Idempotent);
-        Assert.Null(request.IdempotencyKey);
     }
 
     [Fact]
     public async Task ExecuteStepAsync_TypedResult_ReturnsTheTypedAnswer()
     {
-        var sut = CreateSut();
-
-        var result = await sut.ExecuteStepAsync<FakeStepRequest, MyStepResponse>(new FakeStepRequest(), Cancel);
+        var result = await CreateSut().ExecuteStepAsync<FakeStepRequest, MyStepResponse>(new FakeStepRequest(), Cancel);
 
         Assert.Equal("typed", result.Result?.Value);
-        Assert.Equal("/radiology/processes/steps/fakesteprequest", Assert.Single(sent).Url);
+        Assert.Equal("/radiology/1/processes/steps/fakesteprequest", Assert.Single(sent).Url);
     }
 
     [Fact]
-    public async Task ExecuteStepAsync_ByName_PostsTheJsonPayload_WithTheProcessAndTheCallersKey()
+    public async Task ExecuteStepAsync_ByName_PreservesTheProcessAndTheCallersKey()
     {
         var processId = Guid.NewGuid();
-        var sut = CreateSut();
 
-        var response = await sut.ExecuteStepAsync("MyStep", Json(new { memberId = "M1" }), processId, "order-42", Cancel);
+        var response = await CreateSut().ExecuteStepAsync("MyStep", Json(new { memberId = "M1" }), processId, "order-42", Cancel);
 
         Assert.Equal("V-1", response.Result.GetProperty("visitId").GetString());
         var request = Assert.Single(sent);
-        Assert.Equal("/radiology/processes/steps/mystep", request.Url);
+        Assert.Equal("/radiology/1/processes/steps/published-step", request.Url);
         Assert.Equal("M1", Assert.IsType<ExecuteStepRequest<JsonElement>>(request.Body).ProcessStep.GetProperty("memberId").GetString());
         Assert.Equal(processId, request.ProcessId);
         Assert.Equal("order-42", request.IdempotencyKey);
         Assert.True(request.Idempotent);
-        Assert.Equal("Process step request for 'MyStep'", request.Description);
     }
 
     [Fact]
-    public async Task ExecuteStepAsync_ByName_KeepsTheNameOneRouteSegment()
+    public async Task ExecuteStepAsync_AnUnpublishedStep_IsRefusedBeforeSending()
     {
-        await CreateSut().ExecuteStepAsync("../registry", Json(new { }), null, null, Cancel);
+        var exception = await Assert.ThrowsAsync<KaleidoRegistryClientException>(() => CreateSut().ExecuteStepAsync("../registry", Json(new { }), null, null, Cancel));
 
-        Assert.Equal("/radiology/processes/steps/..%2Fregistry", Assert.Single(sent).Url);
+        Assert.Equal(RegistryClientErrorCodes.RouteUnavailable, exception.Code);
+        Assert.Empty(sent);
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData(" ")]
-    public async Task ExecuteStepAsync_ByName_WithoutAName_IsRefused(string? stepName)
+    public async Task ExecuteStepAsync_WithoutAName_IsRefused(string? stepName)
     {
         await Assert.ThrowsAnyAsync<ArgumentException>(() => CreateSut().ExecuteStepAsync(stepName!, Json(new { }), null, null, Cancel));
-
         Assert.Empty(sent);
     }
 
-    // Step URLs come from the route prefix, never from the registry (#381).
-    [Fact]
-    public async Task ExecuteStepAsync_WithoutARoutePrefix_UsesTheDefaultUrl()
-    {
-        await CreateSut(routePrefix: "").ExecuteStepAsync("MyStep", Json(new { }), null, null, Cancel);
-
-        Assert.Equal("/processes/steps/mystep", Assert.Single(sent).Url);
-    }
-
-    // A failure is the transport's answer, passed on as it is.
     [Fact]
     public async Task ExecuteAsync_AFailure_IsPassedOn()
     {

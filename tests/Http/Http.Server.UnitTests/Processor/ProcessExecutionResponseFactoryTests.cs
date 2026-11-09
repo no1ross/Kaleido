@@ -24,13 +24,13 @@ public sealed class ProcessExecutionResponseFactoryTests
         };
 
         var response = CreateSut(responseFactory: responseFactory.Object)
-            .CreateExecutionResponse(processResult, CreateRegistry("Step-A", "Step-B"), "test");
+            .CreateExecutionResponse(processResult, CreateRegistry("Step-A", "Step-B"));
 
         Assert.Equal(processResult.ProcessId, response.ProcessId);
         Assert.Same(required, response.RequiredStep);
         Assert.Same(available, Assert.Single(response.AvailableSteps));
         Assert.Null(response.TargetProcessorName);
-        responseFactory.Verify(x => x.CreateStepSummary(It.Is<ProcessorStepSummary>(s => s.Name == "Step-A"), "test"), Times.Once);
+        responseFactory.Verify(x => x.CreateStepSummary(It.Is<ProcessorStepSummary>(s => s.Name == "Step-A")), Times.Once);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed class ProcessExecutionResponseFactoryTests
         };
 
         var response = CreateSut(responseFactory: responseFactory.Object)
-            .CreateStepResponse(processResult, step, CreateRegistry("Step-A", "Step-B"), "test");
+            .CreateStepResponse(processResult, step, CreateRegistry("Step-A", "Step-B"));
 
         Assert.Equal("test-step", response.StepName);
         Assert.Equal(StepExecutionStatus.ValidationFailed, response.Status);
@@ -64,12 +64,12 @@ public sealed class ProcessExecutionResponseFactoryTests
         };
 
         var response = CreateSut(responseFactory: responseFactory.Object)
-            .CreateExecutionResponse(processResult, CreateRegistry("Step-B"), "test");
+            .CreateExecutionResponse(processResult, CreateRegistry("Step-B"));
 
         Assert.Null(response.RequiredStep);
         Assert.Equal("radiology", response.TargetProcessorName);
         responseFactory.Verify(
-            x => x.CreateRequiredStep(It.IsAny<ProcessorStepSummary>(), It.IsAny<InformationRequest?>(), It.IsAny<string>()),
+            x => x.CreateRequiredStep(It.IsAny<ProcessorStepSummary>(), It.IsAny<InformationRequest?>()),
             Times.Never);
     }
 
@@ -79,7 +79,7 @@ public sealed class ProcessExecutionResponseFactoryTests
         var processResult = CreateProcessResult(CreateStepResult()) with { RequiredStep = "Ghost-Step" };
 
         var exception = Assert.Throws<KaleidoFrameworkException>(() =>
-            CreateSut().CreateExecutionResponse(processResult, CreateRegistry(), "test"));
+            CreateSut().CreateExecutionResponse(processResult, CreateRegistry()));
 
         Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
         Assert.Equal("Required step 'Ghost-Step' was not found in the local registry.", exception.Message);
@@ -91,7 +91,7 @@ public sealed class ProcessExecutionResponseFactoryTests
         var processResult = CreateProcessResult(CreateStepResult()) with { AvailableSteps = ["Ghost-Step"] };
 
         var exception = Assert.Throws<KaleidoFrameworkException>(() =>
-            CreateSut().CreateExecutionResponse(processResult, CreateRegistry(), "test"));
+            CreateSut().CreateExecutionResponse(processResult, CreateRegistry()));
 
         Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
         Assert.Equal("Available step 'Ghost-Step' was not found in the local registry.", exception.Message);
@@ -104,7 +104,7 @@ public sealed class ProcessExecutionResponseFactoryTests
         var processResult = CreateProcessResult(step) with { AvailableSteps = ["Ghost-Step"] };
 
         var exception = Assert.Throws<KaleidoFrameworkException>(() =>
-            CreateSut().CreateStepResponse(processResult, step, CreateRegistry(), "test"));
+            CreateSut().CreateStepResponse(processResult, step, CreateRegistry()));
 
         Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
     }
@@ -140,7 +140,7 @@ public sealed class ProcessExecutionResponseFactoryTests
             Steps = [pendingSilent, pendingWithRuntimeMessage, pendingWithBusinessMessage, completedWithoutResponse],
         };
 
-        var response = CreateSut().CreateExecutionResponse(processResult, CreateRegistry(), "test");
+        var response = CreateSut().CreateExecutionResponse(processResult, CreateRegistry());
 
         Assert.Equal(["runtime", "business", "completed"], response.Results.Select(x => x.StepName));
         Assert.Equal("{}", JsonSerializer.Serialize(response.Results.Last().Response));
@@ -152,10 +152,10 @@ public sealed class ProcessExecutionResponseFactoryTests
         var available = new ProcessStepSummary { Name = "Step-A" };
         var responseFactory = new Mock<IProcessorResponseFactory>();
         responseFactory
-            .Setup(x => x.CreateRequiredStep(It.Is<ProcessorStepSummary>(s => s.Name == "Step-B"), It.IsAny<InformationRequest?>(), "test"))
+            .Setup(x => x.CreateRequiredStep(It.Is<ProcessorStepSummary>(s => s.Name == "Step-B"), It.IsAny<InformationRequest?>()))
             .Returns(required);
         responseFactory
-            .Setup(x => x.CreateStepSummary(It.Is<ProcessorStepSummary>(s => s.Name == "Step-A"), "test"))
+            .Setup(x => x.CreateStepSummary(It.Is<ProcessorStepSummary>(s => s.Name == "Step-A")))
             .Returns(available);
         return (responseFactory, required, available);
     }
@@ -193,7 +193,7 @@ public sealed class ProcessExecutionResponseFactoryTests
     {
         var step = CreateStepResult();
         var response = CreateSut().CreateStepResponse(
-            CreateProcessResult(step), step, Mock.Of<IProcessorStepRegistry>(), "test");
+            CreateProcessResult(step), step, Mock.Of<IProcessorStepRegistry>());
 
         Assert.Equal("business_warning", Assert.Single(response.BusinessMessages).Code);
         Assert.Empty(response.FrameworkMessages);
@@ -211,7 +211,7 @@ public sealed class ProcessExecutionResponseFactoryTests
     {
         var step = CreateStepResult();
         var response = CreateSut(new KaleidoHttpOptions { IncludeFrameworkMessages = true })
-            .CreateExecutionResponse(CreateProcessResult(step), Mock.Of<IProcessorStepRegistry>(), "test");
+            .CreateExecutionResponse(CreateProcessResult(step), Mock.Of<IProcessorStepRegistry>());
 
         var result = Assert.Single(response.Results);
         Assert.Equal("business_warning", Assert.Single(result.BusinessMessages).Code);
@@ -234,7 +234,7 @@ public sealed class ProcessExecutionResponseFactoryTests
         };
 
         var response = CreateSut(new KaleidoHttpOptions { IncludeFrameworkMessages = true })
-            .CreateStepResponse(CreateProcessResult(step), step, Mock.Of<IProcessorStepRegistry>(), "test");
+            .CreateStepResponse(CreateProcessResult(step), step, Mock.Of<IProcessorStepRegistry>());
 
         Assert.Equal("pro_custom_validation", Assert.Single(response.FrameworkMessages).Code);
     }
@@ -244,7 +244,7 @@ public sealed class ProcessExecutionResponseFactoryTests
     {
         var step = CreateStepResult();
         var response = CreateSut(new KaleidoHttpOptions { IncludeFrameworkMessages = true })
-            .CreateStepResponse<string>(CreateProcessResult(step), step, Mock.Of<IProcessorStepRegistry>(), "test");
+            .CreateStepResponse<string>(CreateProcessResult(step), step, Mock.Of<IProcessorStepRegistry>());
 
         Assert.Equal("payload", response.Result);
         Assert.Equal("business_warning", Assert.Single(response.BusinessMessages).Code);

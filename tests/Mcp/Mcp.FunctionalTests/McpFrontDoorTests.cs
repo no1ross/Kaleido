@@ -77,7 +77,7 @@ public sealed class McpFrontDoorTests(FrontDoorFixture fixture)
         var result = Body(await Call(client, "clinic_patient", new() { ["processId"] = processId, ["searchText"] = "Ava" }));
 
         Assert.Equal(processId, result["processId"]!.GetValue<string>());
-        Assert.Contains(fixture.ServiceProcessIds, x => x.Path.Contains("/queryable/", StringComparison.Ordinal) && x.ProcessId == processId);
+        Assert.Contains(fixture.ServiceProcessIds, x => x.Path.Contains("/clinic/1/queryable/", StringComparison.Ordinal) && x.ProcessId == processId);
     }
 
     [Fact]

@@ -95,7 +95,6 @@ public class AuthorizationAspNetCoreFixture
                             .AddInMemoryCollection(new Dictionary<string, string?>
                             {
                                 ["Kaleido:BaseUrl"] = "http://registry.test/",
-                                ["Kaleido:Clients:self:BaseUrl"] = "http://localhost/",
                             })
                             .Build();
 

@@ -182,7 +182,7 @@ public sealed class ProcessExecutionEndpointTests(ProcessorAspNetCoreFixture fix
 
     // No process id: each test starts a new process, whose id the runtime generates.
     private Task<HttpResponseMessage> PostExecuteAsync(ExecuteProcessRequest body) =>
-        fixture.Client.PostAsJsonAsync("/kaleido/processes/execute", body, KaleidoJsonOptions.Options);
+        fixture.Client.PostAsJsonAsync("/kaleido/1/processes/execute", body, KaleidoJsonOptions.Options);
 
     private static ProcessStepRequest CreateStep(string stepName) =>
         new()

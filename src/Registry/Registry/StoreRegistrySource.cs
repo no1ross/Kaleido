@@ -68,7 +68,7 @@ internal sealed class StoreRegistrySource(
         var now = time.GetUtcNow();
         var (capabilities, statuses) = Build(contents, now, published);
         var status = new KaleidoRegistryStatus { Services = statuses, GeneratedAt = now, Revision = RevisionOf(statuses) };
-        List<RegistryServiceAvailability> versions = [.. statuses.Select(x => new RegistryServiceAvailability { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, IsCurrent = x.IsCurrent, Status = x.Status })];
+        List<RegistryServiceAvailability> versions = [.. statuses.Select(x => new RegistryServiceAvailability { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, IsCurrent = x.IsCurrent, Status = x.Status, Transports = x.Transports })];
         var revisioned = capabilities with { Revision = capabilities.ToEntryJson().ToRevision() };
 
         // The hosts check at the registry's pace (the heartbeat interval), and read the capabilities exactly
@@ -130,6 +130,7 @@ internal sealed class StoreRegistrySource(
 
         var processes = new List<ProcessorRegistryResponse>();
         var queryables = new List<QueryableSourceResponse>();
+        var routes = new List<RegistryServiceRoute>();
         var statuses = new List<RegistryServiceStatus>();
 
         foreach (var (service, version) in versions)
@@ -139,15 +140,16 @@ internal sealed class StoreRegistrySource(
                 .Select(x => (Record: x, State: StateOf(x, now, contents.WatchResumedUtc)))
                 .ToList();
             var live = instances.Where(x => x.State != RegistryInstanceState.NotReady).Select(x => x.Record).ToList();
-            var shared = Published(contents.Registrations.Where(x => Is(x.ServiceName, x.ServiceVersion, service, version)), live.Count > 0 ? live : [.. instances.Select(x => x.Record)], published);
+            var shared = Published(contents.Registrations.Where(x => Is(x.ServiceName, x.ServiceVersion, service, version)), live.Count > 0 ? live : [.. instances.Select(x => x.Record)], published, service, version);
 
             // Each entry is the version it was registered under, whatever the stored copy says.
             processes.AddRange(shared.Processes.Select(x => x with { ServiceVersion = version }));
             queryables.AddRange(shared.Queryables.Select(x => x with { ServiceVersion = version }));
-            statuses.Add(StatusOf(service, version, instances, contents.CurrentVersions));
+            routes.AddRange(shared.Routes);
+            statuses.Add(StatusOf(service, version, instances, contents.CurrentVersions, shared.Routes.Single().Transports));
         }
 
-        return (new KaleidoRegistry { Processes = processes, Queryables = queryables, Missing = Missing(versions, processes) }, statuses);
+        return (new KaleidoRegistry { Processes = processes, Queryables = queryables, Routes = routes, Missing = Missing(versions, processes) }, statuses);
     }
 
     // Unknown while not heard from since the watch resumed, for one lease after it; else by lease and health.
@@ -158,7 +160,7 @@ internal sealed class StoreRegistrySource(
                 ? RegistryInstanceState.Ready
                 : RegistryInstanceState.NotReady;
 
-    private static RegistryServiceStatus StatusOf(string service, string version, List<(RegistryInstanceRecord Record, RegistryInstanceState State)> instances, IReadOnlyDictionary<string, string> currentVersions)
+    private static RegistryServiceStatus StatusOf(string service, string version, List<(RegistryInstanceRecord Record, RegistryInstanceState State)> instances, IReadOnlyDictionary<string, string> currentVersions, IReadOnlyCollection<RegistryTransportRoute> transports)
     {
         var ready = instances.Count(x => x.State == RegistryInstanceState.Ready);
         var unknown = instances.Count(x => x.State == RegistryInstanceState.Unknown);
@@ -168,7 +170,8 @@ internal sealed class StoreRegistrySource(
             ServiceName = service,
             ServiceVersion = version,
             IsCurrent = currentVersions.TryGetValue(service, out var current) && string.Equals(current, version, StringComparison.Ordinal),
-            Status = instances.Count == 0 ? RegistryCapabilityStatus.Unavailable
+            Transports = transports,
+            Status = instances.Count == 0 || transports.Count == 0 ? RegistryCapabilityStatus.Unavailable
                 : ready == instances.Count ? RegistryCapabilityStatus.Available
                 : ready > 0 ? RegistryCapabilityStatus.Degraded
                 : unknown > 0 ? RegistryCapabilityStatus.Unknown
@@ -182,24 +185,27 @@ internal sealed class StoreRegistrySource(
     }
 
     // The registrations the instances run, oldest first; with no instance, every registration kept.
-    private static KaleidoRegistry Published(IEnumerable<RegistryRegistrationRecord> registrations, List<RegistryInstanceRecord> instances, IReadOnlyDictionary<string, KaleidoRegistry> capabilities)
+    private static KaleidoRegistry Published(IEnumerable<RegistryRegistrationRecord> registrations, List<RegistryInstanceRecord> instances, IReadOnlyDictionary<string, KaleidoRegistry> capabilities, string service, string version)
     {
         var running = instances.Select(x => x.Revision).ToHashSet(StringComparer.Ordinal);
         var all = registrations.OrderBy(x => x.RegisteredUtc).ToList();
         var used = all.Where(x => running.Contains(x.Revision)).ToList();
 
-        return Shared([.. (used.Count > 0 ? used : all).Select(x => capabilities.GetValueOrDefault(x.Revision)).OfType<KaleidoRegistry>()]);
+        return Shared([.. (used.Count > 0 ? used : all).Select(x => capabilities.GetValueOrDefault(x.Revision)).OfType<KaleidoRegistry>()], service, version);
     }
 
     // The rolling-deployment rule: a capability every revision has, as the oldest one defines it.
-    private static KaleidoRegistry Shared(List<KaleidoRegistry> revisions)
+    private static KaleidoRegistry Shared(List<KaleidoRegistry> revisions, string service, string version)
     {
+        var oldest = revisions.FirstOrDefault() ?? new KaleidoRegistry();
+        var transports = TransportsOf(oldest, service, version)
+            .Where(x => revisions.Skip(1).All(r => TransportsOf(r, service, version).Any(other => string.Equals(x.Transport, other.Transport, StringComparison.OrdinalIgnoreCase))))
+            .ToArray();
+        var routes = new RegistryServiceRoute { ServiceName = service, ServiceVersion = version, Transports = transports };
         if (revisions.Count <= 1)
         {
-            return revisions.FirstOrDefault() ?? new KaleidoRegistry();
+            return oldest with { Routes = [routes] };
         }
-
-        var oldest = revisions[0];
 
         var processes = oldest.Processes
             .Where(p => revisions.TrueForAll(r => r.Processes.Any(o => SameName(o.Name, p.Name))))
@@ -216,8 +222,13 @@ internal sealed class StoreRegistrySource(
                 Views = [.. q.Views.Where(v => revisions.TrueForAll(r => SourceOf(r, q.Name).Views.Any(o => SameName(o.Name, v.Name))))],
             });
 
-        return new KaleidoRegistry { Processes = [.. processes], Queryables = [.. queryables] };
+        return new KaleidoRegistry { Processes = [.. processes], Queryables = [.. queryables], Routes = [routes] };
     }
+
+    private static IReadOnlyCollection<RegistryTransportRoute> TransportsOf(KaleidoRegistry registry, string service, string version) =>
+        registry.Routes.FirstOrDefault(x => Is(x.ServiceName, x.ServiceVersion, service, version))?.Transports is { Count: > 0 } declared
+            ? declared
+            : [new RegistryTransportRoute { Transport = "http", GatewayRoute = $"/{service}/{version}" }];
 
     private List<RegistryMissingService> Missing(List<(string ServiceName, string ServiceVersion)> versions, List<ProcessorRegistryResponse> processes)
     {

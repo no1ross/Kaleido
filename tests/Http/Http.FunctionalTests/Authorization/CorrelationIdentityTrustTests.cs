@@ -11,7 +11,7 @@ public sealed class CorrelationIdentityTrustTests(
     AuthorizationAspNetCoreFixture fixture)
     : IClassFixture<AuthorizationAspNetCoreFixture>
 {
-    private const string ProcessUrl = "/kaleido/processes/00000000-0000-0000-0000-000000000000";
+    private const string ProcessUrl = "/kaleido/1/processes/00000000-0000-0000-0000-000000000000";
 
     private async Task<string?> EchoedRequestIdAsync(HttpRequestMessage request)
     {

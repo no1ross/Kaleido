@@ -93,8 +93,7 @@ internal sealed partial class ProcessExecutionService(
 
         var response = responseFactory.CreateExecutionResponse(
             processResult,
-            registry,
-            serviceOptions.ServiceName);
+            registry);
 
         var continuation = await ContinuationAsync(processResult, response.RequiredStep, response.AvailableSteps, cancellationToken);
 
@@ -179,8 +178,7 @@ internal sealed partial class ProcessExecutionService(
             responseFactory.CreateStepResponse<TResponse>(
                 processResult,
                 stepResult,
-                registry,
-                serviceOptions.ServiceName),
+                registry),
             cancellationToken);
     }
 
@@ -194,8 +192,7 @@ internal sealed partial class ProcessExecutionService(
             responseFactory.CreateStepResponse(
                 processResult,
                 stepResult,
-                registry,
-                serviceOptions.ServiceName),
+                registry),
             cancellationToken);
     }
 

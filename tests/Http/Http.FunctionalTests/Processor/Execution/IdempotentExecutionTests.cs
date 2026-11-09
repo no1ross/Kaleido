@@ -21,7 +21,7 @@ namespace Kaleido.Http.FunctionalTests.Processor.Execution;
 // again. RuntimeRootStep starts a new process on every run, so "ran again" shows as a second process.
 public sealed class IdempotentExecutionTests : IAsyncLifetime
 {
-    private const string RootStepUrl = "/kaleido/processes/steps/runtimerootstep";
+    private const string RootStepUrl = "/kaleido/1/processes/steps/runtimerootstep";
 
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"kaleido-idempotency-{Guid.NewGuid():N}.db");
     private TestControlRegistry? _registry;

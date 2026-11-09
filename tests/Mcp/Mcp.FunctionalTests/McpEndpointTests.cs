@@ -177,6 +177,7 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         var next = started["next"]!;
 
         Assert.Equal("answer_information_request", next["required"]!["tool"]!.GetValue<string>());
+        Assert.Equal("1", next["serviceVersion"]!.GetValue<string>());
         Assert.Equal(VisitQuestions.RequestId, next["informationRequest"]!["informationRequestId"]!.GetValue<string>());
         Assert.Contains("Never answer for the user", next["instruction"]!.GetValue<string>(), StringComparison.Ordinal);
 
@@ -380,8 +381,8 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
 
         var calls = fixture.ServiceRequests.Where(x => x.Authorization == BearerTestAuthHandler.Exchanged(nurse)).ToArray();
 
-        Assert.Contains(calls, x => x.Path.Contains("/queryable/", StringComparison.Ordinal));
-        Assert.Contains(calls, x => x.Path.Contains("/processes/steps/", StringComparison.Ordinal));
+        Assert.Contains(calls, x => x.Path.Contains("/clinic/1/queryable/", StringComparison.Ordinal));
+        Assert.Contains(calls, x => x.Path.Contains("/clinic/1/processes/steps/", StringComparison.Ordinal));
         Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == McpClinicFixture.HostServiceToken);
 
         // #574: the agent's token itself never reaches the service (no token passthrough).
@@ -397,7 +398,7 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
 
         await client.CallToolAsync("clinic_patient", new Dictionary<string, object?>(), cancellationToken: Cancel);
 
-        var call = Assert.Single(fixture.ServiceOrigins, x => x.Authorization == BearerTestAuthHandler.Exchanged(nurse) && x.Path.Contains("/queryable/", StringComparison.Ordinal));
+        var call = Assert.Single(fixture.ServiceOrigins, x => x.Authorization == BearerTestAuthHandler.Exchanged(nurse) && x.Path.Contains("/clinic/1/queryable/", StringComparison.Ordinal));
         Assert.Equal(("mcp", "clinic_patient"), (call.Origin, call.OriginTool));
     }
 }

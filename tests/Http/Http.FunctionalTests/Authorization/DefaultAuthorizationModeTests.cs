@@ -44,7 +44,7 @@ public sealed class DefaultAuthorizationModeTests
     // The Behavior models' initial step, which declares no authorization of its own.
     private static HttpRequestMessage StartStep(string? user)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "/defaultmode/processes/steps/behaviorstartstep")
+        var request = new HttpRequestMessage(HttpMethod.Post, "/defaultmode/1/processes/steps/behaviorstartstep")
         {
             Content = new StringContent("""{"processStep":{}}""", System.Text.Encoding.UTF8, "application/json"),
         };

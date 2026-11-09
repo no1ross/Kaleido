@@ -28,7 +28,7 @@ public sealed class McpHandOffTests(HandOffFixture fixture)
         Assert.Equal(
             ["ward_discharge"],
             moved["next"]!["available"]!.AsArray().Select(x => x!["tool"]!.GetValue<string>()));
-        Assert.DoesNotContain(fixture.WardRequests, x => string.Equals(x.Method, HttpMethod.Get.Method, StringComparison.Ordinal) && x.Path.Contains("/processes/", StringComparison.Ordinal));
+        Assert.DoesNotContain(fixture.WardRequests, x => string.Equals(x.Method, HttpMethod.Get.Method, StringComparison.Ordinal) && x.Path.Contains("/ward/1/processes/", StringComparison.Ordinal));
 
         var discharged = Body(await client.CallToolAsync(
             "ward_discharge",
@@ -36,6 +36,7 @@ public sealed class McpHandOffTests(HandOffFixture fixture)
             cancellationToken: cancel));
 
         Assert.Equal("completed", discharged["outcome"]!.GetValue<string>());
+        Assert.Contains(fixture.WardRequests, x => x.Method == HttpMethod.Post.Method && x.Path.Contains("/ward/1/processes/steps/dischargestep", StringComparison.Ordinal));
     }
 
     private static JsonNode Body(CallToolResult result) =>

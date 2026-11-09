@@ -14,10 +14,10 @@ namespace Kaleido.Http.FunctionalTests.Queryable.Execution;
 // when every component's own unit tests still pass.
 public sealed class QueryContractTests(QueryableAspNetCoreFixture fixture) : IClassFixture<QueryableAspNetCoreFixture>
 {
-    private const string SourceUrl = "/kaleido/queryable/functionalrecordcontextsource/query";
-    private const string AsyncSourceUrl = "/kaleido/queryable/functionalasyncrecordsource/query";
-    private const string AsyncViewUrl = "/kaleido/queryable/functionalasyncrecordsource/functionalcodelistview/query";
-    private const string GridViewUrl = "/kaleido/queryable/functionalrecordcontextsource/functionalrecordgridview/query";
+    private const string SourceUrl = "/kaleido/1/queryable/functionalrecordcontextsource/query";
+    private const string AsyncSourceUrl = "/kaleido/1/queryable/functionalasyncrecordsource/query";
+    private const string AsyncViewUrl = "/kaleido/1/queryable/functionalasyncrecordsource/functionalcodelistview/query";
+    private const string GridViewUrl = "/kaleido/1/queryable/functionalrecordcontextsource/functionalrecordgridview/query";
 
     private readonly HttpClient _client = fixture.Client;
 

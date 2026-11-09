@@ -1,29 +1,16 @@
 namespace Kaleido.Client.Queryable;
 
-/// <summary>
-/// Resolves <see cref="IKaleidoQueryableClient"/> instances for the downstream services configured
-/// under <c>Kaleido:Clients</c>; registered by <c>AddHttpClients()</c>.
-/// </summary>
+/// <summary>Creates Queryable clients for services published by the central registry.</summary>
 public interface IKaleidoQueryableClientFactory
 {
-    /// <summary>
-    /// The client for the downstream service configured under <paramref name="name"/>.
-    /// </summary>
-    /// <param name="name">The client's configured name (its <c>Kaleido:Clients</c> key), matched case-insensitively.</param>
-    /// <returns>A client bound to that service's base address and route prefix.</returns>
-    /// <remarks>
-    /// A name that is not configured fails at the call with a <c>KaleidoConfigurationException</c>
-    /// (<c>httpclient_unknown_client</c>) listing the configured clients.
-    /// Use <see cref="TryGetClientForService"/> when starting from a registry entry.
-    /// </remarks>
-    IKaleidoQueryableClient GetClient(string name);
+    /// <summary>Queries the current version of a service, as the central registry names it.</summary>
+    /// <param name="serviceName">The published service name, compared without case.</param>
+    /// <returns>A client that resolves each query from the central registry's hydrated copy.</returns>
+    IKaleidoQueryableClient GetClient(string serviceName);
 
-    /// <summary>
-    /// The client for the downstream service named <paramref name="serviceName"/> (its route
-    /// prefix, as published in the registry's <c>serviceName</c>), when one is configured. Callers
-    /// that start from the registry (gateways, AI-tool adapters) know services, not client names.
-    /// </summary>
-    bool TryGetClientForService(
-        string serviceName,
-        [NotNullWhen(true)] out IKaleidoQueryableClient? client);
+    /// <summary>Queries the specified version of a service, including one used by a running process.</summary>
+    /// <param name="serviceName">The published service name, compared without case.</param>
+    /// <param name="serviceVersion">The version whose published query routes the calls must use.</param>
+    /// <returns>A client pinned to that service version.</returns>
+    IKaleidoQueryableClient GetClient(string serviceName, string serviceVersion);
 }

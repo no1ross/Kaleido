@@ -209,13 +209,14 @@ internal sealed partial class KaleidoToolInvoker
         {
             return await StateAsync(
                 answers.Service,
+                answers.ServiceVersion,
                 processId,
                 catalog,
                 $"The user did not confirm submitting the answers ({answer?.Action ?? "no answer"}). Nothing was submitted; the process is still waiting for them.",
                 cancellationToken);
         }
 
-        var pending = await PendingAsync(answers.Service, processId, cancellationToken);
+        var pending = await PendingAsync(answers.Service, answers.ServiceVersion, processId, cancellationToken);
 
         if (pending.Error is { } error)
         {
@@ -225,10 +226,10 @@ internal sealed partial class KaleidoToolInvoker
         if (!string.Equals(pending.Request.InformationRequestId, answers.InformationRequestId, StringComparison.Ordinal) ||
             !string.Equals(pending.Request.ExchangeId, answers.ExchangeId, StringComparison.Ordinal))
         {
-            return await StateAsync(answers.Service, processId, catalog, "The process is now asking different questions; the confirmed answers were not submitted.", cancellationToken);
+            return await StateAsync(answers.Service, answers.ServiceVersion, processId, catalog, "The process is now asking different questions; the confirmed answers were not submitted.", cancellationToken);
         }
 
-        var response = await SubmitAsync(answers.Service, pending.Step, pending.Request, answers.ExchangeId, answers.Items, processId, cancellationToken);
+        var response = await SubmitAsync(answers.Service, answers.ServiceVersion, pending.Step, pending.Request, answers.ExchangeId, answers.Items, processId, cancellationToken);
 
         return await FollowUpAsync(
             answers.Service,
@@ -237,7 +238,8 @@ internal sealed partial class KaleidoToolInvoker
             call with { InputResponses = null, RequestState = null },
             new JsonArray([.. answers.Answered.Select(x => (JsonNode?)x)]),
             answers.Round,
-            cancellationToken);
+            cancellationToken,
+            answers.ServiceVersion);
     }
 
     private static CallToolResult AnswersNotConfirmed(ProcessRequiredStep step, string action) =>
@@ -336,5 +338,6 @@ internal sealed partial class KaleidoToolInvoker
         string ExchangeId,
         InformationResponseItem[] Items,
         int Round,
-        string[] Answered);
+        string[] Answered,
+        string? ServiceVersion = null);
 }

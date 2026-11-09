@@ -54,7 +54,6 @@ public sealed class HandOffFixture : IAsyncLifetime
                         services.AddAuthentication(TestAuthHandler.SchemeName)
                             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
                         services.AddAuthorization();
-                        settings[$"Kaleido:Clients:{TargetService}:BaseUrl"] = "http://returns.test/";
                     }
 
                     services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(), new()
@@ -73,7 +72,7 @@ public sealed class HandOffFixture : IAsyncLifetime
 
                     if (targetServer is not null)
                     {
-                        services.AddHttpClient(TargetService).ConfigurePrimaryHttpMessageHandler(targetServer.CreateHandler);
+                        services.AddHttpClient(KaleidoClientTransport.ClientName).ConfigurePrimaryHttpMessageHandler(targetServer.CreateHandler);
                     }
                 });
                 web.Configure(app =>

@@ -89,9 +89,10 @@ public sealed class StoreRegistrySourceTests
 
         Assert.Equal(["OrderScanStep"], Assert.Single(view.Processes).Steps!.Select(x => x.Name));
         Assert.Equal("ScanSource", Assert.Single(view.Queryables).Name);
+        Assert.Equal(new RegistryTransportRoute { Transport = "http", GatewayRoute = "/radiology/2026-11" }, Assert.Single(Assert.Single(view.Registry.Routes).Transports));
         var status = Assert.Single(view.Services);
         Assert.Equal(
-            new RegistryServiceStatus { ServiceName = "radiology", ServiceVersion = "2026-11", IsCurrent = true, Status = RegistryCapabilityStatus.Available, ReadyInstances = 1, Instances = status.Instances },
+            new RegistryServiceStatus { ServiceName = "radiology", ServiceVersion = "2026-11", IsCurrent = true, Status = RegistryCapabilityStatus.Available, Transports = status.Transports, ReadyInstances = 1, Instances = status.Instances },
             status);
         Assert.Equal(
             new RegistryInstanceStatus { InstanceId = instance.InstanceId, State = RegistryInstanceState.Ready, LastHeartbeatUtc = Now },
@@ -387,6 +388,68 @@ public sealed class StoreRegistrySourceTests
         Assert.Equal(capabilities.Revision, afterAFailure.Revision);
     }
 
+    [Fact]
+    public async Task RollingDeployment_AdvertisesOnlyTransportBindingsEveryLiveRevisionSupports()
+    {
+        var sut = CreateSut();
+        var older = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []) with
+        {
+            Routes = [new RegistryServiceRoute { ServiceName = "radiology", ServiceVersion = "1", Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/radiology/1" }] }],
+        }, registered: Start);
+        var newer = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []) with
+        {
+            Routes = [new RegistryServiceRoute { ServiceName = "radiology", ServiceVersion = "1", Transports =
+            [
+                new RegistryTransportRoute { Transport = "http", GatewayRoute = "/radiology/1" },
+                new RegistryTransportRoute { Transport = "grpc", GatewayRoute = "/grpc/radiology/1" },
+            ] }],
+        }, registered: Start.AddMinutes(1));
+        contents = new() { Registrations = [newer, older], Instances = [Instance(older, Now), Instance(newer, Now)] };
+
+        var duringRollout = await sut.GetAvailabilityAsync(Cancel);
+        time.Advance(Defaults.Cache.ViewTtl);
+        contents = contents with { Instances = [Instance(newer, time.GetUtcNow())] };
+        var completedRollout = await sut.GetAvailabilityAsync(Cancel);
+
+        Assert.Equal(["http"], Assert.Single(duringRollout.Services).Transports.Select(x => x.Transport));
+        Assert.Equal(["http", "grpc"], Assert.Single(completedRollout.Services).Transports.Select(x => x.Transport));
+        Assert.NotEqual(duringRollout.Revision, completedRollout.Revision);
+    }
+
+    [Fact]
+    public async Task ATransportRouteChange_ChangesTheCapabilitiesAndAvailabilityRevisions()
+    {
+        var sut = CreateSut();
+        var first = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []) with
+        {
+            Routes = [new RegistryServiceRoute { ServiceName = "radiology", ServiceVersion = "1", Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/radiology/1" }] }],
+        });
+        contents = new() { Registrations = [first], Instances = [Instance(first, Now)] };
+        var before = await sut.GetAvailabilityAsync(Cancel);
+        var beforeStatus = await sut.GetStatusAsync(Cancel);
+
+        time.Advance(Defaults.Cache.ViewTtl);
+        var next = Stored("radiology", "1", Entry([ProcessorWith("radiology", "OrderScanStep")], []) with
+        {
+            Routes = [new RegistryServiceRoute { ServiceName = "radiology", ServiceVersion = "1", Transports =
+            [
+                new RegistryTransportRoute { Transport = "http", GatewayRoute = "/radiology/1" },
+                new RegistryTransportRoute { Transport = "grpc", GatewayRoute = "/grpc/radiology/1" },
+            ] }],
+        });
+        contents = contents with { Registrations = [next], Instances = [Instance(next, time.GetUtcNow())] };
+        var after = await sut.GetAvailabilityAsync(Cancel);
+        var afterStatus = await sut.GetStatusAsync(Cancel);
+        var registry = await sut.GetAsync(Cancel);
+
+        Assert.Equal(["http", "grpc"], Assert.Single(after.Services).Transports.Select(x => x.Transport));
+        Assert.Equal(["http", "grpc"], Assert.Single(afterStatus.Services).Transports.Select(x => x.Transport));
+        Assert.Equal(["http", "grpc"], Assert.Single(registry.Routes).Transports.Select(x => x.Transport));
+        Assert.NotEqual(before.CapabilitiesRevision, after.CapabilitiesRevision);
+        Assert.NotEqual(before.Revision, after.Revision);
+        Assert.NotEqual(beforeStatus.Revision, afterStatus.Revision);
+    }
+
     // The availability a host keeps fresh: each version's overall status, current version and address, no
     // instances. An instance joining within the same status changes nothing; a status flip does.
     [Fact]
@@ -405,7 +468,7 @@ public sealed class StoreRegistrySourceTests
         var degraded = await sut.GetAvailabilityAsync(Cancel);
 
         Assert.Equal(
-            new RegistryServiceAvailability { ServiceName = "radiology", ServiceVersion = "1", IsCurrent = true, Status = RegistryCapabilityStatus.Available },
+            new RegistryServiceAvailability { ServiceName = "radiology", ServiceVersion = "1", IsCurrent = true, Status = RegistryCapabilityStatus.Available, Transports = Assert.Single(first.Services).Transports },
             Assert.Single(first.Services));
         Assert.Equal(first.Revision, anotherInstance.Revision);
         Assert.NotEqual(first.Revision, degraded.Revision);
@@ -435,7 +498,8 @@ public sealed class StoreRegistrySourceTests
         Assert.Equal((await sut.GetCapabilitiesAsync(Cancel)).Revision, afterDeployment.CapabilitiesRevision);
         Assert.NotEqual(standard.CapabilitiesRevision, afterDeployment.CapabilitiesRevision);
         Assert.NotEqual(standard.Revision, slower.Revision);
-        Assert.Equal(standard.Services, afterDeployment.Services);
+        Assert.Equal(standard.Services.Select(x => (x.ServiceName, x.ServiceVersion, x.IsCurrent, x.Status)), afterDeployment.Services.Select(x => (x.ServiceName, x.ServiceVersion, x.IsCurrent, x.Status)));
+        Assert.Equal<RegistryTransportRoute>(Assert.Single(standard.Services).Transports, Assert.Single(afterDeployment.Services).Transports);
         Assert.NotEqual(standard.Revision, afterDeployment.Revision);
     }
 

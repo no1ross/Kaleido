@@ -1,70 +1,86 @@
 using System.Text.Json;
-using Kaleido.Platform;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Http.Client.Processor;
 
-// One configured client's process calls, as a keyed service (#498): the container passes the client
-// name ([ServiceKey]); what to call is this class's, how to send it the transport's. Step URLs come from
-// the route prefix, never from the registry: the registry is filtered per caller, so a cached copy
-// would answer for whoever fetched it first (#381).
+// A service's process calls resolve their published routes from the unfiltered central registry.
+// The factory pins a version when continuing a process; otherwise the registry's current version is used.
 internal sealed class KaleidoProcessorClient(
-    [ServiceKey] string clientName,
-    IKaleidoClientCatalog catalog,
+    string serviceName,
+    string? serviceVersion,
+    IKaleidoRegistryTargetResolver targets,
     IKaleidoClientTransport transport)
     : IKaleidoProcessorClient
 {
-    private readonly KaleidoClientDefinition _client = catalog.Require(clientName);
-
     // 404 is an unknown process here, which says nothing about the registry.
-    public Task<ProcessStateResponse?> GetProcessStateAsync(Guid processId, CancellationToken cancellationToken) =>
-        transport.SendOrNotFoundAsync<ProcessStateResponse>(
-            new KaleidoClientRequest(_client, HttpMethod.Get, ProcessContractUrls.ProcessState(_client.RoutePrefix, processId), $"Process state request for '{processId}'"),
-            cancellationToken);
+    public async Task<ProcessStateResponse?> GetProcessStateAsync(Guid processId, CancellationToken cancellationToken)
+    {
+        var (processor, route) = await ProcessorAsync(cancellationToken);
+        return await transport.SendOrNotFoundAsync<ProcessStateResponse>(
+            new KaleidoClientRequest(serviceName, HttpMethod.Get,
+                KaleidoPublishedHttpRoute.ProcessState(processor.ProcessStateUrlTemplate, processId, route.GatewayRoute),
+                $"Process state request for '{processId}'"), cancellationToken);
+    }
 
-    public Task<ProcessExecutionResponse> ExecuteAsync(
+    public async Task<ProcessExecutionResponse> ExecuteAsync(
         ExecuteProcessRequest request,
         string? idempotencyKey,
-        CancellationToken cancellationToken) =>
-        transport.SendAsync<ProcessExecutionResponse>(
-            Execute(ProcessContractUrls.Execute(_client.RoutePrefix), "Process execute request", request) with { IdempotencyKey = idempotencyKey },
-            cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        var (processor, route) = await ProcessorAsync(cancellationToken);
+        var call = Execute(KaleidoPublishedHttpRoute.RequirePath(processor.ExecuteUrl, route.GatewayRoute), "Process execute request", request);
+        return await transport.SendAsync<ProcessExecutionResponse>(call with { IdempotencyKey = idempotencyKey }, cancellationToken);
+    }
 
-    public Task<StepExecutionResponse> ExecuteStepAsync<TStep>(TStep processStep, CancellationToken cancellationToken)
+    public async Task<StepExecutionResponse> ExecuteStepAsync<TStep>(TStep processStep, CancellationToken cancellationToken)
         where TStep : class =>
-        transport.SendAsync<StepExecutionResponse>(
-            Execute(StepUrl(typeof(TStep).Name), "Process step request", new ExecuteStepRequest<TStep> { ProcessStep = processStep }),
+        await transport.SendAsync<StepExecutionResponse>(
+            Execute(await StepUrlAsync(typeof(TStep).Name, cancellationToken), "Process step request", new ExecuteStepRequest<TStep> { ProcessStep = processStep }),
             cancellationToken);
 
-    public Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(TStep processStep, CancellationToken cancellationToken)
+    public async Task<StepExecutionResponse<TResponse>> ExecuteStepAsync<TStep, TResponse>(TStep processStep, CancellationToken cancellationToken)
         where TStep : class =>
-        transport.SendAsync<StepExecutionResponse<TResponse>>(
-            Execute(StepUrl(typeof(TStep).Name), "Process step request", new ExecuteStepRequest<TStep> { ProcessStep = processStep }),
+        await transport.SendAsync<StepExecutionResponse<TResponse>>(
+            Execute(await StepUrlAsync(typeof(TStep).Name, cancellationToken), "Process step request", new ExecuteStepRequest<TStep> { ProcessStep = processStep }),
             cancellationToken);
 
-    public Task<StepExecutionResponse<JsonElement>> ExecuteStepAsync(
+    public async Task<StepExecutionResponse<JsonElement>> ExecuteStepAsync(
         string stepName,
         JsonElement processStep,
         Guid? processId,
         string? idempotencyKey,
         CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
-
-        var request = Execute(StepUrl(stepName), $"Process step request for '{stepName}'", new ExecuteStepRequest<JsonElement> { ProcessStep = processStep });
-
-        return transport.SendAsync<StepExecutionResponse<JsonElement>>(
-            request with { IdempotencyKey = idempotencyKey, ProcessId = processId },
-            cancellationToken);
+        var url = await StepUrlAsync(stepName, cancellationToken);
+        var request = Execute(url, $"Process step request for '{stepName}'", new ExecuteStepRequest<JsonElement> { ProcessStep = processStep });
+        return await transport.SendAsync<StepExecutionResponse<JsonElement>>(
+            request with { IdempotencyKey = idempotencyKey, ProcessId = processId }, cancellationToken);
     }
 
-    // Every execute call is idempotent (the caller's key, else its own); the central registry owns
-    // the discovery copy, so a 404 never invalidates a per-service registry.
+    // Every execute call is idempotent (the caller's key, else its own).
     private KaleidoClientRequest Execute(string url, string description, object body) =>
-        new(_client, HttpMethod.Post, url, description, body) { Idempotent = true };
+        new(serviceName, HttpMethod.Post, url, description, body) { Idempotent = true };
 
-    // The URL the service publishes for the step: its route segment is the lower-case name, kept one
-    // segment whatever the caller passes.
-    private string StepUrl(string stepName) =>
-        ProcessContractUrls.ExecuteStep(_client.RoutePrefix, Uri.EscapeDataString(stepName.ToLowerInvariant()));
+    private async Task<string> StepUrlAsync(string stepName, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
+        var (processor, route) = await ProcessorAsync(cancellationToken);
+        ProcessStepContract? step = processor.Steps?.FirstOrDefault(x => string.Equals(x.Name, stepName, StringComparison.OrdinalIgnoreCase));
+        step ??= processor.InitialSteps.FirstOrDefault(x => string.Equals(x.Name, stepName, StringComparison.OrdinalIgnoreCase));
+        return step is not null
+            ? KaleidoPublishedHttpRoute.RequirePath(step.ExecuteUrl, route.GatewayRoute)
+            : throw new KaleidoRegistryClientException(RegistryClientErrorCodes.RouteUnavailable,
+                $"The central registry does not publish step '{stepName}' on service '{serviceName}' version '{processor.ServiceVersion}'.");
+    }
+
+    private async Task<(ProcessorRegistryResponse Processor, RegistryTransportRoute Route)> ProcessorAsync(CancellationToken cancellationToken)
+    {
+        var target = await targets.ResolveAsync(serviceName, serviceVersion, ["http"], cancellationToken);
+        var processor = target.Registry.Processes.FirstOrDefault(x =>
+            string.Equals(x.ServiceName, serviceName, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.ServiceVersion, target.Service.ServiceVersion, StringComparison.Ordinal));
+        return processor is not null
+            ? (processor, target.Transport)
+            : throw new KaleidoRegistryClientException(RegistryClientErrorCodes.RouteUnavailable,
+                $"The central registry does not publish a processor for service '{serviceName}' version '{target.Service.ServiceVersion}'.");
+    }
 }

@@ -107,7 +107,7 @@ public sealed class MixedHostTests : IAsyncLifetime
     [Fact]
     public async Task AKaleidoEndpoint_EchoesTheRequestId()
     {
-        using var response = await SendAsync("/kaleido/processes/00000000-0000-0000-0000-000000000000", requestId: "req-1");
+        using var response = await SendAsync("/kaleido/1/processes/00000000-0000-0000-0000-000000000000", requestId: "req-1");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("req-1", Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
@@ -116,7 +116,7 @@ public sealed class MixedHostTests : IAsyncLifetime
     [Fact]
     public async Task AMalformedCorrelationHeader_OnAKaleidoEndpoint_IsKaleidos400()
     {
-        using var response = await SendAsync("/kaleido/processes/00000000-0000-0000-0000-000000000000", processId: "not-a-guid");
+        using var response = await SendAsync("/kaleido/1/processes/00000000-0000-0000-0000-000000000000", processId: "not-a-guid");
 
         await AssertArgumentErrorAsync(response, KaleidoCorrelationHeaders.ProcessId);
     }
@@ -124,7 +124,7 @@ public sealed class MixedHostTests : IAsyncLifetime
     [Fact]
     public async Task ANonGuidProcessId_InTheStateRoute_IsKaleidos400()
     {
-        using var response = await SendAsync("/kaleido/processes/not-a-guid");
+        using var response = await SendAsync("/kaleido/1/processes/not-a-guid");
 
         await AssertArgumentErrorAsync(response, "not-a-guid");
     }

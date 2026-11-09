@@ -83,9 +83,9 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
         endpoints.MapQueryable();
 
-        Assert.Null(FindEndpointByRoute(endpoints, "/data/queryable/test-context/metadata"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/query"));
-        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/queryable/test-context/test-view/query"));
+        Assert.Null(FindEndpointByRoute(endpoints, "/data/1/queryable/test-context/metadata"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/1/queryable/test-context/query"));
+        Assert.NotNull(FindEndpointByRoute(endpoints, "/data/1/queryable/test-context/test-view/query"));
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
         var log = Assert.Single(logger.Invocations, x => string.Equals(x.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal));
         Assert.Equal(LogLevel.Information, log.Arguments[0]);
         Assert.Equal(
-            "Queryable mapped at route prefix /data/queryable with 1 query sources and 1 views.",
+            "Queryable mapped at route prefix /data/1/queryable with 1 query sources and 1 views.",
             log.Arguments[2]?.ToString());
     }
 
@@ -293,7 +293,7 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
         builder.Services.AddSingleton(queryable.Object);
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry(sourceAuthorization, viewAuthorization, sourceDisplayName));
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, AuthorizationMode = mode });
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1", AuthorizationMode = mode });
 
         if (exceptionHandler is not null)
         {

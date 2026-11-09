@@ -1,4 +1,3 @@
-using Kaleido.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 
@@ -15,7 +14,6 @@ namespace Kaleido.Http.Client.Pipeline;
 /// handler it adds, so the container builds them.
 /// </remarks>
 internal sealed class KaleidoClientHandlerFilter(
-    IKaleidoClientCatalog catalog,
     IEnumerable<KaleidoClientHandlerRegistration> handlers)
     : IHttpMessageHandlerBuilderFilter
 {
@@ -44,9 +42,9 @@ internal sealed class KaleidoClientHandlerFilter(
         };
     }
 
-    // A configured client, or the control registry's client (#553) when this host takes part in it.
-    private bool IsKaleidoClient(string name) =>
-        catalog.Find(name) is not null
+    // Only the gateway and control registry clients carry Kaleido's caller credentials.
+    private static bool IsKaleidoClient(string name) =>
+        string.Equals(name, KaleidoClientTransport.ClientName, StringComparison.Ordinal)
         || string.Equals(name, KaleidoHttpRegistryClient.ClientName, StringComparison.Ordinal);
 }
 

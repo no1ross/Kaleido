@@ -27,7 +27,7 @@ internal sealed class LocalRegistrations(
         processorRegistries
             .Take(1)
             .SelectMany(x => x.Registrations)
-            .Select(r => responseFactory.CreateRegistryResponse(r, serviceOptions));
+            .Select(responseFactory.CreateRegistryResponse);
 
     public IEnumerable<QueryableSourceResponse> Queryables() =>
         queryableRegistries

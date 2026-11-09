@@ -2,6 +2,7 @@
 const Kaleido.Client.Registry.RegistryClientErrorCodes.EmptyResponse = "registryclient_empty_response" -> string!
 const Kaleido.Client.Registry.RegistryClientErrorCodes.InvalidResponse = "registryclient_invalid_response" -> string!
 const Kaleido.Client.Registry.RegistryClientErrorCodes.RequestFailed = "registryclient_request_failed" -> string!
+const Kaleido.Client.Registry.RegistryClientErrorCodes.RouteUnavailable = "registryclient_route_unavailable" -> string!
 Kaleido.Client.Calls.KaleidoCallContext
 Kaleido.Client.Calls.KaleidoCallContext.Caller.get -> System.Security.Claims.ClaimsPrincipal?
 Kaleido.Client.Calls.KaleidoCallContext.CallerAuthorization.get -> string?
@@ -19,15 +20,15 @@ Kaleido.Client.Processor.IKaleidoProcessorClient.ExecuteStepAsync<TStep, TRespon
 Kaleido.Client.Processor.IKaleidoProcessorClient.ExecuteStepAsync<TStep>(TStep! processStep, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Platform.Processor.StepExecutionResponse!>!
 Kaleido.Client.Processor.IKaleidoProcessorClient.GetProcessStateAsync(System.Guid processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Platform.Processor.ProcessStateResponse?>!
 Kaleido.Client.Processor.IKaleidoProcessorClientFactory
-Kaleido.Client.Processor.IKaleidoProcessorClientFactory.GetClient(string! name) -> Kaleido.Client.Processor.IKaleidoProcessorClient!
-Kaleido.Client.Processor.IKaleidoProcessorClientFactory.TryGetClientForService(string! serviceName, out Kaleido.Client.Processor.IKaleidoProcessorClient? client) -> bool
+Kaleido.Client.Processor.IKaleidoProcessorClientFactory.GetClient(string! serviceName) -> Kaleido.Client.Processor.IKaleidoProcessorClient!
+Kaleido.Client.Processor.IKaleidoProcessorClientFactory.GetClient(string! serviceName, string! serviceVersion) -> Kaleido.Client.Processor.IKaleidoProcessorClient!
 Kaleido.Client.Queryable.IKaleidoQueryableClient
 Kaleido.Client.Queryable.IKaleidoQueryableClient.QuerySourceAsync<TParameters, TResult>(string! source, Kaleido.Platform.Queryable.QueryApiRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
 Kaleido.Client.Queryable.IKaleidoQueryableClient.QuerySourceAsync<TResult>(string! source, Kaleido.Platform.Queryable.QueryApiRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
 Kaleido.Client.Queryable.IKaleidoQueryableClient.QueryViewAsync<TParameters, TView>(string! source, string! view, Kaleido.Platform.Queryable.QueryApiRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TView!>!>!
 Kaleido.Client.Queryable.IKaleidoQueryableClientFactory
-Kaleido.Client.Queryable.IKaleidoQueryableClientFactory.GetClient(string! name) -> Kaleido.Client.Queryable.IKaleidoQueryableClient!
-Kaleido.Client.Queryable.IKaleidoQueryableClientFactory.TryGetClientForService(string! serviceName, out Kaleido.Client.Queryable.IKaleidoQueryableClient? client) -> bool
+Kaleido.Client.Queryable.IKaleidoQueryableClientFactory.GetClient(string! serviceName) -> Kaleido.Client.Queryable.IKaleidoQueryableClient!
+Kaleido.Client.Queryable.IKaleidoQueryableClientFactory.GetClient(string! serviceName, string! serviceVersion) -> Kaleido.Client.Queryable.IKaleidoQueryableClient!
 Kaleido.Client.Registry.IKaleidoRegistryClient
 Kaleido.Client.Registry.IKaleidoRegistryClient.DeregisterAsync(System.Guid instanceId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Kaleido.Client.Registry.IKaleidoRegistryClient.GetAvailabilityAsync(string? etag, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Client.Registry.KaleidoRegistryDocument<Kaleido.Platform.Registry.KaleidoRegistryAvailability!>!>!

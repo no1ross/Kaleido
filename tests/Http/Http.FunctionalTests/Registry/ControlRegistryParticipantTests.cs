@@ -71,7 +71,10 @@ public sealed class ControlRegistryParticipantTests : IAsyncLifetime
 
         var processor = Assert.Single(served.Processes, x => x.ServiceName == BehaviorFixture.ServiceName);
         Assert.Equal(("1", RegistryCapabilityStatus.Available), (processor.ServiceVersion, processor.Status));
-        Assert.Contains(processor.InitialSteps, x => x.Name == BehaviorSteps.Start);
+        Assert.Contains(processor.InitialSteps, x => x.Name == BehaviorSteps.Start && x.ExecuteUrl == "/behavior/1/processes/steps/behaviorstartstep");
+        Assert.Equal("/behavior/1/processes/execute", processor.ExecuteUrl);
+        Assert.Equal("/behavior/1/processes/{processId}", processor.ProcessStateUrlTemplate);
+        Assert.Equal(new RegistryTransportRoute { Transport = "http", GatewayRoute = "/behavior/1" }, Assert.Single(Assert.Single(served.Routes, x => x.ServiceName == BehaviorFixture.ServiceName).Transports));
         Assert.Empty(served.Errors);
         Assert.Equal(
             [(BehaviorFixture.ServiceName, RegistryCapabilityStatus.Available), (Consumer, RegistryCapabilityStatus.Available)],

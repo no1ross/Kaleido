@@ -47,13 +47,14 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
                 .GetRequiredService<KaleidoServiceOptions>();
 
         var serviceName = serviceOptions.ServiceName;
+        var version = serviceOptions.ServiceVersion ?? throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidServiceVersion, "A Kaleido HTTP service must name the version in its routes.");
 
         var logger =
             endpoints.ServiceProvider
                 .GetRequiredService<ILoggerFactory>()
                 .CreateLogger("Kaleido.Queryable.Startup");
 
-        var routePrefix = QueryableContractUrls.QueryablePrefix(serviceName);
+        var routePrefix = QueryableContractUrls.QueryablePrefix(serviceName, version);
 
         var group =
             endpoints.MapGroup(
