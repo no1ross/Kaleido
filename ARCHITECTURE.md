@@ -11,7 +11,7 @@ Sixteen source projects occupy four layers (twelve shipped packages and four non
 placeholders):
 
 | Layer | Projects | Responsibility |
-|---|---|---|
+| --- | --- | --- |
 | Runtime | [`Kaleido`](./src/Kaleido/README.md) | Transport-free Process and Queryable runtimes, events and store contracts |
 | Shared bases | [`Kaleido.Platform`](./src/Platform/README.md), [`Kaleido.Server`](./src/Server/README.md), [`Kaleido.Client`](./src/Client/README.md) | Published contracts; inbound authorization/correlation; neutral clients and central-registry participation |
 | HTTP | [`Kaleido.Http`](./src/Http/Http/README.md), [`Kaleido.Http.Server`](./src/Http/Http.Server/README.md), [`Kaleido.Http.Client`](./src/Http/Http.Client/README.md) | Shared HTTP route shapes, service endpoints, and the one outbound gateway client |

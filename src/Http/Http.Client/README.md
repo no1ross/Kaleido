@@ -5,6 +5,7 @@ This project adapts neutral Process, Queryable and registry clients to HTTP. It 
 > How this project fits into a whole service, with tested examples: the [consumer guide](../../../docs/guide/README.md). This README is the reference for the project.
 
 See also:
+
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - [`../../AGENTS.md`](../../AGENTS.md)
 - [`../Http.Server/README.md`](../Http.Server/README.md)
@@ -15,19 +16,23 @@ See also:
 ## What lives here
 
 ### Central registry HTTP client
+
 - `KaleidoHttpRegistryClient` implements the neutral `IKaleidoRegistryClient` from `Kaleido.Client`: registration, heartbeat, deregistration and ETag-aware reads use the gateway's fixed `/registry` paths. The neutral `ControlRegistryRegistrar` and `CentralRegistrySource` own registration and the hydrated in-host copy. Process and Queryable clients resolve calls from the in-host unfiltered copy, never a per-service registry.
 
 ### Process client
+
 - `IKaleidoProcessorClient` (in `Kaleido.Client`) — typed interface for process state and step execution
 - `IKaleidoProcessorClientFactory` (in `Kaleido.Client`) — `GetClient(serviceName[, serviceVersion])` chooses the registry's current version or pins an ongoing process to its version
 - `KaleidoProcessorClient` — concrete HTTP client implementation
 
 ### Queryable client
+
 - `IKaleidoQueryableClient` (in `Kaleido.Client`) — interface for view and source queries (addressed by their published names)
 - `IKaleidoQueryableClientFactory` (in `Kaleido.Client`) — resolves a client by published service name, optionally pinned to a version
 - `KaleidoQueryableClient` — concrete HTTP client implementation
 
 ### Shared
+
 - `KaleidoHttpClientException` — reports non-success Process and Queryable responses (`StatusCode` and the service's `Errors`); registry calls raise the neutral `KaleidoRegistryClientException`.
 - `KaleidoHttpClientsServiceCollectionExtensions` — registers one gateway HTTP client via `AddHttpClients()`; Process and Queryable factories resolve the service and version from the central registry, with keyed injection available by service name
 
@@ -36,12 +41,14 @@ See also:
 ## When to use this project
 
 Use this project when a service needs to:
+
 - invoke process steps on a remote processor over HTTP
 - check the state of a remote process instance
 - query a remote query source or view
 - read the central registry through the gateway or hydrate an in-host copy of its metadata
 
 Typical scenarios:
+
 - one processor's handler must signal a required step on another processor
 - a process handler needs reference data from a remote Queryable service before executing
 - an orchestrator or gateway needs to drive remote process steps
@@ -144,13 +151,14 @@ Every call a Kaleido client makes - registry reads, queries, process execution -
 The pipeline, outermost first:
 
 | Stage | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | Total timeout | 30 s | Bounds a whole call, all attempts and delays included. |
 | Retry | 3 retries, 500 ms base delay, exponential with jitter | Retries **safe** requests after a transient failure: 5xx, 408, 429, a timeout, a connection error. |
 | Circuit breaker | opens at 50 % failures (at least 10 calls within 30 s), stays open 15 s | Stops calling a service that keeps failing; calls fail at once until it tries again. |
 | Attempt timeout | 10 s | Bounds one attempt. |
 
-**Only safe requests are retried:**
+### Safe retry rules
+
 - reads (`GET`, `HEAD`): registry, process state;
 - requests with an `Idempotency-Key` header. The process client sends a new key with every execute call (see below), so execute calls are retried too: the service runs the step at most once per key, and a retry gets the first attempt's answer. A keyed call answered **409 with `Retry-After`** (`pro_idempotency_in_progress`: the first attempt still runs) is retried after that delay; any other 409 is not.
 
@@ -178,7 +186,7 @@ timeout. `Kaleido:Clients:{name}:Resilience` is no longer accepted.
 The timeout, retry and circuit-breaker settings are those of `KaleidoResilienceSettings` (core), the same vocabulary the event relay uses under `Kaleido:Events:Resilience`; the two sections are bound independently and have their own defaults, so a client's `MaxRetryAttempts` never changes how often events are retried.
 
 | Setting | Default | |
-|---|---|---|
+| --- | --- | --- |
 | `Enabled` | `true` | `false` turns resilience off. |
 | `TotalTimeout` | `00:00:30` | A whole call, all attempts included. |
 | `AttemptTimeout` | `00:00:10` | One attempt. |
@@ -197,6 +205,7 @@ registered and read its first central view; dependency status comes from registr
 ## Idempotent execute calls
 
 The process client sends an `Idempotency-Key` (a new GUID) with **every execute call** - the generic execute and every step call. A retry of that call (by the resilience pipeline) re-sends the same key. The service admits the key before the step runs, so:
+
 - a retry after a lost response, or after an attempt timed out while the step still ran, gets the first attempt's answer (`Idempotent-Replayed: true`); the step runs at most once;
 - a retry while the first attempt still runs is answered 409 with `Retry-After`, and the client waits and asks again within its total timeout;
 - if the first attempt did not finish with an answer (the service stopped while it ran, or it failed after its step may have run), the call fails with `KaleidoHttpClientException` (`Code = httpclient_conflict`, service error `pro_idempotency_outcome_unknown`): it may or may not have run, so read the process state and decide.
@@ -211,7 +220,7 @@ This is not exactly-once for a handler's own external calls: a service that stop
 
 ## Usage
 
-### Process client
+### Process client usage
 
 Inject `IKaleidoProcessorClientFactory` and use the **published service name**, not a configured
 client alias. Without a version `GetClient(serviceName)` resolves the registry's current version;
@@ -238,7 +247,7 @@ var next = await radiology.ExecuteStepAsync(
 
 Keep the service version with each process id: the id alone cannot select a version. The typed `ExecuteStepAsync` identifies a published step by the payload's type name (`typeof(TStep).Name`), which must match the step name in the unfiltered central registry — the same name the remote service derives from its own step type. Use the remote step type itself, or a local mirror record with the **same type name**. Mirror records should not implement `IProcessStep`, so the calling service's own discovery does not register them as local steps. The process to continue travels in the `X-Kaleido-Process-Id` correlation header (propagated automatically from the current correlation context; the untyped overload's `processId` argument overrides it).
 
-### Queryable client
+### Queryable client usage
 
 Inject `IKaleidoQueryableClientFactory`; query a published service name, optionally pinning its
 version when a query belongs to an older process.
@@ -269,6 +278,7 @@ Sources and views are addressed by their **published names**, the remote type na
 ## Client behavior
 
 Both clients:
+
 - select a service's current or explicitly requested version and call its published step/query URL through the gateway; no route is constructed from a client prefix
 - validate that the URL is a safe relative path beneath that version's published logical route before carrying credentials
 - use the full hydrated central registry (not one filtered for another caller); no per-downstream registry cache or health probe exists
@@ -284,7 +294,7 @@ Every Kaleido client call - a step handler's handoff or lookup, a delegated quer
 a registry fetch, a heartbeat - is one of two kinds, decided by Kaleido (`KaleidoCallPurpose`):
 
 | `KaleidoCallPurpose` | When | It carries |
-|---|---|---|
+| --- | --- | --- |
 | `OnBehalfOfCaller` | the call is made while handling an inbound request (an MCP tool call, a step handler's call) | per `Kaleido:OnBehalfOfCalls`: the caller's token unchanged (`Forward`, the default), or the token the host's handler exchanged for the caller (`Exchange`) |
 | `ServiceOwn` | a registry fetch or refresh (shared by every caller), a heartbeat, or any call outside an inbound request | what the host's handlers set: typically the service's app-only token (client credentials) |
 
@@ -298,7 +308,10 @@ IdentityModel, Microsoft.Identity.Web). `KaleidoCallContext.Of(request)` tells a
 (`Purpose`), for whom (`Caller`) and the caller's token to exchange (`CallerAuthorization`; a credential:
 never log it).
 
-**Kaleido's guard runs last, whatever the handlers set:**
+#### Outbound token guard
+
+Kaleido's guard runs last, whatever the handlers set:
+
 - an anonymous caller's call carries nothing;
 - with `Forward`, a caller's call carries exactly the caller's token;
 - with `Exchange`, a caller's call must carry a token a handler set that is not the inbound one, or it is
@@ -370,9 +383,11 @@ inside it send `X-Kaleido-Process-Id: {processId}`, ahead of the request's corre
 it when the process id arrives as data rather than as a header (an MCP tool argument), so the called
 service records the call with its process. An explicit `processId` passed to
 `ExecuteStepAsync(stepName, step, processId)` still wins. The scope flows with the async call only.
+
 ## What this project does NOT do
 
 This project does not contain:
+
 - server-side endpoint mapping (see [`Kaleido.Http.Server`](../Http.Server/README.md))
 - runtime planning or execution logic (see [`Kaleido`](../../Kaleido/README.md))
 - process state management

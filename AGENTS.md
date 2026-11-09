@@ -5,11 +5,13 @@ This is the repository-level contributor guide for Kaleido: 12 shipped projects 
 ## Build and test commands
 
 ### SDK and target framework
+
 - **Building Kaleido needs the .NET 10 SDK** (`global.json`: 10.0.100, `rollForward: latestFeature`; C# 14). `global.json` searches the running `dotnet`'s own SDKs first, then `C:\dotnet`, where an SDK installed from a zip lives on a machine that allows no installer (#578). Moving to a newer SDK is a deliberate change with its own Issue. That's a requirement for framework contributors only.
 - **The published packages target `net8.0`** (`Directory.Build.props`), so any consumer on .NET 8 or later can use them. Don't raise `TargetFramework` because the SDK is newer; changing it is an explicit owner decision.
 
 ### Build and run tests
-```
+
+```text
 dotnet build Kaleido.slnx
 ./tools/test/Run-Tests.ps1                              # Debug; -Configuration Release to match CI
 ```
@@ -27,6 +29,7 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 **Warnings fail the build in every area (#406)** - `src/`, `tools/` and `tests/`, IDE code-style rules included - so the "0 warnings" gate is enforced, not only observed.
 
 CI (`build.yml`) also checks, and you run before committing:
+
 - whitespace and final newlines: `dotnet format whitespace --folder --include src/ tools/ tests/ docs/ --exclude '**/obj/**' '**/bin/**' --verify-no-changes` (drop `--verify-no-changes` to fix) (#462);
 - every Kaleido type or member named in the Markdown docs exists in the sources: `python3 tools/docs/check-doc-symbols.py` (ADRs are skipped as historical; a deliberate non-symbol in code style goes in the script's `ALLOWED` list with its reason);
 - every tracked local Markdown link, image and heading fragment resolves: `python3 tools/docs/check-local-links.py`; test the checker with `python3 tools/docs/test-check-local-links.py` (external URLs are never fetched; use `python` on Windows);
@@ -40,7 +43,7 @@ CI (`build.yml`) also checks, and you run before committing:
 One place owns each fact: a project's README lists its types and entry points, [`ARCHITECTURE.md`](./ARCHITECTURE.md) describes how the projects depend on each other and how a host registers them, and [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) describes the internals. This section states only what each project owns and must not own; link to those documents rather than repeating their type lists.
 
 | Project | Owns | Does not own |
-|---|---|---|
+| --- | --- | --- |
 | [`Kaleido`](./src/Kaleido/README.md) | Process and Queryable runtimes, eventing, store contracts, in-memory defaults | transport, ASP.NET Core, persistence technology |
 | [`Kaleido.Platform`](./src/Platform/README.md) | shared registry/wire contracts, JSON, headers and metadata; changes ripple into server and client | endpoint mapping, runtime planning |
 | [`Kaleido.Server`](./src/Server/README.md) | ASP.NET Core caller, authorization, correlation, filters, in-host registry view | protocol endpoints, runtime logic |
@@ -71,6 +74,7 @@ One place owns each fact: a project's README lists its types and entry points, [
 ## Coding conventions
 
 In [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); read the section before changing code it covers:
+
 - [Public API documentation](./docs/CONVENTIONS.md#public-api-documentation) - strong XML docs on every public member; every API change in `PublicAPI.Unshipped.txt` and ADR 0032.
 - [Primary constructors](./docs/CONVENTIONS.md#primary-constructors) and [nullable suppression](./docs/CONVENTIONS.md#nullable-suppression-operators) - when to convert; no `!`.
 - [Log levels](./docs/CONVENTIONS.md#log-levels) - Information is boundary signals only; caller errors are never Error.
@@ -103,12 +107,14 @@ GitHub Issues in `no1ross/Kaleido` are the system of record for active and histo
 **Write done criteria in the Issue before starting work.** Anything outside those criteria is a discovered item.
 
 **PR size: few, large PRs.** Each PR has a full CI, Sonar and CodeQL cycle and a review, so many small PRs cost more time than they save. Group a work package (for example, a whole analyzer rule family across all projects, or a feature with its docs and tests) into one PR:
+
 - One PR per work package, not one per project, file or rule. One PR may resolve several Issues (`Fixes #A`, `Fixes #B`).
 - No stacked PRs that must merge in a set order; branch from `master`.
 - Keep a large PR reviewable: separate commits per step, and a PR description with one section per topic (what changed and why).
 - Verification does not shrink with the PR count: build with 0 warnings and all tests before every commit, Sonar and CodeQL green on the PR.
 
 When something new surfaces while working an Issue:
+
 - Create a separate Issue **before** discussing a fix, and link it to the discovery Issue. Record its context, done criteria and relation rather than silently widening the current PR.
 - Classify the relation; never dismiss it as "unrelated":
   - `requires`: add a GitHub sub-issue; the parent cannot close until it is resolved

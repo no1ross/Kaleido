@@ -60,7 +60,7 @@ is stateless Streamable HTTP, so it needs no session affinity behind a load bala
 ## Tools
 
 | Tool | From | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `{service}_{source or view}` | each query source and view | Runs the query (search text, filters, sort, page, view parameters). Takes an optional `processId` where the host has processes (see below). |
 | `{service}_{step}` | each step | Executes the step; a step that is not initial needs the `processId`. |
 | `answer_information_request` | built in, when the central registry has visible processes | Submits the user's answers to the questions a process is waiting for. |
@@ -113,7 +113,7 @@ description, once per property (`service.Source.Field`), not once per tool.
 `[ProcessStep]`, so a client knows which calls need extra care:
 
 | MCP hint / description | Query tools | Step tools |
-|---|---|---|
+| --- | --- | --- |
 | `readOnlyHint` | `true` | `false` |
 | `destructiveHint` | `false` | `Destructive` (default `false`); description: "Cannot be undone." |
 | `openWorldHint` | `false` | `External` (default `false`); description: "Reaches outside systems." |
@@ -132,7 +132,7 @@ with `answer_information_request` or the user answers in forms (#516). Both swit
 without either, nothing is asked:
 
 | Client | What happens |
-|---|---|
+| --- | --- |
 | shows forms in the session | a form names the step, what it declares ("It cannot be undone.") and its inputs, with one unchecked "Run ... now" checkbox; the step runs only on accept with the box checked |
 | MRTR (2026-07-28) | the same form as an `input_required` round (`kaleido-confirm`); the retry runs the confirmed call only with an accepted, checked answer |
 | no forms | `mcp_confirmation_required`; nothing runs, and the user runs the step from a client that shows forms |
@@ -307,7 +307,7 @@ Use `All` for small hosts: every tool keeps its own typed definition and its own
 A tool call never fails at the protocol level: a problem comes back as a tool result with `isError: true` and one of the `McpErrorCodes`, so the agent can explain it or recover.
 
 | Code | When | What the agent is told to do |
-|---|---|---|
+| --- | --- | --- |
 | `mcp_unknown_tool` | The tool (or `call_tool`'s / `describe_tool`'s `name`) is not offered to this caller. | Use the current tool list, `next` or `search_tools`. |
 | `mcp_invalid_arguments` | A required argument is missing (named, with its description) or has the wrong shape. | Fix the arguments. |
 | `mcp_service_error` | The service refused or failed the call; its status and errors are included. A 5xx without errors does not pass the service's message through. | Explain the errors to the user. For a 5xx: check the arguments against the tool's inputs; if they are right, tell the user and do not repeat the same call. |
@@ -339,7 +339,7 @@ The agent (the model) and the MCP client are **untrusted input**. Everything tha
 runs on the server, whatever the agent says or the client shows:
 
 | The agent can... | What decides | Where |
-|---|---|---|
+| --- | --- | --- |
 | call any tool name | the caller's per-service access (the tool list is filtered per caller; a tool not in it is `mcp_unknown_tool` and the service is never called) | adapter + each service's authorization |
 | pass any arguments | each service's validation (`DataAnnotations`, query rules) | service |
 | claim the user agreed | nothing by default: prompt guidance (`confirm with the user`, destructive hints) is advice to well-behaved clients, **not consent**. With `RequireConfirmation`, a `RequiresConfirmation` step runs only after the user accepts the adapter's own form ([Confirmation](#confirmation)): the agent's claim is never accepted, but the client relays the form, so it is still not proof of consent. Questions that must come from the user are information requests: shown as forms where the client supports them, refused when the answers do not match the pending request | service + adapter |
