@@ -1,11 +1,11 @@
-# Kaleido.Http.Mcp
+# Kaleido.Mcp
 
-Publishes a Kaleido host's capabilities to AI agents as [MCP](https://modelcontextprotocol.io)
-tools. The tools are generated from the registry (the host's own capabilities, or the aggregate
-of its clients on a router), filtered per caller, and every call runs **as the caller**, through
-the Kaleido HTTP clients with the caller's token forwarded.
+Publishes central-registry capabilities to AI agents as [MCP](https://modelcontextprotocol.io)
+tools. Tools come from the hydrated registry filtered for each caller; calls use the unfiltered
+registry's published service-version routes through one gateway client **as that caller**. An
+OAuth-protected MCP host exchanges the agent's user token rather than forwarding it unchanged.
 
-> How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../../docs/guide/README.md). This README is the reference for the project.
 
 ```csharp
 builder.Services.AddAuthentication().AddJwtBearer();   // the host's own scheme: callers are authenticated by default
@@ -14,24 +14,29 @@ builder.Services.AddAuthorization();
 builder.Services
     .AddKaleido(builder.Configuration, new()
     {
-        ServiceName = "router",
-        Assemblies = [typeof(Program).Assembly], // required, even when the router has no capabilities of its own
+        ServiceName = "mcp-reader",
+        ServiceVersion = "1",
+        Assemblies = [typeof(Program).Assembly], // required, even without local capabilities
     })
+    .AddInMemoryStores()                              // local evaluation only
     .AddHttp()
-    .AddHttpClients()                                // Kaleido:OnBehalfOfCalls = Exchange (required, see Security)
-    .AddKaleidoClientHandler<TokenExchangeHandler>() // exchanges the agent's user's token for the services
+    .AddHttpClients()                                 // one gateway: Kaleido:BaseUrl
+    .AddControlRegistryClient()
+    .AddKaleidoClientHandler<TokenExchangeHandler>()  // Kaleido:OnBehalfOfCalls = Exchange
     .AddMcp(new() { ServerName = "priorauth" });
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapKaleidoHttp(new() { AggregateRegistry = true });
 app.MapKaleidoMcp("/mcp").RequireAuthorization();
 ```
 
-A complete, tested single-service host is the guide's
-[Publish it to AI agents](../../docs/guide/getting-started.md#6-publish-it-to-ai-agents-mcp); the
+Configure `Kaleido:BaseUrl` with the gateway's address and `Kaleido:OnBehalfOfCalls` with
+`Exchange`. The gateway sends `/registry` to the registry host and each versioned service path
+to that version's host; MCP does not aggregate configured downstream clients. A complete, tested
+single-service host is the guide's
+[Publish it to AI agents](../../../docs/guide/getting-started.md#6-publish-it-to-ai-agents-mcp); the
 exchange handler is shown in
-[Which token a service sends](../../docs/guide/callers-and-correlation.md#which-token-a-service-sends).
+[Which token a service sends](../../../docs/guide/callers-and-correlation.md#which-token-a-service-sends).
 
 Options (`KaleidoMcpOptions`, passed to `AddMcp(new() { ... })`; the `Kaleido:Mcp` configuration
 section overrides them setting by setting, ADR 0030): `ServerName`, `ServerVersion`, `Instructions`
@@ -44,11 +49,13 @@ Nothing is trimmed or replaced: a blank name, version or instructions setting, a
 listed tool, a negative round count or both instruction settings at once fail startup with
 `mcp_invalid_options`.
 
-Call `AddHttp()` and `AddHttpClients()` (with at least one client under `Kaleido:Clients`, and
-`Kaleido:OnBehalfOfCalls = Exchange`) **before** `AddMcp()`: it fails startup with `mcp_missing_http`,
-`mcp_missing_clients` or `mcp_on_behalf_of_calls_not_exchanged` otherwise. An `InstructionsFile` that does not exist fails with
-`mcp_missing_instructions_file`. The endpoint is stateless Streamable HTTP, so it needs no session
-affinity behind a load balancer.
+Call `AddHttp()`, `AddControlRegistryClient()` and `AddHttpClients()` with a gateway
+`Kaleido:BaseUrl` and `Kaleido:OnBehalfOfCalls = Exchange` **before** `AddMcp()`; otherwise
+startup fails with `mcp_missing_http`, `registry_not_configured`, `mcp_missing_clients` or
+`mcp_on_behalf_of_calls_not_exchanged`. `AddHttpClients()` rejects nonempty
+`Kaleido:Clients` entries. An
+`InstructionsFile` that does not exist fails with `mcp_missing_instructions_file`. The endpoint
+is stateless Streamable HTTP, so it needs no session affinity behind a load balancer.
 
 ## Tools
 
@@ -56,9 +63,15 @@ affinity behind a load balancer.
 |---|---|---|
 | `{service}_{source or view}` | each query source and view | Runs the query (search text, filters, sort, page, view parameters). Takes an optional `processId` where the host has processes (see below). |
 | `{service}_{step}` | each step | Executes the step; a step that is not initial needs the `processId`. |
-| `answer_information_request` | built in, when the host (or its aggregate) has processes | Submits the user's answers to the questions a process is waiting for. |
-| `get_process_state` | built in, when the host (or its aggregate) has processes | Where a process stands: state, completed and failed steps, next steps. |
+| `answer_information_request` | built in, when the central registry has visible processes | Submits the user's answers to the questions a process is waiting for. |
+| `get_process_state` | built in, when the central registry has visible processes | Where a process stands: state, completed and failed steps, next steps. |
 | `search_tools`, `describe_tool`, `call_tool` | built in, FrontDoor only | Find a tool by what it does; read one tool's full inputs; run any of the caller's tools by name. |
+
+Each ordinary tool is pinned to its published service version; two live versions with the same step
+have distinct tool identities and routes. `next.serviceVersion` and protected answers/form state
+preserve the version that asked a question. `get_process_state` accepts an optional
+`serviceVersion` for older processes; `answer_information_request` accepts it or recovers it from
+the protected `answersToken`. A process id by itself does not identify the version after a rollout.
 
 **Queries and the process id.** A query tool's `processId` argument is the adapter's, not the
 source's: the query is sent inside `IKaleidoProcessForwarding.ForwardProcess(processId)`, so it
@@ -96,7 +109,7 @@ shown where the field first appears in the tool (`filters`, else `searchText`, e
 the tools are built (the first request, and again whenever the registry changes) the adapter logs, at Warning, every capability, input and query field without a
 description, once per property (`service.Source.Field`), not once per tool.
 
-**Tool hints** ([ADR 0015](../../docs/decisions/0015-declared-step-behavior.md)) - what the implementer declared on
+**Tool hints** ([ADR 0015](../../../docs/decisions/0015-declared-step-behavior.md)) - what the implementer declared on
 `[ProcessStep]`, so a client knows which calls need extra care:
 
 | MCP hint / description | Query tools | Step tools |
@@ -189,7 +202,7 @@ Proposed answers open the form pre-filled; the user confirms or corrects them.
 ### Conditional questions
 
 A question with `enableWhen` applies only when earlier answers say so
-([ADR 0024](../../docs/decisions/0024-conditional-questions.md)). The adapter applies the conditions;
+([ADR 0024](../../../docs/decisions/0024-conditional-questions.md)). The adapter applies the conditions;
 the agent never sees them and only asks what it is handed:
 
 - **Forms** (MRTR and session) show one round at a time: first the questions with no condition, then
@@ -248,7 +261,7 @@ form - which carries exactly the call the user confirmed.
 **Several instances share one key ring.** A form shown by one instance can be answered on another, so
 every instance behind a load balancer uses the same Data Protection application name and key storage
 - configured by the host, with its own `AddDataProtection()` call; Kaleido adds none of its own
-settings. The [deployment guide](../../docs/guide/deployment.md#mcp-on-several-instances-one-key-ring)
+settings. The [deployment guide](../../../docs/guide/deployment.md#mcp-on-several-instances-one-key-ring)
 has the setup. A misconfiguration is reported, never silent: outside Development a host with no key
 storage configured logs a Warning at startup, and an instance that receives a form protected with a
 key it does not have logs a Warning naming the cause, counts it in `kaleido.mcp.states_refused`
@@ -263,7 +276,7 @@ chosen result instead of taking them from the caller).
 ## Front door
 
 With `Kaleido:Mcp:ToolListing = FrontDoor`
-([ADR 0016](../../docs/decisions/0016-mcp-front-door-tool-listing.md)), `tools/list` holds only:
+([ADR 0016](../../../docs/decisions/0016-mcp-front-door-tool-listing.md)), `tools/list` holds only:
 
 - the steps that can start a process;
 - the queries those steps declare with `[Lookup]` (what an agent needs before a process exists);
@@ -313,12 +326,12 @@ error, as the runtimes treat a refused request. A failure of the adapter or the 
 `error`, and its span is an error. The `kaleido.error.code` tag is always one of the codes above
 (`mcp_internal_error` for anything else), never a downstream service's own code.
 
-**Retries.** Tool calls go through the Kaleido clients: their resilience pipeline retries transient failures of one call with the same `Idempotency-Key`, so the service answers a retry it has already completed with the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#resilience)). When the *agent* calls a tool again (after a timeout, a lost answer, a restart), that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
+**Retries.** Tool calls go through the Kaleido clients: their resilience pipeline retries transient failures of one call with the same `Idempotency-Key`, so the service answers a retry it has already completed with the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../../Http/Http.Client/README.md#resilience)). When the *agent* calls a tool again (after a timeout, a lost answer, a restart), that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
 - a non-`[Repeatable]` step continuing a process, with the same inputs for the same process: same key, so the stored answer comes back (within the service's idempotency retention);
 - answers to one information request: same key for the same answers;
 - a `[Repeatable]` step, or an initial step starting a new process (no `processId`): a new key each time, because two such calls are two operations. Here a repeated call runs again; read the process (`get_process_state`) before repeating one whose outcome is unknown.
 
-Keys are scoped per service and caller, so two users never share an answer.
+Keys are scoped per service version and caller, so two users or versions never share an answer.
 
 ## Trust boundary
 
@@ -330,16 +343,16 @@ runs on the server, whatever the agent says or the client shows:
 | call any tool name | the caller's per-service access (the tool list is filtered per caller; a tool not in it is `mcp_unknown_tool` and the service is never called) | adapter + each service's authorization |
 | pass any arguments | each service's validation (`DataAnnotations`, query rules) | service |
 | claim the user agreed | nothing by default: prompt guidance (`confirm with the user`, destructive hints) is advice to well-behaved clients, **not consent**. With `RequireConfirmation`, a `RequiresConfirmation` step runs only after the user accepts the adapter's own form ([Confirmation](#confirmation)): the agent's claim is never accepted, but the client relays the form, so it is still not proof of consent. Questions that must come from the user are information requests: shown as forms where the client supports them, refused when the answers do not match the pending request | service + adapter |
-| put instructions in service text | nothing technical: tool and field descriptions, business messages and refusal reasons are written by the services the adapter aggregates and go to the model as they are. A compromised or careless service can try to steer the agent through them. The default instructions tell the agent to treat that text as data, never as instructions; the controls above (per-caller tools, service validation, the confirmation round) do not depend on the agent obeying | each service's authors (review what a service publishes) |
+| put instructions in service text | nothing technical: tool and field descriptions, business messages and refusal reasons are written by the services registered centrally and go to the model as they are. A compromised or careless service can try to steer the agent through them. The default instructions tell the agent to treat that text as data, never as instructions; the controls above (per-caller tools, service validation, the confirmation round) do not depend on the agent obeying | each service's authors (review what a service publishes) |
 | retry or abandon a call | idempotency keys on execute calls; a cancellation is recorded as one (a Warning), never a failure | client + service |
 | learn data it should not | which capabilities the caller may use (tools are filtered per caller; each service authorizes its own); which **records** a caller may see within a capability is the service's own logic (no case-level guardrails). Credentials and tool arguments are never written to logs or span tags | adapter + services |
 
 A tool call carries the token the host's handler exchanged for the agent's user, never the agent's
 token and never the host's own identity (#574); downstream services see that the call came
 through MCP and which tool started it (`Origin`/`OriginTool`, informational) and which application
-acted (`CallerActor`, from the token) - see [`docs/CORRELATION.md`](../../docs/CORRELATION.md).
+acted (`CallerActor`, from the token) - see [`docs/CORRELATION.md`](../../../docs/CORRELATION.md).
 Each row is covered by tests: `McpEndpointTests`, `McpContractTests` and `McpTrustTests` in
-`tests/Kaleido.Http.Mcp.FunctionalTests`.
+`tests/Mcp/Mcp.FunctionalTests`.
 
 ## The instructions resource
 
@@ -366,8 +379,8 @@ The instructions are guidance for well-behaved agents; nothing in them is a secu
 
 ## Integration example
 
-A router publishing two services to AI agents, with OAuth sign-in from MCP clients and per-service
-tokens:
+A separate MCP host exposing two services already registered centrally. The gateway routes each
+version to its own host; MCP clients sign in with OAuth, and the host exchanges their user's token:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -389,19 +402,22 @@ builder.Services.AddAuthorization();
 builder.Services
     .AddKaleido(builder.Configuration, new()
     {
-        ServiceName = "router",
+        ServiceName = "mcp-reader",
+        ServiceVersion = "1",
         Assemblies = [typeof(Program).Assembly],
+        TypeFilter = _ => false, // this reader publishes no local capabilities
         AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
     })
+    .AddInMemoryStores() // reader-only local example
     .AddHttp()
-    .AddHttpClients()                                   // Kaleido:Clients:intake, Kaleido:Clients:radiology
-    .AddKaleidoClientHandler<OnBehalfOfHandler>()       // the user's token exchanged (Kaleido.Http.Client README)
+    .AddHttpClients()                            // one gateway: Kaleido:BaseUrl
+    .AddControlRegistryClient()
+    .AddKaleidoClientHandler<OnBehalfOfHandler>() // exchanges the user's token
     .AddMcp(new() { ServerName = "priorauth" });
 
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapKaleidoHttp(new() { AggregateRegistry = true });
 app.MapKaleidoMcp("/mcp").RequireAuthorization();
 app.Run();
 ```
@@ -409,19 +425,17 @@ app.Run();
 ```json
 {
   "Kaleido": {
+    "BaseUrl": "https://gateway.internal/",
     "OnBehalfOfCalls": "Exchange",
-    "Clients": {
-      "intake": { "BaseUrl": "https://intake.internal/" },
-      "radiology": { "BaseUrl": "https://radiology.internal/" }
-    },
     "Mcp": { "AdditionalInstructions": "Start every request with an intake." }
   }
 }
 ```
 
-An agent connecting to `/mcp` signs the user in, lists the tools that user may use across both
-services, and every call reaches the service with a token exchanged for that user. The
-[PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) is a complete, runnable version.
+An agent connecting to `/mcp` signs the user in, lists the caller-visible tools from both
+services and calls their version-pinned gateway routes with an exchanged token. The
+[PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) is a separate repository;
+its package and gateway configuration move to this layout with its next framework upgrade.
 
 ## Security
 
@@ -430,14 +444,14 @@ services, and every call reaches the service with a token exchanged for that use
 - Every tool call is made **for the agent's user**: it carries the token the host's handler exchanged
   for that user (`Kaleido:OnBehalfOfCalls = Exchange`, required), and Kaleido guarantees it is never the
   agent's token and never the host's own service credential; an anonymous user stays anonymous
-  ([`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md#what-a-call-carries-the-callers-token-or-the-services-own-574), #574).
+  ([`Kaleido.Http.Client`](../../Http/Http.Client/README.md#what-a-call-carries-the-callers-token-or-the-services-own-574), #574).
   The services authorize the user, not the adapter.
 - Questions and lookups go to the user through forms where the client supports them; the model
   never answers for the user.
 - A process id is a bearer handle: the agent passes it as a tool argument, and any caller who knows
   it and passes the step's own checks can read and continue that process (no case-level guardrails).
   What that exposes, and where a host enforces case access, is in the
-  [threat model](../../docs/AUTHORIZATION.md#threat-model-the-process-id-is-a-bearer-handle).
+  [threat model](../../../docs/AUTHORIZATION.md#threat-model-the-process-id-is-a-bearer-handle).
 
 ## Sign-in from MCP clients (OAuth)
 

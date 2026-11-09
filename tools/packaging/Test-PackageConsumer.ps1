@@ -255,6 +255,7 @@ $runtimeReferences
     @"
 using System.ComponentModel;
 using Kaleido;
+using Kaleido.Client.Processor;
 using Kaleido.Http;
 using Kaleido.Http.Client.Registration;
 using Kaleido.Http.Client.Registry;
@@ -266,6 +267,7 @@ using Kaleido.Processor.Execution;
 using Kaleido.Provider.SQLite;
 using Kaleido.Registry;
 using Kaleido.Registry.Http;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 // Every runtime package in a clean consumer: a standalone registry and a service with HTTP, MCP and SQLite.
 var database = Path.Combine(Path.GetTempPath(), "kaleido-consumer-" + Guid.NewGuid().ToString("N") + ".db");
@@ -293,6 +295,7 @@ await registryApp.StartAsync();
 
 var registered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 var availabilityRead = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+var gatewayTarget = new TaskCompletionSource<Uri>(TaskCreationOptions.RunContinuationsAsynchronously);
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://127.0.0.1:0");
 builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -321,8 +324,11 @@ builder.Services
 
 builder.Services.AddTransient<RegistryRegistrationSignal>();
 builder.Services.AddHttpClient("kaleido-registry").AddHttpMessageHandler<RegistryRegistrationSignal>();
+builder.Services.AddTransient<GatewayRouteToService>();
+builder.Services.AddHttpClient("kaleido-gateway").AddHttpMessageHandler<GatewayRouteToService>();
 builder.Services.AddSingleton(registered);
 builder.Services.AddSingleton(availabilityRead);
+builder.Services.AddSingleton(gatewayTarget);
 
 var app = builder.Build();
 
@@ -335,12 +341,20 @@ app.MapKaleidoHttp();
 app.MapKaleidoMcp("/mcp");
 
 await app.StartAsync();
+gatewayTarget.TrySetResult(new Uri(app.Urls.First()));
 
 try
 {
     await registered.Task.WaitAsync(TimeSpan.FromSeconds(15));
     await availabilityRead.Task.WaitAsync(TimeSpan.FromSeconds(15));
     registryTime.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
+    var healthChecks = app.Services.GetRequiredService<HealthCheckService>();
+    using var readyTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+    while ((await healthChecks.CheckHealthAsync(check => check.Name == "kaleido-registration", readyTimeout.Token)).Status != HealthStatus.Healthy)
+    {
+        await Task.Delay(50, readyTimeout.Token);
+    }
+
     using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
     using var registryHttp = new HttpClient { BaseAddress = new Uri(registryApp.Urls.First()) };
 
@@ -359,6 +373,24 @@ try
         return 1;
     }
 
+    using var unversioned = await http.PostAsJsonAsync("/host/processes/steps/StartStep", new { processStep = new { } });
+    if (unversioned.StatusCode != System.Net.HttpStatusCode.NotFound)
+    {
+        Console.Error.WriteLine("unversioned route unexpectedly mapped");
+        return 1;
+    }
+
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        var client = scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient("host", "1");
+        var called = await client.ExecuteStepAsync(new StartStep(), CancellationToken.None);
+        if (called.Status != StepExecutionStatus.Completed)
+        {
+            Console.Error.WriteLine("registry-published gateway route did not complete the step");
+            return 1;
+        }
+    }
+
     // Any answer but 404 means the MCP endpoint is mapped (a GET without a session is refused).
     var mcp = await http.GetAsync("/mcp");
     if (mcp.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -367,7 +399,7 @@ try
         return 1;
     }
 
-    Console.WriteLine("consumer host: registry, step and MCP endpoint answered");
+    Console.WriteLine("consumer host: registry, versioned-only step, gateway client and MCP endpoint answered");
     return 0;
 }
 finally
@@ -396,6 +428,19 @@ public sealed class RegistryRegistrationSignal(TaskCompletionSource registered, 
         }
 
         return response;
+    }
+}
+
+public sealed class GatewayRouteToService(TaskCompletionSource<Uri> target) : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (request.RequestUri?.AbsolutePath.StartsWith("/host/1/", StringComparison.Ordinal) == true)
+        {
+            request.RequestUri = new Uri(await target.Task.WaitAsync(cancellationToken), request.RequestUri.PathAndQuery);
+        }
+
+        return await base.SendAsync(request, cancellationToken);
     }
 }
 

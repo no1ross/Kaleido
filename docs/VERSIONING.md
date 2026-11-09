@@ -59,8 +59,8 @@ Each package records its public API in two files in its project's `.PublicAPI` f
 
 ## Runtime
 
-- The packages target **`net8.0`**: a service runs on .NET 8 or later. `Kaleido.Http` and
-  `Kaleido.Http.Mcp` also need ASP.NET Core (`Microsoft.AspNetCore.App`).
+- The packages target **`net8.0`**: a service runs on .NET 8 or later. `Kaleido.Server`,
+  `Kaleido.Http.Server`, `Kaleido.Registry.Http` and `Kaleido.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`).
 - The repository builds with the **.NET 10 SDK** pinned in [`global.json`](../global.json) (#578). Moving to a newer SDK is a deliberate change with its own issue; the packages' target framework does not follow the SDK.
 - CI builds and tests on Linux with the .NET 8 runtime installed, so the target framework is the
   runtime the tests run on.

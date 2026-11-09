@@ -73,6 +73,11 @@ jobs:
     - name: Check guide snippets
       run: python3 tools/docs/check-guide-snippets.py
 
+    - name: Check local documentation links and fragments
+      run: |
+        python3 tools/docs/test-check-local-links.py
+        python3 tools/docs/check-local-links.py
+
     # Every AGENTS.md stays small enough for agent tooling to load it whole (#455).
     - name: Check AGENTS.md size
       run: python3 tools/docs/check-agents-size.py
@@ -146,7 +151,7 @@ jobs:
     # would double-count shared src assemblies; reportgenerator merges hits.
     # Scope is shipped src/ assemblies only - tests and analyzers (tools/) are excluded by
     # assembly. Not by path: reportgenerator's file filters are case-insensitive, and '*/tools/*' also
-    # matched src/Kaleido.Http.Mcp/Tools/ (#260).
+    # matched src/Mcp/Mcp/Tools/ (#260).
     - name: Merge coverage
       run: |
         dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11

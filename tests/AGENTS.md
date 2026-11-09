@@ -4,20 +4,24 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 
 | Test project | Tests code in |
 |---|---|
-| `Kaleido.UnitTests` | `src/Kaleido` (core runtime: bootstrap, Process, Queryable) |
-| `Kaleido.Http.UnitTests` | `src/Kaleido.Http` (endpoint filters, exception handler, correlation reader, endpoint extensions, queryable value normalizer) |
-| `Kaleido.Http.FunctionalTests` | `src/Kaleido.Http` and client contracts through TestServer |
-| `Kaleido.Http.Client.UnitTests` | `src/Kaleido.Http.Client` |
-| `Kaleido.Http.Mcp.UnitTests` | `src/Kaleido.Http.Mcp` (tool catalog and naming, schemas, the tool invoker) |
-| `Kaleido.Http.Mcp.FunctionalTests` | `src/Kaleido.Http.Mcp` through a real host and the SDK's MCP client |
-| `Kaleido.Http.Registry.UnitTests` | `src/Kaleido.Http.Registry` (registration and its trust, leases, the rolling-deployment rule, completeness, the in-memory store, the endpoints' mapping) |
-| `Kaleido.Http.Abstractions.UnitTests` | `src/Kaleido.Http.Abstractions` (the internal `HttpHeaderSanitizerExtensions` and contract types) |
-| `Kaleido.Provider.SQLite.UnitTests` | `src/Kaleido.Provider.SQLite` (the store contracts, the SQLite transactions and SQLite fidelity) |
-| `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Kaleido.Observability.OpenTelemetry` (registration of every Kaleido source/meter, `AddOpenTelemetry` options, copied telemetry names equal the owning constants) |
-| `Kaleido.Analyzers.UnitTests` | `tools/analyzers/Kaleido.Analyzers` (consumer `KAL2xxx` rules) |
-| `Kaleido.Analyzers.Source.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Source` (contributor `KAL0xxx` rules) |
-| `Kaleido.Analyzers.Testing.UnitTests` | `tools/analyzers/Kaleido.Analyzers.Testing` (test `KAL1xxx` rules) |
-| `Kaleido.IntegrationTests` | cross-project DI and EF Core registration behavior; the calls a step handler or delegated source makes for the caller through a real host (`CallerCredentials/`); the consumer guide's examples (`Guide/`, over `docs/guide/examples`), run as each guide page states them |
+| `Kaleido.UnitTests` | `src/Kaleido` core runtime |
+| `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |
+| `Kaleido.Server.UnitTests` | `src/Server` authorization, caller/correlation and registry filtering |
+| `Kaleido.Client.UnitTests` | `src/Client` participation, hydration and transport selection |
+| `Kaleido.Http.UnitTests` | `src/Http/Http` versioned URL and route shapes |
+| `Kaleido.Http.Server.UnitTests` | `src/Http/Http.Server` endpoint adapters |
+| `Kaleido.Http.Client.UnitTests` | `src/Http/Http.Client` HTTP clients and handlers |
+| `Kaleido.Http.FunctionalTests` | HTTP server/client contracts with TestServer and the central registry |
+| `Kaleido.Registry.UnitTests` | `src/Registry/Registry` registration, trust, leases, views, cache and store |
+| `Kaleido.Registry.Http.UnitTests` | `src/Registry/Registry.Http` endpoint mapping |
+| `Kaleido.Mcp.UnitTests` | `src/Mcp/Mcp` catalogs, schemas, tool invoker and naming |
+| `Kaleido.Mcp.FunctionalTests` | MCP over a real host and the SDK client |
+| `Kaleido.Provider.SQLite.UnitTests` | `src/Providers/Provider.SQLite` store and transaction fidelity |
+| `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Observability/Observability.OpenTelemetry` registration and telemetry names |
+| `Kaleido.Analyzers.UnitTests` | consumer `KAL2xxx` rules |
+| `Kaleido.Analyzers.Source.UnitTests` | contributor `KAL0xxx` rules |
+| `Kaleido.Analyzers.Testing.UnitTests` | test `KAL1xxx` rules |
+| `Kaleido.IntegrationTests` | cross-project DI, EF Core, caller credentials and compiled consumer-guide examples |
 
 ## Warnings
 Test projects build like `src/`: a warning is an error, and IDE code-style rules (unused usings, naming,
@@ -113,7 +117,7 @@ shared fixtures publish.
 - `ClientFactory` — the Kaleido client factory wired against the TestServer (use for client-level tests)
 - `TestServer` — the underlying `TestServer` instance (use when a test needs its own `CreateHandler()`)
 
-Both fixtures are in `tests/Kaleido.Http.FunctionalTests`.
+Both fixtures are in `tests/Http/Http.FunctionalTests`.
 
 ### Real authentication: the shared test identity (#574)
 Tests of who may call, and of what a call carries for its caller, authenticate as a production service does: ASP.NET's JWT bearer handler over real signed tokens, not a header-driven test scheme.
@@ -141,7 +145,7 @@ returns a manually-composed `HttpClient`:
 var captureHandler = new RequestCaptureHandler() { InnerHandler = fixture.TestServer.CreateHandler() };
 var httpClient = new HttpClient(captureHandler) { BaseAddress = new Uri("http://localhost/") };
 
-services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("my-client", httpClient));
+services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("kaleido-gateway", httpClient));
 ```
 
 The `FixedHttpClientFactory` pattern used in `ProcessClientHeaderTests` and

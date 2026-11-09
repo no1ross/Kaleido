@@ -150,4 +150,4 @@ kaleido
 - The outbox store contract, the relay's options (batch size, concurrency, retries):
   [`Kaleido` README](../../src/Kaleido/README.md).
 - The SQLite outbox, and an outbox store of your own joining its transaction:
-  [SQLite provider README](../../src/Kaleido.Provider.SQLite/README.md).
+  [SQLite provider README](../../src/Providers/Provider.SQLite/README.md).

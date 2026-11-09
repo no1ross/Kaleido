@@ -2,7 +2,7 @@
 
 Optional OpenTelemetry provider for Kaleido. Wires full observability (structured logs, distributed traces, metrics) into a Kaleido service in a single call, exporting via OTLP to any compatible backend (Elastic APM, Grafana, Honeycomb, Jaeger, Datadog, etc.).
 
-> How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../../docs/guide/README.md). This README is the reference for the project.
 
 ## Quick start
 
@@ -92,7 +92,7 @@ With all three signals off, nothing is registered.
 
 ## What Kaleido measures
 
-Kaleido emits telemetry only for what only Kaleido can observe: the Process and Queryable runtimes, the event outbox and relay, store providers and the MCP adapter ([ADR 0014](../../docs/decisions/0014-kaleido-telemetry-only-what-kaleido-observes.md)). Host and transport statistics - request rates, status codes, latencies - come from the host's own instrumentation (ASP.NET Core, HttpClient), which `HostInstrumentation` adds for convenience. There is no Kaleido HTTP meter: Kaleido's error codes are in the response body and the logs.
+Kaleido emits telemetry only for what only Kaleido can observe: the Process and Queryable runtimes, the event outbox and relay, store providers and the MCP adapter ([ADR 0014](../../../docs/decisions/0014-kaleido-telemetry-only-what-kaleido-observes.md)). Host and transport statistics - request rates, status codes, latencies - come from the host's own instrumentation (ASP.NET Core, HttpClient), which `HostInstrumentation` adds for convenience. There is no Kaleido HTTP meter: Kaleido's error codes are in the response body and the logs.
 
 ## Granular API
 

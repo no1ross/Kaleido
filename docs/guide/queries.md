@@ -29,7 +29,7 @@ flowchart LR
 
 ## The query a caller sends
 
-`POST /{service}/queryable/{Source}/query`, or `/{service}/queryable/{Source}/{View}/query`:
+`POST /{service}/{version}/queryable/{Source}/query`, or `/{service}/{version}/queryable/{Source}/{View}/query`:
 
 ```json
 {
@@ -53,7 +53,7 @@ flowchart LR
 - It **counts** the total only when the page cannot tell (a full page, or an empty page past the
   start); `totalCount` is always the number of matching results.
 
-The wire contract: [`Kaleido.Http` README](../../src/Kaleido.Http/README.md).
+The query wire contract and endpoint behavior: [`Kaleido.Http.Server` README](../../src/Http/Http.Server/README.md). Source and view URLs are published per service version in the central registry; .NET clients use those `QueryUrl` values rather than constructing paths.
 
 ## Views
 
@@ -158,7 +158,7 @@ public sealed class ShippingRateSource
 Kaleido validates the caller's query against `ShippingRateQueryContext` first, then hands the request
 (query and parameters) to the source, and returns its `QueryResult` **untouched**, paging included:
 the order and the total are the downstream's. Forwarding the query to another Kaleido service:
-`query.ToApiBody()` (`Kaleido.Http.Abstractions`).
+`query.ToApiBody()` (`Kaleido.Platform`).
 
 ## Who may query, and which rows
 

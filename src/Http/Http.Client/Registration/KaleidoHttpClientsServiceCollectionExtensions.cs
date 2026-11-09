@@ -13,9 +13,8 @@ namespace Kaleido.Http.Client.Registration;
 public static class KaleidoHttpClientsServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers named Kaleido Process and Queryable clients from configuration.
-    /// Reads <c>Kaleido:Clients</c> configuration section and registers both Process and Queryable clients
-    /// for each configured client name.
+    /// Registers one gateway HTTP client at <c>Kaleido:BaseUrl</c> for Process and Queryable calls.
+    /// Client factories resolve published service/version routes from the hydrated central registry.
     /// </summary>
     public static IKaleidoBuilder AddHttpClients(this IKaleidoBuilder builder)
     {

@@ -1,16 +1,18 @@
-# Kaleido.Http.Registry
+# Kaleido.Registry
 
 The control registry (#553): the central registry every Kaleido service registers with and heartbeats
 to. It keeps one record per service and version, each instance's status, and each service's current
 version. It serves the registry to everyone through one endpoint: the full registry to the other Kaleido
 hosts, and to any other caller (the UI, a user) only what that caller may use. It makes no outbound calls.
 
-> **Status:** the registry itself (PR 1 of #553, [ADR 0037](../../docs/decisions/0037-the-control-registry.md)).
-> Versioned routes everywhere with a required `ServiceVersion`, wording overrides and the admin UI follow.
+> [ADR 0040](../../../docs/decisions/0040-central-registry-only-and-versioned-routes.md) supersedes
+> the earlier staged design in [ADR 0037](../../../docs/decisions/0037-the-control-registry.md).
+> HTTP services now map versioned routes; the registry and gateway never infer instance addresses.
 
 ## A registry host
 
-The registry is a Kaleido host with no capabilities of its own:
+The registry is a Kaleido host with no capabilities of its own. Reference `Kaleido.Registry.Http`
+for the fixed HTTP API; supply a durable `IKaleidoRegistryStore` in production:
 
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, new()
@@ -38,10 +40,10 @@ app.MapKaleidoControlRegistry();
 | `POST /registry/instances` | an instance, with its service's own token | `RegistryLease`; 403 `registry_registrant_not_allowed`; 400 `registry_invalid_registration` |
 | `PUT /registry/instances/{instanceId}/heartbeat` | the instance (`RegistryHeartbeat`: its local health) | `RegistryLease`; 404 `registry_instance_unknown` (register again) |
 | `DELETE /registry/instances/{instanceId}` | the instance, at shutdown | 204; 404 |
-| `GET /registry` | everyone | the registry, in one call (`KaleidoRegistry`): every processor and query source with its overall `Status`, and `Missing`, with an ETag, 304 and `?strict`. Unfiltered for a Kaleido host (`ReaderPolicy`); for any other caller, only the capabilities it may use (by each one's published authorization), with its own ETag |
-| `GET /registry/capabilities` | a Kaleido host keeping its copy fresh, when the availability names a new revision | the capabilities alone (no statuses), with an ETag that changes only with a deployment; 403 for anyone else |
-| `GET /registry/availability` | a Kaleido host keeping its copy fresh | each service version's overall status and current version, no instances (`KaleidoRegistryAvailability`), with an ETag that changes only when one of those does; 403 for anyone else |
-| `GET /registry/status` | operations, the registry's UI | each service version's status in detail, its instances included (`KaleidoRegistryStatus`), with its own ETag (heartbeat times alone do not change it); 403 for anyone else |
+| `GET /registry` | everyone | `KaleidoRegistry`: processors, query sources, logical version routes, overall status and `Missing`, with ETag, 304 and `?strict`. Unfiltered for a Kaleido host (`ReaderPolicy`); otherwise capability- and route-filtered for that caller, with its own ETag |
+| `GET /registry/capabilities` | a Kaleido host when availability names a new revision | capabilities and versioned transport bindings (no statuses), with an ETag that changes on a capability or route change; 403 for anyone else |
+| `GET /registry/availability` | a Kaleido host keeping its copy fresh | each service version's status, current marker and published transports, no instances (`KaleidoRegistryAvailability`), with an ETag; 403 for anyone else |
+| `GET /registry/status` | operations, the registry's UI | each service version's status, published transports and instances (`KaleidoRegistryStatus`), with its own ETag (heartbeat times alone do not change it); 403 for anyone else |
 
 Every endpoint is described for OpenAPI (tag `Control registry`, summary, description, what it accepts,
 its success type and each error it can answer, as a `KaleidoErrorResponse`), as the process endpoints
@@ -51,10 +53,14 @@ are (#564 brings every Kaleido endpoint to the same).
   instance. An instance whose heartbeats stop is no longer ready once its lease runs out
   (`HeartbeatInterval` x `MissedHeartbeats`, default 30 s), and it is removed after `Retention`
   (default 24 h).
-- **One record per service version.** A registration carries the instance's capabilities. Instances of
-  the same build share one revision (a hash of the capabilities), stored once.
-- **Rolling deployments.** A version publishes only the steps and query sources every ready instance's
-  revision shares, as the longest-running revision defines them.
+- **One revision per published shape.** A registration carries the instance's capabilities and its
+  service version's transport bindings (`RegistryTransportRoute`: `http` by default, later `grpc`)
+  with public logical gateway paths, never addresses. Identical registrations share one hash of
+  that shape; changing a route makes a new capabilities revision without a store schema change.
+- **Rolling deployments.** A version publishes only the steps and query sources every live revision
+  shares, as the longest-running revision defines them. Only transports all live revisions support
+  are advertised; the oldest revision's binding wins until it leaves. No common transport makes
+  the version `Unavailable`.
 - **One status per capability.** Every processor and query source carries its service version's overall
   status (`RegistryCapabilityStatus`), so a consumer - MCP, a router serving its users - knows what is
   working without reading any instance:
@@ -80,10 +86,9 @@ are (#564 brings every Kaleido endpoint to the same).
 - **Who may register, and who reads.** See [Trust](#trust): service applications only, each as itself;
   Kaleido hosts only, unfiltered.
 - **One call to consume, two to sync.** A consumer reads `GET /registry`: everything in one call. A
-  Kaleido host keeping its copy fresh checks `/registry/capabilities` (changes with a deployment) and
-  `/registry/availability` (changes when a version's overall status does) apart, each with its own ETag,
-  and composes the same registry from them: a few hundred hosts download the capabilities again only
-  when they change, and never the instances.
+  Kaleido host checks `/registry/availability` at the registry's pace and fetches
+  `/registry/capabilities` only when `CapabilitiesRevision` changes. Each document has its own ETag:
+  many hosts download capabilities only when their published shape changes, never the instances.
 - **Completeness.** `Kaleido:Registry:Expected` lists the processor versions the environment needs; one
   not registered, or a service a published step looks up and nobody registered, is listed in `Missing`
   and makes the registry partial (`?strict` answers 502).
@@ -91,10 +96,10 @@ are (#564 brings every Kaleido endpoint to the same).
 ## What the registry does not know
 
 Where anything runs. A service never registers an address or a host: the router maps each
-`/{service}/{version}` route to that version's endpoint, from its own configuration, deployed with each
-version (#553, PR 2). The registry describes what exists - services, versions, capabilities, statuses and
-their logical routes - so no registration can redirect traffic, and no host or DNS name ever needs to be
-kept in step with it.
+`/{service}/{version}` route to that version's host, from its own configuration deployed with the
+version. The registry describes services, versions, capabilities, statuses and logical routes, and
+rejects registrations with absolute or unsafe paths. No registration can redirect credential-bearing
+traffic to a host or DNS name.
 
 ## Trust
 

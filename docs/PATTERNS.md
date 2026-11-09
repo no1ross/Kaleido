@@ -122,7 +122,7 @@ Rules:
   input of the group is enough.
 - Kaleido publishes the link in the registry and never picks the record: a UI renders a lookup,
   and the MCP adapter guides the agent or runs a guided lookup with forms
-  ([MCP README](../src/Kaleido.Http.Mcp/README.md#lookups)).
+  ([MCP README](../src/Mcp/Mcp/README.md#lookups)).
 - A lookup guides; it does not enforce. The step's handler still checks what it receives (for
   example that the enrollment belongs to the member).
 
@@ -179,11 +179,13 @@ Full model: [`INFORMATION_REQUESTS.md`](./INFORMATION_REQUESTS.md).
 services.AddKaleido(builder.Configuration, new()
 {
     ServiceName = "intake", // lowercase letters, digits, '-' and '_' (KAL2005)
+    ServiceVersion = "1",  // required for versioned HTTP routes
     Assemblies = [typeof(Program).Assembly], // explicit — never omit (KAL2006)
 })
     .AddContextStore<IntakeContextStore>()          // every store in use is chosen (ADR 0028):
     .AddIdempotencyStore<IntakeIdempotencyStore>()  // durable, or AddInMemoryStores() for development
-    .AddHttp();
+    .AddHttp()
+    .AddControlRegistryClient(); // Kaleido:BaseUrl names the gateway to the central registry
 ```
 
 `AddKaleido()` auto-registers Processor + Queryable runtimes and registers the
@@ -192,11 +194,11 @@ service's `KaleidoServiceOptions`.
 **Options are immutable; configuration overrides code** ([ADR 0030](decisions/0030-options-are-immutable-configuration-overrides-code.md)).
 Every options type is a record with `get; init;` and defaults. A registration takes
 an optional options object - `AddKaleido(configuration, new() { ... })`,
-`AddHttp(new() { ... })`, `MapKaleidoHttp(new() { ... })`,
-`AddOpenTelemetry(new() { ... })`, `AddMcp(new() { ... })` - naming only what
-differs from the defaults, and lays its configuration section over a copy of it
-(`Kaleido`, `Kaleido:Http`, `Kaleido:Http:Map`, `Kaleido:Clients` and
-`Kaleido:Resilience`, `Kaleido:OpenTelemetry`, `Kaleido:Mcp`). Precedence, lowest
+`AddHttp(new() { ... })`, `AddOpenTelemetry(new() { ... })`, `AddMcp(new() { ... })`
+- naming only what differs from the defaults, and lays its configuration section
+over a copy of it (`Kaleido`, `Kaleido:Http`, `Kaleido:Resilience`,
+`Kaleido:Registry:Cache`, `Kaleido:OpenTelemetry`, `Kaleido:Mcp`). `MapKaleidoHttp()`
+takes no options; `Kaleido:Clients` is no longer an endpoint configuration. Precedence, lowest
 to highest: Kaleido's defaults, code, configuration - each environment can change a
 setting without a code change. Kaleido never changes a value it is given: a blank,
 out-of-range or unreadable setting stops startup with an error naming it.
@@ -214,17 +216,19 @@ generates one. All filters are internal; hosts never register them (#295).
 
 ### Changing a step, source or view
 
-A capability has no version: its name is its identity, and one definition per name is live
-([ADR 0029](decisions/0029-capabilities-have-no-version.md), [ADR 0026](decisions/0026-versioning-concept.md)).
-A changed registry has a new ETag, which is how clients notice a deployment.
+A capability has no independently declared version attribute: its type name identifies it inside
+its **service version** ([ADR 0029](decisions/0029-capabilities-have-no-version.md),
+[ADR 0040](decisions/0040-central-registry-only-and-versioned-routes.md)). Several service
+versions may publish that name concurrently. A changed capability or logical route changes the
+registry revision; hosts hydrate it at the registry's pace.
 
 - **Compatible** (keep the name): wording, a new optional input, a new output field.
-- **Breaking** (publish a new capability, e.g. `CaptureMemberStepV2`): removing, renaming or
-  requiring an input; changing a type or a value's meaning; relationships that would strand stored
-  processes.
-- **In-flight processes continue on the deployed definition.** Completed steps stay in their
-  history. To retire a step, close it first (`AvailableUntil`), and remove it in a later deployment,
-  once no stored process can require it.
+- **Breaking** (publish a new capability name such as `CaptureMemberStepV2`, or deploy a new
+  service version): removing, renaming or requiring an input; changing a type or value's meaning;
+  relationships that would strand stored processes.
+- **In-flight processes stay on their service version.** Its URLs and registry metadata pin the
+  version; keep that host and gateway route while processes may still require it. To retire a step
+  within a version, close it first (`AvailableUntil`), then remove it when no process needs it.
 
 ## Transport-neutral response semantics
 
@@ -243,11 +247,11 @@ What Kaleido guarantees, and what stays with the step handler:
 
 - **Concurrent calls cannot overwrite a process.** Every save is conditional on the version the state was loaded with; the second of two concurrent calls gets **409** `pro_process_conflict` and nothing of it is saved. Consumers read the state again and decide; they never repeat the call blindly.
 - **Retried calls do not run a step twice.** An execute request with an `Idempotency-Key` (the Kaleido clients send one with every execute call) is answered from the stored result when it arrives again. Third-party callers send their own key per logical call.
-- **Client calls are resilient by default:** timeouts, retries of safe requests (reads and requests with an idempotency key), a circuit breaker - configured under `Kaleido:Resilience`, per client in `Kaleido:Clients:{name}:Resilience` ([`Kaleido.Http.Client`](../src/Kaleido.Http.Client/README.md#resilience)).
+- **Client calls are resilient by default:** the one gateway client and central-registry client use timeouts, retries of safe requests (reads and calls with an idempotency key), and a circuit breaker, configured under `Kaleido:Resilience` ([`Kaleido.Http.Client`](../src/Http/Http.Client/README.md#resilience)).
 - **A handler's own side effects are the handler's concern.** On a 409 the handler has already run; only the process state was not saved. A handler that writes to another system or calls one should make that write idempotent (an upsert, a business key, the process id as a reference) so running the step again for the same process is harmless - Kaleido cannot make a handler's external write atomic with its state.
 - **Events are handed to the publisher at least once.** Every service writes every event to its outbox store (a step's `StepCompleted` and a new process's `ProcessCreated` in the same transaction as the state when the persistence provides one, e.g. SQLite), and needs no publisher. The relay - `AddOutboxRelay<TPublisher>()` on one host per outbox database, a service or a host with nothing else - publishes every entry in that database, retrying with backoff until it succeeds - configured under `Kaleido:Events` (`BatchSize`, `MaxConcurrentPublishes`, `Resilience`). A publisher never slows down or fails a request. There is no ordering guarantee: consumers drop duplicates by `IKaleidoEvent.EventId` and order a process's events by `ProcessEventContext.ProcessVersion` ([ADR 0012](decisions/0012-events-at-least-once-through-the-store.md), [ADR 0036](decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)).
 - **Event payloads are complete; sensitive values are redacted before the outbox.** Mark PHI/PII properties of your view, source and step types with your own `DataClassificationAttribute` subclasses (`[PHI]`, `[PII]`; `[property: PHI]` on positional records) and choose a redactor per classification for events with `AddEventRedaction(r => ...)` (the standard `IRedactionBuilder` API): erase, HMAC, keep (`NullRedactor`), or your own encrypting redactor. Without it, classified values are erased. Logs are configured separately with `AddRedaction`, so the two channels can differ (e.g. logs: no PHI or PII; events: PII kept) ([ADR 0025](decisions/0025-event-redaction-policy.md)). For anything else (information-request answers, per-view rules) register an `IKaleidoEventRedactor` (`AddEventRedactor<T>()`). Responses to the caller are never redacted ([ADR 0013](decisions/0013-event-payloads-classified-and-redacted.md)).
-- **Custom stores** implement the conditional save (state only) under the `ProcessKey` scope (processor, version, process id), the idempotent-result methods, and the outbox store (`IKaleidoOutboxStore`, with leased claims and the writer's `ServiceName`/`ServiceVersion` kept), plus `IKaleidoTransactions` to keep a state change and its event atomic on one database ([store contract](../src/Kaleido.Provider.SQLite/README.md#implementing-your-own-store), [ADR 0036](decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)).
+- **Custom stores** implement the conditional save (state only) under the `ProcessKey` scope (processor, version, process id), the idempotent-result methods, and the outbox store (`IKaleidoOutboxStore`, with leased claims and the writer's `ServiceName`/`ServiceVersion` kept), plus `IKaleidoTransactions` to keep a state change and its event atomic on one database ([store contract](../src/Providers/Provider.SQLite/README.md#implementing-your-own-store), [ADR 0036](decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)).
 
 ## Queryable: sources, views and query contexts
 
@@ -427,4 +431,4 @@ service interface implementation is KAL1011. `BuildServiceProvider` must pass
 ## Endpoint metadata
 
 Endpoint names are `const` fields in `*EndpointNames` classes in
-`Kaleido.Http.Abstractions` — never inline literals in `WithName()`.
+`Kaleido.Http` (shared route shapes) and the owning server adapter — never inline literals in `WithName()`.

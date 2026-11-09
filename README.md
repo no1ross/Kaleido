@@ -11,7 +11,7 @@
   <img alt="Status: preview" src="https://img.shields.io/badge/status-preview-8B5CF6?style=flat-square" />
   <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-19A974?style=flat-square" /></a>
   <img alt="Machine discoverable" src="https://img.shields.io/badge/capabilities-machine--discoverable-3182F6?style=flat-square" />
-  <a href="src/Kaleido.Http.Mcp/README.md"><img alt="AI interface: MCP" src="https://img.shields.io/badge/AI%20interface-MCP-3182F6?style=flat-square" /></a>
+  <a href="src/Mcp/Mcp/README.md"><img alt="AI interface: MCP" src="https://img.shields.io/badge/AI%20interface-MCP-3182F6?style=flat-square" /></a>
 </p>
 
 <p align="center">
@@ -129,7 +129,7 @@ Kaleido is a [process engine, not a decision maker](docs/decisions/0001-process-
 
 **Connect the agent. Kaleido supplies the product-specific operating context.**
 
-[`Kaleido.Http.Mcp`](src/Kaleido.Http.Mcp/README.md) translates the caller-visible registry into tools and input schemas. Descriptions and lookups explain how to supply inputs; results describe how to continue.
+[`Kaleido.Mcp`](src/Mcp/Mcp/README.md) translates the caller-visible central registry into tools and input schemas. Descriptions and lookups explain how to supply inputs; results describe how to continue.
 
 When more information is needed, the service supplies an [information request](docs/INFORMATION_REQUESTS.md). The adapter presents forms where supported or returns guidance for the agent to ask the user. The business owns the questions and the meaning of the answers.
 
@@ -151,20 +151,24 @@ That removes a duplicate implementation and a cross-team release dependency, not
 
 ### Add products, not agent integrations
 
-A company can bring one of five products onto conversational AI, then add another the following month. Build the second product's Kaleido service, configure the router's downstream clients and access rules, and publish its capabilities. The existing MCP integration can expose it without adding a product-specific workflow inside the agent.
+A company can bring one of five products onto conversational AI, then add another the following month. Build the second product's Kaleido service, deploy its versioned gateway route and access rules, and register its capabilities centrally. The existing MCP integration can expose it without adding a product-specific workflow inside the agent.
 
 **Same agent. Same MCP connection. Another product available.**
 
-Registry refresh and client discovery must pick up the changes. Product implementation, routing, access configuration, and validation still happen. A new client feature or breaking contract change can still require coordination.
+Registry hydration picks up the new service version; callers use its published capability URLs through the gateway. Product implementation, versioned routing, access configuration, and validation still happen. A new client feature or breaking contract change can still require coordination.
 
 ## Quick start
 
 Reference the relevant projects, or matching preview packages from your available package feed. The examples below show host registration, not a complete business application; add the appropriate namespace imports and your own query, step, and handler implementations.
 
 > [!WARNING]
-> These examples are for local evaluation and explicitly disable capability authorization. Do not expose them as production services. Configure host authentication, capability authorization, and record-level access for your deployment. The MCP router also needs an appropriate downstream credential configuration.
+> These examples are for local evaluation and explicitly disable capability authorization. Do not expose them as production services. Configure host authentication, capability authorization, and record-level access for your deployment. An authenticated MCP host also needs a handler that exchanges the caller's token for downstream calls.
 
 ### Publish a business service over HTTP
+
+Run a separate [control registry](src/Registry/Registry/README.md) and configure `Kaleido:BaseUrl`
+with the gateway's address. Map `/registry` to the registry host and `/orders/1` to this service's
+host in the gateway's deployment configuration. The registry never holds instance addresses.
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -173,12 +177,14 @@ var kaleido = builder.Services
     .AddKaleido(builder.Configuration, new()
     {
         ServiceName = "orders",
+        ServiceVersion = "1",
         DisplayName = "Orders",
         Assemblies = new[] { typeof(Program).Assembly },
         AuthorizationMode = KaleidoAuthorizationMode.None, // Local evaluation only.
     })
     .AddInMemoryStores() // Local evaluation only: process state is lost on restart.
-    .AddHttp();
+    .AddHttp()
+    .AddControlRegistryClient();
 
 var app = builder.Build();
 
@@ -187,28 +193,28 @@ app.MapKaleidoHttp();
 app.Run();
 ```
 
-Kaleido discovers sources, views, steps, and handlers from the configured assemblies, validates registrations at startup, and publishes their HTTP surfaces and metadata.
+Kaleido discovers sources, views, steps, and handlers from the configured assemblies and registers their versioned HTTP URLs with the central registry. `MapKaleidoHttp()` requires a central-registry source: business services register one with
+`AddControlRegistryClient()`, and a control-registry host has its own via `AddControlRegistry()`.
+`ServiceVersion` is required for service endpoints.
 
 `Assemblies` is required even for client-only hosts. A missing or empty list fails at `AddKaleido()` with `missing_assembly`; there is no implicit calling-assembly scan.
 
-### Expose configured services through an MCP router
+### Expose registered services through an MCP host
 
-In a **separate router host**, configure the downstream services under `Kaleido:Clients`. For example, this local configuration points to an Orders service listening at an illustrative address:
+In a **separate MCP host**, point `Kaleido:BaseUrl` at the gateway, which maps `/registry` to the
+registry host and each `/{service}/{version}` path to its deployed service. The MCP host needs no
+per-service client list:
 
 ```json
 {
   "Kaleido": {
-    "Clients": {
-      "orders": {
-        "BaseUrl": "http://localhost:5101",
-        "RoutePrefix": "orders"
-      }
-    }
+    "BaseUrl": "http://localhost:5100",
+    "OnBehalfOfCalls": "Exchange"
   }
 }
 ```
 
-Then register the HTTP clients, how tool calls are authorized for the agent's user, and the MCP adapter, and enable registry aggregation:
+Register central participation and the one outbound gateway client before adding MCP:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -216,25 +222,32 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddKaleido(builder.Configuration, new()
     {
-        ServiceName = "router",
+        ServiceName = "mcp-reader",
+        ServiceVersion = "1",
         Assemblies = new[] { typeof(Program).Assembly },
         AuthorizationMode = KaleidoAuthorizationMode.None, // Local evaluation only.
     })
+    .AddInMemoryStores() // Local evaluation only.
     .AddHttp()
-    .AddHttpClients() // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
+    .AddHttpClients()
+    .AddControlRegistryClient()
     .AddMcp(new() { ServerName = "business" });
 
 var app = builder.Build();
-
-app.MapKaleidoHttp(new() { AggregateRegistry = true });
 app.MapKaleidoMcp("/mcp");
-
 app.Run();
 ```
 
-Connect an MCP-compatible agent to the router's `/mcp` endpoint. `AddHttpClients()` uses configured clients, not automatic network discovery. `AddMcp()` refuses to start unless `Kaleido:OnBehalfOfCalls` is `Exchange`: the agent's user's token is issued for the MCP endpoint and must not be passed through to the services. This local example has no sign-in, so its calls carry nothing; with sign-in, add the handler that exchanges the user's token with `AddKaleidoClientHandler<THandler>()` ([Which token a service sends](docs/guide/callers-and-correlation.md#which-token-a-service-sends), #574). Use `https` base URLs outside local development. Each `RoutePrefix` must match the downstream `ServiceName` (refused at startup otherwise); adjust addresses and ports for your environment.
+Connect an MCP-compatible agent to `/mcp`. `AddHttpClients()` sends to the gateway and resolves
+capability URLs from the host's hydrated central registry; `AddHttpClients()` rejects nonempty
+`Kaleido:Clients` entries at registration.
+`AddMcp()` requires `Exchange`: the agent's user's token cannot be passed unchanged to another
+service. With authentication, add an `AddKaleidoClientHandler<THandler>()` that exchanges it
+([which token a service sends](docs/guide/callers-and-correlation.md#which-token-a-service-sends),
+#574). This local-only example has no sign-in. Use `https` outside local development and configure
+the gateway's per-version destinations in the same deployment as each service.
 
-See the [HTTP client](src/Kaleido.Http.Client/README.md) and [MCP adapter](src/Kaleido.Http.Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
+See the [HTTP client](src/Http/Http.Client/README.md) and [MCP adapter](src/Mcp/Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
 
 ### Choose process storage
 
@@ -247,7 +260,7 @@ kaleido
     .AddSqliteIdempotencyStore("Data Source=kaleido-process.db");
 ```
 
-[`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite/README.md) is a **reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Kaleido.Provider.SQLite/README.md#using-the-example-implementation)), and `EnsureCreated` never migrates an existing database.
+[`Kaleido.Provider.SQLite`](src/Providers/Provider.SQLite/README.md) is a **reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Providers/Provider.SQLite/README.md#using-the-example-implementation)), and `EnsureCreated` never migrates an existing database.
 
 Production deployments provide and validate stores suited to their infrastructure: `IKaleidoContextStore` (process state), `IKaleidoOutboxStore` (every event the service writes, until the relay publishes it), `IKaleidoTransactions` (state and events atomic on one database) and `IKaleidoIdempotencyStore` (requests sent with an idempotency key). Every record is scoped by the service and its version, so services may share one database, and one host per outbox database runs the relay (`AddOutboxRelay<TPublisher>()`) - see [ADR 0036](docs/decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md).
 
@@ -263,7 +276,7 @@ Steps declare inputs and relationships; handlers implement behavior. The process
 
 ### Discovery: how does a consumer find it?
 
-Each service's registry (`GET /{service}/registry`) publishes its capabilities' metadata and the URLs to call them. A router can aggregate downstream registries; MCP exposes tools from the caller-visible model. Discovery does not replace execution-time validation or authorization.
+The central registry (`GET /registry` on the registry host) publishes every service version's capabilities, status and logical gateway routes. Services push their own registrations; each participant hydrates the unfiltered copy for calls, while caller-facing discovery is authorization-filtered. MCP exposes tools from that caller-visible model. Discovery never replaces execution-time validation or authorization.
 
 ## Deployment responsibilities
 
@@ -275,18 +288,27 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 
 | Package | Purpose |
 |---|---|
-| [`Kaleido`](src/Kaleido) | Core Process and Queryable runtimes, metadata, process state, and shared framework mechanisms |
-| [`Kaleido.Http`](src/Kaleido.Http) | ASP.NET Core HTTP hosting, endpoint publication, and registry aggregation |
-| [`Kaleido.Http.Abstractions`](src/Kaleido.Http.Abstractions) | Shared HTTP request, response, discovery, and client contracts; registry snapshot storage (in memory, or shared across replicas in the host's `IDistributedCache`) |
-| [`Kaleido.Http.Client`](src/Kaleido.Http.Client) | Typed clients and registry access for configured remote Kaleido services |
-| [`Kaleido.Http.Mcp`](src/Kaleido.Http.Mcp) | Registry-derived MCP tools, input schemas, guided interaction, and process continuation for AI agents |
-| [`Kaleido.Provider.SQLite`](src/Kaleido.Provider.SQLite) | Reference store for process state, stored execution responses, and the event outbox |
-| [`Kaleido.Observability.OpenTelemetry`](src/Kaleido.Observability.OpenTelemetry) | Opt-in tracing, metrics, logging, and OTLP export integration |
-| [`Kaleido.Analyzers`](tools/analyzers/Kaleido.Analyzers) | Consumer compile-time checks (`KAL2xxx`); installed automatically with `Kaleido` |
+| [`Kaleido`](src/Kaleido) | Transport-free Process and Queryable runtimes and store contracts |
+| [`Kaleido.Platform`](src/Platform) | Shared registry, Process and Queryable contracts, headers and JSON conventions |
+| [`Kaleido.Server`](src/Server) | Shared ASP.NET Core authorization, caller and endpoint services |
+| [`Kaleido.Client`](src/Client) | Neutral clients, registry participation and transport choice |
+| [`Kaleido.Http`](src/Http/Http) | Shared HTTP route and URL vocabulary |
+| [`Kaleido.Http.Server`](src/Http/Http.Server) | Service HTTP endpoints and execution adapters |
+| [`Kaleido.Http.Client`](src/Http/Http.Client) | Registry-resolved calls over one gateway HTTP client |
+| [`Kaleido.Registry`](src/Registry/Registry) | Control registry, store contract, leases, views and HybridCache |
+| [`Kaleido.Registry.Http`](src/Registry/Registry.Http) | Control-registry HTTP endpoints |
+| [`Kaleido.Mcp`](src/Mcp/Mcp) | Caller-visible registry-derived MCP tools and guided continuation |
+| [`Kaleido.Provider.SQLite`](src/Providers/Provider.SQLite) | Reference process, outbox, idempotency and registry stores |
+| [`Kaleido.Observability.OpenTelemetry`](src/Observability/Observability.OpenTelemetry) | Opt-in telemetry export |
+| [`Kaleido.Analyzers`](tools/analyzers/Kaleido.Analyzers) | Consumer compile-time checks (`KAL2xxx`), included by `Kaleido` |
+
+The [`Kaleido.Grpc` projects](src/Grpc/Grpc/README.md) and
+[`Kaleido.Registry.Grpc`](src/Registry/Registry.Grpc/README.md) are non-packable placeholders; gRPC
+is not implemented yet.
 
 ### Prerequisites
 
-- **Using the packages:** they target `net8.0`, so a service runs on .NET 8 or later; run it on a supported runtime (.NET 10 after .NET 8 reaches end of support on 10 November 2026) and override the 8.x dependencies to patched versions ([support window](docs/VERSIONING.md#support-window)). `Kaleido.Http` and `Kaleido.Http.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`). Trimmed and NativeAOT publishing are not supported ([deployment modes](docs/VERSIONING.md#deployment-modes)).
+- **Using the packages:** they target `net8.0`, so a service runs on .NET 8 or later; run it on a supported runtime (.NET 10 after .NET 8 reaches end of support on 10 November 2026) and override the 8.x dependencies to patched versions ([support window](docs/VERSIONING.md#support-window)). `Kaleido.Http.Server`, `Kaleido.Registry.Http` and `Kaleido.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`). Trimmed and NativeAOT publishing are not supported ([deployment modes](docs/VERSIONING.md#deployment-modes)).
 - **Building this repository:** the .NET 10 SDK, pinned in `global.json` (#578).
 
 ### Install
@@ -294,16 +316,17 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 The packages are previews. Tagged versions are published to **nuget.org**, so no extra source is needed ([releasing](RELEASING.md)); add what the service needs:
 
 ```bash
-dotnet add package Kaleido --prerelease                              # core runtimes (always)
-dotnet add package Kaleido.Http --prerelease                         # publish the service over HTTP
-dotnet add package Kaleido.Http.Client --prerelease                  # call other Kaleido services
-dotnet add package Kaleido.Http.Abstractions --prerelease            # only the wire contracts (e.g. a delegated source)
-dotnet add package Kaleido.Http.Mcp --prerelease                     # publish capabilities to AI agents over MCP
+dotnet add package Kaleido --prerelease                              # core runtimes
+dotnet add package Kaleido.Http.Server --prerelease                  # publish HTTP capabilities
+dotnet add package Kaleido.Http.Client --prerelease                  # central-registry and gateway HTTP clients
+dotnet add package Kaleido.Registry.Http --prerelease                # host the control registry over HTTP
+dotnet add package Kaleido.Mcp --prerelease                          # expose registry capabilities to agents
+dotnet add package Kaleido.Platform --prerelease                     # shared contracts only (when needed)
 dotnet add package Kaleido.Observability.OpenTelemetry --prerelease  # logs, traces and metrics over OTLP
-dotnet add package Kaleido.Provider.SQLite --prerelease              # reference store (evaluation, not production)
+dotnet add package Kaleido.Provider.SQLite --prerelease             # reference store (local development)
 ```
 
-`Kaleido.Http` and `Kaleido.Http.Client` bring `Kaleido.Http.Abstractions` and `Kaleido` with them. The packages move together: upgrade all the Kaleido packages a project references at once ([versioning](docs/VERSIONING.md#versions)).
+HTTP adapters bring their required `Kaleido.Http`, `Kaleido.Server` or `Kaleido.Client`, `Kaleido.Platform` and core dependencies transitively. The packages move together: upgrade all Kaleido packages a project references at once ([versioning](docs/VERSIONING.md#versions)).
 
 Preview builds between tags are published only to the repository's GitHub Packages feed, `https://nuget.pkg.github.com/no1ross/index.json`; to use one, add that feed as a source with a GitHub token that can read packages:
 
@@ -317,9 +340,9 @@ dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name k
 - [Architecture](ARCHITECTURE.md)
 - [Patterns: steps, handlers, sources, views, lookups](docs/PATTERNS.md)
 - [Core runtime](src/Kaleido/README.md)
-- [HTTP transport](src/Kaleido.Http/README.md) and [contracts](src/Kaleido.Http.Abstractions/README.md)
-- [HTTP clients](src/Kaleido.Http.Client/README.md)
-- [MCP adapter](src/Kaleido.Http.Mcp/README.md)
+- [HTTP transport](src/Http/Http.Server/README.md) and [contracts](src/Platform/README.md)
+- [HTTP clients](src/Http/Http.Client/README.md)
+- [MCP adapter](src/Mcp/Mcp/README.md)
 - [Information requests](docs/INFORMATION_REQUESTS.md)
 - [Authorization](docs/AUTHORIZATION.md)
 - [Error codes](docs/ERROR_CODES.md)
@@ -327,8 +350,8 @@ dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name k
 - [Analyzers (KAL rules)](docs/ANALYZERS.md)
 - [Versioning, compatibility and support](docs/VERSIONING.md)
 - [Decision records](docs/decisions/README.md), starting with [process engine, not decision maker](docs/decisions/0001-process-engine-not-decision-maker.md)
-- [SQLite reference provider](src/Kaleido.Provider.SQLite/README.md)
-- [OpenTelemetry provider](src/Kaleido.Observability.OpenTelemetry/README.md)
+- [SQLite reference provider](src/Providers/Provider.SQLite/README.md)
+- [OpenTelemetry provider](src/Observability/Observability.OpenTelemetry/README.md)
 - [Prior authorization sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and [e-commerce sample](https://github.com/no1ross/Kaleido-Samples-ECommerce), each in its own repository
 
 ## Project status

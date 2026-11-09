@@ -74,7 +74,7 @@ public interface ILocalQuerySource<TQueryContext>
 /// <para>
 /// The source's public name (registry, routes, events, telemetry) is its type name
 /// (<c>Type.Name</c>), unmodified. Every local source can be queried directly at
-/// <c>/{service}/queryable/{source}/query</c>, and through any query views that reference it.
+/// <c>/{service}/{version}/queryable/{source}/query</c>, and through any query views that reference it.
 /// Kaleido applies search, filter, sort and paging to the returned <see cref="IQueryable{T}"/>.
 /// </para>
 /// <para>
@@ -149,7 +149,7 @@ public interface IQuerySourceAsync<TQueryContext> : ILocalQuerySource<TQueryCont
 /// <typeparam name="TViewParameters">The view's parameters record.</typeparam>
 /// <remarks>
 /// The view's public name is its type name (<c>Type.Name</c>), unique within its source; it is
-/// queried at <c>/{service}/queryable/{source}/{view}/query</c>. Kaleido applies search, filter
+/// queried at <c>/{service}/{version}/queryable/{source}/{view}/query</c>. Kaleido applies search, filter
 /// and sort against <typeparamref name="TQueryContext"/>, then this projection, then paging.
 /// A view implements exactly one of the synchronous or asynchronous shapes.
 /// </remarks>
@@ -234,8 +234,8 @@ public interface IQueryViewSourceAsync<TSource, TQueryContext, TView>
 /// </para>
 /// <para>
 /// The public name is the type name (<c>Type.Name</c>); the source is queried at
-/// <c>/{service}/queryable/{source}/query</c>. To forward a query over HTTP, convert it with
-/// <c>ToApiBody()</c> from <c>Kaleido.Http.Abstractions</c>.
+/// <c>/{service}/{version}/queryable/{source}/query</c>. To forward a query over HTTP, convert it with
+/// <c>ToApiBody()</c> from <c>Kaleido.Platform</c>.
 /// </para>
 /// </remarks>
 public interface IDelegatedQuerySource<TQueryContext, TResult, TParameters>

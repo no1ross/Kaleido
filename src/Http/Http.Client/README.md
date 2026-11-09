@@ -1,25 +1,25 @@
 # Kaleido.Http.Client
 
-This project provides typed HTTP clients for consuming remote Kaleido Process and Queryable endpoints. It is used when one service needs to call another Kaleido service over HTTP.
+This project adapts neutral Process, Queryable and registry clients to HTTP. It sends published versioned capability URLs through one gateway HTTP client, not through individually configured service addresses.
 
-> How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
+> How this project fits into a whole service, with tested examples: the [consumer guide](../../../docs/guide/README.md). This README is the reference for the project.
 
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - [`../../AGENTS.md`](../../AGENTS.md)
-- [`../Kaleido.Http/README.md`](../Kaleido.Http/README.md)
-- [`../Kaleido.Http.Abstractions/README.md`](../Kaleido.Http.Abstractions/README.md)
+- [`../Http.Server/README.md`](../Http.Server/README.md)
+- [`../../Platform/README.md`](../../Platform/README.md)
 
 ---
 
 ## What lives here
 
 ### Central registry HTTP client
-- `KaleidoHttpRegistryClient` implements the neutral `IKaleidoRegistryClient` from `Kaleido.Client`: registration, heartbeat, deregistration and ETag-aware reads use the gateway's fixed `/registry` paths. The neutral `ControlRegistryRegistrar` and `CentralRegistrySource` own registration and the hydrated in-host copy. Named Process and Queryable clients do not fetch per-service registries.
+- `KaleidoHttpRegistryClient` implements the neutral `IKaleidoRegistryClient` from `Kaleido.Client`: registration, heartbeat, deregistration and ETag-aware reads use the gateway's fixed `/registry` paths. The neutral `ControlRegistryRegistrar` and `CentralRegistrySource` own registration and the hydrated in-host copy. Process and Queryable clients resolve calls from the in-host unfiltered copy, never a per-service registry.
 
 ### Process client
 - `IKaleidoProcessorClient` (in `Kaleido.Client`) — typed interface for process state and step execution
-- `IKaleidoProcessorClientFactory` (in `Kaleido.Client`) — resolves a client by its registered name, or by the downstream's service name (`TryGetClientForService`)
+- `IKaleidoProcessorClientFactory` (in `Kaleido.Client`) — `GetClient(serviceName[, serviceVersion])` chooses the registry's current version or pins an ongoing process to its version
 - `KaleidoProcessorClient` — concrete HTTP client implementation
 
 ### Queryable client
@@ -51,40 +51,51 @@ Typical scenarios:
 
 ## Registration
 
-Register all downstream clients from configuration with `AddHttpClients()` — each named client gets **both** a Process client and a Queryable client:
+`AddHttpClients()` registers one named HTTP client (`kaleido-gateway`) at `Kaleido:BaseUrl`.
+`AddControlRegistryClient()` registers and hydrates the central registry; every host mapping Kaleido
+HTTP capabilities or MCP needs it. Choose stores appropriate to the host:
 
 ```csharp
-builder.Services.AddKaleido(builder.Configuration)
-    .AddHttpClients();
+builder.Services.AddKaleido(builder.Configuration, new()
+    {
+        ServiceName = "orders",
+        ServiceVersion = "1",
+        Assemblies = [typeof(Program).Assembly],
+    })
+    .AddInMemoryStores() // local evaluation only
+    .AddHttp()
+    .AddHttpClients()
+    .AddControlRegistryClient();
 ```
-
-`AddHttpClients` binds the `Kaleido:Clients` section. Each entry is a named downstream service; `BaseUrl` falls back to the shared `Kaleido:BaseUrl`, and `RoutePrefix` defaults to the key lowercased. A `BaseUrl` must be an absolute `http` or `https` URL: anything else fails at startup with `httpclient_invalid_options`, naming the client and the key (#521).
 
 ```json
 {
   "Kaleido": {
-    "BaseUrl": "http://router:8080",
-    "Clients": {
-      "Member":    { },
-      "CodeSet":   { },
-      "Radiology": { "BaseUrl": "https://radiology-service-host", "RoutePrefix": "radiology" }
-    }
+    "BaseUrl": "https://gateway.internal"
   }
 }
 ```
 
-The per-client `AddKaleidoClient` builder extension is internal — `AddHttpClients` is the consumer-facing registration seam. Resolve a client through its factory (`GetClient("Radiology")`) when the name is chosen at runtime, or inject it as a keyed service under its configured name when it is fixed: `[FromKeyedServices("Radiology")] IKaleidoProcessorClient`.
+The gateway maps `/registry` to the control registry and each `/{service}/{version}` route to
+that version's host. `BaseUrl` must be an absolute `http` or `https` gateway URL without embedded
+credentials (`httpclient_missing_base_url` or `httpclient_invalid_options` at startup). A
+nonempty `Kaleido:Clients` section is rejected by `AddHttpClients()` at registration, not used
+as a per-service fallback. Factories accept the
+published service name, optionally with its version; keyed injection uses that service name too
+(`[FromKeyedServices("radiology")] IKaleidoProcessorClient`).
 
-**Route-prefix contract:** `RoutePrefix` must equal the downstream service's `Kaleido:ServiceName` — every endpoint a Kaleido service publishes lives under `/{ServiceName}/...`. The default (client key lowercased) works when the service sets `ServiceName` to the same lowercase name. A mismatch produces 404s at call time, not a startup error.
-
-**Registry freshness:** there is no per-client registry cache or remote registry health probe. Each participating host hydrates the central registry from `/registry/availability` and `/registry/capabilities` using separate conditional ETags. The registry gives the heartbeat and availability intervals; unchanged documents return **304**. A failed read leaves the host's last good in-memory copy marked partial and is retried, without probing every configured client.
+**Registry freshness:** no client reads a per-service registry or probes its health. The host
+hydrates `/registry/availability` and only fetches `/registry/capabilities` when the revision
+changes, using separate ETags (unchanged documents return **304**). On read failure, it retains
+the last good copy marked partial. Internal resolution uses that unfiltered copy; discovery for
+a user is filtered for that caller, never shared as the route cache.
 
 ---
 
 ## Taking part in the control registry
 
-With a control registry (`Kaleido.Http.Registry`, #553), each instance registers itself, and a host's
-registry is the control registry's, not one it builds:
+With `Kaleido.Registry` and its `Kaleido.Registry.Http` API (#553, #581), each instance
+registers itself; a host never builds its own registry from downstream services:
 
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
@@ -109,13 +120,14 @@ builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
   overall status, never an instance. Reads never call out.
 - **The registry sets the pace.** The host configures no interval: it heartbeats at the interval each lease
   names, and checks the availability at the interval the availability names (the registry's
-  `HeartbeatInterval`), following a change at its next check. The capabilities are read exactly when the
-  availability names other capabilities than those held (`CapabilitiesRevision`): a deployment shows on
-  every host, capabilities and status together, within one check, and otherwise they are never read
-  again. Until it has read the registry, and after a failed call, it retries at 1 s doubling, at most 30 s.
-- **Read in-process.** The full registry remains in the host's memory; in-host lookups, hand-offs and MCP
-  filter it for their caller. The revision follows both documents, so readers observe either change at
-  the registry's pace. `MapKaleidoHttp()` no longer serves a per-service registry endpoint.
+  `HeartbeatInterval`), following a change at its next check. It reads capabilities when the
+  availability names a revision different from the held one (`CapabilitiesRevision`), or names no
+  revision; unchanged known revisions need no new capability read. A deployment reaches each host
+  at its next check. Until it has read the registry, and after a failed call, it retries at 1 s
+  doubling, at most 30 s.
+- **Read in-process.** The host's full unfiltered registry is the call resolver's source; in-host
+  lookups and MCP produce caller-filtered discovery separately. The revision follows both documents
+  at the registry's pace. `MapKaleidoHttp()` never serves a per-service registry endpoint.
 - **When the registry cannot be read,** the last good copy is served, partial (a `RegistryReadError` for
   `registry`), until a read succeeds.
 - **Its calls are the service's own** (named client `kaleido-registry`, purpose `ServiceOwn`): they carry
@@ -144,25 +156,24 @@ The pipeline, outermost first:
 
 A request with neither is never retried. Retries re-send the same request, so the correlation headers (the same `X-Kaleido-Request-Id`) and the idempotency key stay the same; the resilience events (retries, an opening circuit) appear in the logs and metrics of `Microsoft.Extensions.Resilience`.
 
-**Configuration - three layers.** The framework defaults; `Kaleido:Resilience` for all clients; `Kaleido:Clients:{name}:Resilience` for one client, overriding **only the settings it names** (the rest come from the shared section):
+**Configuration:** framework defaults, overridden setting by setting by `Kaleido:Resilience`,
+apply to the gateway client and the control-registry HTTP client. There are no per-service
+resilience settings:
 
 ```json
 {
   "Kaleido": {
+    "BaseUrl": "https://gateway.internal",
     "Resilience": {
       "MaxRetryAttempts": 2,
       "AttemptTimeout": "00:00:05"
-    },
-    "Clients": {
-      "member":    { "BaseUrl": "http://member:8080" },
-      "radiology": { "BaseUrl": "http://radiology:8080", "Resilience": { "AttemptTimeout": "00:00:20" } },
-      "legacy":    { "BaseUrl": "http://legacy:8080",    "Resilience": { "Enabled": false } }
     }
   }
 }
 ```
 
-Here `member` retries twice with 5 s per attempt (shared), `radiology` retries twice with 20 s per attempt (its own timeout), and `legacy` has no resilience at all.
+This configuration retries safe gateway and registry calls twice with a five-second attempt
+timeout. `Kaleido:Clients:{name}:Resilience` is no longer accepted.
 
 The timeout, retry and circuit-breaker settings are those of `KaleidoResilienceSettings` (core), the same vocabulary the event relay uses under `Kaleido:Events:Resilience`; the two sections are bound independently and have their own defaults, so a client's `MaxRetryAttempts` never changes how often events are retried.
 
@@ -177,9 +188,9 @@ The timeout, retry and circuit-breaker settings are those of `KaleidoResilienceS
 | `CircuitBreakerMinimumThroughput` | `10` | Calls needed within the sampling duration before the circuit can open. |
 | `CircuitBreakerSamplingDuration` | `00:00:30` | Window the failure ratio is measured over. |
 | `CircuitBreakerBreakDuration` | `00:00:15` | How long an open circuit fails calls at once. |
-| `HealthCheckTimeout` | `00:00:05` | Timeout of the client health check. |
 
-**Health checks** (`kaleido-{name}`) are never retried and have their own short timeout (`HealthCheckTimeout`), so health reporting stays fast and honest: a service that does not answer in time, or whose circuit is open, reports `Unhealthy` right away.
+There are no downstream client health probes. `kaleido-registration` reports whether this host
+registered and read its first central view; dependency status comes from registry heartbeats.
 
 ---
 
@@ -190,9 +201,9 @@ The process client sends an `Idempotency-Key` (a new GUID) with **every execute 
 - a retry while the first attempt still runs is answered 409 with `Retry-After`, and the client waits and asks again within its total timeout;
 - if the first attempt did not finish with an answer (the service stopped while it ran, or it failed after its step may have run), the call fails with `KaleidoHttpClientException` (`Code = httpclient_conflict`, service error `pro_idempotency_outcome_unknown`): it may or may not have run, so read the process state and decide.
 
-**Your own retries.** A new call is a new request with a new key, so calling again after a timeout, a crash or a lost answer would run the step again. To make the *logical* operation safe to repeat, pass your own key: `ExecuteAsync(request, idempotencyKey, ct)` and the by-name `ExecuteStepAsync(stepName, step, processId, idempotencyKey, ct)` send it instead of a new GUID, so repeating the call with the same key and the same request gets the stored answer (`null` keeps a new key per call). Keys are scoped per service and caller, up to 200 characters; the same key with a different request is refused (`pro_idempotency_key_reused`). The typed `ExecuteStepAsync<TStep>` overloads always send a new key.
+**Your own retries.** A new call is a new request with a new key, so calling again after a timeout, a crash or a lost answer would run the step again. To make the *logical* operation safe to repeat, pass your own key: `ExecuteAsync(request, idempotencyKey, ct)` and the by-name `ExecuteStepAsync(stepName, step, processId, idempotencyKey, ct)` send it instead of a new GUID, so repeating the call with the same key and the same request gets the stored answer (`null` keeps a new key per call). Keys are scoped per service version and caller, up to 200 characters; the same key with a different request is refused (`pro_idempotency_key_reused`). The typed `ExecuteStepAsync<TStep>` overloads always send a new key.
 
-This is not exactly-once for a handler's own external calls: a service that stops inside a handler after calling another system may have done that work (see [`Kaleido.Http`](../Kaleido.Http/README.md#idempotent-execution-idempotency-key)). The MCP adapter calls services through these clients and derives one key per logical tool call ([MCP retries](../Kaleido.Http.Mcp/README.md)).
+This is not exactly-once for a handler's own external calls: a service that stops inside a handler after calling another system may have done that work (see [`Kaleido.Http`](../Http.Server/README.md#idempotent-execution-idempotency-key)). The MCP adapter calls services through these clients and derives one key per logical tool call ([MCP retries](../../Mcp/Mcp/README.md)).
 
 **When another call changed the process first** (two calls for the same process at the same time - a double submit, two agents on one case), the service refuses the second save with **409** `pro_process_conflict`; the client throws `KaleidoHttpClientException` with `Code = httpclient_conflict` and the service's errors. Nothing of that call was saved. Read the process state again and decide on the next step - do not repeat the call blindly.
 
@@ -202,81 +213,70 @@ This is not exactly-once for a handler's own external calls: a service that stop
 
 ### Process client
 
-Inject `IKaleidoProcessorClientFactory` and resolve a client by name (`GetClient`; a name not configured under `Kaleido:Clients` throws a `KaleidoConfigurationException`, `httpclient_unknown_client`, listing the configured clients), or by the downstream's service name when you start from a registry entry (`TryGetClientForService(serviceName, out var client)`, as gateways and the MCP adapter do).
+Inject `IKaleidoProcessorClientFactory` and use the **published service name**, not a configured
+client alias. Without a version `GetClient(serviceName)` resolves the registry's current version;
+for an existing process use `GetClient(serviceName, serviceVersion)` to stay on the version that
+created it. An unpublished service, version or step fails before sending with
+`registryclient_route_unavailable`.
 
 ```csharp
-// Get the remote registry (fetched on first use, cached per configured client)
-var registry = await clientFactory
-    .GetClient("RemoteProcessor")
-    .GetRegistryAsync(cancellationToken);
+// A new process starts on the current radiology version.
+var started = await clientFactory.GetClient("radiology")
+    .ExecuteStepAsync(new CaptureMriInfoStep { /* ... */ }, cancellationToken);
 
-// Get process state (returns null on 404)
-var state = await clientFactory
-    .GetClient("RemoteProcessor")
-    .GetProcessStateAsync(processId, cancellationToken);
+// Pin subsequent calls, including state reads, to that process's service version.
+var radiology = clientFactory.GetClient("radiology", "2026-11");
+var state = await radiology.GetProcessStateAsync(started.ProcessId, cancellationToken); // null on 404
+var response = await radiology.ExecuteStepAsync<CaptureMriInfoStep, CaptureMriInfoResult>(
+    new CaptureMriInfoStep { /* ... */ }, cancellationToken);
 
-// Execute a step — the step name is the payload's type name ("CaptureMriInfoStep")
-var response = await clientFactory
-    .GetClient("RemoteProcessor")
-    .ExecuteStepAsync(new CaptureMriInfoStep { ... }, cancellationToken);
-
-// Execute a step (typed result)
-var response = await clientFactory
-    .GetClient("RemoteProcessor")
-    .ExecuteStepAsync<CaptureMriInfoStep, CaptureMriInfoResult>(
-        new CaptureMriInfoStep { ... },
-        cancellationToken);
-
-// Execute a step discovered at runtime (no compile-time step type), continuing a given process
-var response = await clientFactory
-    .GetClient("RemoteProcessor")
-    .ExecuteStepAsync("CaptureMriInfoStep", JsonSerializer.SerializeToElement(input), processId, cancellationToken);
+// Runtime-discovered step, with an explicit process id and logical-call idempotency key.
+var next = await radiology.ExecuteStepAsync(
+    "CaptureMriInfoStep", JsonSerializer.SerializeToElement(input), started.ProcessId,
+    idempotencyKey, cancellationToken);
 ```
 
-The typed `ExecuteStepAsync` identifies the remote step by the payload's type name (`typeof(TStep).Name`), which must match a step name in the remote registry — the same name the remote service derives from its own step type. Use the remote step type itself, or a local mirror record with the **same type name**. Mirror records should not implement `IProcessStep`, so the calling service's own discovery does not register them as local steps. The process to continue travels in the `X-Kaleido-Process-Id` correlation header (propagated automatically from the current correlation context; the untyped overload's `processId` argument overrides it).
+Keep the service version with each process id: the id alone cannot select a version. The typed `ExecuteStepAsync` identifies a published step by the payload's type name (`typeof(TStep).Name`), which must match the step name in the unfiltered central registry — the same name the remote service derives from its own step type. Use the remote step type itself, or a local mirror record with the **same type name**. Mirror records should not implement `IProcessStep`, so the calling service's own discovery does not register them as local steps. The process to continue travels in the `X-Kaleido-Process-Id` correlation header (propagated automatically from the current correlation context; the untyped overload's `processId` argument overrides it).
 
 ### Queryable client
 
-Inject `IKaleidoQueryableClientFactory` and resolve a client by name.
+Inject `IKaleidoQueryableClientFactory`; query a published service name, optionally pinning its
+version when a query belongs to an older process.
 
 ```csharp
-// Get the remote registry (fetched on first use, cached per configured client)
-var registry = await clientFactory
-    .GetClient("MemberService")
-    .GetRegistryAsync(cancellationToken);
-
 // View query with typed parameters: source name, then view name
 var result = await clientFactory
-    .GetClient("MemberService")
+    .GetClient("member")
     .QueryViewAsync<MemberDetailsParameters, MemberDetailsView>(
         "MemberQueryContextSource", "MemberDetailsViewSource", request, cancellationToken);
 
 // Direct source query
 var result = await clientFactory
-    .GetClient("CodeSet")
+    .GetClient("code-sets")
     .QuerySourceAsync<ProcedureCodeView>("ProcedureCodeQueryContextSource", request, cancellationToken);
 
 // Direct source query with parameters (e.g. a delegated source scoped to a process)
 var result = await clientFactory
-    .GetClient("Radiology")
+    .GetClient("radiology", "2026-11")
     .QuerySourceAsync<ProviderSearchParameters, ProviderSearchResult>(
         "RequestingProviderSearchSource", request, cancellationToken);
 ```
 
-Sources and views are addressed by their **published names**, the remote type names, as strings. The calling service cannot reference the remote types (they live in another service and are often `internal`). The parameter and result types can be local mirror records. The query goes to `/{routePrefix}/queryable/{source}[/{view}]/query` without consulting the registry; an unknown name, or one the caller may not use, gets the service's own 404 or 403 (`KaleidoHttpClientException`, `httpclient_request_failed`).
+Sources and views are addressed by their **published names**, the remote type names, as strings. The calling service cannot reference the remote types (they live in another service and are often `internal`). The parameter and result types can be local mirror records. The query uses that source's or view's published `QueryUrl` (`/{service}/{version}/queryable/...`) from the unfiltered central registry. An unpublished name fails locally with `registryclient_route_unavailable`; a query the caller may not use is refused by the service with 403 (`KaleidoHttpClientException`, `httpclient_request_failed`).
 
 ---
 
 ## Client behavior
 
 Both clients:
-- send step and query calls to the contract URL built from the configured route prefix (`/{routePrefix}/processes/steps/{step}`, `/{routePrefix}/queryable/{source}[/{view}]/query`); published capability routes will replace that configuration in the next change
-- do not fetch or cache a registry per downstream: the central registry is read by `KaleidoHttpRegistryClient` and hydrated once per participating host
+- select a service's current or explicitly requested version and call its published step/query URL through the gateway; no route is constructed from a client prefix
+- validate that the URL is a safe relative path beneath that version's published logical route before carrying credentials
+- use the full hydrated central registry (not one filtered for another caller); no per-downstream registry cache or health probe exists
 - automatically forward Kaleido correlation headers on outbound requests
 - throw `KaleidoHttpClientException` on non-success capability responses (a 409 conflict: `httpclient_conflict`)
 - run every call through the resilience pipeline (see [Resilience](#resilience))
 
-A step, source or view the service does not have, or the caller may not use, is the service's own answer: `KaleidoHttpClientException` with `httpclient_request_failed` and status 404 or 403.
+A step, source, view, version or transport absent from the registry fails before the HTTP request (`KaleidoRegistryClientException`, `registryclient_route_unavailable`). Once sent, a service's own 404/403 response becomes `KaleidoHttpClientException` with `httpclient_request_failed`.
 
 ### What a call carries: the caller's token, or the service's own (#574)
 
@@ -286,7 +286,7 @@ a registry fetch, a heartbeat - is one of two kinds, decided by Kaleido (`Kaleid
 | `KaleidoCallPurpose` | When | It carries |
 |---|---|---|
 | `OnBehalfOfCaller` | the call is made while handling an inbound request (an MCP tool call, a step handler's call) | per `Kaleido:OnBehalfOfCalls`: the caller's token unchanged (`Forward`, the default), or the token the host's handler exchanged for the caller (`Exchange`) |
-| `ServiceOwn` | a registry fetch or refresh (shared by every caller), a heartbeat, a health probe, any call outside an inbound request | what the host's handlers set: typically the service's app-only token (client credentials) |
+| `ServiceOwn` | a registry fetch or refresh (shared by every caller), a heartbeat, or any call outside an inbound request | what the host's handlers set: typically the service's app-only token (client credentials) |
 
 `Kaleido:OnBehalfOfCalls` (`KaleidoClientOptions.OnBehalfOfCalls`) is a setting, read once at startup,
 not a token: the tokens come from each request, or from the identity provider through the host's handler,
@@ -306,9 +306,16 @@ never log it).
 - the service's own calls keep what the handlers set, and never carry a caller's token.
 
 ```csharp
-builder.Services.AddKaleido(builder.Configuration, new())
+builder.Services.AddKaleido(builder.Configuration, new()
+    {
+        ServiceName = "orders",
+        ServiceVersion = "1",
+        Assemblies = [typeof(Program).Assembly],
+    })
+    .AddInMemoryStores() // local evaluation only
     .AddHttp()
     .AddHttpClients()
+    .AddControlRegistryClient()
     .AddKaleidoClientHandler<ServiceTokenHandler>()   // the service's own calls
     .AddKaleidoClientHandler<OnBehalfOfHandler>();    // with Kaleido:OnBehalfOfCalls = Exchange
 
@@ -350,15 +357,15 @@ public sealed class OnBehalfOfHandler(IConfidentialClientApplication app) : Dele
   (`mcp_on_behalf_of_calls_not_exchanged`).
 - Handlers run in the order added, after the handlers configured on the client itself, and are created per
   client pipeline (transient): keep tokens in a cache they depend on, not in their own fields.
-- **Use `https` base URLs.** A client whose `BaseUrl` is neither `https` nor loopback is logged as a Warning
-  at startup: it would send a caller's credential in clear text.
-- **`RoutePrefix` is a service name** (`[a-z0-9][a-z0-9_-]*`, the downstream `ServiceName`):
-  `AddHttpClients()` refuses any other value at startup (`httpclient_invalid_route_prefix`).
+- **Use an `https` gateway.** A non-loopback `Kaleido:BaseUrl` without HTTPS warns at startup:
+  credential-bearing calls would use clear text. URLs with embedded credentials are refused.
+- **Never trust a published absolute URL.** The registry rejects unsafe paths and the HTTP client
+  checks each URL against its service version's logical route before sending caller credentials.
 
 ### Front doors: calling for a process
 
-`IKaleidoProcessForwarding.ForwardProcess(processId)` (internal, shared with `Kaleido.Http.Mcp`
-through `InternalsVisibleTo`; registered by `AddHttpClients()` when a client is configured): calls
+`IKaleidoProcessForwarding.ForwardProcess(processId)` (internal, shared with `Kaleido.Mcp`
+through `InternalsVisibleTo`; registered by `AddHttpClients()`): calls
 inside it send `X-Kaleido-Process-Id: {processId}`, ahead of the request's correlation context. Use
 it when the process id arrives as data rather than as a header (an MCP tool argument), so the called
 service records the call with its process. An explicit `processId` passed to
@@ -366,22 +373,18 @@ service records the call with its process. An explicit `processId` passed to
 ## What this project does NOT do
 
 This project does not contain:
-- server-side endpoint mapping (see [`Kaleido.Http`](../Kaleido.Http/README.md))
-- runtime planning or execution logic (see [`Kaleido`](../Kaleido/README.md))
+- server-side endpoint mapping (see [`Kaleido.Http.Server`](../Http.Server/README.md))
+- runtime planning or execution logic (see [`Kaleido`](../../Kaleido/README.md))
 - process state management
 
 ---
 
 ## Where to look
 
-- `ControlRegistryRegistrar.cs`, `RegistrationHealthCheck.cs` - registering, heartbeats, readiness
-- `CentralRegistrySource.cs`, `CentralRegistrySync.cs` - the host's copy of the control registry, and keeping it fresh
-- `../Kaleido.Http.Abstractions/Processor/IKaleidoProcessorClient.cs` — process client interface
-- `Processor/KaleidoProcessorClient.cs` — process client implementation
-- `../Kaleido.Http.Abstractions/Queryable/IKaleidoQueryableClient.cs` — queryable client interface
-- `Queryable/KaleidoQueryableClient.cs` — queryable client implementation
-- `KaleidoHttpClientsServiceCollectionExtensions.cs` — `AddHttpClients()` consumer registration
-- `KaleidoClientServiceCollectionExtensions.cs` — internal `AddKaleidoClient(...)` registration: one client's definition, named `HttpClient` and keyed services
-- `../Kaleido.Http.Abstractions/KaleidoClientCatalog.cs` — the configured clients by name
-- `KaleidoClientTransport.cs` — how every client call is sent and its answer read
-- `KaleidoClientException.cs` — `KaleidoHttpClientException` and `HttpClientErrorCodes`
+- `../../Client/Registry/ControlRegistryRegistrar.cs` and `../../Client/Registry/CentralRegistrySource.cs` — protocol-neutral registration and hydration in `Kaleido.Client`
+- `../../Client/Processor/IKaleidoProcessorClient.cs` and `../../Client/Queryable/IKaleidoQueryableClient.cs` — neutral client interfaces
+- `Registry/KaleidoControlRegistryClientServiceCollectionExtensions.cs` — HTTP registry participation through the gateway
+- `Registration/KaleidoHttpClientsServiceCollectionExtensions.cs` — one named gateway client, shared resilience and keyed service-name resolution
+- `Processor/KaleidoProcessorClient.cs`, `Queryable/KaleidoQueryableClient.cs` — capability implementations using published URLs
+- `Transport/KaleidoClientTransport.cs`, `Transport/KaleidoPublishedHttpRoute.cs` — sending, validation and response mapping
+- `Transport/KaleidoClientException.cs` — `KaleidoHttpClientException` and `HttpClientErrorCodes`

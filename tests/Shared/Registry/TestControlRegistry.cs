@@ -65,12 +65,28 @@ public sealed class TestControlRegistry : IAsyncDisposable
 
     public async Task WaitForRegistrationAsync(IHost participant)
     {
-        var instanceId = participant.Services.GetRequiredService<KaleidoServiceOptions>().InstanceId;
-        await registered.GetOrAdd(instanceId, _ => new(TaskCreationOptions.RunContinuationsAsynchronously))
+        var service = participant.Services.GetRequiredService<KaleidoServiceOptions>();
+        await registered.GetOrAdd(service.InstanceId, _ => new(TaskCreationOptions.RunContinuationsAsynchronously))
             .Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         time.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
-        using var scope = participant.Services.CreateScope();
-        await scope.ServiceProvider.GetRequiredService<IKaleidoRegistrySource>().RefreshAsync(TestContext.Current.CancellationToken);
+        using var registryScope = host.Services.CreateScope();
+        using var participantScope = participant.Services.CreateScope();
+        var registry = registryScope.ServiceProvider.GetRequiredService<IKaleidoRegistrySource>();
+        var hydrated = participantScope.ServiceProvider.GetRequiredService<IKaleidoRegistrySource>();
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            await registry.RefreshAsync(TestContext.Current.CancellationToken);
+            await hydrated.RefreshAsync(TestContext.Current.CancellationToken);
+            var view = await hydrated.GetAsync(TestContext.Current.CancellationToken);
+            if (view.Routes.Any(route => route.ServiceName == service.ServiceName && route.ServiceVersion == service.ServiceVersion))
+            {
+                return;
+            }
+
+            time.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
+        }
+
+        throw new InvalidOperationException($"The central registry did not publish {service.ServiceName}/{service.ServiceVersion} after registration.");
     }
 
     public async ValueTask DisposeAsync()

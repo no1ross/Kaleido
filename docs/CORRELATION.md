@@ -6,8 +6,8 @@ process events.
 
 The context itself (`KaleidoCorrelationContext`) is **transport-agnostic** and lives in
 `Kaleido` core. The HTTP wire names (`KaleidoCorrelationHeaders`) live in
-`Kaleido.Http.Abstractions`. A future transport (e.g. gRPC) gets its own header/metadata
-constants in its own project — the context shape does not change.
+`Kaleido.Platform`. A future transport (e.g. gRPC) gets its own header/metadata
+constants in its own wire project — the context shape does not change.
 
 ## Fields and headers
 

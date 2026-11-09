@@ -8,10 +8,10 @@ namespace Kaleido.Mcp;
 /// </summary>
 public static class McpErrorCodes
 {
-    /// <summary><c>AddMcp()</c> needs <c>AddHttp()</c> (the registry) on the same Kaleido builder.</summary>
+    /// <summary><c>AddMcp()</c> needs <c>AddHttp()</c> on the same Kaleido builder.</summary>
     public const string MissingHttp = "mcp_missing_http";
 
-    /// <summary><c>AddMcp()</c> needs Kaleido clients (<c>Kaleido:Clients</c> + <c>AddHttpClients()</c>) to call services.</summary>
+    /// <summary><c>AddMcp()</c> needs the gateway client from <c>AddHttpClients()</c> to call services.</summary>
     public const string MissingClients = "mcp_missing_clients";
 
     /// <summary>

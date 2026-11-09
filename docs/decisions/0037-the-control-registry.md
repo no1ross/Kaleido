@@ -1,6 +1,6 @@
 # 0037. One control registry: services push, everyone reads, and the gateway routes
 
-- **Status:** Accepted
+- **Status:** Superseded by 0040
 - **Date:** 2026-11-03
 - **Related:** #553, #557, #560, #564, #565, #566, #567, ADR 0022, ADR 0036
 

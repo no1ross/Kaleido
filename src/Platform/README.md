@@ -1,19 +1,19 @@
-# Kaleido.Http.Abstractions
+# Kaleido.Platform
 
-This project contains the shared HTTP request/response contract types used across Kaleido's server-side endpoint projects and the client-side consumption project.
+This ASP.NET-free shared model contains the registry, Process and Queryable contracts, JSON conventions and HTTP header names consumed by Kaleido's server and client projects. Runtime planning remains in core; endpoint mapping remains in protocol adapters.
 
 > How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
 
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
-- [`../Kaleido.Http/README.md`](../Kaleido.Http/README.md)
-- [`../Kaleido.Http.Client/README.md`](../Kaleido.Http.Client/README.md)
+- [`../Http/Http.Server/README.md`](../Http/Http.Server/README.md)
+- [`../Http/Http.Client/README.md`](../Http/Http.Client/README.md)
 
 ---
 
 ## What lives here
 
-### Process HTTP contracts
+### Process and registry contracts
 - `ExecuteProcessRequest` — multi-step execute request body
 - `ProcessExecutionResponse` — multi-step execute response (results, required step, available steps)
 - `ProcessExecutionStepResponse` — per-step result within an execute response
@@ -22,17 +22,17 @@ See also:
 - `ProcessStateResponse` — process state read response
 - `ProcessStepSummary` — lightweight step summary used in registry and state responses
 - `ProcessRequiredStep` — the step a process requires next: the fields of a `ProcessStepSummary` (including its execute URL) plus the pending information request, if any
-- `ProcessorRegistryResponse` — full processor registry record (all step metadata)
+- `ProcessorRegistryResponse` — processor metadata, its versioned execute URL, process-state URL template and all steps
 - `ProcessStepResponse` — detailed step metadata record
 - `ProcessFieldMetadata` / `ProcessFieldLookup` / `ProcessOutputFieldMetadata` / `ProcessStepResultMetadata` — a step's input fields (with their lookup) and its typed result fields
 
-For `POST /{service}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Kaleido.Http/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
+For `POST /{service}/{version}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Http/Http.Server/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
 
-### Queryable HTTP contracts
+### Queryable contracts
 - `QueryApiRequest` / `QueryApiRequest<TParameters>` — query request body (search, filter, sort, page, optional view parameters)
 - `QueryApiBody` / `QueryApiFilterNode` / `QueryApiFilterCondition` / `QueryApiFilterGroup` / `QueryApiSort` / `QueryApiPage` — transport-level query body (string enums, raw `JsonElement` values)
 - `QueryableSourceResponse` — a query source in the registry response. It carries:
-  - `Name` (what a client passes to address it), `ServiceName`, `RegistryUrl` and `QueryUrl`;
+  - `Name` (what a client passes to address it), `ServiceName`, `ServiceVersion` and the published `QueryUrl`;
   - `DisplayName`, `Description`, `Pageable` and `Authorization`;
   - `Fields` (query rules), `Parameters`, `OutputFields` and `Views`.
 
@@ -69,7 +69,7 @@ When the total is counted (a full page, or an empty page past the start), the co
 
 ## Who uses this project
 
-- **Server side** (`Kaleido.Http`) — endpoints serialize response contracts and deserialize request contracts
+- **Server side** (`Kaleido.Http.Server`, `Kaleido.Registry.Http`) — endpoints serialize response contracts and deserialize request contracts
 - **Client side** (`Kaleido.Http.Client`) — clients deserialize response contracts and serialize request contracts
 - **Test projects** — functional tests assert against these contract types
 
@@ -79,7 +79,7 @@ Changes here ripple into all of these.
 
 ## Stability expectations
 
-This project defines the published HTTP contract surface. Changes to these types can break:
+This project defines published contracts shared by the registry, HTTP adapters and future transports. Changes to these types can break:
 - existing remote consumers
 - the client implementations in `Kaleido.Http.Client`
 - functional tests in `Kaleido.Http.FunctionalTests`
@@ -87,7 +87,7 @@ This project defines the published HTTP contract surface. Changes to these types
 Prefer additive changes (new optional fields) over breaking changes (removing or renaming fields).
 
 When a contract must change, also update:
-- the matching endpoint in `Kaleido.Http`
+- the matching endpoint in `Kaleido.Http.Server` or `Kaleido.Registry.Http`
 - the matching client method in `Kaleido.Http.Client`
 - the matching tests in `Kaleido.Http.FunctionalTests`
 
@@ -95,16 +95,16 @@ Some contracts carry core types as they are: `InformationRequest`, `ProcessMessa
 the Process state enums, `AuthorizationMetadata`, `FilterOperator`/`MatchMode` (field metadata) and
 `QueryResult<T>`. They are part of this contract surface too: a change to one of them is a wire
 change, and `KaleidoJsonOptionsTests` fixes their JSON. The inventory, and the small amount of
-behavior this project holds on purpose (the registry snapshot stores, header sanitizing,
-`ToApiBody()`), are in the [ADR 0017 amendment](../../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds).
+behavior this project holds on purpose (header sanitizing and `ToApiBody()`), are recorded by
+the [ADR 0017 amendment](../../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds); [ADR 0039](../../docs/decisions/0039-protocol-neutral-package-boundaries.md) supersedes its old package and snapshot-store placement.
 
 ---
 
 ## Where to look
 
-- `Processor/ProcessContracts.cs` — all Process HTTP request/response types; `Processor/IKaleidoProcessorClient*.cs` — the process client interfaces
-- `Queryable/QueryableContracts.cs` and `Queryable/QueryApiBody.cs` — all Queryable HTTP request/response types; `Queryable/IKaleidoQueryableClient*.cs` — the queryable client interfaces
-- `Registry/` — `KaleidoRegistry`, `KaleidoRegistryAvailability`, registration and status contracts, and metadata shared by Process and Queryable registry entries (`DataTypeMetadata`, `EnumValueMetadata`, `ConstraintMetadata`, `ConstraintParameterMetadata`). The central registry host owns storage; participants hydrate a copy through the neutral client contract in `Kaleido.Client`.
+- `Processor/ProcessContracts.cs` — Process request/response shapes; the client interfaces live in `Kaleido.Client/Processor`.
+- `Queryable/QueryableContracts.cs` and `Queryable/QueryApiBody.cs` — Queryable request/response shapes; the client interfaces live in `Kaleido.Client/Queryable`.
+- `Registry/KaleidoRegistry.cs` and `Registry/RegistryControlContracts.cs` — central capabilities, availability/status and `RegistryServiceRoute`/`RegistryTransportRoute`. The registry host owns storage; participants hydrate the copy through `Kaleido.Client`.
+- `KaleidoJsonOptions.cs`, `KaleidoCorrelationHeaders.cs`, `HttpHeaderSanitizer.cs` — shared JSON and HTTP header behavior.
 
-The registry contracts are self-contained: they neither inherit from nor carry core's registry descriptors, which are internal; `Kaleido.Http` maps the runtime registries to them (#356).
-- `KaleidoJsonOptions.cs`, `KaleidoCorrelationHeaders.cs`, `HttpHeaderSanitizer.cs`
+The published registry contracts are separate from core's internal registry descriptors. `Kaleido.Http.Server` projects runtime metadata into them (#356).

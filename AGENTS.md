@@ -1,6 +1,6 @@
 # Kaleido contributor guide
 
-This is the repository-level contributor guide for Kaleido: eight framework projects (see [Project boundaries](#project-boundaries)). Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the repository model, then the README of the project you are changing. The coding conventions are in [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); this file stays under 16,000 bytes so agent tooling loads it whole (#455, checked in CI).
+This is the repository-level contributor guide for Kaleido: 12 shipped projects and four gRPC placeholders (see [Project boundaries](#project-boundaries)). Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the repository model, then the README of the project you are changing. The coding conventions are in [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); this file stays under 16,000 bytes so agent tooling loads it whole (#455, checked in CI).
 
 ## Build and test commands
 
@@ -29,8 +29,10 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 CI (`build.yml`) also checks, and you run before committing:
 - whitespace and final newlines: `dotnet format whitespace --folder --include src/ tools/ tests/ docs/ --exclude '**/obj/**' '**/bin/**' --verify-no-changes` (drop `--verify-no-changes` to fix) (#462);
 - every Kaleido type or member named in the Markdown docs exists in the sources: `python3 tools/docs/check-doc-symbols.py` (ADRs are skipped as historical; a deliberate non-symbol in code style goes in the script's `ALLOWED` list with its reason);
+- every tracked local Markdown link, image and heading fragment resolves: `python3 tools/docs/check-local-links.py`; test the checker with `python3 tools/docs/test-check-local-links.py` (external URLs are never fetched; use `python` on Windows);
 - every public error code is raised in `src/` and listed in `docs/ERROR_CODES.md` (no more, no less): `python3 tools/docs/check-error-codes.py` (#518);
 - every `AGENTS.md` is under 16,000 bytes: `python3 tools/docs/check-agents-size.py` (#455);
+- the packed release set works in a clean host: after a Release build, pack to a fresh subfolder of `artifacts/` and run `./tools/packaging/Test-PackageConsumer.ps1 -Packages <folder>` and `./tools/packaging/Test-PackageConsumer.Tests.ps1 -Packages <folder>` (do not mix older packages in the feed; CI's `-RequireDeterministic` needs PowerShell 7);
 - line coverage of the shipped `src/` assemblies, at least 95% ([build details](./docs/CONVENTIONS.md#build-details)).
 
 ## Project boundaries
@@ -39,22 +41,27 @@ One place owns each fact: a project's README lists its types and entry points, [
 
 | Project | Owns | Does not own |
 |---|---|---|
-| [`Kaleido`](./src/Kaleido/README.md) (core) | bootstrap and builder state, metadata primitives, eventing, transport-agnostic correlation, the Process and Queryable runtimes, the store and outbox contracts (`Storage/`) and their in-memory defaults | any transport, ASP.NET Core, HTTP contracts, a persistence technology |
-| [`Kaleido.Http`](./src/Kaleido.Http/README.md) | the HTTP transport: DI registration, middleware pipeline, correlation propagation, endpoint publication, HTTP execution services | runtime logic (it adapts and publishes) |
-| [`Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md) | the wire contracts and HTTP header names shared by server and client (some are core shapes carried as they are, ADR 0017), and the little behavior both sides need: the registry snapshot stores, header sanitizing, `QueryBody.ToApiBody()` | other behavior (it belongs to `Kaleido.Http` or `Kaleido.Http.Client`); changes ripple into both server and client |
-| [`Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md) | typed clients for remote Kaleido services, configured from `Kaleido:Clients` | server-side logic, endpoint mapping |
-| [`Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md) | the MCP adapter: tools built per caller from the registry (listing, schemas, forms, `call_tool`), calls through the Kaleido clients as the caller | transport or client logic |
-| [`Kaleido.Http.Registry`](./src/Kaleido.Http.Registry/README.md) | the control registry (#553): registration, heartbeats and leases, the store contract and its in-memory store, the merged registry of every service version | the services' own capabilities, routing calls |
-| [`Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md) | wiring Kaleido's activity sources and meters into OpenTelemetry (exporters, instrumentation, resource; one of many possible `Kaleido.Observability.<Technology>` providers) | the instrumentation itself, which lives in core on BCL `ActivitySource`/`Meter` |
-| [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md) | reference implementations of the store contracts (`IKaleidoContextStore`, `IKaleidoOutboxStore`, `IKaleidoIdempotencyStore`) and of `IKaleidoTransactions` on one SQLite database, and of the control registry's `IKaleidoRegistryStore` on the registry host's own | production guarantees; production hosts implement the store on their own infrastructure |
+| [`Kaleido`](./src/Kaleido/README.md) | Process and Queryable runtimes, eventing, store contracts, in-memory defaults | transport, ASP.NET Core, persistence technology |
+| [`Kaleido.Platform`](./src/Platform/README.md) | shared registry/wire contracts, JSON, headers and metadata; changes ripple into server and client | endpoint mapping, runtime planning |
+| [`Kaleido.Server`](./src/Server/README.md) | ASP.NET Core caller, authorization, correlation, filters, in-host registry view | protocol endpoints, runtime logic |
+| [`Kaleido.Client`](./src/Client/README.md) | neutral clients, call context, registry participation, hydration, transport choice | HTTP wire implementation |
+| [`Kaleido.Http`](./src/Http/Http/README.md) | shared HTTP route and URL shapes | server endpoints or outbound calls |
+| [`Kaleido.Http.Server`](./src/Http/Http.Server/README.md) | HTTP Process and Queryable endpoints and execution adapters | core process decisions |
+| [`Kaleido.Http.Client`](./src/Http/Http.Client/README.md) | one gateway HTTP client (`Kaleido:BaseUrl`), published-route calls, credentials and resilience | per-service addresses, server mapping |
+| [`Kaleido.Mcp`](./src/Mcp/Mcp/README.md) | caller-filtered MCP tools, forms, schemas and invocation | transport or client internals |
+| [`Kaleido.Registry`](./src/Registry/Registry/README.md) | control registry, leases, store contract, merged views and HybridCache | instance addresses and gateway routing |
+| [`Kaleido.Registry.Http`](./src/Registry/Registry.Http/README.md) | control-registry HTTP API | registry state or runtime rules |
+| [`Kaleido.Observability.OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md) | OpenTelemetry wiring | instrumentation emitted by core |
+| [`Kaleido.Provider.SQLite`](./src/Providers/Provider.SQLite/README.md) | reference core and registry stores and transactions on SQLite | production-provider guarantees |
+| [gRPC placeholders](./src/Grpc/Grpc/README.md) (`Kaleido.Grpc*`, `Kaleido.Registry.Grpc`) | future protocol boundaries, not packable yet | a gRPC implementation |
 
 ## General contributor rules
 
 - **Kaleido is a process engine; it never makes business decisions** ([ADR 0001](./docs/decisions/0001-process-engine-not-decision-maker.md)). It applies declared rules (the step graph, declared roles/policies, structural validation) and records what happened; what to ask, who may access a case, which path to take and what wording to use belong to the implementer. New capabilities are mechanisms, never content.
 - Keep concerns in the correct project.
 - `Kaleido` (core) should remain free of transport-specific behavior.
-- `Kaleido.Http` should adapt and publish; it should not reimplement runtime logic.
-- `Kaleido.Http.Abstractions` is shared — changes here ripple into both server and client projects.
+- `Kaleido.Http.Server` should adapt and publish; it should not reimplement runtime logic.
+- `Kaleido.Platform` is shared — changes here ripple into both server and client projects.
 - Keep transport layers thin.
 - Prefer explicit registration and discoverability over hidden behavior.
 - Match documentation to the actual code and runtime behavior.
@@ -124,6 +131,6 @@ When something new surfaces while working an Issue:
 ## How to navigate the repo
 
 - **Repository:** [`README.md`](./README.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`MAINTAINERS.md`](./MAINTAINERS.md), [`SECURITY.md`](./SECURITY.md), [`SUPPORT.md`](./SUPPORT.md), [`docs/VERSIONING.md`](./docs/VERSIONING.md), [`RELEASING.md`](./RELEASING.md), [`CHANGELOG.md`](./CHANGELOG.md) — the human-facing summary of these rules, who maintains the project, the vulnerability-reporting route, where to ask, and the preview policy.
-- **Source:** [`src/AGENTS.md`](./src/AGENTS.md) (source contributor guide), [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) (internals), [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md), and each project's README: [`Kaleido`](./src/Kaleido/README.md), [`Kaleido.Http`](./src/Kaleido.Http/README.md), [`Kaleido.Http.Abstractions`](./src/Kaleido.Http.Abstractions/README.md), [`Kaleido.Http.Client`](./src/Kaleido.Http.Client/README.md), [`Kaleido.Http.Mcp`](./src/Kaleido.Http.Mcp/README.md), [`Kaleido.Http.Registry`](./src/Kaleido.Http.Registry/README.md), [`Kaleido.Observability.OpenTelemetry`](./src/Kaleido.Observability.OpenTelemetry/README.md), [`Kaleido.Provider.SQLite`](./src/Kaleido.Provider.SQLite/README.md).
+- **Source:** [`src/AGENTS.md`](./src/AGENTS.md), [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md), [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); project READMEs: [`Kaleido`](./src/Kaleido/README.md), [`Platform`](./src/Platform/README.md), [`Server`](./src/Server/README.md), [`Client`](./src/Client/README.md), [`Http`](./src/Http/Http/README.md), [`Http.Server`](./src/Http/Http.Server/README.md), [`Http.Client`](./src/Http/Http.Client/README.md), [`Mcp`](./src/Mcp/Mcp/README.md), [`Registry`](./src/Registry/Registry/README.md), [`Registry.Http`](./src/Registry/Registry.Http/README.md), [`OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md), [`SQLite`](./src/Providers/Provider.SQLite/README.md).
 - **Tooling:** [`tools/analyzers/README.md`](./tools/analyzers/README.md) — analyzer project roles and test locations; rule catalog in [`docs/ANALYZERS.md`](./docs/ANALYZERS.md).
 - **Tests and examples:** [`tests/AGENTS.md`](./tests/AGENTS.md); the consumer guide's compiled examples, [`docs/guide`](./docs/guide/README.md); the full samples in their own repositories, consuming the Kaleido packages: [`Kaleido-Samples-PriorAuth`](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and [`Kaleido-Samples-ECommerce`](https://github.com/no1ross/Kaleido-Samples-ECommerce) (#95). Use the examples and samples to understand intended consumer usage, and the tests to understand behavioral expectations and invariants.

@@ -1,6 +1,6 @@
 # 0017. Transport contracts live in Kaleido.Http.Abstractions under the Kaleido.Http namespace; the registry snapshot store stays a public async seam
 
-- **Status:** Accepted
+- **Status:** Superseded by 0039
 - **Date:** 2026-10-19
 - **Related:** #298, #293, #275, #356, #313, #448 (amendment: shared core shapes and the behavior Abstractions holds)
 

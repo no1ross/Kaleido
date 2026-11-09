@@ -28,7 +28,7 @@ sequenceDiagram
 
     rect rgba(70, 130, 180, 0.25)
         Note over C,S: One step call
-        C->>R: POST /{service}/processes/steps/{Step} (+ X-Kaleido-Process-Id)
+        C->>R: POST /{service}/{version}/processes/steps/{Step} (+ X-Kaleido-Process-Id)
         R->>S: load the process (or start one, for an initial step)
         R->>R: validate the inputs; check the step may run now
         R->>H: ExecuteAsync(step, context)
@@ -158,7 +158,7 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 | the caller cancels while the handler runs | `canceled` | unchanged: the step can be sent again |
 
 The messages are your words for the user (`businessMessages` in the answer), kept apart from Kaleido's
-diagnostics (`frameworkMessages`). The process state is read with `GET /{service}/processes/{processId}`;
+diagnostics (`frameworkMessages`). The process state is read with `GET /{service}/{version}/processes/{processId}`;
 enum values are camelCase on the wire (`businessFailure`, `awaitingRequiredStep`).
 
 A process **ends** as `complete`, `businessFailure` or `handOff`. From then on its state lists no available step, and any step sent to it is answered with status `pending` and `pro_process_ended` ([ADR 0033](../decisions/0033-process-lifecycle-and-admission.md)). Phases are the step graph's (`AvailableAfter` / `AvailableUntil`). A process whose steps stay open after its business outcome (an audit, an appeal) ends with `Complete()`, typically from an internal-only step that a job calls when the process truly ends. Such a step runs after other steps, never as an entry step (KAL2022).
@@ -227,8 +227,9 @@ public sealed record OpenReturnStep;
 ```
 
 `HandOff` sends nothing: the handler starts the process on the other service itself, with a
-Kaleido client (`AddHttpClients()` and a `returns` client under `Kaleido:Clients`). The client sends
-this process's id and the calling processor, so the returns service starts its process under the
+Kaleido client (`AddHttpClients()` with the one `Kaleido:BaseUrl` gateway). It resolves the
+`returns` service's published route from the host's unfiltered central registry and sends this
+process's id and the calling processor, so the returns service starts its process under the
 **same id**, which an unknown id only does for such a call from another processor's step
 ([ADR 0009](../decisions/0009-unknown-process-id-only-on-handoff.md)).
 
@@ -245,7 +246,10 @@ So a caller follows the URLs and continues on the returns service with the same 
 second call; behind a router it never needs to know the process moved. A step with a typed result
 hands off with its own result too: `HandOff("returns", answer, new ReturnOrderResult { ... })`, built
 from what the returns service returned (`ExecuteStepAsync<TStep, TResponse>`). The other service's
-result is not passed on: your step's result type is your caller's contract.
+result is not passed on: your step's result type is your caller's contract. Each `executeUrl`
+includes the target's version; keep that version alongside the `processId` when reading its state
+or continuing it later (`GetClient(serviceName, serviceVersion)`). The id alone cannot select the
+older version after a rollout.
 
 Hand off only when the other service's step completed: an answer that did not is a process
 violation (the step's status is `exception`). This process keeps only the other service's name, so

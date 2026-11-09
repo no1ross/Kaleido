@@ -14,7 +14,7 @@ public sealed record QueryApiRequest(
     QueryApiBody? Query = null);
 
 /// <summary>
-/// The body of a query endpoint (<c>POST /{service}/queryable/{source}[/{view}]/query</c>):
+/// The body of a query endpoint (<c>POST /{service}/{version}/queryable/{source}[/{view}]/query</c>):
 /// the source's or view's parameters plus an optional query, <c>{"parameters":{…},"query":{…}}</c>.
 /// </summary>
 /// <typeparam name="TParameters">
@@ -148,7 +148,7 @@ public sealed record QueryableViewResponse
     /// </summary>
     public AuthorizationMetadata? Authorization { get; init; }
 
-    /// <summary>The URL to query this view: <c>/{service}/queryable/{source}/{view}/query</c>, with lowercase source and view names.</summary>
+    /// <summary>The URL to query this view: <c>/{service}/{version}/queryable/{source}/{view}/query</c>, with lowercase source and view names.</summary>
     public required string QueryUrl { get; init; }
 
     /// <summary>The parameters the view accepts; empty when it takes none.</summary>

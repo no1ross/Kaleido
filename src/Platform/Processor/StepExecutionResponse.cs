@@ -45,7 +45,7 @@ public record StepExecutionResponse : IHandOffContinuationSource
     /// When set, this request handed the process off to this processor: <see cref="RequiredStep"/>,
     /// <see cref="AvailableSteps"/> and <see cref="Notice"/> are its answer, with its execute URLs, and
     /// the step's business messages are its messages (#198). The process continues there; its state is
-    /// read with GET /{TargetProcessorName}/processes/{ProcessId}.
+    /// read with GET /{TargetProcessorName}/{version}/processes/{ProcessId}, preserving the target's published service version.
     /// </summary>
     public string? TargetProcessorName
     {

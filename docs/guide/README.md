@@ -20,18 +20,20 @@ applies the rules you declared and records what happened.
 ```mermaid
 flowchart LR
     caller["UI / service / AI agent"]
-    mcp["Kaleido.Http.Mcp<br/>(MCP adapter)"]
-    client["Kaleido.Http.Client<br/>(typed clients)"]
-    http["Kaleido.Http<br/>(endpoints, registry)"]
-    core["Kaleido<br/>(Process + Queryable runtimes,<br/>events, stores)"]
+    mcp["Kaleido.Mcp<br/>(caller-visible tools)"]
+    client["Kaleido.Client + Kaleido.Http.Client<br/>(registry-resolved calls)"]
+    gateway["Gateway<br/>/{service}/{version}"]
+    registry["Kaleido.Registry + Kaleido.Registry.Http<br/>(central discovery)"]
+    http["Kaleido.Http.Server<br/>(versioned endpoints)"]
+    core["Kaleido<br/>(Process + Queryable runtimes, events)"]
     store[("your stores<br/>(state, outbox, idempotency)")]
 
     caller -- "MCP tools" --> mcp
-    caller -- "HTTP" --> http
-    mcp --> client
-    client -- "HTTP" --> http
-    http --> core
-    core --> store
+    caller -- "HTTP" --> gateway
+    mcp --> client --> gateway
+    gateway --> http --> core --> store
+    http -- "register + heartbeat" --> registry
+    client -- "hydrate" --> registry
 ```
 
 ## Reading order

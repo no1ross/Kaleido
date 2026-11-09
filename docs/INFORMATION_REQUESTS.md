@@ -149,7 +149,7 @@ new InformationItem
 **Who decides what is asked: Kaleido, never the agent.**
 - **AI agents:** the MCP adapter asks in rounds, first the questions with no condition, then those
   the answers make apply. It submits once, and the agent never sees the conditions (see
-  [the MCP adapter](../src/Kaleido.Http.Mcp/README.md#conditional-questions)).
+  [the MCP adapter](../src/Mcp/Mcp/README.md#conditional-questions)).
 - **UIs:** a UI that renders requests itself applies the same rules: it shows a question once it
   applies and never sends the answers of questions that do not.
 - **Handlers:** a handler receives no answer for a question that did not apply.

@@ -24,7 +24,7 @@ For the full repository model, see:
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - `IEventPublisher` / `IKaleidoEvent` - infrastructure-agnostic event publication seam; events reach the publisher at least once through the outbox and the event relay (`KaleidoEventRelay`, `KaleidoEventOptions`, ADR 0012)
 - `IKaleidoEventRedactor` / `AddEventRedactor<T>()` - reduce events before the outbox write; properties marked with a `DataClassificationAttribute` are redacted per the event policy `AddEventRedaction(r => ...)` sets (separate from the host's log redaction, `AddRedaction`), or erased without one (ADR 0013, ADR 0025)
-- `Kaleido.Exceptions` — `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConcurrencyException` (409), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500); the HTTP transport maps them to the error body `KaleidoErrorResponse`, which lives in `Kaleido.Http.Abstractions` (see [`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md), ADR 0017)
+- `Kaleido.Exceptions` — `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConcurrencyException` (409), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500); the HTTP transport maps them to the error body `KaleidoErrorResponse`, which lives in `Kaleido.Platform` (see [`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md), ADR 0017)
 
 ### Queryable runtime
 - `QueryableServiceCollectionExtensions` — `AddQueryable()` (internal, auto-invoked by `AddKaleido()`)
@@ -42,7 +42,7 @@ For the full repository model, see:
 - `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
 - `IProcessorRuntime` (internal) — runs submitted steps in-process (what the HTTP transport calls); `ProcessorExecutor` (internal) is the main step execution loop
 - `StepCandidateBuilder` / `StepCandidateValidator` / `StepCandidateConsistencyChecker` / `StepCandidatePlanner` / `StepCandidateNextStepChecker` — planning pipeline
-- `IProcessorStepRegistry` / `IProcessorRegistry` (internal, shared with `Kaleido.Http`) — runtime registries
+- `IProcessorStepRegistry` / `IProcessorRegistry` (internal, shared with `Kaleido.Http.Server`) — runtime registries
 - `ProcessorObservability` (internal) — logs, traces and metrics of the runtime
 - `IProcessStepHandler<TStep>` / `IProcessStepHandler<TStep, TResult>` — handler contracts
 - `IInformationStep` / `InformationRequest` / `RequireInformation<TNext>` — information requests: runtime-decided questions answered by an information step (see [`docs/INFORMATION_REQUESTS.md`](../../docs/INFORMATION_REQUESTS.md))
@@ -62,10 +62,10 @@ Reference this project when you need to:
 ## What this project is NOT for
 
 This project does not contain:
-- HTTP endpoint publication, DI registration, middleware, or transport services (see [`Kaleido.Http`](../Kaleido.Http/README.md))
-- HTTP contract types (see [`Kaleido.Http.Abstractions`](../Kaleido.Http.Abstractions/README.md))
-- Remote HTTP client consumption (see [`Kaleido.Http.Client`](../Kaleido.Http.Client/README.md))
-- SQLite state persistence (see [`Kaleido.Provider.SQLite`](../Kaleido.Provider.SQLite/README.md))
+- HTTP endpoint publication, DI registration, middleware, or transport services (see [`Kaleido.Http.Server`](../Http/Http.Server/README.md))
+- HTTP contract types (see [`Kaleido.Platform`](../Platform/README.md))
+- Remote HTTP client consumption (see [`Kaleido.Http.Client`](../Http/Http.Client/README.md))
+- SQLite state persistence (see [`Kaleido.Provider.SQLite`](../Providers/Provider.SQLite/README.md))
 
 ---
 
@@ -76,7 +76,8 @@ A service starts by calling `AddKaleido()`:
 ```csharp
 builder.Services.AddKaleido(builder.Configuration, new()
 {
-    ServiceName = "myservice", // [a-z0-9][a-z0-9_-]*: it is the route prefix and the MCP tool prefix (KAL2005)
+    ServiceName = "myservice", // [a-z0-9][a-z0-9_-]*: service and MCP tool identity (KAL2005)
+    ServiceVersion = "1",     // required when mapping HTTP; each version gets its own gateway route
     Assemblies = [
         typeof(Program).Assembly,
         typeof(MyDbContext).Assembly
@@ -86,7 +87,7 @@ builder.Services.AddKaleido(builder.Configuration, new()
 
 Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, then the callback):
 - `DisplayName` / `Description` — the service's human-readable name and description, published in the registry
-- `IsEntryProcessor` — marks this service's processor as the entry point of an aggregated registry (only one may)
+- `IsEntryProcessor` — marks this service's processor as the central registry's entry point (only one may be published)
 - `InstanceId` — identifies this running instance (new at each start by default) in its own trace tags, events and logs; never sent or read in correlation headers
 - `TypeFilter` — limits which step and query source/view types are registered when an assembly is shared
 - `AuthorizationMode` / `DefaultAuthorization` — capability authorization ([`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md))
@@ -143,7 +144,7 @@ Process is step-centric:
 2. implement exactly one `IProcessStepHandler<TStep>` (or `<TStep, TResult>`)
 3. register the assemblies containing steps via `KaleidoServiceOptions.Assemblies`
 4. let the runtime build a registry and manage state
-5. submit one or more steps through a transport (the HTTP transport, `Kaleido.Http`); the in-process runtime it calls is internal
+5. submit one or more steps through a transport (the HTTP transport, `Kaleido.Http.Server`); the in-process runtime it calls is internal
 
 A step's public name is its type name (`Type.Name`, unmodified) — in the registry, on the wire, in persisted state, and in events. Handlers name the next step by type (`ProcessStepHandlerResult.Success<TNext>()`, or `ProcessStepHandlerResult.Success(response).Next<TNext>()` with a typed response); names are only produced at the boundary.
 

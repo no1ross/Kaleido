@@ -8,7 +8,7 @@ namespace Kaleido.Platform.Processor;
 // ── Requests ────────────────────────────────────────────────────────────────
 
 /// <summary>
-/// The body of the multi-step execute endpoint (<c>POST /{service}/processes/execute</c>): one or
+/// The body of the multi-step execute endpoint (<c>POST /{service}/{version}/processes/execute</c>): one or
 /// more steps submitted together, so a consumer can send all the information it currently has and
 /// let the process determine what can happen next.
 /// </summary>
@@ -62,7 +62,7 @@ public sealed record ProcessStepRequest
 }
 
 /// <summary>
-/// The body of a per-step execute endpoint (<c>POST /{service}/processes/steps/{step}</c>): an
+/// The body of a per-step execute endpoint (<c>POST /{service}/{version}/processes/steps/{step}</c>): an
 /// envelope such as <c>{"processStep":{"field":"value"}}</c>.
 /// </summary>
 /// <remarks>
@@ -125,7 +125,7 @@ public sealed record ProcessExecutionResponse
     /// When set, this request handed the process off to this processor: <see cref="RequiredStep"/>,
     /// <see cref="AvailableSteps"/> and <see cref="Notice"/> are its answer, with its execute URLs, and
     /// the step's business messages are its messages (#198). The process continues there; its state is
-    /// read with GET /{TargetProcessorName}/processes/{ProcessId}.
+    /// read with GET /{TargetProcessorName}/{version}/processes/{ProcessId}.
     /// </summary>
     public string? TargetProcessorName
     {
@@ -234,7 +234,7 @@ public sealed record StepExecutionResponse<TResponse> : StepExecutionResponse
 
 /// <summary>
 /// The current state of a process, returned by the process state endpoint
-/// (<c>GET /{service}/processes/{processId}</c>). Reading the state never executes a step.
+/// (<c>GET /{service}/{version}/processes/{processId}</c>). Reading the state never executes a step.
 /// </summary>
 /// <remarks>
 /// The endpoint answers 404 for an unknown process id; the client's
@@ -274,7 +274,7 @@ public sealed record ProcessStateResponse
 
     /// <summary>
     /// When set, the process has been handed off to this processor.
-    /// The consumer must call GET /{TargetProcessorName}/processes/{ProcessId} to continue.
+    /// The consumer must call GET /{TargetProcessorName}/{version}/processes/{ProcessId} to continue.
     /// <see cref="RequiredStep"/> will be null in this case.
     /// </summary>
     public string? TargetProcessorName
