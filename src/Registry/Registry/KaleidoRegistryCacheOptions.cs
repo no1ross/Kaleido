@@ -23,8 +23,8 @@ public sealed record KaleidoRegistryCacheOptions
         Require(!string.IsNullOrWhiteSpace(options.KeyPrefix) && options.KeyPrefix.Length <= 900, nameof(KeyPrefix), "must be non-empty and at most 900 characters");
         Require(options.ViewTtl > TimeSpan.Zero, nameof(ViewTtl), "must be positive");
         Require(options.CapabilitiesTtl > TimeSpan.Zero, nameof(CapabilitiesTtl), "must be positive");
-        Require(options.ViewLocalTtl is null || options.ViewLocalTtl > TimeSpan.Zero && options.ViewLocalTtl <= options.ViewTtl, nameof(ViewLocalTtl), "must be positive and no longer than ViewTtl");
-        Require(options.CapabilitiesLocalTtl is null || options.CapabilitiesLocalTtl > TimeSpan.Zero && options.CapabilitiesLocalTtl <= options.CapabilitiesTtl, nameof(CapabilitiesLocalTtl), "must be positive and no longer than CapabilitiesTtl");
+        Require(options.ViewLocalTtl is null || (options.ViewLocalTtl > TimeSpan.Zero && options.ViewLocalTtl <= options.ViewTtl), nameof(ViewLocalTtl), "must be positive and no longer than ViewTtl");
+        Require(options.CapabilitiesLocalTtl is null || (options.CapabilitiesLocalTtl > TimeSpan.Zero && options.CapabilitiesLocalTtl <= options.CapabilitiesTtl), nameof(CapabilitiesLocalTtl), "must be positive and no longer than CapabilitiesTtl");
     }
 
     private static void Require(bool condition, string name, string rule)

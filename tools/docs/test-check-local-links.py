@@ -122,6 +122,29 @@ class LocalLinksTests(unittest.TestCase):
         self.assertEqual(1, checked)
         self.assertEqual([], findings)
 
+    def test_fence_lengths_and_heading_closing_hashes(self):
+        self.add("docs/guide.md", "# C# basics\n## Heading ###\n###### Last\n####### Not a heading\n")
+        self.add("docs/index.md", """~~~markdown
+[example](missing.md)
+~~~~
+[Code](guide.md#c-basics) [Heading](guide.md#heading)
+[Last](guide.md#last) [Invalid](guide.md#not-a-heading)
+""")
+
+        checked, findings = self.check()
+
+        self.assertEqual(4, checked)
+        self.assertEqual([5], [finding.line for finding in findings])
+
+    def test_code_spans_match_only_identical_backtick_runs(self):
+        self.add("docs/guide.md", "# Present\n")
+        self.add("docs/index.md", "``[hidden](missing.md)`` `[hidden](missing.md)` `unclosed [Shown](guide.md#present)\n")
+
+        checked, findings = self.check()
+
+        self.assertEqual(1, checked)
+        self.assertEqual([], findings)
+
     def test_explicit_ids_do_not_change_duplicate_heading_suffixes(self):
         self.add("docs/guide.md", "<a id=\"repeat\"></a>\n## Repeat\n## Repeat\n")
         self.add("docs/index.md", "[Second](guide.md#repeat-1)\n[Not a third](guide.md#repeat-2)\n")

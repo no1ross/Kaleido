@@ -9,20 +9,18 @@ import posixpath
 import re
 import subprocess
 import sys
+from bisect import bisect_right
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 
-FENCE = re.compile(r"^( *)(`{3,}|~{3,})(.*)$")
 LIST_ITEM = re.compile(r"^( *)(?:[-+*]|\d+[.)]) +")
-HEADING = re.compile(r"^ {0,3}#{1,6}(?:\s+|$)(.*)$")
 SETEXT = re.compile(r"^ {0,3}(?:=+|-+)\s*$")
 REFERENCE = re.compile(r"^ *\[([^]\n]+)\]:\s*(<[^>]+>|\S+)")
 ATTRIBUTE = re.compile(r"\b(?:href|src)\s*=\s*(['\"])(.*?)\1", re.I)
 EXPLICIT_ID = re.compile(r"<[a-z][^>]*?\b(?:id|name)\s*=\s*(?:['\"]([^'\"]+)['\"]|([^\s>]+))", re.I)
 AUTOLINK = re.compile(r"<((?:\.{1,2}/|/)[^>\s]+)>")
-CODE = re.compile(r"(`+)(.*?)\1")
 SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.I)
 GITHUB_LINE = re.compile(r"^L\d+(?:-L\d+)?$")
 
@@ -34,6 +32,65 @@ class Finding:
     message: str
 
 
+def fence_marker(line):
+    content = line.lstrip(" ")
+    if not content or content[0] not in "`~":
+        return None
+    end = 0
+    while end < len(content) and content[end] == content[0]:
+        end += 1
+    return (content[:end], content[end:]) if end >= 3 else None
+
+
+def atx_heading(line):
+    indent = len(line) - len(line.lstrip(" "))
+    if indent > 3:
+        return None
+    content = line[indent:]
+    level = 0
+    while level < len(content) and content[level] == "#":
+        level += 1
+    if not 1 <= level <= 6 or level < len(content) and not content[level].isspace():
+        return None
+    return content[level:].lstrip()
+
+
+def mask_code_spans(line):
+    runs = []
+    index = 0
+    while (start := line.find("`", index)) >= 0:
+        end = start + 1
+        while end < len(line) and line[end] == "`":
+            end += 1
+        runs.append((start, end))
+        index = end
+    by_length = {}
+    for index, (start, end) in enumerate(runs):
+        by_length.setdefault(end - start, []).append(index)
+    masked = list(line)
+    index = 0
+    while index < len(runs):
+        start, end = runs[index]
+        candidates = by_length[end - start]
+        next_index = bisect_right(candidates, index)
+        if next_index < len(candidates):
+            closing_index = candidates[next_index]
+            closing_end = runs[closing_index][1]
+            masked[start:closing_end] = " " * (closing_end - start)
+            index = closing_index + 1
+        else:
+            index += 1
+    return "".join(masked)
+
+
+def closing_heading_hashes(title):
+    stripped = title.rstrip()
+    end = len(stripped)
+    while end and stripped[end - 1] == "#":
+        end -= 1
+    return stripped[:end].rstrip() if end < len(stripped) and (end == 0 or stripped[end - 1].isspace()) else title
+
+
 def visible_lines(text):
     fence = None
     comment = False
@@ -41,8 +98,8 @@ def visible_lines(text):
     for raw in text.splitlines():
         original = re.sub(r"^ {0,3}(?:> ?)+", "", raw)
         if fence is not None:
-            match = FENCE.match(original)
-            if match and match.group(2)[0] == fence[0] and len(match.group(2)) >= len(fence) and not match.group(3).strip():
+            match = fence_marker(original)
+            if match and match[0][0] == fence[0] and len(match[0]) >= len(fence) and not match[1].strip():
                 fence = None
             yield ""
             continue
@@ -71,9 +128,9 @@ def visible_lines(text):
             list_indents.append(item.end())
         in_list = bool(list_indents and indent >= list_indents[-1])
         indented_code = original.startswith("\t") or indent >= 4 and not item and not (in_list and indent < list_indents[-1] + 4)
-        match = FENCE.match(line)
+        match = fence_marker(line)
         if match and not indented_code and (indent <= 3 or in_list and indent - list_indents[-1] <= 3):
-            fence = match.group(2)
+            fence = match[0]
             yield ""
         elif indented_code:
             yield ""
@@ -94,13 +151,13 @@ def anchors(lines):
     headings = set()
     previous = ""
     for line in lines:
-        without_code = CODE.sub(lambda match: " " * len(match.group()), line)
+        without_code = mask_code_spans(line)
         for match in EXPLICIT_ID.finditer(without_code):
             found.add(html.unescape(match.group(1) or match.group(2)))
-        match = HEADING.match(line)
-        paragraph = previous and not (HEADING.match(previous) or LIST_ITEM.match(previous) or REFERENCE.match(previous)
+        atx = atx_heading(line)
+        paragraph = previous and not (atx_heading(previous) is not None or LIST_ITEM.match(previous) or REFERENCE.match(previous)
                                       or previous.lstrip().startswith(("<", "|")) or re.fullmatch(r"[-*_ ]{3,}", previous.strip()))
-        title = re.sub(r"\s+#+\s*$", "", match.group(1)) if match else previous if SETEXT.match(line) and paragraph else None
+        title = closing_heading_hashes(atx) if atx is not None else previous if SETEXT.match(line) and paragraph else None
         if title is not None:
             base = slug(title)
             candidate = base
@@ -201,7 +258,7 @@ def markdown_links(lines):
     for number, original in enumerate(lines, 1):
         if REFERENCE.match(original):
             continue
-        line = CODE.sub(lambda match: " " * len(match.group()), original)
+        line = mask_code_spans(original)
         yield from ((number, target) for target in inline_links(line, references))
         yield from ((number, match.group(2)) for match in ATTRIBUTE.finditer(line))
         yield from ((number, match.group(1)) for match in AUTOLINK.finditer(line)

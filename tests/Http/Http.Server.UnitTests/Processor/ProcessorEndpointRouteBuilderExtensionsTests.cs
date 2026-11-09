@@ -149,6 +149,32 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         Assert.Contains("Untyped Step", endpoint.Metadata.GetMetadata<ITagsMetadata>()!.Tags);
     }
 
+    [Fact]
+    public void MapProcessor_TypedAndUntypedSteps_ShareEndpointMetadata()
+    {
+        var endpoints = CreateEndpoints(registrations:
+        [
+            CreateRegistration(typeof(TestStep), typeof(TestResponse), "Test-Step", AuthorizationMetadata.Unspecified),
+            CreateRegistration(typeof(UntypedStep), null, "Untyped-Step", AuthorizationMetadata.Unspecified),
+        ]);
+        endpoints.MapProcessor();
+
+        var typed = FindEndpoint(endpoints, ProcessEndpointNames.StepExecutionEndpointName("test-step"))!;
+        var untyped = FindEndpoint(endpoints, ProcessEndpointNames.StepExecutionEndpointName("untyped-step"))!;
+        var typedDescription = typed.Metadata.GetMetadata<IEndpointDescriptionMetadata>()!.Description;
+        var untypedDescription = untyped.Metadata.GetMetadata<IEndpointDescriptionMetadata>()!.Description;
+
+        Assert.Equal("Execute Test Step.", typed.Metadata.GetMetadata<IEndpointSummaryMetadata>()!.Summary);
+        Assert.Equal("Execute Untyped Step.", untyped.Metadata.GetMetadata<IEndpointSummaryMetadata>()!.Summary);
+        Assert.Equal(typedDescription.Replace("Test Step", "Untyped Step", StringComparison.Ordinal), untypedDescription);
+        Assert.Equal(typeof(ExecuteStepRequest<TestStep>), typed.Metadata.GetMetadata<IAcceptsMetadata>()!.RequestType);
+        Assert.Equal(typeof(ExecuteStepRequest<UntypedStep>), untyped.Metadata.GetMetadata<IAcceptsMetadata>()!.RequestType);
+        Assert.Contains("application/json", typed.Metadata.GetMetadata<IAcceptsMetadata>()!.ContentTypes);
+        Assert.Contains("application/json", untyped.Metadata.GetMetadata<IAcceptsMetadata>()!.ContentTypes);
+        Assert.Contains(typed.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>(), x => x.Type == typeof(StepExecutionResponse<TestResponse>));
+        Assert.Contains(untyped.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>(), x => x.Type == typeof(StepExecutionResponse));
+    }
+
     [Theory]
     [InlineData(KaleidoAuthorizationMode.Authenticated)]
     [InlineData(KaleidoAuthorizationMode.ZeroTrust)]

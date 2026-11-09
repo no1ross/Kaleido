@@ -228,9 +228,6 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
         ProcessStepRegistration step,
         KaleidoServiceOptions options)
     {
-        var stepName =
-            step.Metadata.Name.ToLowerInvariant();
-
         endpoints.MapPost(
                 route,
                 async (
@@ -245,23 +242,7 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
-            .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
-            .WithKaleidoAuthorization(step.Metadata.Authorization, options)
-            .WithName(
-                ProcessEndpointNames.StepExecutionEndpointName(
-                    stepName))
-            .WithTags(step.Metadata.DisplayName)
-            .WithSummary(
-                $"Execute {step.Metadata.DisplayName}.")
-            .WithDescription(
-                $"Executes the '{step.Metadata.DisplayName}' process step. " +
-                "Send a JSON body with a required processStep property containing the step input. " +
-                "To resume, send X-Kaleido-Process-Id as a request header; omit it to create a new process. " +
-                "The response includes processId, outcome, requiredStep, availableSteps, businessMessages, " +
-                "and frameworkMessages (empty by default). Typed steps also include result. " +
-                "The process id is echoed in the X-Kaleido-Process-Id response header.")
-            .Accepts<ExecuteStepRequest<TProcessStep>>(
-                "application/json")
+            .ConfigureStepExecutionEndpoint<TProcessStep>(step, options)
             .Produces<StepExecutionResponse<TResponse>>();
     }
 
@@ -271,9 +252,6 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
         ProcessStepRegistration step,
         KaleidoServiceOptions options)
     {
-        var stepName =
-            step.Metadata.Name.ToLowerInvariant();
-
         endpoints.MapPost(
                 route,
                 async (
@@ -288,11 +266,20 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
 
                     return Results.Ok(result);
                 })
+            .ConfigureStepExecutionEndpoint<TProcessStep>(step, options)
+            .Produces<StepExecutionResponse>();
+    }
+
+    private static RouteHandlerBuilder ConfigureStepExecutionEndpoint<TProcessStep>(
+        this RouteHandlerBuilder builder,
+        ProcessStepRegistration step,
+        KaleidoServiceOptions options) =>
+        builder
             .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
             .WithKaleidoAuthorization(step.Metadata.Authorization, options)
             .WithName(
                 ProcessEndpointNames.StepExecutionEndpointName(
-                    stepName))
+                    step.Metadata.Name.ToLowerInvariant()))
             .WithTags(step.Metadata.DisplayName)
             .WithSummary(
                 $"Execute {step.Metadata.DisplayName}.")
@@ -304,9 +291,7 @@ internal static partial class ProcessorEndpointRouteBuilderExtensions
                 "and frameworkMessages (empty by default). Typed steps also include result. " +
                 "The process id is echoed in the X-Kaleido-Process-Id response header.")
             .Accepts<ExecuteStepRequest<TProcessStep>>(
-                "application/json")
-            .Produces<StepExecutionResponse>();
-    }
+                "application/json");
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Process endpoints mapped at route prefix {RoutePrefix} with {ProcessStepCount} process steps and {InitialStepCount} initial steps.")]
     private static partial void LogEndpointsMapped(ILogger logger, string routePrefix, int processStepCount, int initialStepCount);
