@@ -1017,7 +1017,7 @@ public sealed class ProcessorRuntimeTests
     [Fact]
     public async Task ExecuteAsync_ForANewProcess_SavesItRightAwayWithItsProcessCreatedEvent()
     {
-        var created = OutboxEvent(KaleidoEventTypes.ProcessCreated);
+        var created = OutboxEvent(ProcessEventTypes.ProcessCreated);
         var outbox = new Mock<IKaleidoEventWriter>();
         outbox.Setup(x => x.Prepare(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>())).Returns(created);
         var store = new Mock<IKaleidoContextStore>();

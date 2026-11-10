@@ -4,7 +4,8 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 
 | Test project | Tests code in |
 |---|---|
-| `Kaleido.UnitTests` | `src/Kaleido` foundation, Process and Eventing pending extraction |
+| `Kaleido.UnitTests` | `src/Kaleido` foundation and Eventing pending extraction |
+| `Kaleido.Process.UnitTests` | `src/Capabilities/Process/Kaleido.Process` steps, runtime and stores |
 | `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
 | `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |
 | `Kaleido.Server.UnitTests` | `src/Server` authorization, caller/correlation and registry filtering |
@@ -24,7 +25,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Analyzers.Testing.UnitTests` | test `KAL1xxx` rules |
 | `Kaleido.IntegrationTests` | cross-project DI, EF Core, caller credentials and compiled consumer-guide examples |
 
-Project-wide imports belong in each test `.csproj` as `<Using Include="..." />`, not `GlobalUsings.cs`.
+Project-wide imports belong in each test `.csproj` as `<Using Include="..." />`, not `GlobalUsings.cs`. Assembly-boundary checks are pending source analyzers (#591), not SUT unit fixtures.
 
 ## Warnings
 Test projects build like `src/`: a warning is an error, and IDE code-style rules (unused usings, naming,

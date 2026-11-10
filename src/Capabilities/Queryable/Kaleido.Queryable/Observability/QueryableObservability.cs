@@ -232,7 +232,13 @@ internal sealed partial class QueryableObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity.SetErrorStatus(exception);
+            activity?.SetStatus(ActivityStatusCode.Error, exception switch
+            {
+                KaleidoConfigurationException configuration => configuration.Code,
+                KaleidoFrameworkException framework => framework.Code,
+                KaleidoValidationException validation => validation.Code,
+                _ => exception.GetType().Name,
+            });
             activity.AddExceptionEvent(exception);
 
             QueryExecutionFailuresCounter.Add(1, CreateExecutionTags(details));

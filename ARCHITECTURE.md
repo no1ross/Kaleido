@@ -7,12 +7,12 @@ registry and reached through a gateway.
 
 ## 1. Architectural overview
 
-Seventeen source projects currently occupy four layers (thirteen shipped packages and four non-packable gRPC
+Eighteen source projects currently occupy four layers (fourteen shipped packages and four non-packable gRPC
 placeholders). The capability extraction is in progress (#585):
 
 | Layer | Projects | Responsibility |
 | --- | --- | --- |
-| Runtime | [`Kaleido`](./src/Kaleido/README.md), [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | Process and Eventing still in core pending extraction; Queryable owns its source/view runtime |
+| Runtime | [`Kaleido`](./src/Kaleido/README.md), [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md), [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | Core retains Eventing/outbox until extracted; Process and Queryable own their runtimes |
 | Shared bases | [`Kaleido.Platform`](./src/Platform/README.md), [`Kaleido.Server`](./src/Server/README.md), [`Kaleido.Client`](./src/Client/README.md) | Published contracts; inbound authorization/correlation; neutral clients and central-registry participation |
 | HTTP | [`Kaleido.Http`](./src/Http/Http/README.md), [`Kaleido.Http.Server`](./src/Http/Http.Server/README.md), [`Kaleido.Http.Client`](./src/Http/Http.Client/README.md) | Shared HTTP route shapes, service endpoints, and the one outbound gateway client |
 | Registry and MCP | [`Kaleido.Registry`](./src/Registry/Registry/README.md), [`Kaleido.Registry.Http`](./src/Registry/Registry.Http/README.md), [`Kaleido.Mcp`](./src/Mcp/Mcp/README.md) | Authoritative store-backed registry, its HTTP API, and caller-visible MCP tools |
@@ -22,7 +22,7 @@ placeholders). The capability extraction is in progress (#585):
 Dependencies point from adapters to bases, never from one protocol to another:
 
 ```text
-Kaleido ─► Kaleido.Queryable
+Kaleido ─► Kaleido.Process, Kaleido.Queryable
 Kaleido ─► Kaleido.Platform ─► Kaleido.Server, Kaleido.Client, Kaleido.Http
 Kaleido.Server + Kaleido.Http ─► Kaleido.Http.Server
 Kaleido.Client + Kaleido.Http ─► Kaleido.Http.Client
@@ -99,9 +99,9 @@ The consumer guide's [compiled examples](./docs/guide/examples) are exercised by
 ## 4. Registration model
 
 1. `AddKaleido(configuration, options)` binds configuration over explicit service options, validates
-   the assembly list and still registers Process during extraction. `AddQueryable()` explicitly registers
-   Queryable from the same scan set. Choose in-memory stores deliberately for local work or register
-   durable store implementations.
+   the assembly list and registers the foundation/outbox baseline. Call `AddProcess()` and `AddQueryable()`
+   explicitly for the capabilities the host publishes. Choose in-memory stores deliberately for local
+   work or register durable store implementations.
 2. An HTTP service calls `AddHttp()` and `AddControlRegistryClient()` with `Kaleido:BaseUrl` set to
    the gateway and a `ServiceVersion`. `MapKaleidoHttp()` maps only that host's Process and Queryable
    endpoints at `/{service}/{version}/...`. There is no unversioned alias or service registry route.

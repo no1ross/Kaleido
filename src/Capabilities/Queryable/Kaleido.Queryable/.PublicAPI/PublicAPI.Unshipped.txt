@@ -1,4 +1,5 @@
 #nullable enable
+const Kaleido.Queryable.Eventing.QueryableEventTypes.QueryExecuted = "query.executed.v1" -> string!
 const Kaleido.Queryable.Observability.QueryableTelemetry.ActivitySourceName = "Kaleido.Queryable" -> string!
 const Kaleido.Queryable.Observability.QueryableTelemetry.CanceledEventName = "kaleido.queryable.canceled" -> string!
 const Kaleido.Queryable.Observability.QueryableTelemetry.DelegateActivityName = "kaleido.queryable.delegate" -> string!
@@ -54,6 +55,7 @@ Kaleido.Queryable.EmptyQueryViewParameters.<Clone>$() -> Kaleido.Queryable.Empty
 Kaleido.Queryable.EmptyQueryViewParameters.EmptyQueryViewParameters() -> void
 Kaleido.Queryable.EmptyQueryViewParameters.Equals(Kaleido.Queryable.EmptyQueryViewParameters? other) -> bool
 Kaleido.Queryable.Eventing.IQueryEvent
+Kaleido.Queryable.Eventing.QueryableEventTypes
 Kaleido.Queryable.Eventing.QueryExecuted
 Kaleido.Queryable.Eventing.QueryExecuted.<Clone>$() -> Kaleido.Queryable.Eventing.QueryExecuted!
 Kaleido.Queryable.Eventing.QueryExecuted.Equals(Kaleido.Queryable.Eventing.QueryExecuted? other) -> bool

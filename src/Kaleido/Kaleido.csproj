@@ -22,9 +22,6 @@
 		<Using Include="Kaleido.Eventing" />
 		<Using Include="Kaleido.Exceptions" />
 		<Using Include="Kaleido.Observability" />
-		<Using Include="Kaleido.Processor" />
-		<Using Include="Kaleido.Processor.Execution" />
-		<Using Include="Kaleido.Processor.Planning" />
 		<Using Include="Kaleido.Storage" />
 	</ItemGroup>
 
@@ -46,6 +43,8 @@
 
 	<ItemGroup>
 		<!-- The servers, clients and front doors are built into the solution: they use core's transport seams (authorization evaluation, correlation initialization) without making them public API; the outgoing clients and the MCP adapter read the inbound caller the server set (ADR 0022). -->
+		<InternalsVisibleTo Include="Kaleido.Process" />
+		<InternalsVisibleTo Include="Kaleido.Process.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Queryable" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Platform" />

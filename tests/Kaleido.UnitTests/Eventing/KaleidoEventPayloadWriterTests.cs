@@ -44,7 +44,7 @@ public sealed class KaleidoEventPayloadWriterTests
     private static KaleidoEventEnvelope<QueryExecuted, QueryableEventContext> QueryEnvelope(params object?[] records) =>
         new()
         {
-            EventType = KaleidoEventTypes.QueryExecuted,
+            EventType = QueryableEventTypes.QueryExecuted,
             Context = new QueryableEventContext { RequestId = "req-1", ServiceName = "member", QuerySourceName = "Members" },
             Event = new QueryExecuted
             {
@@ -62,7 +62,7 @@ public sealed class KaleidoEventPayloadWriterTests
     private static KaleidoEventEnvelope<StepCompleted, ProcessEventContext> StepEnvelope(object? request, object? response) =>
         new()
         {
-            EventType = KaleidoEventTypes.ProcessStepCompleted,
+            EventType = ProcessEventTypes.ProcessStepCompleted,
             Context = new ProcessEventContext { RequestId = "req-1", ServiceName = "intake", ProcessId = Guid.NewGuid(), StepName = "CaptureMember" },
             Event = new StepCompleted
             {
@@ -177,7 +177,7 @@ public sealed class KaleidoEventPayloadWriterTests
 
         var root = JsonDocument.Parse(entry.Payload).RootElement;
         Assert.Equal(envelope.Event.EventId, entry.EventId);
-        Assert.Equal(KaleidoEventTypes.QueryExecuted, root.GetProperty("eventType").GetString());
+        Assert.Equal(QueryableEventTypes.QueryExecuted, root.GetProperty("eventType").GetString());
         Assert.Equal("Members", root.GetProperty("context").GetProperty("querySourceName").GetString());
         Assert.Equal(1, root.GetProperty("event").GetProperty("totalCount").GetInt32());
     }

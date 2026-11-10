@@ -1,6 +1,5 @@
 using Kaleido.Eventing;
 using Kaleido.Exceptions;
-using Kaleido.Processor.Registry;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,19 +12,16 @@ public sealed class KaleidoStoreSelectionCheckTests
 {
     private static KaleidoStoreSelectionCheck CreateSut(IServiceCollection services) => new(services);
 
-    // What AddKaleido registers: the in-memory defaults and the outbox; with process steps, the step
-    // registry.
-    private static ServiceCollection Defaults(bool withProcesses = true)
+    // What AddKaleido registers: the outbox default; a capability contributes its own store choices.
+    private static ServiceCollection Defaults(params string[] capabilityStores)
     {
         var services = new ServiceCollection();
-        services.AddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
-        services.AddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
         services.AddScoped<IKaleidoOutbox, KaleidoStoreOutbox>();
         services.AddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
 
-        if (withProcesses)
+        if (capabilityStores.Length > 0)
         {
-            services.AddSingleton(Mock.Of<IProcessorStepRegistry>());
+            services.AddSingleton(new KaleidoStoreSelectionContributor(_ => capabilityStores));
         }
 
         return services;
@@ -37,7 +33,7 @@ public sealed class KaleidoStoreSelectionCheckTests
     [Fact]
     public async Task AServiceWithProcesses_LeftAtTheDefaults_DoesNotStart_NamingTheStores()
     {
-        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(Defaults()));
+        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(Defaults("process state (IKaleidoContextStore)", "idempotency records (IKaleidoIdempotencyStore)")));
 
         Assert.Equal(ConfigurationErrorCodes.StoresNotChosen, exception.Code);
         Assert.Contains("process state (IKaleidoContextStore)", exception.Message, StringComparison.Ordinal);
@@ -49,7 +45,7 @@ public sealed class KaleidoStoreSelectionCheckTests
     [Fact]
     public async Task TheExplicitInMemoryChoice_Starts()
     {
-        var services = Defaults();
+        var services = Defaults("process state (IKaleidoContextStore)", "idempotency records (IKaleidoIdempotencyStore)");
         services.AddSingleton<KaleidoInMemoryStoresChoice>();
 
         await StartAsync(services);
@@ -60,8 +56,6 @@ public sealed class KaleidoStoreSelectionCheckTests
     public async Task DurableStores_Start()
     {
         var services = Defaults();
-        services.AddScoped(_ => Mock.Of<IKaleidoContextStore>());
-        services.AddScoped<IKaleidoIdempotencyStore, FakeIdempotencyStore>();
         services.AddScoped(_ => Mock.Of<IKaleidoOutboxStore>());
 
         await StartAsync(services);
@@ -70,8 +64,8 @@ public sealed class KaleidoStoreSelectionCheckTests
     [Fact]
     public async Task OneStoreLeftInMemory_IsTheOneNamed()
     {
-        var services = Defaults();
-        services.AddScoped<IKaleidoIdempotencyStore, FakeIdempotencyStore>();
+        var services = Defaults("process state (IKaleidoContextStore)");
+        services.AddScoped(_ => Mock.Of<IKaleidoOutboxStore>());
 
         var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(services));
 
@@ -84,24 +78,16 @@ public sealed class KaleidoStoreSelectionCheckTests
     [Fact]
     public void AQueryOnlyService_UsesOnlyTheOutboxStore()
     {
-        Assert.Equal(["event outbox (IKaleidoOutboxStore)"], KaleidoStoreSelectionCheck.InMemoryStoresInUse(Defaults(withProcesses: false)));
+        Assert.Equal(["event outbox (IKaleidoOutboxStore)"], KaleidoStoreSelectionCheck.InMemoryStoresInUse(Defaults()));
     }
 
     // Whether or not this host publishes: every service writes its events (#552).
     [Fact]
     public void ADurableOutboxStore_NeedsNoChoice()
     {
-        var durable = Defaults(withProcesses: false);
+        var durable = Defaults();
         durable.AddScoped(_ => Mock.Of<IKaleidoOutboxStore>());
 
         Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(durable));
-    }
-    private sealed class FakeIdempotencyStore : IKaleidoIdempotencyStore
-    {
-        public Task<IdempotentResult?> AdmitAsync(IdempotentResult result, CancellationToken cancellationToken) => Task.FromResult<IdempotentResult?>(null);
-
-        public Task<bool> CompleteAsync(IdempotentResult result, CancellationToken cancellationToken) => Task.FromResult(true);
-
-        public Task<bool> ReleaseAsync(string key, Guid admissionId, CancellationToken cancellationToken) => Task.FromResult(true);
     }
 }

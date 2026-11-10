@@ -1,5 +1,21 @@
 namespace Kaleido.Processor.Eventing;
 
+/// <summary>Stable outbox discriminators for the Process events declared in this capability.</summary>
+public static class ProcessEventTypes
+{
+    /// <summary>The event type of <see cref="Kaleido.Processor.Eventing.ProcessCreated"/>.</summary>
+    public const string ProcessCreated = "process.created.v1";
+
+    /// <summary>The event type of <see cref="Kaleido.Processor.Eventing.PlanBuilt"/>.</summary>
+    public const string ProcessPlanBuilt = "process.plan-built.v1";
+
+    /// <summary>The event type of <see cref="Kaleido.Processor.Eventing.StepCompleted"/>.</summary>
+    public const string ProcessStepCompleted = "process.step-completed.v1";
+
+    /// <summary>The event type of <see cref="Kaleido.Processor.Eventing.ExecutionCompleted"/>.</summary>
+    public const string ProcessExecutionCompleted = "process.execution-completed.v1";
+}
+
 /// <summary>
 /// A Process runtime event: the payload of an envelope with a <see cref="ProcessEventContext"/>,
 /// handed to <see cref="IEventPublisher"/> through the event outbox.
@@ -7,7 +23,7 @@ namespace Kaleido.Processor.Eventing;
 /// <remarks>
 /// The concrete events are <see cref="ProcessCreated"/>, <see cref="PlanBuilt"/>,
 /// <see cref="StepCompleted"/> and <see cref="ExecutionCompleted"/>, published under the matching
-/// <see cref="KaleidoEventTypes"/> names.
+/// <see cref="ProcessEventTypes"/> names.
 /// </remarks>
 public interface IProcessEvent : IKaleidoEvent;
 

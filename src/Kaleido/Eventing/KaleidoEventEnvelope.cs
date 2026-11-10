@@ -11,7 +11,7 @@ public sealed record KaleidoEventEnvelope<TEvent, TContext>
     where TEvent : IKaleidoEvent
 {
     /// <summary>
-    /// The stable string type discriminator for this event; values are defined on <see cref="KaleidoEventTypes"/>.
+    /// The stable string type discriminator for this event; its owning capability defines the value beside the event declaration.
     /// Use this in <see cref="IEventPublisher"/> implementations for routing and serialization.
     /// </summary>
     public required string EventType { get; init; }

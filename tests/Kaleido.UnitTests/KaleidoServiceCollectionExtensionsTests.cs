@@ -20,9 +20,9 @@ public sealed class KaleidoServiceCollectionExtensionsTests
             Assemblies = [typeof(KaleidoServiceCollectionExtensionsTests).Assembly],
         };
 
-    // Three store contracts, one per concern, each with an in-memory default the host can replace.
+    // The foundation registers the outbox default without replacing a host's chosen store.
     [Fact]
-    public void AddKaleido_RegistersTheThreeInMemoryStores_AndAHostsOwnStoreWins()
+    public void AddKaleido_RegistersTheOutboxStore_AndAHostsOwnStoreWins()
     {
         var services = new ServiceCollection();
         var ownOutbox = Mock.Of<Kaleido.Storage.IKaleidoOutboxStore>();
@@ -30,8 +30,6 @@ public sealed class KaleidoServiceCollectionExtensionsTests
 
         services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
 
-        Assert.Equal("InMemoryKaleidoContextStore", Single<Kaleido.Storage.IKaleidoContextStore>(services).ImplementationType?.Name);
-        Assert.Equal("InMemoryKaleidoIdempotencyStore", Single<Kaleido.Storage.IKaleidoIdempotencyStore>(services).ImplementationType?.Name);
         Assert.Same(ownOutbox, Single<Kaleido.Storage.IKaleidoOutboxStore>(services).ImplementationInstance);
     }
 
@@ -520,46 +518,13 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         services.Any(x => x.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService) && x.ImplementationType == typeof(Kaleido.Eventing.KaleidoEventRelay));
 
     [Fact]
-    public void AddKaleido_ByDefault_UsesKaleidosOutboxInMemory_AndNoTransactions()
+    public void AddKaleido_ByDefault_UsesKaleidosOutboxInMemory()
     {
         var services = NewBuilder().Services;
 
         Assert.Equal(typeof(Kaleido.Eventing.KaleidoStoreOutbox), Registered<Kaleido.Storage.IKaleidoOutbox>(services));
         Assert.Equal(typeof(Kaleido.Storage.InMemoryKaleidoOutboxStore), Registered<Kaleido.Storage.IKaleidoOutboxStore>(services));
-        Assert.Equal(typeof(Kaleido.Storage.NoKaleidoTransactions), Registered<Kaleido.Storage.IKaleidoTransactions>(services));
     }
-    [Fact]
-    public void AddContextStore_IdempotencyStore_AndTransactions_ReplaceTheDefaults_AsScoped()
-    {
-        var services = NewBuilder().AddContextStore<OwnContextStore>().AddIdempotencyStore<OwnIdempotencyStore>().AddTransactions<OwnTransactions>().Services;
-
-        Assert.Equal(ServiceLifetime.Scoped, Single<Kaleido.Storage.IKaleidoContextStore>(services).Lifetime);
-        Assert.Equal(typeof(OwnContextStore), Registered<Kaleido.Storage.IKaleidoContextStore>(services));
-        Assert.Equal(typeof(OwnIdempotencyStore), Single<Kaleido.Storage.IKaleidoIdempotencyStore>(services).ImplementationType);
-        Assert.Equal(typeof(OwnTransactions), Single<Kaleido.Storage.IKaleidoTransactions>(services).ImplementationType);
-    }
-
-    [Fact]
-    public void AddContextStore_TheSameStoreTwice_IsRegisteredOnce()
-    {
-        var services = NewBuilder().AddContextStore<OwnContextStore>().AddContextStore<OwnContextStore>().Services;
-
-        Assert.Equal(typeof(OwnContextStore), Single<Kaleido.Storage.IKaleidoContextStore>(services).ImplementationType);
-    }
-
-    // One store per service: a second, different one (by type, instance or factory) is a mistake.
-    [Fact]
-    public void AddContextStore_WhenAnotherStoreIsRegistered_IsAConfigurationError()
-    {
-        var services = new ServiceCollection();
-        var builder = NewBuilder(services);
-        services.AddScoped(_ => Mock.Of<Kaleido.Storage.IKaleidoContextStore>());
-
-        var exception = Assert.Throws<KaleidoConfigurationException>(builder.AddContextStore<OwnContextStore>);
-
-        Assert.Equal(ConfigurationErrorCodes.ConflictingStore, exception.Code);
-    }
-
     [Fact]
     public void AddOutboxStore_StoresTheOutbox()
     {
@@ -581,36 +546,14 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void TheStoreMethods_ShouldThrow_WhenBuilderIsNull()
+    public void AddOutboxStore_ShouldThrow_WhenBuilderIsNull()
     {
         IKaleidoBuilder? builder = null;
 
-        Assert.Throws<ArgumentNullException>(() => builder!.AddContextStore<OwnContextStore>());
         Assert.Throws<ArgumentNullException>(() => builder!.AddOutboxStore<OwnOutboxStore>());
     }
     // ---------------------------------------------------------------------------
     // Test doubles
-
-    private sealed class OwnContextStore : Kaleido.Storage.IKaleidoContextStore
-    {
-        public Task<Kaleido.Processor.Context.ProcessorContext?> LoadAsync(Kaleido.Storage.ProcessKey key, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-        public Task<Kaleido.Processor.Context.ProcessorContext> SaveAsync(Kaleido.Processor.Context.ProcessorContext context, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    }
-
-    private sealed class OwnIdempotencyStore : Kaleido.Storage.IKaleidoIdempotencyStore
-    {
-        public Task<Kaleido.Storage.IdempotentResult?> AdmitAsync(Kaleido.Storage.IdempotentResult admission, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-        public Task<bool> CompleteAsync(Kaleido.Storage.IdempotentResult result, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-        public Task<bool> ReleaseAsync(string key, Guid admissionId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    }
-
-    private sealed class OwnTransactions : Kaleido.Storage.IKaleidoTransactions
-    {
-        public Task<Kaleido.Storage.IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    }
 
     private class OwnOutboxStore : Kaleido.Storage.IKaleidoOutboxStore
     {

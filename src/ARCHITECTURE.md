@@ -27,7 +27,7 @@ Rule of thumb: if a name refers to *who runs the work* (runtime, registries, pla
 ## Project dependency graph
 
 ```text
-Kaleido ─► Kaleido.Queryable
+Kaleido ─► Kaleido.Process, Kaleido.Queryable
 Kaleido ─► Kaleido.Platform ─► Kaleido.Server, Kaleido.Client, Kaleido.Http
 Kaleido.Server + Kaleido.Http ─► Kaleido.Http.Server
 Kaleido.Client + Kaleido.Http ─► Kaleido.Http.Client
@@ -44,11 +44,11 @@ records the direct `ProjectReference` edges.
 
 ---
 
-## 1. Kaleido foundation and Queryable capability (migration #585)
+## 1. Kaleido foundation, Process and Queryable (migration #585)
 
 ### Internal structure during extraction
 
-Queryable is now a separate capability project; Process and Eventing remain in Kaleido until their extraction units:
+Process and Queryable are separate capability projects; Eventing remains in Kaleido until its own extraction:
 
 #### Bootstrap and shared (`Kaleido`)
 
@@ -71,10 +71,10 @@ Queryable is now a separate capability project; Process and Eventing remain in K
 
 #### Process runtime (`Kaleido.Processor`)
 
-- Registration: `ProcessorServiceCollectionExtensions` (internal, invoked by `AddKaleido()`)
+- Registration: `ProcessorServiceCollectionExtensions.AddProcess()` (public, called explicitly after `AddKaleido()` with an assembly scan set); the runtime registries remain internal.
 - Runtime: `IProcessorRuntime` (internal, called by the HTTP transport), `ProcessorExecutor` (the step execution loop)
 - Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`, `StepCandidateNextStepChecker` (only next steps run; answers checked against the pending information request)
-- State: `IKaleidoContextStore` (in `Kaleido.Storage`, next to `IKaleidoOutboxStore`, `IKaleidoTransactions` and `IKaleidoIdempotencyStore`; every record scoped by the service and its version, `ProcessKey`), the internal in-memory defaults, `ProcessorContext`; `ProcessorTransition` (internal) runs every process-state save: begin, save the state, add its event to the outbox, commit, committed (ADR 0023, ADR 0036)
+- State: `Kaleido.Process` owns `IKaleidoContextStore`, `IKaleidoIdempotencyStore`, `IKaleidoTransactions`, `ProcessKey` and `ProcessorContext`; Eventing's `IKaleidoOutboxStore` remains temporarily in foundation. `ProcessorTransition` saves state and its event in one transaction when the provider supplies one (ADR 0023, ADR 0036).
 - Registries: `IProcessorStepRegistry`, `IProcessorRegistry` (both internal, shared with `Kaleido.Http.Server`)
 - Observability: `ProcessorObservability`
 
@@ -94,12 +94,12 @@ Public seams consumers are expected to implement or replace:
 ### Core design invariants
 
 - The core project has no transport dependencies.
-- `KaleidoServiceOptions.Assemblies` records assemblies; recording does not scan them for capabilities. `AddKaleido()` still invokes `AddProcessor()` during extraction, while the owner project scans Queryable capabilities only when the host calls `AddQueryable()` explicitly.
+- `KaleidoServiceOptions.Assemblies` records assemblies but does not scan them. Call `AddProcess()` and/or `AddQueryable()` explicitly for the capabilities this host publishes; `AddKaleido()` installs neither runtime.
 - Queryable discovery is interface-only and a type is exactly one capability; `QueryableService` dispatches by the queried type. How a source is fulfilled (local or delegated) is never published.
 - `ProcessorContext` is current resumable state only, not an audit log.
 - `IKaleidoBuilder` is intentionally minimal.
 - `TotalCount` is always the number of matching results. A pageable capability always pages (its default page when the request names none). `CountAsync` runs only when the page cannot tell the total: the page is full, or empty past the start. A partial page ends the results (`TotalCount = offset + items.Count`); an unpageable capability returns every result (`TotalCount = items.Count`).
-- Core runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`) are transport-agnostic — they use CLR enums and `object?` values. The HTTP transport converts `QueryApiBody` (string enums, `JsonElement` values) to `QueryBody` via `QueryBodyResolver` before handing to core.
+- Queryable runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`) are transport-agnostic — they use CLR enums and `object?` values. The HTTP transport converts `QueryApiBody` (string enums, `JsonElement` values) to `QueryBody` via `QueryBodyResolver` before handing to core.
 
 ---
 

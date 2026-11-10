@@ -57,6 +57,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0039](./0039-protocol-neutral-package-boundaries.md) | Historical Platform, Client and Server package boundaries | Superseded by [0041](./0041-capability-owned-project-boundaries.md) | #581, #577 |
 | [0040](./0040-central-registry-only-and-versioned-routes.md) | One authoritative registry, versioned logical gateway routes, registry-driven clients and HybridCache; no service registries or host fan-out | Accepted | #581, #577, #553 |
 | [0041](./0041-capability-owned-project-boundaries.md) | Project and registration boundaries follow behavioral ownership; migrate from the foundation outward | Accepted | #585, #586, #588 |
+| [0042](./0042-event-types-belong-to-capabilities.md) | Process and Queryable own their event discriminators, not lower-level Eventing | Accepted | #585, #589, #590 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

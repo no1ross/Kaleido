@@ -20,6 +20,6 @@ public static class KaleidoEventTelemetry
     /// <summary>Events that could not be written to the outbox (not part of a state save).</summary>
     public const string EnqueueFailuresCounterName = "kaleido.events.enqueue_failures";
 
-    /// <summary>Tag: the event type (<see cref="KaleidoEventTypes"/>).</summary>
+    /// <summary>Tag: the event type defined by its owning capability.</summary>
     public const string TagEventType = "kaleido.event.type";
 }

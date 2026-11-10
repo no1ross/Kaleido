@@ -1226,7 +1226,7 @@ public sealed class ProcessorExecutorTests
     }
 
     private static KaleidoOutboxEvent OutboxEvent() =>
-        new() { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessStepCompleted, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
+        new() { EventId = Guid.NewGuid(), EventType = ProcessEventTypes.ProcessStepCompleted, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
 
     private static Mock<IProcessorTransition> RecordingTransition(List<IReadOnlyCollection<KaleidoOutboxEvent>> savedEvents)
     {

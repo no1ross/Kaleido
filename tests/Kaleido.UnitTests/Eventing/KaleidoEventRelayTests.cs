@@ -70,7 +70,7 @@ public sealed class KaleidoEventRelayTests
         var now = DateTimeOffset.UtcNow;
         var entry = new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
         {
-            EventType = KaleidoEventTypes.ProcessCreated,
+            EventType = ProcessEventTypes.ProcessCreated,
             Context = new ProcessEventContext { RequestId = "req-1", ServiceName = "svc", ProcessId = Guid.NewGuid(), StepName = "step-a" },
             Event = new ProcessCreated { OccurredOn = now, State = ProcessExecutionState.Active, CreatedUtc = now, UpdatedUtc = now, SubmittedStepCount = 1 },
         }.ToOutboxEvent();

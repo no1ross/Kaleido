@@ -1,5 +1,6 @@
 using Kaleido.Eventing;
 using Kaleido.Exceptions;
+using Kaleido.Processor.Eventing;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
 
@@ -9,7 +10,7 @@ public sealed class ProcessorTransitionTests
     : SutFixture
 {
     private static readonly KaleidoOutboxEvent StepCompleted =
-        new() { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessStepCompleted, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
+        new() { EventId = Guid.NewGuid(), EventType = ProcessEventTypes.ProcessStepCompleted, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
 
     private static readonly ProcessorContext Context = new() { ProcessId = Guid.NewGuid(), ProcessorName = "radiology", Version = 3 };
 

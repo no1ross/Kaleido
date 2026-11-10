@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido Process capability: step registration, execution, state transitions, recovery and process store contracts.</Description>
+		<PackageTags>kaleido;process;workflow;runtime</PackageTags>
+		<RootNamespace>Kaleido</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\Kaleido\Kaleido.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Processor" />
+		<Using Include="Kaleido.Processor.Execution" />
+		<Using Include="Kaleido.Processor.Planning" />
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Kaleido.Platform" />
+		<InternalsVisibleTo Include="Kaleido.Server" />
+		<InternalsVisibleTo Include="Kaleido.Client" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.IntegrationTests" />
+	</ItemGroup>
+</Project>

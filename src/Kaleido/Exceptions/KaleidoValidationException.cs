@@ -3,7 +3,7 @@ namespace Kaleido.Exceptions;
 /// <summary>
 /// Thrown when a Kaleido request fails validation — bad field, unsupported operator, invalid page size, etc.
 /// Results in a 400 Bad Request when caught by the endpoint handlers.
-/// The <see cref="Code"/> is forwarded directly into the HTTP response body (e.g. <c>QueryableErrorCodes</c>, <see cref="Kaleido.Processor.ProcessorErrorCodes"/>).
+/// The <see cref="Code"/> is forwarded directly into the HTTP response body (e.g. <c>QueryableErrorCodes</c>, <c>ProcessorErrorCodes</c>).
 /// </summary>
 [ExcludeFromCodeCoverage]
 public sealed class KaleidoValidationException : Exception
@@ -46,6 +46,6 @@ public sealed class KaleidoValidationException : Exception
         Code = code;
     }
 
-    /// <summary>Stable machine-readable error code (e.g. <c>QueryableErrorCodes</c>, <see cref="Kaleido.Processor.ProcessorErrorCodes"/>). Wire-safe — forwarded directly into 400 response bodies.</summary>
+    /// <summary>Stable machine-readable error code (e.g. <c>QueryableErrorCodes</c>, <c>ProcessorErrorCodes</c>). Wire-safe — forwarded directly into 400 response bodies.</summary>
     public string Code { get; }
 }

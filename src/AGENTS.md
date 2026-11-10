@@ -15,7 +15,7 @@ What each project owns and must not own is stated once, in the root [project bou
 
 - **Project references point one way.** A new reference is an architecture change:
   - `Kaleido` references no other Kaleido project. Its tooling reference to `Kaleido.Analyzers` carries only analyzer assets; nothing compiles against or runs it.
-  - `Kaleido.Queryable`, `Kaleido.Platform` and `Kaleido.Observability.OpenTelemetry` reference `Kaleido`; `Kaleido.Server` and `Kaleido.Client` reference `Kaleido.Platform`.
+  - `Kaleido.Process`, `Kaleido.Queryable`, `Kaleido.Platform` and `Kaleido.Observability.OpenTelemetry` reference `Kaleido`; `Kaleido.Server` and `Kaleido.Client` reference `Kaleido.Platform`.
   - `Kaleido.Http` references `Kaleido.Platform`; `Kaleido.Http.Server` references `Kaleido.Server` and `Kaleido.Http`; `Kaleido.Http.Client` references `Kaleido.Client` and `Kaleido.Http`.
   - `Kaleido.Mcp` references `Kaleido.Http.Server` and `Kaleido.Http.Client`; `Kaleido.Registry` references `Kaleido.Server`; `Kaleido.Registry.Http` references `Kaleido.Registry` and `Kaleido.Http.Server`.
   - `Kaleido.Provider.SQLite` references `Kaleido` and `Kaleido.Registry`; gRPC placeholders mirror the corresponding protocol boundaries.
@@ -25,16 +25,16 @@ What each project owns and must not own is stated once, in the root [project bou
 
 ---
 
-## Core runtime rules
+## Foundation and capability rules
 
 ### Bootstrap rules
 `AddKaleido()` should remain responsible for:
 - shared DI baseline setup
 - scoped correlation accessor registration (`TryAddScoped` so pre-existing registrations win)
-- the store defaults (no publisher: see Eventing rules)
+- the outbox default (no publisher: see Eventing rules)
 - returning the builder for higher-level frameworks
 
-During migration #585, `AddKaleido()` still registers Process internally; `Kaleido.Queryable` owns the explicit `AddQueryable()` call. Both scan `KaleidoServiceOptions.Assemblies`. The intended final foundation registers neither capability; see the [registration model](../ARCHITECTURE.md#4-registration-model).
+`AddKaleido()` registers neither runtime. `AddProcess()` and `AddQueryable()` scan `KaleidoServiceOptions.Assemblies` in their owning projects; see the [registration model](../ARCHITECTURE.md#4-registration-model).
 
 ### Builder rules
 `IKaleidoBuilder` is intentionally small: `Services`, `Assemblies`, `Configuration` and `ServiceOptions` — what every subsystem builder (Process, Queryable, Registry, transports) needs without a DI lookup. Be cautious about expanding it — additional members affect every framework built on top.
@@ -72,7 +72,7 @@ Runtime invariants:
 Process is step-centric, not query-centric. Do not import Queryable terminology into Process code or docs.
 
 Registration invariants:
-- `AddKaleido()` must be called before `AddProcessor(...)`
+- `AddKaleido()` must be called before `AddProcess()`
 - A step is identified by `IProcessStep`; `[ProcessStep]` only describes it. Every `IProcessStep` type needs `[ProcessStep]` with a non-empty `DisplayName` and `Description`, and `[ProcessStep]` is only valid on `IProcessStep` types
 - A step's name is its type name (`Type.Name`, unmodified); step type names must be unique across the assembly scan
 - Inside the runtime the next step is typed (`Success<TNext>()`, `Type` through invoker → evaluator); step names are produced only at the boundary (state, events, responses)
@@ -122,7 +122,7 @@ Middleware and endpoint mapping code should adapt contracts and wire the runtime
 ### Transport contract boundary
 A query request is never read as a core type (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`): `QueryApiBody` and its sub-types in `Kaleido.Platform` are the request wire contract — string enums, `JsonElement` values. `QueryBodyResolver` (in `Kaleido.Http.Server`) converts between them before handing to core. Some core shapes do travel as they are in responses and registry metadata (`InformationRequest`, `ProcessMessage`, `KaleidoCaller`, the Process state enums, `AuthorizationMetadata`, `FilterOperator`/`MatchMode` in field metadata, `QueryResult<T>`): they are supported wire contracts, changed additively only after 1.0 and pinned by snapshot tests ([ADR 0017 amendment](../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds)).
 
-Core never parses transport input. The transport reads each submitted step into its step type (`POST /{service}/{version}/processes/execute`: `ProcessExecutionService`, with `KaleidoJsonOptions`, 400 for a step that cannot be built before anything runs) and core receives typed steps only; `Kaleido.Processor` has no `System.Text.Json` dependency (architecture test `Process_MustNotDependOnJson`). Core's one sanctioned JSON use is the event outbox (`Kaleido.Eventing`): its own storage format, where classified values are redacted (ADR 0013) (#344).
+Process never parses transport input. The transport reads each step into its type (`ProcessExecutionService` uses `KaleidoJsonOptions` and returns 400 for invalid input); the runtime receives typed steps only. `Kaleido.Process` must not depend on `System.Text.Json`; replacement build-time enforcement is tracked in #591. The event outbox uses JSON for its own redacted storage format (ADR 0013, #344).
 
 `KaleidoJsonEndpointFilter` is applied to all Kaleido route groups — it wraps `IValueHttpResult` responses in `Results.Json(..., KaleidoJsonOptions.Options)` so enums serialize as strings. Do not call `ConfigureHttpJsonOptions` — it affects all endpoints in the host app, not just Kaleido's.
 

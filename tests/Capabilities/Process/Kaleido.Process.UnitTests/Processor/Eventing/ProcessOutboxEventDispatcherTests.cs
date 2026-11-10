@@ -8,23 +8,23 @@ public sealed class ProcessOutboxEventDispatcherTests : SutFixture
     private static ProcessOutboxEventDispatcher CreateSut() => new();
 
     [Theory]
-    [InlineData(KaleidoEventTypes.ProcessCreated)]
-    [InlineData(KaleidoEventTypes.ProcessPlanBuilt)]
-    [InlineData(KaleidoEventTypes.ProcessStepCompleted)]
-    [InlineData(KaleidoEventTypes.ProcessExecutionCompleted)]
+    [InlineData(ProcessEventTypes.ProcessCreated)]
+    [InlineData(ProcessEventTypes.ProcessPlanBuilt)]
+    [InlineData(ProcessEventTypes.ProcessStepCompleted)]
+    [InlineData(ProcessEventTypes.ProcessExecutionCompleted)]
     public void CanHandle_ProcessEventType_IsTrue(string eventType) =>
         Assert.True(CreateSut().CanHandle(eventType));
 
     [Fact]
     public void CanHandle_QueryEventType_IsFalse() =>
-        Assert.False(CreateSut().CanHandle(KaleidoEventTypes.QueryExecuted));
+        Assert.False(CreateSut().CanHandle("query.executed.v1"));
 
     [Fact]
     public async Task PublishAsync_RestoresProcessEvent()
     {
         var envelope = new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
         {
-            EventType = KaleidoEventTypes.ProcessCreated,
+            EventType = ProcessEventTypes.ProcessCreated,
             Context = new ProcessEventContext { RequestId = "request", ServiceName = "service", ProcessId = Guid.NewGuid(), StepName = "step" },
             Event = new ProcessCreated { OccurredOn = DateTimeOffset.UtcNow, State = ProcessExecutionState.Active, CreatedUtc = DateTimeOffset.UtcNow, UpdatedUtc = DateTimeOffset.UtcNow, SubmittedStepCount = 1 },
         };

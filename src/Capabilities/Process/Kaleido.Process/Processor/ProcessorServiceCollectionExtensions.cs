@@ -23,7 +23,11 @@ public static class ProcessorServiceCollectionExtensions
         return builder;
     }
 
-    internal static IKaleidoBuilder AddProcessor(this IKaleidoBuilder builder)
+    /// <summary>Discovers and registers Process steps, handlers and the in-process execution runtime.</summary>
+    /// <param name="builder">The Kaleido builder, with an explicit assembly scan set.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">Assemblies or step registrations are invalid.</exception>
+    public static IKaleidoBuilder AddProcess(this IKaleidoBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -31,7 +35,7 @@ public static class ProcessorServiceCollectionExtensions
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.MissingAssembly,
-                "At least one assembly must be registered before AddProcessor().");
+                "At least one assembly must be registered before AddProcess().");
         }
 
         var types = builder.Assemblies.ScanTypes();
@@ -60,6 +64,10 @@ public static class ProcessorServiceCollectionExtensions
         }
 
         ValidateProcessSteps(recordTypes);
+        builder.Services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
+        builder.Services.TryAddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
+        builder.Services.TryAddSingleton<IKaleidoTransactions, NoKaleidoTransactions>();
+        builder.Services.TryAddSingleton(new KaleidoStoreSelectionContributor(ProcessStoresInUse));
         builder.AddProcessEventDispatch();
 
         var handlerTypes = recordTypes.ToDictionary(x => x, x => RegisterHandler(builder.Services, x, types));
@@ -68,6 +76,50 @@ public static class ProcessorServiceCollectionExtensions
         RegisterFrameworkServices(builder.Services);
 
         return builder;
+    }
+
+    /// <summary>Registers a scoped process-state store instead of the in-memory default.</summary>
+    /// <typeparam name="TStore">The process-state store implementation.</typeparam>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">Another context store has already been chosen.</exception>
+    public static IKaleidoBuilder AddContextStore<TStore>(this IKaleidoBuilder builder)
+        where TStore : class, IKaleidoContextStore =>
+        KaleidoServiceCollectionExtensions.Replace<IKaleidoContextStore, TStore, InMemoryKaleidoContextStore>(builder, "context store");
+
+    /// <summary>Registers a scoped idempotency store instead of the in-memory default.</summary>
+    /// <typeparam name="TStore">The idempotency store implementation.</typeparam>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">Another idempotency store has already been chosen.</exception>
+    public static IKaleidoBuilder AddIdempotencyStore<TStore>(this IKaleidoBuilder builder)
+        where TStore : class, IKaleidoIdempotencyStore =>
+        KaleidoServiceCollectionExtensions.Replace<IKaleidoIdempotencyStore, TStore, InMemoryKaleidoIdempotencyStore>(builder, "idempotency store");
+
+    /// <summary>Registers the scoped transaction used to save Process state and its event atomically on one database.</summary>
+    /// <typeparam name="TTransactions">The persistence-specific transaction implementation.</typeparam>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">Another transaction implementation has already been chosen.</exception>
+    public static IKaleidoBuilder AddTransactions<TTransactions>(this IKaleidoBuilder builder)
+        where TTransactions : class, IKaleidoTransactions =>
+        KaleidoServiceCollectionExtensions.Replace<IKaleidoTransactions, TTransactions, NoKaleidoTransactions>(builder, "transactions");
+
+    internal static IReadOnlyList<string> ProcessStoresInUse(this IServiceCollection services)
+    {
+        var inMemory = new List<string>();
+
+        if (KaleidoStoreSelectionCheck.Implementation<IKaleidoContextStore>(services) == typeof(InMemoryKaleidoContextStore))
+        {
+            inMemory.Add("process state (IKaleidoContextStore)");
+        }
+
+        if (KaleidoStoreSelectionCheck.Implementation<IKaleidoIdempotencyStore>(services) == typeof(InMemoryKaleidoIdempotencyStore))
+        {
+            inMemory.Add("idempotency records (IKaleidoIdempotencyStore)");
+        }
+
+        return inMemory;
     }
 
     private static void RegisterRegistries(

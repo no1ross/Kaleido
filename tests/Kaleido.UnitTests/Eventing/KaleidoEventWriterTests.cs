@@ -38,7 +38,7 @@ public sealed class KaleidoEventWriterTests
     private static KaleidoEventEnvelope<ProcessCreated, ProcessEventContext> Envelope() =>
         new()
         {
-            EventType = KaleidoEventTypes.ProcessCreated,
+            EventType = ProcessEventTypes.ProcessCreated,
             Context = new ProcessEventContext { RequestId = "req-1", ServiceName = "svc", ProcessId = Guid.NewGuid(), StepName = "step-a" },
             Event = new ProcessCreated { OccurredOn = DateTimeOffset.UtcNow, State = ProcessExecutionState.Active, CreatedUtc = DateTimeOffset.UtcNow, UpdatedUtc = DateTimeOffset.UtcNow, SubmittedStepCount = 1 },
         };
@@ -46,7 +46,7 @@ public sealed class KaleidoEventWriterTests
     [Fact]
     public async Task PrepareAndWrite_UseWhatThePayloadWriterProduces()
     {
-        var written = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessCreated, Payload = "{\"redacted\":true}", OccurredUtc = DateTimeOffset.UtcNow };
+        var written = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = ProcessEventTypes.ProcessCreated, Payload = "{\"redacted\":true}", OccurredUtc = DateTimeOffset.UtcNow };
         var writer = new Mock<IKaleidoEventPayloadWriter>();
         writer.Setup(x => x.Write(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>())).Returns(written);
         var outbox = BuiltInOutbox();

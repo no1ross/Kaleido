@@ -9,18 +9,18 @@ public sealed class QueryableOutboxEventDispatcherTests : SutFixture
 
     [Fact]
     public void CanHandle_QueryEventType_IsTrue() =>
-        Assert.True(CreateSut().CanHandle(KaleidoEventTypes.QueryExecuted));
+        Assert.True(CreateSut().CanHandle(QueryableEventTypes.QueryExecuted));
 
     [Fact]
     public void CanHandle_ProcessEventType_IsFalse() =>
-        Assert.False(CreateSut().CanHandle(KaleidoEventTypes.ProcessCreated));
+        Assert.False(CreateSut().CanHandle("process.created.v1"));
 
     [Fact]
     public async Task PublishAsync_RestoresQueryableEvent()
     {
         var envelope = new KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>
         {
-            EventType = KaleidoEventTypes.QueryExecuted,
+            EventType = QueryableEventTypes.QueryExecuted,
             Context = new QueryableEventContext { RequestId = "request", ServiceName = "service", QuerySourceName = "source" },
             Event = new QueryExecuted { OccurredOn = DateTimeOffset.UtcNow, QuerySourceName = "source", IsDirectQuery = true, TotalCount = 1, ReturnedCount = 1, SortCount = 0, FilterProvided = false },
         };

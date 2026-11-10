@@ -128,6 +128,16 @@ internal sealed partial class ProcessorObservability(
     ILogger<ProcessorObservability> logger)
     : IProcessorObservability
 {
+    private static void MarkProcessFailed(Activity? activity, Exception exception) =>
+        activity?.SetStatus(ActivityStatusCode.Error, exception switch
+        {
+            KaleidoConcurrencyException conflict => conflict.Code,
+            KaleidoConfigurationException configuration => configuration.Code,
+            KaleidoFrameworkException framework => framework.Code,
+            KaleidoValidationException validation => validation.Code,
+            _ => exception.GetType().Name,
+        });
+
     private static readonly ActivitySource ActivitySource =
         new(ProcessorTelemetry.ActivitySourceName);
 
@@ -387,7 +397,7 @@ internal sealed partial class ProcessorObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity.SetErrorStatus(exception);
+            MarkProcessFailed(activity, exception);
             activity.AddExceptionEvent(exception);
 
             ProcessExecutionFailuresCounter.Add(
@@ -514,7 +524,7 @@ internal sealed partial class ProcessorObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity.SetErrorStatus(exception);
+            MarkProcessFailed(activity, exception);
             activity.AddExceptionEvent(exception);
 
             ProcessStepFailuresCounter.Add(
@@ -544,7 +554,7 @@ internal sealed partial class ProcessorObservability(
 
             var tag = UnsavedTag(outcome);
 
-            activity.SetErrorStatus(failure);
+            MarkProcessFailed(activity, failure);
             activity.AddExceptionEvent(failure);
             activity?.AddEvent(new ActivityEvent(
                 ProcessorTelemetry.StepOutcomeUnsavedEventName,
@@ -624,7 +634,7 @@ internal sealed partial class ProcessorObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity.SetErrorStatus(exception);
+            MarkProcessFailed(activity, exception);
             activity.AddExceptionEvent(exception);
 
             LogRetrying(logger, exception, processorName, details.StepName, details.ProcessId, details.Attempt);
@@ -635,7 +645,7 @@ internal sealed partial class ProcessorObservability(
             ArgumentNullException.ThrowIfNull(exception);
             ArgumentNullException.ThrowIfNull(outcome);
 
-            activity.SetErrorStatus(exception);
+            MarkProcessFailed(activity, exception);
             activity.AddExceptionEvent(exception);
 
             var tags = CreateStepTags(processorName, details.StepName);
@@ -670,7 +680,7 @@ internal sealed partial class ProcessorObservability(
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            activity.SetErrorStatus(exception);
+            MarkProcessFailed(activity, exception);
             activity.AddExceptionEvent(exception);
 
             ProcessHandlerFailuresCounter.Add(

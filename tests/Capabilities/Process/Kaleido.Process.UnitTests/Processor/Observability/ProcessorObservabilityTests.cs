@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
@@ -222,6 +223,24 @@ public sealed class ProcessorObservabilityTests
         Assert.Equal(
             "exception",
             exception.ParamName);
+    }
+
+    [Fact]
+    public void ExecutionObservation_ConcurrencyFailure_UsesProcessCode()
+    {
+        var serviceName = $"test-processor-{Guid.NewGuid():N}";
+        var activities = new List<Activity>();
+        using var listener = CreateActivityListener(activities);
+        var observability = CreateSut(serviceName);
+
+        using (var observation = observability.BeginExecution(new ProcessorExecutionObservationDetails(1)))
+        {
+            observation.ExecutionFailed(new KaleidoConcurrencyException(Guid.NewGuid()));
+        }
+
+        var activity = Assert.Single(activities, x => x.GetTagItem(KaleidoTelemetryTags.ProcessorName) as string == serviceName);
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        Assert.Equal(ProcessorErrorCodes.ProcessConflict, activity.StatusDescription);
     }
 
     [Fact]

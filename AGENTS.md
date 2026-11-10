@@ -46,7 +46,8 @@ A project's README lists its API; [`ARCHITECTURE.md`](./ARCHITECTURE.md) maps de
 
 | Project | Owns | Does not own |
 | --- | --- | --- |
-| [`Kaleido`](./src/Kaleido/README.md) | Process runtime, eventing, store contracts and defaults (pending extraction) | Queryable, transport, persistence technology |
+| [`Kaleido`](./src/Kaleido/README.md) | foundation and Eventing/outbox pending extraction | capability runtimes, transport |
+| [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md) | steps, state, idempotency, recovery | Queryable, central registry, wire adapters |
 | [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | query sources/views and execution | Process, central registry, wire adapters |
 | [`Kaleido.Platform`](./src/Platform/README.md) | shared registry/wire contracts, JSON, headers and metadata; changes ripple into server and client | endpoint mapping, runtime planning |
 | [`Kaleido.Server`](./src/Server/README.md) | ASP.NET Core caller, authorization, correlation, filters, in-host registry view | protocol endpoints, runtime logic |

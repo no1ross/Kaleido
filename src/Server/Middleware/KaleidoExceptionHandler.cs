@@ -137,7 +137,12 @@ internal sealed partial class KaleidoExceptionHandler(ILogger<KaleidoExceptionHa
     // caller (OpenTelemetry's HTTP server conventions), so dashboards do not count it as a fault. The
     // status describes the failure by code or exception type, never by its message (#290).
     private static void MarkFailed(Exception exception) =>
-        Activity.Current.SetErrorStatus(exception);
+        Activity.Current?.SetStatus(ActivityStatusCode.Error, exception switch
+        {
+            KaleidoConfigurationException configuration => configuration.Code,
+            KaleidoFrameworkException framework => framework.Code,
+            _ => exception.GetType().Name,
+        });
 
     // Without an authentication handler the status code is set directly; with one, the handler
     // answers (a challenge for an anonymous caller, forbid for an authenticated one).

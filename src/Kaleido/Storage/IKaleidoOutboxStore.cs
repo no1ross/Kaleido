@@ -20,7 +20,7 @@ namespace Kaleido.Storage;
 /// </para>
 /// <para>
 /// <strong>Atomic with the process state</strong> when both are on one database and
-/// <see cref="IKaleidoTransactions"/> covers it (e.g. <c>AddSqliteContextStore</c> and
+/// <c>IKaleidoTransactions</c> covers it (e.g. <c>AddSqliteContextStore</c> and
 /// <c>AddSqliteOutboxStore</c> on one SQLite database): write in the open transaction when there is
 /// one, on your own otherwise. Keep the outbox on the context store's database: an outbox on another
 /// database writes its events on their own, and if the transition's commit then fails, they are still
@@ -129,7 +129,7 @@ public sealed record KaleidoOutboxStatus
 /// One event in the outbox: the serialized event envelope plus its delivery state.
 /// </summary>
 /// <remarks>
-/// <see cref="EventType"/> (one of <see cref="KaleidoEventTypes"/>) tells the relay which event and
+/// <see cref="EventType"/> (defined by the capability that produced the event) tells the relay which event and
 /// context types <see cref="Payload"/> holds; no CLR type names are stored. A custom store keeps
 /// every member as is and treats <see cref="Payload"/> as opaque text (a step's request and
 /// response are part of it, so allow several KB).
@@ -140,7 +140,7 @@ public sealed record KaleidoOutboxEvent
     /// <summary>The event's <see cref="IKaleidoEvent.EventId"/>; consumers use it to drop duplicates.</summary>
     public required Guid EventId { get; init; }
 
-    /// <summary>The event type (<see cref="KaleidoEventTypes"/>).</summary>
+    /// <summary>The event type defined by the capability that produced the event.</summary>
     public required string EventType { get; init; }
 
     /// <summary>

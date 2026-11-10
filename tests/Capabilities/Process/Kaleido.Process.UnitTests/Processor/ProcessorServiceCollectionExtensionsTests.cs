@@ -2,6 +2,7 @@ using Kaleido.Eventing;
 using Kaleido.Exceptions;
 using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Registry;
+using Kaleido.Storage;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +27,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddProcessor_RegistersProcessorRegistry()
+    public void AddProcess_RegistersProcessorRegistry()
     {
         var services = new ServiceCollection();
 
@@ -36,7 +37,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
             DisplayName = "Test Processor",
             Description = "Test processor.",
             Assemblies = new[] { typeof(TestStep).Assembly },
-        });
+        }).AddProcess();
 
         using var provider = services.BuildServiceProvider();
 
@@ -62,11 +63,11 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddProcessor_RegistersTheStepRegistryOnce_FromTheScannedSteps()
+    public void AddProcess_RegistersTheStepRegistryOnce_FromTheScannedSteps()
     {
         var services = new ServiceCollection();
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), new() { ServiceName = "test-processor", Assemblies = new[] { typeof(TestStep).Assembly } });
+        services.AddKaleido(new ConfigurationBuilder().Build(), new() { ServiceName = "test-processor", Assemblies = new[] { typeof(TestStep).Assembly } }).AddProcess();
 
         var descriptor =
             Assert.Single(services, x => x.ServiceType == typeof(IProcessorStepRegistry));
@@ -80,7 +81,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddProcessor_WithIsEntryProcessor_RegistrationReflectsIt()
+    public void AddProcess_WithIsEntryProcessor_RegistrationReflectsIt()
     {
         var services = new ServiceCollection();
 
@@ -89,7 +90,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
             ServiceName = "test-processor",
             Assemblies = new[] { typeof(TestStep).Assembly },
             IsEntryProcessor = true,
-        });
+        }).AddProcess();
 
         using var provider = services.BuildServiceProvider();
 
@@ -103,7 +104,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddProcessor_WhenProcessStepAttributeOnTypeWithoutInterface_Throws()
+    public void AddProcess_WhenProcessStepAttributeOnTypeWithoutInterface_Throws()
     {
         var assembly =
             BuildAssembly(module =>
@@ -111,14 +112,14 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var ex =
             Assert.Throws<KaleidoConfigurationException>(() =>
-                AddKaleido(assembly));
+                RegisterProcess(assembly));
 
         Assert.Equal(ProcessorErrorCodes.InvalidRegistration, ex.Code);
         Assert.Contains("AttributeOnlyStep", ex.Message);
     }
 
     [Fact]
-    public void AddProcessor_WhenProcessStepTypeMissingAttribute_Throws()
+    public void AddProcess_WhenProcessStepTypeMissingAttribute_Throws()
     {
         var assembly =
             BuildAssembly(module =>
@@ -126,7 +127,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var ex =
             Assert.Throws<KaleidoConfigurationException>(() =>
-                AddKaleido(assembly));
+                RegisterProcess(assembly));
 
         Assert.Equal(ProcessorErrorCodes.MissingAttribute, ex.Code);
         Assert.Contains("InterfaceOnlyStep", ex.Message);
@@ -135,7 +136,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     [Theory]
     [InlineData(" ", "Description", nameof(ProcessStepAttribute.DisplayName))]
     [InlineData("Display", "", nameof(ProcessStepAttribute.Description))]
-    public void AddProcessor_WhenRequiredMetadataEmpty_Throws(
+    public void AddProcess_WhenRequiredMetadataEmpty_Throws(
         string displayName,
         string description,
         string expectedProperty)
@@ -152,14 +153,14 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var ex =
             Assert.Throws<KaleidoConfigurationException>(() =>
-                AddKaleido(assembly));
+                RegisterProcess(assembly));
 
         Assert.Equal(ProcessorErrorCodes.MissingAttribute, ex.Code);
         Assert.Contains(expectedProperty, ex.Message);
     }
 
     [Fact]
-    public void AddProcessor_WhenTwoStepsShareTypeName_Throws()
+    public void AddProcess_WhenTwoStepsShareTypeName_Throws()
     {
         var assembly =
             BuildAssembly(module =>
@@ -170,14 +171,14 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var ex =
             Assert.Throws<KaleidoConfigurationException>(() =>
-                AddKaleido(assembly));
+                RegisterProcess(assembly));
 
         Assert.Equal(ProcessorErrorCodes.DuplicateStep, ex.Code);
         Assert.Contains("SharedStep", ex.Message);
     }
 
     [Fact]
-    public void AddProcessor_WhenInvalidTypeExcludedByTypeFilter_DoesNotThrow()
+    public void AddProcess_WhenInvalidTypeExcludedByTypeFilter_DoesNotThrow()
     {
         var assembly =
             BuildAssembly(module =>
@@ -194,7 +195,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddProcessor_WhenInformationStepDeclaresOtherProperties_Throws()
+    public void AddProcess_WhenInformationStepDeclaresOtherProperties_Throws()
     {
         var assembly =
             BuildAssembly(module =>
@@ -202,32 +203,32 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var ex =
             Assert.Throws<KaleidoConfigurationException>(() =>
-                AddKaleido(assembly));
+                RegisterProcess(assembly));
 
         Assert.Equal(ProcessorErrorCodes.InvalidRegistration, ex.Code);
         Assert.Contains("MemberId", ex.Message);
     }
 
     [Fact]
-    public void AddProcessor_WhenNoAssemblyIsRegistered_Throws()
+    public void AddProcess_WhenNoAssemblyIsRegistered_Throws()
     {
         var builder = new Mock<IKaleidoBuilder>();
         builder.SetupGet(x => x.Assemblies).Returns([]);
 
         var ex =
-            Assert.Throws<KaleidoConfigurationException>(builder.Object.AddProcessor);
+            Assert.Throws<KaleidoConfigurationException>(builder.Object.AddProcess);
 
         Assert.Equal(ConfigurationErrorCodes.MissingAssembly, ex.Code);
     }
 
     [Fact]
-    public void AddProcessor_WhenBuilderIsNull_Throws()
+    public void AddProcess_WhenBuilderIsNull_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => ((IKaleidoBuilder)null!).AddProcessor());
+        Assert.Throws<ArgumentNullException>(() => ((IKaleidoBuilder)null!).AddProcess());
     }
 
     [Fact]
-    public void AddProcessor_WhenAStepHasNoHandler_Throws()
+    public void AddProcess_WhenAStepHasNoHandler_Throws()
     {
         var assembly =
             BuildAssembly(module =>
@@ -235,14 +236,14 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var ex =
             Assert.Throws<KaleidoConfigurationException>(() =>
-                AddKaleido(assembly));
+                RegisterProcess(assembly));
 
         Assert.Equal(ProcessorErrorCodes.MissingHandler, ex.Code);
         Assert.Contains("Steps.UnhandledStep", ex.Message);
     }
 
     [Fact]
-    public void AddProcessor_WhenAStepHasTwoHandlers_Throws()
+    public void AddProcess_WhenAStepHasTwoHandlers_Throws()
     {
         var assembly =
             BuildAssembly(module =>
@@ -254,7 +255,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var ex =
             Assert.Throws<KaleidoConfigurationException>(() =>
-                AddKaleido(assembly));
+                RegisterProcess(assembly));
 
         Assert.Equal(ProcessorErrorCodes.InvalidHandler, ex.Code);
         Assert.Contains("Handlers.FirstHandler", ex.Message);
@@ -303,7 +304,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddProcessor_IgnoresAbstractAndInterfaceStepTypes()
+    public void AddProcess_IgnoresAbstractAndInterfaceStepTypes()
     {
         var assembly =
             BuildAssembly(module =>
@@ -319,9 +320,90 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         var services = new ServiceCollection();
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), new() { ServiceName = "test-processor", Assemblies = [assembly] });
+        services.AddKaleido(new ConfigurationBuilder().Build(), new() { ServiceName = "test-processor", Assemblies = [assembly] }).AddProcess();
 
         Assert.DoesNotContain(services, x => x.ServiceType == typeof(IProcessorStepRegistry));
+    }
+
+    [Fact]
+    public void AddProcess_RegistersTheThreeProcessStoreDefaults()
+    {
+        var services = NewProcessBuilder().Services;
+
+        Assert.Equal(typeof(InMemoryKaleidoContextStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoContextStore)).ImplementationType);
+        Assert.Equal(typeof(InMemoryKaleidoIdempotencyStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoIdempotencyStore)).ImplementationType);
+        Assert.Equal(typeof(NoKaleidoTransactions), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoTransactions)).ImplementationType);
+        Assert.Equal(["process state (IKaleidoContextStore)", "idempotency records (IKaleidoIdempotencyStore)"], services.ProcessStoresInUse());
+    }
+
+    [Fact]
+    public void AddContextStore_IdempotencyStore_AndTransactions_ReplaceTheDefaults_AsScoped()
+    {
+        var services = NewProcessBuilder().AddContextStore<OwnContextStore>().AddIdempotencyStore<OwnIdempotencyStore>().AddTransactions<OwnTransactions>().Services;
+
+        Assert.Equal(ServiceLifetime.Scoped, Assert.Single(services, x => x.ServiceType == typeof(IKaleidoContextStore)).Lifetime);
+        Assert.Equal(typeof(OwnContextStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoContextStore)).ImplementationType);
+        Assert.Equal(typeof(OwnIdempotencyStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoIdempotencyStore)).ImplementationType);
+        Assert.Equal(typeof(OwnTransactions), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoTransactions)).ImplementationType);
+        Assert.Empty(services.ProcessStoresInUse());
+    }
+
+    [Fact]
+    public void AddContextStore_TheSameStoreTwice_IsRegisteredOnce()
+    {
+        var services = NewProcessBuilder().AddContextStore<OwnContextStore>().AddContextStore<OwnContextStore>().Services;
+
+        Assert.Equal(typeof(OwnContextStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoContextStore)).ImplementationType);
+    }
+
+    // One store per service: a second, different one (by type, instance or factory) is a mistake.
+    [Fact]
+    public void AddContextStore_WhenAnotherStoreIsRegistered_IsAConfigurationError()
+    {
+        var services = new ServiceCollection();
+        var builder = NewProcessBuilder(services);
+        services.AddScoped(_ => Mock.Of<IKaleidoContextStore>());
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(builder.AddContextStore<OwnContextStore>);
+
+        Assert.Equal(ConfigurationErrorCodes.ConflictingStore, exception.Code);
+    }
+
+    [Fact]
+    public void AddContextStore_WhenBuilderIsNull_Throws()
+    {
+        IKaleidoBuilder? builder = null;
+
+        Assert.Throws<ArgumentNullException>(() => builder!.AddContextStore<OwnContextStore>());
+    }
+
+    private static IKaleidoBuilder NewProcessBuilder(IServiceCollection? services = null) =>
+        (services ?? new ServiceCollection()).AddKaleido(new ConfigurationBuilder().Build(), new()
+        {
+            ServiceName = "test-processor",
+            Assemblies = [typeof(TestStep).Assembly],
+            TypeFilter = type => type == typeof(TestStep),
+        }).AddProcess();
+
+    private sealed class OwnContextStore : IKaleidoContextStore
+    {
+        public Task<Kaleido.Processor.Context.ProcessorContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<Kaleido.Processor.Context.ProcessorContext> SaveAsync(Kaleido.Processor.Context.ProcessorContext context, CancellationToken cancellationToken) => throw new NotSupportedException();
+    }
+
+    private sealed class OwnIdempotencyStore : IKaleidoIdempotencyStore
+    {
+        public Task<IdempotentResult?> AdmitAsync(IdempotentResult admission, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> CompleteAsync(IdempotentResult result, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> ReleaseAsync(string key, Guid admissionId, CancellationToken cancellationToken) => throw new NotSupportedException();
+    }
+
+    private sealed class OwnTransactions : IKaleidoTransactions
+    {
+        public Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private static void DefineHandlerInterface(
@@ -340,12 +422,12 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         typeBuilder.CreateType();
     }
 
-    private static void AddKaleido(
+    private static void RegisterProcess(
         System.Reflection.Assembly assembly)
     {
         var services = new ServiceCollection();
 
-        services.AddKaleido(new ConfigurationBuilder().Build(), new() { ServiceName = "test-processor", Assemblies = [assembly] });
+        services.AddKaleido(new ConfigurationBuilder().Build(), new() { ServiceName = "test-processor", Assemblies = [assembly] }).AddProcess();
     }
 
     private static System.Reflection.Emit.AssemblyBuilder BuildAssembly(

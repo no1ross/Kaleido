@@ -1,11 +1,18 @@
 namespace Kaleido.Queryable.Eventing;
 
+/// <summary>Stable outbox discriminators for the Queryable events declared in this capability.</summary>
+public static class QueryableEventTypes
+{
+    /// <summary>The event type of <see cref="Kaleido.Queryable.Eventing.QueryExecuted"/>.</summary>
+    public const string QueryExecuted = "query.executed.v1";
+}
+
 /// <summary>Marker for the events emitted by the Queryable runtime.</summary>
 public interface IQueryEvent : IKaleidoEvent;
 
 /// <summary>
 /// A Queryable source or view query completed successfully. Event type
-/// <see cref="KaleidoEventTypes.QueryExecuted"/>, published with a
+/// <see cref="QueryableEventTypes.QueryExecuted"/>, published with a
 /// <see cref="QueryableEventContext"/>.
 /// </summary>
 /// <remarks>

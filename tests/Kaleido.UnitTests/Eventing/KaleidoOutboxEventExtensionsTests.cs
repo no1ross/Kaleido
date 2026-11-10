@@ -16,7 +16,7 @@ public sealed class KaleidoOutboxEventExtensionsTests
     private static KaleidoEventEnvelope<StepCompleted, ProcessEventContext> StepCompletedEnvelope() =>
         new()
         {
-            EventType = KaleidoEventTypes.ProcessStepCompleted,
+            EventType = ProcessEventTypes.ProcessStepCompleted,
             Context = Context(),
             Event = new StepCompleted
             {
@@ -37,7 +37,7 @@ public sealed class KaleidoOutboxEventExtensionsTests
         var entry = envelope.ToOutboxEvent();
 
         Assert.Equal(envelope.Event.EventId, entry.EventId);
-        Assert.Equal(KaleidoEventTypes.ProcessStepCompleted, entry.EventType);
+        Assert.Equal(ProcessEventTypes.ProcessStepCompleted, entry.EventType);
         Assert.Equal(envelope.Event.OccurredOn, entry.OccurredUtc);
         Assert.Equal(envelope.Event.OccurredOn, entry.NextAttemptUtc);
         Assert.Equal(0, entry.Attempts);
@@ -70,11 +70,11 @@ public sealed class KaleidoOutboxEventExtensionsTests
 
     public static TheoryData<string> EventTypes() =>
     [
-        KaleidoEventTypes.ProcessCreated,
-        KaleidoEventTypes.ProcessPlanBuilt,
-        KaleidoEventTypes.ProcessStepCompleted,
-        KaleidoEventTypes.ProcessExecutionCompleted,
-        KaleidoEventTypes.QueryExecuted,
+        ProcessEventTypes.ProcessCreated,
+        ProcessEventTypes.ProcessPlanBuilt,
+        ProcessEventTypes.ProcessStepCompleted,
+        ProcessEventTypes.ProcessExecutionCompleted,
+        QueryableEventTypes.QueryExecuted,
     ];
 
     // A real envelope of each type, serialized the way the outbox stores it.
@@ -84,20 +84,20 @@ public sealed class KaleidoOutboxEventExtensionsTests
 
         return eventType switch
         {
-            KaleidoEventTypes.ProcessCreated => (new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
+            ProcessEventTypes.ProcessCreated => (new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
             {
                 EventType = eventType,
                 Context = Context(),
                 Event = new ProcessCreated { OccurredOn = now, State = ProcessExecutionState.Active, CreatedUtc = now, UpdatedUtc = now, SubmittedStepCount = 1 },
             }).ToOutboxEvent(),
-            KaleidoEventTypes.ProcessPlanBuilt => (new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
+            ProcessEventTypes.ProcessPlanBuilt => (new KaleidoEventEnvelope<PlanBuilt, ProcessEventContext>
             {
                 EventType = eventType,
                 Context = Context(),
                 Event = new PlanBuilt { OccurredOn = now, State = ProcessExecutionState.Active, SubmittedStepCount = 1, CandidateCount = 1, ExecutableCount = 1 },
             }).ToOutboxEvent(),
-            KaleidoEventTypes.ProcessStepCompleted => StepCompletedEnvelope().ToOutboxEvent(),
-            KaleidoEventTypes.ProcessExecutionCompleted => (new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
+            ProcessEventTypes.ProcessStepCompleted => StepCompletedEnvelope().ToOutboxEvent(),
+            ProcessEventTypes.ProcessExecutionCompleted => (new KaleidoEventEnvelope<ExecutionCompleted, ProcessEventContext>
             {
                 EventType = eventType,
                 Context = Context(),
@@ -136,7 +136,7 @@ public sealed class KaleidoOutboxEventExtensionsTests
             .Callback<KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>, CancellationToken>((e, _) => published = e)
             .Returns(Task.CompletedTask);
 
-        await publisher.Object.PublishOutboxEventAsync<QueryExecuted, QueryableEventContext>(EntryOf(KaleidoEventTypes.QueryExecuted), CancellationToken.None);
+        await publisher.Object.PublishOutboxEventAsync<QueryExecuted, QueryableEventContext>(EntryOf(QueryableEventTypes.QueryExecuted), CancellationToken.None);
 
         Assert.Equal("Members", published!.Context.QuerySourceName);
         Assert.Equal(2, published.Event.TotalCount);
@@ -155,7 +155,7 @@ public sealed class KaleidoOutboxEventExtensionsTests
     [Fact]
     public async Task PublishAsync_ForAnEmptyPayload_Throws()
     {
-        var entry = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessCreated, Payload = "null", OccurredUtc = DateTimeOffset.UtcNow };
+        var entry = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = ProcessEventTypes.ProcessCreated, Payload = "null", OccurredUtc = DateTimeOffset.UtcNow };
 
         await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
             Mock.Of<IEventPublisher>().PublishOutboxEventAsync<ProcessCreated, ProcessEventContext>(entry, CancellationToken.None));
