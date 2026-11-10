@@ -1,6 +1,6 @@
 # Kaleido
 
-This project is Kaleido's core runtime. It contains everything needed to bootstrap the framework and run Process and Queryable capabilities at the application layer, without requiring any transport or ASP.NET Core dependency.
+This project currently bootstraps Kaleido and runs Process and Eventing while those capabilities are being extracted. Queryable already lives in [`Kaleido.Queryable`](../Capabilities/Queryable/Kaleido.Queryable/README.md). The foundation remains free of transport and ASP.NET Core dependencies.
 
 > How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
 
@@ -27,16 +27,7 @@ For the full repository model, see:
 - `Kaleido.Exceptions` — `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConcurrencyException` (409), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500); the HTTP transport maps them to the error body `KaleidoErrorResponse`, which lives in `Kaleido.Platform` (see [`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md), ADR 0017)
 
 ### Queryable runtime
-- `QueryableServiceCollectionExtensions` — `AddQueryable()` (internal, auto-invoked by `AddKaleido()`)
-- `IQueryableService` / `QueryableService` (internal; called by the HTTP transport) — main dispatch service (by queried type: view, local source, or delegated source)
-- `IQuerySourceRegistry` / `IQueryViewRegistry` (internal) — runtime registries (sources keyed by source type and name; views keyed by view type)
-- `QueryContextEngine` / `DelegatedQuerySourceEngine` / `QueryContextExecutor` — query execution pipeline
-- `IQueryContextExecutor<TView>` — public extension point: register your own implementation to plug in provider-native async execution (e.g. EF Core `CountAsync`/`ToListAsync`, MongoDB `CountDocumentsAsync`). The default knows no provider: it uses `IAsyncEnumerable<T>` when supported, sync LINQ otherwise, and counts an async query by reading every matching row, so a host on an async provider registers that provider's executor ([docs/PATTERNS.md](../../docs/PATTERNS.md#queryable-sources-views-and-query-contexts)).
-- `QueryRequestCompiler` / `QueryRequestValidator` — validation and compilation
-- `QueryableObservability` (internal) — logs, traces and metrics of the Queryable runtime
-- `IQuerySource<T>` / `IQuerySourceAsync<T>` / `IDelegatedQuerySource<…>` — source interfaces (the identity, described by `[QuerySource]`)
-- `IQueryViewSource<TSource, …>` / `IQueryViewSourceAsync<TSource, …>` — view interfaces (the identity, described by `[QueryView]`)
-- `IQueryContext` / `IQueryParameters` — markers for query context records (query rules) and parameter records
+- [`Kaleido.Queryable`](../Capabilities/Queryable/Kaleido.Queryable/README.md) owns source/view declarations, query planning and execution, and explicit `AddQueryable()` registration.
 
 ### Process runtime
 - `ProcessorServiceCollectionExtensions` — `AddProcessor(...)` (internal, auto-invoked by `AddKaleido()`)
@@ -53,10 +44,10 @@ For the full repository model, see:
 ## What this project is for
 
 Reference this project when you need to:
-- bootstrap Kaleido with `AddKaleido()` (which auto-registers the Queryable and Process runtimes)
+- bootstrap Kaleido with `AddKaleido()` (which still auto-registers Process during migration; add `AddQueryable()` explicitly for query sources/views)
 - register assemblies via `KaleidoServiceOptions.Assemblies` in the options passed to `AddKaleido()`
 - work with shared metadata primitives (`TypeDescriber`, `ConstraintMapper`)
-- implement a query source, query view, delegated query source, or step handler
+- implement a step handler; query sources and views belong to [`Kaleido.Queryable`](../Capabilities/Queryable/Kaleido.Queryable/README.md)
 - work with correlation context or event publishing
 
 ## What this project is NOT for
@@ -98,7 +89,7 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 - registers the scoped correlation accessor (using `TryAddScoped` so a pre-existing registration wins)
 - registers the in-memory stores (`IKaleidoContextStore`, `IKaleidoIdempotencyStore`, `IKaleidoOutboxStore`) and no transactions; the builder replaces them (`AddContextStore`, `AddIdempotencyStore`, `AddOutboxStore`, `AddTransactions`; one of each per service). It registers no publisher and no relay: `AddOutboxRelay<TPublisher>()` adds the relay (a hosted background service that hands every outbox entry of its database to the publisher - see `KaleidoEventOptions`, `Kaleido:Events`) on the host that publishes
 - refuses to start a host that leaves a store it uses at the in-memory default (`stores_not_chosen`, ADR 0028): the context and idempotency stores when the service has process steps, the outbox store when it publishes through Kaleido's outbox. `AddInMemoryStores()` chooses memory explicitly (development, tests)
-- automatically invokes `AddQueryable()` and `AddProcessor()` to register both runtimes
+- still invokes `AddProcessor()` during extraction; call `AddQueryable()` on the builder to register query sources and views
 - returns an `IKaleidoBuilder`
 
 `AddKaleido()` is called once per service collection: a host runs one Kaleido service. A second call throws `KaleidoConfigurationException` (`duplicate_registration`) instead of silently replacing the first one's options; the same holds for `AddHttp()` (#301).
@@ -107,33 +98,9 @@ Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, t
 
 ---
 
-## Queryable model and execution
+## Queryable capability
 
-**The source is the identity; the query context describes how it is queried.** See [`docs/PATTERNS.md`](../../docs/PATTERNS.md) for the canonical shapes.
-
-| Capability | Identity (interface) | Metadata | Public name / route | Who applies search, filter, sort, paging |
-|---|---|---|---|---|
-| **Local source** | `IQuerySource<TQueryContext>` / `IQuerySourceAsync<TQueryContext>` | `[QuerySource]` | `Type.Name` (unique per service), `/{source}/query` | Kaleido, in-process |
-| **Local view** | `IQueryViewSource<TSource, TQueryContext, TView[, TParams]>` / async | `[QueryView]` | `Type.Name` (unique per source), `/{source}/{view}/query` | Kaleido (on the source's queryable), then the view's projection |
-| **Delegated source** | `IDelegatedQuerySource<TQueryContext, TResult[, TParams]>` | `[QuerySource]` | `Type.Name`, `/{source}/query` | the downstream system; Kaleido passes the `QueryResult` through untouched |
-
-- **Discovery is interface-only:** a source or view must carry its attribute, with a non-empty `DisplayName` and `Description`.
-- **A type is exactly one capability,** so `QueryableService.QueryAsync<TQuery, TResult>` dispatches by the queried type. A view type runs the view over its source; a local source type runs a direct query; a delegated source type runs the delegated engine. There are no competing lanes and no fallback.
-- **Every local source can be queried directly.** Exposure is controlled by what its query context publishes and by authorization.
-- **A query context may back several sources.** Sources are registered and resolved by their concrete type.
-- **The consumer's query is always validated against the source's query context,** for delegated sources too. Paging comes from the source's `[Pageable]` (direct queries) or the view's (view queries); it is not inherited. Both limits are required: `DefaultSize` and `MaxSize` greater than zero, `DefaultSize` no greater than `MaxSize` (startup fails with `qry_invalid_registration` otherwise, #519).
-- **Input the query cannot use is the caller's mistake (400), never a 500 (#519):** an enum value that names no member (by name or number), a number the field's type cannot hold (`300` for a `byte`), an undefined logical operator (`qry_invalid_logical_operator`) or sort direction (`qry_invalid_sort_direction`), checked by the transport and again by the runtime. A number is read as the field's own type, so the whole range of an unsigned field reaches the query. A `[Flags]` enum value may combine members.
-- **Case-insensitive matching** (equals, `in`, `contains`/`startsWith`/`endsWith`, search) lower-cases both sides. An in-memory query does so with the invariant culture, so the current culture cannot change a match; a database provider keeps `ToLower()`, which it translates and compares with the database's collation.
-- **Pages are stable.** A pageable view or local source declares a sortable `DefaultSortField` (on `[QueryView]` / `[QuerySource]`; startup fails with `qry_invalid_registration` otherwise), and a request without a sort is ordered by it, ascending. Prefer a unique field: rows with equal values can still swap places between pages. A delegated source's order is its downstream's. The default is published as `pageable.defaultSortField`.
-- **Query parameters are validated before the query runs,** like a step's input: the parameters record's DataAnnotations (`[Required]` → `qry_missing_parameter`, others → `qry_invalid_parameter_value`), and a missing record is rejected when it has a `[Required]` member. A source or view can rely on its required parameters being present. For value types, declare the parameter with the C# `required` keyword (or a nullable type): on a plain `Guid` an omitted value is `Guid.Empty` and passes `[Required]` (KAL2019). The same holds for step inputs (KAL2018).
-- **Request bodies are read by Kaleido.** The per-step and query endpoints deserialize their typed body themselves (`KaleidoJsonBody<T>`), so a body that does not fit (a malformed value, a `required` member left out) is answered 400 `argument_error` naming the JSON path, by Kaleido's error handling - never by the host's developer exception page or `UseExceptionHandler`.
-- **How a source is fulfilled (`QuerySourceKind`: local or delegated) is runtime metadata for the service only.** It is internal: never published, and not passed to sources and views (`QueryExecutionContext` carries only the request).
-
-### Performance implications
-
-- **Delegated sources pay full materialization cost:** the source computes and returns the whole `QueryResult<TResult>` (typically a cross-service call). Nothing re-queries it.
-- **Local views pay projection cost only:** the framework applies request semantics (filter/sort/page) to an `IQueryable<TQueryContext>` in-process; paging bounds memory.
-- **Direct source queries are the rawest lane:** request semantics apply directly against the source's queryable and return query context records.
+Queryable registration, query execution and source/view semantics belong to [`Kaleido.Queryable`](../Capabilities/Queryable/Kaleido.Queryable/README.md). Call `AddQueryable()` explicitly after `AddKaleido()`; the foundation itself does not register the Queryable runtime.
 
 ---
 

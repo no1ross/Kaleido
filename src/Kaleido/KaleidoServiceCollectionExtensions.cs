@@ -16,8 +16,8 @@ namespace Kaleido;
 public static class KaleidoServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the Kaleido core and the Process and Queryable runtimes for the steps, query sources
-    /// and views found in <see cref="KaleidoServiceOptions.Assemblies"/>.
+    /// Registers the Kaleido core and the Process runtime for steps found in
+    /// <see cref="KaleidoServiceOptions.Assemblies"/>. Queryable is registered separately with <c>AddQueryable()</c>.
     /// </summary>
     /// <remarks>
     /// The <c>Kaleido</c> configuration section is laid over a copy of <paramref name="options"/>:
@@ -110,9 +110,8 @@ public static class KaleidoServiceCollectionExtensions
 
         var builder = new KaleidoBuilder(services, configuration, serviceOptions);
 
-        // Automatically register Process and Queryable runtimes
+        // Automatically register the Process runtime; Queryable is registered by its owner.
         builder.AddProcessor();
-        builder.AddQueryable();
 
         return builder;
     }

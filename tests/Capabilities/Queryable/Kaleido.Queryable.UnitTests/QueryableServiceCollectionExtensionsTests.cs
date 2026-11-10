@@ -179,7 +179,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
                 ServiceName = "test-service",
                 Assemblies = [typeof(QueryableServiceCollectionExtensionsTests).Assembly],
                 TypeFilter = type => type == sourceType || type == viewType,
-            });
+            }).AddQueryable();
 
         using var provider = services.BuildServiceProvider(
             new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });

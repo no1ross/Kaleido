@@ -15,10 +15,11 @@ What each project owns and must not own is stated once, in the root [project bou
 
 - **Project references point one way.** A new reference is an architecture change:
   - `Kaleido` references no other Kaleido project. Its tooling reference to `Kaleido.Analyzers` carries only analyzer assets; nothing compiles against or runs it.
-  - `Kaleido.Platform` and `Kaleido.Observability.OpenTelemetry` reference `Kaleido`; `Kaleido.Server` and `Kaleido.Client` reference `Kaleido.Platform`.
+  - `Kaleido.Queryable`, `Kaleido.Platform` and `Kaleido.Observability.OpenTelemetry` reference `Kaleido`; `Kaleido.Server` and `Kaleido.Client` reference `Kaleido.Platform`.
   - `Kaleido.Http` references `Kaleido.Platform`; `Kaleido.Http.Server` references `Kaleido.Server` and `Kaleido.Http`; `Kaleido.Http.Client` references `Kaleido.Client` and `Kaleido.Http`.
   - `Kaleido.Mcp` references `Kaleido.Http.Server` and `Kaleido.Http.Client`; `Kaleido.Registry` references `Kaleido.Server`; `Kaleido.Registry.Http` references `Kaleido.Registry` and `Kaleido.Http.Server`.
   - `Kaleido.Provider.SQLite` references `Kaleido` and `Kaleido.Registry`; gRPC placeholders mirror the corresponding protocol boundaries.
+- **Project-wide imports:** put `<Using Include="..." />` in each `.csproj`, not in `GlobalUsings.cs`; migrate projects as they are touched.
 - **One type with behavior per file.** A type with hand-written logic (a method, operator or computed property; records included) is declared in a file named after it - a generic twin by its arity, `ProcessStepHandlerResult<T>` in `ProcessStepHandlerResultOfT.cs` - and has its own unit-test class (KAL0019, KAL1009, [types with behavior](../docs/ANALYZERS.md#types-with-behavior)). Data-only records, an interface with its implementation (KAL0014), exceptions and attributes may share a file. `[ExcludeFromCodeCoverage]` only on data types (KAL0020).
 - **Public means consumer API.** Transports, front doors and providers are built into the solution, so seams shared between Kaleido's own projects are internal and shared through `InternalsVisibleTo`: always the MSBuild item (`<InternalsVisibleTo Include="..." />`), never the attribute. `src/Directory.Build.props` grants every package's own `<Package>.UnitTests` and Moq's `DynamicProxyGenAssembly2`; any other friend assembly goes in the package's `.csproj`, with a comment saying why. A type is public only when a consumer must name, implement or call it, and then it carries full XML documentation (CS1591 is enforced) and a line in its package's `PublicAPI.Unshipped.txt` (RS0016/RS0017 are enforced). In particular, the runtime registries (`IProcessorStepRegistry`, `ProcessStepRegistration`, `IQuerySourceRegistry`, `IQueryViewRegistry`) and the in-process execution entry points (`IProcessorRuntime` with `ProcessRequest`/`ProcessorRequest`/`ProcessResult`, `IQueryableService`) are internal: only the transports use them (#297).
 
@@ -33,7 +34,7 @@ What each project owns and must not own is stated once, in the root [project bou
 - the store defaults (no publisher: see Eventing rules)
 - returning the builder for higher-level frameworks
 
-`AddKaleido()` also registers both runtimes (the internal `AddProcessor()` and `AddQueryable()`), which scan the assemblies in `KaleidoServiceOptions.Assemblies`; the registration model is described once, in [`../ARCHITECTURE.md`](../ARCHITECTURE.md#4-registration-model).
+During migration #585, `AddKaleido()` still registers Process internally; `Kaleido.Queryable` owns the explicit `AddQueryable()` call. Both scan `KaleidoServiceOptions.Assemblies`. The intended final foundation registers neither capability; see the [registration model](../ARCHITECTURE.md#4-registration-model).
 
 ### Builder rules
 `IKaleidoBuilder` is intentionally small: `Services`, `Assemblies`, `Configuration` and `ServiceOptions` — what every subsystem builder (Process, Queryable, Registry, transports) needs without a DI lookup. Be cautious about expanding it — additional members affect every framework built on top.

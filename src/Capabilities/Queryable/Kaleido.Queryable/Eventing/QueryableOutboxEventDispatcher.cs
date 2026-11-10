@@ -1,3 +1,5 @@
+using Kaleido.Storage;
+
 namespace Kaleido.Queryable.Eventing;
 
 internal sealed class QueryableOutboxEventDispatcher : IOutboxEventDispatcher

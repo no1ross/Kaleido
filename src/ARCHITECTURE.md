@@ -27,6 +27,7 @@ Rule of thumb: if a name refers to *who runs the work* (runtime, registries, pla
 ## Project dependency graph
 
 ```text
+Kaleido ─► Kaleido.Queryable
 Kaleido ─► Kaleido.Platform ─► Kaleido.Server, Kaleido.Client, Kaleido.Http
 Kaleido.Server + Kaleido.Http ─► Kaleido.Http.Server
 Kaleido.Client + Kaleido.Http ─► Kaleido.Http.Client
@@ -43,11 +44,11 @@ records the direct `ProjectReference` edges.
 
 ---
 
-## 1. Kaleido (core)
+## 1. Kaleido foundation and Queryable capability (migration #585)
 
-### Core internal structure
+### Internal structure during extraction
 
-The core project is organized around three main areas:
+Queryable is now a separate capability project; Process and Eventing remain in Kaleido until their extraction units:
 
 #### Bootstrap and shared (`Kaleido`)
 
@@ -61,7 +62,7 @@ The core project is organized around three main areas:
 
 #### Queryable runtime (`Kaleido.Queryable`)
 
-- Registration: `QueryableServiceCollectionExtensions` (internal, invoked by `AddKaleido()`)
+- Registration: `QueryableServiceCollectionExtensions.AddQueryable()` (public, called explicitly after `AddKaleido()` with the same assembly scan set). Source and view runtime registries remain internal.
 - Runtime: `QueryableService` (dispatch by queried type), `QueryContextEngine`, `DelegatedQuerySourceEngine`, `QueryContextExecutor`
 - Extension point: `IQueryContextExecutor<TView>` is public — consumers on async-capable providers (e.g. EF Core, MongoDB) should register their own implementation so `CountAsync`/`ToListAsync` call provider-native async operators instead of the default `IAsyncEnumerable`/sync fallback.
 - Planning: `QueryRequestCompiler`, `QueryRequestValidator`
@@ -93,7 +94,7 @@ Public seams consumers are expected to implement or replace:
 ### Core design invariants
 
 - The core project has no transport dependencies.
-- `KaleidoServiceOptions.Assemblies` records assemblies; recording does not scan them for capabilities. Scanning happens during the `AddQueryable()` / `AddProcessor()` calls that `AddKaleido()` invokes internally.
+- `KaleidoServiceOptions.Assemblies` records assemblies; recording does not scan them for capabilities. `AddKaleido()` still invokes `AddProcessor()` during extraction, while the owner project scans Queryable capabilities only when the host calls `AddQueryable()` explicitly.
 - Queryable discovery is interface-only and a type is exactly one capability; `QueryableService` dispatches by the queried type. How a source is fulfilled (local or delegated) is never published.
 - `ProcessorContext` is current resumable state only, not an audit log.
 - `IKaleidoBuilder` is intentionally minimal.

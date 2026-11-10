@@ -1,4 +1,4 @@
-namespace Kaleido;
+namespace Kaleido.Queryable.Observability;
 
 /// <summary>
 /// A singleton no-op <see cref="IDisposable"/> used as a safe fallback

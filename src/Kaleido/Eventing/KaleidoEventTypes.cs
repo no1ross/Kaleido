@@ -32,7 +32,7 @@ public static class KaleidoEventTypes
     public const string ProcessExecutionCompleted = "process.execution-completed.v1";
 
     /// <summary>
-    /// The event type of a <see cref="Kaleido.Queryable.Eventing.QueryExecuted"/> event: a Queryable
+    /// The event type of a <c>QueryExecuted</c> event: a Queryable
     /// source or view query was executed.
     /// </summary>
     public const string QueryExecuted = "query.executed.v1";

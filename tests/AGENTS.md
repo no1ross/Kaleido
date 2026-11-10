@@ -4,7 +4,8 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 
 | Test project | Tests code in |
 |---|---|
-| `Kaleido.UnitTests` | `src/Kaleido` core runtime |
+| `Kaleido.UnitTests` | `src/Kaleido` foundation, Process and Eventing pending extraction |
+| `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
 | `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |
 | `Kaleido.Server.UnitTests` | `src/Server` authorization, caller/correlation and registry filtering |
 | `Kaleido.Client.UnitTests` | `src/Client` participation, hydration and transport selection |
@@ -22,6 +23,8 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Analyzers.Source.UnitTests` | contributor `KAL0xxx` rules |
 | `Kaleido.Analyzers.Testing.UnitTests` | test `KAL1xxx` rules |
 | `Kaleido.IntegrationTests` | cross-project DI, EF Core, caller credentials and compiled consumer-guide examples |
+
+Project-wide imports belong in each test `.csproj` as `<Using Include="..." />`, not `GlobalUsings.cs`.
 
 ## Warnings
 Test projects build like `src/`: a warning is an error, and IDE code-style rules (unused usings, naming,
@@ -78,7 +81,7 @@ SUT may only be constructed inside a `CreateSut` method or via `Sut` (KAL1008),
 collaborators must be mocked — never `new` a real Kaleido service
 implementation (KAL1011; domain data the SUT consumes is exempt) — and the
 fixture file must mirror the SUT's source path (KAL1003 — e.g.
-`src/Kaleido/Queryable/Metadata/QueryMetadataExtensions.cs` → `tests/Kaleido.UnitTests/Queryable/Metadata/QueryMetadataExtensionsTests.cs`;
+`src/Capabilities/Queryable/Kaleido.Queryable/Metadata/QueryMetadataExtensions.cs` → `tests/Capabilities/Queryable/Kaleido.Queryable.UnitTests/Metadata/QueryMetadataExtensionsTests.cs`;
 the analyzer finds the SUT's file among the `src/` paths `tests/Directory.Build.props` passes as
 additional files).
 The fixture's namespace is the SUT's namespace with `.UnitTests` appended, not

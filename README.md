@@ -182,6 +182,7 @@ var kaleido = builder.Services
         Assemblies = new[] { typeof(Program).Assembly },
         AuthorizationMode = KaleidoAuthorizationMode.None, // Local evaluation only.
     })
+    .AddQueryable()
     .AddInMemoryStores() // Local evaluation only: process state is lost on restart.
     .AddHttp()
     .AddControlRegistryClient();
@@ -193,7 +194,7 @@ app.MapKaleidoHttp();
 app.Run();
 ```
 
-Kaleido discovers sources, views, steps, and handlers from the configured assemblies and registers their versioned HTTP URLs with the central registry. `MapKaleidoHttp()` requires a central-registry source: business services register one with
+`AddQueryable()` registers sources and views; during extraction `AddKaleido()` still registers steps and handlers. The HTTP service publishes their versioned URLs to the central registry. `MapKaleidoHttp()` requires a central-registry source: business services register one with
 `AddControlRegistryClient()`, and a control-registry host has its own via `AddControlRegistry()`.
 `ServiceVersion` is required for service endpoints.
 
@@ -288,7 +289,8 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 
 | Package | Purpose |
 |---|---|
-| [`Kaleido`](src/Kaleido) | Transport-free Process and Queryable runtimes and store contracts |
+| [`Kaleido`](src/Kaleido) | Core registration, Process and Eventing pending extraction |
+| [`Kaleido.Queryable`](src/Capabilities/Queryable/Kaleido.Queryable) | Query source/view registration and execution |
 | [`Kaleido.Platform`](src/Platform) | Shared registry, Process and Queryable contracts, headers and JSON conventions |
 | [`Kaleido.Server`](src/Server) | Shared ASP.NET Core authorization, caller and endpoint services |
 | [`Kaleido.Client`](src/Client) | Neutral clients, registry participation and transport choice |
@@ -316,7 +318,8 @@ is not implemented yet.
 The packages are previews. Tagged versions are published to **nuget.org**, so no extra source is needed ([releasing](RELEASING.md)); add what the service needs:
 
 ```bash
-dotnet add package Kaleido --prerelease                              # core runtimes
+dotnet add package Kaleido --prerelease                              # foundation and Process during extraction
+dotnet add package Kaleido.Queryable --prerelease                    # query sources and views
 dotnet add package Kaleido.Http.Server --prerelease                  # publish HTTP capabilities
 dotnet add package Kaleido.Http.Client --prerelease                  # central-registry and gateway HTTP clients
 dotnet add package Kaleido.Registry.Http --prerelease                # host the control registry over HTTP

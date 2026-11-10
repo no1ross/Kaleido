@@ -1,4 +1,6 @@
-namespace Kaleido.UnitTests;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Queryable.Observability.UnitTests;
 
 public sealed class NullDisposableTests
     : SutFixture

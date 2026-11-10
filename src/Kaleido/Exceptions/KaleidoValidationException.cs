@@ -3,7 +3,7 @@ namespace Kaleido.Exceptions;
 /// <summary>
 /// Thrown when a Kaleido request fails validation — bad field, unsupported operator, invalid page size, etc.
 /// Results in a 400 Bad Request when caught by the endpoint handlers.
-/// The <see cref="Code"/> is forwarded directly into the HTTP response body (e.g. <see cref="Kaleido.Queryable.QueryableErrorCodes"/>, <see cref="Kaleido.Processor.ProcessorErrorCodes"/>).
+/// The <see cref="Code"/> is forwarded directly into the HTTP response body (e.g. <c>QueryableErrorCodes</c>, <see cref="Kaleido.Processor.ProcessorErrorCodes"/>).
 /// </summary>
 [ExcludeFromCodeCoverage]
 public sealed class KaleidoValidationException : Exception
@@ -13,7 +13,7 @@ public sealed class KaleidoValidationException : Exception
     /// </summary>
     /// <param name="code">
     /// The machine-readable error code, from the area's catalog (e.g.
-    /// <see cref="Kaleido.Queryable.QueryableErrorCodes"/>).
+    /// <c>QueryableErrorCodes</c>).
     /// </param>
     /// <param name="message">
     /// The explanation for the caller. It is returned in the 400 response body (or, thrown from a
@@ -32,7 +32,7 @@ public sealed class KaleidoValidationException : Exception
     /// </summary>
     /// <param name="code">
     /// The machine-readable error code, from the area's catalog (e.g.
-    /// <see cref="Kaleido.Queryable.QueryableErrorCodes"/>).
+    /// <c>QueryableErrorCodes</c>).
     /// </param>
     /// <param name="message">
     /// The explanation for the caller. It is returned in the 400 response body (or, thrown from a
@@ -46,6 +46,6 @@ public sealed class KaleidoValidationException : Exception
         Code = code;
     }
 
-    /// <summary>Stable machine-readable error code (e.g. <see cref="Kaleido.Queryable.QueryableErrorCodes"/>, <see cref="Kaleido.Processor.ProcessorErrorCodes"/>). Wire-safe — forwarded directly into 400 response bodies.</summary>
+    /// <summary>Stable machine-readable error code (e.g. <c>QueryableErrorCodes</c>, <see cref="Kaleido.Processor.ProcessorErrorCodes"/>). Wire-safe — forwarded directly into 400 response bodies.</summary>
     public string Code { get; }
 }

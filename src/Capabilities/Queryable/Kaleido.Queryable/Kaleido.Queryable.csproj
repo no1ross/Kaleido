@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido Queryable capability: source and view registration, query validation, planning and execution.</Description>
+		<PackageTags>kaleido;queryable;query;runtime</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\Kaleido\Kaleido.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Query" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Kaleido.Platform" />
+		<InternalsVisibleTo Include="Kaleido.Server" />
+		<InternalsVisibleTo Include="Kaleido.Client" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.IntegrationTests" />
+	</ItemGroup>
+</Project>

@@ -17,6 +17,17 @@
 		<PackageReference Include="Polly.Core" />
 	</ItemGroup>
 
+	<ItemGroup>
+    <Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Processor" />
+		<Using Include="Kaleido.Processor.Execution" />
+		<Using Include="Kaleido.Processor.Planning" />
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+
 	<!-- EXT-05: this reference exists only so Kaleido.nupkg declares a package
 	     dependency on Kaleido.Analyzers, which flows the consumer rules to every
 	     service that installs Kaleido. It is not an Analyzer item, so the rules do
@@ -35,6 +46,8 @@
 
 	<ItemGroup>
 		<!-- The servers, clients and front doors are built into the solution: they use core's transport seams (authorization evaluation, correlation initialization) without making them public API; the outgoing clients and the MCP adapter read the inbound caller the server set (ADR 0022). -->
+		<InternalsVisibleTo Include="Kaleido.Queryable" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Platform" />
 		<InternalsVisibleTo Include="Kaleido.Server" />
 		<InternalsVisibleTo Include="Kaleido.Client" />

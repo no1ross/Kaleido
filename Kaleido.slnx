@@ -23,6 +23,9 @@
     <File Path="global.json" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/src/Capabilities/Queryable/">
+    <Project Path="src/Capabilities/Queryable/Kaleido.Queryable/Kaleido.Queryable.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <File Path="src/AGENTS.md" />
     <File Path="src/ARCHITECTURE.md" />
@@ -55,6 +58,9 @@
     <Project Path="src/Registry/Registry/Kaleido.Registry.csproj" />
     <Project Path="src/Registry/Registry.Grpc/Kaleido.Registry.Grpc.csproj" />
     <Project Path="src/Registry/Registry.Http/Kaleido.Registry.Http.csproj" />
+  </Folder>
+  <Folder Name="/test/Capabilities/Queryable/">
+    <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.UnitTests/Kaleido.Queryable.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />

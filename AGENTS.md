@@ -42,11 +42,12 @@ CI (`build.yml`) also checks, and you run before committing:
 
 ## Project boundaries
 
-One place owns each fact: a project's README lists its types and entry points, [`ARCHITECTURE.md`](./ARCHITECTURE.md) describes how the projects depend on each other and how a host registers them, and [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) describes the internals. This section states only what each project owns and must not own; link to those documents rather than repeating their type lists.
+A project's README lists its API; [`ARCHITECTURE.md`](./ARCHITECTURE.md) maps dependencies and registration, and [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) describes internals. This table states ownership boundaries, not type lists.
 
 | Project | Owns | Does not own |
 | --- | --- | --- |
-| [`Kaleido`](./src/Kaleido/README.md) | Process and Queryable runtimes, eventing, store contracts, in-memory defaults | transport, ASP.NET Core, persistence technology |
+| [`Kaleido`](./src/Kaleido/README.md) | Process runtime, eventing, store contracts and defaults (pending extraction) | Queryable, transport, persistence technology |
+| [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | query sources/views and execution | Process, central registry, wire adapters |
 | [`Kaleido.Platform`](./src/Platform/README.md) | shared registry/wire contracts, JSON, headers and metadata; changes ripple into server and client | endpoint mapping, runtime planning |
 | [`Kaleido.Server`](./src/Server/README.md) | ASP.NET Core caller, authorization, correlation, filters, in-host registry view | protocol endpoints, runtime logic |
 | [`Kaleido.Client`](./src/Client/README.md) | neutral clients, call context, registry participation, hydration, transport choice | HTTP wire implementation |

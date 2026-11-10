@@ -53,7 +53,7 @@ public sealed class KaleidoConfigurationException : Exception
 /// Stable machine-readable diagnostic codes for core Kaleido configuration errors
 /// (service setup and authorization settings). They are raised at startup, so they never
 /// reach HTTP response bodies. Each area owns its own startup codes:
-/// <see cref="Kaleido.Queryable.QueryableErrorCodes"/>, <see cref="Kaleido.Processor.ProcessorErrorCodes"/>,
+/// <c>QueryableErrorCodes</c>, <see cref="Kaleido.Processor.ProcessorErrorCodes"/>,
 /// and the transport/provider projects' own catalogs.
 /// </summary>
 public static class ConfigurationErrorCodes

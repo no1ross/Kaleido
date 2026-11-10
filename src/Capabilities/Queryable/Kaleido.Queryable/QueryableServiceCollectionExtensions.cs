@@ -21,7 +21,11 @@ public static class QueryableServiceCollectionExtensions
         return builder;
     }
 
-    internal static IKaleidoBuilder AddQueryable(this IKaleidoBuilder builder)
+    /// <summary>Discovers and registers query sources, views and their Queryable runtime from the builder's assemblies.</summary>
+    /// <param name="builder">The Kaleido builder, with an explicit assembly scan set.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">Assemblies or discovered capabilities are invalid.</exception>
+    public static IKaleidoBuilder AddQueryable(this IKaleidoBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
