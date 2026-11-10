@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Reflection;
 using Kaleido.Exceptions;
 using Kaleido.Registry;
 
@@ -16,19 +15,9 @@ public sealed class QuerySourceRegistryTests
         Type[] localSourceTypes,
         Type[] delegatedSourceTypes)
     {
-        var typeDescriber = new Mock<ITypeDescriber>();
-        typeDescriber
-            .Setup(m => m.GetDescriptor(It.IsAny<PropertyInfo>()))
-            .Returns(new DataTypeDescriptor("mock-type"));
-
-        var constraintMapper = new Mock<IConstraintMapper>();
-        constraintMapper
-            .Setup(m => m.Map(It.IsAny<PropertyInfo>()))
-            .Returns([]);
-
         return new QuerySourceRegistry(
-            typeDescriber.Object,
-            constraintMapper.Object,
+            new TypeDescriber(),
+            new ConstraintMapper(),
             localSourceTypes,
             delegatedSourceTypes,
             defaultAuthorization);

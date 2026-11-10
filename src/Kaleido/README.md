@@ -20,8 +20,8 @@ For the full repository model, see:
 - no event writer, outbox store or publisher: a host adds `AddEventing()` for the current outbox-backed writer and `AddOutboxRelay<TPublisher>()` in the publishing host (ADR 0036). Relay-only hosts register the Process/Queryable event dispatchers they need separately.
 
 ### Shared abstractions
-- `ITypeDescriber` / `TypeDescriber` (internal) — converts CLR types and properties into `DataTypeDescriptor` values (internal; the HTTP transport maps them to the wire's `DataTypeMetadata`)
-- `IConstraintMapper` / `ConstraintMapper` (internal) — converts `ValidationAttribute` usage into metadata constraint contracts
+- `TypeDescriber` (internal concrete singleton) — converts CLR types and properties into `DataTypeDescriptor` values; HTTP maps those into wire `DataTypeMetadata`
+- `ConstraintMapper` (internal concrete singleton) — converts `ValidationAttribute` usage into metadata constraint contracts
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - Event publication, redaction, relay and outbox types belong to [`Kaleido.Eventing`](../Events/Kaleido.Eventing/README.md); the foundation supplies only the shared `DataClassificationAttribute` inspection used by event and metadata owners (ADR 0013, ADR 0025).
 - `Kaleido.Exceptions` — shared `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500). The Process-owned `KaleidoConcurrencyException` reports process-state conflicts (409). HTTP error bodies belong to `Kaleido.Platform` during extraction (see [`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md)).

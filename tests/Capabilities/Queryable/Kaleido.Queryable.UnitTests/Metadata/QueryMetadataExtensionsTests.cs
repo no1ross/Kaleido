@@ -100,12 +100,7 @@ public sealed class QueryMetadataExtensionsTests
 
     private static FieldMetadata Field(string property)
     {
-        var typeDescriber = new Mock<ITypeDescriber>();
-        typeDescriber
-            .Setup(x => x.GetDescriptor(It.IsAny<PropertyInfo>()))
-            .Returns(new DataTypeDescriptor("mock-type"));
-
-        return typeof(OperatorFitContext).GetProperty(property)!.ToFieldMetadata(typeDescriber.Object);
+        return typeof(OperatorFitContext).GetProperty(property)!.ToFieldMetadata(new TypeDescriber());
     }
 
     private enum FitStatus

@@ -23,6 +23,19 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     private static ServiceDescriptor Single<TService>(IServiceCollection services) =>
         Assert.Single(services, x => x.ServiceType == typeof(TService));
 
+    [Fact]
+    public void AddKaleido_RegistersConcreteMetadataHelpersAsSingletons()
+    {
+        var services = new ServiceCollection();
+        services.AddKaleido(EmptyConfig(), DefaultServiceOptions());
+
+        Assert.Equal(ServiceLifetime.Singleton, Single<TypeDescriber>(services).Lifetime);
+        Assert.Equal(ServiceLifetime.Singleton, Single<ConstraintMapper>(services).Lifetime);
+        using var provider = services.BuildServiceProvider();
+        Assert.Same(provider.GetRequiredService<TypeDescriber>(), provider.GetRequiredService<TypeDescriber>());
+        Assert.Same(provider.GetRequiredService<ConstraintMapper>(), provider.GetRequiredService<ConstraintMapper>());
+    }
+
     // ADR 0030: configuration overrides code setting by setting; what configuration does not name keeps
     // the code value, and the host's own instance is never changed.
     [Fact]

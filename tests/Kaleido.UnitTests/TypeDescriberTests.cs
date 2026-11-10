@@ -178,13 +178,13 @@ public sealed class TypeDescriberTests
     [InlineData(typeof(List<int>), false)]
     public void IsSupportedType_AcceptsScalarsAndEnums(Type type, bool expected)
     {
-        Assert.Equal(expected, _sut.IsSupportedType(type));
+        Assert.Equal(expected, TypeDescriber.IsSupportedType(type));
     }
 
     [Fact]
     public void IsSupportedType_WhenTypeIsNull_Throws()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => _sut.IsSupportedType(null!));
+        var exception = Assert.Throws<ArgumentNullException>(() => TypeDescriber.IsSupportedType(null!));
 
         Assert.Equal("type", exception.ParamName);
     }

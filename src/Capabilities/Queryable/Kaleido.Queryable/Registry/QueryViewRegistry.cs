@@ -22,12 +22,12 @@ internal sealed class QueryViewRegistry
 {
     private readonly FrozenDictionary<Type, QueryViewRegistration> _byType;
 
-    private readonly ITypeDescriber _typeDescriber;
-    private readonly IConstraintMapper _constraintMapper;
+    private readonly TypeDescriber _typeDescriber;
+    private readonly ConstraintMapper _constraintMapper;
 
     public QueryViewRegistry(
-        ITypeDescriber typeDescriber,
-        IConstraintMapper constraintMapper,
+        TypeDescriber typeDescriber,
+        ConstraintMapper constraintMapper,
         IEnumerable<Type> queryViewTypes)
     {
         ArgumentNullException.ThrowIfNull(typeDescriber);

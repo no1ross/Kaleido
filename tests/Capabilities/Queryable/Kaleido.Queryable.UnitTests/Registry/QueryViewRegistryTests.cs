@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Reflection;
 using Kaleido.Exceptions;
 
 namespace Kaleido.Queryable.Registry.UnitTests;
@@ -8,26 +7,8 @@ namespace Kaleido.Queryable.Registry.UnitTests;
 public sealed class QueryViewRegistryTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static readonly DataTypeDescriptor TestDataType =
-        new("mock-type");
-
-    private static QueryViewRegistry CreateSut(params Type[] viewTypes)
-    {
-        var typeDescriber = new Mock<ITypeDescriber>();
-        typeDescriber
-            .Setup(m => m.GetDescriptor(It.IsAny<PropertyInfo>()))
-            .Returns(TestDataType);
-
-        var constraintMapper = new Mock<IConstraintMapper>();
-        constraintMapper
-            .Setup(m => m.Map(It.IsAny<PropertyInfo>()))
-            .Returns([new ConstraintContract { Type = "Required" }]);
-
-        return new QueryViewRegistry(
-            typeDescriber.Object,
-            constraintMapper.Object,
-            viewTypes);
-    }
+    private static QueryViewRegistry CreateSut(params Type[] viewTypes) =>
+        new(new TypeDescriber(), new ConstraintMapper(), viewTypes);
 
     [Fact]
     public void Constructor_BuildsRegistrationMetadata()
@@ -57,14 +38,14 @@ public sealed class QueryViewRegistryTests
 
         Assert.Equal(nameof(TestParameters.Category), parameter.Name);
         Assert.Equal(typeof(string), parameter.Type);
-        Assert.Equal(TestDataType, parameter.DataType);
+        Assert.Equal(new DataTypeDescriptor("string"), parameter.DataType);
         Assert.Equal("Category description", parameter.Description);
         Assert.Single(parameter.Constraints);
         Assert.Equal("Required", parameter.Constraints.Single().Type);
 
         var outputField = Assert.Single(registry.GetRegistration(typeof(TestView)).Metadata.OutputFields!, x => x.Name == nameof(TestContract.Id));
         Assert.Equal(typeof(int), outputField.Type);
-        Assert.Equal(TestDataType, outputField.DataType);
+        Assert.Equal(new DataTypeDescriptor("integer"), outputField.DataType);
     }
 
     [Fact]

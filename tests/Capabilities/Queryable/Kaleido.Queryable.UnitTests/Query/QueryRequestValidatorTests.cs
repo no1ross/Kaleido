@@ -11,15 +11,7 @@ public sealed class QueryRequestValidatorTests
 
     private readonly QueryRequestValidator _validator = CreateSut();
 
-    private static QueryRequestValidator CreateSut(bool supportedTypes = true)
-    {
-        var typeDescriber = new Mock<ITypeDescriber>();
-        typeDescriber
-            .Setup(m => m.IsSupportedType(It.IsAny<Type>()))
-            .Returns(supportedTypes);
-
-        return new QueryRequestValidator(typeDescriber.Object);
-    }
+    private static QueryRequestValidator CreateSut() => new();
 
     [Fact]
     public void Validate_WhenRequestIsValid_DoesNotThrow()
@@ -205,7 +197,7 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, new object())));
 
-        var ex = Assert.Throws<KaleidoValidationException>(() => CreateSut(supportedTypes: false).Validate(request, CreateMetadata(), null));
+        var ex = Assert.Throws<KaleidoValidationException>(() => CreateSut().Validate(request, CreateMetadata(), null));
 
         Assert.Equal(QueryableErrorCodes.UnsupportedRuntimeType, ex.Code);
         Assert.Contains("System.Object", ex.Message, StringComparison.Ordinal);
@@ -216,7 +208,7 @@ public sealed class QueryRequestValidatorTests
     {
         var request = new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Code", FilterOperator.Equals, [null])));
 
-        CreateSut(supportedTypes: false).Validate(request, CreateMetadata(), null);
+        CreateSut().Validate(request, CreateMetadata(), null);
     }
 
     [Fact]

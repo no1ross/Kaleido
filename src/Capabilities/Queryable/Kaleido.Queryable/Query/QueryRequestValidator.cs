@@ -35,7 +35,7 @@ internal interface IQueryContextValidator
     void Validate(IQueryRequest request, QuerySourceMetadata metadata, PageableMetadata? pageable);
 }
 
-internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQueryContextValidator
+internal sealed class QueryRequestValidator : IQueryContextValidator
 {
     public void Validate(
         IQueryRequest request,
@@ -123,7 +123,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         }
     }
 
-    private void ValidateFilterValueTypes(QueryFilterCondition condition)
+    private static void ValidateFilterValueTypes(QueryFilterCondition condition)
     {
         foreach (var value in condition.Values)
         {
@@ -138,7 +138,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         }
     }
 
-    private void ValidateSupportedRuntimeType(
+    private static void ValidateSupportedRuntimeType(
         string name,
         object value)
     {
@@ -147,7 +147,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
                 value.GetType())
             ?? value.GetType();
 
-        if (typeDescriber.IsSupportedType(actualType))
+        if (TypeDescriber.IsSupportedType(actualType))
         {
             return;
         }
@@ -160,7 +160,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
 
     private const int MaxFilterDepth = 10;
 
-    private void ValidateFilter(
+    private static void ValidateFilter(
         QueryFilterNode? node,
         QuerySourceMetadata metadata,
         int depth = 0)
@@ -209,7 +209,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
             "Filter node must specify either Condition or Group.");
     }
 
-    private void ValidateFilterGroup(
+    private static void ValidateFilterGroup(
         QueryFilterGroup group,
         QuerySourceMetadata metadata,
         int depth)
@@ -239,7 +239,7 @@ internal sealed class QueryRequestValidator(ITypeDescriber typeDescriber) : IQue
         }
     }
 
-    private void ValidateFilterCondition(
+    private static void ValidateFilterCondition(
         QueryFilterCondition condition,
         QuerySourceMetadata metadata)
     {

@@ -7,8 +7,8 @@ using System.Reflection;
 internal sealed partial record ProcessStepRegistration
 {
     internal ProcessorStepRegistryItem ToRegistryItem(
-        ITypeDescriber typeDescriber,
-        IConstraintMapper constraintMapper)
+        TypeDescriber typeDescriber,
+        ConstraintMapper constraintMapper)
     {
         return new ProcessorStepRegistryItem
         {
@@ -62,8 +62,8 @@ internal sealed partial record ProcessStepRegistration
     }
 
     private ProcessorInputFieldDescriptor[] ToInputDescriptors(
-        ITypeDescriber typeDescriber,
-        IConstraintMapper constraintMapper)
+        TypeDescriber typeDescriber,
+        ConstraintMapper constraintMapper)
     {
         var properties = StepType.GetProperties();
 
@@ -107,8 +107,8 @@ internal sealed partial record ProcessStepRegistration
 
     private static ProcessorInputFieldDescriptor ToInputDescriptor(
         PropertyInfo property,
-        ITypeDescriber typeDescriber,
-        IConstraintMapper constraintMapper,
+        TypeDescriber typeDescriber,
+        ConstraintMapper constraintMapper,
         LookupMetadata? lookup)
     {
         var display = property.GetCustomAttribute<DisplayAttribute>();
@@ -129,7 +129,7 @@ internal sealed partial record ProcessStepRegistration
     }
 
     private ProcessorStepResultDescriptor? ToResultDescriptor(
-        ITypeDescriber typeDescriber)
+        TypeDescriber typeDescriber)
     {
         if (StepResultType is null)
         {
@@ -149,7 +149,7 @@ internal sealed partial record ProcessStepRegistration
 
     private static ProcessorOutputFieldDescriptor ToOutputDescriptor(
         PropertyInfo property,
-        ITypeDescriber typeDescriber)
+        TypeDescriber typeDescriber)
     {
         return new ProcessorOutputFieldDescriptor
         {

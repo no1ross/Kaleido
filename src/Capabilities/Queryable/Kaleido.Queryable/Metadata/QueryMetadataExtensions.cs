@@ -15,7 +15,7 @@ internal static class QueryMetadataExtensions
     /// </summary>
     internal static FieldMetadata ToFieldMetadata(
         this PropertyInfo property,
-        ITypeDescriber typeDescriber)
+        TypeDescriber typeDescriber)
     {
         var filterable =
             property.GetCustomAttribute<FilterableAttribute>();
@@ -51,8 +51,8 @@ internal static class QueryMetadataExtensions
     /// </summary>
     internal static IReadOnlyList<QueryParameterMetadata> ToParameterMetadata(
         this Type parametersType,
-        ITypeDescriber typeDescriber,
-        IConstraintMapper constraintMapper)
+        TypeDescriber typeDescriber,
+        ConstraintMapper constraintMapper)
     {
         if (parametersType == typeof(EmptyQueryViewParameters))
         {
@@ -81,7 +81,7 @@ internal static class QueryMetadataExtensions
     /// </summary>
     internal static IReadOnlyList<QueryOutputFieldMetadata> ToOutputFieldMetadata(
         this Type viewType,
-        ITypeDescriber typeDescriber) =>
+        TypeDescriber typeDescriber) =>
         viewType
             .GetProperties(
                 BindingFlags.Public |
@@ -107,8 +107,8 @@ internal static class QueryMetadataExtensions
         Type contextType,
         Type parametersType,
         Type viewType,
-        ITypeDescriber typeDescriber,
-        IConstraintMapper constraintMapper) =>
+        TypeDescriber typeDescriber,
+        ConstraintMapper constraintMapper) =>
         new(
             queryViewType.Name,
             attribute.DisplayName,

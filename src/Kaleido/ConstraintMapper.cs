@@ -54,12 +54,7 @@ internal sealed record ConstraintParameterContract
     public object? Value { get; init; }
 }
 
-internal interface IConstraintMapper
-{
-    IReadOnlyCollection<ConstraintContract> Map(PropertyInfo propertyInfo);
-}
-
-internal sealed class ConstraintMapper : IConstraintMapper
+internal sealed class ConstraintMapper
 {
     public IReadOnlyCollection<ConstraintContract> Map(
         PropertyInfo propertyInfo)

@@ -64,19 +64,7 @@ internal sealed record EnumValueDescriptor(
     string Name,
     string? Description);
 
-internal interface ITypeDescriber
-{
-    DataTypeDescriptor GetDescriptor(PropertyInfo propertyInfo);
-
-    /// <summary>
-    /// Returns true if <paramref name="type"/> is a known scalar or enum type
-    /// that the framework can describe and that transport layers are expected
-    /// to deliver as a typed CLR value.
-    /// </summary>
-    bool IsSupportedType(Type type);
-}
-
-internal sealed class TypeDescriber : ITypeDescriber
+internal sealed class TypeDescriber
 {
     private static readonly FrozenDictionary<Type, DataTypeDescriptor> TypeMappings =
             new Dictionary<Type, DataTypeDescriptor>
@@ -112,7 +100,12 @@ internal sealed class TypeDescriber : ITypeDescriber
                 [typeof(TimeSpan)] = new("string", "duration"),
             }.ToFrozenDictionary();
 
-    public bool IsSupportedType(Type type)
+    /// <summary>
+    /// Returns true if <paramref name="type"/> is a known scalar or enum type
+    /// that the framework can describe and that transport layers are expected
+    /// to deliver as a typed CLR value.
+    /// </summary>
+    public static bool IsSupportedType(Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
 

@@ -60,16 +60,16 @@ public static class QueryableServiceCollectionExtensions
 
         builder.Services.TryAddSingleton<QuerySourceRegistry>(
             sp => new QuerySourceRegistry(
-                sp.GetRequiredService<ITypeDescriber>(),
-                sp.GetRequiredService<IConstraintMapper>(),
+                sp.GetRequiredService<TypeDescriber>(),
+                sp.GetRequiredService<ConstraintMapper>(),
                 localSourceTypes,
                 delegatedSourceTypes,
                 builder.ServiceOptions.DefaultAuthorization));
 
         builder.Services.TryAddSingleton<QueryViewRegistry>(
             sp => new QueryViewRegistry(
-                sp.GetRequiredService<ITypeDescriber>(),
-                sp.GetRequiredService<IConstraintMapper>(),
+                sp.GetRequiredService<TypeDescriber>(),
+                sp.GetRequiredService<ConstraintMapper>(),
                 viewTypes));
 
         builder.Services.TryAddSingleton<IQuerySourceRegistry>(sp => sp.GetRequiredService<QuerySourceRegistry>());

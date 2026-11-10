@@ -98,8 +98,8 @@ public static class KaleidoServiceCollectionExtensions
         // At start, every store in use is chosen - durable, or AddInMemoryStores() (ADR 0028).
         // The check reads the final collection, so the registration order does not matter.
         services.AddHostedService(_ => new KaleidoStoreSelectionCheck(services));
-        services.TryAddSingleton<ITypeDescriber, TypeDescriber>();
-        services.TryAddSingleton<IConstraintMapper, ConstraintMapper>();
+        services.TryAddSingleton<TypeDescriber>();
+        services.TryAddSingleton<ConstraintMapper>();
 
         var builder = new KaleidoBuilder(services, configuration, serviceOptions);
 

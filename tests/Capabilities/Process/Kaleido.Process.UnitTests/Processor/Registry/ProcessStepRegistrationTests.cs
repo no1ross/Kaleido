@@ -74,16 +74,8 @@ public sealed class ProcessStepRegistrationTests
         bool repeatable = false) =>
         new(stepType, resultType, typeof(object), dependencies ?? [], availableAfter ?? [], [], new RepeatableOptions { Enabled = repeatable }, Metadata(stepType.Name));
 
-    private static ProcessorStepRegistryItem RegistryItem(ProcessStepRegistration registration)
-    {
-        var describer = new Mock<ITypeDescriber>();
-        describer.Setup(x => x.GetDescriptor(It.IsAny<System.Reflection.PropertyInfo>()))
-            .Returns((System.Reflection.PropertyInfo property) => new DataTypeDescriptor(property.PropertyType.Name));
-        var constraints = new Mock<IConstraintMapper>();
-        constraints.Setup(x => x.Map(It.IsAny<System.Reflection.PropertyInfo>())).Returns([]);
-
-        return registration.ToRegistryItem(describer.Object, constraints.Object);
-    }
+    private static ProcessorStepRegistryItem RegistryItem(ProcessStepRegistration registration) =>
+        registration.ToRegistryItem(new TypeDescriber(), new ConstraintMapper());
 
     [Theory]
     [InlineData(typeof(AnswerStep), true)]
@@ -114,7 +106,7 @@ public sealed class ProcessStepRegistrationTests
 
         var name = Assert.Single(item.Fields, x => x.Name == nameof(ChargeStep.MemberName));
         var amount = Assert.Single(item.Fields, x => x.Name == nameof(ChargeStep.Amount));
-        Assert.Equal("String", name.DataType.Type);
+        Assert.Equal("string", name.DataType.Type);
         Assert.Equal("The member's name.", name.Description);
         Assert.Equal(["Test:PHI"], name.Classifications);
         Assert.Equal("Amount", amount.DisplayName);

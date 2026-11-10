@@ -214,8 +214,8 @@ internal sealed partial class ProcessorRegistry : IProcessorRegistry
 {
 
     public ProcessorRegistry(
-        ITypeDescriber typeDescriber,
-        IConstraintMapper constraintMapper,
+        TypeDescriber typeDescriber,
+        ConstraintMapper constraintMapper,
         KaleidoServiceOptions serviceOptions,
         IProcessorStepRegistry stepRegistry,
         ILogger<ProcessorRegistry> logger)

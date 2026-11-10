@@ -135,8 +135,8 @@ public static class ProcessorServiceCollectionExtensions
 
         builder.Services.TryAddSingleton<IProcessorRegistry>(
             sp => new ProcessorRegistry(
-                sp.GetRequiredService<ITypeDescriber>(),
-                sp.GetRequiredService<IConstraintMapper>(),
+                sp.GetRequiredService<TypeDescriber>(),
+                sp.GetRequiredService<ConstraintMapper>(),
                 builder.ServiceOptions,
                 sp.GetRequiredService<IProcessorStepRegistry>(),
                 sp.GetRequiredService<ILogger<ProcessorRegistry>>()));

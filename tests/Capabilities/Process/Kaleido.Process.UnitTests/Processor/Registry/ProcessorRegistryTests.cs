@@ -15,16 +15,16 @@ public sealed class ProcessorRegistryTests
         stepRegistry.SetupGet(x => x.InitialRegistrations).Returns([]);
 
         return CreateSut(
-            Mock.Of<ITypeDescriber>(),
-            Mock.Of<IConstraintMapper>(),
+            new TypeDescriber(),
+            new ConstraintMapper(),
             new KaleidoServiceOptions { ServiceName = "intake", IsEntryProcessor = isEntryProcessor },
             stepRegistry.Object,
             logger ?? Mock.Of<ILogger<ProcessorRegistry>>());
     }
 
     private static ProcessorRegistry CreateSut(
-        ITypeDescriber typeDescriber,
-        IConstraintMapper constraintMapper,
+        TypeDescriber typeDescriber,
+        ConstraintMapper constraintMapper,
         KaleidoServiceOptions serviceOptions,
         IProcessorStepRegistry stepRegistry,
         ILogger<ProcessorRegistry> logger) =>
@@ -62,10 +62,10 @@ public sealed class ProcessorRegistryTests
         var options = new KaleidoServiceOptions { ServiceName = "intake" };
         var logger = Mock.Of<ILogger<ProcessorRegistry>>();
 
-        Assert.Equal("typeDescriber", Assert.Throws<ArgumentNullException>(() => CreateSut(null!, Mock.Of<IConstraintMapper>(), options, stepRegistry, logger)).ParamName);
-        Assert.Equal("constraintMapper", Assert.Throws<ArgumentNullException>(() => CreateSut(Mock.Of<ITypeDescriber>(), null!, options, stepRegistry, logger)).ParamName);
-        Assert.Equal("serviceOptions", Assert.Throws<ArgumentNullException>(() => CreateSut(Mock.Of<ITypeDescriber>(), Mock.Of<IConstraintMapper>(), null!, stepRegistry, logger)).ParamName);
-        Assert.Equal("stepRegistry", Assert.Throws<ArgumentNullException>(() => CreateSut(Mock.Of<ITypeDescriber>(), Mock.Of<IConstraintMapper>(), options, null!, logger)).ParamName);
-        Assert.Equal("logger", Assert.Throws<ArgumentNullException>(() => CreateSut(Mock.Of<ITypeDescriber>(), Mock.Of<IConstraintMapper>(), options, stepRegistry, null!)).ParamName);
+        Assert.Equal("typeDescriber", Assert.Throws<ArgumentNullException>(() => CreateSut(null!, new ConstraintMapper(), options, stepRegistry, logger)).ParamName);
+        Assert.Equal("constraintMapper", Assert.Throws<ArgumentNullException>(() => CreateSut(new TypeDescriber(), null!, options, stepRegistry, logger)).ParamName);
+        Assert.Equal("serviceOptions", Assert.Throws<ArgumentNullException>(() => CreateSut(new TypeDescriber(), new ConstraintMapper(), null!, stepRegistry, logger)).ParamName);
+        Assert.Equal("stepRegistry", Assert.Throws<ArgumentNullException>(() => CreateSut(new TypeDescriber(), new ConstraintMapper(), options, null!, logger)).ParamName);
+        Assert.Equal("logger", Assert.Throws<ArgumentNullException>(() => CreateSut(new TypeDescriber(), new ConstraintMapper(), options, stepRegistry, null!)).ParamName);
     }
 }

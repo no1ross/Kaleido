@@ -27,13 +27,13 @@ internal sealed class QuerySourceRegistry : IQuerySourceRegistry
     private readonly FrozenDictionary<string, QuerySourceRegistration> _byName;
     private readonly FrozenDictionary<Type, QuerySourceRegistration> _byType;
 
-    private readonly ITypeDescriber _typeDescriber;
-    private readonly IConstraintMapper _constraintMapper;
+    private readonly TypeDescriber _typeDescriber;
+    private readonly ConstraintMapper _constraintMapper;
     private readonly AuthorizationMetadata _defaultAuthorization;
 
     public QuerySourceRegistry(
-        ITypeDescriber typeDescriber,
-        IConstraintMapper constraintMapper,
+        TypeDescriber typeDescriber,
+        ConstraintMapper constraintMapper,
         IEnumerable<Type> localSourceTypes,
         IEnumerable<Type> delegatedSourceTypes,
         AuthorizationMetadata defaultAuthorization)
