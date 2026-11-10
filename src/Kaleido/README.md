@@ -16,7 +16,7 @@ For the full repository model, see:
 - `KaleidoServiceCollectionExtensions` — `AddKaleido()` entry point (assemblies supplied via `KaleidoServiceOptions.Assemblies`), `AddOutboxRelay<TPublisher>()`, `AddEventRedactor<T>()`
 - `IKaleidoBuilder` / `KaleidoBuilder` — shared builder abstraction carrying `Services`, `Assemblies`, `Configuration` and `ServiceOptions`
 - `IKaleidoCorrelationContextAccessor` — scoped correlation accessor registered by bootstrap (a pre-existing registration wins)
-- no `IEventPublisher`: every service writes its events to its outbox store, and the host that publishes adds `AddOutboxRelay<TPublisher>()` (ADR 0036)
+- no `IEventPublisher`: every service writes its events to its outbox store, and the host that publishes adds `AddOutboxRelay<TPublisher>()` (ADR 0036). A relay-only host also calls `AddProcessEventDispatch()` and `AddQueryableEventDispatch()` for the event families stored in its database; hosts with those capabilities register their dispatch automatically.
 
 ### Shared abstractions
 - `ITypeDescriber` / `TypeDescriber` (internal) — converts CLR types and properties into `DataTypeDescriptor` values (internal; the HTTP transport maps them to the wire's `DataTypeMetadata`)

@@ -17,7 +17,7 @@ using Microsoft.Extensions.Hosting;
 namespace Kaleido.Http.FunctionalTests.Processor.Execution;
 
 // #552: the outbox relay as a console host - Host.CreateDefaultBuilder(), no web server, no steps or
-// queries, nothing but AddOutboxRelay over the database the services write their events to. Writer
+// queries, only the outbox relay and its event dispatch over the database the services write to. Writer
 // services post steps over HTTP and only write; the relay hosts publish. Each host is its own container,
 // instance and relay, as separate processes would be.
 public sealed class OutboxRelayConsoleHostTests : IAsyncLifetime
@@ -130,6 +130,8 @@ public sealed class OutboxRelayConsoleHostTests : IAsyncLifetime
                         Resilience = new() { RetryDelay = TimeSpan.FromMilliseconds(20), MaxRetryAttempts = maxRetryAttempts, CircuitBreakerMinimumThroughput = 1000 },
                     },
                 })
+                    .AddProcessEventDispatch()
+                    .AddQueryableEventDispatch()
                     .AddSqliteOutboxStore(ConnectionString)
                     .AddOutboxRelay<ConsolePublisher>();
             })

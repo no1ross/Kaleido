@@ -27,6 +27,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IEventPublisher _publisher;
+    private readonly IReadOnlyCollection<IOutboxEventDispatcher> _dispatchers;
     private readonly IKaleidoEventSignal _signal;
     private readonly ILogger<KaleidoEventRelay> _logger;
     private readonly KaleidoEventOptions _options;
@@ -42,6 +43,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
     public KaleidoEventRelay(
         IServiceScopeFactory scopeFactory,
         IEventPublisher publisher,
+        IEnumerable<IOutboxEventDispatcher> dispatchers,
         IKaleidoEventSignal signal,
         KaleidoServiceOptions serviceOptions,
         TimeProvider time,
@@ -50,6 +52,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         _scopeFactory = scopeFactory;
         _time = time;
         _publisher = publisher;
+        _dispatchers = dispatchers.ToArray();
         _signal = signal;
         _logger = logger;
         _serviceOptions = serviceOptions;
@@ -188,8 +191,8 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         try
         {
             await _pipeline.ExecuteAsync(
-                static (state, token) => new ValueTask(state.Publisher.PublishOutboxEventAsync(state.Entry, token)),
-                (Publisher: _publisher, Entry: entry),
+                static (state, token) => new ValueTask(state.Publisher.PublishOutboxEventAsync(state.Entry, state.Dispatchers, token)),
+                (Publisher: _publisher, Entry: entry, Dispatchers: _dispatchers),
                 cancellationToken);
         }
         catch (BrokenCircuitException)

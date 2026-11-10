@@ -34,6 +34,11 @@ publisher. One relay publishes them ([ADR 0036](../decisions/0036-stores-scoped-
 | **The outbox store** (every service) | `AddOutboxStore<T>()` or `AddSqliteOutboxStore`, on the context store's database | in every service |
 | **The relay** and its `IEventPublisher` | `AddOutboxRelay<TPublisher>()` | on one host per outbox database: one of the services, or a host with nothing else |
 
+A host that runs only the relay and publishes no steps or queries also calls `AddProcessEventDispatch()`
+and `AddQueryableEventDispatch()` for the event families in its outbox. A host that registers
+Process or Queryable capabilities adds the corresponding dispatch automatically. The relay
+publishes the same typed event envelopes in either kind of host.
+
 Several services, and versions of one, may share an outbox database. Each entry names its writer
 (`ServiceName`, `ServiceVersion`), and the relay drains every one: it polls and claims a batch at a time,
 and several relay instances coordinate through leased claims. A database no relay reads keeps growing.

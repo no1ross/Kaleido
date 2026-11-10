@@ -1425,6 +1425,10 @@ Kaleido.Storage.KaleidoOutboxEvent.ServiceName.get -> string!
 Kaleido.Storage.KaleidoOutboxEvent.ServiceVersion.get -> string?
 Kaleido.Storage.KaleidoOutboxEvent.ServiceName.init -> void
 Kaleido.Storage.KaleidoOutboxEvent.ServiceVersion.init -> void
+Kaleido.Processor.ProcessorServiceCollectionExtensions
+Kaleido.Queryable.QueryableServiceCollectionExtensions
+static Kaleido.Processor.ProcessorServiceCollectionExtensions.AddProcessEventDispatch(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Queryable.QueryableServiceCollectionExtensions.AddQueryableEventDispatch(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 Kaleido.Storage.KaleidoOutboxStatus
 override Kaleido.Storage.KaleidoOutboxStatus.ToString() -> string!
 Kaleido.Storage.KaleidoOutboxRelay

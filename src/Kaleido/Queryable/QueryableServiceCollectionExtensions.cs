@@ -8,8 +8,19 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Queryable;
 
-internal static class QueryableServiceCollectionExtensions
+/// <summary>Registers Queryable runtime services and typed Queryable outbox event dispatch.</summary>
+public static class QueryableServiceCollectionExtensions
 {
+    /// <summary>Registers dispatch for Queryable events on a host that relays their outbox, without registering a Queryable runtime.</summary>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public static IKaleidoBuilder AddQueryableEventDispatch(this IKaleidoBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IOutboxEventDispatcher, QueryableOutboxEventDispatcher>());
+        return builder;
+    }
+
     internal static IKaleidoBuilder AddQueryable(this IKaleidoBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -35,6 +46,8 @@ internal static class QueryableServiceCollectionExtensions
             // No query sources to register - this is valid for Process-only services
             return builder;
         }
+
+        builder.AddQueryableEventDispatch();
 
         foreach (var type in localSourceTypes.Concat(delegatedSourceTypes).Concat(viewTypes))
         {

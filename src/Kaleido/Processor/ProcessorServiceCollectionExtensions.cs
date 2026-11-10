@@ -10,8 +10,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Processor;
 
-internal static class ProcessorServiceCollectionExtensions
+/// <summary>Registers Process runtime services and typed Process outbox event dispatch.</summary>
+public static class ProcessorServiceCollectionExtensions
 {
+    /// <summary>Registers dispatch for Process events on a host that relays their outbox, without registering a Process runtime.</summary>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public static IKaleidoBuilder AddProcessEventDispatch(this IKaleidoBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IOutboxEventDispatcher, ProcessOutboxEventDispatcher>());
+        return builder;
+    }
+
     internal static IKaleidoBuilder AddProcessor(this IKaleidoBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -49,6 +60,7 @@ internal static class ProcessorServiceCollectionExtensions
         }
 
         ValidateProcessSteps(recordTypes);
+        builder.AddProcessEventDispatch();
 
         var handlerTypes = recordTypes.ToDictionary(x => x, x => RegisterHandler(builder.Services, x, types));
 

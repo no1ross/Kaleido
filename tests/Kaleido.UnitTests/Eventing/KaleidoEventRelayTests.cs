@@ -32,9 +32,16 @@ public sealed class KaleidoEventRelayTests
         var scopeFactory = new Mock<IServiceScopeFactory>();
         scopeFactory.Setup(x => x.CreateScope()).Returns(scope.Object);
 
+        var dispatcher = new Mock<IOutboxEventDispatcher>();
+        dispatcher.Setup(x => x.CanHandle(It.IsAny<string>())).Returns(true);
+        dispatcher.Setup(x => x.PublishAsync(It.IsAny<IEventPublisher>(), It.IsAny<KaleidoOutboxEvent>(), It.IsAny<CancellationToken>()))
+            .Returns((IEventPublisher target, KaleidoOutboxEvent entry, CancellationToken token) =>
+                target.PublishOutboxEventAsync<ProcessCreated, ProcessEventContext>(entry, token));
+
         return new KaleidoEventRelay(
             scopeFactory.Object,
             publisher,
+            [dispatcher.Object],
             signal ?? Mock.Of<IKaleidoEventSignal>(),
             new KaleidoServiceOptions { ServiceName = "svc", Events = options ?? new KaleidoEventOptions() },
             clock ?? time,

@@ -310,6 +310,8 @@ public sealed class EventOutboxTests : IAsyncLifetime
                     TypeFilter = _ => false,
                     Events = new() { Resilience = new() { RetryDelay = TimeSpan.FromMilliseconds(50) } },
                 })
+                    .AddProcessEventDispatch()
+                    .AddQueryableEventDispatch()
                     .AddSqliteOutboxStore($"Data Source={_databasePath}")
                     .AddOutboxRelay<TestPublisher>();
             })

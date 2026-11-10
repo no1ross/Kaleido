@@ -1,4 +1,6 @@
+using Kaleido.Eventing;
 using Kaleido.Exceptions;
+using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Registry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +10,20 @@ namespace Kaleido.Queryable.UnitTests;
 public sealed class QueryableServiceCollectionExtensionsTests
     : Kaleido.UnitTests.SutFixture
 {
+    [Fact]
+    public void AddQueryableEventDispatch_RegistersWithoutQueryableRuntime()
+    {
+        var services = new ServiceCollection();
+        var builder = new Mock<IKaleidoBuilder>();
+        builder.SetupGet(x => x.Services).Returns(services);
+
+        builder.Object.AddQueryableEventDispatch();
+        builder.Object.AddQueryableEventDispatch();
+
+        Assert.Single(services, x => x.ServiceType == typeof(IOutboxEventDispatcher) && x.ImplementationType == typeof(QueryableOutboxEventDispatcher));
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(IQueryableRegistry));
+    }
+
     [Fact]
     public void Discover_PartitionsCapabilitiesByInterface()
     {

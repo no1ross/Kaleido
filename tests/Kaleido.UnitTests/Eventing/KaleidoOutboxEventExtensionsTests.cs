@@ -55,7 +55,7 @@ public sealed class KaleidoOutboxEventExtensionsTests
             .Callback<KaleidoEventEnvelope<StepCompleted, ProcessEventContext>, CancellationToken>((e, _) => published = e)
             .Returns(Task.CompletedTask);
 
-        await publisher.Object.PublishOutboxEventAsync(envelope.ToOutboxEvent(), CancellationToken.None);
+        await publisher.Object.PublishOutboxEventAsync<StepCompleted, ProcessEventContext>(envelope.ToOutboxEvent(), CancellationToken.None);
 
         Assert.NotNull(published);
         Assert.Equal(envelope.Event.EventId, published.Event.EventId);
@@ -114,14 +114,16 @@ public sealed class KaleidoOutboxEventExtensionsTests
 
     [Theory]
     [MemberData(nameof(EventTypes))]
-    public async Task PublishAsync_KnowsEveryEventType(string eventType)
+    public async Task PublishAsync_RoutesKnownEventTypesToRegisteredDispatcher(string eventType)
     {
         var publisher = new Mock<IEventPublisher>();
+        var dispatcher = new Mock<IOutboxEventDispatcher>();
+        dispatcher.Setup(x => x.CanHandle(eventType)).Returns(true);
         var entry = EntryOf(eventType);
 
-        await publisher.Object.PublishOutboxEventAsync(entry, CancellationToken.None);
+        await publisher.Object.PublishOutboxEventAsync(entry, [dispatcher.Object], CancellationToken.None);
 
-        Assert.Single(publisher.Invocations);
+        dispatcher.Verify(x => x.PublishAsync(publisher.Object, entry, CancellationToken.None), Times.Once);
     }
 
     [Fact]
@@ -134,7 +136,7 @@ public sealed class KaleidoOutboxEventExtensionsTests
             .Callback<KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>, CancellationToken>((e, _) => published = e)
             .Returns(Task.CompletedTask);
 
-        await publisher.Object.PublishOutboxEventAsync(EntryOf(KaleidoEventTypes.QueryExecuted), CancellationToken.None);
+        await publisher.Object.PublishOutboxEventAsync<QueryExecuted, QueryableEventContext>(EntryOf(KaleidoEventTypes.QueryExecuted), CancellationToken.None);
 
         Assert.Equal("Members", published!.Context.QuerySourceName);
         Assert.Equal(2, published.Event.TotalCount);
@@ -145,7 +147,7 @@ public sealed class KaleidoOutboxEventExtensionsTests
         var entry = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = "something.else.v1", Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            Mock.Of<IEventPublisher>().PublishOutboxEventAsync(entry, CancellationToken.None));
+            Mock.Of<IEventPublisher>().PublishOutboxEventAsync(entry, [], CancellationToken.None));
 
         Assert.Contains("something.else.v1", exception.Message, StringComparison.Ordinal);
     }
@@ -156,6 +158,6 @@ public sealed class KaleidoOutboxEventExtensionsTests
         var entry = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessCreated, Payload = "null", OccurredUtc = DateTimeOffset.UtcNow };
 
         await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            Mock.Of<IEventPublisher>().PublishOutboxEventAsync(entry, CancellationToken.None));
+            Mock.Of<IEventPublisher>().PublishOutboxEventAsync<ProcessCreated, ProcessEventContext>(entry, CancellationToken.None));
     }
 }

@@ -1,13 +1,18 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
-using Kaleido.Processor.Eventing;
-using Kaleido.Queryable.Eventing;
 
 namespace Kaleido.Eventing;
 
+internal interface IOutboxEventDispatcher
+{
+    bool CanHandle(string eventType);
+
+    Task PublishAsync(IEventPublisher publisher, KaleidoOutboxEvent entry, CancellationToken cancellationToken);
+}
+
 // Turns an event envelope into an outbox entry, and an entry back into the envelope the publisher gets. The event and context types are looked
-// up by EventType in a fixed map - no CLR type name is ever read from the store.
+// up by EventType in the registered Process or Queryable dispatcher - no CLR type name is ever read from the store.
 internal static class KaleidoOutboxEventExtensions
 {
     private static readonly JsonSerializerOptions Options = new DefaultJsonTypeInfoResolver().ToOutboxJsonOptions();
@@ -32,21 +37,15 @@ internal static class KaleidoOutboxEventExtensions
         };
     }
 
-    // Deserializes the entry into its envelope type and hands it to the publisher.
-    public static Task PublishOutboxEventAsync(this IEventPublisher publisher, KaleidoOutboxEvent entry, CancellationToken cancellationToken) =>
-        entry.EventType switch
-        {
-            KaleidoEventTypes.ProcessCreated => PublishAsync<ProcessCreated, ProcessEventContext>(publisher, entry, cancellationToken),
-            KaleidoEventTypes.ProcessPlanBuilt => PublishAsync<PlanBuilt, ProcessEventContext>(publisher, entry, cancellationToken),
-            KaleidoEventTypes.ProcessStepCompleted => PublishAsync<StepCompleted, ProcessEventContext>(publisher, entry, cancellationToken),
-            KaleidoEventTypes.ProcessExecutionCompleted => PublishAsync<ExecutionCompleted, ProcessEventContext>(publisher, entry, cancellationToken),
-            KaleidoEventTypes.QueryExecuted => PublishAsync<QueryExecuted, QueryableEventContext>(publisher, entry, cancellationToken),
-            _ => throw new KaleidoFrameworkException(
+    public static Task PublishOutboxEventAsync(this IEventPublisher publisher, KaleidoOutboxEvent entry, IEnumerable<IOutboxEventDispatcher> dispatchers, CancellationToken cancellationToken) =>
+        dispatchers.FirstOrDefault(x => x.CanHandle(entry.EventType)) is { } dispatcher
+            ? dispatcher.PublishAsync(publisher, entry, cancellationToken)
+            : throw new KaleidoFrameworkException(
                 FrameworkErrorCodes.TypeMismatch,
-                $"Outbox event '{entry.EventId}' has the unknown event type '{entry.EventType}'."),
-        };
+                $"Outbox event '{entry.EventId}' has the unknown event type '{entry.EventType}'.");
 
-    private static Task PublishAsync<TEvent, TContext>(IEventPublisher publisher, KaleidoOutboxEvent entry, CancellationToken cancellationToken)
+    // Deserializes the entry into its envelope type and hands it to the publisher.
+    internal static Task PublishOutboxEventAsync<TEvent, TContext>(this IEventPublisher publisher, KaleidoOutboxEvent entry, CancellationToken cancellationToken)
         where TEvent : IKaleidoEvent =>
         publisher.PublishAsync(
             JsonSerializer.Deserialize<KaleidoEventEnvelope<TEvent, TContext>>(entry.Payload, Options)

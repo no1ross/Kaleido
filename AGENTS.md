@@ -26,6 +26,8 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 2. **All tests pass:** `./tools/test/Run-Tests.ps1` → `Passed!`, 0 failed, with a non-zero test count. The script itself refuses a test project missing from `Kaleido.slnx`, a stale or missing build output (it runs each project's evaluated `TargetPath`), a run without a summary and a project that ran no tests (#437); `tools/test/Test-RunTests.ps1` tests those rules (CI runs it).
 3. **Record the result in the commit message body**, e.g. `Gate: build 0 errors / 0 warnings; tests 2981 passed`.
 
+**Architecture migration #585 exception:** while lower-level projects are being extracted, unmigrated dependents may temporarily fail. For each migration commit, build the active production project, its associated test project(s), and already-migrated dependencies with 0 warnings; run their tests, affected functional tests and applicable analyzer/documentation checks. Record those exact results and any temporarily broken dependents in the commit. Do not disable rules or delete tests. Restore the full gate above and all CI checks before the migration PR is complete.
+
 **Warnings fail the build in every area (#406)** - `src/`, `tools/` and `tests/`, IDE code-style rules included - so the "0 warnings" gate is enforced, not only observed.
 
 CI (`build.yml`) also checks, and you run before committing:

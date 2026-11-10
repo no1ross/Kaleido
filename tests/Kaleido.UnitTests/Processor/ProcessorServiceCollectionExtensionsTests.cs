@@ -1,4 +1,6 @@
+using Kaleido.Eventing;
 using Kaleido.Exceptions;
+using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Registry;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +11,20 @@ namespace Kaleido.Processor.UnitTests;
 public sealed class ProcessorServiceCollectionExtensionsTests
     : SutFixture
 {
+    [Fact]
+    public void AddProcessEventDispatch_RegistersWithoutProcessRuntime()
+    {
+        var services = new ServiceCollection();
+        var builder = new Mock<IKaleidoBuilder>();
+        builder.SetupGet(x => x.Services).Returns(services);
+
+        builder.Object.AddProcessEventDispatch();
+        builder.Object.AddProcessEventDispatch();
+
+        Assert.Single(services, x => x.ServiceType == typeof(IOutboxEventDispatcher) && x.ImplementationType == typeof(ProcessOutboxEventDispatcher));
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(IProcessorRegistry));
+    }
+
     [Fact]
     public void AddProcessor_RegistersProcessorRegistry()
     {
