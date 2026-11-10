@@ -1,4 +1,3 @@
-using Kaleido.Processor.Eventing;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
@@ -20,8 +19,8 @@ public sealed class KaleidoEventWriterTests
     {
         var writer = new Mock<IKaleidoEventPayloadWriter>();
         writer
-            .Setup(x => x.Write(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>()))
-            .Returns<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>(envelope => envelope.ToOutboxEvent());
+            .Setup(x => x.Write(It.IsAny<KaleidoEventEnvelope<SampleEvent, ProcessEventContext>>()))
+            .Returns<KaleidoEventEnvelope<SampleEvent, ProcessEventContext>>(envelope => envelope.ToOutboxEvent());
 
         return writer;
     }
@@ -35,20 +34,20 @@ public sealed class KaleidoEventWriterTests
         return outbox;
     }
 
-    private static KaleidoEventEnvelope<ProcessCreated, ProcessEventContext> Envelope() =>
+    private static KaleidoEventEnvelope<SampleEvent, ProcessEventContext> Envelope() =>
         new()
         {
-            EventType = ProcessEventTypes.ProcessCreated,
+            EventType = "eventing.sample.v1",
             Context = new ProcessEventContext { RequestId = "req-1", ServiceName = "svc", ProcessId = Guid.NewGuid(), StepName = "step-a" },
-            Event = new ProcessCreated { OccurredOn = DateTimeOffset.UtcNow, State = ProcessExecutionState.Active, CreatedUtc = DateTimeOffset.UtcNow, UpdatedUtc = DateTimeOffset.UtcNow, SubmittedStepCount = 1 },
+            Event = new SampleEvent { OccurredOn = DateTimeOffset.UtcNow },
         };
 
     [Fact]
     public async Task PrepareAndWrite_UseWhatThePayloadWriterProduces()
     {
-        var written = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = ProcessEventTypes.ProcessCreated, Payload = "{\"redacted\":true}", OccurredUtc = DateTimeOffset.UtcNow };
+        var written = new KaleidoOutboxEvent { EventId = Guid.NewGuid(), EventType = "eventing.sample.v1", Payload = "{\"redacted\":true}", OccurredUtc = DateTimeOffset.UtcNow };
         var writer = new Mock<IKaleidoEventPayloadWriter>();
-        writer.Setup(x => x.Write(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>())).Returns(written);
+        writer.Setup(x => x.Write(It.IsAny<KaleidoEventEnvelope<SampleEvent, ProcessEventContext>>())).Returns(written);
         var outbox = BuiltInOutbox();
         var sut = CreateSut(outbox.Object, writer.Object);
 

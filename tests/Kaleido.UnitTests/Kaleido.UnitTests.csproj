@@ -9,15 +9,5 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />
-		<ProjectReference Include="..\..\src\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />
-		<ProjectReference Include="..\..\src\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
-	</ItemGroup>
-	<ItemGroup>
-		<Using Include="Kaleido.Processor" />
-		<Using Include="Kaleido.Processor.Execution" />
-		<Using Include="Kaleido.Processor.Planning" />
-		<Using Include="Kaleido.Queryable" />
-		<Using Include="Kaleido.Queryable.Metadata" />
-		<Using Include="Kaleido.Queryable.Query" />
 	</ItemGroup>
 </Project>

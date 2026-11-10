@@ -9,7 +9,7 @@ namespace Kaleido;
 /// </summary>
 /// <remarks>
 /// The defaults below are the HTTP clients' defaults. The event relay starts from its own (see
-/// <see cref="Eventing.KaleidoEventOptions"/>); a section overrides only the settings it names.
+/// <c>KaleidoEventOptions</c>); a section overrides only the settings it names.
 /// </remarks>
 public record KaleidoResilienceSettings
 {

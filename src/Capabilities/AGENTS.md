@@ -1,0 +1,7 @@
+# Capability source rules
+
+Inherit root and `src/` guidance; read [dependency boundaries](../../docs/architecture/dependencies.md), [Eventing](../../docs/architecture/events.md) and [ADR 0042](../../docs/decisions/0042-event-types-belong-to-capabilities.md) for the already-extracted capability projects.
+
+- Process and Queryable own their separate registrations, runtime decisions, event payloads, stable discriminators, telemetry emitters and typed outbox dispatch. Keep them independent: no Process→Queryable or Queryable→Process reference. Both currently use generic Eventing writer/envelope seams; Eventing must not depend back on either capability. This is a temporary cycle-free placement (#592), not a final naming decision.
+- The shared builder carries foundation inputs; `AddProcess()` and `AddQueryable()` scan the explicitly chosen assemblies only when called. Relay-only hosts can register `AddProcessEventDispatch()` / `AddQueryableEventDispatch()` without starting the runtimes. Do not hide a capability behind `AddKaleido()` or add a no-op registration.
+- Keep transport input and endpoint conventions out of these projects. Public/persisted event strings, state/envelope JSON and error-code values are compatibility boundaries. Preserve a source project's matching unit-test project and use project-wide `.csproj` `<Using>` items; consult the child capability AGENTS for behavior-specific rules.

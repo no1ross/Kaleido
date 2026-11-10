@@ -8,6 +8,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\..\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

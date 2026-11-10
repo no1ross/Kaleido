@@ -170,11 +170,20 @@ public sealed class FixtureStructureMirrorAnalyzer : DiagnosticAnalyzer
         // Folders only: the last segment is the file.
         for (var i = segments.Length - 2; i >= 0; i--)
         {
-            if (string.Equals(segments[i], assemblyName, System.StringComparison.OrdinalIgnoreCase) ||
-                (shortName is not null && !string.Equals(shortName, "UnitTests", System.StringComparison.Ordinal) &&
-                    string.Equals(segments[i], shortName, System.StringComparison.OrdinalIgnoreCase)))
+            if (string.Equals(segments[i], assemblyName, System.StringComparison.OrdinalIgnoreCase))
             {
                 return i;
+            }
+        }
+
+        if (shortName is not null && !string.Equals(shortName, "UnitTests", System.StringComparison.Ordinal))
+        {
+            for (var i = segments.Length - 2; i >= 0; i--)
+            {
+                if (string.Equals(segments[i], shortName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
             }
         }
 

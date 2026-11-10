@@ -1,7 +1,10 @@
+using Kaleido.Eventing;
 using Kaleido.Http.Client.Registration;
 using Kaleido.Http.Client.Registry;
 using Kaleido.Http.Server;
 using Kaleido.Mcp;
+using Kaleido.Processor;
+using Kaleido.Queryable;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +27,9 @@ public static class OrdersService
             Assemblies = [typeof(OrderSource).Assembly],
             AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
         })
+            .AddEventing()
+            .AddProcess()
+            .AddQueryable()
             .AddInMemoryStores()   // local evaluation only: nothing survives a restart
             .AddHttp()
             .AddControlRegistryClient();
@@ -51,6 +57,9 @@ public static class OrdersService
             Assemblies = [typeof(OrderSource).Assembly],
             AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
         })
+            .AddEventing()
+            .AddProcess()
+            .AddQueryable()
             .AddInMemoryStores()   // local evaluation only: nothing survives a restart
             .AddHttp()
             .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it

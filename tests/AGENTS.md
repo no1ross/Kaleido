@@ -4,7 +4,8 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 
 | Test project | Tests code in |
 |---|---|
-| `Kaleido.UnitTests` | `src/Kaleido` foundation and Eventing pending extraction |
+| `Kaleido.UnitTests` | `src/Kaleido` foundation only; do not reference Process, Queryable or Eventing |
+| `Kaleido.Eventing.UnitTests` | `src/Events/Kaleido.Eventing` generic event writer, outbox, relay and redaction |
 | `Kaleido.Process.UnitTests` | `src/Capabilities/Process/Kaleido.Process` steps, runtime and stores |
 | `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
 | `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |

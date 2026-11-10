@@ -1,6 +1,6 @@
 # Kaleido contributor guide
 
-This is the repository-level contributor guide for Kaleido: 12 shipped projects and four gRPC placeholders (see [Project boundaries](#project-boundaries)). Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the repository model, then the README of the project you are changing. The coding conventions are in [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); this file stays under 16,000 bytes so agent tooling loads it whole (#455, checked in CI).
+This is the repository-level contributor guide for Kaleido: 15 shipped projects and four gRPC placeholders during #585 (see [Project boundaries](#project-boundaries)). Read the [architecture map](./docs/architecture/README.md), then the README and scoped AGENTS.md of the project you are changing. The coding conventions are in [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); this file stays under 16,000 bytes so agent tooling loads it whole (#455, checked in CI).
 
 ## Build and test commands
 
@@ -42,13 +42,14 @@ CI (`build.yml`) also checks, and you run before committing:
 
 ## Project boundaries
 
-A project's README lists its API; [`ARCHITECTURE.md`](./ARCHITECTURE.md) maps dependencies and registration, and [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) describes internals. This table states ownership boundaries, not type lists.
+A project's README explains its software; the [architecture map](./docs/architecture/README.md) explains design, and scoped AGENTS files tell agents what to preserve. The two legacy ARCHITECTURE.md files are being retired as each area moves. This table states ownership boundaries, not type lists.
 
 | Project | Owns | Does not own |
 | --- | --- | --- |
-| [`Kaleido`](./src/Kaleido/README.md) | foundation and Eventing/outbox pending extraction | capability runtimes, transport |
-| [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md) | steps, state, idempotency, recovery | Queryable, central registry, wire adapters |
-| [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | query sources/views and execution | Process, central registry, wire adapters |
+| [`Kaleido`](./src/Kaleido/README.md) | foundation: identity, shared metadata, correlation and generic store selection | Eventing/outbox, capability runtimes, transport |
+| [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md) | generic event envelope, redaction, writer, outbox store/relay and health | Process/Queryable event payloads or a transport; placement temporary (#592) |
+| [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md) | steps, state, idempotency, recovery and Process events | Queryable, central registry, wire adapters |
+| [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | query sources/views, execution and Queryable events | Process, central registry, wire adapters |
 | [`Kaleido.Platform`](./src/Platform/README.md) | shared registry/wire contracts, JSON, headers and metadata; changes ripple into server and client | endpoint mapping, runtime planning |
 | [`Kaleido.Server`](./src/Server/README.md) | ASP.NET Core caller, authorization, correlation, filters, in-host registry view | protocol endpoints, runtime logic |
 | [`Kaleido.Client`](./src/Client/README.md) | neutral clients, call context, registry participation, hydration, transport choice | HTTP wire implementation |
@@ -71,7 +72,7 @@ A project's README lists its API; [`ARCHITECTURE.md`](./ARCHITECTURE.md) maps de
 - `Kaleido.Platform` is shared — changes here ripple into both server and client projects.
 - Keep transport layers thin.
 - Prefer explicit registration and discoverability over hidden behavior.
-- Match documentation to the actual code and runtime behavior.
+- Match documentation to the actual code and runtime behavior. In #585, each processed project updates its consumer README, focused `docs/architecture/` explanation and applicable hierarchical AGENTS scope before its project commit; move reached content out of the two legacy ARCHITECTURE.md files. Add a narrower `.editorconfig` only for genuinely area-specific differences, and prefer source analyzers to editorconfig for dependency rules (#591). Do not create the target documentation/AGENTS tree up front.
 - When you change contracts or metadata semantics, review the downstream docs and tests for the affected area.
 - Define response semantics before choosing a serialization format: keep distinct message streams separate and represent an empty collection consistently across transports. Options control which messages adapters populate, not JSON-specific field presence.
 
@@ -89,11 +90,8 @@ In [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); read the section before chang
 
 ## For code generators
 
-- Read [`docs/PATTERNS.md`](./docs/PATTERNS.md) first — it is the canonical
-  convention doc (step/handler shape, sync-vs-async sources, options
-  snapshots, exceptions, DI, correlation).
-- The vocabulary is: **Processor** = owns/executes steps; **Process** = one
-  executing instance. See `src/ARCHITECTURE.md` → Terminology.
+- Start with the [architecture map](./docs/architecture/README.md); use [Process authoring](./docs/architecture/capabilities/process-authoring.md) or [Queryable authoring](./docs/architecture/capabilities/queryable-authoring.md) for consumer declarations and [implementation boundaries](./docs/architecture/implementation.md) for framework exceptions, DI and async rules.
+- The vocabulary is: **Processor** = owns/executes steps; **Process** = one executing instance. See [principles and terminology](./docs/architecture/principles.md).
 - `docs/ANALYZERS.md` has one section per audience, each listing its rules
   and what they prevent:
   - consumer `KAL2xxx` rules, for code that uses Kaleido (services, samples);
@@ -140,7 +138,4 @@ When something new surfaces while working an Issue:
 
 ## How to navigate the repo
 
-- **Repository:** [`README.md`](./README.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`MAINTAINERS.md`](./MAINTAINERS.md), [`SECURITY.md`](./SECURITY.md), [`SUPPORT.md`](./SUPPORT.md), [`docs/VERSIONING.md`](./docs/VERSIONING.md), [`RELEASING.md`](./RELEASING.md), [`CHANGELOG.md`](./CHANGELOG.md) — the human-facing summary of these rules, who maintains the project, the vulnerability-reporting route, where to ask, and the preview policy.
-- **Source:** [`src/AGENTS.md`](./src/AGENTS.md), [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md), [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); project READMEs: [`Kaleido`](./src/Kaleido/README.md), [`Platform`](./src/Platform/README.md), [`Server`](./src/Server/README.md), [`Client`](./src/Client/README.md), [`Http`](./src/Http/Http/README.md), [`Http.Server`](./src/Http/Http.Server/README.md), [`Http.Client`](./src/Http/Http.Client/README.md), [`Mcp`](./src/Mcp/Mcp/README.md), [`Registry`](./src/Registry/Registry/README.md), [`Registry.Http`](./src/Registry/Registry.Http/README.md), [`OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md), [`SQLite`](./src/Providers/Provider.SQLite/README.md).
-- **Tooling:** [`tools/analyzers/README.md`](./tools/analyzers/README.md) — analyzer project roles and test locations; rule catalog in [`docs/ANALYZERS.md`](./docs/ANALYZERS.md).
-- **Tests and examples:** [`tests/AGENTS.md`](./tests/AGENTS.md); the consumer guide's compiled examples, [`docs/guide`](./docs/guide/README.md); the full samples in their own repositories, consuming the Kaleido packages: [`Kaleido-Samples-PriorAuth`](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and [`Kaleido-Samples-ECommerce`](https://github.com/no1ross/Kaleido-Samples-ECommerce) (#95). Use the examples and samples to understand intended consumer usage, and the tests to understand behavioral expectations and invariants.
+Start with the [architecture map](./docs/architecture/README.md) and the touched project's README (linked in [project boundaries](#project-boundaries)). Read [`src/AGENTS.md`](./src/AGENTS.md) for production rules, [`tests/AGENTS.md`](./tests/AGENTS.md) for testing and [`docs/ANALYZERS.md`](./docs/ANALYZERS.md) for enforced rules. Consumer examples are in the [guide](./docs/guide/README.md); support/release policy is in [`docs/VERSIONING.md`](./docs/VERSIONING.md).

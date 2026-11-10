@@ -1,0 +1,8 @@
+# Foundation modification rules
+
+Inherit the repository and `src/` guidance. Read [foundation architecture](../../docs/architecture/core.md), [dependency boundaries](../../docs/architecture/dependencies.md) and the [project README](README.md) before editing this project.
+
+- `Kaleido` may not reference Eventing, Process or Queryable. `AddKaleido()` registers shared identity, logging, correlation, metadata and the neutral store-choice check; never silently add a capability runtime, outbox writer, publisher, provider or transport. Keep `IKaleidoBuilder` minimal and assembly deduplication stable.
+- Preserve configuration-over-code overlay on a **copy**, single registration validation and scoped caller/correlation accessors. Do not move `Events` back into `KaleidoServiceOptions`; Eventing binds its own `Kaleido:Events` section. Root authorization/scan settings are transitional pending #586, not a reason to invent a new abstraction without an owner decision.
+- `KaleidoStoreSelectionCheck` aggregates owner-contributed in-memory stores from final DI registrations; it must not reference a concrete Process/Eventing store. `AddInMemoryStores()` is an explicit temporary shared choice until provider migration. `TypeDescriber`, `ConstraintMapper`, shared classification inspection and resilience value shapes affect multiple projects: inspect downstream use before changing them.
+- `tests/Kaleido.UnitTests` is **Core-only**: do not add Process/Queryable/Eventing project references or use their payload types as samples. Build the source/test pair with zero warnings and run the suite; follow the root #585 active-unit exception and docs/API checks before a migration commit.

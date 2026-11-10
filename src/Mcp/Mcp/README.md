@@ -350,7 +350,7 @@ runs on the server, whatever the agent says or the client shows:
 A tool call carries the token the host's handler exchanged for the agent's user, never the agent's
 token and never the host's own identity (#574); downstream services see that the call came
 through MCP and which tool started it (`Origin`/`OriginTool`, informational) and which application
-acted (`CallerActor`, from the token) - see [`docs/CORRELATION.md`](../../../docs/CORRELATION.md).
+acted (`CallerActor`, from the token) - see [`docs/CORRELATION.md`](../../../docs/architecture/correlation.md).
 Each row is covered by tests: `McpEndpointTests`, `McpContractTests` and `McpTrustTests` in
 `tests/Mcp/Mcp.FunctionalTests`.
 
@@ -451,7 +451,7 @@ its package and gateway configuration move to this layout with its next framewor
 - A process id is a bearer handle: the agent passes it as a tool argument, and any caller who knows
   it and passes the step's own checks can read and continue that process (no case-level guardrails).
   What that exposes, and where a host enforces case access, is in the
-  [threat model](../../../docs/AUTHORIZATION.md#threat-model-the-process-id-is-a-bearer-handle).
+  [threat model](../../../docs/architecture/authorization.md#threat-model-the-process-id-is-a-bearer-handle).
 
 ## Sign-in from MCP clients (OAuth)
 

@@ -1,8 +1,6 @@
-using Kaleido.Eventing;
 using Kaleido.Exceptions;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Storage.UnitTests;
 
@@ -12,16 +10,13 @@ public sealed class KaleidoStoreSelectionCheckTests
 {
     private static KaleidoStoreSelectionCheck CreateSut(IServiceCollection services) => new(services);
 
-    // What AddKaleido registers: the outbox default; a capability contributes its own store choices.
-    private static ServiceCollection Defaults(params string[] capabilityStores)
+    // Capabilities contribute only the stores they use; the check aggregates their choices.
+    private static ServiceCollection Defaults(params string[] stores)
     {
         var services = new ServiceCollection();
-        services.AddScoped<IKaleidoOutbox, KaleidoStoreOutbox>();
-        services.AddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
-
-        if (capabilityStores.Length > 0)
+        if (stores.Length > 0)
         {
-            services.AddSingleton(new KaleidoStoreSelectionContributor(_ => capabilityStores));
+            services.AddSingleton(new KaleidoStoreSelectionContributor(_ => stores));
         }
 
         return services;
@@ -31,14 +26,16 @@ public sealed class KaleidoStoreSelectionCheckTests
         CreateSut(services).StartAsync(TestContext.Current.CancellationToken);
 
     [Fact]
-    public async Task AServiceWithProcesses_LeftAtTheDefaults_DoesNotStart_NamingTheStores()
+    public async Task SeveralContributors_LeftAtTheDefaults_DoNotStart_NamingAllStores()
     {
-        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(Defaults("process state (IKaleidoContextStore)", "idempotency records (IKaleidoIdempotencyStore)")));
+        var services = Defaults("process state (IKaleidoContextStore)");
+        services.AddSingleton(new KaleidoStoreSelectionContributor(_ => ["idempotency records (IKaleidoIdempotencyStore)"]));
+
+        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(services));
 
         Assert.Equal(ConfigurationErrorCodes.StoresNotChosen, exception.Code);
         Assert.Contains("process state (IKaleidoContextStore)", exception.Message, StringComparison.Ordinal);
         Assert.Contains("idempotency records (IKaleidoIdempotencyStore)", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("event outbox (IKaleidoOutboxStore)", exception.Message, StringComparison.Ordinal);
         Assert.Contains("AddInMemoryStores()", exception.Message, StringComparison.Ordinal);
     }
 
@@ -46,7 +43,7 @@ public sealed class KaleidoStoreSelectionCheckTests
     public async Task TheExplicitInMemoryChoice_Starts()
     {
         var services = Defaults("process state (IKaleidoContextStore)", "idempotency records (IKaleidoIdempotencyStore)");
-        services.AddSingleton<KaleidoInMemoryStoresChoice>();
+        services.AddSingleton(typeof(KaleidoInMemoryStoresChoice), KaleidoInMemoryStoresChoice.Explicit);
 
         await StartAsync(services);
         await CreateSut(services).StopAsync(TestContext.Current.CancellationToken);
@@ -55,17 +52,13 @@ public sealed class KaleidoStoreSelectionCheckTests
     [Fact]
     public async Task DurableStores_Start()
     {
-        var services = Defaults();
-        services.AddScoped(_ => Mock.Of<IKaleidoOutboxStore>());
-
-        await StartAsync(services);
+        await StartAsync(Defaults());
     }
 
     [Fact]
     public async Task OneStoreLeftInMemory_IsTheOneNamed()
     {
         var services = Defaults("process state (IKaleidoContextStore)");
-        services.AddScoped(_ => Mock.Of<IKaleidoOutboxStore>());
 
         var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(services));
 
@@ -73,21 +66,9 @@ public sealed class KaleidoStoreSelectionCheckTests
         Assert.DoesNotContain("idempotency records", exception.Message, StringComparison.Ordinal);
     }
 
-    // A query-only service keeps neither process state nor idempotency records, but it writes its events
-    // (#552): its outbox store must be chosen too.
     [Fact]
-    public void AQueryOnlyService_UsesOnlyTheOutboxStore()
+    public void AServiceWithoutStoreContributors_NeedsNoChoice()
     {
-        Assert.Equal(["event outbox (IKaleidoOutboxStore)"], KaleidoStoreSelectionCheck.InMemoryStoresInUse(Defaults()));
-    }
-
-    // Whether or not this host publishes: every service writes its events (#552).
-    [Fact]
-    public void ADurableOutboxStore_NeedsNoChoice()
-    {
-        var durable = Defaults();
-        durable.AddScoped(_ => Mock.Of<IKaleidoOutboxStore>());
-
-        Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(durable));
+        Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(Defaults()));
     }
 }

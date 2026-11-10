@@ -1,7 +1,5 @@
 using System.Text.Json;
 using Kaleido.Exceptions;
-using Kaleido.Processor.Eventing;
-using Kaleido.Queryable.Eventing;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Compliance.Classification;
@@ -41,12 +39,12 @@ public sealed class KaleidoEventPayloadWriterTests
             Address = new Address("Main Street 1"),
         };
 
-    private static KaleidoEventEnvelope<QueryExecuted, QueryableEventContext> QueryEnvelope(params object?[] records) =>
+    private static KaleidoEventEnvelope<SampleQueryEvent, QueryableEventContext> QueryEnvelope(params object?[] records) =>
         new()
         {
-            EventType = QueryableEventTypes.QueryExecuted,
+            EventType = "eventing.query-sample.v1",
             Context = new QueryableEventContext { RequestId = "req-1", ServiceName = "member", QuerySourceName = "Members" },
-            Event = new QueryExecuted
+            Event = new SampleQueryEvent
             {
                 OccurredOn = DateTimeOffset.UtcNow,
                 QuerySourceName = "Members",
@@ -59,20 +57,20 @@ public sealed class KaleidoEventPayloadWriterTests
             },
         };
 
-    private static KaleidoEventEnvelope<StepCompleted, ProcessEventContext> StepEnvelope(object? request, object? response) =>
+    private static KaleidoEventEnvelope<SampleStepEvent, ProcessEventContext> StepEnvelope(object? request, object? response) =>
         new()
         {
-            EventType = ProcessEventTypes.ProcessStepCompleted,
+            EventType = "eventing.step-sample.v1",
             Context = new ProcessEventContext { RequestId = "req-1", ServiceName = "intake", ProcessId = Guid.NewGuid(), StepName = "CaptureMember" },
-            Event = new StepCompleted
+            Event = new SampleStepEvent
             {
                 OccurredOn = DateTimeOffset.UtcNow,
                 StepName = "CaptureMember",
                 Request = request,
                 Response = response,
-                DecisionType = ExecutionDecisionType.Continue,
-                Status = StepExecutionStatus.Completed,
-                ProcessState = ProcessExecutionState.Active,
+                DecisionType = "continue",
+                Status = "completed",
+                ProcessState = "active",
             },
         };
 
@@ -177,7 +175,7 @@ public sealed class KaleidoEventPayloadWriterTests
 
         var root = JsonDocument.Parse(entry.Payload).RootElement;
         Assert.Equal(envelope.Event.EventId, entry.EventId);
-        Assert.Equal(QueryableEventTypes.QueryExecuted, root.GetProperty("eventType").GetString());
+        Assert.Equal("eventing.query-sample.v1", root.GetProperty("eventType").GetString());
         Assert.Equal("Members", root.GetProperty("context").GetProperty("querySourceName").GetString());
         Assert.Equal(1, root.GetProperty("event").GetProperty("totalCount").GetInt32());
     }
@@ -235,6 +233,31 @@ public sealed class KaleidoEventPayloadWriterTests
         public Address? Address { get; init; }
     }
 
+    private sealed record SampleQueryEvent : IKaleidoEvent
+    {
+        public Guid EventId { get; init; } = Guid.NewGuid();
+        public DateTimeOffset OccurredOn { get; init; }
+        public string QuerySourceName { get; init; } = string.Empty;
+        public bool IsDirectQuery { get; init; }
+        public int TotalCount { get; init; }
+        public int ReturnedCount { get; init; }
+        public int SortCount { get; init; }
+        public bool FilterProvided { get; init; }
+        public object?[] Records { get; init; } = [];
+    }
+
+    private sealed record SampleStepEvent : IKaleidoEvent
+    {
+        public Guid EventId { get; init; } = Guid.NewGuid();
+        public DateTimeOffset OccurredOn { get; init; }
+        public string StepName { get; init; } = string.Empty;
+        public object? Request { get; init; }
+        public object? Response { get; init; }
+        public string DecisionType { get; init; } = string.Empty;
+        public string Status { get; init; } = string.Empty;
+        public string ProcessState { get; init; } = string.Empty;
+    }
+
     // Shows the classification and the text it was given: redacted({phi|pii|several}|{value}).
     private sealed class EchoRedactorProvider : IKaleidoEventRedactorProvider
     {
@@ -263,14 +286,14 @@ public sealed class KaleidoEventPayloadWriterTests
         }
     }
 
-    private sealed class RecordingRedactor(string name, List<string> calls, Func<KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>, KaleidoEventEnvelope<QueryExecuted, QueryableEventContext>> redact)
+    private sealed class RecordingRedactor(string name, List<string> calls, Func<KaleidoEventEnvelope<SampleQueryEvent, QueryableEventContext>, KaleidoEventEnvelope<SampleQueryEvent, QueryableEventContext>> redact)
         : IKaleidoEventRedactor
     {
         public KaleidoEventEnvelope<TEvent, TContext> Redact<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope)
             where TEvent : IKaleidoEvent
         {
             calls.Add(name);
-            return envelope is KaleidoEventEnvelope<QueryExecuted, QueryableEventContext> query
+            return envelope is KaleidoEventEnvelope<SampleQueryEvent, QueryableEventContext> query
                 ? (KaleidoEventEnvelope<TEvent, TContext>)(object)redact(query)
                 : envelope;
         }

@@ -131,7 +131,7 @@ Kaleido is a [process engine, not a decision maker](docs/decisions/0001-process-
 
 [`Kaleido.Mcp`](src/Mcp/Mcp/README.md) translates the caller-visible central registry into tools and input schemas. Descriptions and lookups explain how to supply inputs; results describe how to continue.
 
-When more information is needed, the service supplies an [information request](docs/INFORMATION_REQUESTS.md). The adapter presents forms where supported or returns guidance for the agent to ask the user. The business owns the questions and the meaning of the answers.
+When more information is needed, the service supplies an [information request](docs/architecture/capabilities/information-requests.md). The adapter presents forms where supported or returns guidance for the agent to ask the user. The business owns the questions and the meaning of the answers.
 
 ### Details arrive when they are needed
 
@@ -182,9 +182,10 @@ var kaleido = builder.Services
         Assemblies = new[] { typeof(Program).Assembly },
         AuthorizationMode = KaleidoAuthorizationMode.None, // Local evaluation only.
     })
+    .AddEventing() // Explicit outbox writer, store and health check.
     .AddProcess()
     .AddQueryable()
-    .AddInMemoryStores() // Local evaluation only: process state is lost on restart.
+    .AddInMemoryStores() // Local evaluation only: process state and events are lost on restart.
     .AddHttp()
     .AddControlRegistryClient();
 
@@ -195,7 +196,7 @@ app.MapKaleidoHttp();
 app.Run();
 ```
 
-`AddProcess()` registers steps and handlers, and `AddQueryable()` registers sources and views. `AddKaleido()` installs only the shared baseline. The HTTP service publishes versioned capability URLs to the central registry. `MapKaleidoHttp()` requires a central-registry source: business services register one with
+`AddEventing()` registers the outbox-backed writer and binds `Kaleido:Events`; `AddProcess()` registers steps and handlers, and `AddQueryable()` registers sources and views. `AddKaleido()` installs only the shared baseline. The HTTP service publishes versioned capability URLs to the central registry. `MapKaleidoHttp()` requires a central-registry source: business services register one with
 `AddControlRegistryClient()`, and a control-registry host has its own via `AddControlRegistry()`.
 `ServiceVersion` is required for service endpoints.
 
@@ -290,7 +291,8 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 
 | Package | Purpose |
 |---|---|
-| [`Kaleido`](src/Kaleido) | Core registration and Eventing pending extraction |
+| [`Kaleido`](src/Kaleido) | Foundation: identity, metadata, correlation and builder |
+| [`Kaleido.Eventing`](src/Events/Kaleido.Eventing) | Generic event writer, redaction, outbox store and relay |
 | [`Kaleido.Process`](src/Capabilities/Process/Kaleido.Process) | Process steps, state, recovery and persistence seams |
 | [`Kaleido.Queryable`](src/Capabilities/Queryable/Kaleido.Queryable) | Query source/view registration and execution |
 | [`Kaleido.Platform`](src/Platform) | Shared registry, Process and Queryable contracts, headers and JSON conventions |
@@ -320,7 +322,8 @@ is not implemented yet.
 The packages are previews. Tagged versions are published to **nuget.org**, so no extra source is needed ([releasing](RELEASING.md)); add what the service needs:
 
 ```bash
-dotnet add package Kaleido --prerelease                              # foundation and outbox during extraction
+dotnet add package Kaleido --prerelease                              # foundation
+dotnet add package Kaleido.Eventing --prerelease                     # event writer and outbox (when used)
 dotnet add package Kaleido.Process --prerelease                      # process steps, state and persistence seams
 dotnet add package Kaleido.Queryable --prerelease                    # query sources and views
 dotnet add package Kaleido.Http.Server --prerelease                  # publish HTTP capabilities
@@ -343,16 +346,16 @@ dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name k
 ## Documentation
 
 - **[Consumer guide](docs/guide/README.md)**: how Kaleido works end to end and how to choose its options, with compiled, tested examples. Start here.
-- [Architecture](ARCHITECTURE.md)
-- [Patterns: steps, handlers, sources, views, lookups](docs/PATTERNS.md)
+- [Architecture map](docs/architecture/README.md) (the legacy [`ARCHITECTURE.md`](ARCHITECTURE.md) retains only unmigrated sections)
+- [Process authoring: steps, handlers, lookups](docs/architecture/capabilities/process-authoring.md) and [Queryable authoring: sources and views](docs/architecture/capabilities/queryable-authoring.md)
 - [Core runtime](src/Kaleido/README.md)
 - [HTTP transport](src/Http/Http.Server/README.md) and [contracts](src/Platform/README.md)
 - [HTTP clients](src/Http/Http.Client/README.md)
 - [MCP adapter](src/Mcp/Mcp/README.md)
-- [Information requests](docs/INFORMATION_REQUESTS.md)
-- [Authorization](docs/AUTHORIZATION.md)
+- [Information requests](docs/architecture/capabilities/information-requests.md)
+- [Authorization](docs/architecture/authorization.md)
 - [Error codes](docs/ERROR_CODES.md)
-- [Correlation](docs/CORRELATION.md)
+- [Correlation](docs/architecture/correlation.md)
 - [Analyzers (KAL rules)](docs/ANALYZERS.md)
 - [Versioning, compatibility and support](docs/VERSIONING.md)
 - [Decision records](docs/decisions/README.md), starting with [process engine, not decision maker](docs/decisions/0001-process-engine-not-decision-maker.md)
@@ -368,7 +371,7 @@ The MCP adapter is implemented, not merely a planned AI integration. That does n
 
 ## Contributing
 
-Issues, design feedback, and focused pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) (setup, the per-commit gate, pull requests) and [SUPPORT.md](SUPPORT.md) for questions. Start with [AGENTS.md](AGENTS.md) and [ARCHITECTURE.md](ARCHITECTURE.md) before making structural changes. Everyone follows the [code of conduct](CODE_OF_CONDUCT.md).
+Issues, design feedback, and focused pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) (setup, the per-commit gate, pull requests) and [SUPPORT.md](SUPPORT.md) for questions. Start with [AGENTS.md](AGENTS.md) and the [architecture map](docs/architecture/README.md) before making structural changes. Everyone follows the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Security
 

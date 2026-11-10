@@ -8,7 +8,7 @@ namespace Kaleido.Eventing;
 // heartbeats and the due entries), never calls another service, so it cannot recurse.
 internal sealed class KaleidoOutboxHealthCheck(
     IKaleidoOutboxStore store,
-    KaleidoServiceOptions serviceOptions,
+    KaleidoEventOptions options,
     TimeProvider time)
     : IHealthCheck
 {
@@ -16,7 +16,6 @@ internal sealed class KaleidoOutboxHealthCheck(
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var options = serviceOptions.Events;
         var now = time.GetUtcNow();
         var status = await store.GetStatusAsync(now, cancellationToken);
         var data = new Dictionary<string, object>(StringComparer.Ordinal)

@@ -1,40 +1,22 @@
 # Kaleido Architecture
 
-This is the top-level map of the current framework. Project READMEs name the types each project
-owns; [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) describes the implementation. Kaleido is a
-metadata-driven Process and Queryable engine whose capabilities are published by one control
-registry and reached through a gateway.
+This is the legacy overview while #585 moves each reached area to the [architecture map](./docs/architecture/README.md). Keep only unprocessed descriptions here and retire this file after they are moved. Kaleido is a metadata-driven Process and Queryable engine whose capabilities are published by one control registry and reached through a gateway.
 
 ## 1. Architectural overview
 
-Eighteen source projects currently occupy four layers (fourteen shipped packages and four non-packable gRPC
-placeholders). The capability extraction is in progress (#585):
+Nineteen source projects currently occupy four layers (fifteen shipped packages and four non-packable gRPC
+placeholders). The capability extraction is in progress (#585); [focused architecture pages](./docs/architecture/README.md) cover only areas processed so far:
 
 | Layer | Projects | Responsibility |
 | --- | --- | --- |
-| Runtime | [`Kaleido`](./src/Kaleido/README.md), [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md), [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | Core retains Eventing/outbox until extracted; Process and Queryable own their runtimes |
+| Foundation and runtimes | [`Kaleido`](./src/Kaleido/README.md), [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md), [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md), [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | Core supplies service identity, metadata and correlation; Eventing owns the outbox/relay, Process and Queryable their runtimes. Eventing placement is provisional (#592). |
 | Shared bases | [`Kaleido.Platform`](./src/Platform/README.md), [`Kaleido.Server`](./src/Server/README.md), [`Kaleido.Client`](./src/Client/README.md) | Published contracts; inbound authorization/correlation; neutral clients and central-registry participation |
 | HTTP | [`Kaleido.Http`](./src/Http/Http/README.md), [`Kaleido.Http.Server`](./src/Http/Http.Server/README.md), [`Kaleido.Http.Client`](./src/Http/Http.Client/README.md) | Shared HTTP route shapes, service endpoints, and the one outbound gateway client |
 | Registry and MCP | [`Kaleido.Registry`](./src/Registry/Registry/README.md), [`Kaleido.Registry.Http`](./src/Registry/Registry.Http/README.md), [`Kaleido.Mcp`](./src/Mcp/Mcp/README.md) | Authoritative store-backed registry, its HTTP API, and caller-visible MCP tools |
 | Providers | [`Kaleido.Provider.SQLite`](./src/Providers/Provider.SQLite/README.md), [`Kaleido.Observability.OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md) | Development/reference persistence and opt-in telemetry export |
 | Future wire adapters | [`Kaleido.Grpc`](./src/Grpc/Grpc/README.md), [`Kaleido.Grpc.Server`](./src/Grpc/Grpc.Server/README.md), [`Kaleido.Grpc.Client`](./src/Grpc/Grpc.Client/README.md), [`Kaleido.Registry.Grpc`](./src/Registry/Registry.Grpc/README.md) | Project placeholders only; gRPC is not implemented or packed yet |
 
-Dependencies point from adapters to bases, never from one protocol to another:
-
-```text
-Kaleido ─► Kaleido.Process, Kaleido.Queryable
-Kaleido ─► Kaleido.Platform ─► Kaleido.Server, Kaleido.Client, Kaleido.Http
-Kaleido.Server + Kaleido.Http ─► Kaleido.Http.Server
-Kaleido.Client + Kaleido.Http ─► Kaleido.Http.Client
-Kaleido.Server ─► Kaleido.Registry
-Kaleido.Registry + Kaleido.Http.Server ─► Kaleido.Registry.Http
-Kaleido.Http.Server + Kaleido.Http.Client ─► Kaleido.Mcp
-Kaleido + Kaleido.Registry ─► Kaleido.Provider.SQLite
-Kaleido ─► Kaleido.Observability.OpenTelemetry
-```
-
-The arrows in this sketch mean "is referenced by"; actual `ProjectReference` edges are listed in
-the projects. The gRPC placeholders reserve protocol boundaries without an implementation ([ADR 0041](./docs/decisions/0041-capability-owned-project-boundaries.md)).
+The [canonical dependency model](./docs/architecture/dependencies.md) records the processed subgraph and preserves the old sketch's unprocessed edges for later verification. Project `ProjectReference` items are authoritative; the gRPC placeholders remain non-packable ([ADR 0041](./docs/decisions/0041-capability-owned-project-boundaries.md)).
 
 ## 2. Top-level design principles
 
@@ -98,10 +80,7 @@ The consumer guide's [compiled examples](./docs/guide/examples) are exercised by
 
 ## 4. Registration model
 
-1. `AddKaleido(configuration, options)` binds configuration over explicit service options, validates
-   the assembly list and registers the foundation/outbox baseline. Call `AddProcess()` and `AddQueryable()`
-   explicitly for the capabilities the host publishes. Choose in-memory stores deliberately for local
-   work or register durable store implementations.
+1. Foundation and capability registration have moved to [foundation](./docs/architecture/core.md), [Eventing](./docs/architecture/events.md), [Process](./docs/architecture/capabilities/process.md) and [Queryable](./docs/architecture/capabilities/queryable.md). `AddKaleido()` alone does not register the outbox or either runtime; compose `AddEventing()` and the hosted capabilities explicitly.
 2. An HTTP service calls `AddHttp()` and `AddControlRegistryClient()` with `Kaleido:BaseUrl` set to
    the gateway and a `ServiceVersion`. `MapKaleidoHttp()` maps only that host's Process and Queryable
    endpoints at `/{service}/{version}/...`. There is no unversioned alias or service registry route.

@@ -1,105 +1,26 @@
 # Kaleido Source Architecture
 
-This document describes the architecture of the `src/` projects in detail. It covers project dependencies, internal structure, and the key design decisions within each project.
-
-For the top-level repository model, see [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+This legacy document retains only `src/` architecture sections not yet moved during #585. [The focused architecture map](../docs/architecture/README.md) is the new entry point; remove this file when the remaining sections have migrated.
 
 ---
 
 ## Terminology
 
-Canonical vocabulary — type names, namespaces, and docs must follow it:
-
-| Term | Meaning |
-| --- | --- |
-| **Service** | A deployed Kaleido host — `Kaleido:ServiceName` and `ServiceVersion`, public route `/{service}/{version}` |
-| **Processor** | The unit a service hosts that owns and executes Steps — the runtime/DI identity (`Kaleido.Processor` namespace, `IProcessorRuntime`, `ProcessorContext`, `IKaleidoContextStore`, the internal `AddProcessor`/`MapProcessor` that `AddKaleido()`/`MapKaleidoHttp()` call, `kaleido.processor.*` telemetry) |
-| **Process** | One executing workflow instance — the wire/transport domain (`/processes` routes, `ProcessId`, `ProcessExecutionState`, `ProcessStateResponse`, `ExecuteProcessRequest`, process events) |
-| **Step** | A unit of work inside a Processor — identified by `IProcessStep`, described by `[ProcessStep]`, named by its type name (it marks the work, not the executor) |
-| **Source / View / Query context** | Queryable-side (`Queryable` namespace); names are type names. A **query source** (`IQuerySource<T>`, `[QuerySource]`) is the published capability; a **query view** (`IQueryViewSource<TSource, …>`, `[QueryView]`) projects it; a **query context** (`IQueryContext`) describes how it is queried. |
-| **Delegated** | A query source that fulfils queries downstream (a facade): `IDelegatedQuerySource`, `DelegatedQuerySourceEngine`. Not visible to consumers |
-| **Central registry** | Service-version registration and discovery (`KaleidoRegistry`); each participant hydrates a full in-memory copy from the control registry |
-
-Rule of thumb: if a name refers to *who runs the work* (runtime, registries, planner, executor, stores, telemetry identity) it's `Processor*`; if it refers to *one executing instance* (request/response/state, routes, events) it's `Process*`. `Kaleido.Platform.Processor`, `Kaleido.Http.Server.Processor` and `Kaleido.Http.Client.Processor` separate contracts and adapters even though the HTTP resource is `processes`.
+The canonical vocabulary moved to [principles and terminology](../docs/architecture/principles.md); retain this anchor only while the other legacy sections migrate.
 
 ---
 
 ## Project dependency graph
 
-```text
-Kaleido ─► Kaleido.Process, Kaleido.Queryable
-Kaleido ─► Kaleido.Platform ─► Kaleido.Server, Kaleido.Client, Kaleido.Http
-Kaleido.Server + Kaleido.Http ─► Kaleido.Http.Server
-Kaleido.Client + Kaleido.Http ─► Kaleido.Http.Client
-Kaleido.Server ─► Kaleido.Registry
-Kaleido.Registry + Kaleido.Http.Server ─► Kaleido.Registry.Http
-Kaleido.Http.Server + Kaleido.Http.Client ─► Kaleido.Mcp
-Kaleido + Kaleido.Registry ─► Kaleido.Provider.SQLite
-Kaleido ─► Kaleido.Observability.OpenTelemetry
-```
-
-Arrows mean "is referenced by". The gRPC and registry-gRPC projects mirror these boundaries but
-are non-packable placeholders; no protocol adapter depends on another. Each project's `csproj`
-records the direct `ProjectReference` edges.
+The processed edges and old sketch's unverified remaining edges now live in [dependencies](../docs/architecture/dependencies.md); each project's `.csproj` is authoritative until it is migrated. The gRPC and registry-gRPC projects remain non-packable placeholders.
 
 ---
 
-## 1. Kaleido foundation, Process and Queryable (migration #585)
+## 1. Foundation, Eventing, Process and Queryable (#585)
 
-### Internal structure during extraction
+These reached areas have moved to [foundation](../docs/architecture/core.md), [Eventing](../docs/architecture/events.md), [Process](../docs/architecture/capabilities/process.md) and [Queryable](../docs/architecture/capabilities/queryable.md). Their dependency rules are in [dependencies](../docs/architecture/dependencies.md). This legacy file retains only architecture sections for areas still awaiting migration.
 
-Process and Queryable are separate capability projects; Eventing remains in Kaleido until its own extraction:
-
-#### Bootstrap and shared (`Kaleido`)
-
-- `KaleidoServiceCollectionExtensions` — `AddKaleido()` (assemblies via `KaleidoServiceOptions.Assemblies`)
-- `IKaleidoBuilder` / `KaleidoBuilder` — minimal shared builder
-- `IKaleidoCorrelationContextAccessor` — scoped accessor for ambient correlation (a pre-existing registration wins)
-- `TypeDescriber` (internal) — CLR type → `DataTypeDescriptor` projection and `IsSupportedType` check
-- `ConstraintMapper` (internal) — `ValidationAttribute` → `ConstraintContract` projection
-- `KaleidoCorrelationContext` — shared ambient identity
-- `IEventPublisher` — infrastructure-agnostic event seam; registered only by `AddOutboxRelay<TPublisher>()`, on the host that runs the relay (ADR 0036)
-
-#### Queryable runtime (`Kaleido.Queryable`)
-
-- Registration: `QueryableServiceCollectionExtensions.AddQueryable()` (public, called explicitly after `AddKaleido()` with the same assembly scan set). Source and view runtime registries remain internal.
-- Runtime: `QueryableService` (dispatch by queried type), `QueryContextEngine`, `DelegatedQuerySourceEngine`, `QueryContextExecutor`
-- Extension point: `IQueryContextExecutor<TView>` is public — consumers on async-capable providers (e.g. EF Core, MongoDB) should register their own implementation so `CountAsync`/`ToListAsync` call provider-native async operators instead of the default `IAsyncEnumerable`/sync fallback.
-- Planning: `QueryRequestCompiler`, `QueryRequestValidator`
-- Registries: `IQuerySourceRegistry`, `IQueryViewRegistry`, `IQueryableRegistry` (published projection)
-- Observability: `QueryableObservability`
-
-#### Process runtime (`Kaleido.Processor`)
-
-- Registration: `ProcessorServiceCollectionExtensions.AddProcess()` (public, called explicitly after `AddKaleido()` with an assembly scan set); the runtime registries remain internal.
-- Runtime: `IProcessorRuntime` (internal, called by the HTTP transport), `ProcessorExecutor` (the step execution loop)
-- Planning: `StepCandidateBuilder`, `StepCandidateValidator`, `StepCandidateConsistencyChecker`, `StepCandidatePlanner`, `StepCandidateNextStepChecker` (only next steps run; answers checked against the pending information request)
-- State: `Kaleido.Process` owns `IKaleidoContextStore`, `IKaleidoIdempotencyStore`, `IKaleidoTransactions`, `ProcessKey` and `ProcessorContext`; Eventing's `IKaleidoOutboxStore` remains temporarily in foundation. `ProcessorTransition` saves state and its event in one transaction when the provider supplies one (ADR 0023, ADR 0036).
-- Registries: `IProcessorStepRegistry`, `IProcessorRegistry` (both internal, shared with `Kaleido.Http.Server`)
-- Observability: `ProcessorObservability`
-
-### Extension points
-
-Public seams consumers are expected to implement or replace:
-
-| Seam | Register via | Notes |
-| ------ | -------------- | ------- |
-| `IKaleidoContextStore`, `IKaleidoIdempotencyStore`, `IKaleidoTransactions` | `AddContextStore<T>()`, `AddIdempotencyStore<T>()`, `AddTransactions<T>()` (or `AddSqliteContextStore`/`AddSqliteIdempotencyStore`) - one implementation each | Production deployments implement against their own durable store; SQLite provider is a reference impl |
-| `IKaleidoOutboxStore` | one per service (`AddOutboxStore<T>()`/`AddSqliteOutboxStore`): every event it writes, tagged with the writer; several services may share its database | Atomic with the state only on the database `IKaleidoTransactions` covers (ADR 0023, ADR 0036) |
-| `IEventPublisher` | `AddOutboxRelay<TPublisher>()` on the host that publishes (one per outbox database) | No default: services only write; the relay hands every event in its database to it at least once (ADR 0036) |
-| `IQueryContextExecutor<TView>` | `services.AddSingleton(typeof(IQueryContextExecutor<>), typeof(MyExecutor<>))` (the default is added with `TryAdd`) | Provider-native execution (e.g. EF Core `CountAsync`/`ToListAsync`): the default counts an async query by reading every matching row; see `docs/PATTERNS.md` |
-| Observability provider | `AddOpenTelemetry()` (Kaleido.Observability.OpenTelemetry) or custom `AddKaleidoInstrumentation()` calls | Core stays provider-agnostic on BCL `ActivitySource`/`Meter` |
-| Delegated query sources | implement `IDelegatedQuerySource<TQueryContext, TResult[, TParameters]>` and add `[QuerySource]` | A facade: translates the consumer's query (validated against `TQueryContext`), calls a downstream source or view, and maps to `TResult` |
-
-### Core design invariants
-
-- The core project has no transport dependencies.
-- `KaleidoServiceOptions.Assemblies` records assemblies but does not scan them. Call `AddProcess()` and/or `AddQueryable()` explicitly for the capabilities this host publishes; `AddKaleido()` installs neither runtime.
-- Queryable discovery is interface-only and a type is exactly one capability; `QueryableService` dispatches by the queried type. How a source is fulfilled (local or delegated) is never published.
-- `ProcessorContext` is current resumable state only, not an audit log.
-- `IKaleidoBuilder` is intentionally minimal.
-- `TotalCount` is always the number of matching results. A pageable capability always pages (its default page when the request names none). `CountAsync` runs only when the page cannot tell the total: the page is full, or empty past the start. A partial page ends the results (`TotalCount = offset + items.Count`); an unpageable capability returns every result (`TotalCount = items.Count`).
-- Queryable runtime types (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`) are transport-agnostic — they use CLR enums and `object?` values. The HTTP transport converts `QueryApiBody` (string enums, `JsonElement` values) to `QueryBody` via `QueryBodyResolver` before handing to core.
+The not-yet-processed OpenTelemetry provider supplies `AddOpenTelemetry()` or custom `AddKaleidoInstrumentation()` calls; core instrumentation is BCL `ActivitySource`/`Meter`. Its full ownership moves with that project.
 
 ---
 
@@ -237,7 +158,7 @@ Every piece is built by the container; no service creates another.
 
 ### SQLite provider invariants
 
-- Each SQLite registration replaces one in-memory default registered by `AddKaleido()`; all share one database (one connection string).
+- Each SQLite registration replaces the corresponding owner-provided in-memory default (`AddProcess()` for state/idempotency, `AddEventing()` for the outbox); all share one database (one connection string). The provider's final references are updated in its own migration.
 - The store must correctly implement state reconciliation so that existing saved contexts remain valid when the step registry changes.
 
 ---
@@ -299,7 +220,7 @@ These are framework invariants — code that violates them produces split traces
 - **End-to-end vs per-hop** — `RequestId`/`ProcessId` are forwarded unchanged on every hop.
   `X-Kaleido-Calling-Processor`/`-Calling-Step` are set by the caller only when the call is
   made from inside a step, and never forwarded. The processor instance id is never on the
-  wire. See [`../docs/CORRELATION.md`](../docs/CORRELATION.md).
+  wire. See [`../docs/architecture/correlation.md`](../docs/architecture/correlation.md).
 - **Outbound propagation is automatic** — `KaleidoProcessorClient`/`KaleidoQueryableClient`
   stamp headers via `CorrelationHeaderStamper`. Do not set `X-Kaleido-*` headers manually
   on outbound requests.
@@ -320,13 +241,7 @@ Both Queryable and Process publish observability through activity sources and me
 
 ### Event publishing
 
-`IEventPublisher` belongs to the relay: `AddOutboxRelay<TPublisher>()` registers it with the relay, on one host per outbox database (a service, or a host with nothing else). Services register none (ADR 0036).
-
-Events are handed to `IEventPublisher` **at least once, never on the request path** ([ADR 0012](../docs/decisions/0012-events-at-least-once-through-the-store.md)):
-
-- **Kaleido owns when; services write, a relay publishes** (ADR 0023, ADR 0036). The runtime hands every event to the outbox (internal `IKaleidoOutbox` over `IKaleidoOutboxStore`), tagged with the writing service and version. A transition's event goes inside its transaction (`ProcessorTransition`: begin, save the state, add the event, commit, committed): `ProcessCreated` (a new process is saved right away) and `StepCompleted`. `PlanBuilt`, `ExecutionCompleted` and `QueryExecuted` are added right after, without a transaction; a failure is logged and counted, never fails the request. Every service writes every event; publishing is the relay's (`AddOutboxRelay`), which drains every entry of its outbox store's database.
-- **Relay.** `KaleidoEventRelay`, a hosted background service registered by `AddKaleido()` (one per instance), claims a batch (`Kaleido:Events:BatchSize`), publishes each entry through a Polly pipeline (timeout + circuit breaker, no Polly retries; `Kaleido:Events:Resilience`) and removes it on success. A failure is retried with exponential backoff (the durable schedule lives in the outbox, so it survives restarts); after `MaxRetryAttempts` the entry is parked. A write wakes the local relay at once; otherwise it polls, backing off to 10 s while the outbox is empty. Claims are leases, so an entry is in one instance's hands at a time; when an instance stops, its leases expire and another takes over.
-- **Privacy.** Payloads are complete (the audit trail); before the outbox write, the registered `IKaleidoEventRedactor`s run and properties marked with a `DataClassificationAttribute` are redacted per the event policy (`AddEventRedaction`; the host's `AddRedaction` stays the log policy), or erased without one (`KaleidoEventPayloadWriter`, ADR 0013, ADR 0025). A crash between a successful publish and its removal publishes the event again - consumers drop duplicates by `IKaleidoEvent.EventId`.
+Moved to [Eventing and the outbox](../docs/architecture/events.md); keep this anchor only while the remaining legacy architecture sections migrate.
 
 ### Discoverability
 

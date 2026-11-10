@@ -39,14 +39,14 @@ What the test shows, under `Authenticated`:
 | signed in, role `manager` | everything, Refund order included | Refund order runs |
 
 The MCP adapter builds each caller's tools from that caller's registry. The full rule table
-(`Roles`, `Policy`, `AllowAnonymous`, a service default): [AUTHORIZATION](../AUTHORIZATION.md),
+(`Roles`, `Policy`, `AllowAnonymous`, a service default): [AUTHORIZATION](../architecture/authorization.md),
 [ADR 0021](../decisions/0021-authenticated-by-default.md).
 
 **A process id is not a permission.** Any caller the capability rules admit, holding a process id, can
 continue that process (the test: Ben confirms Ann's order); Kaleido has no case-level guardrails
 ([ADR 0010](../decisions/0010-no-case-level-guardrails.md)). Which records a caller may touch is your
 handlers' and sources' job: [Queries - Who may query, and which rows](queries.md#who-may-query-and-which-rows),
-[threat model](../AUTHORIZATION.md#threat-model-the-process-id-is-a-bearer-handle).
+[threat model](../architecture/authorization.md#threat-model-the-process-id-is-a-bearer-handle).
 
 ## Which token a service sends
 
@@ -103,7 +103,7 @@ before it is sent (`httpclient_caller_token_not_exchanged`).
 
 Every call carries correlation headers; Kaleido reads them on the way in, passes them to your handlers
 and sources, stamps them on the way out, and puts them on logs, traces and events
-([CORRELATION](../CORRELATION.md)):
+([CORRELATION](../architecture/correlation.md)):
 
 ```mermaid
 sequenceDiagram

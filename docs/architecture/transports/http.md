@@ -1,0 +1,9 @@
+# HTTP transport boundaries (documented current behavior)
+
+This page records the current HTTP transport's architectural constraints. The HTTP projects have **not** had their deep #585 migration; their current READMEs and project files remain the authoritative implementation until that work is reached. The transport adapts [Process](../capabilities/process.md) and [Queryable](../capabilities/queryable.md) but does not own their runtime decisions.
+
+`AddHttp()` does not add host-wide middleware. Kaleido's own route groups get internal endpoint filters: the exception filter first (including malformed correlation errors), then the correlation filter after the host's authentication (headers, trace tags, echo), then JSON and caller filters. The host's unrelated endpoints get no `X-Kaleido-*` headers or Kaleido error bodies. A host endpoint calling a Kaleido client without an inbound request id causes the downstream service to generate one. Hosts do not register the internal filters (#295). Avoid setting `X-Kaleido-*` headers by hand or minting a second `RequestId`: the scoped `IKaleidoCorrelationContextAccessor` carries identity and typed clients forward it automatically ([foundation](../core.md)).
+
+The gateway HTTP client and central-registry client use timeout, circuit breaker and retries **only for safe requests** (reads and calls with an idempotency key), configured under `Kaleido:Resilience`. See the [HTTP client README](../../../src/Http/Http.Client/README.md#resilience). Endpoint names are constants in `*EndpointNames` classes owned by `Kaleido.Http` or the server adapter; do not inline literals in `WithName()`.
+
+Response contracts are [transport-neutral](../principles.md#transport-neutral-response-semantics): adapters decide which messages to populate. HTTP JSON omission rules must not define an empty-collection contract that behaves differently over a future gRPC transport.

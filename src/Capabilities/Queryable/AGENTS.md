@@ -1,0 +1,9 @@
+# Queryable modification rules
+
+Inherit root, `src/` and `src/Capabilities/` guidance. Read [Queryable architecture](../../../docs/architecture/capabilities/queryable.md), [source/view authoring](../../../docs/architecture/capabilities/queryable-authoring.md) and the [package README](Kaleido.Queryable/README.md).
+
+- Source interfaces identify a query capability; `[QuerySource]` / `[QueryView]` describe it with nonempty display/description. A type has exactly one source shape (sync xor async, one query context, local xor delegated) or one view shape; a view references a registered local source. Source names are unique per service, view names per source, and a context may back several sources. Register/resolve concrete source types, not `IQuerySource<T>` registrations.
+- Runtime registries (`IQuerySourceRegistry`, `IQueryViewRegistry`) and in-process `IQueryableService` remain internal; only adapters in this repository invoke them (#297).
+- Dispatch by queried type with no fallback. Validate consumer queries against the source context **before** execution, including delegated sources; leave a delegated downstream `QueryResult` untouched. `QuerySourceKind` is internal, never a published registry/wire field.
+- `[Pageable]` belongs separately to each direct source or view. Pageable local sources/views need a sortable `DefaultSortField` for stable default ordering; delegated ordering is downstream. `TotalCount` always means matching rows, not returned-page length; do not add an unnecessary count for a partial page.
+- `QueryableEventTypes`/payloads and typed dispatcher stay here; only generic envelopes/writer/relay live in Eventing. Keep matching tests in `Kaleido.Queryable.UnitTests` and run the active source/test gates plus directly affected Eventing tests for event changes.

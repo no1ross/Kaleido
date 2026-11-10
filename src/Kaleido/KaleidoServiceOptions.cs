@@ -126,12 +126,6 @@ public sealed record KaleidoServiceOptions
     public AuthorizationMetadata DefaultAuthorization { get; init; } = AuthorizationMetadata.Unspecified;
 
     /// <summary>
-    /// How the event relay hands outbox entries to the event publisher (<c>Kaleido:Events</c>):
-    /// batch size, parallelism and resilience. See <see cref="KaleidoEventOptions"/>.
-    /// </summary>
-    public KaleidoEventOptions Events { get; init; } = new();
-
-    /// <summary>
     /// Validates a <see cref="KaleidoServiceOptions"/> instance.
     /// Throws <see cref="KaleidoConfigurationException"/> if <see cref="ServiceName"/> is invalid
     /// or <see cref="Assemblies"/> is null or empty.
@@ -147,8 +141,6 @@ public sealed record KaleidoServiceOptions
         ValidateAuthorization(options);
         ValidateServiceName(options.ServiceName);
         ValidateServiceVersion(options.ServiceVersion);
-        KaleidoEventOptions.Validate(options.Events);
-
         if (options.Assemblies is null || options.Assemblies.Count == 0)
         {
             throw new KaleidoConfigurationException(

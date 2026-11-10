@@ -30,4 +30,4 @@ BenchmarkDotNet 0.15.8, .NET 8.0.31, Windows 11, Intel Core Ultra 7 265H.
 Conclusion: the default counts an async query by reading every matching row, so its cost grows with
 the matches; a provider executor's does not. Core stays provider-neutral; a host on an async provider
 (EF Core, MongoDB, ...) registers that provider's executor -
-[`docs/PATTERNS.md`](../../docs/PATTERNS.md#queryable-sources-views-and-query-contexts).
+[Queryable authoring patterns](../../docs/architecture/capabilities/queryable-authoring.md#provider-native-async-execution).

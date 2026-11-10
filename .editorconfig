@@ -314,7 +314,7 @@ dotnet_naming_rule.parameters_should_be_camel_case.severity = warning
 dotnet_diagnostic.MA0182.severity = none
 
 ; Core internal seams used through InternalsVisibleTo by the extracted capability assemblies
-[src/Kaleido/{AssemblyTypeExtensions.cs,TypeExtensions.cs,Observability/ActivityExceptionExtensions.cs}]
+[src/Kaleido/{AssemblyTypeExtensions.cs,TypeExtensions.cs,DataClassificationExtensions.cs,Observability/ActivityExceptionExtensions.cs}]
 dotnet_diagnostic.MA0182.severity = none
 
 ; EF Core entity navigation properties use ICollection<T> by convention

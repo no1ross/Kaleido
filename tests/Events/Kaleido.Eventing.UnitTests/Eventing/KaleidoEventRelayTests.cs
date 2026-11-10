@@ -1,4 +1,3 @@
-using Kaleido.Processor.Eventing;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,14 +35,15 @@ public sealed class KaleidoEventRelayTests
         dispatcher.Setup(x => x.CanHandle(It.IsAny<string>())).Returns(true);
         dispatcher.Setup(x => x.PublishAsync(It.IsAny<IEventPublisher>(), It.IsAny<KaleidoOutboxEvent>(), It.IsAny<CancellationToken>()))
             .Returns((IEventPublisher target, KaleidoOutboxEvent entry, CancellationToken token) =>
-                target.PublishOutboxEventAsync<ProcessCreated, ProcessEventContext>(entry, token));
+                target.PublishOutboxEventAsync<SampleEvent, ProcessEventContext>(entry, token));
 
         return new KaleidoEventRelay(
             scopeFactory.Object,
             publisher,
             [dispatcher.Object],
             signal ?? Mock.Of<IKaleidoEventSignal>(),
-            new KaleidoServiceOptions { ServiceName = "svc", Events = options ?? new KaleidoEventOptions() },
+            new KaleidoServiceOptions { ServiceName = "svc" },
+            options ?? new KaleidoEventOptions(),
             clock ?? time,
             logger ?? NullLogger<KaleidoEventRelay>.Instance);
     }
@@ -68,11 +68,11 @@ public sealed class KaleidoEventRelayTests
     private static KaleidoOutboxEvent Entry(int attempts = 0)
     {
         var now = DateTimeOffset.UtcNow;
-        var entry = new KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>
+        var entry = new KaleidoEventEnvelope<SampleEvent, ProcessEventContext>
         {
-            EventType = ProcessEventTypes.ProcessCreated,
+            EventType = "eventing.sample.v1",
             Context = new ProcessEventContext { RequestId = "req-1", ServiceName = "svc", ProcessId = Guid.NewGuid(), StepName = "step-a" },
-            Event = new ProcessCreated { OccurredOn = now, State = ProcessExecutionState.Active, CreatedUtc = now, UpdatedUtc = now, SubmittedStepCount = 1 },
+            Event = new SampleEvent { OccurredOn = now },
         }.ToOutboxEvent();
 
         return entry with { Attempts = attempts };
@@ -92,7 +92,7 @@ public sealed class KaleidoEventRelayTests
     {
         var publisher = new Mock<IEventPublisher>();
         publisher
-            .Setup(x => x.PublishAsync(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.PublishAsync(It.IsAny<KaleidoEventEnvelope<SampleEvent, ProcessEventContext>>(), It.IsAny<CancellationToken>()))
             .Returns(() => publish?.Invoke() ?? Task.CompletedTask);
 
         return publisher;
@@ -112,7 +112,7 @@ public sealed class KaleidoEventRelayTests
         var claimed = await CreateSut(store.Object, publisher.Object).RelayBatchAsync(CancellationToken.None);
 
         Assert.Equal(2, claimed);
-        publisher.Verify(x => x.PublishAsync(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        publisher.Verify(x => x.PublishAsync(It.IsAny<KaleidoEventEnvelope<SampleEvent, ProcessEventContext>>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         store.Verify(x => x.CompleteEventAsync(first.EventId, It.IsAny<CancellationToken>()));
         store.Verify(x => x.CompleteEventAsync(second.EventId, It.IsAny<CancellationToken>()));
     }
@@ -217,8 +217,8 @@ public sealed class KaleidoEventRelayTests
         var publishing = new TaskCompletionSource();
         var publisher = new Mock<IEventPublisher>();
         publisher
-            .Setup(x => x.PublishAsync(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>(), It.IsAny<CancellationToken>()))
-            .Returns<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>, CancellationToken>((_, token) =>
+            .Setup(x => x.PublishAsync(It.IsAny<KaleidoEventEnvelope<SampleEvent, ProcessEventContext>>(), It.IsAny<CancellationToken>()))
+            .Returns<KaleidoEventEnvelope<SampleEvent, ProcessEventContext>, CancellationToken>((_, token) =>
             {
                 publishing.TrySetResult();
                 return Task.Delay(Timeout.Infinite, token);
@@ -264,7 +264,7 @@ public sealed class KaleidoEventRelayTests
 
         await CreateSut(store.Object, publisher.Object, options).RelayBatchAsync(CancellationToken.None);
 
-        publisher.Verify(x => x.PublishAsync(It.IsAny<KaleidoEventEnvelope<ProcessCreated, ProcessEventContext>>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        publisher.Verify(x => x.PublishAsync(It.IsAny<KaleidoEventEnvelope<SampleEvent, ProcessEventContext>>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         store.Verify(x => x.FailEventAsync(It.IsAny<Guid>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 

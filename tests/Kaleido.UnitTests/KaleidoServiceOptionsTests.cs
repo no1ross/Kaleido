@@ -1,4 +1,3 @@
-using Kaleido.Eventing;
 using Kaleido.Exceptions;
 using Kaleido.Registry;
 using Kaleido.Testing;
@@ -14,14 +13,12 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
         KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.None,
         AuthorizationMetadata? defaultAuthorization = null,
         bool useNullAuthorization = false,
-        KaleidoEventOptions? events = null,
         bool withAssemblies = true) =>
         new()
         {
             ServiceName = serviceName,
             AuthorizationMode = mode,
             DefaultAuthorization = useNullAuthorization ? null! : defaultAuthorization ?? AuthorizationMetadata.Unspecified,
-            Events = events ?? new KaleidoEventOptions(),
             Assemblies = withAssemblies ? [typeof(KaleidoServiceOptionsTests).Assembly] : null,
         };
 
@@ -164,15 +161,6 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
             () => KaleidoServiceOptions.Validate(CreateSut("..")));
 
         Assert.DoesNotContain("instead", exception.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Validate_InvalidEventOptions_ThrowsInvalidEventOptions()
-    {
-        var exception = Assert.Throws<KaleidoConfigurationException>(
-            () => KaleidoServiceOptions.Validate(CreateSut("svc", events: new KaleidoEventOptions { BatchSize = 0 })));
-
-        Assert.Equal(ConfigurationErrorCodes.InvalidEventOptions, exception.Code);
     }
 
     [Fact]

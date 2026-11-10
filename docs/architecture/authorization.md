@@ -7,7 +7,7 @@ resulting principal via the transport and enforces one gate:
 - **Capability authorization** — `KaleidoAuthorizationAttribute` on steps, query sources,
   and views narrows access with `Roles` / `Policy`, or opens it with `AllowAnonymous`.
 
-Kaleido has **no case-level guardrails** ([ADR 0010](./decisions/0010-no-case-level-guardrails.md)):
+Kaleido has **no case-level guardrails** ([ADR 0010](../decisions/0010-no-case-level-guardrails.md)):
 see [Who may continue a process](#who-may-continue-a-process) and the [threat model](#threat-model-the-process-id-is-a-bearer-handle).
 
 ## The mode: `AuthorizationMode`
@@ -23,7 +23,7 @@ services.AddKaleido(configuration, new()
 Both can also be bound from configuration (`Kaleido:AuthorizationMode`,
 `Kaleido:DefaultAuthorization:Policy`, `Kaleido:DefaultAuthorization:Roles:0`, …).
 
-**The default is `Authenticated`** ([ADR 0021](./decisions/0021-authenticated-by-default.md)): a host that never sets the
+**The default is `Authenticated`** ([ADR 0021](../decisions/0021-authenticated-by-default.md)): a host that never sets the
 mode enforces an authenticated caller on every capability, and without an authentication scheme
 it does not start (`authentication_not_configured`). Leaving capabilities open is a choice the host
 states: `AuthorizationMode = None` (or `Kaleido:AuthorizationMode=None`).
@@ -155,7 +155,7 @@ not admit is still refused (401/403).
 
 `ProcessorContext.CreatedBy` is captured at process creation from
 `KaleidoCorrelationContext.Caller` (transport-supplied, post-auth — see
-[`CORRELATION.md`](./CORRELATION.md)) as a **tag only** (created by), like `UpdatedBy` and the step tags ([caller tags](./CORRELATION.md#caller-tags-tagging-only)); none is ever
+[`CORRELATION.md`](correlation.md)) as a **tag only** (created by), like `UpdatedBy` and the step tags ([caller tags](correlation.md#caller-tags-tagging-only)); none is ever
 enforced. There is no transfer endpoint.
 
 Keep call identity out of user roles: a service-to-service hop should identify the calling
@@ -185,7 +185,7 @@ access, not as proof that the caller belongs to the case.
 
 - HTTP: response bodies, the echoed `X-Kaleido-Process-Id` response header, and the same header
   Kaleido's clients forward on every downstream call made for the process
-  ([`CORRELATION.md`](./CORRELATION.md));
+  ([`CORRELATION.md`](correlation.md));
 - telemetry: the `kaleido.process.id` tag on the Processor, Queryable, HTTP, MCP and context-store
   activities;
 - logs: Debug-level runtime and store messages, and the Warning for a concurrent change (409);
@@ -212,7 +212,7 @@ implementer does, with these hooks:
   including the MCP adapter, whose calls reach the services as the caller.
 
 Adding a check in one of these places is a business rule of the implementer; Kaleido stays
-mechanism-only ([ADR 0001](./decisions/0001-process-engine-not-decision-maker.md)).
+mechanism-only ([ADR 0001](../decisions/0001-process-engine-not-decision-maker.md)).
 
 ## Evaluation
 

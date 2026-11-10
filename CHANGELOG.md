@@ -292,7 +292,7 @@ sections.
   read from each identity's `RoleClaimType`, exactly as ASP.NET's `RequireRole` on the typed routes.
   Before, generic execute and discovery matched roles case-insensitively and only from
   `ClaimTypes.Role`, so a caller could be admitted on one surface and refused on another
-  ([Authorization](docs/AUTHORIZATION.md)).
+  ([Authorization](docs/architecture/authorization.md)).
 - **Stable MCP tool names** (#435): names are derived from the unfiltered registry, not from what
   the caller may see; when two capabilities (or a capability and a built-in tool) derive the same
   name, each gets `_` plus a hash of its own identity instead of `_step`/`_view`/`_2` numbering, so a

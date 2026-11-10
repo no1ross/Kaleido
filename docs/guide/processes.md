@@ -14,7 +14,7 @@ each behavior described here.
   the C# `required` keyword (KAL2018).
 - Exactly one handler per step: `IProcessStepHandler<TStep>`, or `IProcessStepHandler<TStep, TResult>`
   to return a result (described for agents, KAL2021).
-- Every rule: [PATTERNS - Step + handler](../PATTERNS.md#step--handler).
+- Every rule: [Process authoring - Step + handler](../architecture/capabilities/process-authoring.md#step--handler).
 
 ## What happens on a call
 
@@ -239,7 +239,7 @@ The handler passes that service's answer to `HandOff`, and this step's answer is
 - `targetProcessorName` is `"returns"`;
 - `requiredStep` (with its questions, when it asks some) and `availableSteps` are the returns
   service's next steps, as its registry publishes them, with its execute URLs, and only the ones
-  this caller may run ([Authorization](../AUTHORIZATION.md));
+  this caller may run ([Authorization](../architecture/authorization.md));
 - `notice` is its notice, and the step's `businessMessages` are its messages.
 
 So a caller follows the URLs and continues on the returns service with the same `processId`, with no
@@ -260,7 +260,7 @@ Each processor keeps its own state ([Callers and correlation](callers-and-correl
 
 - **Two calls for one process at once:** the state is saved conditionally on its version; the second
   gets **409** `pro_process_conflict`, and its handler's work must be safe to run again. See
-  [PATTERNS - Concurrency](../PATTERNS.md#concurrency-idempotency-and-retries).
+  [Process authoring - Concurrency](../architecture/capabilities/process-authoring.md#process-host-and-persistence).
 - **A retried call:** send an `Idempotency-Key` (the Kaleido clients always do); a repeat is answered
   from the stored result instead of running the step again
   ([ADR 0019](../decisions/0019-idempotent-execution-admission.md)).
@@ -270,5 +270,5 @@ Each processor keeps its own state ([Callers and correlation](callers-and-correl
 A step has no version: its name is its identity, one definition per name is live, and running
 processes continue on the deployed definition (completed steps stay in their history). A breaking
 change takes a new step name. See
-[PATTERNS - Changing a step, source or view](../PATTERNS.md#changing-a-step-source-or-view) and
+[Architecture - Capability identity and versions](../architecture/principles.md#capability-identity-and-service-versions) and
 [ADR 0029](../decisions/0029-capabilities-have-no-version.md).

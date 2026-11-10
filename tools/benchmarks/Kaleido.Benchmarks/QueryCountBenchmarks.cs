@@ -141,7 +141,7 @@ public sealed class MemberDb(DbContextOptions<MemberDb> options) : DbContext(opt
         modelBuilder.Entity<MemberRow>().ToTable("Members");
 }
 
-/// <summary>The executor an EF Core host registers (docs/PATTERNS.md).</summary>
+/// <summary>The executor an EF Core host registers (docs/architecture/capabilities/queryable-authoring.md).</summary>
 public sealed class EfCoreQueryContextExecutor<TView> : IQueryContextExecutor<TView>
     where TView : class
 {

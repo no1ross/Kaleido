@@ -1,4 +1,3 @@
-using Kaleido.Processor.Eventing;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
 
@@ -12,7 +11,7 @@ public sealed class KaleidoStoreOutboxTests
     [Fact]
     public async Task AddAsync_AddsTheEventsToTheOutboxStore()
     {
-        KaleidoOutboxEvent[] events = [new() { EventId = Guid.NewGuid(), EventType = ProcessEventTypes.ProcessCreated, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow }];
+        KaleidoOutboxEvent[] events = [new() { EventId = Guid.NewGuid(), EventType = "eventing.sample.v1", Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow }];
         var store = new Mock<IKaleidoOutboxStore>();
         var signal = new Mock<IKaleidoEventSignal>();
         using var cancellation = new CancellationTokenSource();

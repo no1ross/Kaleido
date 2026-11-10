@@ -16,7 +16,7 @@ public sealed class KaleidoOutboxHealthCheckTests
     private static readonly KaleidoEventOptions Defaults = new();
 
     private KaleidoOutboxHealthCheck CreateSut(KaleidoEventOptions? events = null) =>
-        new(store.Object, new KaleidoServiceOptions { ServiceName = "orders", Events = events ?? Defaults }, time);
+        new(store.Object, events ?? Defaults, time);
 
     private DateTimeOffset Now => time.GetUtcNow();
 
@@ -44,7 +44,7 @@ public sealed class KaleidoOutboxHealthCheckTests
         var result = await CheckAsync();
 
         Assert.Equal(Defaults.OutboxHealthFailureStatus, result.Status);
-        Assert.Contains(nameof(KaleidoServiceCollectionExtensions.AddOutboxRelay), result.Description, StringComparison.Ordinal);
+        Assert.Contains(nameof(KaleidoEventingServiceCollectionExtensions.AddOutboxRelay), result.Description, StringComparison.Ordinal);
     }
 
     [Theory]

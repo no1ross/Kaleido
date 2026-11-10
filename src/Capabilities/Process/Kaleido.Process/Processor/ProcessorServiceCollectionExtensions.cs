@@ -67,7 +67,7 @@ public static class ProcessorServiceCollectionExtensions
         builder.Services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
         builder.Services.TryAddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
         builder.Services.TryAddSingleton<IKaleidoTransactions, NoKaleidoTransactions>();
-        builder.Services.TryAddSingleton(new KaleidoStoreSelectionContributor(ProcessStoresInUse));
+        builder.Services.AddSingleton(new KaleidoStoreSelectionContributor(ProcessStoresInUse));
         builder.AddProcessEventDispatch();
 
         var handlerTypes = recordTypes.ToDictionary(x => x, x => RegisterHandler(builder.Services, x, types));

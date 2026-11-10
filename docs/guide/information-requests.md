@@ -151,6 +151,6 @@ The MCP adapter asks in rounds: forms where the client supports them, a chat con
 
 ## Where to read more
 
-- The contracts, validation, state and events: [INFORMATION_REQUESTS](../INFORMATION_REQUESTS.md).
-- The handler shape: [PATTERNS - Information step](../PATTERNS.md#information-step-runtime-decided-questions).
+- The contracts, validation, state and events: [INFORMATION_REQUESTS](../architecture/capabilities/information-requests.md).
+- The handler shape: [Process authoring - Information step](../architecture/capabilities/process-authoring.md#information-step-runtime-decided-questions).
 - A complete example: the PriorAuth radiology questionnaire ([PriorAuth sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth), in its own repository).

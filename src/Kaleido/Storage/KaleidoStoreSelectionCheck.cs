@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 namespace Kaleido.Storage;
 
 // The explicit choice of AddInMemoryStores(): its presence in the service collection is the choice.
-internal sealed class KaleidoInMemoryStoresChoice;
+internal enum KaleidoInMemoryStoresChoice { Explicit }
 
 internal delegate IReadOnlyList<string> KaleidoStoreSelectionContributor(IServiceCollection services);
 
@@ -14,8 +14,7 @@ internal delegate IReadOnlyList<string> KaleidoStoreSelectionContributor(IServic
 // Add* calls does not matter, and it covers only the stores in use:
 // - the stores each registered capability contributes when it uses them; Process contributes
 //   context and idempotency stores when it has steps (a query-only service uses neither);
-// - the outbox store, always: every service writes its events, a query-only service included, and
-//   publishing is the relay's (#552).
+// - Eventing contributes the outbox whenever its writer is registered; publishing is the relay's (#552).
 // Not inferred from the environment name: a production host that forgot is refused the same way.
 internal sealed class KaleidoStoreSelectionCheck(IServiceCollection services) : IHostedService
 {
@@ -49,11 +48,6 @@ internal sealed class KaleidoStoreSelectionCheck(IServiceCollection services) : 
             .OfType<KaleidoStoreSelectionContributor>())
         {
             inMemory.AddRange(contributor(services));
-        }
-
-        if (Implementation<IKaleidoOutboxStore>(services) == typeof(InMemoryKaleidoOutboxStore))
-        {
-            inMemory.Add("event outbox (IKaleidoOutboxStore)");
         }
 
         return inMemory;

@@ -1,10 +1,11 @@
 # Kaleido
 
-This project bootstraps Kaleido and temporarily hosts Eventing while it is extracted. [`Kaleido.Process`](../Capabilities/Process/Kaleido.Process/README.md) and [`Kaleido.Queryable`](../Capabilities/Queryable/Kaleido.Queryable/README.md) own their runtimes. The foundation remains free of transport and ASP.NET Core dependencies.
+This project bootstraps Kaleido and owns shared service identity, metadata and correlation. [`Kaleido.Eventing`](../Events/Kaleido.Eventing/README.md) owns event writing and the outbox; [`Kaleido.Process`](../Capabilities/Process/Kaleido.Process/README.md) and [`Kaleido.Queryable`](../Capabilities/Queryable/Kaleido.Queryable/README.md) own their runtimes. The foundation does not depend on any of them or on a transport.
 
 > How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
 
 For the full repository model, see:
+- [Foundation architecture](../../docs/architecture/core.md) and [dependency boundaries](../../docs/architecture/dependencies.md)
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 - [`../AGENTS.md`](../AGENTS.md)
 
@@ -13,24 +14,23 @@ For the full repository model, see:
 ## What lives here
 
 ### Bootstrap
-- `KaleidoServiceCollectionExtensions` — `AddKaleido()` entry point (assemblies supplied via `KaleidoServiceOptions.Assemblies`), `AddOutboxRelay<TPublisher>()`, `AddEventRedactor<T>()`
+- `KaleidoServiceCollectionExtensions` — `AddKaleido()` entry point (assemblies supplied via `KaleidoServiceOptions.Assemblies`) and the explicit shared `AddInMemoryStores()` store choice
 - `IKaleidoBuilder` / `KaleidoBuilder` — shared builder abstraction carrying `Services`, `Assemblies`, `Configuration` and `ServiceOptions`
 - `IKaleidoCorrelationContextAccessor` — scoped correlation accessor registered by bootstrap (a pre-existing registration wins)
-- no `IEventPublisher`: every service writes its events to its outbox store, and the host that publishes adds `AddOutboxRelay<TPublisher>()` (ADR 0036). A relay-only host also calls `AddProcessEventDispatch()` and `AddQueryableEventDispatch()` for the event families stored in its database; hosts with those capabilities register their dispatch automatically.
+- no event writer, outbox store or publisher: a host adds `AddEventing()` for the current outbox-backed writer and `AddOutboxRelay<TPublisher>()` in the publishing host (ADR 0036). Relay-only hosts register the Process/Queryable event dispatchers they need separately.
 
 ### Shared abstractions
 - `ITypeDescriber` / `TypeDescriber` (internal) — converts CLR types and properties into `DataTypeDescriptor` values (internal; the HTTP transport maps them to the wire's `DataTypeMetadata`)
 - `IConstraintMapper` / `ConstraintMapper` (internal) — converts `ValidationAttribute` usage into metadata constraint contracts
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
-- `IEventPublisher` / `IKaleidoEvent` - infrastructure-agnostic event publication seam; events reach the publisher at least once through the outbox and the event relay (`KaleidoEventRelay`, `KaleidoEventOptions`, ADR 0012)
-- `IKaleidoEventRedactor` / `AddEventRedactor<T>()` - reduce events before the outbox write; properties marked with a `DataClassificationAttribute` are redacted per the event policy `AddEventRedaction(r => ...)` sets (separate from the host's log redaction, `AddRedaction`), or erased without one (ADR 0013, ADR 0025)
+- Event publication, redaction, relay and outbox types belong to [`Kaleido.Eventing`](../Events/Kaleido.Eventing/README.md); the foundation supplies only the shared `DataClassificationAttribute` inspection used by event and metadata owners (ADR 0013, ADR 0025).
 - `Kaleido.Exceptions` — shared `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500). The Process-owned `KaleidoConcurrencyException` reports process-state conflicts (409). HTTP error bodies belong to `Kaleido.Platform` during extraction (see [`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md)).
 
 ### Queryable runtime
 - [`Kaleido.Queryable`](../Capabilities/Queryable/Kaleido.Queryable/README.md) owns source/view declarations, query planning and execution, and explicit `AddQueryable()` registration.
 
 ### Process runtime
-- [`Kaleido.Process`](../Capabilities/Process/Kaleido.Process/README.md) owns step/handler declarations, state, execution, Process telemetry and the context/idempotency/transaction provider seams. `AddProcess()` is explicit; the outbox remains in Eventing pending its extraction.
+- [`Kaleido.Process`](../Capabilities/Process/Kaleido.Process/README.md) owns step/handler declarations, state, execution, Process telemetry and the context/idempotency/transaction provider seams. `AddProcess()` is explicit; the outbox is owned by [`Kaleido.Eventing`](../Events/Kaleido.Eventing/README.md).
 
 ---
 
@@ -41,7 +41,7 @@ Reference this project when you need to:
 - register assemblies via `KaleidoServiceOptions.Assemblies` in the options passed to `AddKaleido()`
 - work with shared metadata primitives (`TypeDescriber`, `ConstraintMapper`)
 - find step/handler declarations in [`Kaleido.Process`](../Capabilities/Process/Kaleido.Process/README.md) and query source/view declarations in [`Kaleido.Queryable`](../Capabilities/Queryable/Kaleido.Queryable/README.md)
-- work with correlation context or event publishing
+- work with correlation context; use [`Kaleido.Eventing`](../Events/Kaleido.Eventing/README.md) for event publishing
 
 ## What this project is NOT for
 
@@ -50,6 +50,7 @@ This project does not contain:
 - HTTP contract types (see [`Kaleido.Platform`](../Platform/README.md))
 - Remote HTTP client consumption (see [`Kaleido.Http.Client`](../Http/Http.Client/README.md))
 - SQLite state persistence (see [`Kaleido.Provider.SQLite`](../Providers/Provider.SQLite/README.md))
+- event writing, redaction, outbox stores or relay behavior (see [`Kaleido.Eventing`](../Events/Kaleido.Eventing/README.md))
 
 ---
 
@@ -69,19 +70,19 @@ builder.Services.AddKaleido(builder.Configuration, new()
 });
 ```
 
-Other `KaleidoServiceOptions` (bound from the `Kaleido` configuration section, then the callback):
+Other `KaleidoServiceOptions` (code values overlaid by the `Kaleido` configuration section):
 - `DisplayName` / `Description` — the service's human-readable name and description, published in the registry
 - `IsEntryProcessor` — marks this service's processor as the central registry's entry point (only one may be published)
 - `InstanceId` — identifies this running instance (new at each start by default) in its own trace tags, events and logs; never sent or read in correlation headers
 - `TypeFilter` — limits which step and query source/view types are registered when an assembly is shared
-- `AuthorizationMode` / `DefaultAuthorization` — capability authorization ([`docs/AUTHORIZATION.md`](../../docs/AUTHORIZATION.md))
-- `Events` — the event relay (`Kaleido:Events`, `KaleidoEventOptions`)
+- `AuthorizationMode` / `DefaultAuthorization` — capability authorization ([`docs/AUTHORIZATION.md`](../../docs/architecture/authorization.md))
+Event options now belong to [`Kaleido.Eventing`](../Events/Kaleido.Eventing/README.md): pass `KaleidoEventOptions` to `AddEventing(options)`; its `Kaleido:Events` section still overrides named code settings.
 
 `AddKaleido()`:
 - validates the `IServiceCollection`
 - registers the scoped correlation accessor (using `TryAddScoped` so a pre-existing registration wins)
-- registers the in-memory outbox default (`IKaleidoOutboxStore`) and event writing; `AddProcess()` installs the context, idempotency and no-transaction defaults. Choose replacements through the owning builder extensions (`AddContextStore`, `AddIdempotencyStore`, `AddTransactions` in Process, `AddOutboxStore` here). It registers no publisher or relay: the publishing host adds `AddOutboxRelay<TPublisher>()` (see `KaleidoEventOptions`, `Kaleido:Events`).
-- refuses to start a host that leaves a store it uses at the in-memory default (`stores_not_chosen`, ADR 0028): the context and idempotency stores when the service has process steps, the outbox store when it publishes through Kaleido's outbox. `AddInMemoryStores()` chooses memory explicitly (development, tests)
+- registers a shared store-selection check; capabilities contribute only the in-memory defaults they use. `AddProcess()` installs process state/idempotency/transaction defaults and `AddEventing()` installs the event outbox writer/store/health check. Replace a store through its owner (`AddContextStore`, `AddIdempotencyStore`, `AddTransactions` in Process; `AddOutboxStore` in Eventing).
+- refuses to start a host that leaves a used store at its in-memory default (`stores_not_chosen`, ADR 0028). `AddInMemoryStores()` chooses memory explicitly (development, tests). Without Eventing, foundation registers no outbox or event writer.
 - registers neither runtime; call `AddProcess()` and/or `AddQueryable()` on the builder to register hosted capabilities
 - returns an `IKaleidoBuilder`
 

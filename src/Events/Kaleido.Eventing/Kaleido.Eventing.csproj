@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido Eventing: event envelopes, redaction, outbox storage, relay and publication.</Description>
+		<PackageTags>kaleido;events;outbox;relay</PackageTags>
+		<RootNamespace>Kaleido</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Kaleido\Kaleido.csproj" />
+		<PackageReference Include="Microsoft.Extensions.Compliance.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Logging" />
+		<PackageReference Include="Polly.Core" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Process and Queryable own typed dispatch and use generic Eventing seams; adapters and integration tests compose relay-only hosts. -->
+		<InternalsVisibleTo Include="Kaleido.Process" />
+		<InternalsVisibleTo Include="Kaleido.Process.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Queryable" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.IntegrationTests" />
+	</ItemGroup>
+</Project>

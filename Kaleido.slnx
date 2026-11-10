@@ -2,9 +2,9 @@
   <Folder Name="/docs/">
     <File Path="docs/ANALYZERS.md" />
     <File Path="docs/ASSETS.md" />
-    <File Path="docs/AUTHORIZATION.md" />
+    <File Path="docs/architecture/authorization.md" />
     <File Path="docs/BRAND.md" />
-    <File Path="docs/CORRELATION.md" />
+    <File Path="docs/architecture/correlation.md" />
     <File Path="docs/ERROR_CODES.md" />
     <File Path="docs/PATTERNS.md" />
     <File Path="docs/VERSIONING.md" />
@@ -37,6 +37,9 @@
     <Project Path="src/Kaleido/Kaleido.csproj" />
     <Project Path="src/Platform/Kaleido.Platform.csproj" />
     <Project Path="src/Server/Kaleido.Server.csproj" />
+  </Folder>
+  <Folder Name="/src/Events/">
+    <Project Path="src/Events/Kaleido.Eventing/Kaleido.Eventing.csproj" />
   </Folder>
   <Folder Name="/src/Grpc/">
     <Project Path="src/Grpc/Grpc/Kaleido.Grpc.csproj" />
@@ -80,6 +83,9 @@
     <Project Path="tests/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
     <Project Path="tests/Platform.UnitTests/Kaleido.Platform.UnitTests.csproj" />
     <Project Path="tests/Server.UnitTests/Kaleido.Server.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/test/Events/">
+    <Project Path="tests/Events/Kaleido.Eventing.UnitTests/Kaleido.Eventing.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Http/">
     <Project Path="tests/Http/Http.Client.UnitTests/Kaleido.Http.Client.UnitTests.csproj" />

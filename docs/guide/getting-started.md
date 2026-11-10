@@ -143,13 +143,15 @@ services.AddKaleido(configuration, new()
     Assemblies = [typeof(OrderSource).Assembly],
     AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
 })
+    .AddEventing()
+    .AddProcess()
+    .AddQueryable()
     .AddInMemoryStores()   // local evaluation only: nothing survives a restart
     .AddHttp()
     .AddControlRegistryClient();
 ```
 
-`AddInMemoryStores()` is a choice: the process state and idempotency records live in this process
-and are lost on restart. Without a choice the host does not start (`stores_not_chosen`): a service
+`AddKaleido()` installs only the foundation; `AddEventing()` installs the outbox-backed writer and `AddProcess()`/`AddQueryable()` register their runtimes. `AddInMemoryStores()` is a choice: process state, idempotency records and the event outbox live in this process and are lost on restart. Without a choice the host does not start (`stores_not_chosen`): a service
 never keeps them in memory by accident. A deployed service registers durable stores instead
 ([Persistence](persistence.md), [ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md)).
 
@@ -218,6 +220,9 @@ services.AddKaleido(configuration, new()
     Assemblies = [typeof(OrderSource).Assembly],
     AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
 })
+    .AddEventing()
+    .AddProcess()
+    .AddQueryable()
     .AddInMemoryStores()   // local evaluation only: nothing survives a restart
     .AddHttp()
     .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it

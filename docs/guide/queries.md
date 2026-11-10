@@ -13,7 +13,7 @@ examples continue the orders service (`docs/guide/examples/Queries`); a test run
 | **Delegated source** (`IDelegatedQuerySource<TContext, TResult>`, optionally with parameters) | Answers the query itself, for data Kaleido cannot run as LINQ (another service's API, a search engine) |
 
 The source of the [getting-started](getting-started.md#2-a-query-source) example is a local source;
-every attribute and rule is in [PATTERNS - Queryable](../PATTERNS.md#queryable-sources-views-and-query-contexts).
+every attribute and rule is in [Queryable authoring](../architecture/capabilities/queryable-authoring.md).
 
 ```mermaid
 flowchart LR
@@ -211,13 +211,13 @@ public sealed class MyInvoicesSource(IKaleidoCorrelationContextAccessor correlat
 Listing the page and counting the total is `IQueryContextExecutor<TView>`. Kaleido's default works
 for any LINQ source but counts an async query by **reading every matching row**. On EF Core, register
 the EF Core executor, so a full page is counted with one `SELECT COUNT(*)`; it uses LINQ for any other
-source of the host. The code: [PATTERNS - Queryable](../PATTERNS.md#queryable-sources-views-and-query-contexts).
+source of the host. The code: [Queryable authoring](../architecture/capabilities/queryable-authoring.md).
 
 ## Queries as lookups
 
 A step input the user cannot type (an id) names the query that supplies it with `[Lookup]`: UIs and
 agents search that source, show the matches, and pass the chosen field
-([PATTERNS - Lookup inputs](../PATTERNS.md#lookup-inputs-ids-the-user-cannot-type)).
+([Process authoring - Lookup inputs](../architecture/capabilities/process-authoring.md#lookup-inputs-ids-the-user-cannot-type)).
 
 ## Events
 

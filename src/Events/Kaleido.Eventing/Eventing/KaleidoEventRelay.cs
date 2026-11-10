@@ -46,6 +46,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         IEnumerable<IOutboxEventDispatcher> dispatchers,
         IKaleidoEventSignal signal,
         KaleidoServiceOptions serviceOptions,
+        KaleidoEventOptions options,
         TimeProvider time,
         ILogger<KaleidoEventRelay> logger)
     {
@@ -56,7 +57,7 @@ internal sealed partial class KaleidoEventRelay : BackgroundService
         _signal = signal;
         _logger = logger;
         _serviceOptions = serviceOptions;
-        _options = serviceOptions.Events;
+        _options = options;
 
         // Long enough for a whole batch at the configured parallelism, plus a margin.
         var rounds = (_options.BatchSize + _options.MaxConcurrentPublishes - 1) / _options.MaxConcurrentPublishes;

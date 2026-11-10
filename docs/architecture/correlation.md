@@ -62,7 +62,7 @@ The MCP endpoint (`MapKaleidoMcp`), mapped by the MCP SDK, runs the same correla
   chars); unsanitizable content is dropped.
 - `ProcessId` must parse as a GUID. A malformed value throws `BadHttpRequestException`,
   which `KaleidoExceptionEndpointFilter` maps to **HTTP 400** (`argument_error`) — see
-  [`ERROR_CODES.md`](./ERROR_CODES.md).
+  [`ERROR_CODES.md`](../ERROR_CODES.md).
 - A missing `X-Kaleido-Request-Id` is replaced with a fresh GUID, so every request has an
   ID downstream. `KaleidoCorrelationContext.IsEmpty` reports whether any meaningful field
   was supplied.
@@ -113,11 +113,11 @@ endpoint groups:
 - `CallerId` - the stable subject id: the `sub` claim, else `ClaimTypes.NameIdentifier`.
 
 Anonymous requests get `CallerName = null`, `CallerId = null`. The caller's roles are not copied:
-authorization reads them from `HttpContext.User` through ASP.NET ([AUTHORIZATION.md](./AUTHORIZATION.md), #574).
+authorization reads them from `HttpContext.User` through ASP.NET ([AUTHORIZATION.md](authorization.md), #574).
 `KaleidoCorrelationContext.Caller` (`KaleidoCaller { Name, Id }`) is the caller as Kaleido tags it.
 
 These fields feed the **caller tags** and audit, never authorization - see
-[`AUTHORIZATION.md`](./AUTHORIZATION.md). They are **not** propagated outbound: each hop derives
+[`AUTHORIZATION.md`](authorization.md). They are **not** propagated outbound: each hop derives
 its own caller identity from its own authenticated principal. Service-to-service calls must carry
 credentials the next hop can authenticate (e.g. a bearer token) - the transport's job, not Kaleido's.
 

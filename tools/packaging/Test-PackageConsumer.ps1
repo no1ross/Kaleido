@@ -54,6 +54,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 # The release set (#436): every shipped package, by id. Adding a package means adding it here.
 $libraries = @(
     "Kaleido",
+    "Kaleido.Eventing",
     "Kaleido.Process",
     "Kaleido.Queryable",
     "Kaleido.Platform",

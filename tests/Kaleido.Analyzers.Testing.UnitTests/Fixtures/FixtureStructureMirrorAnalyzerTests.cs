@@ -115,6 +115,18 @@ public class MissingThingTests
     }
 
     [Fact]
+    public async Task AProjectWhoseShortNameMatchesNestedFolder_MirrorsTheNestedFolder()
+    {
+        var test = MetadataTest(Widget, "/repo/tests/Events/Kaleido.Eventing.UnitTests/Eventing/WidgetTests.cs", WidgetTests,
+            "/repo/src/Events/Kaleido.Eventing/Eventing/Widget.cs");
+        test.AssemblyName = "Kaleido.Eventing.UnitTests";
+        test.TestState.ReferenceSources.Clear();
+        test.TestState.ReferenceSources.Add(("Kaleido.Eventing", Widget));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task AFamilyFolder_WrongFixtureFolder_Reports()
     {
         var test = MetadataTest(Widget, "/repo/tests/Http/Sample.UnitTests/Wrong/WidgetTests.cs", WidgetTests,

@@ -1,4 +1,3 @@
-using Kaleido.Processor.Eventing;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -36,7 +35,7 @@ public sealed class InMemoryKaleidoOutboxStoreTests
         new()
         {
             EventId = Guid.NewGuid(),
-            EventType = ProcessEventTypes.ProcessStepCompleted,
+            EventType = "eventing.sample.v1",
             Payload = "{}",
             OccurredUtc = occurredUtc ?? time.GetUtcNow().AddSeconds(-1),
             NextAttemptUtc = occurredUtc ?? time.GetUtcNow().AddSeconds(-1),

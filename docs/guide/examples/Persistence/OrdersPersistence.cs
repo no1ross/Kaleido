@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Kaleido.Eventing;
 using Kaleido.Exceptions;
+using Kaleido.Processor;
 using Kaleido.Processor.Context;
 using Kaleido.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -269,6 +271,8 @@ public static class OrdersPersistence
         services.AddDbContext<OrdersDbContext>(o => o.UseSqlite(connectionString));   // scoped
 
         return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(OrdersContextStore).Assembly] })
+            .AddEventing()
+            .AddProcess()
             .AddContextStore<OrdersContextStore>()
             .AddOutboxStore<OrdersOutboxStore>()
             .AddTransactions<OrdersTransactions>()

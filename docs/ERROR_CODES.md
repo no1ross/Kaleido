@@ -12,7 +12,7 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 | `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | the owning area's codes: `ConfigurationErrorCodes` (core), `QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes`, `McpErrorCodes`, `OpenTelemetryErrorCodes` |
 | `KaleidoFrameworkException` | `Kaleido.Exceptions` | 500 Internal Server Error | `FrameworkErrorCodes` |
 | `KaleidoConcurrencyException` | `Kaleido.Exceptions` | 409 Conflict | `ProcessorErrorCodes.ProcessConflict` (`pro_process_conflict`) |
-| `KaleidoAuthorizationException` | `Kaleido.Exceptions` | 401 (unauthenticated) or 403 (denied), answered by the host's authentication scheme (challenge / forbid) | none: carries `Capability` and `CallerIsAuthenticated` ([`AUTHORIZATION.md`](./AUTHORIZATION.md)) |
+| `KaleidoAuthorizationException` | `Kaleido.Exceptions` | 401 (unauthenticated) or 403 (denied), answered by the host's authentication scheme (challenge / forbid) | none: carries `Capability` and `CallerIsAuthenticated` ([`architecture/authorization.md`](./architecture/authorization.md)) |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
 | `KaleidoRegistryClientException` | `Kaleido.Client.Registry` | — (client-side) | `RegistryClientErrorCodes` |
 
@@ -90,7 +90,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `ProcessEnded` | `pro_process_ended` | The process has ended here (complete, business failure, handed off): no step of this service runs on it; a hand-back from the service holding it excepted ([ADR 0033](decisions/0033-process-lifecycle-and-admission.md)) |
 | `OutcomePendingRecovery` | `pro_outcome_pending_recovery` | 503: the step ran, but the process could not be saved; its outcome is kept and saved when the store is available again. Do not send the step again ([ADR 0034](decisions/0034-unsaved-step-outcomes.md)) |
 | `OutcomeNotSaved` | `pro_outcome_not_saved` | 500: the step ran, but its outcome was not saved and could not be kept; or 409: another request changed the process meanwhile. Do not send the step again; the process must be reconciled ([ADR 0034](decisions/0034-unsaved-step-outcomes.md)) |
-| `NotPermitted` | `pro_not_permitted` | A **notice**, not an error: the process continues with steps the caller may not run (`requiredStep` null or `availableSteps` empty), or a step input's lookup names a query the caller may not use (`lookup` left out). Nothing is named ([AUTHORIZATION.md](AUTHORIZATION.md), #524) |
+| `NotPermitted` | `pro_not_permitted` | A **notice**, not an error: the process continues with steps the caller may not run (`requiredStep` null or `availableSteps` empty), or a step input's lookup names a query the caller may not use (`lookup` left out). Nothing is named ([architecture/authorization.md](architecture/authorization.md), #524) |
 | `ProcessRecovering` | `pro_process_recovering` | 409: an earlier step's outcome is still being saved; nothing was run. Try again shortly ([ADR 0034](decisions/0034-unsaved-step-outcomes.md)) |
 | `InvalidHandOff` | `pro_invalid_hand_off` | A handler handed the process off to the service it runs in, or with a target answer whose step did not complete or that both requires and offers a step (#198); a process violation, so the process keeps its state |
 | `ExecutionCanceled` | `pro_execution_canceled` | Step execution was cancelled |
@@ -105,7 +105,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `InformationResponseUnanswered` | `pro_information_response_unanswered` | A question that applies has no answer (every question enabled by the answers must be answered; ADR 0024) |
 | `InformationResponseInvalidAnswer` | `pro_information_response_invalid_answer` | An answer does not fit its question: unknown item, wrong value for the item type, a choice that was not offered, several answers to a question that does not repeat, or an answer to a question that does not apply (its `enableWhen` does not hold) |
 
-Information-request validation is structural only; see [`INFORMATION_REQUESTS.md`](./INFORMATION_REQUESTS.md#validation).
+Information-request validation is structural only; see [`INFORMATION_REQUESTS.md`](./architecture/capabilities/information-requests.md#validation).
 
 ---
 

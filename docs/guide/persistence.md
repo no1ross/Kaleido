@@ -331,6 +331,8 @@ public sealed class OrdersTransactions(OrdersDbContext db) : IKaleidoTransaction
 services.AddDbContext<OrdersDbContext>(o => o.UseSqlite(connectionString));   // scoped
 
 return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(OrdersContextStore).Assembly] })
+    .AddEventing()
+    .AddProcess()
     .AddContextStore<OrdersContextStore>()
     .AddOutboxStore<OrdersOutboxStore>()
     .AddTransactions<OrdersTransactions>()
@@ -340,8 +342,8 @@ return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemb
 ```
 
 Every store a service uses is chosen at registration: a durable one, or memory explicitly with
-`AddInMemoryStores()`. A service with process steps uses the context and idempotency stores, and every
-service uses an outbox store, since every service writes its events. A store left at its in-memory
+`AddInMemoryStores()`. A service with Process steps uses the context and idempotency stores, and
+an Eventing host uses an outbox store for every event it writes. A store left at its in-memory
 default stops the host at startup with `stores_not_chosen`, naming the store
 ([ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md), [ADR 0036](../decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)).
 

@@ -9,7 +9,7 @@ client (portal, IVR, AI agent) sends the answers back in a standard shape.
 Kaleido owns the **schema**, never the **content**. It carries the questions, records that the
 process is waiting for them, and checks that the answers fit. What to ask, the wording, the
 options and what an answer means all belong to the implementer
-([ADR 0003](./decisions/0003-schema-not-content.md)).
+([ADR 0003](../../decisions/0003-schema-not-content.md)).
 
 ## Two kinds of steps
 
@@ -90,7 +90,7 @@ required step, with their request (`RequireInformation`).
 The contracts are modelled on the **structure** of the FHIR R4 Questionnaire /
 QuestionnaireResponse: a tree of items with ids, types, options and nested items, and answers
 keyed by item id. They use Kaleido's own schema; Kaleido is not a FHIR framework
-([ADR 0002](./decisions/0002-information-request-contract.md)).
+([ADR 0002](../../decisions/0002-information-request-contract.md)).
 
 | Type | Fields |
 |---|---|
@@ -123,7 +123,7 @@ correlation `RequestId`, which stays in the process state and off the contracts.
 
 Some questions apply only when an earlier answer says so: laterality only when the body part is not
 the spine, the weeks of therapy only when therapy was tried. An item's `enableWhen` says when
-([ADR 0024](./decisions/0024-conditional-questions.md)):
+([ADR 0024](../../decisions/0024-conditional-questions.md)):
 
 ```csharp
 new InformationItem
@@ -149,7 +149,7 @@ new InformationItem
 **Who decides what is asked: Kaleido, never the agent.**
 - **AI agents:** the MCP adapter asks in rounds, first the questions with no condition, then those
   the answers make apply. It submits once, and the agent never sees the conditions (see
-  [the MCP adapter](../src/Mcp/Mcp/README.md#conditional-questions)).
+  [the MCP adapter](../../../src/Mcp/Mcp/README.md#conditional-questions)).
 - **UIs:** a UI that renders requests itself applies the same rules: it shows a question once it
   applies and never sends the answers of questions that do not.
 - **Handlers:** a handler receives no answer for a question that did not apply.
@@ -166,7 +166,7 @@ Kaleido checks shape only, never meaning:
   - proposed answers fit their question like answers (an offered option, the right type), at most one unless the question `repeats`; groups and display items take none;
   - each `enableWhen` condition tests an earlier question (so conditions never form a cycle), with an operator its type supports and a value that fits the question (`true`/`false` for `exists`).
 - **Response**, against the pending request:
-  - `pro_information_response_stale`, checked first: the answers' `exchangeId` is not the pending request's. Kaleido issues a fresh `exchangeId` every time a handler requires information - a value the handler sets is replaced - and keeps it with the pending request (in the state, so across restarts). The same questionnaire, with the same item ids, can be asked again (a repeatable step requiring itself); its exchange id is what tells a delayed answer, a stale form or a replayed answer to the earlier time from answers to the current one. The rounds of one request (conditional questions, ADR 0024) share one exchange. Answers echo it as received with the questions ([ADR 0031](decisions/0031-information-requests-have-an-exchange-identity.md));
+  - `pro_information_response_stale`, checked first: the answers' `exchangeId` is not the pending request's. Kaleido issues a fresh `exchangeId` every time a handler requires information - a value the handler sets is replaced - and keeps it with the pending request (in the state, so across restarts). The same questionnaire, with the same item ids, can be asked again (a repeatable step requiring itself); its exchange id is what tells a delayed answer, a stale form or a replayed answer to the earlier time from answers to the current one. The rounds of one request (conditional questions, ADR 0024) share one exchange. Answers echo it as received with the questions ([ADR 0031](../../decisions/0031-information-requests-have-an-exchange-identity.md));
   - `pro_information_response_mismatch`: the step isn't the pending required step, or the `informationRequestId` differs (answers for another or an earlier round);
   - `pro_information_response_unanswered`: every question that applies (not `display`/`group`, enabled by the answers) must be answered. There is no optional question: if you ask, you need an answer; "none of the above" is an option you provide;
   - `pro_information_response_invalid_answer`: unknown item ids, an answer that doesn't fit its type, a choice that wasn't offered, several answers to a question that doesn't `repeat`, or an answer to a question that does not apply.
@@ -185,7 +185,7 @@ job.
   `StepCompleted` already carries each step's payload (the answers), and `PlanBuilt` /
   `StepCompleted` / `ExecutionCompleted` carry `RequiredInformationRequest`.
 - **Who answered** is tagged on the events: `ProcessEventContext.Caller` carries the caller as
-  the principal provides it (#193; [caller tags](./CORRELATION.md#caller-tags-tagging-only)). It is
+  the principal provides it (#193; [caller tags](../correlation.md#caller-tags-tagging-only)). It is
   personal data in the event stream; a consumer that must not publish it removes it in an
   `IKaleidoEventRedactor`.
 
@@ -212,7 +212,7 @@ job.
 ## Analyzers
 
 KAL2012 (information-step shape), KAL2013 (`Success<TNext>` with an information step),
-KAL2014/KAL2015 (describe step and query inputs). See [`ANALYZERS.md`](./ANALYZERS.md).
+KAL2014/KAL2015 (describe step and query inputs). See [`ANALYZERS.md`](../../ANALYZERS.md).
 
 ## Sample
 
