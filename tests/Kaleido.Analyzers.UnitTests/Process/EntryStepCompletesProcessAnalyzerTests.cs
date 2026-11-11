@@ -12,7 +12,7 @@ public sealed class EntryStepCompletesProcessAnalyzerTests
         new();
 
     private const string KaleidoStubs = @"
-namespace Kaleido.Processor
+namespace Kaleido.Process
 {
     public interface IProcessStep { }
 
@@ -26,7 +26,7 @@ namespace Kaleido.Processor
     public sealed class AvailableUntilAttribute<TStep> : System.Attribute where TStep : IProcessStep { }
 }
 
-namespace Kaleido.Processor.Execution
+namespace Kaleido.Process.Execution
 {
     public sealed class ProcessStepHandlerResult
     {
@@ -49,16 +49,16 @@ namespace Kaleido.Processor.Execution
 }";
 
     private const string Steps = @"
-public sealed class StartStep : Kaleido.Processor.IProcessStep { }
+public sealed class StartStep : Kaleido.Process.IProcessStep { }
 
-[Kaleido.Processor.AvailableAfter<StartStep>]
-public sealed class CloseCaseStep : Kaleido.Processor.IProcessStep { }
+[Kaleido.Process.AvailableAfter<StartStep>]
+public sealed class CloseCaseStep : Kaleido.Process.IProcessStep { }
 
-[Kaleido.Processor.DependsOn<StartStep>]
-public sealed class ArchiveStep : Kaleido.Processor.IProcessStep { }
+[Kaleido.Process.DependsOn<StartStep>]
+public sealed class ArchiveStep : Kaleido.Process.IProcessStep { }
 
-[Kaleido.Processor.AvailableUntil<StartStep>]
-public sealed class OnlyClosedByStep : Kaleido.Processor.IProcessStep { }
+[Kaleido.Process.AvailableUntil<StartStep>]
+public sealed class OnlyClosedByStep : Kaleido.Process.IProcessStep { }
 ";
 
     private static readonly DiagnosticResult EntryStepCompletes =
@@ -68,10 +68,10 @@ public sealed class OnlyClosedByStep : Kaleido.Processor.IProcessStep { }
     public async Task CompleteForAnEntryStep_Reports()
     {
         await RunAsync(Steps + @"
-public sealed class StartHandler : Kaleido.Processor.Execution.IProcessStepHandler<StartStep>
+public sealed class StartHandler : Kaleido.Process.Execution.IProcessStepHandler<StartStep>
 {
-    public System.Threading.Tasks.Task<Kaleido.Processor.Execution.ProcessStepHandlerResult> ExecuteAsync(StartStep processStep) =>
-        System.Threading.Tasks.Task.FromResult({|#0:Kaleido.Processor.Execution.ProcessStepHandlerResult.Complete()|});
+    public System.Threading.Tasks.Task<Kaleido.Process.Execution.ProcessStepHandlerResult> ExecuteAsync(StartStep processStep) =>
+        System.Threading.Tasks.Task.FromResult({|#0:Kaleido.Process.Execution.ProcessStepHandlerResult.Complete()|});
 }
 " + KaleidoStubs,
             EntryStepCompletes.WithLocation(0).WithArguments("StartHandler", "StartStep"));
@@ -82,10 +82,10 @@ public sealed class StartHandler : Kaleido.Processor.Execution.IProcessStepHandl
     public async Task TypedCompleteForAStepOnlyClosedByAnother_Reports()
     {
         await RunAsync(Steps + @"
-public sealed class OnlyClosedByHandler : Kaleido.Processor.Execution.IProcessStepHandler<OnlyClosedByStep, string>
+public sealed class OnlyClosedByHandler : Kaleido.Process.Execution.IProcessStepHandler<OnlyClosedByStep, string>
 {
-    public System.Threading.Tasks.Task<Kaleido.Processor.Execution.ProcessStepHandlerResult<string>> ExecuteAsync(OnlyClosedByStep processStep) =>
-        System.Threading.Tasks.Task.FromResult({|#0:Kaleido.Processor.Execution.ProcessStepHandlerResult.Complete(""closed"")|});
+    public System.Threading.Tasks.Task<Kaleido.Process.Execution.ProcessStepHandlerResult<string>> ExecuteAsync(OnlyClosedByStep processStep) =>
+        System.Threading.Tasks.Task.FromResult({|#0:Kaleido.Process.Execution.ProcessStepHandlerResult.Complete(""closed"")|});
 }
 " + KaleidoStubs,
             EntryStepCompletes.WithLocation(0).WithArguments("OnlyClosedByHandler", "OnlyClosedByStep"));
@@ -95,16 +95,16 @@ public sealed class OnlyClosedByHandler : Kaleido.Processor.Execution.IProcessSt
     public async Task CompleteForAStepThatRunsAfterOthers_NoDiagnostic()
     {
         await RunAsync(Steps + @"
-public sealed class CloseCaseHandler : Kaleido.Processor.Execution.IProcessStepHandler<CloseCaseStep>
+public sealed class CloseCaseHandler : Kaleido.Process.Execution.IProcessStepHandler<CloseCaseStep>
 {
-    public System.Threading.Tasks.Task<Kaleido.Processor.Execution.ProcessStepHandlerResult> ExecuteAsync(CloseCaseStep processStep) =>
-        System.Threading.Tasks.Task.FromResult(Kaleido.Processor.Execution.ProcessStepHandlerResult.Complete());
+    public System.Threading.Tasks.Task<Kaleido.Process.Execution.ProcessStepHandlerResult> ExecuteAsync(CloseCaseStep processStep) =>
+        System.Threading.Tasks.Task.FromResult(Kaleido.Process.Execution.ProcessStepHandlerResult.Complete());
 }
 
-public sealed class ArchiveHandler : Kaleido.Processor.Execution.IProcessStepHandler<ArchiveStep, string>
+public sealed class ArchiveHandler : Kaleido.Process.Execution.IProcessStepHandler<ArchiveStep, string>
 {
-    public System.Threading.Tasks.Task<Kaleido.Processor.Execution.ProcessStepHandlerResult<string>> ExecuteAsync(ArchiveStep processStep) =>
-        System.Threading.Tasks.Task.FromResult(Kaleido.Processor.Execution.ProcessStepHandlerResult.Complete(""archived""));
+    public System.Threading.Tasks.Task<Kaleido.Process.Execution.ProcessStepHandlerResult<string>> ExecuteAsync(ArchiveStep processStep) =>
+        System.Threading.Tasks.Task.FromResult(Kaleido.Process.Execution.ProcessStepHandlerResult.Complete(""archived""));
 }
 " + KaleidoStubs);
     }
@@ -113,15 +113,15 @@ public sealed class ArchiveHandler : Kaleido.Processor.Execution.IProcessStepHan
     public async Task OtherResultsOrCallsOutsideAHandler_NoDiagnostic()
     {
         await RunAsync(Steps + @"
-public sealed class StartHandler : Kaleido.Processor.Execution.IProcessStepHandler<StartStep>
+public sealed class StartHandler : Kaleido.Process.Execution.IProcessStepHandler<StartStep>
 {
-    public System.Threading.Tasks.Task<Kaleido.Processor.Execution.ProcessStepHandlerResult> ExecuteAsync(StartStep processStep) =>
-        System.Threading.Tasks.Task.FromResult(Kaleido.Processor.Execution.ProcessStepHandlerResult.Success());
+    public System.Threading.Tasks.Task<Kaleido.Process.Execution.ProcessStepHandlerResult> ExecuteAsync(StartStep processStep) =>
+        System.Threading.Tasks.Task.FromResult(Kaleido.Process.Execution.ProcessStepHandlerResult.Success());
 }
 
 public static class NotAHandler
 {
-    public static object Run() => Kaleido.Processor.Execution.ProcessStepHandlerResult.Complete();
+    public static object Run() => Kaleido.Process.Execution.ProcessStepHandlerResult.Complete();
 }
 " + KaleidoStubs);
     }

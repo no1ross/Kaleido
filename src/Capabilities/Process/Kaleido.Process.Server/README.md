@@ -1,0 +1,7 @@
+# Kaleido.Process.Server
+
+Transport-neutral admission and replay contracts in `Kaleido.Process.Server.Idempotency` for server-side Process requests. `IProcessIdempotencyStore` admits a scoped key atomically; a completed `IdempotencyRecord` holds an `IdempotencyReplay` with a caller-defined format and opaque payload bytes. The owner of a transport decides how to scope the key, hash requests, encode responses and map in-progress/unknown outcomes. This project does not register an endpoint or select a transport.
+
+`AddIdempotencyStore<TStore>()` explicitly registers a scoped store; neither generic `AddProcess()` nor `AddKaleido()` selects one. A durable implementation is needed across service restarts and multiple instances; the included in-memory implementation is only a development/reference implementation and warns when constructed. It is not automatically selected by `AddProcess()` or `AddKaleido()`.
+
+`IdempotencyRecord`/`IdempotencyState` represent in-progress, completed or unknown outcomes; `IdempotencyReplay` contains a required format identifier and opaque bytes, not an HTTP status or JSON response. `InMemoryProcessIdempotencyStore` is the reference implementation. The existing HTTP and SQLite adapters are not yet migrated to these contracts (#587); persisted replay rows are not migrated. Admission IDs fence late completions/releases after expiry and re-admission. A lease ending does not free a key: the outcome remains unknown until its retention expires. Callers should persist a completed or unknown outcome even after the request is canceled.

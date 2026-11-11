@@ -24,13 +24,13 @@ For the full repository model, see:
 - `Registry/KaleidoAuthorizationAttribute` and `Registry/AuthorizationMetadata` — shared declaration and effective rule for Process steps and Queryable sources/views, both in the `Kaleido.Registry` namespace; the central control registry is a separate later owner
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - Event publication, redaction, relay and outbox types belong to [`Kaleido.Eventing`](../../Events/Kaleido.Eventing/README.md); the foundation supplies only the shared `DataClassificationAttribute` inspection used by event and metadata owners (ADR 0013, ADR 0025).
-- `Kaleido.Exceptions` — shared `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500). The Process-owned `KaleidoConcurrencyException` reports process-state conflicts (409). HTTP error bodies belong to `Kaleido.Platform` during extraction (see [`docs/ERROR_CODES.md`](../../../docs/ERROR_CODES.md)).
+- `Kaleido.Exceptions` — shared `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500). The Process-owned `ProcessConcurrencyException` (`Kaleido.Process.Exceptions`) reports process-state conflicts (409). HTTP error bodies belong to `Kaleido.Platform` during extraction (see [`docs/ERROR_CODES.md`](../../../docs/ERROR_CODES.md)).
 
 ### Queryable runtime
 - [`Kaleido.Queryable`](../../Capabilities/Queryable/Kaleido.Queryable/README.md) owns source/view declarations, query planning and execution, and explicit `AddQueryable()` registration.
 
 ### Process runtime
-- [`Kaleido.Process`](../../Capabilities/Process/Kaleido.Process/README.md) owns step/handler declarations, state, execution, Process telemetry and the context/idempotency/transaction provider seams. `AddProcess()` is explicit; the outbox is owned by [`Kaleido.Eventing`](../../Events/Kaleido.Eventing/README.md).
+- [`Kaleido.Process`](../../Capabilities/Process/Kaleido.Process/README.md) owns step/handler declarations, state, execution, Process telemetry and the context/transaction provider seams; [`Kaleido.Process.Server`](../../Capabilities/Process/Kaleido.Process.Server/README.md) owns neutral idempotency admission and replay. `AddProcess()` is explicit; the outbox is owned by [`Kaleido.Eventing`](../../Events/Kaleido.Eventing/README.md).
 
 ---
 
@@ -109,4 +109,4 @@ Step graph, execution, recovery and process-state contracts belong to [`Kaleido.
 - `TypeDescriber.cs` / `ConstraintMapper.cs` — shared metadata utilities
 - `AssemblyTypeExtensions.cs` / `TypeFilterExtensions.cs` / `TypeExtensions.cs` — shared assembly scan, explicit type filter and generic-interface reflection
 - [`Kaleido.Queryable/QueryableService.cs`](../../Capabilities/Queryable/Kaleido.Queryable/QueryableService.cs) — Queryable dispatch
-- [`Kaleido.Process/Processor/Execution/ProcessorExecutor.cs`](../../Capabilities/Process/Kaleido.Process/Processor/Execution/ProcessorExecutor.cs) — Process execution loop
+- [`Kaleido.Process/Execution/ProcessorExecutor.cs`](../../Capabilities/Process/Kaleido.Process/Execution/ProcessorExecutor.cs) — Process execution loop

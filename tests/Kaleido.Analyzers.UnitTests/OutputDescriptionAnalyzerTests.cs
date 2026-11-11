@@ -23,11 +23,15 @@ namespace System.ComponentModel.DataAnnotations
     }
 }
 
-namespace Kaleido.Processor
+namespace Kaleido.Process
 {
     public interface IProcessStep { }
-    public interface IProcessStepHandler<TStep> { }
-    public interface IProcessStepHandler<TStep, TResult> { }
+}
+
+namespace Kaleido.Process.Execution
+{
+    public interface IProcessStepHandler<in TProcessStep> where TProcessStep : Kaleido.Process.IProcessStep { }
+    public interface IProcessStepHandler<in TProcessStep, TProcessStepResult> where TProcessStep : Kaleido.Process.IProcessStep { }
 }
 
 namespace Kaleido.Queryable
@@ -41,7 +45,7 @@ namespace Kaleido.Queryable
     public interface IDelegatedQuerySource<TQueryContext, TResult, TParameters> { }
 }
 
-public sealed record CaptureStep : Kaleido.Processor.IProcessStep;
+public sealed record CaptureStep : Kaleido.Process.IProcessStep;
 public sealed record NoParameters : Kaleido.Queryable.IQueryParameters;
 public sealed record MemberContext : Kaleido.Queryable.IQueryContext { public string Id { get; init; } }
 public sealed class MemberSource : Kaleido.Queryable.IQuerySource<MemberContext> { }";
@@ -58,7 +62,7 @@ public sealed record CaptureResult
     public string {|#0:ResolvedCode|} { get; init; }
 }
 
-public sealed class CaptureHandler : Kaleido.Processor.IProcessStepHandler<CaptureStep, CaptureResult> { }
+public sealed class CaptureHandler : Kaleido.Process.Execution.IProcessStepHandler<CaptureStep, CaptureResult> { }
 " + KaleidoStubs,
             OutputProperty.WithLocation(0).WithArguments("ResolvedCode", "CaptureResult"));
     }
@@ -101,7 +105,7 @@ public sealed record CaptureResult
     internal string Internal { get; init; }
 }
 
-public sealed class CaptureHandler : Kaleido.Processor.IProcessStepHandler<CaptureStep, CaptureResult> { }
+public sealed class CaptureHandler : Kaleido.Process.Execution.IProcessStepHandler<CaptureStep, CaptureResult> { }
 " + KaleidoStubs);
     }
 
@@ -154,6 +158,26 @@ public sealed class SharedView : Kaleido.Queryable.IQueryViewSource<MemberSource
             OutputProperty.WithLocation(0).WithArguments("Code", "Shared"));
     }
 
+    [Fact]
+    public async Task UnrelatedInterfacesNamedIProcessStepHandler_NoDiagnostic()
+    {
+        await RunAsync(@"
+namespace Elsewhere
+{
+    public interface IProcessStepHandler<TProcessStep, TProcessStepResult> { }
+}
+
+namespace Kaleido.Process
+{
+    public interface IProcessStepHandler<TProcessStep, TProcessStepResult> { }
+}
+
+public sealed record UnrelatedResult { public string Code { get; init; } }
+public sealed class OtherHandler : Elsewhere.IProcessStepHandler<CaptureStep, UnrelatedResult> { }
+public sealed class RootHandler : Kaleido.Process.IProcessStepHandler<CaptureStep, UnrelatedResult> { }
+" + KaleidoStubs);
+    }
+
     // An output used by two handlers is reported once.
     [Fact]
     public async Task AnOutputUsedTwice_IsReportedOnce()
@@ -164,8 +188,8 @@ public sealed record SharedResult
     public string {|#0:Code|} { get; init; }
 }
 
-public sealed class FirstHandler : Kaleido.Processor.IProcessStepHandler<CaptureStep, SharedResult> { }
-public sealed class SecondHandler : Kaleido.Processor.IProcessStepHandler<CaptureStep, SharedResult> { }
+public sealed class FirstHandler : Kaleido.Process.Execution.IProcessStepHandler<CaptureStep, SharedResult> { }
+public sealed class SecondHandler : Kaleido.Process.Execution.IProcessStepHandler<CaptureStep, SharedResult> { }
 " + KaleidoStubs,
             OutputProperty.WithLocation(0).WithArguments("Code", "SharedResult"));
     }
@@ -177,11 +201,11 @@ public sealed class SecondHandler : Kaleido.Processor.IProcessStepHandler<Captur
     {
         await RunAsync(@"
 public sealed class ContextView : Kaleido.Queryable.IQueryViewSource<MemberSource, MemberContext, MemberContext, NoParameters> { }
-public sealed class TextHandler : Kaleido.Processor.IProcessStepHandler<CaptureStep, string> { }
-public sealed class PlainHandler : Kaleido.Processor.IProcessStepHandler<CaptureStep> { }
+public sealed class TextHandler : Kaleido.Process.Execution.IProcessStepHandler<CaptureStep, string> { }
+public sealed class PlainHandler : Kaleido.Process.Execution.IProcessStepHandler<CaptureStep> { }
 
 public sealed record HiddenResult { public string Code { get; init; } }
-public abstract class BaseHandler : Kaleido.Processor.IProcessStepHandler<CaptureStep, HiddenResult> { }
+public abstract class BaseHandler : Kaleido.Process.Execution.IProcessStepHandler<CaptureStep, HiddenResult> { }
 " + KaleidoStubs);
     }
 }

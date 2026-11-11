@@ -7,8 +7,10 @@
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-		<Using Include="Kaleido.Processor" />
-		<Using Include="Kaleido.Processor.Execution" />
-		<Using Include="Kaleido.Processor.Planning" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Process.Planning" />
+		<Using Include="Kaleido.Process.Storage" />
+		<Using Include="Kaleido.Process.Exceptions" />
 	</ItemGroup>
 </Project>

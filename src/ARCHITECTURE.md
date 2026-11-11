@@ -70,7 +70,7 @@ The not-yet-processed OpenTelemetry provider supplies `AddOpenTelemetry()` or cu
 ### Server and HTTP endpoint invariants
 
 - Endpoints adapt contracts and publish routes. They do not reimplement runtime planning or business execution.
-- The only service route prefix is `/{ServiceName}/{ServiceVersion}` from `KaleidoServiceOptions`; `ServiceVersion` is required by HTTP mapping. The gateway maps that logical public route to the one host serving the version.
+- The only service route prefix is `/{ServiceName}/{ServiceVersion}` from `KaleidoServiceOptions`; `ServiceVersion` is required for every service, not only HTTP mapping. The gateway maps that logical public route to the one host serving the version.
 - Registry endpoint returns 200 by default. Partial responses are signalled through `Errors`/`IsPartial`; `?strict` opts into a 502 when partial.
 - `ConfigureHttpJsonOptions` is never called — Kaleido JSON options are scoped to Kaleido endpoints via `KaleidoJsonEndpointFilter`. Consumer endpoints retain their own serialization behavior.
 
@@ -141,7 +141,7 @@ Every piece is built by the container; no service creates another.
 ### OpenTelemetry provider structure
 
 - `KaleidoObservabilityOpenTelemetryExtensions` — `AddOpenTelemetry()` on `IKaleidoBuilder` (logging + tracing + metrics + OTLP) and `AddKaleidoInstrumentation()` on `TracerProviderBuilder`/`MeterProviderBuilder`
-- Instrumentation itself stays in `Kaleido` (BCL `ActivitySource`/`Meter`); this project only wires the OTel SDK
+- Process and Queryable own their BCL `ActivitySource`/`Meter` emitters; this not-yet-migrated project wires the OTel SDK and must reconcile their names in its own unit
 
 ### OpenTelemetry provider invariants
 
@@ -153,12 +153,12 @@ Every piece is built by the container; no service creates another.
 
 ### SQLite provider structure
 
-- `SqliteKaleidoContextStore`, `SqliteKaleidoOutboxStore`, `SqliteKaleidoIdempotencyStore` - implement the store contracts with EF Core on one scoped `SqliteKaleidoContextDbContext`; `SqliteKaleidoTransactions` opens one transaction on it per process-state transition, so the context store and the outbox store (or a host's outbox joining `ISqliteKaleidoTransaction`) commit together
-- `SqliteKaleidoServiceCollectionExtensions` - `AddSqliteContextStore` (+ the transactions), `AddSqliteOutboxStore`, `AddSqliteIdempotencyStore`: one store each, one database
+- The existing `SqliteKaleidoContextStore`, `SqliteKaleidoOutboxStore`, `SqliteKaleidoIdempotencyStore` and `SqliteKaleidoTransactions` have not yet been migrated to Process's `IProcessContextStore`/`IProcessTransactions` and Process.Server's `IProcessIdempotencyStore` (#587). A future provider must join state and outbox writes in the **same provider session/transaction**, not just use one database; do not assume this adapter currently interoperates.
+- `SqliteKaleidoServiceCollectionExtensions` currently declares `AddSqliteContextStore`, `AddSqliteOutboxStore` and `AddSqliteIdempotencyStore`; their mapping to the new contracts remains to be migrated (#587)
 
 ### SQLite provider invariants
 
-- Each SQLite registration replaces the corresponding owner-provided in-memory default (`AddProcess()` for state/idempotency, `AddEventing()` for the outbox); all share one database (one connection string). The provider's final references are updated in its own migration.
+- Generic `AddProcess()` and `AddEventing()` do not select in-memory stores. The later Provider owner explicitly offers `AddInMemoryProviders()` for development; the SQLite provider's references and replay/schema compatibility await its own migration (#587). No existing rows are silently converted.
 - The store must correctly implement state reconciliation so that existing saved contexts remain valid when the step registry changes.
 
 ---
@@ -250,4 +250,4 @@ Metadata is derived from CLR types at startup:
 - `TypeDescriber` (internal) converts CLR property types to `DataTypeDescriptor` values
 - `ConstraintMapper` (internal) converts `ValidationAttribute` usage to `ConstraintContract` values
 - Both are used by the Queryable and Process runtimes when building discovery metadata for HTTP endpoints
-- The runtime registry descriptors (`DataTypeDescriptor`, `ConstraintContract`, the `Kaleido.Processor.Registry` and `Kaleido.Queryable.Metadata` types) are internal. The published contracts in `Kaleido.Platform` have their own types (`DataTypeMetadata`, `ConstraintMetadata`, `ProcessFieldLookup`, `QueryablePagingMetadata`, …), and `Kaleido.Http.Server` maps to them (`RegistryMetadataMapper`, `ProcessorResponseFactory`, `QueryableRegistryItemExtensions`), so a change to a core descriptor is never a wire change by accident (#356)
+- The runtime registry descriptors (`DataTypeDescriptor`, `ConstraintContract`, the `Kaleido.Process.Registry` and `Kaleido.Queryable.Metadata` types) are internal. The published contracts in `Kaleido.Platform` have their own types (`DataTypeMetadata`, `ConstraintMetadata`, `ProcessFieldLookup`, `QueryablePagingMetadata`, …), and `Kaleido.Http.Server` maps to them (`RegistryMetadataMapper`, `ProcessorResponseFactory`, `QueryableRegistryItemExtensions`), so a change to a core descriptor is never a wire change by accident (#356)

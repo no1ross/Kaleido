@@ -14,7 +14,7 @@ public sealed class ToolNameLengthAnalyzerTests
     private const string KaleidoStubs = @"
 namespace System.Runtime.CompilerServices { internal static class IsExternalInit { } }
 
-namespace Kaleido.Processor
+namespace Kaleido.Process
 {
     public interface IProcessStep { }
 
@@ -40,7 +40,7 @@ namespace Kaleido.Queryable
     public async Task AStepWithinTheBudget_NoDiagnostic()
     {
         await RunAsync(@"
-public sealed record CaptureRequestingProviderStep : Kaleido.Processor.IProcessStep;
+public sealed record CaptureRequestingProviderStep : Kaleido.Process.IProcessStep;
 " + KaleidoStubs);
     }
 
@@ -48,7 +48,7 @@ public sealed record CaptureRequestingProviderStep : Kaleido.Processor.IProcessS
     public async Task AStepOverTheBudget_Reports()
     {
         await RunAsync(@"
-public sealed record {|#0:" + LongStep + @"|} : Kaleido.Processor.IProcessStep;
+public sealed record {|#0:" + LongStep + @"|} : Kaleido.Process.IProcessStep;
 " + KaleidoStubs,
             Expected.WithLocation(0).WithArguments(
                 LongStep,
@@ -61,7 +61,7 @@ public sealed record {|#0:" + LongStep + @"|} : Kaleido.Processor.IProcessStep;
     public async Task AnInformationStep_IsNotATool_NoDiagnostic()
     {
         await RunAsync(@"
-public sealed record " + LongStep + @" : Kaleido.Processor.IInformationStep;
+public sealed record " + LongStep + @" : Kaleido.Process.IInformationStep;
 " + KaleidoStubs);
     }
 

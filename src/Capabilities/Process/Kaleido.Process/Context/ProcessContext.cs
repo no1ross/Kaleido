@@ -1,0 +1,226 @@
+namespace Kaleido.Process.Context;
+
+/// <summary>
+/// <para>
+/// Represents the current durable state of a process instance.
+/// This object contains only the information required to continue
+/// processing future requests.
+/// </para>
+/// <para>
+/// Historical activity and operational evidence are emitted as
+/// process events and should not be stored here.
+/// </para>
+/// </summary>
+public sealed record ProcessContext
+{
+    /// <summary>
+    /// Uniquely identifies the process instance.
+    /// </summary>
+    public required Guid ProcessId
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The registered name of the processor that owns this process instance.
+    /// </summary>
+    public required string ProcessorName
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The version of the processor that owns this process instance
+    /// (<see cref="KaleidoServiceOptions.ServiceVersion"/>); <see langword="null"/> when it is unversioned.
+    /// </summary>
+    public string? ProcessorVersion
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The key the process is stored under: <see cref="ProcessorName"/>, <see cref="ProcessorVersion"/> and
+    /// <see cref="ProcessId"/> (#552).
+    /// </summary>
+    public Storage.ProcessKey Key => new(ProcessorName, ProcessorVersion, ProcessId);
+
+    /// <summary>
+    /// The correlation request id (<see cref="KaleidoCorrelationContext.RequestId"/>) of the latest
+    /// request that created or loaded this process. The runtime copies it to the
+    /// <see cref="StepContext.LatestRequestId"/> of each step whose execution that request records
+    /// (not a step its handler rejects). It is saved only when the process is created or such a step
+    /// is recorded; a request that records no step leaves the stored value unchanged.
+    /// </summary>
+    public string? LatestRequestId
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The stored version of this process state (optimistic concurrency): 0 for a process that has
+    /// never been saved, incremented by every save. A store saves a context only when its stored
+    /// version still equals this value, and returns the saved context with the new version.
+    /// </summary>
+    public long Version
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The caller that created this process (<see cref="KaleidoCorrelationContext.Caller"/> at
+    /// creation). <see langword="null"/> when the process was created anonymously or on a transport
+    /// without an authenticated caller.
+    /// </summary>
+    /// <remarks>
+    /// A tag only (created by), never enforced. Kaleido has no case-level
+    /// guardrails: whether a caller may open or continue a particular process
+    /// is a business/data-level concern of the underlying systems, and a
+    /// process may be continued by different callers (e.g. started through an
+    /// IVR, taken over by a phone rep, finished by the provider in a portal),
+    /// subject only to each step's declared roles/policies (ADR 0010).
+    /// </remarks>
+    public KaleidoCaller? CreatedBy
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The caller of the latest request that changed this process - stamped with
+    /// <see cref="LatestRequestId"/>, and saved only when a step of that request ran. A tag only,
+    /// like <see cref="CreatedBy"/>.
+    /// </summary>
+    public KaleidoCaller? UpdatedBy
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Current process execution state.
+    /// </summary>
+    public ProcessExecutionState State
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// When the process is waiting for a specific next step on the local processor,
+    /// this contains the step name. Null when <see cref="TargetProcessorName"/> is set.
+    /// </summary>
+    public string? RequiredStep
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The pending information request: the questions <see cref="RequiredStep"/> (an
+    /// <see cref="IInformationStep"/>) needs answered, stored as presented. Set only in
+    /// <see cref="ProcessExecutionState.AwaitingInformation"/>; replaced or cleared by the next
+    /// outcome. This is execution state only: recording the questions and answers over time is
+    /// the implementer's concern.
+    /// </summary>
+    public InformationRequest? RequiredInformationRequest
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// When set, the process has been handed off to this processor.
+    /// The consumer must call the target processor's state endpoint to continue.
+    /// </summary>
+    public string? TargetProcessorName
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// The currently available next steps on the local processor
+    /// that may be supplied by the caller.
+    /// </summary>
+    public IReadOnlyCollection<string> AvailableSteps
+    {
+        get;
+        init;
+    }
+        = [];
+
+    /// <summary>
+    /// Current state for each registered process step.
+    /// </summary>
+    public IReadOnlyCollection<StepContext> Steps
+    {
+        get;
+        init;
+    }
+        = [];
+
+    /// <summary>
+    /// When the process instance was created (UTC); set once when the runtime initializes the context.
+    /// </summary>
+    public DateTimeOffset CreatedUtc
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// A timestamp (UTC) the runtime sets on creation, when a loaded process is reconciled with the
+    /// registered steps (at the start of every request on it), and when a step's result or failure
+    /// is applied. A cancelled step does not set it. Like the rest of the context, a new value is
+    /// stored only when the context is saved.
+    /// </summary>
+    public DateTimeOffset UpdatedUtc
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Returns the state of the step named <paramref name="stepName"/> (case-insensitive), or
+    /// <see langword="null"/> when <see cref="Steps"/> has no entry for it.
+    /// </summary>
+    /// <param name="stepName">The step's name: its type name.</param>
+    /// <returns>The step's <see cref="StepContext"/>, or <see langword="null"/>.</returns>
+    /// <exception cref="ArgumentException"><paramref name="stepName"/> is null, empty or whitespace.</exception>
+    public StepContext? FindStep(
+        string stepName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stepName);
+
+        return Steps.FirstOrDefault(
+            x => string.Equals(
+                x.StepName,
+                stepName,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Whether the step named <paramref name="stepName"/> (case-insensitive) has the status
+    /// <see cref="StepExecutionStatus.Completed"/> in <see cref="Steps"/>.
+    /// </summary>
+    /// <param name="stepName">The step's name: its type name.</param>
+    /// <returns>
+    /// <see langword="true"/> when the step's last recorded status is completed; <see langword="false"/>
+    /// when it has any other status or is not in <see cref="Steps"/>.
+    /// </returns>
+    public bool HasCompletedStep(
+        string stepName)
+    {
+        return Steps.Any(
+            x => string.Equals(
+                x.StepName,
+                stepName,
+                StringComparison.OrdinalIgnoreCase)
+            && x.Status == StepExecutionStatus.Completed);
+    }
+}

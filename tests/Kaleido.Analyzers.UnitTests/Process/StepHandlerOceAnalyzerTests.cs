@@ -12,7 +12,7 @@ public sealed class StepHandlerOceAnalyzerTests
         new();
 
     private const string KaleidoStubs = @"
-namespace Kaleido.Processor.Execution
+namespace Kaleido.Process.Execution
 {
     public interface IProcessStepHandler<TStep>
     {
@@ -31,7 +31,7 @@ namespace Kaleido.Processor.Execution
     {
         await RunAsync(@"
 public class MyStep { }
-public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
+public class MyHandler : Kaleido.Process.Execution.IProcessStepHandler<MyStep>
 {
     public System.Threading.Tasks.Task<int> ExecuteAsync(
         MyStep step, object context,
@@ -51,7 +51,7 @@ public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
     {
         await RunAsync(@"
 public class MyStep { }
-public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
+public class MyHandler : Kaleido.Process.Execution.IProcessStepHandler<MyStep>
 {
     public System.Threading.Tasks.Task<int> ExecuteAsync(
         MyStep step, object context,
@@ -70,7 +70,7 @@ public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
     {
         await RunAsync(@"
 public class MyStep { }
-public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
+public class MyHandler : Kaleido.Process.Execution.IProcessStepHandler<MyStep>
 {
     public System.Threading.Tasks.Task<int> ExecuteAsync(
         MyStep step, object context,
@@ -92,7 +92,7 @@ public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
     {
         await RunAsync(@"
 public class MyStep { }
-public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
+public class MyHandler : Kaleido.Process.Execution.IProcessStepHandler<MyStep>
 {
     public System.Threading.Tasks.Task<int> ExecuteAsync(
         MyStep step, object context,
@@ -111,7 +111,7 @@ public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
 using OCE = System.OperationCanceledException;
 public class MyStep { }
 public class MyCanceledException : System.OperationCanceledException { }
-public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
+public class MyHandler : Kaleido.Process.Execution.IProcessStepHandler<MyStep>
 {
     private bool retry;
 " + members + @"
@@ -225,9 +225,9 @@ public class LookAlike : Elsewhere.IProcessStepHandler<MyStep>
     {
         await RunAsync(@"
 public class MyStep { }
-public class MyHandler : Kaleido.Processor.Execution.IProcessStepHandler<MyStep>
+public class MyHandler : Kaleido.Process.Execution.IProcessStepHandler<MyStep>
 {
-    System.Threading.Tasks.Task<int> Kaleido.Processor.Execution.IProcessStepHandler<MyStep>.ExecuteAsync(
+    System.Threading.Tasks.Task<int> Kaleido.Process.Execution.IProcessStepHandler<MyStep>.ExecuteAsync(
         MyStep step, object context, System.Threading.CancellationToken cancellationToken)
     {
         try { }

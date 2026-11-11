@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<Compile Include="..\..\..\Shared\SutFixture.cs" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Process\Kaleido.Process.Server\Kaleido.Process.Server.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Process.Server.Idempotency" />
+	</ItemGroup>
+</Project>

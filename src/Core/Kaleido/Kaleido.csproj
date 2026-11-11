@@ -42,6 +42,8 @@
 		<InternalsVisibleTo Include="Kaleido.Eventing" />
 		<InternalsVisibleTo Include="Kaleido.Eventing.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Process" />
+		<!-- Process.Server uses the shared explicit-store Replace helper (conflict, idempotence, scoped lifetime). -->
+		<InternalsVisibleTo Include="Kaleido.Process.Server" />
 		<InternalsVisibleTo Include="Kaleido.Process.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Queryable" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.UnitTests" />

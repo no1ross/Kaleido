@@ -20,7 +20,7 @@ public sealed class ToolNameLengthAnalyzer : DiagnosticAnalyzer
 {
     public const int MaxCapabilityLength = 40;
 
-    private const string InformationStepInterfaceFullName = "Kaleido.Processor.IInformationStep";
+    private const string InformationStepInterfaceFullName = "Kaleido.Process.IInformationStep";
 
     private static readonly string[] Suffixes =
         ["QueryContextSource", "QueryViewSource", "ViewSource", "Source", "Step"];

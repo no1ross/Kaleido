@@ -1,5 +1,5 @@
 {
-  // Foundation and Queryable settings only. Add each other owner when its project is migrated.
+  // Foundation, Queryable and Process settings only. Add each other owner when its project is migrated.
   "Kaleido": {
     // Required: lowercase service identity, also used in published route names.
     "ServiceName": "orders",
@@ -14,6 +14,17 @@
       "DefaultAuthorization": {
         "Policy": "read-orders",
         "Roles": ["reader"],
+        "AllowAnonymous": false
+      }
+    },
+    "Process": {
+      // Optional: marks this processor as an entry processor in published metadata.
+      "IsEntryProcessor": true,
+      // Optional: steps without their own authorization declaration inherit this rule.
+      // An absent Process default is unspecified standalone; Hosting inheritance is later-owned.
+      "DefaultAuthorization": {
+        "Policy": "write-orders",
+        "Roles": ["processor"],
         "AllowAnonymous": false
       }
     }

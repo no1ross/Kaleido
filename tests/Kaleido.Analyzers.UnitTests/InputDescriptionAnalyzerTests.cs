@@ -25,7 +25,7 @@ namespace System.ComponentModel.DataAnnotations
     }
 }
 
-namespace Kaleido.Processor
+namespace Kaleido.Process
 {
     public interface IProcessStep { }
 
@@ -52,7 +52,7 @@ namespace Kaleido.Queryable
     public async Task StepPropertyWithoutDescription_Reports()
     {
         await RunAsync(@"
-public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
+public sealed record CaptureMemberStep : Kaleido.Process.IProcessStep
 {
     public string {|#0:MemberId|} { get; init; } = """";
 }
@@ -64,7 +64,7 @@ public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
     public async Task StepPropertyWithDescriptionOrDisplayDescription_NoDiagnostic()
     {
         await RunAsync(@"
-public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
+public sealed record CaptureMemberStep : Kaleido.Process.IProcessStep
 {
     [System.ComponentModel.Description(""The member's identifier on their card."")]
     public string MemberId { get; init; } = """";
@@ -79,7 +79,7 @@ public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
     public async Task DisplayWithoutDescription_Reports()
     {
         await RunAsync(@"
-public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
+public sealed record CaptureMemberStep : Kaleido.Process.IProcessStep
 {
     [System.ComponentModel.DataAnnotations.Display(Name = ""Member ID"", Prompt = ""What is the member ID?"")]
     public string {|#0:MemberId|} { get; init; } = """";
@@ -92,7 +92,7 @@ public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
     public async Task EmptyDescription_Reports()
     {
         await RunAsync(@"
-public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
+public sealed record CaptureMemberStep : Kaleido.Process.IProcessStep
 {
     [System.ComponentModel.Description("" "")]
     public string {|#0:MemberId|} { get; init; } = """";
@@ -105,7 +105,7 @@ public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
     public async Task InformationStep_IsNotChecked()
     {
         await RunAsync(@"
-public sealed record AnswerStep : Kaleido.Processor.IInformationStep
+public sealed record AnswerStep : Kaleido.Process.IInformationStep
 {
     public string InformationRequestId { get; init; } = """";
 }

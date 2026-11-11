@@ -12,7 +12,7 @@ public sealed class ProcessStepAttributeAnalyzerTests
         new();
 
     private const string ProcessStepStub = @"
-namespace Kaleido.Processor
+namespace Kaleido.Process
 {
     [System.AttributeUsage(System.AttributeTargets.Class)]
     public class ProcessStepAttribute : System.Attribute
@@ -29,7 +29,7 @@ namespace Kaleido.Processor
     public async Task DisplayName_Empty_Reports()
     {
         await RunAsync(@"
-using Kaleido.Processor;
+using Kaleido.Process;
 [{|#0:ProcessStep(DisplayName = """", Description = ""Does foo."")|}]
 public class MyStep { }
 " + ProcessStepStub,
@@ -40,7 +40,7 @@ public class MyStep { }
     public async Task Description_WhitespaceOnly_Reports()
     {
         await RunAsync(@"
-using Kaleido.Processor;
+using Kaleido.Process;
 [{|#0:ProcessStep(DisplayName = ""Foo"", Description = ""   "")|}]
 public class MyStep { }
 " + ProcessStepStub,
@@ -51,7 +51,7 @@ public class MyStep { }
     public async Task Valid_NoDiagnostic()
     {
         await RunAsync(@"
-using Kaleido.Processor;
+using Kaleido.Process;
 [ProcessStep(DisplayName = ""Foo"", Description = ""Does foo."")]
 public class MyStep { }
 " + ProcessStepStub);
@@ -62,7 +62,7 @@ public class MyStep { }
     public async Task ConstantExpressions_NoDiagnostic()
     {
         await RunAsync(@"
-using Kaleido.Processor;
+using Kaleido.Process;
 public static class Texts { public const string Name = ""Foo""; }
 [ProcessStep(DisplayName = Texts.Name, Description = ""Does foo. "" + nameof(MyStep))]
 public class MyStep { }
@@ -73,7 +73,7 @@ public class MyStep { }
     public async Task ConstantExpressionThatIsEmpty_Reports()
     {
         await RunAsync(@"
-using Kaleido.Processor;
+using Kaleido.Process;
 public static class Texts { public const string Empty = """"; }
 [{|#0:ProcessStep(DisplayName = ""Foo"", Description = Texts.Empty + """")|}]
 public class MyStep { }

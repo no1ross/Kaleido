@@ -1,0 +1,184 @@
+namespace Kaleido.Process;
+
+/// <summary>
+/// Stable Processor codes shared by startup, planning, validation, and execution.
+/// Message severity is carried separately by <see cref="MessageType"/>.
+/// </summary>
+public static class ProcessorErrorCodes
+{
+    /// <summary>A step type is missing [ProcessStep].</summary>
+    public const string MissingAttribute = "pro_missing_attribute";
+
+    /// <summary>A step has no registered handler.</summary>
+    public const string MissingHandler = "pro_missing_handler";
+
+    /// <summary>A handler has an invalid signature.</summary>
+    public const string InvalidHandler = "pro_invalid_handler";
+
+    /// <summary>Registered step names are duplicated.</summary>
+    public const string DuplicateStep = "pro_duplicate_step";
+
+    /// <summary>A step registration is structurally invalid.</summary>
+    public const string InvalidRegistration = "pro_invalid_registration";
+
+    /// <summary>The requested step is not registered.</summary>
+    public const string UnknownStep = "pro_unknown_step";
+
+    /// <summary>
+    /// The request names a process that does not exist, and is not a handoff from another
+    /// processor: a new process is never started under an unknown id by mistake.
+    /// </summary>
+    public const string ProcessNotFound = "pro_process_not_found";
+
+    /// <summary>
+    /// The process was changed by another request since this one loaded it (optimistic
+    /// concurrency): nothing was saved. Read the process state again and decide on the next step.
+    /// </summary>
+    public const string ProcessConflict = "pro_process_conflict";
+
+    /// <summary>
+    /// An idempotency key was sent again with a different request: the key identifies one logical call
+    /// and its stored answer belongs to the first request. Use a new key for a new call.
+    /// </summary>
+    public const string IdempotencyKeyReused = "pro_idempotency_key_reused";
+
+    /// <summary>
+    /// An idempotency key is invalid under the admission surface's key-length or caller-scope rules.
+    /// </summary>
+    public const string InvalidIdempotencyKey = "pro_invalid_idempotency_key";
+
+    /// <summary>
+    /// The first request with this idempotency key is still running, so this one did not run. Retry
+    /// later with the same key to get its answer.
+    /// </summary>
+    public const string IdempotencyInProgress = "pro_idempotency_in_progress";
+
+    /// <summary>
+    /// The first request with this idempotency key did not finish with an answer: it never finished (e.g.
+    /// the service stopped while it ran) or failed after its step may have run (an unexpected error, a
+    /// cancellation). It may or may not have run, so it is not run again with this key until the record
+    /// expires: read the process state and decide on the next step.
+    /// </summary>
+    public const string IdempotencyOutcomeUnknown = "pro_idempotency_outcome_unknown";
+
+    /// <summary>The supplied step request is invalid.</summary>
+    public const string InvalidRequest = "pro_invalid_request";
+
+    /// <summary>Step validation failed without a more specific built-in code.</summary>
+    public const string ValidationFailed = "pro_validation_failed";
+
+    /// <summary>A required step field is missing.</summary>
+    public const string Required = "pro_required";
+
+    /// <summary>A step field violates a length constraint.</summary>
+    public const string InvalidLength = "pro_invalid_length";
+
+    /// <summary>A step field is outside its allowed range.</summary>
+    public const string OutOfRange = "pro_out_of_range";
+
+    /// <summary>A step field does not match its declared format.</summary>
+    public const string InvalidFormat = "pro_invalid_format";
+
+    /// <summary>A previously completed step requires no additional processing.</summary>
+    public const string AlreadyProcessed = "pro_already_processed";
+
+    /// <summary>A required dependency has not been completed.</summary>
+    public const string DependencyNotSatisfied = "pro_dependency_not_satisfied";
+
+    /// <summary>A required next step is invalid.</summary>
+    public const string InvalidRequiredStep = "pro_invalid_required_step";
+
+    /// <summary>The required next step cannot be executed.</summary>
+    public const string RequiredStepNotAllowed = "pro_required_step_not_allowed";
+
+    /// <summary>
+    /// A handler handed the process off wrongly: to the service it runs in (a handoff names another
+    /// service), or with a target answer whose step did not complete (the target did not take the
+    /// process over) or that both requires and offers the same step (#198). Reported as a process
+    /// violation: the process keeps its state.
+    /// </summary>
+    public const string InvalidHandOff = "pro_invalid_hand_off";
+
+    /// <summary>Step execution was cancelled.</summary>
+    public const string ExecutionCanceled = "pro_execution_canceled";
+
+    /// <summary>An unexpected framework error interrupted a step.</summary>
+    public const string FrameworkException = "pro_framework_exception";
+
+    /// <summary>A repeatable step remains eligible after prior execution.</summary>
+    public const string RepeatableStep = "pro_repeatable_step";
+
+    /// <summary>A process execution result contained no entry for the step that was executed.</summary>
+    public const string MissingStepResult = "pro_missing_step_result";
+
+    /// <summary>
+    /// The submitted step is not a next step of the process: not the pending required step,
+    /// or not available under the process rules.
+    /// </summary>
+    public const string StepNotAvailable = "pro_step_not_available";
+
+    /// <summary>
+    /// The process has ended here: it is complete, it ended in a business failure, or it was handed
+    /// off to another service. Nobody can run a step of this service on it (a handoff back from the
+    /// service that holds it excepted); start a new process, or continue on the named service (#512).
+    /// </summary>
+    public const string ProcessEnded = "pro_process_ended";
+
+    /// <summary>
+    /// A step's handler ran, but the process could not be saved; its outcome is kept and saved when the
+    /// store is available again (503). Do not send the step again: read the process state later (#537).
+    /// </summary>
+    public const string OutcomePendingRecovery = "pro_outcome_pending_recovery";
+
+    /// <summary>
+    /// A step's handler ran, but its outcome was not saved and could not be kept for recovery (500), or
+    /// another request changed the process meanwhile (409). Do not send the step again: its own work may
+    /// have happened, and the process must be reconciled (#537).
+    /// </summary>
+    public const string OutcomeNotSaved = "pro_outcome_not_saved";
+
+    /// <summary>
+    /// The outcome of an earlier step of the process is still being saved: nothing was run (409). Try
+    /// again shortly (#537).
+    /// </summary>
+    public const string ProcessRecovering = "pro_process_recovering";
+
+    /// <summary>
+    /// A notice, not an error (#524): the process continues with a step the caller may not run, or
+    /// offers only such steps; or a step input's lookup names a query the caller may not use. The
+    /// response leaves them out and does not name them: the caller learns only that something is
+    /// beyond their access.
+    /// </summary>
+    public const string NotPermitted = "pro_not_permitted";
+
+    /// <summary>A handler returned an information request that is not well-formed.</summary>
+    public const string InformationRequestInvalid = "pro_information_request_invalid";
+
+    /// <summary>An information step was required without an information request.</summary>
+    public const string InformationRequestMissing = "pro_information_request_missing";
+
+    /// <summary>
+    /// Answers were submitted for an information request that is not pending (another step,
+    /// another request, or nothing was requested).
+    /// </summary>
+    public const string InformationResponseMismatch = "pro_information_response_mismatch";
+
+    /// <summary>
+    /// Answers carry the exchange id of an earlier time the questions were put, not of the pending
+    /// request (a delayed answer, a stale form, a replayed continuation - perhaps of the same
+    /// questionnaire with the same item ids). Rejected before any handler runs; answer the current
+    /// questions (#442).
+    /// </summary>
+    public const string InformationResponseStale = "pro_information_response_stale";
+
+    /// <summary>A presented question has no answer.</summary>
+    public const string InformationResponseUnanswered = "pro_information_response_unanswered";
+
+    /// <summary>
+    /// An answer doesn't fit its question: unknown item, wrong value for the item type, a choice
+    /// that wasn't offered, or several answers to a question that doesn't repeat.
+    /// </summary>
+    public const string InformationResponseInvalidAnswer = "pro_information_response_invalid_answer";
+
+    internal const string InformationResponsePrefix = "pro_information_response_";
+}

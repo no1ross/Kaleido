@@ -59,6 +59,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0041](./0041-capability-owned-project-boundaries.md) | Project and registration boundaries follow behavioral ownership; migrate from the foundation outward | Accepted | #585, #586, #588 |
 | [0042](./0042-event-types-belong-to-capabilities.md) | Process and Queryable own their event discriminators, not lower-level Eventing | Accepted | #585, #589, #590 |
 | [0043](./0043-required-service-identity-and-shared-authorization-declarations.md) | Every service has a version, InstanceId is internal, and shared authorization declarations/metadata live in Core | Accepted | #585, #586, #588, #595 |
+| [0044](./0044-process-server-idempotency-ownership.md) | Generic Process owns state/transactions; Process.Server owns neutral idempotency admission and opaque replay | Accepted | #589, #587, #600, #602 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

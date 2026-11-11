@@ -31,7 +31,7 @@ namespace System.ComponentModel.DataAnnotations
     public sealed class RequiredAttribute : System.Attribute { }
 }
 
-namespace Kaleido.Processor
+namespace Kaleido.Process
 {
     public interface IProcessStep { }
 }
@@ -53,7 +53,7 @@ public enum ProcedureCodeSystem { Unknown, Cpt }";
     public async Task RequiredValueTypeStepInputs_Report()
     {
         await RunAsync(@"
-public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
+public sealed record CaptureMemberStep : Kaleido.Process.IProcessStep
 {
     [System.ComponentModel.DataAnnotations.Required]
     public System.Guid {|#0:MemberId|} { get; init; }
@@ -83,7 +83,7 @@ public sealed class ProviderSearchParameters : Kaleido.Queryable.IQueryParameter
     public async Task NullableReferenceAndOptionalInputs_NoDiagnostic()
     {
         await RunAsync(@"
-public sealed record CaptureMemberStep : Kaleido.Processor.IProcessStep
+public sealed record CaptureMemberStep : Kaleido.Process.IProcessStep
 {
     [System.ComponentModel.DataAnnotations.Required]
     public System.Guid? MemberId { get; init; }

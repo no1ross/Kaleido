@@ -44,8 +44,8 @@ public sealed class StepHandlerOceAnalyzer : DiagnosticAnalyzer
         {
             var handlers = new[]
                 {
-                    start.Compilation.GetTypeByMetadataName("Kaleido.Processor.Execution.IProcessStepHandler`1"),
-                    start.Compilation.GetTypeByMetadataName("Kaleido.Processor.Execution.IProcessStepHandler`2"),
+                    start.Compilation.GetTypeByMetadataName("Kaleido.Process.Execution.IProcessStepHandler`1"),
+                    start.Compilation.GetTypeByMetadataName("Kaleido.Process.Execution.IProcessStepHandler`2"),
                 }
                 .Where(x => x is not null)
                 .Cast<INamedTypeSymbol>()

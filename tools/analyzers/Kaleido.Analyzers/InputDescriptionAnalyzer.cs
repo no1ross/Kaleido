@@ -16,7 +16,7 @@ namespace Kaleido.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class InputDescriptionAnalyzer : DiagnosticAnalyzer
 {
-    private const string InformationStepInterfaceFullName = "Kaleido.Processor.IInformationStep";
+    private const string InformationStepInterfaceFullName = "Kaleido.Process.IInformationStep";
     private const string QueryParametersInterfaceFullName = "Kaleido.Queryable.IQueryParameters";
 
     private static readonly DiagnosticDescriptor StepRule =

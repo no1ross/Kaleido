@@ -177,10 +177,10 @@ job.
 
 ## State, events and history
 
-- **State** holds only the pending request (`ProcessorContext.RequiredInformationRequest`). It
+- **State** holds only the pending request (`ProcessContext.RequiredInformationRequest`). It
   sits next to `RequiredStep` and is tied to the execution that produced it by
-  `LatestRequestId`. Stores persist it (the SQLite reference store keeps it as JSON on the
-  required-step row); a consumer `IKaleidoContextStore` must persist it too.
+  `LatestRequestId`. Stores persist it (a provider must keep it with the
+  required-step state; the existing SQLite adapter remains unmigrated (#587)); a consumer `IProcessContextStore` must persist it too.
 - **No history.** Kaleido doesn't keep past questions or answers. Recording them is yours.
   `StepCompleted` already carries each step's payload (the answers), and `PlanBuilt` /
   `StepCompleted` / `ExecutionCompleted` carry `RequiredInformationRequest`.

@@ -89,16 +89,17 @@ Require it only with `RequireInformation<TNext>(request)`, not `Success<TNext>()
 services.AddKaleido(builder.Configuration, new()
 {
     ServiceName = "intake", // lowercase letters, digits, '-' and '_' (KAL2005)
-    ServiceVersion = "1",  // required for versioned HTTP routes
+    ServiceVersion = "1",  // required for every service (from code or configuration); also scopes state and routes
     Assemblies = [typeof(Program).Assembly], // explicit — never omit (KAL2006)
 })
     .AddEventing()                         // outbox-backed event writer; choose its store too
     .AddProcess()                          // explicit step/handler runtime
-    .AddContextStore<IntakeContextStore>() // every used store must be chosen (ADR 0028)
-    .AddIdempotencyStore<IntakeIdempotencyStore>()
-    .AddOutboxStore<IntakeOutboxStore>()   // or AddInMemoryStores() for local development
-    .AddHttp()
-    .AddControlRegistryClient(); // Kaleido:BaseUrl names the gateway to the central registry
+    .AddContextStore<IntakeContextStore>() // Process state: choose a provider explicitly
+    .AddTransactions<IntakeTransactions>() // same provider session as the outbox
+    .AddOutboxStore<IntakeOutboxStore>();  // Eventing owns this store
+
+// Separately, a server that uses idempotency admission registers its own store:
+// kaleido.AddIdempotencyStore<IntakeIdempotencyStore>(); // Kaleido.Process.Server
 ```
 
-`AddKaleido()` registers the foundation, **not** Process/Queryable/Eventing. A provider's state/idempotency stores and outbox must be durable for production, with `IKaleidoTransactions` covering state + event on the same database when atomicity is required. A host publishing the database's events calls `AddOutboxRelay<TPublisher>()` explicitly; other services need no publisher ([Eventing architecture](../events.md)). Concurrent saves are conditional on the loaded version: the losing call receives 409 `pro_process_conflict`; the handler may already have run, so external side effects must be idempotent (upsert, business key or process id). An `Idempotency-Key` returns the stored result for a retry without executing a step twice. A third-party caller supplies its own key per logical call. A custom store implements a conditional save scoped by `ProcessKey` (processor, version, process id), idempotent-result methods and an outbox with leased claims and writer identity ([SQLite provider contract](../../../src/Providers/Kaleido.Provider.SQLite/README.md#implementing-your-own-store), [ADR 0036](../../decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)). Business side effects outside the store cannot be made atomic automatically.
+`AddKaleido()` registers the foundation, **not** Process/Queryable/Eventing. `AddProcess()` selects no in-memory context or idempotency store; the later Provider's `AddInMemoryProviders()` is an explicit development choice. Generic Process owns `IProcessContextStore` and `IProcessTransactions`; its transition state save and Eventing outbox add are atomic only when **both stores join the same provider session/transaction**, regardless of database technology. A common database alone is insufficient. The neutral `Kaleido.Process.Server.Idempotency.IProcessIdempotencyStore` is a separate server-side admission store with opaque replay bytes and a format identifier ([ADR 0044](../../decisions/0044-process-server-idempotency-ownership.md)); a durable implementation is needed across restarts/instances. HTTP/SQLite adapters are not yet migrated to that contract (#587), so this is not a working end-to-end HTTP/SQLite wiring recipe and persisted replay rows have not been converted. A host publishing events calls `AddOutboxRelay<TPublisher>()` explicitly ([Eventing architecture](../events.md)). Concurrent saves are conditional on the loaded version: a stale save raises `ProcessConcurrencyException` (`pro_process_conflict`); the handler may have run already, so external effects must be idempotent. Store keys include processor, version and process id; new services require `ServiceVersion`, while persisted `ProcessKey.ProcessorVersion` and `ProcessContext.ProcessorVersion` remain nullable for legacy state. Business effects outside the transaction cannot be made atomic automatically.

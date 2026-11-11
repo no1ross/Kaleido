@@ -3,7 +3,6 @@
 	<PropertyGroup>
 		<Description>Kaleido Process capability: step registration, execution, state transitions, recovery and process store contracts.</Description>
 		<PackageTags>kaleido;process;workflow;runtime</PackageTags>
-		<RootNamespace>Kaleido</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -16,10 +15,12 @@
 		<Using Include="Kaleido" />
 		<Using Include="Kaleido.Eventing" />
 		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Exceptions" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Process.Planning" />
+		<Using Include="Kaleido.Process.Storage" />
 		<Using Include="Kaleido.Observability" />
-		<Using Include="Kaleido.Processor" />
-		<Using Include="Kaleido.Processor.Execution" />
-		<Using Include="Kaleido.Processor.Planning" />
 		<Using Include="Kaleido.Storage" />
 	</ItemGroup>
 

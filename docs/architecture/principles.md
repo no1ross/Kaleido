@@ -4,8 +4,8 @@ Kaleido is a process engine: it executes declared mechanisms but does not make a
 
 | Term | Meaning |
 | --- | --- |
-| **Service** | A deployed Kaleido host with `Kaleido:ServiceName` and optional `ServiceVersion`, published at `/{service}/{version}` by HTTP. |
-| **Processor** | A service's step-hosting runtime/DI identity (`Kaleido.Process`, currently `Kaleido.Processor.*` namespaces), registered with `AddProcess()`. |
+| **Service** | A deployed Kaleido host with `Kaleido:ServiceName` and required `ServiceVersion` (from code or configuration), published at `/{service}/{version}` by HTTP. |
+| **Processor** | A service's step-hosting runtime/DI identity (`Kaleido.Process` and its folder-aligned namespaces), registered with `AddProcess()`. |
 | **Process** | One executing workflow instance (`ProcessId`, `ProcessExecutionState`, process events and `/processes` routes). |
 | **Step** | A unit of work in a Processor (`IProcessStep`, `[ProcessStep]`), identified by its type name; the step marks work, not the executor. |
 | **Source / View / Query context** | A Queryable source (`IQuerySource<T>`, `[QuerySource]`) is the published capability; a view (`IQueryViewSource<TSource,…>`, `[QueryView]`) projects it; a context (`IQueryContext`) describes how it is queried. Names are type names. |
@@ -20,4 +20,4 @@ A capability has no independent version attribute; its type name identifies it i
 
 Define response meaning before choosing JSON, gRPC or another wire shape. Keep handler-authored `BusinessMessages` distinct from framework `FrameworkMessages`; callers may present the former and treat the latter as diagnostics. An option can include framework messages, but when disabled the collection is **empty**, not absent by a JSON-only rule. Repeated fields have the same empty-collection semantics over future transports. Adapters decide which messages to populate; serializer-specific omission does not define the contract or belong in core runtime types.
 
-Use `Processor*` for what hosts/runs work (runtime, registries, planner, executor, stores, telemetry identity); use `Process*` for one executing instance (request, response, state, routes, events). A published HTTP resource can still be `processes` even where `Kaleido.Platform.Processor`, `Kaleido.Http.Server.Processor` and `Kaleido.Http.Client.Processor` adapt its contracts. More detailed capability behavior belongs in [Process](capabilities/process.md) and [Queryable](capabilities/queryable.md), not this vocabulary page.
+Use `Processor*` for what hosts/runs work (runtime, registries, planner, executor, telemetry identity); use `Process*` for one executing instance and its request, response, state, storage contracts and events. A published HTTP resource can still be `processes` even where `Kaleido.Platform.Processor`, `Kaleido.Http.Server.Processor` and `Kaleido.Http.Client.Processor` adapt its contracts. More detailed capability behavior belongs in [Process](capabilities/process.md) and [Queryable](capabilities/queryable.md), not this vocabulary page.

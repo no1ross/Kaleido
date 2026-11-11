@@ -27,8 +27,7 @@ services.AddKaleido(configuration, new()
 
 `Kaleido.Registry.AuthorizationMetadata` and `[KaleidoAuthorization]` are foundation declarations under `src/Core/Kaleido/Registry/`; `AddServer()` binds the transport-neutral enforcement settings in the temporary Server.Next shell. The host's transport still enforces the effective rule.
 
-Both can also be bound from configuration (`Kaleido:AuthorizationMode`,
-`Kaleido:DefaultAuthorization:Policy`, `Kaleido:DefaultAuthorization:Roles:0`, …).
+The service-wide mode and default can also be bound from `Kaleido:AuthorizationMode`, `Kaleido:DefaultAuthorization:Policy` and `Kaleido:DefaultAuthorization:Roles:0`. Process's separate optional default binds from `Kaleido:Process:DefaultAuthorization:*`; when absent, standalone Process uses an unspecified rule. Hosting's service-default inheritance remains a later owner.
 
 **The default is `Authenticated`** ([ADR 0021](../decisions/0021-authenticated-by-default.md)): a host that never sets the
 mode enforces an authenticated caller on every capability, and without an authentication scheme
@@ -160,7 +159,7 @@ case started through an IVR, taken over by a rep on the phone, finished by the p
 a portal — subject only to each step's declared roles/policies. A caller the next step does
 not admit is still refused (401/403).
 
-`ProcessorContext.CreatedBy` is captured at process creation from
+`ProcessContext.CreatedBy` is captured at process creation from
 `KaleidoCorrelationContext.Caller` (transport-supplied, post-auth — see
 [`CORRELATION.md`](correlation.md)) as a **tag only** (created by), like `UpdatedBy` and the step tags ([caller tags](correlation.md#caller-tags-tagging-only)); none is ever
 enforced. There is no transfer endpoint.
@@ -214,7 +213,7 @@ implementer does, with these hooks:
   authorization policy to every Kaleido endpoint (`app.MapKaleidoHttp().RequireAuthorization("case-access")`).
   Its handler can read the process id from the route value or the request header and check the
   case. This is the only place that also guards **reading** state, where no handler runs.
-- **The store.** A host can register its own `IKaleidoContextStore` (or wrap the one it uses) that
+- **The store.** A host can register its own `IProcessContextStore` (or wrap the one it uses) that
   refuses to load a process for a caller who may not see it; this applies to every surface,
   including the MCP adapter, whose calls reach the services as the caller.
 

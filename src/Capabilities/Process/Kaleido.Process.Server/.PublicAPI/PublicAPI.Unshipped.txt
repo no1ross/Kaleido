@@ -1,0 +1,42 @@
+#nullable enable
+Kaleido.Process.Server.Idempotency.IdempotencyRecord
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.<Clone>$() -> Kaleido.Process.Server.Idempotency.IdempotencyRecord!
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.AdmissionId.get -> System.Guid
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.AdmissionId.init -> void
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.Equals(Kaleido.Process.Server.Idempotency.IdempotencyRecord? other) -> bool
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.ExpiresUtc.get -> System.DateTimeOffset
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.ExpiresUtc.init -> void
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.IdempotencyRecord() -> void
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.Key.get -> string!
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.Key.init -> void
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.LeaseUntilUtc.get -> System.DateTimeOffset
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.LeaseUntilUtc.init -> void
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.ProcessorName.get -> string!
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.ProcessorName.init -> void
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.ProcessorVersion.get -> string?
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.ProcessorVersion.init -> void
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.Replay.get -> Kaleido.Process.Server.Idempotency.IdempotencyReplay?
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.Replay.init -> void
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.RequestHash.get -> string!
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.RequestHash.init -> void
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.State.get -> Kaleido.Process.Server.Idempotency.IdempotencyState
+Kaleido.Process.Server.Idempotency.IdempotencyRecord.State.init -> void
+Kaleido.Process.Server.Idempotency.IdempotencyReplay
+Kaleido.Process.Server.Idempotency.IdempotencyReplay.Format.get -> string!
+Kaleido.Process.Server.Idempotency.IdempotencyReplay.IdempotencyReplay(string! format, byte[]! payload) -> void
+Kaleido.Process.Server.Idempotency.IdempotencyReplay.Payload.get -> byte[]!
+Kaleido.Process.Server.Idempotency.IdempotencyState
+Kaleido.Process.Server.Idempotency.IdempotencyState.Completed = 1 -> Kaleido.Process.Server.Idempotency.IdempotencyState
+Kaleido.Process.Server.Idempotency.IdempotencyState.InProgress = 0 -> Kaleido.Process.Server.Idempotency.IdempotencyState
+Kaleido.Process.Server.Idempotency.IdempotencyState.OutcomeUnknown = 2 -> Kaleido.Process.Server.Idempotency.IdempotencyState
+Kaleido.Process.Server.Idempotency.IProcessIdempotencyStore
+Kaleido.Process.Server.Idempotency.IProcessIdempotencyStore.AdmitAsync(Kaleido.Process.Server.Idempotency.IdempotencyRecord! admission, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Process.Server.Idempotency.IdempotencyRecord?>!
+Kaleido.Process.Server.Idempotency.IProcessIdempotencyStore.CompleteAsync(Kaleido.Process.Server.Idempotency.IdempotencyRecord! result, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Kaleido.Process.Server.Idempotency.IProcessIdempotencyStore.ReleaseAsync(string! key, System.Guid admissionId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Kaleido.Process.Server.ProcessServerServiceCollectionExtensions
+override Kaleido.Process.Server.Idempotency.IdempotencyRecord.Equals(object? obj) -> bool
+override Kaleido.Process.Server.Idempotency.IdempotencyRecord.GetHashCode() -> int
+override Kaleido.Process.Server.Idempotency.IdempotencyRecord.ToString() -> string!
+static Kaleido.Process.Server.Idempotency.IdempotencyRecord.operator !=(Kaleido.Process.Server.Idempotency.IdempotencyRecord? left, Kaleido.Process.Server.Idempotency.IdempotencyRecord? right) -> bool
+static Kaleido.Process.Server.Idempotency.IdempotencyRecord.operator ==(Kaleido.Process.Server.Idempotency.IdempotencyRecord? left, Kaleido.Process.Server.Idempotency.IdempotencyRecord? right) -> bool
+static Kaleido.Process.Server.ProcessServerServiceCollectionExtensions.AddIdempotencyStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

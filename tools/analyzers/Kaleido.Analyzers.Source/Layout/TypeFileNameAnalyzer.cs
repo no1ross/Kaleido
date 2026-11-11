@@ -8,7 +8,7 @@ namespace Kaleido.Analyzers.Source.Layout;
 
 /// <summary>
 /// KAL0019 — a type with behavior (TypeBehavior) is declared in a file named after it:
-/// <c>ProcessorContext</c> in <c>ProcessorContext.cs</c>, a generic twin by its arity
+/// <c>ProcessContext</c> in <c>ProcessContext.cs</c>, a generic twin by its arity
 /// (<c>ProcessStepHandlerResult&lt;T&gt;</c> in <c>ProcessStepHandlerResultOfT.cs</c>), the parts of a
 /// partial type in <c>{Name}.cs</c> or <c>{Name}.{Part}.cs</c>. So two types with behavior never share a
 /// file, and a file shows which unit-test class it needs (<c>{Name}Tests</c>, #404). Data-only records,

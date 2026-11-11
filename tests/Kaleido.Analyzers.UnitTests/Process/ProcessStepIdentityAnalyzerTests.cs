@@ -12,7 +12,7 @@ public sealed class ProcessStepIdentityAnalyzerTests
         new();
 
     private const string KaleidoStubs = @"
-namespace Kaleido.Processor
+namespace Kaleido.Process
 {
     public interface IProcessStep { }
 
@@ -34,7 +34,7 @@ namespace Kaleido.Processor
     public async Task AttributeWithoutInterface_Reports()
     {
         await RunAsync(@"
-[Kaleido.Processor.ProcessStep(DisplayName = ""Upsert"", Description = ""Upserts."")]
+[Kaleido.Process.ProcessStep(DisplayName = ""Upsert"", Description = ""Upserts."")]
 public class {|#0:UpsertStep|} { }
 " + KaleidoStubs,
             AttributeWithoutInterface.WithLocation(0).WithArguments("UpsertStep"));
@@ -44,7 +44,7 @@ public class {|#0:UpsertStep|} { }
     public async Task InterfaceWithoutAttribute_Reports()
     {
         await RunAsync(@"
-public class {|#0:UpsertStep|} : Kaleido.Processor.IProcessStep { }
+public class {|#0:UpsertStep|} : Kaleido.Process.IProcessStep { }
 " + KaleidoStubs,
             InterfaceWithoutAttribute.WithLocation(0).WithArguments("UpsertStep"));
     }
@@ -53,8 +53,8 @@ public class {|#0:UpsertStep|} : Kaleido.Processor.IProcessStep { }
     public async Task InterfaceAndAttribute_NoDiagnostic()
     {
         await RunAsync(@"
-[Kaleido.Processor.ProcessStep(DisplayName = ""Upsert"", Description = ""Upserts."")]
-public class UpsertStep : Kaleido.Processor.IProcessStep { }
+[Kaleido.Process.ProcessStep(DisplayName = ""Upsert"", Description = ""Upserts."")]
+public class UpsertStep : Kaleido.Process.IProcessStep { }
 " + KaleidoStubs);
     }
 
@@ -62,7 +62,7 @@ public class UpsertStep : Kaleido.Processor.IProcessStep { }
     public async Task AbstractInterfaceTypeWithoutAttribute_NoDiagnostic()
     {
         await RunAsync(@"
-public abstract class StepBase : Kaleido.Processor.IProcessStep { }
+public abstract class StepBase : Kaleido.Process.IProcessStep { }
 " + KaleidoStubs);
     }
 

@@ -14,7 +14,7 @@ public sealed class InformationStepAnalyzerTests
     private const string KaleidoStubs = @"
 namespace System.Runtime.CompilerServices { internal static class IsExternalInit { } }
 
-namespace Kaleido.Processor
+namespace Kaleido.Process
 {
     public interface IProcessStep { }
 
@@ -30,35 +30,35 @@ namespace Kaleido.Processor
     }
 }
 
-namespace Kaleido.Processor.Execution
+namespace Kaleido.Process.Execution
 {
     public sealed class ProcessStepHandlerResult
     {
         public static ProcessStepHandlerResult Success() => new();
-        public static ProcessStepHandlerResult Success<TNext>() where TNext : Kaleido.Processor.IProcessStep => new();
-        public static ProcessStepHandlerResult RequireInformation<TNext>(Kaleido.Processor.InformationRequest request)
-            where TNext : Kaleido.Processor.IInformationStep => new();
+        public static ProcessStepHandlerResult Success<TNext>() where TNext : Kaleido.Process.IProcessStep => new();
+        public static ProcessStepHandlerResult RequireInformation<TNext>(Kaleido.Process.InformationRequest request)
+            where TNext : Kaleido.Process.IInformationStep => new();
         public static ProcessStepHandlerResult<TProcessStepResult> Success<TProcessStepResult>(TProcessStepResult response) => new();
     }
 
     public sealed class ProcessStepHandlerResult<TProcessStepResult>
     {
         public ProcessStepHandlerResult<TProcessStepResult> Next<TNext>()
-            where TNext : Kaleido.Processor.IProcessStep => this;
-        public ProcessStepHandlerResult<TProcessStepResult> RequireInformation<TNext>(Kaleido.Processor.InformationRequest request)
-            where TNext : Kaleido.Processor.IInformationStep => this;
+            where TNext : Kaleido.Process.IProcessStep => this;
+        public ProcessStepHandlerResult<TProcessStepResult> RequireInformation<TNext>(Kaleido.Process.InformationRequest request)
+            where TNext : Kaleido.Process.IInformationStep => this;
     }
 }";
 
     private const string Steps = @"
-public sealed record AnswerStep : Kaleido.Processor.IInformationStep
+public sealed record AnswerStep : Kaleido.Process.IInformationStep
 {
     public string InformationRequestId { get; init; } = """";
     public string ExchangeId { get; init; } = """";
-    public System.Collections.Generic.IReadOnlyList<Kaleido.Processor.InformationResponseItem> Items { get; init; } = new Kaleido.Processor.InformationResponseItem[0];
+    public System.Collections.Generic.IReadOnlyList<Kaleido.Process.InformationResponseItem> Items { get; init; } = new Kaleido.Process.InformationResponseItem[0];
 }
 
-public sealed record CaptureStep : Kaleido.Processor.IProcessStep;
+public sealed record CaptureStep : Kaleido.Process.IProcessStep;
 ";
 
     private static readonly DiagnosticResult Shape =
@@ -77,11 +77,11 @@ public sealed record CaptureStep : Kaleido.Processor.IProcessStep;
     public async Task InformationStepWithAnotherProperty_Reports()
     {
         await RunAsync(@"
-public sealed record MixedStep : Kaleido.Processor.IInformationStep
+public sealed record MixedStep : Kaleido.Process.IInformationStep
 {
     public string InformationRequestId { get; init; } = """";
     public string ExchangeId { get; init; } = """";
-    public System.Collections.Generic.IReadOnlyList<Kaleido.Processor.InformationResponseItem> Items { get; init; } = new Kaleido.Processor.InformationResponseItem[0];
+    public System.Collections.Generic.IReadOnlyList<Kaleido.Process.InformationResponseItem> Items { get; init; } = new Kaleido.Process.InformationResponseItem[0];
     public string {|#0:MemberId|} { get; init; } = """";
 }
 " + KaleidoStubs,
@@ -92,7 +92,7 @@ public sealed record MixedStep : Kaleido.Processor.IInformationStep
     public async Task OrdinaryStepWithProperties_NoDiagnostic()
     {
         await RunAsync(@"
-public sealed record CaptureMemberStep(string MemberId) : Kaleido.Processor.IProcessStep;
+public sealed record CaptureMemberStep(string MemberId) : Kaleido.Process.IProcessStep;
 " + KaleidoStubs);
     }
 
@@ -103,7 +103,7 @@ public sealed record CaptureMemberStep(string MemberId) : Kaleido.Processor.IPro
 public static class Handler
 {
     public static object Run() =>
-        {|#0:Kaleido.Processor.Execution.ProcessStepHandlerResult.Success<AnswerStep>()|};
+        {|#0:Kaleido.Process.Execution.ProcessStepHandlerResult.Success<AnswerStep>()|};
 }
 " + KaleidoStubs,
             SuccessWithInformationStep.WithLocation(0).WithArguments("AnswerStep"));
@@ -116,7 +116,7 @@ public static class Handler
 public static class Handler
 {
     public static object Run() =>
-        {|#0:Kaleido.Processor.Execution.ProcessStepHandlerResult.Success(""done"").Next<AnswerStep>()|};
+        {|#0:Kaleido.Process.Execution.ProcessStepHandlerResult.Success(""done"").Next<AnswerStep>()|};
 }
 " + KaleidoStubs,
             SuccessWithInformationStep.WithLocation(0).WithArguments("AnswerStep"));
@@ -129,16 +129,16 @@ public static class Handler
 public static class Handler
 {
     public static object Next() =>
-        Kaleido.Processor.Execution.ProcessStepHandlerResult.Success<CaptureStep>();
+        Kaleido.Process.Execution.ProcessStepHandlerResult.Success<CaptureStep>();
 
     public static object Ask() =>
-        Kaleido.Processor.Execution.ProcessStepHandlerResult.RequireInformation<AnswerStep>(new Kaleido.Processor.InformationRequest());
+        Kaleido.Process.Execution.ProcessStepHandlerResult.RequireInformation<AnswerStep>(new Kaleido.Process.InformationRequest());
 
     public static object TypedNext() =>
-        Kaleido.Processor.Execution.ProcessStepHandlerResult.Success(""done"").Next<CaptureStep>();
+        Kaleido.Process.Execution.ProcessStepHandlerResult.Success(""done"").Next<CaptureStep>();
 
     public static object TypedAsk() =>
-        Kaleido.Processor.Execution.ProcessStepHandlerResult.Success(""done"").RequireInformation<AnswerStep>(new Kaleido.Processor.InformationRequest());
+        Kaleido.Process.Execution.ProcessStepHandlerResult.Success(""done"").RequireInformation<AnswerStep>(new Kaleido.Process.InformationRequest());
 }
 " + KaleidoStubs);
     }

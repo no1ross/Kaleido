@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Transport-neutral Process server admission and replay contracts.</Description>
+		<PackageTags>kaleido;process;server;idempotency</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\Core\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\Kaleido.Process\Kaleido.Process.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Exceptions" />
+	</ItemGroup>
+</Project>

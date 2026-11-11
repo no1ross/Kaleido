@@ -5,6 +5,8 @@ watch. The wiring examples are compiled (`docs/guide/examples/Deployment`).
 
 ## Several instances
 
+The generic Process runtime now owns `IProcessContextStore`/`IProcessTransactions` and Process.Server owns neutral `IProcessIdempotencyStore` replay (format plus opaque bytes). `AddProcess()` selects neither an in-memory context store nor an idempotency store; the later Provider's `AddInMemoryProviders()` is an explicit development choice. The existing HTTP and SQLite adapters remain unmigrated (#587), so the examples below describe deployment requirements, **not** a currently working Process.Server/HTTP/SQLite integration or a replay-row migration.
+
 Kaleido keeps no state in the instance once the stores are durable, so instances can be added and
 removed freely. They share the database:
 
@@ -69,8 +71,7 @@ services.AddDataProtection()
 ## The database schema
 
 Kaleido never creates or migrates your schema. With your own stores it is yours (migrations as usual).
-With the SQLite reference provider, the host creates it once at startup (`EnsureCreatedAsync`), and it
-is never migrated ([provider README](../../src/Providers/Kaleido.Provider.SQLite/README.md)).
+The unmigrated SQLite reference provider previously had the host create its schema once at startup (`EnsureCreatedAsync`); it does not migrate existing rows or implement the new Process.Server replay contract yet (#587) ([provider README](../../src/Providers/Kaleido.Provider.SQLite/README.md)).
 
 ## Health
 

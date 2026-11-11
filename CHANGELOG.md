@@ -13,6 +13,10 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Generic Process namespaces and neutral server admission** (#589, #587, #600, #602, [ADR 0044](docs/decisions/0044-process-server-idempotency-ownership.md)):
+  - Generic Process types now live under `Kaleido.Process` and project-relative namespaces. ProcessorContext is now `Kaleido.Process.Context.ProcessContext`; KaleidoConcurrencyException becomes `Kaleido.Process.Exceptions.ProcessConcurrencyException` (same `pro_process_conflict` value). IKaleidoContextStore/InMemoryKaleidoContextStore become `IProcessContextStore`/`InMemoryProcessContextStore`; IKaleidoTransactions, IKaleidoTransaction and NoKaleidoTransactions become `IProcessTransactions`, `IProcessTransaction` and `NoProcessTransactions` under `Kaleido.Process.Storage`. ProcessorServiceCollectionExtensions becomes `ProcessServiceCollectionExtensions`. Stable persisted property names, event discriminators, error codes and metric strings do not change.
+  - `AddProcess()` does **not** register in-memory context or idempotency stores; the later Provider's `AddInMemoryProviders()` is explicit. Process owns context/transaction contracts, not idempotency. State and transition events are atomic only when state and outbox join the same provider session/transaction, regardless of technology; the same database by itself is insufficient.
+  - `Kaleido.Process.Server.Idempotency` now owns `IProcessIdempotencyStore`, `IdempotencyRecord`, `IdempotencyState`, `IdempotencyReplay` and `InMemoryProcessIdempotencyStore`. Completed replay holds a format identifier and opaque bytes, not HTTP status/JSON. `AddIdempotencyStore<T>()` is explicit on Process.Server. Existing HTTP, SQLite and Provider integrations remain unmigrated (#587); do not assume compatibility or migrated replay rows. Every service requires `ServiceVersion`, but nullable persisted `ProcessKey.ProcessorVersion` and `ProcessContext.ProcessorVersion` still permit legacy reads; no stored state was rewritten.
 - **Foundation identity and shared authorization declarations** (#586, [ADR 0043](docs/decisions/0043-required-service-identity-and-shared-authorization-declarations.md)):
   every `AddKaleido()` service now needs a valid `ServiceVersion` from code or configuration; unversioned services no longer start. `KaleidoServiceOptions.InstanceId` is internal and generated per running instance, not set by consumers or JSON. `KaleidoAuthorizationAttribute` moves to `Kaleido.Registry` with `AuthorizationMetadata`, both in the Core package; update namespaces/package references when consuming the declaration.
 - **Package boundaries, central registry and versioned gateway routes** (#581,
@@ -85,7 +89,7 @@ sections.
     seen within `Kaleido:Events:RelaySeenWithin`, or when there is a backlog (`BacklogMaxAge`,
     `BacklogMaxCount`).
   - **Breaking:**
-    - `IKaleidoContextStore.LoadAsync` takes a `ProcessKey`, and stores must keep the scope.
+    - The former IKaleidoContextStore.LoadAsync takes a `ProcessKey`, and stores must keep the scope.
     - `IKaleidoOutboxStore` gains `RecordRelayAsync` and `GetStatusAsync`.
     - `AddEventPublisher<T>` is replaced by `AddOutboxRelay<TPublisher>()`, and there is no default
       publisher.
@@ -249,7 +253,7 @@ sections.
   before any handler runs. The MCP adapter captures the id when it shows questions and submits it;
   the agent now gets an `answersToken` with every set of questions and passes it back.
 - **Idempotency admissions are fenced; an unknown outcome is kept** (#441, ADR 0019 amendment): custom
-  `IKaleidoIdempotencyStore` implementations change. `IdempotentResult` and `IdempotentResultState`
+  implementations of the former IKaleidoIdempotencyStore change. `IdempotentResult` and `IdempotentResultState`
   move to `Kaleido.Storage`; `IdempotentResult` gains `AdmissionId` (set on admission);
   `CompleteAsync` returns `Task<bool>` and updates only the record still in progress under that
   admission id (never inserts); `ReleaseAsync(key, admissionId)` returns `Task<bool>` and deletes only
@@ -309,12 +313,12 @@ sections.
 - **One credential model for outgoing calls:** IKaleidoCallCredentialProvider; an MCP host registers
   ForwardCallerToken() or its own provider ([ADR 0022](docs/decisions/0022-call-credentials.md), #403;
   replaced by `Kaleido:OnBehalfOfCalls` and the host's own handlers, ADR 0038, #574).
-- **Store contracts split** into `IKaleidoContextStore`, `IKaleidoOutboxStore` and
-  `IKaleidoIdempotencyStore` ([ADR 0020](docs/decisions/0020-three-store-contracts.md), #399).
+- **Historical store-contract split** introduced the former IKaleidoContextStore, `IKaleidoOutboxStore` and
+  the former IKaleidoIdempotencyStore ([ADR 0020](docs/decisions/0020-three-store-contracts.md), #399).
 - **Outbox integration** ([ADR 0023](docs/decisions/0023-outbox-integration.md), #408): the context store is
   state only (`SaveAsync(context)`); every event goes to `IKaleidoOutbox` - Kaleido's built-in outbox
   (default), the host's own (`AddOutbox<T>()`) or `AddDirectPublication()` - and the optional
-  `IKaleidoTransactions` makes a state change and its event atomic. `IKaleidoOutboxStore.EnqueueEventsAsync`
+  the former IKaleidoTransactions made a state change and its event atomic. `IKaleidoOutboxStore.EnqueueEventsAsync`
   is now `AddAsync`. New builder methods `AddContextStore`, `AddIdempotencyStore`, `AddOutboxStore`,
   `AddTransactions`; new startup codes `conflicting_store`, `conflicting_outbox`.
 - **Event redaction separate from log redaction** ([ADR 0025](docs/decisions/0025-event-redaction-policy.md), #278):
@@ -354,7 +358,7 @@ sections.
   cannot contradict itself (e.g. succeeded and rejected at once).
 - **Cancellation tokens are required** (#313): no public async API defaults its `CancellationToken`
   any more (handlers, async sources and views, delegated sources, `IEventPublisher`, the store
-  contracts, `IKaleidoOutbox`, `IKaleidoTransactions` and the Kaleido clients; the former registry snapshot-store interface was removed in #581),
+  contracts, `IKaleidoOutbox`, the former IKaleidoTransactions and the Kaleido clients; the former registry snapshot-store interface was removed in #581),
   so a caller cannot silently drop cancellation. Callers pass their token; an implementation may keep
   a default. Parameters that preceded the token became required too: the by-name
   `ExecuteStepAsync(stepName, processStep, processId, cancellationToken)` (pass `null` for no
@@ -466,7 +470,7 @@ sections.
   - the information-step payload example includes `exchangeId`;
   - the step fields in the Http README no longer list `version` (ADR 0029);
   - the analyzer counts and each test rule's scope are stated as they are (KAL1010 applies in every test project);
-  - `IKaleidoTransactions` and `IKaleidoOutboxStore` say what an outbox on another database means: a failed commit
+  - The former IKaleidoTransactions and `IKaleidoOutboxStore` say what an outbox on another database means: a failed commit
     still relays the transition's events.
 - **`SqliteTelemetry` holds constants only** (#525): its `ActivitySource`, `Meter` and failure counters moved into
   the SQLite context store, as the telemetry conventions require. The names are unchanged.

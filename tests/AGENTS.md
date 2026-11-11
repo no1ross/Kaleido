@@ -71,7 +71,7 @@ own fixture (KAL1009), and lives in its own file (KAL0019). The definition is in
 [`docs/ANALYZERS.md`](../docs/ANALYZERS.md#types-with-behavior).
 - **One SUT, its own logic.** An injected collaborator is mocked, never tested through (KAL1011). A
   record or other data type with behavior may be *used* as input in another fixture, but its logic is
-  tested in its own fixture: `ProcessorContextTests` covers `HasCompletedStep`; the runtime's tests
+  tested in its own fixture: `ProcessContextTests` covers `HasCompletedStep`; the runtime's tests
   only pass contexts in.
 - **Generic twins** keep their type names; files and fixtures carry the arity:
   `ProcessStepHandlerResult` → `ProcessStepHandlerResultTests`, `ProcessStepHandlerResult<T>` →

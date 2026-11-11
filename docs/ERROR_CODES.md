@@ -11,7 +11,7 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 | `KaleidoValidationException` | `Kaleido.Exceptions` | 400 Bad Request, or a failed Process step outcome | `QueryableErrorCodes` (`qry_*`), `ProcessorErrorCodes` (`pro_*`), or a handler-supplied domain code |
 | `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | the owning area's codes: `ConfigurationErrorCodes` (core), `QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes`, `McpErrorCodes`, `OpenTelemetryErrorCodes` |
 | `KaleidoFrameworkException` | `Kaleido.Exceptions` | 500 Internal Server Error | `FrameworkErrorCodes` |
-| `KaleidoConcurrencyException` | `Kaleido.Exceptions` | 409 Conflict | `ProcessorErrorCodes.ProcessConflict` (`pro_process_conflict`) |
+| `ProcessConcurrencyException` | `Kaleido.Process.Exceptions` | 409 Conflict | `ProcessorErrorCodes.ProcessConflict` (`pro_process_conflict`) |
 | `KaleidoAuthorizationException` | `Kaleido.Exceptions` | 401 (unauthenticated) or 403 (denied), answered by the host's authentication scheme (challenge / forbid) | none: carries `Capability` and `CallerIsAuthenticated` ([`architecture/authorization.md`](./architecture/authorization.md)) |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
 | `KaleidoRegistryClientException` | `Kaleido.Client.Registry` | — (client-side) | `RegistryClientErrorCodes` |
@@ -72,7 +72,7 @@ Both message collections are present on Process execution responses. `BusinessMe
 | `InvalidRegistration` | `pro_invalid_registration` | Step registration is structurally invalid (including `[ProcessStep]` on a type that does not implement `IProcessStep`, and an `IInformationStep` declaring properties other than `InformationRequestId` and `Items`) |
 | `UnknownStep` | `pro_unknown_step` | Requested step is not registered; on `POST /processes/execute` it rejects the whole request before anything runs (400) |
 | `ProcessNotFound` | `pro_process_not_found` | The request names a process that does not exist and is not a handoff from another processor; nothing is started (400, ADR 0009) |
-| `ProcessConflict` | `pro_process_conflict` | Another request saved the process since this one loaded it (optimistic concurrency); nothing of this request was saved. Read the process state again and decide on the next step (409, `KaleidoConcurrencyException`) |
+| `ProcessConflict` | `pro_process_conflict` | Another request saved the process since this one loaded it (optimistic concurrency); nothing of this request was saved. Read the process state again and decide on the next step (409, `ProcessConcurrencyException`) |
 | `IdempotencyKeyReused` | `pro_idempotency_key_reused` | An `Idempotency-Key` was sent again with a different request; a key identifies one call - use a new key for a new call (422) |
 | `InvalidIdempotencyKey` | `pro_invalid_idempotency_key` | The `Idempotency-Key` header is longer than 200 characters, or shorter than 16 from a caller without an identity, who shares the key space with every other such caller and must send a random key (400) |
 | `IdempotencyInProgress` | `pro_idempotency_in_progress` | The first request with this `Idempotency-Key` is still running, so this one did not run; retry with the same key after `Retry-After` to get its answer (409) |
@@ -116,7 +116,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | Constant | Code | Meaning |
 |---|---|---|
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
-| `InvalidServiceVersion` | `invalid_service_version` | `ServiceVersion` is set but empty, longer than `MaxServiceVersionLength`, or not an ASCII letter or digit followed by letters, digits, `.`, `-` and `_` (#552) |
+| `InvalidServiceVersion` | `invalid_service_version` | `ServiceVersion` is missing or empty, longer than `MaxServiceVersionLength`, or not an ASCII letter or digit followed by letters, digits, `.`, `-` and `_` (#552) |
 | `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
 | `ConflictingAuthorization` | `conflicting_authorization` | `[KaleidoAuthorization]` declares `AllowAnonymous` together with `Roles`/`Policy` |
 | `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization (`Authenticated` is the default) but no authentication scheme is registered: add host authentication, or set `AuthorizationMode = None` explicitly |

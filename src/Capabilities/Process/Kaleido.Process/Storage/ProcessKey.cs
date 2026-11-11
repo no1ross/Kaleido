@@ -1,4 +1,4 @@
-namespace Kaleido.Storage;
+namespace Kaleido.Process.Storage;
 
 /// <summary>
 /// Identifies one process's state in a store: the processor that owns it, that processor's version and
@@ -9,8 +9,8 @@ namespace Kaleido.Storage;
 /// <param name="ProcessorVersion">The owning processor's version (<see cref="KaleidoServiceOptions.ServiceVersion"/>); <see langword="null"/> when it is unversioned.</param>
 /// <param name="ProcessId">The process id.</param>
 /// <remarks>
-/// Kaleido passes the key on every load and saves each <see cref="Processor.Context.ProcessorContext"/>
-/// under its own (<see cref="Processor.Context.ProcessorContext.Key"/>), so a store keeps any number of
+/// Kaleido passes the key on every load and saves each <see cref="Context.ProcessContext"/>
+/// under its own (<see cref="Context.ProcessContext.Key"/>), so a store keeps any number of
 /// processors and versions in one database: every query and write of a store must match all three parts.
 /// </remarks>
 [ExcludeFromCodeCoverage]
