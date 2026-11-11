@@ -16,10 +16,11 @@ public sealed record AuthorizationMetadata(
     string? Policy,
     IReadOnlyList<string> Roles)
 {
+    internal AuthorizationMetadata() : this(Policy: null, Roles: []) { }
+
     /// <summary>
-    /// No declaration: no policy, no roles and no <see cref="AllowAnonymous"/>. The default of
-    /// <c>KaleidoServiceOptions.DefaultAuthorization</c> and of a capability's effective rule when
-    /// neither the capability nor its service declared one; it is not <see cref="IsExplicit"/>.
+    /// No declaration: no policy, no roles and no <see cref="AllowAnonymous"/>. Used when
+    /// neither the capability nor its service declared a rule; it is not <see cref="IsExplicit"/>.
     /// </summary>
     public static AuthorizationMetadata Unspecified { get; } = new(Policy: null, []);
 

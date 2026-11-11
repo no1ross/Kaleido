@@ -22,4 +22,9 @@ public sealed record KaleidoQueryableOptions : IKaleidoOptions
     /// <c>Kaleido:Queryable:DefaultAuthorization</c>.
     /// </summary>
     public AuthorizationMetadata? DefaultAuthorization { get; init; }
+
+    internal KaleidoQueryableOptions Snapshot() =>
+        DefaultAuthorization is { } authorization
+            ? this with { DefaultAuthorization = authorization with { Roles = [.. authorization.Roles] } }
+            : this;
 }

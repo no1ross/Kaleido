@@ -8,7 +8,7 @@ public sealed class KaleidoBuilderTests
     : SutFixture
 {
     private static KaleidoBuilder CreateSut(params System.Reflection.Assembly[]? assemblies) =>
-        CreateSut(new ServiceCollection(), new ConfigurationBuilder().Build(), new KaleidoServiceOptions { ServiceName = "test", Assemblies = assemblies });
+        CreateSut(new ServiceCollection(), new ConfigurationBuilder().Build(), new KaleidoServiceOptions { ServiceName = "test", ServiceVersion = "1", Assemblies = assemblies });
 
     private static KaleidoBuilder CreateSut(IServiceCollection services, IConfiguration configuration, KaleidoServiceOptions options) =>
         new(services, configuration, options);
@@ -46,7 +46,7 @@ public sealed class KaleidoBuilderTests
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationBuilder().Build();
-        var options = new KaleidoServiceOptions { ServiceName = "test", Assemblies = [typeof(KaleidoBuilderTests).Assembly] };
+        var options = new KaleidoServiceOptions { ServiceName = "test", ServiceVersion = "1", Assemblies = [typeof(KaleidoBuilderTests).Assembly] };
 
         var sut = CreateSut(services, configuration, options);
 

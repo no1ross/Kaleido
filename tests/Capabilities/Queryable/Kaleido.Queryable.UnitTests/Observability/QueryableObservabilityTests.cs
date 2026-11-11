@@ -275,7 +275,7 @@ public sealed class QueryableObservabilityTests
 
         return new QueryableObservability(
             correlationAccessor.Object,
-            new KaleidoServiceOptions { ServiceName = "test-queryable" },
+            new KaleidoServiceOptions { ServiceName = "test-queryable", ServiceVersion = "1" },
             logger ?? Mock.Of<ILogger<QueryableObservability>>());
     }
 }

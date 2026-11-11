@@ -1,5 +1,0 @@
-# Kaleido.Registry capability declarations
-
-This temporarily named, non-packable `Kaleido.Registry.Next` project owns `KaleidoAuthorizationAttribute` and the `AuthorizationMetadata` projection of that declaration. Process and Queryable use the metadata when publishing their capability descriptions; the transport-neutral Server owner uses it as the service-wide default. It depends only on the Kaleido foundation, not on Server, Hosting, or the existing control registry.
-
-The directory has its intended final name, `Kaleido.Registry`; only the `.Next.csproj` and assembly names avoid colliding with the still-unmigrated `src/Registry/Registry/Kaleido.Registry.csproj`. No control-registry storage, API or hosting behavior moves in this shallow shell. See [authorization architecture](../../../../docs/architecture/authorization.md) and [dependency boundaries](../../../../docs/architecture/dependencies.md); the existing project's later migration must preserve its Git history and settle final package ownership.

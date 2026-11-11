@@ -26,7 +26,7 @@ namespace Kaleido.Queryable.Query;
 /// provider-specific logic.
 /// </para>
 /// </summary>
-internal interface IQueryContextValidator
+internal interface IQueryRequestValidator
 {
     /// <summary>
     /// Validates a request against a source's query context fields and the paging that applies
@@ -35,7 +35,7 @@ internal interface IQueryContextValidator
     void Validate(IQueryRequest request, QuerySourceMetadata metadata, PageableMetadata? pageable);
 }
 
-internal sealed class QueryRequestValidator : IQueryContextValidator
+internal sealed class QueryRequestValidator : IQueryRequestValidator
 {
     public void Validate(
         IQueryRequest request,
@@ -89,36 +89,41 @@ internal sealed class QueryRequestValidator : IQueryContextValidator
 
         foreach (var property in properties)
         {
-            var attributes = property.Attributes.OfType<ValidationAttribute>().ToArray();
+            ValidateParameter(property, parameters);
+        }
+    }
 
-            if (attributes.Length == 0)
+    private static void ValidateParameter(PropertyDescriptor property, object parameters)
+    {
+        var attributes = property.Attributes.OfType<ValidationAttribute>().ToArray();
+
+        if (attributes.Length == 0)
+        {
+            return;
+        }
+
+        var context = new ValidationContext(parameters) { MemberName = property.Name, DisplayName = property.Name };
+        var value = property.GetValue(parameters);
+
+        var requiredAttribute = attributes.OfType<RequiredAttribute>().FirstOrDefault();
+
+        if (requiredAttribute?.GetValidationResult(value, context) is { } missing)
+        {
+            // The attribute's own message only when the implementer wrote one.
+            throw new KaleidoValidationException(
+                QueryableErrorCodes.MissingParameter,
+                requiredAttribute.ErrorMessage is null
+                    ? $"Parameter '{property.Name}' is required."
+                    : missing.ErrorMessage ?? $"Parameter '{property.Name}' is required.");
+        }
+
+        foreach (var attribute in attributes.Where(x => x is not RequiredAttribute))
+        {
+            if (attribute.GetValidationResult(value, context) is { } failure)
             {
-                continue;
-            }
-
-            var context = new ValidationContext(parameters) { MemberName = property.Name, DisplayName = property.Name };
-            var value = property.GetValue(parameters);
-
-            var requiredAttribute = attributes.OfType<RequiredAttribute>().FirstOrDefault();
-
-            if (requiredAttribute?.GetValidationResult(value, context) is { } missing)
-            {
-                // The attribute's own message only when the implementer wrote one.
                 throw new KaleidoValidationException(
-                    QueryableErrorCodes.MissingParameter,
-                    requiredAttribute.ErrorMessage is null
-                        ? $"Parameter '{property.Name}' is required."
-                        : missing.ErrorMessage ?? $"Parameter '{property.Name}' is required.");
-            }
-
-            foreach (var attribute in attributes.Where(x => x is not RequiredAttribute))
-            {
-                if (attribute.GetValidationResult(value, context) is { } failure)
-                {
-                    throw new KaleidoValidationException(
-                        QueryableErrorCodes.InvalidParameterValue,
-                        failure.ErrorMessage ?? $"Parameter '{property.Name}' is not valid.");
-                }
+                    QueryableErrorCodes.InvalidParameterValue,
+                    failure.ErrorMessage ?? $"Parameter '{property.Name}' is not valid.");
             }
         }
     }

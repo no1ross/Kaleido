@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Kaleido.Eventing;
 using Kaleido.Exceptions;
 using Kaleido.Observability;
@@ -40,7 +41,7 @@ public sealed class QueryContextEngineTests
     {
         public Task<IQueryable<FakeContext>> CreateQueryAsync(
             QueryExecutionContext executionContext,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(new[] { new FakeContext { Code = "Z" } }.AsQueryable());
     }
 
@@ -51,8 +52,17 @@ public sealed class QueryContextEngineTests
             query.Select(x => new FakeView { Label = "label-" + x.Code });
     }
 
+    public sealed record RequiredParameters([property: Required] string? Ward) : IQueryParameters;
+
+    [QueryView(DisplayName = "Parameterized labels", Description = "Labels with a required ward parameter.")]
+    public sealed class FakeParameterizedView : IQueryViewSource<FakeSource, FakeContext, FakeView, RequiredParameters>
+    {
+        public IQueryable<FakeView> CreateView(IQueryable<FakeContext> query, QueryExecutionContext executionContext) =>
+            query.Select(x => new FakeView { Label = "label-" + x.Code });
+    }
+
     private static QueryContextEngine<FakeContext, TView> CreateSut<TView>(
-        IQueryContextValidator validator,
+        IQueryRequestValidator validator,
         IServiceProvider serviceProvider,
         CompiledPage? page = null,
         Mock<IQueryContextExecutor<TView>>? executor = null,
@@ -61,7 +71,7 @@ public sealed class QueryContextEngineTests
         Mock<IKaleidoEventWriter>? outbox = null)
         where TView : class
     {
-        var compiler = new Mock<IQueryContextCompiler>();
+        var compiler = new Mock<IQueryRequestCompiler>();
         compiler
             .Setup(x => x.Compile(It.IsAny<IQueryRequest>(), It.IsAny<QuerySourceMetadata>(), It.IsAny<PageableMetadata?>()))
             .Returns(new CompiledQuery(null, null, [], page ?? new CompiledPage(50, 0)));
@@ -102,12 +112,29 @@ public sealed class QueryContextEngineTests
             serviceProvider);
     }
 
+    [Theory]
+    [InlineData("request")]
+    [InlineData("source")]
+    public async Task ExecuteAsync_Direct_WhenAnArgumentIsNull_ThrowsBeforeStartingObservation(string missing)
+    {
+        var observation = new Mock<IQueryExecutionObservation>();
+        var sut = CreateSut<FakeContext>(Mock.Of<IQueryRequestValidator>(), Mock.Of<IServiceProvider>(), observation: observation);
+        IQueryRequest request = missing == "request" ? null! : new QueryRequest();
+        var source = missing == "source" ? null! : CreateSourceRegistration(typeof(FakeSource), pageable: null);
+
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            sut.ExecuteAsync(request, source, TestContext.Current.CancellationToken));
+
+        Assert.Equal(missing, exception.ParamName);
+        observation.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
+    }
+
     [Fact]
     public async Task ExecuteAsync_Direct_ResolvesConcreteSourceAndValidatesWithSourcePaging()
     {
         var source = new FakeSource();
         var registration = CreateSourceRegistration(typeof(FakeSource), new PageableMetadata(25, 100));
-        var validator = new Mock<IQueryContextValidator>();
+        var validator = new Mock<IQueryRequestValidator>();
         var serviceProvider = new Mock<IServiceProvider>();
         serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(source);
 
@@ -121,16 +148,54 @@ public sealed class QueryContextEngineTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_Direct_RejectsWrongParametersTypeBeforeValidationOrExecution()
+    {
+        var registration = CreateSourceRegistration(typeof(FakeSource), pageable: null);
+        var validator = new Mock<IQueryRequestValidator>();
+        var provider = new Mock<IServiceProvider>();
+        var outbox = new Mock<IKaleidoEventWriter>();
+        var request = new QueryRequest<RequiredParameters>(new RequiredParameters("ward"));
+
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
+            CreateSut<FakeContext>(validator.Object, provider.Object, outbox: outbox)
+                .ExecuteAsync(request, registration, TestContext.Current.CancellationToken));
+
+        Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
+        validator.VerifyNoOtherCalls();
+        provider.VerifyNoOtherCalls();
+        outbox.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public async Task ExecuteAsync_Direct_UsesAsyncSource()
     {
         var registration = CreateSourceRegistration(typeof(FakeAsyncSource), pageable: null);
         var serviceProvider = new Mock<IServiceProvider>();
         serviceProvider.Setup(x => x.GetService(typeof(FakeAsyncSource))).Returns(new FakeAsyncSource());
 
-        var result = await CreateSut<FakeContext>(Mock.Of<IQueryContextValidator>(), serviceProvider.Object)
+        var result = await CreateSut<FakeContext>(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object)
             .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken);
 
         Assert.Equal("Z", Assert.Single(result.Results).Code);
+    }
+
+    [Theory]
+    [InlineData("request")]
+    [InlineData("source")]
+    [InlineData("viewRegistration")]
+    public async Task ExecuteAsync_View_WhenAnArgumentIsNull_ThrowsBeforeStartingObservation(string missing)
+    {
+        var observation = new Mock<IQueryExecutionObservation>();
+        var sut = CreateSut<FakeView>(Mock.Of<IQueryRequestValidator>(), Mock.Of<IServiceProvider>(), observation: observation);
+        IQueryRequest request = missing == "request" ? null! : new QueryRequest();
+        var source = missing == "source" ? null! : CreateSourceRegistration(typeof(FakeSource), pageable: null);
+        var view = missing == "viewRegistration" ? null! : CreateViewRegistration(pageable: null);
+
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            sut.ExecuteAsync(request, source, view, TestContext.Current.CancellationToken));
+
+        Assert.Equal(missing, exception.ParamName);
+        observation.Verify(x => x.ExecutionFailed(It.IsAny<Exception>()), Times.Never);
     }
 
     [Fact]
@@ -147,7 +212,7 @@ public sealed class QueryContextEngineTests
                 typeof(FakeContext),
                 new QueryViewMetadata(nameof(FakeLabelView), "Labels", "Labels.", viewPageable, [], []));
 
-        var validator = new Mock<IQueryContextValidator>();
+        var validator = new Mock<IQueryRequestValidator>();
         var serviceProvider = new Mock<IServiceProvider>();
         serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
         serviceProvider.Setup(x => x.GetService(typeof(FakeLabelView))).Returns(new FakeLabelView());
@@ -158,6 +223,28 @@ public sealed class QueryContextEngineTests
 
         Assert.Equal(["label-A", "label-B"], result.Results.Select(x => x.Label));
         validator.Verify(x => x.Validate(request, sourceRegistration.Metadata, viewPageable), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_View_RejectsWrongParametersTypeBeforeValidationOrExecution()
+    {
+        var source = CreateSourceRegistration(typeof(FakeSource), pageable: null);
+        var view = new QueryViewRegistration(
+            typeof(FakeParameterizedView), typeof(FakeView), typeof(RequiredParameters),
+            typeof(FakeSource), typeof(FakeContext),
+            new QueryViewMetadata(nameof(FakeParameterizedView), "Labels", "Labels.", null, [], []));
+        var validator = new Mock<IQueryRequestValidator>();
+        var provider = new Mock<IServiceProvider>();
+        var outbox = new Mock<IKaleidoEventWriter>();
+
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
+            CreateSut<FakeView>(validator.Object, provider.Object, outbox: outbox)
+                .ExecuteAsync(new QueryRequest(), source, view, TestContext.Current.CancellationToken));
+
+        Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
+        validator.VerifyNoOtherCalls();
+        provider.VerifyNoOtherCalls();
+        outbox.VerifyNoOtherCalls();
     }
 
     // A pageable source pages with its default page when the request names none, so a full page is
@@ -171,7 +258,7 @@ public sealed class QueryContextEngineTests
         var executor = new Mock<IQueryContextExecutor<FakeContext>>();
         executor.Setup(x => x.CountAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>())).ReturnsAsync(44);
 
-        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(2, 0), executor)
+        var result = await CreateSut(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, new CompiledPage(2, 0), executor)
             .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Results.Count);
@@ -186,7 +273,7 @@ public sealed class QueryContextEngineTests
         serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
         var executor = new Mock<IQueryContextExecutor<FakeContext>>();
 
-        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(25, 0), executor)
+        var result = await CreateSut(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, new CompiledPage(25, 0), executor)
             .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.TotalCount);
@@ -202,7 +289,7 @@ public sealed class QueryContextEngineTests
         serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
         var executor = new Mock<IQueryContextExecutor<FakeContext>>();
 
-        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(4, 4), executor)
+        var result = await CreateSut(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, new CompiledPage(4, 4), executor)
             .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken);
 
         Assert.Equal(6, result.TotalCount);
@@ -219,7 +306,7 @@ public sealed class QueryContextEngineTests
         var executor = new Mock<IQueryContextExecutor<FakeContext>>();
         executor.Setup(x => x.CountAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>())).ReturnsAsync(2);
 
-        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(25, 50), executor, returnsNoRows: true)
+        var result = await CreateSut(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, new CompiledPage(25, 50), executor, returnsNoRows: true)
             .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Results);
@@ -234,7 +321,7 @@ public sealed class QueryContextEngineTests
         serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
         var executor = new Mock<IQueryContextExecutor<FakeContext>>();
 
-        var result = await CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, new CompiledPage(2, 0), executor)
+        var result = await CreateSut(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, new CompiledPage(2, 0), executor)
             .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.TotalCount);
@@ -250,7 +337,7 @@ public sealed class QueryContextEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
         var outbox = new Mock<IKaleidoEventWriter>();
 
-        await CreateSut<FakeContext>(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, observation: observation, outbox: outbox)
+        await CreateSut<FakeContext>(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, observation: observation, outbox: outbox)
             .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken);
 
         observation.Verify(x => x.BeginSource(), Times.Once);
@@ -274,7 +361,7 @@ public sealed class QueryContextEngineTests
         var serviceProvider = new Mock<IServiceProvider>();
         serviceProvider.Setup(x => x.GetService(typeof(FakeAsyncSource))).Returns(source.Object);
 
-        var result = await CreateSut<FakeContext>(Mock.Of<IQueryContextValidator>(), serviceProvider.Object)
+        var result = await CreateSut<FakeContext>(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object)
             .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken);
 
         Assert.Equal("later", Assert.Single(result.Results).Code);
@@ -284,7 +371,7 @@ public sealed class QueryContextEngineTests
     public async Task ExecuteAsync_Direct_WhenValidationFails_RecordsAValidationFailureOnly()
     {
         var registration = CreateSourceRegistration(typeof(FakeSource), pageable: null);
-        var validator = new Mock<IQueryContextValidator>();
+        var validator = new Mock<IQueryRequestValidator>();
         var failure = new KaleidoValidationException("qry_bad", "bad");
         validator.Setup(x => x.Validate(It.IsAny<IQueryRequest>(), It.IsAny<QuerySourceMetadata>(), It.IsAny<PageableMetadata?>())).Throws(failure);
         var observation = new Mock<IQueryExecutionObservation>();
@@ -307,7 +394,7 @@ public sealed class QueryContextEngineTests
         serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
         var executor = new Mock<IQueryContextExecutor<FakeContext>>();
         var observation = new Mock<IQueryExecutionObservation>();
-        var sut = CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, executor: executor, observation: observation);
+        var sut = CreateSut(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, executor: executor, observation: observation);
         var canceled = new CancellationToken(canceled: true);
         executor.Setup(x => x.ToListAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(canceled));
 
@@ -326,7 +413,7 @@ public sealed class QueryContextEngineTests
         serviceProvider.Setup(x => x.GetService(typeof(FakeSource))).Returns(new FakeSource());
         var executor = new Mock<IQueryContextExecutor<FakeContext>>();
         var observation = new Mock<IQueryExecutionObservation>();
-        var sut = CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, executor: executor, observation: observation);
+        var sut = CreateSut(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, executor: executor, observation: observation);
         executor.Setup(x => x.ToListAsync(It.IsAny<IQueryable<FakeContext>>(), It.IsAny<CancellationToken>())).ThrowsAsync(new TaskCanceledException("timeout"));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken));
@@ -344,7 +431,7 @@ public sealed class QueryContextEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(
-            () => CreateSut<FakeContext>(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, observation: observation)
+            () => CreateSut<FakeContext>(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, observation: observation)
                 .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
@@ -360,7 +447,7 @@ public sealed class QueryContextEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(
-            () => CreateSut<FakeView>(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, observation: observation)
+            () => CreateSut<FakeView>(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, observation: observation)
                 .ExecuteAsync(new QueryRequest(), registration, TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
@@ -380,7 +467,7 @@ public sealed class QueryContextEngineTests
         serviceProvider.Setup(x => x.GetService(typeof(FakeLabelView))).Returns(asyncView.Object);
         var observation = new Mock<IQueryExecutionObservation>();
 
-        var result = await CreateSut<FakeView>(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, observation: observation)
+        var result = await CreateSut<FakeView>(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, observation: observation)
             .ExecuteAsync(new QueryRequest(), CreateSourceRegistration(typeof(FakeSource), pageable: null), CreateViewRegistration(pageable: null), TestContext.Current.CancellationToken);
 
         Assert.Equal(["async-A", "async-B"], result.Results.Select(x => x.Label));
@@ -396,7 +483,7 @@ public sealed class QueryContextEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(
-            () => CreateSut<FakeView>(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, observation: observation)
+            () => CreateSut<FakeView>(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, observation: observation)
                 .ExecuteAsync(new QueryRequest(), CreateSourceRegistration(typeof(FakeSource), pageable: null), CreateViewRegistration(pageable: null), TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
@@ -408,7 +495,7 @@ public sealed class QueryContextEngineTests
     [Fact]
     public async Task ExecuteAsync_View_WhenValidationFails_RecordsAValidationFailureOnly()
     {
-        var validator = new Mock<IQueryContextValidator>();
+        var validator = new Mock<IQueryRequestValidator>();
         var failure = new KaleidoValidationException("qry_bad", "bad");
         validator.Setup(x => x.Validate(It.IsAny<IQueryRequest>(), It.IsAny<QuerySourceMetadata>(), It.IsAny<PageableMetadata?>())).Throws(failure);
         var observation = new Mock<IQueryExecutionObservation>();
@@ -429,7 +516,7 @@ public sealed class QueryContextEngineTests
         serviceProvider.Setup(x => x.GetService(typeof(FakeLabelView))).Returns(new FakeLabelView());
         var executor = new Mock<IQueryContextExecutor<FakeView>>();
         var observation = new Mock<IQueryExecutionObservation>();
-        var sut = CreateSut(Mock.Of<IQueryContextValidator>(), serviceProvider.Object, executor: executor, observation: observation);
+        var sut = CreateSut(Mock.Of<IQueryRequestValidator>(), serviceProvider.Object, executor: executor, observation: observation);
         var canceled = new CancellationToken(canceled: true);
         executor.Setup(x => x.ToListAsync(It.IsAny<IQueryable<FakeView>>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException(canceled));
 

@@ -34,6 +34,8 @@ internal sealed class MemberSearchView : IQueryViewSource<MemberQuerySource, Mem
 }
 ```
 
+The route comments illustrate the HTTP adapter; the source and view contracts themselves are transport-neutral. A source or view can declare `[KaleidoAuthorization]`; an undeclared source uses the optional `Kaleido:Queryable:DefaultAuthorization` rule ([configuration example](../../guide/examples/kaleido-settings.jsonc)), and a view without its own rule inherits its source's effective rule. Authorization enforcement belongs to the host/transport, not the query engine.
+
 ## Declaration rules
 
 - **Interfaces identify; attributes describe.** Discovery is interface-only: each source needs `[QuerySource]` and each view needs `[QueryView]` (KAL2010); an attribute without its interface is not discovered (KAL2009); both need nonempty `DisplayName` and `Description` (KAL2002/2003).

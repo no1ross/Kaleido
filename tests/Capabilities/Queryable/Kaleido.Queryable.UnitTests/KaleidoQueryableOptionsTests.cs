@@ -17,6 +17,19 @@ public sealed class KaleidoQueryableOptionsTests : SutFixture<KaleidoQueryableOp
     }
 
     [Fact]
+    public void Snapshot_KeepsAuthorizationRolesIndependentOfTheCaller()
+    {
+        var roles = new List<string> { "reader" };
+        var code = Sut with { DefaultAuthorization = new AuthorizationMetadata("staff", roles) };
+        var snapshot = code.Snapshot();
+        roles.Add("later");
+
+        Assert.Equal(["reader"], snapshot.DefaultAuthorization?.Roles);
+        Assert.Equal(["reader", "later"], code.DefaultAuthorization?.Roles);
+        Assert.Null(Sut.Snapshot().DefaultAuthorization);
+    }
+
+    [Fact]
     public void Validate_RejectsConflictingQueryableDefault()
     {
         var options = Sut with

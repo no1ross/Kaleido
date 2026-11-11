@@ -11,6 +11,7 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
         new()
         {
             ServiceName = serviceName,
+            ServiceVersion = "1",
             Assemblies = withAssemblies ? [typeof(KaleidoServiceOptionsTests).Assembly] : null,
         };
 
@@ -128,9 +129,12 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
     }
 
     [Fact]
-    public void Validate_NoServiceVersion_DoesNotThrow()
+    public void Validate_NoServiceVersion_ThrowsInvalidServiceVersion()
     {
-        KaleidoServiceOptions.Validate(CreateSut("svc") with { ServiceVersion = null });
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
+            KaleidoServiceOptions.Validate(CreateSut("svc") with { ServiceVersion = null! }));
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidServiceVersion, exception.Code);
     }
 
     [Theory]
@@ -166,9 +170,9 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
 
     // The scope name keys stores shared by services and versions (#552); '@' is in neither a name nor a version.
     [Theory]
-    [InlineData(null, "svc")]
+    [InlineData("1", "svc@1")]
     [InlineData("2", "svc@2")]
-    public void ScopeName_IsTheServiceAndItsVersion(string? version, string expected)
+    public void ScopeName_IsTheServiceAndItsVersion(string version, string expected)
     {
         Assert.Equal(expected, (CreateSut("svc") with { ServiceVersion = version }).ScopeName);
     }

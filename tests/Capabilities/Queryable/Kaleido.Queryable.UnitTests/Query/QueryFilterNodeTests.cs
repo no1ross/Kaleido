@@ -19,6 +19,30 @@ public sealed class QueryFilterNodeTests
     }
 
     [Fact]
+    public void CreateCondition_CreatesTheNamedFieldAndValue()
+    {
+        var node = QueryFilterNode.CreateCondition("Category", FilterOperator.Equals, "Alpha");
+
+        Assert.NotNull(node.Condition);
+        Assert.Null(node.Group);
+        Assert.Equal("Category", node.Condition.Field);
+        Assert.Equal(FilterOperator.Equals, node.Condition.Operator);
+        Assert.Equal("Alpha", node.Condition.Values.Single());
+    }
+
+    [Fact]
+    public void CreateGroup_CreatesAGroupOfItsChild()
+    {
+        var child = QueryFilterNode.CreateCondition("Category", FilterOperator.Equals, "Alpha");
+        var node = QueryFilterNode.CreateGroup(LogicalOperator.And, child);
+
+        Assert.Null(node.Condition);
+        Assert.NotNull(node.Group);
+        Assert.Equal(LogicalOperator.And, node.Group.Operator);
+        Assert.Single(node.Group.Filters);
+    }
+
+    [Fact]
     public void CreateGroup_IsAGroupNode_WithTheOperatorAndFiltersInOrder()
     {
         var first = CreateSut();

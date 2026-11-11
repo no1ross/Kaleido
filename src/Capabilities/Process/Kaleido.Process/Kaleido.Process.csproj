@@ -9,7 +9,6 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\Core\Kaleido\Kaleido.csproj" />
 		<ProjectReference Include="..\..\..\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
-		<ProjectReference Include="..\..\Registry\Kaleido.Registry\Kaleido.Registry.Next.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

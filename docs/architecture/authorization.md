@@ -15,10 +15,17 @@ see [Who may continue a process](#who-may-continue-a-process) and the [threat mo
 ```csharp
 services.AddKaleido(configuration, new()
 {
+    ServiceName = "orders",
+    ServiceVersion = "1",
+    Assemblies = [typeof(Program).Assembly],
+}).AddServer(new()
+{
     AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
     DefaultAuthorization = new AuthorizationMetadata(Policy: null, Roles: ["staff"]), // optional service default
 });
 ```
+
+`Kaleido.Registry.AuthorizationMetadata` and `[KaleidoAuthorization]` are foundation declarations under `src/Core/Kaleido/Registry/`; `AddServer()` binds the transport-neutral enforcement settings in the temporary Server.Next shell. The host's transport still enforces the effective rule.
 
 Both can also be bound from configuration (`Kaleido:AuthorizationMode`,
 `Kaleido:DefaultAuthorization:Policy`, `Kaleido:DefaultAuthorization:Roles:0`, …).

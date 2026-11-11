@@ -21,7 +21,7 @@ internal interface IDelegatedQuerySourceEngine<TQueryContext, TResult>
 }
 
 internal sealed class DelegatedQuerySourceEngine<TQueryContext, TResult>(
-    IQueryContextValidator validator,
+    IQueryRequestValidator validator,
     IQueryEventFactory eventFactory,
     IKaleidoEventWriter eventWriter,
     IKaleidoCorrelationContextAccessor correlationAccessor,

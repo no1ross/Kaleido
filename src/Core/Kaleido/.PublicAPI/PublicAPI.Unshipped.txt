@@ -90,12 +90,10 @@ Kaleido.KaleidoServiceOptions.Description.init -> void
 Kaleido.KaleidoServiceOptions.DisplayName.get -> string?
 Kaleido.KaleidoServiceOptions.DisplayName.init -> void
 Kaleido.KaleidoServiceOptions.Equals(Kaleido.KaleidoServiceOptions? other) -> bool
-Kaleido.KaleidoServiceOptions.InstanceId.get -> System.Guid
-Kaleido.KaleidoServiceOptions.InstanceId.init -> void
 Kaleido.KaleidoServiceOptions.KaleidoServiceOptions() -> void
 Kaleido.KaleidoServiceOptions.ServiceName.get -> string!
 Kaleido.KaleidoServiceOptions.ServiceName.init -> void
-Kaleido.KaleidoServiceOptions.ServiceVersion.get -> string?
+Kaleido.KaleidoServiceOptions.ServiceVersion.get -> string!
 Kaleido.KaleidoServiceOptions.ServiceVersion.init -> void
 Kaleido.KaleidoServiceOptions.TypeFilter.get -> System.Func<System.Type!, bool>?
 Kaleido.KaleidoServiceOptions.TypeFilter.init -> void
@@ -136,6 +134,26 @@ Kaleido.Observability.KaleidoCorrelationContext.ProcessId.init -> void
 Kaleido.Observability.KaleidoCorrelationContext.RequestId.get -> string!
 Kaleido.Observability.KaleidoCorrelationContext.RequestId.init -> void
 Kaleido.Observability.KaleidoTelemetryTags
+Kaleido.Registry.AuthorizationMetadata
+Kaleido.Registry.AuthorizationMetadata.<Clone>$() -> Kaleido.Registry.AuthorizationMetadata!
+Kaleido.Registry.AuthorizationMetadata.AllowAnonymous.get -> bool
+Kaleido.Registry.AuthorizationMetadata.AllowAnonymous.init -> void
+Kaleido.Registry.AuthorizationMetadata.AuthorizationMetadata(string? Policy, System.Collections.Generic.IReadOnlyList<string!>! Roles) -> void
+Kaleido.Registry.AuthorizationMetadata.Deconstruct(out string? Policy, out System.Collections.Generic.IReadOnlyList<string!>! Roles) -> void
+Kaleido.Registry.AuthorizationMetadata.Equals(Kaleido.Registry.AuthorizationMetadata? other) -> bool
+Kaleido.Registry.AuthorizationMetadata.IsExplicit() -> bool
+Kaleido.Registry.AuthorizationMetadata.Policy.get -> string?
+Kaleido.Registry.AuthorizationMetadata.Policy.init -> void
+Kaleido.Registry.AuthorizationMetadata.Roles.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Registry.AuthorizationMetadata.Roles.init -> void
+Kaleido.Registry.KaleidoAuthorizationAttribute
+Kaleido.Registry.KaleidoAuthorizationAttribute.AllowAnonymous.get -> bool
+Kaleido.Registry.KaleidoAuthorizationAttribute.AllowAnonymous.init -> void
+Kaleido.Registry.KaleidoAuthorizationAttribute.KaleidoAuthorizationAttribute() -> void
+Kaleido.Registry.KaleidoAuthorizationAttribute.Policy.get -> string?
+Kaleido.Registry.KaleidoAuthorizationAttribute.Policy.init -> void
+Kaleido.Registry.KaleidoAuthorizationAttribute.Roles.get -> string?
+Kaleido.Registry.KaleidoAuthorizationAttribute.Roles.init -> void
 override Kaleido.KaleidoNotice.Equals(object? obj) -> bool
 override Kaleido.KaleidoNotice.GetHashCode() -> int
 override Kaleido.KaleidoNotice.ToString() -> string!
@@ -151,6 +169,9 @@ override Kaleido.Observability.KaleidoCaller.ToString() -> string!
 override Kaleido.Observability.KaleidoCorrelationContext.Equals(object? obj) -> bool
 override Kaleido.Observability.KaleidoCorrelationContext.GetHashCode() -> int
 override Kaleido.Observability.KaleidoCorrelationContext.ToString() -> string!
+override Kaleido.Registry.AuthorizationMetadata.Equals(object? obj) -> bool
+override Kaleido.Registry.AuthorizationMetadata.GetHashCode() -> int
+override Kaleido.Registry.AuthorizationMetadata.ToString() -> string!
 static Kaleido.KaleidoNotice.operator !=(Kaleido.KaleidoNotice? left, Kaleido.KaleidoNotice? right) -> bool
 static Kaleido.KaleidoNotice.operator ==(Kaleido.KaleidoNotice? left, Kaleido.KaleidoNotice? right) -> bool
 static Kaleido.KaleidoResilienceSettings.operator !=(Kaleido.KaleidoResilienceSettings? left, Kaleido.KaleidoResilienceSettings? right) -> bool
@@ -162,6 +183,9 @@ static Kaleido.Observability.KaleidoCaller.operator !=(Kaleido.Observability.Kal
 static Kaleido.Observability.KaleidoCaller.operator ==(Kaleido.Observability.KaleidoCaller? left, Kaleido.Observability.KaleidoCaller? right) -> bool
 static Kaleido.Observability.KaleidoCorrelationContext.operator !=(Kaleido.Observability.KaleidoCorrelationContext? left, Kaleido.Observability.KaleidoCorrelationContext? right) -> bool
 static Kaleido.Observability.KaleidoCorrelationContext.operator ==(Kaleido.Observability.KaleidoCorrelationContext? left, Kaleido.Observability.KaleidoCorrelationContext? right) -> bool
+static Kaleido.Registry.AuthorizationMetadata.operator !=(Kaleido.Registry.AuthorizationMetadata? left, Kaleido.Registry.AuthorizationMetadata? right) -> bool
+static Kaleido.Registry.AuthorizationMetadata.operator ==(Kaleido.Registry.AuthorizationMetadata? left, Kaleido.Registry.AuthorizationMetadata? right) -> bool
+static Kaleido.Registry.AuthorizationMetadata.Unspecified.get -> Kaleido.Registry.AuthorizationMetadata!
 virtual Kaleido.KaleidoResilienceSettings.<Clone>$() -> Kaleido.KaleidoResilienceSettings!
 virtual Kaleido.KaleidoResilienceSettings.EqualityContract.get -> System.Type!
 virtual Kaleido.KaleidoResilienceSettings.Equals(Kaleido.KaleidoResilienceSettings? other) -> bool

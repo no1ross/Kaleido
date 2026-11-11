@@ -13,6 +13,7 @@ public sealed class KaleidoEventingServiceCollectionExtensionsTests : SutFixture
     private static KaleidoServiceOptions DefaultServiceOptions() => new()
     {
         ServiceName = "test-service",
+        ServiceVersion = "1",
         Assemblies = [typeof(KaleidoEventingServiceCollectionExtensionsTests).Assembly],
     };
 

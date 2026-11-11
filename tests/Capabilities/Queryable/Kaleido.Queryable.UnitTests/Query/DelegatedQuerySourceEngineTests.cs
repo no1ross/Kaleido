@@ -36,7 +36,7 @@ public sealed class DelegatedQuerySourceEngineTests
     }
 
     private static DelegatedQuerySourceEngine<FakeContext, FakeResult> CreateSut(
-        IQueryContextValidator validator,
+        IQueryRequestValidator validator,
         IServiceProvider serviceProvider,
         Mock<IQueryExecutionObservation>? observation = null,
         Mock<IKaleidoEventWriter>? outbox = null)
@@ -60,7 +60,7 @@ public sealed class DelegatedQuerySourceEngineTests
     {
         var source = new FakeDelegatedSource();
         var registration = CreateRegistration();
-        var validator = new Mock<IQueryContextValidator>();
+        var validator = new Mock<IQueryRequestValidator>();
         var request = new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid()));
 
         var result = await CreateSut(validator.Object, ServiceProviderFor(source))
@@ -77,7 +77,7 @@ public sealed class DelegatedQuerySourceEngineTests
     public async Task ExecuteAsync_WhenValidationFails_DoesNotCallSource()
     {
         var source = new FakeDelegatedSource();
-        var validator = new Mock<IQueryContextValidator>();
+        var validator = new Mock<IQueryRequestValidator>();
         validator
             .Setup(x => x.Validate(It.IsAny<IQueryRequest>(), It.IsAny<QuerySourceMetadata>(), It.IsAny<PageableMetadata?>()))
             .Throws(new KaleidoValidationException(QueryableErrorCodes.FieldNotFilterable, "Not filterable."));
@@ -94,7 +94,7 @@ public sealed class DelegatedQuerySourceEngineTests
     {
         var exception =
             await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-                CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(new FakeDelegatedSource()))
+                CreateSut(Mock.Of<IQueryRequestValidator>(), ServiceProviderFor(new FakeDelegatedSource()))
                     .ExecuteAsync(new QueryRequest(), CreateRegistration(), TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
@@ -106,7 +106,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
         var outbox = new Mock<IKaleidoEventWriter>();
 
-        await CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(new FakeDelegatedSource()), observation, outbox)
+        await CreateSut(Mock.Of<IQueryRequestValidator>(), ServiceProviderFor(new FakeDelegatedSource()), observation, outbox)
             .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken);
 
         observation.Verify(x => x.BeginDelegate(), Times.Once);
@@ -118,7 +118,7 @@ public sealed class DelegatedQuerySourceEngineTests
     public async Task ExecuteAsync_WhenValidationFails_RecordsAValidationFailureOnly()
     {
         var failure = new KaleidoValidationException(QueryableErrorCodes.FieldNotFilterable, "Not filterable.");
-        var validator = new Mock<IQueryContextValidator>();
+        var validator = new Mock<IQueryRequestValidator>();
         validator
             .Setup(x => x.Validate(It.IsAny<IQueryRequest>(), It.IsAny<QuerySourceMetadata>(), It.IsAny<PageableMetadata?>()))
             .Throws(failure);
@@ -142,7 +142,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(source.Object), observation)
+            CreateSut(Mock.Of<IQueryRequestValidator>(), ServiceProviderFor(source.Object), observation)
                 .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), new CancellationToken(canceled: true)));
 
         observation.Verify(x => x.Canceled(), Times.Once);
@@ -160,7 +160,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(source.Object), observation)
+            CreateSut(Mock.Of<IQueryRequestValidator>(), ServiceProviderFor(source.Object), observation)
                 .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         observation.Verify(x => x.Canceled(), Times.Never);
@@ -178,7 +178,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
 
         var thrown = await Assert.ThrowsAsync<HttpRequestException>(() =>
-            CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(source.Object), observation)
+            CreateSut(Mock.Of<IQueryRequestValidator>(), ServiceProviderFor(source.Object), observation)
                 .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         Assert.Same(failure, thrown);
@@ -196,7 +196,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
 
         var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(source.Object), observation)
+            CreateSut(Mock.Of<IQueryRequestValidator>(), ServiceProviderFor(source.Object), observation)
                 .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
@@ -209,7 +209,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
 
         var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
-            CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(new object()), observation)
+            CreateSut(Mock.Of<IQueryRequestValidator>(), ServiceProviderFor(new object()), observation)
                 .ExecuteAsync(new QueryRequest<FakeParameters>(new FakeParameters(Guid.NewGuid())), CreateRegistration(), TestContext.Current.CancellationToken));
 
         var framework = exception as KaleidoFrameworkException ?? Assert.IsType<KaleidoFrameworkException>(exception.InnerException);
@@ -226,7 +226,7 @@ public sealed class DelegatedQuerySourceEngineTests
         var observation = new Mock<IQueryExecutionObservation>();
 
         var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
-            CreateSut(Mock.Of<IQueryContextValidator>(), ServiceProviderFor(new FakeDelegatedSource()), observation)
+            CreateSut(Mock.Of<IQueryRequestValidator>(), ServiceProviderFor(new FakeDelegatedSource()), observation)
                 .ExecuteAsync(request.Object, CreateRegistration(), TestContext.Current.CancellationToken));
 
         var framework = exception as KaleidoFrameworkException ?? Assert.IsType<KaleidoFrameworkException>(exception.InnerException);

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Kaleido.Exceptions;
+using Kaleido.Registry;
 
 namespace Kaleido.Queryable.Registry.UnitTests;
 

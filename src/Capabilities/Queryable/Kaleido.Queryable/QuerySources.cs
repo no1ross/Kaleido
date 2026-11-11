@@ -1,53 +1,6 @@
 namespace Kaleido.Queryable;
 
 /// <summary>
-/// Marks a record as a <b>query context</b>: the record that describes how a query source can be
-/// queried. Its properties carry the query rules — <see cref="FilterableAttribute"/>,
-/// <see cref="SearchableAttribute"/>, <see cref="SortableAttribute"/> — and it is the record type a
-/// local source produces and a direct query returns.
-/// </summary>
-/// <remarks>
-/// <para>
-/// A query context is not a capability on its own and has no public name; a source
-/// (<see cref="IQuerySource{TQueryContext}"/>, <see cref="IQuerySourceAsync{TQueryContext}"/> or
-/// <see cref="IDelegatedQuerySource{TQueryContext,TResult,TParameters}"/>) is. The same context may
-/// be used by several sources.
-/// </para>
-/// <para>
-/// The query-rule attributes only have meaning on query contexts; an analyzer reports them on
-/// other types.
-/// </para>
-/// </remarks>
-/// <example>
-/// <code>
-/// public sealed record MemberQueryContext : IQueryContext
-/// {
-///     [Key] public Guid MemberEnrollmentId { get; init; }
-///
-///     [Searchable(Priority = 1, MatchMode = MatchMode.Exact)]
-///     [Sortable]
-///     public string MemberNumber { get; init; } = string.Empty;
-/// }
-/// </code>
-/// </example>
-public interface IQueryContext;
-
-/// <summary>
-/// Marks a record as the <b>parameters</b> of a query view or delegated source: named inputs
-/// beyond search, filter, sort and paging (for example a process id). Parameters are published in
-/// the registry with their validation constraints.
-/// </summary>
-/// <remarks>
-/// Use <see cref="EmptyQueryViewParameters"/> (or the generic overloads without a parameters type
-/// argument) when no parameters are needed.
-/// </remarks>
-public interface IQueryParameters;
-
-/// <summary>Parameters record used when a query view or delegated source declares no parameters.</summary>
-[ExcludeFromCodeCoverage]
-public sealed record EmptyQueryViewParameters : IQueryParameters;
-
-/// <summary>
 /// Shared marker for the two local source shapes (<see cref="IQuerySource{TQueryContext}"/> and
 /// <see cref="IQuerySourceAsync{TQueryContext}"/>). It lets local query views reference a source
 /// without caring whether it is synchronous or asynchronous.
@@ -134,83 +87,6 @@ public interface IQuerySourceAsync<TQueryContext> : ILocalQuerySource<TQueryCont
         QueryExecutionContext executionContext,
         CancellationToken cancellationToken);
 }
-
-/// <summary>
-/// A local query view: a projection over a local source. Implementing this interface is the view's
-/// <b>identity</b>; describe it with <see cref="QueryViewAttribute"/>.
-/// </summary>
-/// <typeparam name="TSource">
-/// The local source this view projects — a type implementing
-/// <see cref="IQuerySource{TQueryContext}"/> or <see cref="IQuerySourceAsync{TQueryContext}"/>.
-/// The view is published under that source.
-/// </typeparam>
-/// <typeparam name="TQueryContext">The source's query context record (repeated so <see cref="CreateView"/> is fully typed).</typeparam>
-/// <typeparam name="TView">The record type the view returns (a plain output shape).</typeparam>
-/// <typeparam name="TViewParameters">The view's parameters record.</typeparam>
-/// <remarks>
-/// The view's public name is its type name (<c>Type.Name</c>), unique within its source; it is
-/// queried at <c>/{service}/{version}/queryable/{source}/{view}/query</c>. Kaleido applies search, filter
-/// and sort against <typeparamref name="TQueryContext"/>, then this projection, then paging.
-/// A view implements exactly one of the synchronous or asynchronous shapes.
-/// </remarks>
-public interface IQueryViewSource<TSource, TQueryContext, TView, TViewParameters>
-    where TSource : class, ILocalQuerySource<TQueryContext>
-    where TQueryContext : class, IQueryContext
-    where TView : class
-    where TViewParameters : class, IQueryParameters
-{
-    /// <summary>Projects the source's queryable into the view's records.</summary>
-    /// <param name="query">The source's queryable, with search, filter and sort applied.</param>
-    /// <param name="executionContext">The source metadata and the current request.</param>
-    /// <returns>The projected queryable.</returns>
-    IQueryable<TView> CreateView(IQueryable<TQueryContext> query, QueryExecutionContext executionContext);
-}
-
-/// <summary>A local query view without parameters; see <see cref="IQueryViewSource{TSource,TQueryContext,TView,TViewParameters}"/>.</summary>
-/// <typeparam name="TSource">The local source this view projects.</typeparam>
-/// <typeparam name="TQueryContext">The source's query context record.</typeparam>
-/// <typeparam name="TView">The record type the view returns.</typeparam>
-public interface IQueryViewSource<TSource, TQueryContext, TView>
-    : IQueryViewSource<TSource, TQueryContext, TView, EmptyQueryViewParameters>
-    where TSource : class, ILocalQuerySource<TQueryContext>
-    where TQueryContext : class, IQueryContext
-    where TView : class;
-
-/// <summary>
-/// The asynchronous form of <see cref="IQueryViewSource{TSource,TQueryContext,TView,TViewParameters}"/> —
-/// implement it when the projection requires async work. Implementing this interface is the view's
-/// <b>identity</b>; describe it with <see cref="QueryViewAttribute"/>.
-/// </summary>
-/// <typeparam name="TSource">The local source this view projects.</typeparam>
-/// <typeparam name="TQueryContext">The source's query context record.</typeparam>
-/// <typeparam name="TView">The record type the view returns.</typeparam>
-/// <typeparam name="TViewParameters">The view's parameters record.</typeparam>
-public interface IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParameters>
-    where TSource : class, ILocalQuerySource<TQueryContext>
-    where TQueryContext : class, IQueryContext
-    where TView : class
-    where TViewParameters : class, IQueryParameters
-{
-    /// <summary>Projects the source's queryable into the view's records.</summary>
-    /// <param name="query">The source's queryable, with search, filter and sort applied.</param>
-    /// <param name="executionContext">The source metadata and the current request.</param>
-    /// <param name="cancellationToken">Cancels the operation.</param>
-    /// <returns>The projected queryable.</returns>
-    Task<IQueryable<TView>> CreateViewAsync(
-        IQueryable<TQueryContext> query,
-        QueryExecutionContext executionContext,
-        CancellationToken cancellationToken);
-}
-
-/// <summary>An asynchronous local query view without parameters; see <see cref="IQueryViewSourceAsync{TSource,TQueryContext,TView,TViewParameters}"/>.</summary>
-/// <typeparam name="TSource">The local source this view projects.</typeparam>
-/// <typeparam name="TQueryContext">The source's query context record.</typeparam>
-/// <typeparam name="TView">The record type the view returns.</typeparam>
-public interface IQueryViewSourceAsync<TSource, TQueryContext, TView>
-    : IQueryViewSourceAsync<TSource, TQueryContext, TView, EmptyQueryViewParameters>
-    where TSource : class, ILocalQuerySource<TQueryContext>
-    where TQueryContext : class, IQueryContext
-    where TView : class;
 
 /// <summary>
 /// A delegated query source: a facade that hides internal complexity behind a simple query

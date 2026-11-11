@@ -1,18 +1,16 @@
 # Processed project dependencies
 
-The graph below states actual, directly relevant references for projects processed or actively being extracted under #585/#586. `.Next` assemblies are temporary non-packable shells, not final package names. An arrow points **from a project to a project it references**:
+The graph below states actual, directly relevant references for projects processed or actively being extracted under #585/#586. The Server.Next assembly is a temporary non-packable shell, not a final package name. An arrow points **from a project to a project it references**:
 
 ```text
 Kaleido.Process   ──► Kaleido.Eventing ──► Kaleido
-                  ├──► Kaleido.Registry.Next ──► Kaleido
                   ╰────────────────────────────► Kaleido
 Kaleido.Queryable ──► Kaleido.Eventing ──► Kaleido
-                  ├──► Kaleido.Registry.Next ──► Kaleido
                   ╰────────────────────────────► Kaleido
-Kaleido.Server.Next ──► Kaleido.Registry.Next, Kaleido
+Kaleido.Server.Next ─────────────────────────► Kaleido
 ```
 
-`Kaleido` must not reference either capability or Eventing. Eventing provides generic envelopes, outbox/writer/relay/redaction seams and does not reference Process or Queryable; each capability owns its own payloads, stable discriminators and typed dispatch registration. Both capabilities reference foundation for identity, CLR metadata mechanics and correlation, and temporary Registry.Next for shared authorization declarations/metadata (#595). The Eventing placement and compatibility `<RootNamespace>Kaleido</RootNamespace>` are **temporary shallow-extraction choices**, not the final package design (#592). Moving a single Eventing assembly above Process and Queryable without moving its generic contracts would create a cycle; revisit that design in #592 rather than introducing one now.
+`Kaleido` must not reference either capability or Eventing. Eventing provides generic envelopes, outbox/writer/relay/redaction seams and does not reference Process or Queryable; each capability owns its own payloads, stable discriminators and typed dispatch registration. Both capabilities reference foundation for identity, CLR metadata mechanics, correlation and shared authorization declarations/metadata; the temporary Registry.Next shell was removed by owner decision (#586, superseding #595). The Eventing placement and compatibility `<RootNamespace>Kaleido</RootNamespace>` are **temporary shallow-extraction choices**, not the final package design (#592). Moving a single Eventing assembly above Process and Queryable without moving its generic contracts would create a cycle; revisit that design in #592 rather than introducing one now.
 
 Foundation no longer owns a store-choice check, contributor or in-memory provider default. `Kaleido.Provider` temporarily offers explicit `AddInMemoryProviders()` registration of the existing Process/Eventing implementations (#598); Hosting's in-progress check verifies **presence** of required registrations, not the implementation technology (#597). These owners reference lower projects; foundation references none of them. Cross-assembly internal seams use `.csproj` `<InternalsVisibleTo>` items, and project-wide usings use `.csproj` `<Using>` items.
 

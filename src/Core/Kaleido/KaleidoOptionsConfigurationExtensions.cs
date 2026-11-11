@@ -15,7 +15,8 @@ namespace Kaleido;
 /// </para>
 /// <list type="bullet">
 /// <item><description>the options record is copied first, and so is every nested options record that
-/// configuration touches;</description></item>
+/// configuration touches; a null positional record with collection constructor parameters must declare
+/// a parameterless default or be supplied in code, since constructor binding can append collections;</description></item>
 /// <item><description>a setting whose key is in the section replaces the code value; a setting whose
 /// key is absent keeps it;</description></item>
 /// <item><description>a configured collection replaces the code's collection (string-keyed dictionaries
@@ -92,9 +93,20 @@ internal static class KaleidoOptionsConfigurationExtensions
     {
         try
         {
-            if (IsOptionsRecord(type) && (current ?? CreateDefault(type)) is { } nested)
+            if (IsOptionsRecord(type))
             {
-                return Overlay(nested, setting, errorCode);
+                if ((current ?? CreateDefault(type)) is { } nested)
+                {
+                    return Overlay(nested, setting, errorCode);
+                }
+
+                if (type.GetConstructors().Any(constructor => constructor.GetParameters().Any(parameter =>
+                    parameter.ParameterType != typeof(string) && typeof(IEnumerable).IsAssignableFrom(parameter.ParameterType))))
+                {
+                    throw new KaleidoConfigurationException(
+                        errorCode,
+                        $"The configured value of {setting.Path} cannot be read as {Describe(type)}: a positional record with a collection needs a declared parameterless default or a code-supplied value.");
+                }
             }
 
             if (StringDictionaryValueType(type) is { } valueType)
@@ -134,7 +146,9 @@ internal static class KaleidoOptionsConfigurationExtensions
         type.GetConstructor(AnyInstance, [type]);
 
     private static object? CreateDefault(Type type) =>
-        type.GetConstructor(Type.EmptyTypes) is { } constructor ? constructor.Invoke([]) : null;
+        type.GetConstructor(AnyInstance, binder: null, types: Type.EmptyTypes, modifiers: null) is { } constructor
+            ? constructor.Invoke([])
+            : null;
 
     private static Type? StringDictionaryValueType(Type type) =>
         type.IsGenericType

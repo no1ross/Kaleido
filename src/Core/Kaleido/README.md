@@ -21,6 +21,7 @@ For the full repository model, see:
 ### Shared abstractions
 - `TypeDescriber` (internal concrete singleton) — converts CLR types and properties into `DataTypeDescriptor` values; HTTP maps those into wire `DataTypeMetadata`
 - `ConstraintMapper` (internal concrete singleton) — converts `ValidationAttribute` usage into metadata constraint contracts
+- `Registry/KaleidoAuthorizationAttribute` and `Registry/AuthorizationMetadata` — shared declaration and effective rule for Process steps and Queryable sources/views, both in the `Kaleido.Registry` namespace; the central control registry is a separate later owner
 - `KaleidoCorrelationContext` — shared ambient identity model for requests/workflows
 - Event publication, redaction, relay and outbox types belong to [`Kaleido.Eventing`](../../Events/Kaleido.Eventing/README.md); the foundation supplies only the shared `DataClassificationAttribute` inspection used by event and metadata owners (ADR 0013, ADR 0025).
 - `Kaleido.Exceptions` — shared `KaleidoValidationException` (400), `KaleidoAuthorizationException` (401/403), `KaleidoConfigurationException` and `KaleidoFrameworkException` (500). The Process-owned `KaleidoConcurrencyException` reports process-state conflicts (409). HTTP error bodies belong to `Kaleido.Platform` during extraction (see [`docs/ERROR_CODES.md`](../../../docs/ERROR_CODES.md)).
@@ -61,7 +62,7 @@ A service starts by calling `AddKaleido()`:
 builder.Services.AddKaleido(builder.Configuration, new()
 {
     ServiceName = "myservice", // [a-z0-9][a-z0-9_-]*: service and MCP tool identity (KAL2005)
-    ServiceVersion = "1",     // required when mapping HTTP; each version gets its own gateway route
+    ServiceVersion = "1",     // required for every service; a version also scopes routes and stored records
     Assemblies = [
         typeof(Program).Assembly,
         typeof(MyDbContext).Assembly
@@ -71,10 +72,9 @@ builder.Services.AddKaleido(builder.Configuration, new()
 
 Other `KaleidoServiceOptions` (code values overlaid by the `Kaleido` configuration section):
 - `DisplayName` / `Description` — the service's human-readable name and description, published in the registry
-- `InstanceId` — identifies this running instance (new at each start by default) in its own trace tags, events and logs; never sent or read in correlation headers
 - `TypeFilter` — limits which step and query source/view types are registered when an assembly is shared
 
-The [commented configuration inventory](../../../docs/guide/examples/kaleido-settings.jsonc) shows every Core JSON setting. `Assemblies` (required) and `TypeFilter` (optional) are code-only. Process owns its entry flag, Server owns authorization mode/default ([authorization architecture](../../../docs/architecture/authorization.md)), and [Eventing](../../Events/Kaleido.Eventing/README.md) owns its `Kaleido:Events` section.
+The [commented configuration inventory](../../../docs/guide/examples/kaleido-settings.jsonc) shows every Core JSON setting. `ServiceName` and `ServiceVersion` are required from code or configuration; `Assemblies` (required) and `TypeFilter` (optional) are code-only. Kaleido generates `InstanceId` internally for each running instance; neither consumers nor configuration set it. Process owns its entry flag, Server owns authorization mode/default ([authorization architecture](../../../docs/architecture/authorization.md)), and [Eventing](../../Events/Kaleido.Eventing/README.md) owns its `Kaleido:Events` section.
 
 `AddKaleido()`:
 - validates the `IServiceCollection`

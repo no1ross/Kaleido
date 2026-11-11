@@ -1,5 +1,5 @@
+using System.Text.Json;
 using Kaleido.Exceptions;
-
 using Kaleido.UnitTests;
 
 namespace Kaleido.Registry.UnitTests;
@@ -85,6 +85,19 @@ public sealed class AuthorizationMetadataTests
         Assert.True(CreateSut(roles: ["radiology"]).IsExplicit());
         Assert.True(CreateSut(policy: "can-view").IsExplicit());
         Assert.True(CreateSut(allowAnonymous: true).IsExplicit());
+    }
+
+    [Fact]
+    public void JsonDeserialization_StillUsesTheDeclaredPublicConstructor()
+    {
+        var rule = JsonSerializer.Deserialize<AuthorizationMetadata>("{\"Policy\":\"staff\",\"Roles\":[\"reader\"]}");
+        var missingRoles = JsonSerializer.Deserialize<AuthorizationMetadata>("{\"Policy\":\"staff\"}");
+
+        Assert.NotNull(rule);
+        Assert.Equal("staff", rule.Policy);
+        Assert.Equal(["reader"], rule.Roles);
+        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization,
+            Assert.Throws<KaleidoConfigurationException>(() => AuthorizationMetadata.ValidateDefault(missingRoles)).Code);
     }
 
     [Fact]

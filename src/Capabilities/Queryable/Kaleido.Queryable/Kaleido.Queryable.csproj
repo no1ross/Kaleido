@@ -8,7 +8,6 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\Core\Kaleido\Kaleido.csproj" />
 		<ProjectReference Include="..\..\..\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
-		<ProjectReference Include="..\..\Registry\Kaleido.Registry\Kaleido.Registry.Next.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -22,6 +21,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- Unmigrated adapters and their functional tests consume Queryable's internal runtime/registry seams; no public API is added for them. -->
 		<InternalsVisibleTo Include="Kaleido.Platform" />
 		<InternalsVisibleTo Include="Kaleido.Server" />
 		<InternalsVisibleTo Include="Kaleido.Client" />

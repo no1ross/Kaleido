@@ -5,7 +5,6 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\Core\Kaleido\Kaleido.csproj" />
-		<ProjectReference Include="..\..\..\Capabilities\Registry\Kaleido.Registry\Kaleido.Registry.Next.csproj" />
 		<ProjectReference Include="..\..\..\Transports\Kaleido.Server\Kaleido.Server.Next.csproj" />
 		<ProjectReference Include="..\..\..\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
 		<ProjectReference Include="..\..\..\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />

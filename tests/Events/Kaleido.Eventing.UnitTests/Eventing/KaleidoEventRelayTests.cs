@@ -42,7 +42,7 @@ public sealed class KaleidoEventRelayTests
             publisher,
             [dispatcher.Object],
             signal ?? Mock.Of<IKaleidoEventSignal>(),
-            new KaleidoServiceOptions { ServiceName = "svc" },
+            new KaleidoServiceOptions { ServiceName = "svc", ServiceVersion = "1" },
             options ?? new KaleidoEventOptions(),
             clock ?? time,
             logger ?? NullLogger<KaleidoEventRelay>.Instance);

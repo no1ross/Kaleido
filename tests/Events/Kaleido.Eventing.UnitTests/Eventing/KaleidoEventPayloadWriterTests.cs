@@ -22,7 +22,7 @@ public sealed class KaleidoEventPayloadWriterTests
         new(
             redactors ?? [],
             redactorProvider ?? NoEventPolicy(),
-            serviceOptions ?? new KaleidoServiceOptions { ServiceName = "svc" },
+            serviceOptions ?? new KaleidoServiceOptions { ServiceName = "svc", ServiceVersion = "1" },
             logger ?? Mock.Of<ILogger<KaleidoEventPayloadWriter>>());
 
     // No AddEventRedaction: nothing is configured, every classified value is erased.
@@ -301,9 +301,9 @@ public sealed class KaleidoEventPayloadWriterTests
 
     // #552: several services and versions may share an outbox database; each entry names its writer.
     [Theory]
-    [InlineData(null)]
+    [InlineData("1")]
     [InlineData("2")]
-    public void Write_TagsTheEntryWithTheWritingServiceAndVersion(string? version)
+    public void Write_TagsTheEntryWithTheWritingServiceAndVersion(string version)
     {
         var entry = CreateSut(serviceOptions: new KaleidoServiceOptions { ServiceName = "orders", ServiceVersion = version })
             .Write(StepEnvelope(request: null, response: null));

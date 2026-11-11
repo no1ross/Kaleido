@@ -16,6 +16,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         new()
         {
             ServiceName = "test-service",
+            ServiceVersion = "1",
             Assemblies = [typeof(KaleidoServiceCollectionExtensionsTests).Assembly],
         };
 
@@ -35,6 +36,30 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         Assert.Same(provider.GetRequiredService<ConstraintMapper>(), provider.GetRequiredService<ConstraintMapper>());
     }
 
+    [Fact]
+    public void AddKaleido_MissingVersion_ThrowsBeforeChangingServices()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
+            services.AddKaleido(EmptyConfig(), DefaultServiceOptions() with { ServiceVersion = null! }));
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidServiceVersion, exception.Code);
+        Assert.Empty(services);
+    }
+
+    [Fact]
+    public void AddKaleido_DoesNotBindInternalInstanceIdFromConfiguration()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:InstanceId"] = Guid.Empty.ToString() })
+            .Build();
+
+        var options = new ServiceCollection().AddKaleido(configuration, DefaultServiceOptions()).ServiceOptions;
+
+        Assert.NotEqual(Guid.Empty, options.InstanceId);
+    }
+
     // ADR 0030: configuration overrides code setting by setting; what configuration does not name keeps
     // the code value, and the host's own instance is never changed.
     [Fact]
@@ -44,6 +69,8 @@ public sealed class KaleidoServiceCollectionExtensionsTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Kaleido:DisplayName"] = "From configuration",
+                ["Kaleido:ServiceName"] = "configured-service",
+                ["Kaleido:ServiceVersion"] = "2",
             })
             .Build();
         var code = DefaultServiceOptions() with
@@ -55,8 +82,12 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var registered = new ServiceCollection().AddKaleido(config, code).ServiceOptions;
 
         Assert.Equal("From configuration", registered.DisplayName);
+        Assert.Equal("configured-service", registered.ServiceName);
+        Assert.Equal("2", registered.ServiceVersion);
         Assert.Equal("Kept", registered.Description);
         Assert.Equal("From code", code.DisplayName);
+        Assert.Equal("test-service", code.ServiceName);
+        Assert.Equal("1", code.ServiceVersion);
     }
 
     // The registered options hold their own copy: changing the caller's array afterwards
@@ -129,7 +160,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var assembly = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
 
-        var builder = services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", Assemblies = new[] { assembly } });
+        var builder = services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", ServiceVersion = "1", Assemblies = new[] { assembly } });
 
         var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
         Assert.Same(assembly, Assert.Single(concreteBuilder.Assemblies));
@@ -142,7 +173,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var assembly1 = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
         var assembly2 = typeof(IServiceCollection).Assembly;
 
-        var builder = services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", Assemblies = new[] { assembly1, assembly2 } });
+        var builder = services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", ServiceVersion = "1", Assemblies = new[] { assembly1, assembly2 } });
 
         var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
         Assert.Contains(assembly1, concreteBuilder.Assemblies);
@@ -155,7 +186,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var assembly = typeof(KaleidoServiceCollectionExtensionsTests).Assembly;
 
-        var builder = services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", Assemblies = new[] { assembly, assembly } });
+        var builder = services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", ServiceVersion = "1", Assemblies = new[] { assembly, assembly } });
 
         var concreteBuilder = Assert.IsType<KaleidoBuilder>(builder);
         Assert.Equal(1, concreteBuilder.Assemblies.Count(a => a == assembly));
@@ -169,7 +200,7 @@ public sealed class KaleidoServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() =>
-            services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", Assemblies = empty ? [] : null }));
+            services.AddKaleido(EmptyConfig(), new() { ServiceName = "test-service", ServiceVersion = "1", Assemblies = empty ? [] : null }));
 
         Assert.Equal(ConfigurationErrorCodes.MissingAssembly, exception.Code);
         Assert.Empty(services);
@@ -237,7 +268,11 @@ public sealed class KaleidoServiceCollectionExtensionsTests
     public void AddKaleido_WithoutConfigureCallback_UsesBoundConfigurationAndValidatesIt()
     {
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:ServiceName"] = "bound-service" })
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Kaleido:ServiceName"] = "bound-service",
+                ["Kaleido:ServiceVersion"] = "1",
+            })
             .Build();
         var services = new ServiceCollection();
 

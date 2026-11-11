@@ -1,12 +1,12 @@
 
-namespace Kaleido.Queryable;
+namespace Kaleido.Queryable.Registry;
 
 /// <summary>
 /// Reflection helpers for the Queryable identity interfaces. The shorter generic forms
 /// (without a parameters type) derive from the full forms, so every implementation exposes a
 /// full-form interface; these helpers only look at the full forms.
 /// </summary>
-internal static class QueryViewTypeExtensions
+internal static class QueryableCapabilityTypeExtensions
 {
     /// <summary>
     /// The synchronous local source interfaces (<see cref="IQuerySource{TQueryContext}"/>)

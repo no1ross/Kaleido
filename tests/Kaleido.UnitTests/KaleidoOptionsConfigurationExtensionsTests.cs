@@ -59,6 +59,50 @@ public sealed class KaleidoOptionsConfigurationExtensionsTests
         Assert.Equal(new Pair("a", "b"), bound.Pair);
     }
 
+    [Fact]
+    public void BindOver_ANullPositionalRecordWithCollection_DoesNotDuplicateValues()
+    {
+        var bound = Section(("Rule:Policy", "configured"), ("Rule:Roles:0", "reader"))
+            .BindOver(new Sample(), Code);
+
+        Assert.Equal("configured", bound.Rule?.Policy);
+        Assert.Equal(["reader"], bound.Rule?.Roles);
+    }
+
+    [Fact]
+    public void BindOver_ANullPositionalRecordWithCollection_AllowsMissingNullableConstructorValue()
+    {
+        var bound = Section(("Rule:Roles:0", "reader"), ("Rule:AllowAnonymous", "true"))
+            .BindOver(new Sample(), Code);
+
+        Assert.Null(bound.Rule?.Policy);
+        Assert.Equal(["reader"], bound.Rule?.Roles);
+        Assert.True(bound.Rule?.AllowAnonymous);
+    }
+
+    [Fact]
+    public void BindOver_ANullPositionalRecordWithCollectionAndNoDefault_RejectsAmbiguousBinding()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() =>
+            Section(("UndeclaredRule:Policy", "configured"), ("UndeclaredRule:Roles:0", "reader"))
+                .BindOver(new Sample(), Code));
+
+        Assert.Equal(Code, exception.Code);
+        Assert.Contains("Options:UndeclaredRule", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("default", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BindOver_APositionalRecordFromCode_ReplacesOnlyNamedSettingsWithoutMutation()
+    {
+        var code = new Sample { Rule = new AuthorizationLike("code", ["code-role"]) };
+        var bound = Section(("Rule:Roles:0", "reader")).BindOver(code, Code);
+
+        Assert.Equal("code", bound.Rule?.Policy);
+        Assert.Equal(["reader"], bound.Rule?.Roles);
+        Assert.Equal(["code-role"], code.Rule?.Roles);
+    }
+
     // The binder alone would append the configured items to the code's.
     [Fact]
     public void BindOver_AConfiguredList_ReplacesTheCodeList()
@@ -165,6 +209,10 @@ public sealed class KaleidoOptionsConfigurationExtensionsTests
 
         public Pair? Pair { get; init; }
 
+        public AuthorizationLike? Rule { get; init; }
+
+        public NoDefaultCollection? UndeclaredRule { get; init; }
+
         public IReadOnlyList<string> Items { get; init; } = [];
 
         public IReadOnlyDictionary<string, Inner> Map { get; init; } = new Dictionary<string, Inner>();
@@ -178,6 +226,15 @@ public sealed class KaleidoOptionsConfigurationExtensionsTests
     }
 
     public sealed record Pair(string Left, string Right);
+
+    public sealed record AuthorizationLike(string? Policy, IReadOnlyList<string> Roles)
+    {
+        internal AuthorizationLike() : this(null, []) { }
+
+        public bool AllowAnonymous { get; init; }
+    }
+
+    public sealed record NoDefaultCollection(string? Policy, IReadOnlyList<string> Roles);
 
     public sealed class NotARecord
     {

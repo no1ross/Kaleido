@@ -7,7 +7,7 @@ namespace Kaleido.Queryable.Eventing.UnitTests;
 public sealed class QueryEventFactoryTests
     : SutFixture
 {
-    private readonly KaleidoServiceOptions _options = new() { ServiceName = "test-service" };
+    private readonly KaleidoServiceOptions _options = new() { ServiceName = "test-service", ServiceVersion = "1" };
 
     private QueryEventFactory Sut => CreateSut();
 
@@ -201,9 +201,9 @@ public sealed class QueryEventFactoryTests
 
     // #552: a query event names the service's version, so versions publishing to one stream stay apart.
     [Theory]
-    [InlineData(null)]
+    [InlineData("1")]
     [InlineData("2")]
-    public void CreateQueryExecuted_CarriesTheServiceVersion(string? version)
+    public void CreateQueryExecuted_CarriesTheServiceVersion(string version)
     {
         var details = new QueryObservationDetails("test-context", "test-view", false, QueryExecutionMode.DelegatedSource);
 

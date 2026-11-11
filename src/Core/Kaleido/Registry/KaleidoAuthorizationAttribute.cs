@@ -1,4 +1,4 @@
-namespace Kaleido;
+namespace Kaleido.Registry;
 
 /// <summary>
 /// Declares the authorization requirement for a Kaleido capability — a process step,

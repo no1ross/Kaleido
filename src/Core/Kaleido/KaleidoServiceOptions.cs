@@ -42,9 +42,8 @@ public sealed record KaleidoServiceOptions : IKaleidoOptions
     public string ServiceName { get; init; } = string.Empty;
 
     /// <summary>
-    /// The version of this service, when versions of it run side by side (for example <c>"2"</c> or
-    /// <c>"2026-11"</c>): an opaque label Kaleido never compares or orders. <see langword="null"/> (the
-    /// default) means the service is unversioned.
+    /// The required version of this service (for example <c>"2"</c> or <c>"2026-11"</c>):
+    /// an opaque label Kaleido never compares or orders. Supply it in code or configuration.
     /// </summary>
     /// <remarks>
     /// Every record Kaleido stores is scoped by the service and this version (#552): a process belongs to
@@ -55,15 +54,14 @@ public sealed record KaleidoServiceOptions : IKaleidoOptions
     /// (<c>invalid_service_version</c>). Set it in code or with the <c>Kaleido:ServiceVersion</c>
     /// configuration key.
     /// </remarks>
-    public string? ServiceVersion { get; init; }
+    public string ServiceVersion { get; init; } = string.Empty;
 
     /// <summary>The longest <see cref="ServiceVersion"/> accepted.</summary>
     public const int MaxServiceVersionLength = 64;
 
-    // The service and its version as one name, for keys of stores shared by services and versions (the
-    // registry snapshots, #552): "orders", or "orders@2". Neither a service name nor a version can
-    // contain '@', so no two read the same.
-    internal string ScopeName => ServiceVersion is null ? ServiceName : $"{ServiceName}@{ServiceVersion}";
+    // The service and its required version as one name, for keys of stores shared by services and
+    // versions (the registry snapshots, #552): "orders@2". Neither name nor version can contain '@'.
+    internal string ScopeName => $"{ServiceName}@{ServiceVersion}";
 
     /// <summary>
     /// A human-readable display name for this service (e.g. <c>"Prior Auth Intake"</c>).
@@ -81,7 +79,7 @@ public sealed record KaleidoServiceOptions : IKaleidoOptions
     /// Generated fresh at startup by default. Recorded in this service's own trace tags,
     /// events and logs for auditing; never sent or read in correlation headers.
     /// </summary>
-    public Guid InstanceId { get; init; } = Guid.NewGuid();
+    internal Guid InstanceId { get; init; } = Guid.NewGuid();
 
     /// <summary>
     /// The assemblies to scan for Process and Queryable registrations.
@@ -101,12 +99,12 @@ public sealed record KaleidoServiceOptions : IKaleidoOptions
 
     /// <summary>
     /// Validates a <see cref="KaleidoServiceOptions"/> instance.
-    /// Throws <see cref="KaleidoConfigurationException"/> if <see cref="ServiceName"/> is invalid
+    /// Throws <see cref="KaleidoConfigurationException"/> if the name or required version is invalid,
     /// or <see cref="Assemblies"/> is null or empty.
     /// </summary>
     /// <param name="options">The options instance to validate.</param>
     /// <exception cref="KaleidoConfigurationException">
-    /// Thrown when <see cref="ServiceName"/> or <see cref="Assemblies"/> fails validation.
+    /// Thrown when the name, version or <see cref="Assemblies"/> fails validation.
     /// </exception>
     internal static void Validate(KaleidoServiceOptions options)
     {
@@ -152,17 +150,12 @@ public sealed record KaleidoServiceOptions : IKaleidoOptions
     // first, then letters, digits, '.', '-' and '_'.
     private static void ValidateServiceVersion(string? serviceVersion)
     {
-        if (serviceVersion is null)
-        {
-            return;
-        }
-
         if (!IsValidServiceVersion(serviceVersion))
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.InvalidServiceVersion,
                 $"KaleidoServiceOptions.ServiceVersion '{serviceVersion}' must be 1 to {MaxServiceVersionLength} characters, start with an ASCII letter or digit " +
-                "and contain only ASCII letters, digits, '.', '-' and '_'. Leave it unset for an unversioned service.");
+                "and contain only ASCII letters, digits, '.', '-' and '_'. Set it in code or with Kaleido:ServiceVersion.");
         }
     }
 

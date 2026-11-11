@@ -7,7 +7,7 @@ public sealed class QueryRequestOfTTests
 {
     private sealed record WardParameters(string Ward);
 
-    private static QueryRequest<WardParameters> CreateSut(WardParameters? parameters) => new(parameters);
+    private static QueryRequest<WardParameters> CreateSut(WardParameters? parameters, QueryBody? query = null) => new(parameters, query);
 
     // What a source or view reads through the untyped request.
     [Fact]
@@ -18,6 +18,18 @@ public sealed class QueryRequestOfTTests
 
         Assert.Same(parameters, request.ViewParameters);
         Assert.Equal(typeof(WardParameters), request.ViewParametersType);
+    }
+
+    [Fact]
+    public void WithQuery_ExposesTypedAndUntypedParameters()
+    {
+        var parameters = new WardParameters("Alpha");
+        IQueryRequest request = CreateSut(parameters, new QueryBody(SearchText: "alpha"));
+
+        Assert.Same(parameters, ((QueryRequest<WardParameters>)request).ViewParameters);
+        Assert.Same(parameters, request.ViewParameters);
+        Assert.Equal(typeof(WardParameters), request.ViewParametersType);
+        Assert.Equal("alpha", request.Query!.SearchText);
     }
 
     [Fact]

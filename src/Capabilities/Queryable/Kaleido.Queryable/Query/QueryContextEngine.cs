@@ -27,8 +27,8 @@ internal interface IQueryContextEngine<TQueryContext, TView>
 }
 
 internal sealed class QueryContextEngine<TQueryContext, TView>(
-    IQueryContextValidator validator,
-    IQueryContextCompiler compiler,
+    IQueryRequestValidator validator,
+    IQueryRequestCompiler compiler,
     ICompiledQueryApplier<TQueryContext> applier,
     IQueryContextExecutor<TView> executor,
     IQueryEventFactory eventFactory,
@@ -46,6 +46,10 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         QueryViewRegistration viewRegistration,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(viewRegistration);
+
         var details =
             new QueryObservationDetails(
                 source.Metadata.Name,
@@ -61,6 +65,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         {
             var metadata = source.Metadata;
             var pageable = viewRegistration.Metadata.Pageable;
+            ValidateParametersType(request, viewRegistration.ViewParametersType, viewRegistration.QueryViewType, "Query view");
             validator.Validate(request, metadata, pageable);
 
             var executionContext = new QueryExecutionContext(request);
@@ -102,6 +107,9 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         QuerySourceRegistration source,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(source);
+
         var details =
             new QueryObservationDetails(
                 source.Metadata.Name,
@@ -116,6 +124,7 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         try
         {
             var metadata = source.Metadata;
+            ValidateParametersType(request, source.ParametersType, source.SourceType, "Query source");
             validator.Validate(request, metadata, metadata.Pageable);
 
             var executionContext = new QueryExecutionContext(request);
@@ -156,6 +165,16 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         {
             observation.ExecutionFailed(exception);
             throw;
+        }
+    }
+
+    private static void ValidateParametersType(IQueryRequest request, Type expected, Type capability, string kind)
+    {
+        if (request.ViewParametersType != expected)
+        {
+            throw new KaleidoFrameworkException(
+                FrameworkErrorCodes.TypeMismatch,
+                $"{kind} '{capability.FullName}' expected parameters '{expected.FullName}', but request used '{request.ViewParametersType.FullName}'.");
         }
     }
 
@@ -246,12 +265,20 @@ internal sealed class QueryContextEngine<TQueryContext, TView>(
         int returned,
         CompiledPage page,
         bool pageable,
-        CancellationToken cancellationToken) =>
-        !pageable
-            ? returned
-            : returned == page.Size || (returned == 0 && page.Offset > 0)
-                ? await executor.CountAsync(unpagedQuery, cancellationToken)
-                : page.Offset + returned;
+        CancellationToken cancellationToken)
+    {
+        if (!pageable)
+        {
+            return returned;
+        }
+
+        if (returned == page.Size || (returned == 0 && page.Offset > 0))
+        {
+            return await executor.CountAsync(unpagedQuery, cancellationToken);
+        }
+
+        return page.Offset + returned;
+    }
 
     private async Task<IQueryable<TView>> CreateViewAsync(
         QueryViewRegistration viewRegistration,

@@ -13,6 +13,8 @@ The changes below are grouped by area; the pull requests carry the details and t
 sections.
 
 ### Breaking changes
+- **Foundation identity and shared authorization declarations** (#586, [ADR 0043](docs/decisions/0043-required-service-identity-and-shared-authorization-declarations.md)):
+  every `AddKaleido()` service now needs a valid `ServiceVersion` from code or configuration; unversioned services no longer start. `KaleidoServiceOptions.InstanceId` is internal and generated per running instance, not set by consumers or JSON. `KaleidoAuthorizationAttribute` moves to `Kaleido.Registry` with `AuthorizationMetadata`, both in the Core package; update namespaces/package references when consuming the declaration.
 - **Package boundaries, central registry and versioned gateway routes** (#581,
   [ADR 0039](docs/decisions/0039-protocol-neutral-package-boundaries.md),
   [ADR 0040](docs/decisions/0040-central-registry-only-and-versioned-routes.md)):

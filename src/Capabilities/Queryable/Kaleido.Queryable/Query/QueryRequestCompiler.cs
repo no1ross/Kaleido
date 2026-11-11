@@ -18,7 +18,7 @@ namespace Kaleido.Queryable.Query;
 /// </para>
 /// <para>This interface exists to separate validation from execution.</para>
 /// </summary>
-internal interface IQueryContextCompiler
+internal interface IQueryRequestCompiler
 {
     /// <summary>
     /// Compiles a validated request against a source's query context fields and the paging that
@@ -27,7 +27,7 @@ internal interface IQueryContextCompiler
     CompiledQuery Compile(IQueryRequest request, QuerySourceMetadata metadata, PageableMetadata? pageable);
 }
 
-internal sealed class QueryRequestCompiler : IQueryContextCompiler
+internal sealed class QueryRequestCompiler : IQueryRequestCompiler
 {
     public CompiledQuery Compile(
         IQueryRequest request,
