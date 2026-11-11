@@ -4,6 +4,7 @@ using Kaleido.Processor.Eventing;
 using Kaleido.Processor.Observability;
 using Kaleido.Processor.Recovery;
 using Kaleido.Processor.Registry;
+using Kaleido.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -25,11 +26,14 @@ public static class ProcessorServiceCollectionExtensions
 
     /// <summary>Discovers and registers Process steps, handlers and the in-process execution runtime.</summary>
     /// <param name="builder">The Kaleido builder, with an explicit assembly scan set.</param>
+    /// <param name="options">Process settings from code, overridden by the <c>Kaleido:Process</c> section.</param>
     /// <returns>The same builder, for chaining.</returns>
-    /// <exception cref="KaleidoConfigurationException">Assemblies or step registrations are invalid.</exception>
-    public static IKaleidoBuilder AddProcess(this IKaleidoBuilder builder)
+    /// <exception cref="KaleidoConfigurationException">Assemblies, Process settings or step registrations are invalid.</exception>
+    public static IKaleidoBuilder AddProcess(this IKaleidoBuilder builder, KaleidoProcessOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
+
+        var processOptions = builder.BindOptions(options);
 
         if (builder.Assemblies.Count == 0)
         {
@@ -64,15 +68,13 @@ public static class ProcessorServiceCollectionExtensions
         }
 
         ValidateProcessSteps(recordTypes);
-        builder.Services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
-        builder.Services.TryAddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
+        builder.Services.TryAddSingleton(processOptions);
         builder.Services.TryAddSingleton<IKaleidoTransactions, NoKaleidoTransactions>();
-        builder.Services.AddSingleton(new KaleidoStoreSelectionContributor(ProcessStoresInUse));
         builder.AddProcessEventDispatch();
 
         var handlerTypes = recordTypes.ToDictionary(x => x, x => RegisterHandler(builder.Services, x, types));
 
-        RegisterRegistries(builder, recordTypes, handlerTypes);
+        RegisterRegistries(builder, recordTypes, handlerTypes, processOptions);
         RegisterFrameworkServices(builder.Services);
 
         return builder;
@@ -105,39 +107,24 @@ public static class ProcessorServiceCollectionExtensions
         where TTransactions : class, IKaleidoTransactions =>
         KaleidoServiceCollectionExtensions.Replace<IKaleidoTransactions, TTransactions, NoKaleidoTransactions>(builder, "transactions");
 
-    internal static IReadOnlyList<string> ProcessStoresInUse(this IServiceCollection services)
-    {
-        var inMemory = new List<string>();
-
-        if (KaleidoStoreSelectionCheck.Implementation<IKaleidoContextStore>(services) == typeof(InMemoryKaleidoContextStore))
-        {
-            inMemory.Add("process state (IKaleidoContextStore)");
-        }
-
-        if (KaleidoStoreSelectionCheck.Implementation<IKaleidoIdempotencyStore>(services) == typeof(InMemoryKaleidoIdempotencyStore))
-        {
-            inMemory.Add("idempotency records (IKaleidoIdempotencyStore)");
-        }
-
-        return inMemory;
-    }
-
     private static void RegisterRegistries(
         IKaleidoBuilder builder,
         Type[] recordTypes,
-        Dictionary<Type, Type> handlerTypes)
+        Dictionary<Type, Type> handlerTypes,
+        KaleidoProcessOptions processOptions)
     {
         builder.Services.TryAddSingleton<IProcessorStepRegistry>(
             _ => new ProcessorStepRegistry(
                 recordTypes,
                 handlerTypes,
-                builder.ServiceOptions.DefaultAuthorization));
+                processOptions.DefaultAuthorization ?? AuthorizationMetadata.Unspecified));
 
         builder.Services.TryAddSingleton<IProcessorRegistry>(
             sp => new ProcessorRegistry(
                 sp.GetRequiredService<TypeDescriber>(),
                 sp.GetRequiredService<ConstraintMapper>(),
                 builder.ServiceOptions,
+                processOptions,
                 sp.GetRequiredService<IProcessorStepRegistry>(),
                 sp.GetRequiredService<ILogger<ProcessorRegistry>>()));
     }

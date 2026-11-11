@@ -1,0 +1,3 @@
+# HTTP transport rules
+
+Inherit root, `src/` and `src/Transports/` guidance. This is the **target** HTTP area; current HTTP projects still live under `src/Http/` and must not be moved solely to fill this folder. When their project migration reaches this area, keep wire JSON/routes/headers and ASP.NET filters in HTTP owners, with Core, Process and Queryable transport-agnostic. Apply Kaleido endpoint filters to Kaleido routes only; do not change host-wide JSON, auth or error behavior. Read [current HTTP boundaries](../../../docs/architecture/transports/http.md) and the affected project README before editing; move matching fixtures and update paths/docs in the same project unit. Do not implement HTTP behavior in the transport-neutral Server shell.

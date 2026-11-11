@@ -217,12 +217,14 @@ internal sealed partial class ProcessorRegistry : IProcessorRegistry
         TypeDescriber typeDescriber,
         ConstraintMapper constraintMapper,
         KaleidoServiceOptions serviceOptions,
+        KaleidoProcessOptions processOptions,
         IProcessorStepRegistry stepRegistry,
         ILogger<ProcessorRegistry> logger)
     {
         ArgumentNullException.ThrowIfNull(typeDescriber);
         ArgumentNullException.ThrowIfNull(constraintMapper);
         ArgumentNullException.ThrowIfNull(serviceOptions);
+        ArgumentNullException.ThrowIfNull(processOptions);
         ArgumentNullException.ThrowIfNull(stepRegistry);
         ArgumentNullException.ThrowIfNull(logger);
 
@@ -230,7 +232,7 @@ internal sealed partial class ProcessorRegistry : IProcessorRegistry
         [
             new ProcessorRegistryItem
             {
-                IsEntryProcessor = serviceOptions.IsEntryProcessor,
+                IsEntryProcessor = processOptions.IsEntryProcessor,
                 InitialSteps = stepRegistry.InitialRegistrations
                     .OrderBy(x => x.Metadata.Name, StringComparer.OrdinalIgnoreCase)
                     .Select(x => x.ToSummary())

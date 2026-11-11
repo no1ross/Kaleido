@@ -130,6 +130,12 @@ Kaleido.Queryable.IQueryViewSource<TSource, TQueryContext, TView>
 Kaleido.Queryable.IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParameters>
 Kaleido.Queryable.IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParameters>.CreateViewAsync(System.Linq.IQueryable<TQueryContext!>! query, Kaleido.Queryable.Query.QueryExecutionContext! executionContext, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Linq.IQueryable<TView!>!>!
 Kaleido.Queryable.IQueryViewSourceAsync<TSource, TQueryContext, TView>
+Kaleido.Queryable.KaleidoQueryableOptions
+Kaleido.Queryable.KaleidoQueryableOptions.<Clone>$() -> Kaleido.Queryable.KaleidoQueryableOptions!
+Kaleido.Queryable.KaleidoQueryableOptions.DefaultAuthorization.get -> Kaleido.Registry.AuthorizationMetadata?
+Kaleido.Queryable.KaleidoQueryableOptions.DefaultAuthorization.init -> void
+Kaleido.Queryable.KaleidoQueryableOptions.Equals(Kaleido.Queryable.KaleidoQueryableOptions? other) -> bool
+Kaleido.Queryable.KaleidoQueryableOptions.KaleidoQueryableOptions() -> void
 Kaleido.Queryable.LogicalOperator
 Kaleido.Queryable.LogicalOperator.And = 0 -> Kaleido.Queryable.LogicalOperator
 Kaleido.Queryable.LogicalOperator.Or = 1 -> Kaleido.Queryable.LogicalOperator
@@ -284,6 +290,9 @@ override Kaleido.Queryable.EmptyQueryViewParameters.ToString() -> string!
 override Kaleido.Queryable.Eventing.QueryExecuted.Equals(object? obj) -> bool
 override Kaleido.Queryable.Eventing.QueryExecuted.GetHashCode() -> int
 override Kaleido.Queryable.Eventing.QueryExecuted.ToString() -> string!
+override Kaleido.Queryable.KaleidoQueryableOptions.Equals(object? obj) -> bool
+override Kaleido.Queryable.KaleidoQueryableOptions.GetHashCode() -> int
+override Kaleido.Queryable.KaleidoQueryableOptions.ToString() -> string!
 override Kaleido.Queryable.Query.QueryBody.Equals(object? obj) -> bool
 override Kaleido.Queryable.Query.QueryBody.GetHashCode() -> int
 override Kaleido.Queryable.Query.QueryBody.ToString() -> string!
@@ -320,6 +329,8 @@ static Kaleido.Queryable.EmptyQueryViewParameters.operator !=(Kaleido.Queryable.
 static Kaleido.Queryable.EmptyQueryViewParameters.operator ==(Kaleido.Queryable.EmptyQueryViewParameters? left, Kaleido.Queryable.EmptyQueryViewParameters? right) -> bool
 static Kaleido.Queryable.Eventing.QueryExecuted.operator !=(Kaleido.Queryable.Eventing.QueryExecuted? left, Kaleido.Queryable.Eventing.QueryExecuted? right) -> bool
 static Kaleido.Queryable.Eventing.QueryExecuted.operator ==(Kaleido.Queryable.Eventing.QueryExecuted? left, Kaleido.Queryable.Eventing.QueryExecuted? right) -> bool
+static Kaleido.Queryable.KaleidoQueryableOptions.operator !=(Kaleido.Queryable.KaleidoQueryableOptions? left, Kaleido.Queryable.KaleidoQueryableOptions? right) -> bool
+static Kaleido.Queryable.KaleidoQueryableOptions.operator ==(Kaleido.Queryable.KaleidoQueryableOptions? left, Kaleido.Queryable.KaleidoQueryableOptions? right) -> bool
 static Kaleido.Queryable.Query.QueryBody.operator !=(Kaleido.Queryable.Query.QueryBody? left, Kaleido.Queryable.Query.QueryBody? right) -> bool
 static Kaleido.Queryable.Query.QueryBody.operator ==(Kaleido.Queryable.Query.QueryBody? left, Kaleido.Queryable.Query.QueryBody? right) -> bool
 static Kaleido.Queryable.Query.QueryExecutionContext.operator !=(Kaleido.Queryable.Query.QueryExecutionContext? left, Kaleido.Queryable.Query.QueryExecutionContext? right) -> bool
@@ -338,7 +349,7 @@ static Kaleido.Queryable.Query.QueryRequest.operator !=(Kaleido.Queryable.Query.
 static Kaleido.Queryable.Query.QueryRequest.operator ==(Kaleido.Queryable.Query.QueryRequest? left, Kaleido.Queryable.Query.QueryRequest? right) -> bool
 static Kaleido.Queryable.Query.QuerySort.operator !=(Kaleido.Queryable.Query.QuerySort? left, Kaleido.Queryable.Query.QuerySort? right) -> bool
 static Kaleido.Queryable.Query.QuerySort.operator ==(Kaleido.Queryable.Query.QuerySort? left, Kaleido.Queryable.Query.QuerySort? right) -> bool
-static Kaleido.Queryable.QueryableServiceCollectionExtensions.AddQueryable(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Queryable.QueryableServiceCollectionExtensions.AddQueryable(this Kaleido.IKaleidoBuilder! builder, Kaleido.Queryable.KaleidoQueryableOptions? options = null) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Queryable.QueryableServiceCollectionExtensions.AddQueryableEventDispatch(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.EqualityContract.get -> System.Type!
 virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.PrintMembers(System.Text.StringBuilder! builder) -> bool

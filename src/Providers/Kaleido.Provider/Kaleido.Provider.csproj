@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Temporary explicit registration for Kaleido in-memory store providers.</Description>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
+		<ProjectReference Include="..\..\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+</Project>

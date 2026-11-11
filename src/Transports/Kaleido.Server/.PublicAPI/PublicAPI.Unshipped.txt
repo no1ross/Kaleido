@@ -1,0 +1,20 @@
+#nullable enable
+Kaleido.KaleidoAuthorizationMode
+Kaleido.KaleidoAuthorizationMode.Authenticated = 1 -> Kaleido.KaleidoAuthorizationMode
+Kaleido.KaleidoAuthorizationMode.None = 0 -> Kaleido.KaleidoAuthorizationMode
+Kaleido.KaleidoAuthorizationMode.ZeroTrust = 2 -> Kaleido.KaleidoAuthorizationMode
+Kaleido.Server.KaleidoServerOptions
+Kaleido.Server.KaleidoServerOptions.<Clone>$() -> Kaleido.Server.KaleidoServerOptions!
+Kaleido.Server.KaleidoServerOptions.AuthorizationMode.get -> Kaleido.KaleidoAuthorizationMode
+Kaleido.Server.KaleidoServerOptions.AuthorizationMode.init -> void
+Kaleido.Server.KaleidoServerOptions.DefaultAuthorization.get -> Kaleido.Registry.AuthorizationMetadata!
+Kaleido.Server.KaleidoServerOptions.DefaultAuthorization.init -> void
+Kaleido.Server.KaleidoServerOptions.Equals(Kaleido.Server.KaleidoServerOptions? other) -> bool
+Kaleido.Server.KaleidoServerOptions.KaleidoServerOptions() -> void
+Kaleido.Server.KaleidoServerServiceCollectionExtensions
+override Kaleido.Server.KaleidoServerOptions.Equals(object? obj) -> bool
+override Kaleido.Server.KaleidoServerOptions.GetHashCode() -> int
+override Kaleido.Server.KaleidoServerOptions.ToString() -> string!
+static Kaleido.Server.KaleidoServerOptions.operator !=(Kaleido.Server.KaleidoServerOptions? left, Kaleido.Server.KaleidoServerOptions? right) -> bool
+static Kaleido.Server.KaleidoServerOptions.operator ==(Kaleido.Server.KaleidoServerOptions? left, Kaleido.Server.KaleidoServerOptions? right) -> bool
+static Kaleido.Server.KaleidoServerServiceCollectionExtensions.AddServer(this Kaleido.IKaleidoBuilder! builder, Kaleido.Server.KaleidoServerOptions? options = null) -> Kaleido.IKaleidoBuilder!

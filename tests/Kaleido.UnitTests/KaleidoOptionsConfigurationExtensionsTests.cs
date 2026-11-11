@@ -107,6 +107,52 @@ public sealed class KaleidoOptionsConfigurationExtensionsTests
         Assert.Throws<ArgumentException>(() => section.BindOver(new Sample(), " "));
     }
 
+    [Fact]
+    public void BindOptions_UsesTheOptionsPathAndValidatesTheOverlay()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Options:Count"] = "2" })
+            .Build();
+        var code = new ValidatedSample { Count = 3 };
+
+        var effective = configuration.BindOptions(code);
+
+        Assert.Equal(2, effective.Count);
+        Assert.Equal(3, code.Count);
+        Assert.Equal(1, new ConfigurationBuilder().Build().BindOptions<ValidatedSample>().Count);
+        var invalid = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Options:Count"] = "0" })
+            .Build();
+        Assert.Equal(Code, Assert.Throws<KaleidoConfigurationException>(() => invalid.BindOptions<ValidatedSample>()).Code);
+    }
+
+    [Fact]
+    public void BindOptions_OnBuilder_UsesTheSameConfiguration()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Options:Count"] = "4" })
+            .Build();
+        var builder = new Mock<IKaleidoBuilder>();
+        builder.SetupGet(x => x.Configuration).Returns(configuration);
+
+        Assert.Equal(4, builder.Object.BindOptions<ValidatedSample>().Count);
+    }
+
+    private sealed record ValidatedSample : IKaleidoOptions
+    {
+        public int Count { get; init; } = 1;
+
+        string IKaleidoOptions.ConfigurationPath => "Options";
+
+        void IKaleidoOptions.Validate()
+        {
+            if (Count <= 0)
+            {
+                throw new KaleidoConfigurationException(Code, "Count must be positive.");
+            }
+        }
+    }
+
     public sealed record Sample
     {
         public string Name { get; init; } = "default";

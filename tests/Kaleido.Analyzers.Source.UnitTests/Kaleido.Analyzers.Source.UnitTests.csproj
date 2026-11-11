@@ -9,6 +9,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\tools\analyzers\Kaleido.Analyzers.Source\Kaleido.Analyzers.Source.csproj" />
-		<ProjectReference Include="..\..\src\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\src\Core\Kaleido\Kaleido.csproj" />
 	</ItemGroup>
 </Project>

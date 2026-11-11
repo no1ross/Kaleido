@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Temporary transport-neutral Kaleido Server authorization configuration boundary.</Description>
+		<RootNamespace>Kaleido</RootNamespace>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\Capabilities\Registry\Kaleido.Registry\Kaleido.Registry.Next.csproj" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Registry" />
+	</ItemGroup>
+</Project>

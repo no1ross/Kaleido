@@ -263,7 +263,7 @@ kaleido
     .AddSqliteIdempotencyStore("Data Source=kaleido-process.db");
 ```
 
-[`Kaleido.Provider.SQLite`](src/Providers/Provider.SQLite/README.md) is a **reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Providers/Provider.SQLite/README.md#using-the-example-implementation)), and `EnsureCreated` never migrates an existing database.
+[`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite/README.md) is a **reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Providers/Kaleido.Provider.SQLite/README.md#using-the-example-implementation)), and `EnsureCreated` never migrates an existing database.
 
 Production deployments provide and validate stores suited to their infrastructure: `IKaleidoContextStore` (process state), `IKaleidoOutboxStore` (every event the service writes, until the relay publishes it), `IKaleidoTransactions` (state and events atomic on one database) and `IKaleidoIdempotencyStore` (requests sent with an idempotency key). Every record is scoped by the service and its version, so services may share one database, and one host per outbox database runs the relay (`AddOutboxRelay<TPublisher>()`) - see [ADR 0036](docs/decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md).
 
@@ -291,7 +291,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 
 | Package | Purpose |
 |---|---|
-| [`Kaleido`](src/Kaleido) | Foundation: identity, metadata, correlation and builder |
+| [`Kaleido`](src/Core/Kaleido) | Foundation: identity, metadata, correlation and builder |
 | [`Kaleido.Eventing`](src/Events/Kaleido.Eventing) | Generic event writer, redaction, outbox store and relay |
 | [`Kaleido.Process`](src/Capabilities/Process/Kaleido.Process) | Process steps, state, recovery and persistence seams |
 | [`Kaleido.Queryable`](src/Capabilities/Queryable/Kaleido.Queryable) | Query source/view registration and execution |
@@ -304,7 +304,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Registry`](src/Registry/Registry) | Control registry, store contract, leases, views and HybridCache |
 | [`Kaleido.Registry.Http`](src/Registry/Registry.Http) | Control-registry HTTP endpoints |
 | [`Kaleido.Mcp`](src/Mcp/Mcp) | Caller-visible registry-derived MCP tools and guided continuation |
-| [`Kaleido.Provider.SQLite`](src/Providers/Provider.SQLite) | Reference process, outbox, idempotency and registry stores |
+| [`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite) | Reference process, outbox, idempotency and registry stores |
 | [`Kaleido.Observability.OpenTelemetry`](src/Observability/Observability.OpenTelemetry) | Opt-in telemetry export |
 | [`Kaleido.Analyzers`](tools/analyzers/Kaleido.Analyzers) | Consumer compile-time checks (`KAL2xxx`), included by `Kaleido` |
 
@@ -348,7 +348,7 @@ dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name k
 - **[Consumer guide](docs/guide/README.md)**: how Kaleido works end to end and how to choose its options, with compiled, tested examples. Start here.
 - [Architecture map](docs/architecture/README.md) (the legacy [`ARCHITECTURE.md`](ARCHITECTURE.md) retains only unmigrated sections)
 - [Process authoring: steps, handlers, lookups](docs/architecture/capabilities/process-authoring.md) and [Queryable authoring: sources and views](docs/architecture/capabilities/queryable-authoring.md)
-- [Core runtime](src/Kaleido/README.md)
+- [Core runtime](src/Core/Kaleido/README.md)
 - [HTTP transport](src/Http/Http.Server/README.md) and [contracts](src/Platform/README.md)
 - [HTTP clients](src/Http/Http.Client/README.md)
 - [MCP adapter](src/Mcp/Mcp/README.md)
@@ -359,7 +359,7 @@ dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name k
 - [Analyzers (KAL rules)](docs/ANALYZERS.md)
 - [Versioning, compatibility and support](docs/VERSIONING.md)
 - [Decision records](docs/decisions/README.md), starting with [process engine, not decision maker](docs/decisions/0001-process-engine-not-decision-maker.md)
-- [SQLite reference provider](src/Providers/Provider.SQLite/README.md)
+- [SQLite reference provider](src/Providers/Kaleido.Provider.SQLite/README.md)
 - [OpenTelemetry provider](src/Observability/Observability.OpenTelemetry/README.md)
 - [Prior authorization sample](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and [e-commerce sample](https://github.com/no1ross/Kaleido-Samples-ECommerce), each in its own repository
 

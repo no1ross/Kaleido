@@ -7,7 +7,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
 		<PackageReference Include="Microsoft.Extensions.Compliance.Abstractions" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
@@ -32,6 +32,8 @@
 		<InternalsVisibleTo Include="Kaleido.Process.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Queryable" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Provider" />
+		<InternalsVisibleTo Include="Kaleido.Provider.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Registry" />
 		<InternalsVisibleTo Include="Kaleido.Mcp" />

@@ -7,8 +7,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\..\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\..\Core\Kaleido\Kaleido.csproj" />
 		<ProjectReference Include="..\..\..\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
+		<ProjectReference Include="..\..\Registry\Kaleido.Registry\Kaleido.Registry.Next.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -24,6 +25,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="Kaleido.Provider" />
+		<InternalsVisibleTo Include="Kaleido.Provider.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Platform" />
 		<InternalsVisibleTo Include="Kaleido.Server" />
 		<InternalsVisibleTo Include="Kaleido.Client" />

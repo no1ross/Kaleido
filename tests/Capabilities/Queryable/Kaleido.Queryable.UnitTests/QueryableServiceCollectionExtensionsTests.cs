@@ -35,7 +35,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
                 typeof(MemberSearch),
                 typeof(ProviderSearch),
                 typeof(MemberContext),
-                typeof(PlainClass)
+                typeof(QueryableServiceCollectionExtensionsTests)
             }
             .DiscoverQueryableCapabilities();
 
@@ -145,8 +145,9 @@ public sealed class QueryableServiceCollectionExtensionsTests
     {
         var builder = new Mock<IKaleidoBuilder>();
         builder.SetupGet(x => x.Assemblies).Returns([]);
+        builder.SetupGet(x => x.Configuration).Returns(new ConfigurationBuilder().Build());
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(builder.Object.AddQueryable);
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.Object.AddQueryable());
 
         Assert.Equal(ConfigurationErrorCodes.MissingAssembly, exception.Code);
     }
@@ -157,6 +158,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = new Mock<IKaleidoBuilder>();
         builder.SetupGet(x => x.Assemblies).Returns([typeof(QueryableServiceCollectionExtensionsTests).Assembly]);
+        builder.SetupGet(x => x.Configuration).Returns(new ConfigurationBuilder().Build());
         builder.SetupGet(x => x.Services).Returns(services);
         builder.SetupGet(x => x.ServiceOptions).Returns(new KaleidoServiceOptions { ServiceName = "svc", TypeFilter = _ => false });
 
@@ -221,11 +223,9 @@ public sealed class QueryableServiceCollectionExtensionsTests
         public string MemberNumber { get; init; } = string.Empty;
     }
 
-    private sealed class MemberView;
+    private sealed record MemberView(string DisplayName);
 
     private sealed record ProcessParameters(Guid ProcessId) : IQueryParameters;
-
-    private sealed class PlainClass;
 
     [QuerySource(DisplayName = "Members", Description = "Members.")]
     private sealed class MemberSource : IQuerySource<MemberContext>
@@ -239,7 +239,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
     {
         public Task<IQueryable<MemberContext>> CreateQueryAsync(
             QueryExecutionContext executionContext,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(Array.Empty<MemberContext>().AsQueryable());
     }
 
@@ -255,7 +255,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
     {
         public Task<QueryResult<MemberView>> ExecuteAsync(
             IQueryRequest<ProcessParameters> request,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(new QueryResult<MemberView>(0, 0, 0, []));
     }
 
@@ -282,7 +282,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
     {
         public Task<QueryResult<MemberView>> ExecuteAsync(
             IQueryRequest<EmptyQueryViewParameters> request,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(new QueryResult<MemberView>(0, 0, 0, []));
     }
 
@@ -307,7 +307,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
         public Task<IQueryable<MemberContext>> CreateQueryAsync(
             QueryExecutionContext executionContext,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(Array.Empty<MemberContext>().AsQueryable());
     }
 
@@ -322,7 +322,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
 
         public Task<QueryResult<MemberView>> ExecuteAsync(
             IQueryRequest<EmptyQueryViewParameters> request,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(new QueryResult<MemberView>(0, 0, 0, []));
     }
 
@@ -348,7 +348,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         public Task<IQueryable<MemberView>> CreateViewAsync(
             IQueryable<MemberContext> query,
             QueryExecutionContext executionContext,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(Array.Empty<MemberView>().AsQueryable());
     }
 
@@ -359,12 +359,12 @@ public sealed class QueryableServiceCollectionExtensionsTests
     {
         public Task<QueryResult<MemberView>> ExecuteAsync(
             IQueryRequest<EmptyQueryViewParameters> request,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(new QueryResult<MemberView>(0, 0, 0, []));
 
         public Task<QueryResult<MemberView>> ExecuteAsync(
             IQueryRequest<ProcessParameters> request,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(new QueryResult<MemberView>(0, 0, 0, []));
     }
 
@@ -383,7 +383,7 @@ public sealed class QueryableServiceCollectionExtensionsTests
         public Task<IQueryable<MemberView>> CreateViewAsync(
             IQueryable<MemberContext> query,
             QueryExecutionContext executionContext,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken) =>
             Task.FromResult(Array.Empty<MemberView>().AsQueryable());
     }
 

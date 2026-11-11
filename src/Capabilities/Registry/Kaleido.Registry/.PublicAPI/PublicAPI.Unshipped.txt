@@ -1,0 +1,27 @@
+#nullable enable
+Kaleido.KaleidoAuthorizationAttribute
+Kaleido.KaleidoAuthorizationAttribute.AllowAnonymous.get -> bool
+Kaleido.KaleidoAuthorizationAttribute.AllowAnonymous.init -> void
+Kaleido.KaleidoAuthorizationAttribute.KaleidoAuthorizationAttribute() -> void
+Kaleido.KaleidoAuthorizationAttribute.Policy.get -> string?
+Kaleido.KaleidoAuthorizationAttribute.Policy.init -> void
+Kaleido.KaleidoAuthorizationAttribute.Roles.get -> string?
+Kaleido.KaleidoAuthorizationAttribute.Roles.init -> void
+Kaleido.Registry.AuthorizationMetadata
+Kaleido.Registry.AuthorizationMetadata.<Clone>$() -> Kaleido.Registry.AuthorizationMetadata!
+Kaleido.Registry.AuthorizationMetadata.AllowAnonymous.get -> bool
+Kaleido.Registry.AuthorizationMetadata.AllowAnonymous.init -> void
+Kaleido.Registry.AuthorizationMetadata.AuthorizationMetadata(string? Policy, System.Collections.Generic.IReadOnlyList<string!>! Roles) -> void
+Kaleido.Registry.AuthorizationMetadata.Deconstruct(out string? Policy, out System.Collections.Generic.IReadOnlyList<string!>! Roles) -> void
+Kaleido.Registry.AuthorizationMetadata.Equals(Kaleido.Registry.AuthorizationMetadata? other) -> bool
+Kaleido.Registry.AuthorizationMetadata.IsExplicit() -> bool
+Kaleido.Registry.AuthorizationMetadata.Policy.get -> string?
+Kaleido.Registry.AuthorizationMetadata.Policy.init -> void
+Kaleido.Registry.AuthorizationMetadata.Roles.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Registry.AuthorizationMetadata.Roles.init -> void
+override Kaleido.Registry.AuthorizationMetadata.Equals(object? obj) -> bool
+override Kaleido.Registry.AuthorizationMetadata.GetHashCode() -> int
+override Kaleido.Registry.AuthorizationMetadata.ToString() -> string!
+static Kaleido.Registry.AuthorizationMetadata.operator !=(Kaleido.Registry.AuthorizationMetadata? left, Kaleido.Registry.AuthorizationMetadata? right) -> bool
+static Kaleido.Registry.AuthorizationMetadata.operator ==(Kaleido.Registry.AuthorizationMetadata? left, Kaleido.Registry.AuthorizationMetadata? right) -> bool
+static Kaleido.Registry.AuthorizationMetadata.Unspecified.get -> Kaleido.Registry.AuthorizationMetadata!

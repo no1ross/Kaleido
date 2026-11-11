@@ -1,0 +1,3 @@
+#nullable enable
+Kaleido.Provider.KaleidoInMemoryProvidersServiceCollectionExtensions
+static Kaleido.Provider.KaleidoInMemoryProvidersServiceCollectionExtensions.AddInMemoryProviders(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

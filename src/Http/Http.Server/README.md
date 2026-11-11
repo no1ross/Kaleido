@@ -7,7 +7,7 @@ This project publishes a service's versioned Process and Queryable HTTP endpoint
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - [`../../AGENTS.md`](../../AGENTS.md)
-- [`../../Kaleido/README.md`](../../Kaleido/README.md)
+- [`../../Core/Kaleido/README.md`](../../Core/Kaleido/README.md)
 - [`../../Platform/README.md`](../../Platform/README.md)
 
 ---
@@ -56,7 +56,7 @@ Reference this project when you need to:
 ## What this project is NOT for
 
 This project does not contain:
-- runtime business logic — that is [`Kaleido`](../../Kaleido/README.md)
+- runtime business logic — that is [`Kaleido`](../../Core/Kaleido/README.md)
 - shared published contracts — that is [`Kaleido.Platform`](../../Platform/README.md)
 - remote HTTP client consumption — that is [`Kaleido.Http.Client`](../Http.Client/README.md)
 

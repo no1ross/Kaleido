@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<Compile Include="..\..\..\Shared\SutFixture.cs" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry\Kaleido.Registry.Next.csproj" />
+	</ItemGroup>
+</Project>

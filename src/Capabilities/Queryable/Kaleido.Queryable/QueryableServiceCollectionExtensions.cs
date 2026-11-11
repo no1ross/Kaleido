@@ -3,6 +3,7 @@ using Kaleido.Queryable.Eventing;
 using Kaleido.Queryable.Observability;
 using Kaleido.Queryable.Registry;
 using Kaleido.Queryable.Runtime;
+using Kaleido.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -23,11 +24,14 @@ public static class QueryableServiceCollectionExtensions
 
     /// <summary>Discovers and registers query sources, views and their Queryable runtime from the builder's assemblies.</summary>
     /// <param name="builder">The Kaleido builder, with an explicit assembly scan set.</param>
+    /// <param name="options">Queryable settings from code, overridden by the <c>Kaleido:Queryable</c> section.</param>
     /// <returns>The same builder, for chaining.</returns>
-    /// <exception cref="KaleidoConfigurationException">Assemblies or discovered capabilities are invalid.</exception>
-    public static IKaleidoBuilder AddQueryable(this IKaleidoBuilder builder)
+    /// <exception cref="KaleidoConfigurationException">Assemblies, Queryable settings or discovered capabilities are invalid.</exception>
+    public static IKaleidoBuilder AddQueryable(this IKaleidoBuilder builder, KaleidoQueryableOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
+
+        var queryOptions = builder.BindOptions(options);
 
         if (builder.Assemblies.Count == 0)
         {
@@ -52,6 +56,7 @@ public static class QueryableServiceCollectionExtensions
         }
 
         builder.AddQueryableEventDispatch();
+        builder.Services.TryAddSingleton(queryOptions);
 
         foreach (var type in localSourceTypes.Concat(delegatedSourceTypes).Concat(viewTypes))
         {
@@ -64,7 +69,7 @@ public static class QueryableServiceCollectionExtensions
                 sp.GetRequiredService<ConstraintMapper>(),
                 localSourceTypes,
                 delegatedSourceTypes,
-                builder.ServiceOptions.DefaultAuthorization));
+                queryOptions.DefaultAuthorization ?? AuthorizationMetadata.Unspecified));
 
         builder.Services.TryAddSingleton<QueryViewRegistry>(
             sp => new QueryViewRegistry(

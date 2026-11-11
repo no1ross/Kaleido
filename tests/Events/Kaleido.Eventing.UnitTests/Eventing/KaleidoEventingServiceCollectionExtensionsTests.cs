@@ -249,28 +249,12 @@ public sealed class KaleidoEventingServiceCollectionExtensionsTests : SutFixture
     }
 
     [Fact]
-    public void AddEventing_ByDefault_UsesKaleidosOutboxInMemory()
+    public void AddEventing_DoesNotSelectAnOutboxStore()
     {
         var services = NewBuilder().Services;
 
         Assert.Equal(typeof(KaleidoStoreOutbox), Registered<IKaleidoOutbox>(services));
-        Assert.Equal(typeof(InMemoryKaleidoOutboxStore), Registered<IKaleidoOutboxStore>(services));
-    }
-
-    // A query-only service has no process state or idempotency store, but its Eventing outbox still needs a choice (#552).
-    [Fact]
-    public void AddEventing_WithOnlyTheOutbox_ContributesItsStoreChoice()
-    {
-        Assert.Equal(["event outbox (IKaleidoOutboxStore)"], KaleidoStoreSelectionCheck.InMemoryStoresInUse(NewBuilder().Services));
-    }
-
-    // Whether or not this host publishes: a durable outbox needs no in-memory choice (#552).
-    [Fact]
-    public void AddOutboxStore_WithADurableStore_NeedsNoInMemoryChoice()
-    {
-        var services = NewBuilder().AddOutboxStore<OwnOutboxStore>().Services;
-
-        Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(services));
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(IKaleidoOutboxStore));
     }
 
     [Fact]

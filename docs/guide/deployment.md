@@ -70,7 +70,7 @@ services.AddDataProtection()
 
 Kaleido never creates or migrates your schema. With your own stores it is yours (migrations as usual).
 With the SQLite reference provider, the host creates it once at startup (`EnsureCreatedAsync`), and it
-is never migrated ([provider README](../../src/Providers/Provider.SQLite/README.md)).
+is never migrated ([provider README](../../src/Providers/Kaleido.Provider.SQLite/README.md)).
 
 ## Health
 

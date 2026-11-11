@@ -46,7 +46,7 @@ A project's README explains its software; the [architecture map](./docs/architec
 
 | Project | Owns | Does not own |
 | --- | --- | --- |
-| [`Kaleido`](./src/Kaleido/README.md) | foundation: identity, shared metadata, correlation and generic store selection | Eventing/outbox, capability runtimes, transport |
+| [`Kaleido`](./src/Core/Kaleido/README.md) | foundation: identity, shared metadata, correlation and options binding | Eventing/outbox, capability runtimes, provider choice, transport |
 | [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md) | generic event envelope, redaction, writer, outbox store/relay and health | Process/Queryable event payloads or a transport; placement temporary (#592) |
 | [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md) | steps, state, idempotency, recovery and Process events | Queryable, central registry, wire adapters |
 | [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | query sources/views, execution and Queryable events | Process, central registry, wire adapters |
@@ -60,7 +60,7 @@ A project's README explains its software; the [architecture map](./docs/architec
 | [`Kaleido.Registry`](./src/Registry/Registry/README.md) | control registry, leases, store contract, merged views and HybridCache | instance addresses and gateway routing |
 | [`Kaleido.Registry.Http`](./src/Registry/Registry.Http/README.md) | control-registry HTTP API | registry state or runtime rules |
 | [`Kaleido.Observability.OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md) | OpenTelemetry wiring | instrumentation emitted by core |
-| [`Kaleido.Provider.SQLite`](./src/Providers/Provider.SQLite/README.md) | reference core and registry stores and transactions on SQLite | production-provider guarantees |
+| [`Kaleido.Provider.SQLite`](./src/Providers/Kaleido.Provider.SQLite/README.md) | reference core and registry stores and transactions on SQLite | production-provider guarantees |
 | [gRPC placeholders](./src/Grpc/Grpc/README.md) (`Kaleido.Grpc*`, `Kaleido.Registry.Grpc`) | future protocol boundaries, not packable yet | a gRPC implementation |
 
 ## General contributor rules
@@ -72,7 +72,7 @@ A project's README explains its software; the [architecture map](./docs/architec
 - `Kaleido.Platform` is shared — changes here ripple into both server and client projects.
 - Keep transport layers thin.
 - Prefer explicit registration and discoverability over hidden behavior.
-- Match documentation to the actual code and runtime behavior. In #585, each processed project updates its consumer README, focused `docs/architecture/` explanation and applicable hierarchical AGENTS scope before its project commit; move reached content out of the two legacy ARCHITECTURE.md files. Add a narrower `.editorconfig` only for genuinely area-specific differences, and prefer source analyzers to editorconfig for dependency rules (#591). Do not create the target documentation/AGENTS tree up front.
+- Match documentation to the actual code and runtime behavior. In #585, each processed project updates its consumer README, focused `docs/architecture/` explanation and applicable hierarchical AGENTS scope before its project commit; move reached content out of the two legacy ARCHITECTURE.md files. Add a narrower `.editorconfig` only for genuinely area-specific differences, and prefer source analyzers to editorconfig for dependency rules (#591). The target HTTP/gRPC AGENTS scopes contain no migrated code yet; do not move those projects just to populate them.
 - When you change contracts or metadata semantics, review the downstream docs and tests for the affected area.
 - Define response semantics before choosing a serialization format: keep distinct message streams separate and represent an empty collection consistently across transports. Options control which messages adapters populate, not JSON-specific field presence.
 

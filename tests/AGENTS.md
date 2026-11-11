@@ -4,7 +4,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 
 | Test project | Tests code in |
 |---|---|
-| `Kaleido.UnitTests` | `src/Kaleido` foundation only; do not reference Process, Queryable or Eventing |
+| `Kaleido.UnitTests` | `src/Core/Kaleido` foundation only; do not reference Process, Queryable or Eventing |
 | `Kaleido.Eventing.UnitTests` | `src/Events/Kaleido.Eventing` generic event writer, outbox, relay and redaction |
 | `Kaleido.Process.UnitTests` | `src/Capabilities/Process/Kaleido.Process` steps, runtime and stores |
 | `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
@@ -19,7 +19,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Registry.Http.UnitTests` | `src/Registry/Registry.Http` endpoint mapping |
 | `Kaleido.Mcp.UnitTests` | `src/Mcp/Mcp` catalogs, schemas, tool invoker and naming |
 | `Kaleido.Mcp.FunctionalTests` | MCP over a real host and the SDK client |
-| `Kaleido.Provider.SQLite.UnitTests` | `src/Providers/Provider.SQLite` store and transaction fidelity |
+| `Kaleido.Provider.SQLite.UnitTests` | `src/Providers/Kaleido.Provider.SQLite` store and transaction fidelity |
 | `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Observability/Observability.OpenTelemetry` registration and telemetry names |
 | `Kaleido.Analyzers.UnitTests` | consumer `KAL2xxx` rules |
 | `Kaleido.Analyzers.Source.UnitTests` | contributor `KAL0xxx` rules |

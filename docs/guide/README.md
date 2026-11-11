@@ -1,7 +1,7 @@
 # Kaleido consumer guide
 
 How Kaleido works end to end, and how to choose between its options. This guide is organized by
-concept; it links to the reference pages (`docs/*.md`), the project READMEs and the decision records
+concept; it links to the [architecture map](../architecture/README.md), project READMEs and decision records
 (`docs/decisions`) for the details, instead of repeating them.
 
 > **Support status: preview.** Kaleido is pre-1.0. Public APIs and wire contracts can still change
@@ -25,7 +25,7 @@ flowchart LR
     gateway["Gateway<br/>/{service}/{version}"]
     registry["Kaleido.Registry + Kaleido.Registry.Http<br/>(central discovery)"]
     http["Kaleido.Http.Server<br/>(versioned endpoints)"]
-    core["Kaleido<br/>(Process + Queryable runtimes, events)"]
+    core["Kaleido foundation + hosted Process / Queryable / Eventing"]
     store[("your stores<br/>(state, outbox, idempotency)")]
 
     caller -- "MCP tools" --> mcp
@@ -41,12 +41,13 @@ flowchart LR
 | Page | What you learn |
 |---|---|
 | [Getting started](getting-started.md) | A service from zero: a query source, two steps, HTTP, then MCP |
+| [Core settings example](examples/kaleido-settings.jsonc) | All currently Core-owned JSON settings, with comments for code-only inputs; add each subsystem's settings as its project is processed |
 | [Processes](processes.md) | Steps, handlers, relationships, outcomes, changing a step |
 | [Queries](queries.md) | Sources, views, query contexts, paging and counting, delegated sources |
 | [Information requests](information-requests.md) | Questions decided at runtime, conditional questions |
 | [Callers and correlation](callers-and-correlation.md) | Authorization, the tokens calls carry, request and process ids across services |
 | [Events and the outbox](events-and-outbox.md) | Which events exist, when they are written, the delivery guarantees |
-| [Persistence](persistence.md) | The store contracts, the defaults, SQLite, your own store, atomicity |
+| [Persistence](persistence.md) | Store contracts, explicit provider choices, SQLite, your own store, atomicity |
 | [Deployment](deployment.md) | Several instances, schemas, health, what to monitor |
 | [Choosing options](choosing-options.md) | Decision tables for every `Add*` registration |
 

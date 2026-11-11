@@ -451,6 +451,14 @@ Kaleido.Processor.InformationResponseItem.ItemId.init -> void
 Kaleido.Processor.InformationResponseItem.Items.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Processor.InformationResponseItem!>!
 Kaleido.Processor.InformationResponseItem.Items.init -> void
 Kaleido.Processor.IProcessStep
+Kaleido.Processor.KaleidoProcessOptions
+Kaleido.Processor.KaleidoProcessOptions.<Clone>$() -> Kaleido.Processor.KaleidoProcessOptions!
+Kaleido.Processor.KaleidoProcessOptions.DefaultAuthorization.get -> Kaleido.Registry.AuthorizationMetadata?
+Kaleido.Processor.KaleidoProcessOptions.DefaultAuthorization.init -> void
+Kaleido.Processor.KaleidoProcessOptions.Equals(Kaleido.Processor.KaleidoProcessOptions? other) -> bool
+Kaleido.Processor.KaleidoProcessOptions.IsEntryProcessor.get -> bool
+Kaleido.Processor.KaleidoProcessOptions.IsEntryProcessor.init -> void
+Kaleido.Processor.KaleidoProcessOptions.KaleidoProcessOptions() -> void
 Kaleido.Processor.LookupAttribute
 Kaleido.Processor.LookupAttribute.Display.get -> string![]!
 Kaleido.Processor.LookupAttribute.Display.init -> void
@@ -638,6 +646,9 @@ override Kaleido.Processor.InformationRequest.ToString() -> string!
 override Kaleido.Processor.InformationResponseItem.Equals(object? obj) -> bool
 override Kaleido.Processor.InformationResponseItem.GetHashCode() -> int
 override Kaleido.Processor.InformationResponseItem.ToString() -> string!
+override Kaleido.Processor.KaleidoProcessOptions.Equals(object? obj) -> bool
+override Kaleido.Processor.KaleidoProcessOptions.GetHashCode() -> int
+override Kaleido.Processor.KaleidoProcessOptions.ToString() -> string!
 override Kaleido.Processor.ProcessMessage.Equals(object? obj) -> bool
 override Kaleido.Processor.ProcessMessage.GetHashCode() -> int
 override Kaleido.Processor.ProcessMessage.ToString() -> string!
@@ -702,11 +713,13 @@ static Kaleido.Processor.InformationRequest.operator !=(Kaleido.Processor.Inform
 static Kaleido.Processor.InformationRequest.operator ==(Kaleido.Processor.InformationRequest? left, Kaleido.Processor.InformationRequest? right) -> bool
 static Kaleido.Processor.InformationResponseItem.operator !=(Kaleido.Processor.InformationResponseItem? left, Kaleido.Processor.InformationResponseItem? right) -> bool
 static Kaleido.Processor.InformationResponseItem.operator ==(Kaleido.Processor.InformationResponseItem? left, Kaleido.Processor.InformationResponseItem? right) -> bool
+static Kaleido.Processor.KaleidoProcessOptions.operator !=(Kaleido.Processor.KaleidoProcessOptions? left, Kaleido.Processor.KaleidoProcessOptions? right) -> bool
+static Kaleido.Processor.KaleidoProcessOptions.operator ==(Kaleido.Processor.KaleidoProcessOptions? left, Kaleido.Processor.KaleidoProcessOptions? right) -> bool
 static Kaleido.Processor.ProcessMessage.operator !=(Kaleido.Processor.ProcessMessage? left, Kaleido.Processor.ProcessMessage? right) -> bool
 static Kaleido.Processor.ProcessMessage.operator ==(Kaleido.Processor.ProcessMessage? left, Kaleido.Processor.ProcessMessage? right) -> bool
 static Kaleido.Processor.ProcessorServiceCollectionExtensions.AddContextStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Processor.ProcessorServiceCollectionExtensions.AddIdempotencyStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
-static Kaleido.Processor.ProcessorServiceCollectionExtensions.AddProcess(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Processor.ProcessorServiceCollectionExtensions.AddProcess(this Kaleido.IKaleidoBuilder! builder, Kaleido.Processor.KaleidoProcessOptions? options = null) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Processor.ProcessorServiceCollectionExtensions.AddProcessEventDispatch(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Processor.ProcessorServiceCollectionExtensions.AddTransactions<TTransactions>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Processor.StepProcessingMessage.Error(string! code, string! message) -> Kaleido.Processor.StepProcessingMessage!

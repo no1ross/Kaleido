@@ -1,0 +1,3 @@
+# gRPC transport rules
+
+Inherit root, `src/` and `src/Transports/` guidance. This is the **target** gRPC area; current non-packable placeholders remain under `src/Grpc/` until their project migration. They implement no gRPC adapter today. Do not introduce a fake `AddGrpcHosting()` or claim functional gRPC behavior before there are real contracts, tests and owner-approved registration semantics. Keep any eventual wire/metadata mapping in this transport rather than Core or HTTP; consult the [placeholder README](../../Grpc/Grpc/README.md) and document the actual project boundary when implementation is reached.

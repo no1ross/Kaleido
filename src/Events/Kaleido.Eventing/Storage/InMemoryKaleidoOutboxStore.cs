@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Storage;
 
-// The default storage of the built-in outbox: in memory. It survives a publisher outage, not a
+// Explicit in-memory storage of the built-in outbox. It survives a publisher outage, not a
 // restart; each instance relays only the events it wrote itself.
 internal sealed partial class InMemoryKaleidoOutboxStore : IKaleidoOutboxStore
 {

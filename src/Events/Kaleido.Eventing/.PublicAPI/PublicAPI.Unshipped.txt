@@ -1,5 +1,4 @@
 #nullable enable
-const Kaleido.Eventing.KaleidoEventOptions.SectionName = "Events" -> string!
 const Kaleido.Eventing.KaleidoEventTelemetry.EnqueueFailuresCounterName = "kaleido.events.enqueue_failures" -> string!
 const Kaleido.Eventing.KaleidoEventTelemetry.FailedCounterName = "kaleido.events.failed" -> string!
 const Kaleido.Eventing.KaleidoEventTelemetry.MeterName = "Kaleido.Events" -> string!

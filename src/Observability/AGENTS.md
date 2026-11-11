@@ -1,0 +1,3 @@
+# Observability area rules
+
+Inherit root and `src/` guidance. This area owns opt-in telemetry SDK/export wiring, not the Process, Queryable or Eventing behavior that emits measurements. Before changing subscriptions or copied instrument names, read the owning capability's `*Telemetry` definitions and [dependency model](../../docs/architecture/dependencies.md); keep shared names and tag values compatible. Do not put an OpenTelemetry SDK dependency into Kaleido foundation or a capability. `Kaleido.Observability.OpenTelemetry` has not completed its #585 migration: inspect its actual references and matching unit suite when reached. Run its own targeted build/tests then, not the final pack gate now.

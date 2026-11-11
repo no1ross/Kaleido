@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Storage;
 
-// The default idempotency store: the records of requests sent with an idempotency key, in memory.
+// Explicit in-memory idempotency storage for requests sent with an idempotency key.
 internal sealed partial class InMemoryKaleidoIdempotencyStore : IKaleidoIdempotencyStore
 {
     private readonly Dictionary<string, IdempotentResult> _results = new(StringComparer.Ordinal);

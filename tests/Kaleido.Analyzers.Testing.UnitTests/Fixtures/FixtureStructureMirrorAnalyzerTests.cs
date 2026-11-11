@@ -127,6 +127,35 @@ public class MissingThingTests
     }
 
     [Fact]
+    public async Task ATemporaryProjectName_InItsFinalFolder_IsMirrored()
+    {
+        var test = MetadataTest(Widget, "/repo/tests/Capabilities/Registry/Kaleido.Registry.UnitTests/Things/WidgetTests.cs", WidgetTests,
+            "/repo/src/Capabilities/Registry/Kaleido.Registry/Things/Widget.cs");
+        test.AssemblyName = "Kaleido.Registry.Next.UnitTests";
+        test.TestState.ReferenceSources.Clear();
+        test.TestState.ReferenceSources.Add(("Kaleido.Registry.Next", Widget));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ATemporaryProjectName_InItsFinalFolder_StillRejectsTheWrongFixtureFolder()
+    {
+        var test = MetadataTest(Widget, "/repo/tests/Capabilities/Registry/Kaleido.Registry.UnitTests/Wrong/WidgetTests.cs", WidgetTests,
+            "/repo/src/Capabilities/Registry/Kaleido.Registry/Things/Widget.cs");
+        test.AssemblyName = "Kaleido.Registry.Next.UnitTests";
+        test.TestState.ReferenceSources.Clear();
+        test.TestState.ReferenceSources.Add(("Kaleido.Registry.Next", Widget));
+        test.ExpectedDiagnostics.Add(
+            new DiagnosticResult("KAL1003", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("WidgetTests", System.IO.Path.Combine("Things", "WidgetTests.cs"),
+                    System.IO.Path.Combine("Capabilities", "Registry", "Kaleido.Registry", "Things", "Widget.cs")));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task AFamilyFolder_WrongFixtureFolder_Reports()
     {
         var test = MetadataTest(Widget, "/repo/tests/Http/Sample.UnitTests/Wrong/WidgetTests.cs", WidgetTests,

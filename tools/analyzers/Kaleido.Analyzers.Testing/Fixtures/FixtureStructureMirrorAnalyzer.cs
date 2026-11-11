@@ -155,7 +155,7 @@ public sealed class FixtureStructureMirrorAnalyzer : DiagnosticAnalyzer
             : string.Join(Path.DirectorySeparatorChar.ToString(), segments.Skip(index + 1));
     }
 
-    /// <summary>The index of the last folder of the path named after the assembly; -1 when none is.</summary>
+    /// <summary>The index of the project folder, including a temporary .Next assembly name; -1 when none is.</summary>
     private static int ProjectFolderIndex(string relativePath, string? assemblyName)
     {
         if (assemblyName is not { Length: > 0 })
@@ -163,27 +163,50 @@ public sealed class FixtureStructureMirrorAnalyzer : DiagnosticAnalyzer
             return -1;
         }
 
-        var dot = assemblyName.IndexOf('.');
-        var shortName = dot > 0 ? assemblyName.Substring(dot + 1) : null;
         var segments = relativePath.Split(Path.DirectorySeparatorChar);
-
-        // Folders only: the last segment is the file.
-        for (var i = segments.Length - 2; i >= 0; i--)
+        var index = FolderIndex(segments, assemblyName);
+        if (index >= 0)
         {
-            if (string.Equals(segments[i], assemblyName, System.StringComparison.OrdinalIgnoreCase))
+            return index;
+        }
+
+        var finalFolder = FinalFolderName(assemblyName);
+        if (finalFolder is not null)
+        {
+            index = FolderIndex(segments, finalFolder);
+            if (index >= 0)
             {
-                return i;
+                return index;
             }
         }
 
-        if (shortName is not null && !string.Equals(shortName, "UnitTests", System.StringComparison.Ordinal))
+        var dot = assemblyName.IndexOf('.');
+        var shortName = dot > 0 ? assemblyName.Substring(dot + 1) : null;
+        return shortName is not null && !string.Equals(shortName, "UnitTests", System.StringComparison.Ordinal)
+            ? FolderIndex(segments, shortName)
+            : -1;
+    }
+
+    private static string? FinalFolderName(string assemblyName)
+    {
+        if (assemblyName.EndsWith(".Next.UnitTests", System.StringComparison.Ordinal))
         {
-            for (var i = segments.Length - 2; i >= 0; i--)
+            return assemblyName.Substring(0, assemblyName.Length - ".Next.UnitTests".Length) + ".UnitTests";
+        }
+
+        return assemblyName.EndsWith(".Next", System.StringComparison.Ordinal)
+            ? assemblyName.Substring(0, assemblyName.Length - ".Next".Length)
+            : null;
+    }
+
+    private static int FolderIndex(string[] segments, string folder)
+    {
+        // Folders only: the last segment is the file.
+        for (var i = segments.Length - 2; i >= 0; i--)
+        {
+            if (string.Equals(segments[i], folder, System.StringComparison.OrdinalIgnoreCase))
             {
-                if (string.Equals(segments[i], shortName, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    return i;
-                }
+                return i;
             }
         }
 

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Storage;
 
-// The default process-state store: in memory, for development and tests. State only: a transition's
+// Explicit in-memory process-state storage for development and tests. State only: a transition's
 // events are added by the outbox integration (no transaction in memory; neither write can fail). Each
 // process is kept under its key - processor, version and id (#552).
 internal sealed partial class InMemoryKaleidoContextStore : IKaleidoContextStore

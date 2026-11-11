@@ -34,9 +34,12 @@
     <File Path="src/ARCHITECTURE.md" />
     <File Path="src/Directory.Build.props" />
     <Project Path="src/Client/Kaleido.Client.csproj" />
-    <Project Path="src/Kaleido/Kaleido.csproj" />
     <Project Path="src/Platform/Kaleido.Platform.csproj" />
     <Project Path="src/Server/Kaleido.Server.csproj" />
+  </Folder>
+  <Folder Name="/src/Core/">
+    <File Path="src/Core/AGENTS.md" />
+    <Project Path="src/Core/Kaleido/Kaleido.csproj" />
   </Folder>
   <Folder Name="/src/Events/">
     <Project Path="src/Events/Kaleido.Eventing/Kaleido.Eventing.csproj" />
@@ -58,7 +61,7 @@
     <Project Path="src/Observability/Observability.OpenTelemetry/Kaleido.Observability.OpenTelemetry.csproj" />
   </Folder>
   <Folder Name="/src/Providers/">
-    <Project Path="src/Providers/Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
+    <Project Path="src/Providers/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
   </Folder>
   <Folder Name="/src/Registry/">
     <Project Path="src/Registry/Registry/Kaleido.Registry.csproj" />
@@ -101,7 +104,7 @@
     <Project Path="tests/Observability/Observability.OpenTelemetry.UnitTests/Kaleido.Observability.OpenTelemetry.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Providers/">
-    <Project Path="tests/Providers/Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
+    <Project Path="tests/Providers/Kaleido.Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Registry/">
     <Project Path="tests/Registry/Registry.Http.UnitTests/Kaleido.Registry.Http.UnitTests.csproj" />

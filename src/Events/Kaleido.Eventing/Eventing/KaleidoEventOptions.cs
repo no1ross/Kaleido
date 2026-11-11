@@ -34,10 +34,13 @@ namespace Kaleido.Eventing;
 /// }
 /// </code>
 /// </remarks>
-public sealed record KaleidoEventOptions
+public sealed record KaleidoEventOptions : IKaleidoOptions
 {
-    /// <summary>The configuration section, below <c>Kaleido</c>.</summary>
-    public const string SectionName = "Events";
+    private const string MustBePositive = "must be positive";
+
+    string IKaleidoOptions.ConfigurationPath => "Kaleido:Events";
+
+    void IKaleidoOptions.Validate() => Validate(this);
 
     /// <summary>The most entries one claim takes. Default 20.</summary>
     public int BatchSize { get; init; } = 20;
@@ -93,12 +96,12 @@ public sealed record KaleidoEventOptions
             throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidEventOptions, "Kaleido:Events must not be null.");
         }
 
-        Require(options.BatchSize > 0, nameof(BatchSize), "must be positive");
-        Require(options.MaxConcurrentPublishes > 0, nameof(MaxConcurrentPublishes), "must be positive");
-        Require(options.RelayHeartbeatInterval > TimeSpan.Zero, nameof(RelayHeartbeatInterval), "must be positive");
+        Require(options.BatchSize > 0, nameof(BatchSize), MustBePositive);
+        Require(options.MaxConcurrentPublishes > 0, nameof(MaxConcurrentPublishes), MustBePositive);
+        Require(options.RelayHeartbeatInterval > TimeSpan.Zero, nameof(RelayHeartbeatInterval), MustBePositive);
         Require(options.RelaySeenWithin > options.RelayHeartbeatInterval, nameof(RelaySeenWithin), "must be longer than RelayHeartbeatInterval");
-        Require(options.BacklogMaxAge > TimeSpan.Zero, nameof(BacklogMaxAge), "must be positive");
-        Require(options.BacklogMaxCount > 0, nameof(BacklogMaxCount), "must be positive");
+        Require(options.BacklogMaxAge > TimeSpan.Zero, nameof(BacklogMaxAge), MustBePositive);
+        Require(options.BacklogMaxCount > 0, nameof(BacklogMaxCount), MustBePositive);
         Require(Enum.IsDefined(options.OutboxHealthFailureStatus) && options.OutboxHealthFailureStatus != HealthStatus.Healthy, nameof(OutboxHealthFailureStatus), "must be Degraded or Unhealthy");
         KaleidoResilienceSettings.Validate(options.Resilience, "Kaleido:Events:Resilience", ConfigurationErrorCodes.InvalidEventOptions);
     }

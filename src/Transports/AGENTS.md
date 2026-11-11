@@ -1,0 +1,3 @@
+# Transport area rules
+
+Inherit root and `src/` guidance. A transport adapts existing capability contracts and caller identity; it must not reimplement Process/Queryable runtime decisions or make the foundation depend upward. The transport-neutral `Kaleido.Server.Next` shell owns service authorization options and validation without ASP.NET, HTTP or gRPC types. Its distinct `.Next.csproj` name is temporary until the existing Server project is migrated with Git history; do not create a second `Kaleido.Server` assembly. See [authorization](../../docs/architecture/authorization.md) and [dependencies](../../docs/architecture/dependencies.md). Only add transport-specific child rules once actual code is reached; no misleading no-op gRPC registrations.

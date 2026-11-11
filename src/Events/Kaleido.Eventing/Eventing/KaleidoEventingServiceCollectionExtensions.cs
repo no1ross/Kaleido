@@ -11,8 +11,8 @@ public static class KaleidoEventingServiceCollectionExtensions
     /// <remarks>
     /// Configuration overrides a copy of <paramref name="options"/> setting by setting, keeping the
     /// existing <c>Kaleido:Events</c> keys and validating the effective values before registration.
-    /// An in-memory outbox store is the default; a host must choose a durable one or explicitly call
-    /// <c>AddInMemoryStores()</c>. No publisher or relay is registered: use
+    /// A provider must register an outbox store; <c>AddInMemoryProviders()</c> does so explicitly
+    /// for development, while production hosts choose durable storage. No publisher or relay is registered: use
     /// <see cref="AddOutboxRelay{TPublisher}"/> on the host that drains the outbox.
     /// </remarks>
     /// <param name="builder">The Kaleido builder.</param>
@@ -33,17 +33,12 @@ public static class KaleidoEventingServiceCollectionExtensions
             throw new KaleidoConfigurationException(ConfigurationErrorCodes.DuplicateRegistration, "AddEventing() was called more than once on this service collection.");
         }
 
-        var events = builder.Configuration
-            .GetSection(KaleidoServiceOptions.SectionName)
-            .GetSection(KaleidoEventOptions.SectionName)
-            .BindOver(options ?? new KaleidoEventOptions(), ConfigurationErrorCodes.InvalidOptions);
-        KaleidoEventOptions.Validate(events);
+        var events = builder.BindOptions(options);
         services.AddSingleton(events);
 
-        // The outbox (ADR 0023, #552) is in memory by default. Process registers its own state and
-        // idempotency stores; the host that publishes adds the relay explicitly.
+        // Eventing wraps the host's explicitly registered outbox store (ADR 0023, #552); the host
+        // that publishes adds the relay separately.
         services.TryAddScoped<IKaleidoOutbox, KaleidoStoreOutbox>();
-        services.TryAddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
         // The relay's wake-up signal, event redaction policy (empty until AddEventRedaction,
         // ADR 0025), payload writer and per-request writer make up event writing.
         services.TryAddSingleton<IKaleidoEventSignal, KaleidoEventSignal>();
@@ -51,10 +46,6 @@ public static class KaleidoEventingServiceCollectionExtensions
         services.TryAddSingleton<IKaleidoEventRedactorProvider, KaleidoEventRedactorProvider>();
         services.TryAddSingleton<IKaleidoEventPayloadWriter, KaleidoEventPayloadWriter>();
         services.TryAddScoped<IKaleidoEventWriter, KaleidoEventWriter>();
-        services.AddSingleton(new KaleidoStoreSelectionContributor(current =>
-            KaleidoStoreSelectionCheck.Implementation<IKaleidoOutboxStore>(current) == typeof(InMemoryKaleidoOutboxStore)
-                ? ["event outbox (IKaleidoOutboxStore)"]
-                : []));
         // Every Eventing host watches its own outbox for a recent relay and backlog (#552).
         // The check resolves a scoped store, and AddEventing runs once so it is registered once.
         services.AddHealthChecks().AddCheck<KaleidoOutboxHealthCheck>(KaleidoOutboxHealthCheck.Name, failureStatus: null, tags: ["kaleido", "outbox"]);
@@ -156,7 +147,7 @@ public static class KaleidoEventingServiceCollectionExtensions
 
     /// <summary>
     /// Registers one scoped implementation of <see cref="IKaleidoOutboxStore"/> in place of the
-    /// in-memory default. Keep the outbox on the same database as Process state when a host's
+    /// chosen in-memory registration, if present. Keep the outbox on the same database as Process state when a host's
     /// <c>IKaleidoTransactions</c> must commit state changes and events atomically; a relay on that
     /// database publishes the entries.
     /// </summary>

@@ -2,7 +2,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Observability\Observability.OpenTelemetry\Kaleido.Observability.OpenTelemetry.csproj" />
 		<!-- Only to compare the telemetry names the OTel package copies with the owning constants. -->
-		<ProjectReference Include="..\..\..\src\Providers\Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
+		<ProjectReference Include="..\..\..\src\Providers\Kaleido.Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
 		<ProjectReference Include="..\..\..\src\Mcp\Mcp\Kaleido.Mcp.csproj" />
 		<ProjectReference Include="..\..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
 	</ItemGroup>

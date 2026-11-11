@@ -19,7 +19,7 @@ public sealed class KaleidoEventOptionsTests
         Assert.Equal(1, sut.MaxConcurrentPublishes);
         Assert.Equal(TimeSpan.FromSeconds(30), sut.Resilience.AttemptTimeout);
         Assert.Equal(9, sut.Resilience.MaxRetryAttempts);
-        Assert.Equal("Events", KaleidoEventOptions.SectionName);
+        Assert.Equal("Kaleido:Events", ((IKaleidoOptions)sut).ConfigurationPath);
     }
 
     [Fact]

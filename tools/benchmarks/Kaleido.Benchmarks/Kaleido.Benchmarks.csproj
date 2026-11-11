@@ -11,6 +11,6 @@
         <PackageReference Include="Microsoft.Extensions.Configuration" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\Kaleido\Kaleido.csproj" />
+        <ProjectReference Include="..\..\..\src\Core\Kaleido\Kaleido.csproj" />
     </ItemGroup>
 </Project>

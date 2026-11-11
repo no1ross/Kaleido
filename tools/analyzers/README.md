@@ -8,7 +8,7 @@ This directory contains three Roslyn analyzer projects with different audiences.
 | [`Kaleido.Analyzers.Source`](Kaleido.Analyzers.Source/) | Repository contributor `KAL0xxx` rules; not shipped to consumers | [`Kaleido.Analyzers.Source.UnitTests`](../../tests/Kaleido.Analyzers.Source.UnitTests/) |
 | [`Kaleido.Analyzers.Testing`](Kaleido.Analyzers.Testing/) | Repository test-contributor `KAL1xxx` rules; not shipped to consumers | [`Kaleido.Analyzers.Testing.UnitTests`](../../tests/Kaleido.Analyzers.Testing.UnitTests/) |
 
-`Kaleido.Analyzers` is packed on its own (only `analyzers/dotnet/cs/Kaleido.Analyzers.dll`, no dependencies) and [`src/Kaleido/Kaleido.csproj`](../../src/Kaleido/Kaleido.csproj) references it with analyzer assets only, so `Kaleido.nupkg` depends on it without compiling against or running it. The Source and Testing analyzers are not packable and remain repository-only.
+`Kaleido.Analyzers` is packed on its own (only `analyzers/dotnet/cs/Kaleido.Analyzers.dll`, no dependencies) and [`src/Core/Kaleido/Kaleido.csproj`](../../src/Core/Kaleido/Kaleido.csproj) references it with analyzer assets only, so `Kaleido.nupkg` depends on it without compiling against or running it. The Source and Testing analyzers are not packable and remain repository-only.
 
 Where each family runs in this repository:
 

@@ -6,7 +6,7 @@
 	</PropertyGroup>
 
 <ItemGroup>
-		<ProjectReference Include="..\..\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

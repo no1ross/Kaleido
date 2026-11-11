@@ -59,7 +59,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
 
         Assert.Equal(nameof(TestStep), step.Name);
         Assert.NotNull(step.Result);
-        Assert.Single(step.Result!.OutputFields);
+        Assert.Single(step.Result.OutputFields);
     }
 
     [Fact]
@@ -89,8 +89,7 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         {
             ServiceName = "test-processor",
             Assemblies = new[] { typeof(TestStep).Assembly },
-            IsEntryProcessor = true,
-        }).AddProcess();
+        }).AddProcess(new() { IsEntryProcessor = true });
 
         using var provider = services.BuildServiceProvider();
 
@@ -191,7 +190,9 @@ public sealed class ProcessorServiceCollectionExtensionsTests
             ServiceName = "test-processor",
             Assemblies = [assembly],
             TypeFilter = type => type.Namespace != "Excluded",
-        });
+        }).AddProcess();
+
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(IProcessorStepRegistry));
     }
 
     [Fact]
@@ -214,9 +215,10 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     {
         var builder = new Mock<IKaleidoBuilder>();
         builder.SetupGet(x => x.Assemblies).Returns([]);
+        builder.SetupGet(x => x.Configuration).Returns(new ConfigurationBuilder().Build());
 
         var ex =
-            Assert.Throws<KaleidoConfigurationException>(builder.Object.AddProcess);
+            Assert.Throws<KaleidoConfigurationException>(() => builder.Object.AddProcess());
 
         Assert.Equal(ConfigurationErrorCodes.MissingAssembly, ex.Code);
     }
@@ -326,18 +328,17 @@ public sealed class ProcessorServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddProcess_RegistersTheThreeProcessStoreDefaults()
+    public void AddProcess_DoesNotSelectStateOrIdempotencyStores()
     {
         var services = NewProcessBuilder().Services;
 
-        Assert.Equal(typeof(InMemoryKaleidoContextStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoContextStore)).ImplementationType);
-        Assert.Equal(typeof(InMemoryKaleidoIdempotencyStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoIdempotencyStore)).ImplementationType);
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(IKaleidoContextStore));
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(IKaleidoIdempotencyStore));
         Assert.Equal(typeof(NoKaleidoTransactions), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoTransactions)).ImplementationType);
-        Assert.Equal(["process state (IKaleidoContextStore)", "idempotency records (IKaleidoIdempotencyStore)"], services.ProcessStoresInUse());
     }
 
     [Fact]
-    public void AddContextStore_IdempotencyStore_AndTransactions_ReplaceTheDefaults_AsScoped()
+    public void AddContextStore_IdempotencyStore_AndTransactions_RegisterExplicitStores_AsScoped()
     {
         var services = NewProcessBuilder().AddContextStore<OwnContextStore>().AddIdempotencyStore<OwnIdempotencyStore>().AddTransactions<OwnTransactions>().Services;
 
@@ -345,7 +346,6 @@ public sealed class ProcessorServiceCollectionExtensionsTests
         Assert.Equal(typeof(OwnContextStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoContextStore)).ImplementationType);
         Assert.Equal(typeof(OwnIdempotencyStore), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoIdempotencyStore)).ImplementationType);
         Assert.Equal(typeof(OwnTransactions), Assert.Single(services, x => x.ServiceType == typeof(IKaleidoTransactions)).ImplementationType);
-        Assert.Empty(services.ProcessStoresInUse());
     }
 
     [Fact]

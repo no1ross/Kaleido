@@ -21,7 +21,7 @@ What each project owns is in the root [project boundaries](../AGENTS.md#project-
 
 ## Processed areas
 
-Rules unique to an already-processed area live in that area's child AGENTS file: [foundation](Kaleido/AGENTS.md), [capabilities](Capabilities/AGENTS.md) ([Process](Capabilities/Process/AGENTS.md), [Queryable](Capabilities/Queryable/AGENTS.md)) and [Eventing](Events/AGENTS.md). Read those files only when changing their subtree; design rationale belongs in [focused architecture](../docs/architecture/README.md), not repeated here.
+Rules unique to an already-processed area live in that area's child AGENTS file: [foundation](Core/AGENTS.md), [capabilities](Capabilities/AGENTS.md) ([Process](Capabilities/Process/AGENTS.md), [Queryable](Capabilities/Queryable/AGENTS.md)) and [Eventing](Events/AGENTS.md). Read those files only when changing their subtree; design rationale belongs in [focused architecture](../docs/architecture/README.md), not repeated here.
 
 ---
 

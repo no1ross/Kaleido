@@ -1,5 +1,4 @@
 using Kaleido.Exceptions;
-using Kaleido.Registry;
 using Kaleido.Testing;
 
 namespace Kaleido.UnitTests;
@@ -8,36 +7,27 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
 {
     protected override KaleidoServiceOptions CreateSut() => CreateSut("test-service");
 
-    private static KaleidoServiceOptions CreateSut(
-        string serviceName,
-        KaleidoAuthorizationMode mode = KaleidoAuthorizationMode.None,
-        AuthorizationMetadata? defaultAuthorization = null,
-        bool useNullAuthorization = false,
-        bool withAssemblies = true) =>
+    private static KaleidoServiceOptions CreateSut(string serviceName, bool withAssemblies = true) =>
         new()
         {
             ServiceName = serviceName,
-            AuthorizationMode = mode,
-            DefaultAuthorization = useNullAuthorization ? null! : defaultAuthorization ?? AuthorizationMetadata.Unspecified,
             Assemblies = withAssemblies ? [typeof(KaleidoServiceOptionsTests).Assembly] : null,
         };
 
     [Fact]
-    public void Defaults_AreUnspecifiedAuthorizationAndFreshInstance()
+    public void Defaults_UseAFreshInstanceAndKaleidoSection()
     {
         var sut = Sut;
 
-        Assert.Equal(KaleidoAuthorizationMode.None, sut.AuthorizationMode);
-        Assert.False(sut.DefaultAuthorization.IsExplicit());
         Assert.NotEqual(Guid.Empty, sut.InstanceId);
-        Assert.Equal("Kaleido", KaleidoServiceOptions.SectionName);
+        Assert.Equal("Kaleido", ((IKaleidoOptions)sut).ConfigurationPath);
     }
 
     [Fact]
     public void Validate_ValidOptions_DoesNotThrow()
     {
         KaleidoServiceOptions.Validate(Sut);
-        KaleidoServiceOptions.Validate(CreateSut("svc", KaleidoAuthorizationMode.ZeroTrust, new AuthorizationMetadata(null, []) { AllowAnonymous = true }));
+        KaleidoServiceOptions.Validate(CreateSut("svc"));
     }
 
     [Fact]
@@ -46,52 +36,6 @@ public sealed class KaleidoServiceOptionsTests : SutFixture<KaleidoServiceOption
         var exception = Assert.Throws<ArgumentNullException>(() => KaleidoServiceOptions.Validate(null!));
 
         Assert.Equal("options", exception.ParamName);
-    }
-
-    [Fact]
-    public void Validate_UnknownAuthorizationMode_ThrowsInvalidAuthorizationMode()
-    {
-        var exception = Assert.Throws<KaleidoConfigurationException>(
-            () => KaleidoServiceOptions.Validate(CreateSut("svc", (KaleidoAuthorizationMode)42)));
-
-        Assert.Equal(ConfigurationErrorCodes.InvalidAuthorizationMode, exception.Code);
-    }
-
-    [Fact]
-    public void Validate_NullDefaultAuthorization_ThrowsConflictingAuthorization()
-    {
-        var exception = Assert.Throws<KaleidoConfigurationException>(
-            () => KaleidoServiceOptions.Validate(CreateSut("svc", useNullAuthorization: true)));
-
-        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization, exception.Code);
-    }
-
-    [Fact]
-    public void Validate_NullDefaultAuthorizationRoles_ThrowsConflictingAuthorization()
-    {
-        var exception = Assert.Throws<KaleidoConfigurationException>(
-            () => KaleidoServiceOptions.Validate(CreateSut("svc", defaultAuthorization: new AuthorizationMetadata(null, null!))));
-
-        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization, exception.Code);
-    }
-
-    [Theory]
-    [InlineData("staff", false)]
-    [InlineData(null, true)]
-    public void Validate_AnonymousCombinedWithPolicyOrRoles_ThrowsConflictingAuthorization(string? policy, bool withRole)
-    {
-        var authorization = new AuthorizationMetadata(policy, withRole ? ["admin"] : []) { AllowAnonymous = true };
-
-        var exception = Assert.Throws<KaleidoConfigurationException>(
-            () => KaleidoServiceOptions.Validate(CreateSut("svc", defaultAuthorization: authorization)));
-
-        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization, exception.Code);
-    }
-
-    [Fact]
-    public void Validate_PolicyWithoutAnonymous_DoesNotThrow()
-    {
-        KaleidoServiceOptions.Validate(CreateSut("svc", defaultAuthorization: new AuthorizationMetadata("staff", ["admin"])));
     }
 
     [Theory]

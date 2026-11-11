@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Transport-neutral Kaleido host composition and required-provider registration validation.</Description>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\Core\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\..\Capabilities\Registry\Kaleido.Registry\Kaleido.Registry.Next.csproj" />
+		<ProjectReference Include="..\..\..\Transports\Kaleido.Server\Kaleido.Server.Next.csproj" />
+		<ProjectReference Include="..\..\..\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
+		<ProjectReference Include="..\..\..\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />
+		<ProjectReference Include="..\..\..\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
+		<ProjectReference Include="..\..\..\Providers\Kaleido.Provider\Kaleido.Provider.csproj" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Processor" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Server" />
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+</Project>

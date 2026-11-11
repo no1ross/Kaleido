@@ -19,7 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\Kaleido\Kaleido.csproj" />
+        <ProjectReference Include="..\..\..\src\Core\Kaleido\Kaleido.csproj" />
         <ProjectReference Include="..\..\..\src\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
         <ProjectReference Include="..\..\..\src\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
         <ProjectReference Include="..\..\..\src\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />

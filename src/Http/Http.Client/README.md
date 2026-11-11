@@ -389,7 +389,7 @@ service records the call with its process. An explicit `processId` passed to
 This project does not contain:
 
 - server-side endpoint mapping (see [`Kaleido.Http.Server`](../Http.Server/README.md))
-- runtime planning or execution logic (see [`Kaleido`](../../Kaleido/README.md))
+- runtime planning or execution logic (see [`Kaleido`](../../Core/Kaleido/README.md))
 - process state management
 
 ---
