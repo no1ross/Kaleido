@@ -1,0 +1,9 @@
+# Kaleido.Hosting
+
+Transport-neutral composition for a Kaleido host. Call `AddKaleido(configuration, serviceOptions).AddHosting(...)` with a required service version and explicit scan assemblies. `AddHosting()` binds the Server authorization mode and service-wide default, registers Process and Queryable only when their declared types are discovered, and registers Eventing when a capability writes events or the host explicitly requests it. A Process or Queryable capability's own authorization default overrides the service default.
+
+Hosting does not authenticate a caller, execute a business job, choose a provider, install a transport, or require the central registry. A console application supplies its own `IHostedService` or other entry point, creates a scope, and calls the public `IProcessorRuntime` and `IQueryableService` interfaces. HTTP and other adapters can call the same capability APIs in their later owners; Hosting remains usable without them.
+
+The startup `KaleidoProviderRegistrationCheck` requires an `IProcessContextStore` only when Process steps were registered, and an `IKaleidoOutboxStore` whenever Eventing was registered. It accepts any explicitly registered implementation, including a test or development store; no store is silently selected. Process.Server's idempotency admission store is a separate choice for adapters that use it, not a requirement for a console query or step.
+
+The first functional proof is `tests/FunctionalTests/Kaleido.FunctionalTests/Hosting/ConsoleHostingTests.cs`: a real non-ASP.NET `IHost` with a consumer-owned job executes one Process step and one Queryable source query through public APIs, with no friend access to generic runtime internals or central registry participation. Registry publication and HTTP/Provider migrations remain separate project units under #585.

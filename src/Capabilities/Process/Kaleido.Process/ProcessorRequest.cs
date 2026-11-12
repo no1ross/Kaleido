@@ -1,21 +1,21 @@
 namespace Kaleido.Process;
 
 /// <summary>
-/// The steps submitted to a processor in one request, the <see cref="ProcessRequest.Processor"/>
-/// part of a <see cref="ProcessRequest"/>.
+/// The typed steps submitted together to one processor, carried in
+/// <see cref="ProcessRequest.Processor"/>. A processor may plan several steps in one call.
 /// </summary>
 [ExcludeFromCodeCoverage]
-internal sealed record ProcessorRequest
+public sealed record ProcessorRequest
 {
     /// <summary>
-    /// The submitted steps, keyed by step name (the step type's name, as the registry publishes it)
-    /// with the step's input as the value.
+    /// The submitted steps keyed by their declared CLR type names (case-insensitive). Each value
+    /// is an instance of that registered <see cref="IProcessStep"/> type, never an unparsed body.
     /// </summary>
     /// <remarks>
-    /// Each value is an instance of the step type: the transport reads its wire format into the step
-    /// type before the runtime sees it (core never parses input). Each entry becomes one planned
-    /// candidate; a name that is not a registered step, or a value of another type, makes that
-    /// candidate invalid. The default dictionary compares names case-insensitively.
+    /// The runtime plans each entry as a candidate. Unknown names, mismatched value types and
+    /// invalid step inputs are reported in the corresponding <see cref="ProcessStepResult"/>,
+    /// rather than silently converted. The default empty dictionary uses case-insensitive names.
+    /// A host adapter converts any wire input to typed steps before constructing this request.
     /// </remarks>
     public IReadOnlyDictionary<string, object?> Steps { get; init; }
         = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);

@@ -48,13 +48,14 @@ A project's README explains its software; the [architecture map](./docs/architec
 | --- | --- | --- |
 | [`Kaleido`](./src/Core/Kaleido/README.md) | foundation: identity, shared metadata, correlation and options binding | Eventing/outbox, capability runtimes, provider choice, transport |
 | [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md) | generic event envelope, redaction, writer, outbox store/relay and health | Process/Queryable event payloads or a transport; placement temporary (#592) |
-| [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md) | steps, state, idempotency, recovery and Process events | Queryable, central registry, wire adapters |
-| [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | query sources/views, execution and Queryable events | Process, central registry, wire adapters |
+| [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md) | steps, state, recovery, events and public neutral invocation | Queryable, central registry, idempotency admission, HTTP |
+| [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | query sources/views, events and public neutral invocation | Process, central registry, HTTP |
 | [`Kaleido.Platform`](./src/Platform/README.md) | shared registry/wire contracts, JSON, headers and metadata; changes ripple into server and client | endpoint mapping, runtime planning |
-| [`Kaleido.Server`](./src/Server/README.md) | ASP.NET Core caller, authorization, correlation, filters, in-host registry view | protocol endpoints, runtime logic |
+| [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md) | neutral authorization mode/default | ASP.NET, Registry client, runtime logic |
 | [`Kaleido.Client`](./src/Client/README.md) | neutral clients, call context, registry participation, hydration, transport choice | HTTP wire implementation |
 | [`Kaleido.Http`](./src/Http/Http/README.md) | shared HTTP route and URL shapes | server endpoints or outbound calls |
-| [`Kaleido.Http.Server`](./src/Http/Http.Server/README.md) | HTTP Process and Queryable endpoints and execution adapters | core process decisions |
+| [`Kaleido.Http.Server`](./src/Http/Http.Server/README.md) | shared ASP.NET filters and caller handling (migration pending) | Registry wiring, capability execution |
+| [`Kaleido.Hosting`](./src/Composed/Hosts/Kaleido.Hosting/README.md) | neutral capability registration and required-store checks | transport, provider choice, mandatory Registry client |
 | [`Kaleido.Http.Client`](./src/Http/Http.Client/README.md) | one gateway HTTP client (`Kaleido:BaseUrl`), published-route calls, credentials and resilience | per-service addresses, server mapping |
 | [`Kaleido.Mcp`](./src/Mcp/Mcp/README.md) | caller-filtered MCP tools, forms, schemas and invocation | transport or client internals |
 | [`Kaleido.Registry`](./src/Registry/Registry/README.md) | control registry, leases, store contract, merged views and HybridCache | instance addresses and gateway routing |

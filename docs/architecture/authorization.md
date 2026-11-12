@@ -25,7 +25,7 @@ services.AddKaleido(configuration, new()
 });
 ```
 
-`Kaleido.Registry.AuthorizationMetadata` and `[KaleidoAuthorization]` are foundation declarations under `src/Core/Kaleido/Registry/`; `AddServer()` binds the transport-neutral enforcement settings in the temporary Server.Next shell. The host's transport still enforces the effective rule.
+`Kaleido.Registry.AuthorizationMetadata` and `[KaleidoAuthorization]` are foundation declarations under `src/Core/Kaleido/Registry/`; the final transport-neutral `Kaleido.Server` project binds mode and service defaults through `AddServer()`. The host's transport still enforces the effective rule.
 
 The service-wide mode and default can also be bound from `Kaleido:AuthorizationMode`, `Kaleido:DefaultAuthorization:Policy` and `Kaleido:DefaultAuthorization:Roles:0`. Process's separate optional default binds from `Kaleido:Process:DefaultAuthorization:*`; when absent, standalone Process uses an unspecified rule. Hosting's service-default inheritance remains a later owner.
 

@@ -1,11 +1,11 @@
 #nullable enable
-Kaleido.KaleidoAuthorizationMode
-Kaleido.KaleidoAuthorizationMode.Authenticated = 1 -> Kaleido.KaleidoAuthorizationMode
-Kaleido.KaleidoAuthorizationMode.None = 0 -> Kaleido.KaleidoAuthorizationMode
-Kaleido.KaleidoAuthorizationMode.ZeroTrust = 2 -> Kaleido.KaleidoAuthorizationMode
+Kaleido.Server.KaleidoAuthorizationMode
+Kaleido.Server.KaleidoAuthorizationMode.Authenticated = 1 -> Kaleido.Server.KaleidoAuthorizationMode
+Kaleido.Server.KaleidoAuthorizationMode.None = 0 -> Kaleido.Server.KaleidoAuthorizationMode
+Kaleido.Server.KaleidoAuthorizationMode.ZeroTrust = 2 -> Kaleido.Server.KaleidoAuthorizationMode
 Kaleido.Server.KaleidoServerOptions
 Kaleido.Server.KaleidoServerOptions.<Clone>$() -> Kaleido.Server.KaleidoServerOptions!
-Kaleido.Server.KaleidoServerOptions.AuthorizationMode.get -> Kaleido.KaleidoAuthorizationMode
+Kaleido.Server.KaleidoServerOptions.AuthorizationMode.get -> Kaleido.Server.KaleidoAuthorizationMode
 Kaleido.Server.KaleidoServerOptions.AuthorizationMode.init -> void
 Kaleido.Server.KaleidoServerOptions.DefaultAuthorization.get -> Kaleido.Registry.AuthorizationMetadata!
 Kaleido.Server.KaleidoServerOptions.DefaultAuthorization.init -> void

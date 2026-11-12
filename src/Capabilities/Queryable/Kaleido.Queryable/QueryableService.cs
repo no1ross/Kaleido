@@ -5,10 +5,21 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Queryable;
 
-/// <summary>In-process entry point for executing Queryable requests.</summary>
-internal interface IQueryableService
+/// <summary>
+/// Executes a registered Queryable source or view inside this host. Console jobs and transport
+/// adapters use this scoped service with a typed <see cref="IQueryRequest"/>; no HTTP body or
+/// central-registry lookup is involved.
+/// </summary>
+/// <remarks>
+/// Register Queryable sources/views with <c>AddQueryable()</c> before resolving this service.
+/// It validates the query and parameters against the local source/view metadata, then runs the
+/// declared source or view in its own scope with the current correlation and caller context.
+/// The host is responsible for authenticating and authorizing access to the requested capability;
+/// this in-process executor does not enforce its declared roles or policies.
+/// </remarks>
+public interface IQueryableService
 {
-    /// <summary>Executes a query against a query source or a query view.</summary>
+    /// <summary>Validates and executes a typed query against a locally registered source or view.</summary>
     /// <typeparam name="TQuery">
     /// What to query: a local query view type (a view query), or a query source type (a direct
     /// query of a local source, or a delegated source).
@@ -17,9 +28,12 @@ internal interface IQueryableService
     /// The returned record type: the view's record for a view, the query context for a local
     /// source, or the source's result record for a delegated source.
     /// </typeparam>
-    /// <param name="request">The query and parameters.</param>
-    /// <param name="cancellationToken">Cancels the query.</param>
-    /// <returns>The query result.</returns>
+    /// <param name="request">A public <see cref="QueryRequest"/> or typed query request with
+    /// parameters matching the registered source or view.</param>
+    /// <param name="cancellationToken">Cancels validation or execution; pass the host job or
+    /// inbound request token so provider-backed queries can stop.</param>
+    /// <returns>The result page and total count in a <see cref="QueryResult{TView}"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="request"/> is null.</exception>
     /// <exception cref="KaleidoFrameworkException">
     /// <typeparamref name="TQuery"/> is not a registered source or view, or
     /// <typeparamref name="TResult"/> does not match what it returns.

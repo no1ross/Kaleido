@@ -1,13 +1,15 @@
 namespace Kaleido.Process;
 
 /// <summary>
-/// The result of one submitted step in a <see cref="ProcessResult"/>: how it was planned and, when
-/// it ran in this request, its outcome.
+/// The planning and execution outcome of one submitted step in a <see cref="ProcessResult"/>.
+/// <see cref="CandidateStatus"/> describes whether planning admitted it;
+/// <see cref="ExecutionStatus"/> describes what happened if its handler ran.
 /// </summary>
 [ExcludeFromCodeCoverage]
-internal sealed record ProcessStepResult
+public sealed record ProcessStepResult
 {
-    /// <summary>The step name as submitted in <see cref="ProcessorRequest.Steps"/>.</summary>
+    /// <summary>The submitted step name, matched case-insensitively against the local registered
+    /// step types in <see cref="ProcessorRequest.Steps"/>.</summary>
     public required string StepName
     {
         get;
@@ -37,7 +39,9 @@ internal sealed record ProcessStepResult
         init;
     }
 
-    /// <summary>The handler's response payload; <see langword="null"/> when the step did not run, failed with an error, or returned no response.</summary>
+    /// <summary>The handler's typed result, if it returned one. A caller may inspect it as the
+    /// handler's declared response type; <see langword="null"/> when no result was produced. The
+    /// runtime does not serialize or convert this value for a transport.</summary>
     public object? Response
     {
         get;
@@ -75,5 +79,5 @@ internal sealed record ProcessStepResult
         get;
         init;
     }
-= [];
+        = [];
 }

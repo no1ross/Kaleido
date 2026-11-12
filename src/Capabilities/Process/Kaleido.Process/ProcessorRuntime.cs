@@ -6,12 +6,18 @@ using Kaleido.Process.Recovery;
 namespace Kaleido.Process;
 
 /// <summary>
-/// Runs submitted steps of this processor in-process: loads or creates the process, plans the
-/// submitted steps, executes the ones the process rules admit, and saves the process state after
-/// each executed step (a step its handler rejects leaves the process unchanged and unsaved).
-/// Adapters invoke it after converting their request into typed Process steps.
+/// Executes typed Process steps in this host: loads or creates an instance, plans the submitted
+/// steps, runs those the process rules admit, and saves state after each executed step. A step
+/// rejected by its handler leaves the process unchanged. Console jobs and transport adapters both
+/// invoke this service; transport parsing is not part of the runtime.
 /// </summary>
-internal interface IProcessorRuntime
+/// <remarks>
+/// Register Process steps with <c>AddProcess()</c>, then resolve this scoped service from the host.
+/// Callers supply instances of declared <see cref="IProcessStep"/> types, usually through
+/// <see cref="ProcessRequest.ForStep{TStep}"/>. This runtime does not authenticate callers or enforce
+/// a step's declared roles and policies: the host must authorize the caller before submitting a step.
+/// </remarks>
+public interface IProcessorRuntime
 {
     /// <summary>
     /// Executes the steps in <paramref name="request"/> against the process it identifies, or
@@ -26,10 +32,13 @@ internal interface IProcessorRuntime
     /// </remarks>
     /// <param name="request">The process to continue (or create) and the steps to submit.</param>
     /// <param name="cancellationToken">
-    /// Cancels the execution. A step running when it is cancelled is recorded as canceled and the
-    /// process state is saved.
+    /// Cancels loading, planning or execution. A cancellation while a step's handler runs can be
+    /// recorded as a canceled step; cancellation before a step is admitted propagates.
     /// </param>
-    /// <returns>The process state after this request and the planning and execution result of every submitted step.</returns>
+    /// <returns>The process state and the planning/execution outcome of every submitted step. Read
+    /// <see cref="ProcessResult.Steps"/> rather than inferring a step's success from the overall state.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="request"/> is null.</exception>
+    /// <exception cref="OperationCanceledException">Cancellation interrupted the request before it could complete.</exception>
     /// <exception cref="KaleidoValidationException">
     /// <see cref="ProcessRequest.ProcessId"/> is set but no such process exists, and the request is
     /// not a handoff from another processor (<see cref="ProcessorErrorCodes.ProcessNotFound"/>).

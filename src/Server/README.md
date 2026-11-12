@@ -1,5 +1,3 @@
-# Kaleido.Server
+# Former Server project location
 
-Kaleido server base for ASP.NET Core, shared by every Kaleido server: who the caller is, capability authorization on ASP.NET's path, correlation, and the endpoint filters and error body every Kaleido endpoint uses.
-
-See the [repository README](https://github.com/no1ross/Kaleido#readme) and [ARCHITECTURE.md](https://github.com/no1ross/Kaleido/blob/master/ARCHITECTURE.md).
+The transport-neutral `Kaleido.Server` project and its authorization settings now live at [src/Transports/Kaleido.Server](../Transports/Kaleido.Server/README.md). Its former ASP.NET caller, authorization, JSON and endpoint-filter implementations were Git-moved to the existing [HTTP server project](../Http/Http.Server/README.md), where their HTTP migration remains pending. Central-registry-specific files moved under `src/Registry/Registry.Http/`; local Process execution and Queryable source registration remain in their capability projects. No HTTP or central Registry behavior is registered by neutral Server.

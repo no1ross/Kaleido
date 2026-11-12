@@ -16,6 +16,7 @@ public sealed class KaleidoServerServiceCollectionExtensionsTests : SutFixture
         new ServiceCollection().AddKaleido(configuration ?? EmptyConfig(), new()
         {
             ServiceName = "test-service",
+            ServiceVersion = "1",
             Assemblies = [typeof(KaleidoServerServiceCollectionExtensionsTests).Assembly],
         });
 

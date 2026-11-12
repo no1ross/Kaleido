@@ -38,7 +38,6 @@
 
 	<ItemGroup>
 		<!-- Extracted capabilities and Eventing use shared internal metadata, configuration overlay and correlation seams; adapters/front doors also use transport seams without making them public API (ADR 0022). -->
-		<InternalsVisibleTo Include="Kaleido.Server.Next" />
 		<InternalsVisibleTo Include="Kaleido.Eventing" />
 		<InternalsVisibleTo Include="Kaleido.Eventing.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Process" />

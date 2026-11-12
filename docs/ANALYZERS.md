@@ -154,7 +154,7 @@ For the remaining rules, see their implementations under [`Kaleido.Analyzers.Sou
 
 ## Test rules — `KAL1xxx`
 
-**Audience:** contributors writing tests. **Project:** [`Kaleido.Analyzers.Testing`](../tools/analyzers/Kaleido.Analyzers.Testing/), referenced by every test project through `tests/Directory.Build.props`; never shipped. Individual rules have their own applicability checks and `.editorconfig` exemptions: KAL1006 is disabled for functional/integration tests, KAL1001-KAL1004, KAL1009 and KAL1012 run only in `*.UnitTests` assemblies; KAL1007, KAL1008 and KAL1011 apply to fixtures inheriting `SutFixture<TSut>`; KAL1010 applies in every test project (unit, functional and integration).
+**Audience:** contributors writing tests. **Project:** [`Kaleido.Analyzers.Testing`](../tools/analyzers/Kaleido.Analyzers.Testing/), referenced by every test project through `tests/Directory.Build.props`; never shipped. Individual rules have their own applicability checks and `.editorconfig` exemptions: KAL1006, KAL1001-KAL1004, KAL1009 and KAL1012 run only in `*.UnitTests` assemblies (including any new project layout); existing `.editorconfig` functional exemptions are not needed for KAL1006's assembly-scope check; KAL1007, KAL1008 and KAL1011 apply to fixtures inheriting `SutFixture<TSut>`; KAL1010 applies in every test project (unit, functional and integration).
 
 | ID | Rule | Diagnostic message |
 |---|---|---|
@@ -172,7 +172,7 @@ For the remaining rules, see their implementations under [`Kaleido.Analyzers.Sou
 | KAL1012 | A unit-test fixture is declared in its SUT's namespace with `.UnitTests` appended (`Kaleido.Queryable.Query.QueryContextEngine` → `Kaleido.Queryable.Query.UnitTests`); `*.UnitTests` assemblies only | `Test fixture '{0}' tests '{1}' — declare it in namespace '{2}'` |
 
 **Effective severities and why each rule stays (#307).** These are repository conventions, not runtime-correctness checks; each is kept because it makes the suite predictable to navigate and to generate:
-- every KAL1xxx rule is an `Error`, so it fails the test build on its own, whatever a project's warnings-as-errors setting (KAL1009 included, #458); KAL1006 is off in the functional and integration test projects (their fixtures are hosts, not a single SUT);
+- every KAL1xxx rule is an `Error`, so it fails the test build on its own, whatever a project's warnings-as-errors setting (KAL1009 included, #458); KAL1006 is scoped in the analyzer to `.UnitTests` assemblies, so functional/integration fixtures can describe host scenarios rather than one SUT;
 - **KAL1009** (a fixture per type with behavior) - kept, and blocking: a new type with behavior is not done until its fixture exists. It is what makes "where is X tested" answerable by name; since #404 it judges behavior, not type kind, so a record's logic is tested in its own fixture rather than through another type's;
 - **KAL1011** (mock collaborators) - kept, by design (maintainer decision, #461). A unit test tests one unit: its collaborators are mocked, so a change in class B never fails class A's tests, and a class's tests are found by its name, not spread over every class that uses it. How the classes work together - the flow - is what the functional and integration tests are for. The exemptions are the justified counterexamples and are tested: domain data and records/DTOs implementing no Kaleido interface, test-assembly doubles, BCL and third-party scaffolding (`ServiceCollection`, `HttpClient`), and the SUT itself;
 - the fixture-shape rules (KAL1003, KAL1006-KAL1008, KAL1010, KAL1012) - kept: they keep one SUT per fixture, found at the mirrored path and namespace;
@@ -189,7 +189,7 @@ A type with behavior may still be *used* as input data by another type's tests (
 
 ### SutFixture notes (KAL1006–KAL1009)
 
-`SutFixture<TSut>` lives in `Kaleido.UnitTests` (the base test project — other `*.UnitTests` projects reference it). KAL1009 runs only in `*.UnitTests` assemblies; KAL1006 is disabled for functional/integration projects in `.editorconfig`. Those suites are scenario-scoped and do not normally use `SutFixture`, while the other fixture-shape rules activate only when their specific fixture pattern occurs.
+`SutFixture<TSut>` lives in `Kaleido.UnitTests` (the base test project — other `*.UnitTests` projects reference it). KAL1009 and KAL1006 run only in `*.UnitTests` assemblies. Functional and integration suites are scenario-scoped and do not normally use `SutFixture`, while the other fixture-shape rules activate only when their specific fixture pattern occurs.
 
 ### Examples
 

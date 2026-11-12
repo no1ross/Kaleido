@@ -1,25 +1,21 @@
-using Kaleido.Http.Server.Registry;
-using Kaleido.Platform.Registry;
-using Kaleido.Processor.Registry;
 using Kaleido.Server;
 using Kaleido.Server.Authorization;
-using Kaleido.Server.Registry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Http.Server;
 
 /// <summary>
-/// Registers the Kaleido HTTP transport (routing, middleware pipeline, capability authorization,
-/// HTTP execution services and the unified registry) on an <see cref="IKaleidoBuilder"/>; the entry
-/// point is <see cref="AddHttp"/>. Map the endpoints with <c>MapKaleidoHttp()</c>.
+/// Registers shared Kaleido HTTP routing, body handling, correlation and ASP.NET authorization
+/// infrastructure on an <see cref="IKaleidoBuilder"/>; capability adapters and registry participation
+/// are registered separately.
 /// </summary>
 public static class KaleidoHttpServiceCollectionExtensions
 {
     /// <summary>
     /// Registers HTTP transport infrastructure for Kaleido: ASP.NET Core routing,
     /// <see cref="Microsoft.AspNetCore.Http.IHttpContextAccessor"/>, correlation and exception
-    /// middleware, and HTTP-specific execution services.
+    /// handling and scoped HTTP error responses.
     /// </summary>
     /// <remarks>
     /// The <c>Kaleido:Http</c> configuration section is laid over a copy of <paramref name="options"/>
@@ -58,7 +54,6 @@ public static class KaleidoHttpServiceCollectionExtensions
             .BindOver(options ?? new KaleidoHttpOptions(), ConfigurationErrorCodes.InvalidHttpOptions);
         KaleidoHttpOptions.Validate(httpOptions);
         builder.Services.AddSingleton(httpOptions);
-        RegisterTransport(builder);
 
         // Capability authorization is ASP.NET's (#574): the typed routes' policies, and the same policies
         // checked by IAuthorizationService on the dynamic paths. 401/403 responses are produced by the
@@ -67,41 +62,6 @@ public static class KaleidoHttpServiceCollectionExtensions
         builder.Services.TryAddScoped<IKaleidoAuthorizer, KaleidoAuthorizer>();
         builder.Services.TryAddSingleton<Kaleido.Server.Middleware.IKaleidoExceptionHandler, Kaleido.Server.Middleware.KaleidoExceptionHandler>();
 
-        // Register HTTP-specific execution services — only when Process runtime is present
-        if (builder.Services.Any(d => d.ServiceType == typeof(IProcessorRegistry)))
-        {
-            builder.Services.TryAddScoped<IProcessExecutionService, ProcessExecutionService>();
-            builder.Services.TryAddScoped<IProcessStateService, ProcessStateService>();
-            builder.Services.TryAddScoped<IProcessContinuationFilter, ProcessContinuationFilter>();
-            builder.Services.TryAddScoped<IHandOffStepResolver, HandOffStepResolver>();
-        }
-
-        builder.Services.TryAddSingleton<IProcessorResponseFactory, ProcessorResponseFactory>();
-        builder.Services.TryAddSingleton<IProcessExecutionResponseFactory, ProcessExecutionResponseFactory>();
-
-        // The central registry's hydrated copy is the in-host source for MCP and authorization; this
-        // service's own capabilities are published only when the registry client registers this instance.
-        builder.Services.TryAddSingleton(TimeProvider.System);
-        builder.Services.TryAddSingleton<LocalRegistrations>();
-        builder.Services.TryAddSingleton<IKaleidoLocalCapabilities>(x => x.GetRequiredService<LocalRegistrations>());
-        builder.Services.TryAddScoped<IKaleidoRegistryService, KaleidoRegistryService>();
-
-        // The same registry unfiltered, for in-host consumers that must not depend on one caller's
-        // view (the MCP adapter's stable tool names, #435); never served to a caller.
-        builder.Services.TryAddScoped<IKaleidoUnfilteredRegistry, KaleidoRegistryService>();
-
         return builder;
-    }
-
-    private static void RegisterTransport(IKaleidoBuilder builder)
-    {
-        if (builder.ServiceOptions.ServiceVersion is { Length: > 0 } version)
-        {
-            builder.Services.AddSingleton(new RegistryTransportRoute
-            {
-                Transport = "http",
-                GatewayRoute = KaleidoHttpRoutePrefix.Service(builder.ServiceOptions.ServiceName, version),
-            });
-        }
     }
 }

@@ -1,18 +1,22 @@
 namespace Kaleido.Process;
 
 /// <summary>
-/// A request to <see cref="IProcessorRuntime.ExecuteAsync"/>: the process to continue (or none, to
-/// start one) and the steps submitted for it.
+/// A local request to <see cref="IProcessorRuntime.ExecuteAsync"/> containing typed Process steps
+/// for a new or existing process instance. This is not a transport or JSON request body.
 /// </summary>
 /// <remarks>
-/// Use <see cref="ForStep{TStep}"/> to submit a single typed step.
+/// Use <see cref="ForStep{TStep}"/> for one declared step. To submit several steps in one
+/// request, provide a <see cref="ProcessorRequest"/> whose <see cref="ProcessorRequest.Steps"/>
+/// map contains their registered type names and typed instances. The runtime plans them under
+/// the process rules and reports each submitted step's outcome in <see cref="ProcessResult.Steps"/>.
+/// The host authenticates and authorizes those steps before calling the runtime.
 /// </remarks>
-internal sealed record ProcessRequest
+public sealed record ProcessRequest
 {
     /// <summary>
-    /// Uniquely identifies the durable process instance.
-    /// Re-submissions for the same process use the same correlation id.
-    /// Null creates a new process instance.
+    /// Identifies the durable process instance to continue. Use the id returned in
+    /// <see cref="ProcessResult.ProcessId"/> for subsequent requests; <see langword="null"/>
+    /// starts a new instance. This is not the ambient request-correlation id.
     /// </summary>
     public Guid? ProcessId
     {
@@ -21,7 +25,8 @@ internal sealed record ProcessRequest
     }
 
     /// <summary>
-    /// Consumer supplied process request data.
+    /// The submitted steps as typed instances, keyed by their registered type names. For one
+    /// step, use <see cref="ForStep{TStep}"/> instead of constructing this property by hand.
     /// </summary>
     public required ProcessorRequest Processor
     {
@@ -30,16 +35,17 @@ internal sealed record ProcessRequest
     }
 
     /// <summary>
-    /// Creates a <see cref="ProcessRequest"/> for a single step.
-    /// The step name is the step type's name (<c>typeof(TStep).Name</c>), the same
-    /// name the registry publishes.
+    /// Creates a local <see cref="ProcessRequest"/> for one typed step. Its key is
+    /// <c>typeof(TStep).Name</c>, the name that Process registered for this step type.
     /// </summary>
     /// <typeparam name="TStep">The process step type.</typeparam>
     /// <param name="step">The step instance containing the input data.</param>
     /// <param name="processId">
-    /// Optional process correlation identifier. Pass the same value on each submission
-    /// to resume an existing process instance. Omit (or pass <see langword="null"/>) to start a new one.
+    /// The existing process id to continue; omit or pass <see langword="null"/> to start a new
+    /// instance. Use the previous result's <see cref="ProcessResult.ProcessId"/> to resume it.
     /// </param>
+    /// <returns>A request whose submitted steps contain this typed step under its registered name.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="step"/> is null.</exception>
     public static ProcessRequest ForStep<TStep>(TStep step, Guid? processId = null)
         where TStep : class, IProcessStep
     {

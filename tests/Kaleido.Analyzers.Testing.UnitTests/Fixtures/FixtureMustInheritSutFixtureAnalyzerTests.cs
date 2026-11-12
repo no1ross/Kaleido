@@ -51,6 +51,20 @@ public class {|#0:WidgetTests|}
     }
 
     [Fact]
+    public async Task FunctionalTestAssembly_DoesNotRequireSutFixture()
+    {
+        var test = Create(@"
+public class ConsoleHostingTests
+{
+    [Xunit.Fact]
+    public void HostStartsAndRuns() { }
+}" + Stubs);
+        test.AssemblyName = "Kaleido.FunctionalTests";
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task ClassWithoutTestMethods_NoDiagnostic()
     {
         await RunAsync(@"

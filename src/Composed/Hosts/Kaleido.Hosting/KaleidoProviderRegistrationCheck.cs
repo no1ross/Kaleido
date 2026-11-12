@@ -10,8 +10,7 @@ internal sealed class KaleidoProviderRegistrationCheck(IServiceCollection servic
         var missing = new List<string>();
         if (services.Any(x => x.ServiceType == typeof(KaleidoProcessOptions)))
         {
-            Require<IKaleidoContextStore>(services, missing, "process state (IKaleidoContextStore)");
-            Require<IKaleidoIdempotencyStore>(services, missing, "idempotency records (IKaleidoIdempotencyStore)");
+            Require<IProcessContextStore>(services, missing, "process state (IProcessContextStore)");
         }
 
         if (services.Any(x => x.ServiceType == typeof(KaleidoEventOptions)))

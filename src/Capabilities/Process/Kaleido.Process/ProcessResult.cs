@@ -1,22 +1,25 @@
 namespace Kaleido.Process;
 
 /// <summary>
-/// The result of <see cref="IProcessorRuntime.ExecuteAsync"/>: the process state after the request
-/// and the result of every submitted step.
+/// The durable process state after a local <see cref="IProcessorRuntime.ExecuteAsync"/> call and
+/// the outcome of each submitted step. This is a transport-neutral result, not a wire response.
 /// </summary>
 /// <remarks>
 /// <see cref="State"/>, <see cref="RequiredStep"/>, <see cref="RequiredInformationRequest"/>,
 /// <see cref="TargetProcessorName"/> and <see cref="AvailableSteps"/> are taken from the process state
 /// after the last step this request ran; when no step changed it, they are the state the request
-/// started from.
+/// started from. Inspect <see cref="Steps"/> for submitted steps that were invalid, already satisfied,
+/// rejected or canceled: an overall process state alone does not say that every submitted step ran.
+/// Use <see cref="ProcessId"/> when submitting a later request to the same process.
 /// </remarks>
 [ExcludeFromCodeCoverage]
-internal sealed record ProcessResult
+public sealed record ProcessResult
 {
     /// <summary>The process instance the request ran against; newly generated when the request created the process without an id.</summary>
     public required Guid ProcessId { get; init; }
 
-    /// <summary>The process state after this request.</summary>
+    /// <summary>The process's stored execution state after this request; inspect <see cref="Steps"/>
+    /// for what happened to each submitted step.</summary>
     public required ProcessExecutionState State
     {
         get;
@@ -54,8 +57,9 @@ internal sealed record ProcessResult
     }
 
     /// <summary>
-    /// The handed-off-to processor's notice on the request that hands off (for example
-    /// <c>pro_not_permitted</c>), unchanged; <see langword="null"/> otherwise.
+    /// A notice from the target processor on the request that hands off (for example, that some
+    /// next steps are not permitted), unchanged; <see langword="null"/> otherwise. It does not
+    /// grant the caller access to that target's steps.
     /// </summary>
     public KaleidoNotice? Notice
     {
@@ -76,8 +80,9 @@ internal sealed record ProcessResult
         = [];
 
     /// <summary>
-    /// One result per submitted step, in planning order: the steps that passed validation first, in
-    /// dependency order, then the rest.
+    /// One <see cref="ProcessStepResult"/> per submitted step in planning order: valid steps first
+    /// in dependency order, then those the planner could not admit. An included step may still be
+    /// pending if an earlier step stopped execution.
     /// </summary>
     public IReadOnlyCollection<ProcessStepResult> Steps
     {

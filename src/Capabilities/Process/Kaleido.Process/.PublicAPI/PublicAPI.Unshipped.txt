@@ -450,6 +450,8 @@ Kaleido.Process.InformationResponseItem.ItemId.get -> string!
 Kaleido.Process.InformationResponseItem.ItemId.init -> void
 Kaleido.Process.InformationResponseItem.Items.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Process.InformationResponseItem!>!
 Kaleido.Process.InformationResponseItem.Items.init -> void
+Kaleido.Process.IProcessorRuntime
+Kaleido.Process.IProcessorRuntime.ExecuteAsync(Kaleido.Process.ProcessRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Process.ProcessResult!>!
 Kaleido.Process.IProcessStep
 Kaleido.Process.KaleidoProcessOptions
 Kaleido.Process.KaleidoProcessOptions.<Clone>$() -> Kaleido.Process.KaleidoProcessOptions!
@@ -497,6 +499,40 @@ Kaleido.Process.ProcessMessage.ProcessMessage() -> void
 Kaleido.Process.ProcessMessage.Type.get -> Kaleido.Process.MessageType
 Kaleido.Process.ProcessMessage.Type.init -> void
 Kaleido.Process.ProcessorErrorCodes
+Kaleido.Process.ProcessorRequest
+Kaleido.Process.ProcessorRequest.<Clone>$() -> Kaleido.Process.ProcessorRequest!
+Kaleido.Process.ProcessorRequest.Equals(Kaleido.Process.ProcessorRequest? other) -> bool
+Kaleido.Process.ProcessorRequest.ProcessorRequest() -> void
+Kaleido.Process.ProcessorRequest.Steps.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
+Kaleido.Process.ProcessorRequest.Steps.init -> void
+Kaleido.Process.ProcessRequest
+Kaleido.Process.ProcessRequest.<Clone>$() -> Kaleido.Process.ProcessRequest!
+Kaleido.Process.ProcessRequest.Equals(Kaleido.Process.ProcessRequest? other) -> bool
+Kaleido.Process.ProcessRequest.ProcessId.get -> System.Guid?
+Kaleido.Process.ProcessRequest.ProcessId.init -> void
+Kaleido.Process.ProcessRequest.Processor.get -> Kaleido.Process.ProcessorRequest!
+Kaleido.Process.ProcessRequest.Processor.init -> void
+Kaleido.Process.ProcessRequest.ProcessRequest() -> void
+Kaleido.Process.ProcessResult
+Kaleido.Process.ProcessResult.<Clone>$() -> Kaleido.Process.ProcessResult!
+Kaleido.Process.ProcessResult.AvailableSteps.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+Kaleido.Process.ProcessResult.AvailableSteps.init -> void
+Kaleido.Process.ProcessResult.Equals(Kaleido.Process.ProcessResult? other) -> bool
+Kaleido.Process.ProcessResult.Notice.get -> Kaleido.KaleidoNotice?
+Kaleido.Process.ProcessResult.Notice.init -> void
+Kaleido.Process.ProcessResult.ProcessId.get -> System.Guid
+Kaleido.Process.ProcessResult.ProcessId.init -> void
+Kaleido.Process.ProcessResult.ProcessResult() -> void
+Kaleido.Process.ProcessResult.RequiredInformationRequest.get -> Kaleido.Process.InformationRequest?
+Kaleido.Process.ProcessResult.RequiredInformationRequest.init -> void
+Kaleido.Process.ProcessResult.RequiredStep.get -> string?
+Kaleido.Process.ProcessResult.RequiredStep.init -> void
+Kaleido.Process.ProcessResult.State.get -> Kaleido.Process.ProcessExecutionState
+Kaleido.Process.ProcessResult.State.init -> void
+Kaleido.Process.ProcessResult.Steps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Process.ProcessStepResult!>!
+Kaleido.Process.ProcessResult.Steps.init -> void
+Kaleido.Process.ProcessResult.TargetProcessorName.get -> string?
+Kaleido.Process.ProcessResult.TargetProcessorName.init -> void
 Kaleido.Process.ProcessServiceCollectionExtensions
 Kaleido.Process.ProcessStepAttribute
 Kaleido.Process.ProcessStepAttribute.Description.get -> string!
@@ -510,6 +546,24 @@ Kaleido.Process.ProcessStepAttribute.External.init -> void
 Kaleido.Process.ProcessStepAttribute.ProcessStepAttribute() -> void
 Kaleido.Process.ProcessStepAttribute.RequiresConfirmation.get -> bool
 Kaleido.Process.ProcessStepAttribute.RequiresConfirmation.init -> void
+Kaleido.Process.ProcessStepResult
+Kaleido.Process.ProcessStepResult.<Clone>$() -> Kaleido.Process.ProcessStepResult!
+Kaleido.Process.ProcessStepResult.BusinessMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Process.ProcessMessage!>!
+Kaleido.Process.ProcessStepResult.BusinessMessages.init -> void
+Kaleido.Process.ProcessStepResult.CandidateStatus.get -> Kaleido.Process.StepCandidateStatus
+Kaleido.Process.ProcessStepResult.CandidateStatus.init -> void
+Kaleido.Process.ProcessStepResult.Equals(Kaleido.Process.ProcessStepResult? other) -> bool
+Kaleido.Process.ProcessStepResult.ExecutionStatus.get -> Kaleido.Process.StepExecutionStatus
+Kaleido.Process.ProcessStepResult.ExecutionStatus.init -> void
+Kaleido.Process.ProcessStepResult.IncludedInExecutionPlan.get -> bool
+Kaleido.Process.ProcessStepResult.IncludedInExecutionPlan.init -> void
+Kaleido.Process.ProcessStepResult.ProcessStepResult() -> void
+Kaleido.Process.ProcessStepResult.Response.get -> object?
+Kaleido.Process.ProcessStepResult.Response.init -> void
+Kaleido.Process.ProcessStepResult.RuntimeMessages.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Process.StepProcessingMessage!>!
+Kaleido.Process.ProcessStepResult.RuntimeMessages.init -> void
+Kaleido.Process.ProcessStepResult.StepName.get -> string!
+Kaleido.Process.ProcessStepResult.StepName.init -> void
 Kaleido.Process.RepeatableAttribute
 Kaleido.Process.RepeatableAttribute.RepeatableAttribute() -> void
 Kaleido.Process.StepCandidateStatus
@@ -620,6 +674,18 @@ override Kaleido.Process.KaleidoProcessOptions.ToString() -> string!
 override Kaleido.Process.ProcessMessage.Equals(object? obj) -> bool
 override Kaleido.Process.ProcessMessage.GetHashCode() -> int
 override Kaleido.Process.ProcessMessage.ToString() -> string!
+override Kaleido.Process.ProcessorRequest.Equals(object? obj) -> bool
+override Kaleido.Process.ProcessorRequest.GetHashCode() -> int
+override Kaleido.Process.ProcessorRequest.ToString() -> string!
+override Kaleido.Process.ProcessRequest.Equals(object? obj) -> bool
+override Kaleido.Process.ProcessRequest.GetHashCode() -> int
+override Kaleido.Process.ProcessRequest.ToString() -> string!
+override Kaleido.Process.ProcessResult.Equals(object? obj) -> bool
+override Kaleido.Process.ProcessResult.GetHashCode() -> int
+override Kaleido.Process.ProcessResult.ToString() -> string!
+override Kaleido.Process.ProcessStepResult.Equals(object? obj) -> bool
+override Kaleido.Process.ProcessStepResult.GetHashCode() -> int
+override Kaleido.Process.ProcessStepResult.ToString() -> string!
 override Kaleido.Process.StepProcessingMessage.Equals(object? obj) -> bool
 override Kaleido.Process.StepProcessingMessage.GetHashCode() -> int
 override Kaleido.Process.StepProcessingMessage.ToString() -> string!
@@ -682,10 +748,19 @@ static Kaleido.Process.KaleidoProcessOptions.operator !=(Kaleido.Process.Kaleido
 static Kaleido.Process.KaleidoProcessOptions.operator ==(Kaleido.Process.KaleidoProcessOptions? left, Kaleido.Process.KaleidoProcessOptions? right) -> bool
 static Kaleido.Process.ProcessMessage.operator !=(Kaleido.Process.ProcessMessage? left, Kaleido.Process.ProcessMessage? right) -> bool
 static Kaleido.Process.ProcessMessage.operator ==(Kaleido.Process.ProcessMessage? left, Kaleido.Process.ProcessMessage? right) -> bool
+static Kaleido.Process.ProcessorRequest.operator !=(Kaleido.Process.ProcessorRequest? left, Kaleido.Process.ProcessorRequest? right) -> bool
+static Kaleido.Process.ProcessorRequest.operator ==(Kaleido.Process.ProcessorRequest? left, Kaleido.Process.ProcessorRequest? right) -> bool
+static Kaleido.Process.ProcessRequest.ForStep<TStep>(TStep! step, System.Guid? processId = null) -> Kaleido.Process.ProcessRequest!
+static Kaleido.Process.ProcessRequest.operator !=(Kaleido.Process.ProcessRequest? left, Kaleido.Process.ProcessRequest? right) -> bool
+static Kaleido.Process.ProcessRequest.operator ==(Kaleido.Process.ProcessRequest? left, Kaleido.Process.ProcessRequest? right) -> bool
+static Kaleido.Process.ProcessResult.operator !=(Kaleido.Process.ProcessResult? left, Kaleido.Process.ProcessResult? right) -> bool
+static Kaleido.Process.ProcessResult.operator ==(Kaleido.Process.ProcessResult? left, Kaleido.Process.ProcessResult? right) -> bool
 static Kaleido.Process.ProcessServiceCollectionExtensions.AddContextStore<TStore>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Process.ProcessServiceCollectionExtensions.AddProcess(this Kaleido.IKaleidoBuilder! builder, Kaleido.Process.KaleidoProcessOptions? options = null) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Process.ProcessServiceCollectionExtensions.AddProcessEventDispatch(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Process.ProcessServiceCollectionExtensions.AddTransactions<TTransactions>(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Process.ProcessStepResult.operator !=(Kaleido.Process.ProcessStepResult? left, Kaleido.Process.ProcessStepResult? right) -> bool
+static Kaleido.Process.ProcessStepResult.operator ==(Kaleido.Process.ProcessStepResult? left, Kaleido.Process.ProcessStepResult? right) -> bool
 static Kaleido.Process.StepProcessingMessage.Error(string! code, string! message) -> Kaleido.Process.StepProcessingMessage!
 static Kaleido.Process.StepProcessingMessage.Information(string! code, string! message) -> Kaleido.Process.StepProcessingMessage!
 static Kaleido.Process.StepProcessingMessage.operator !=(Kaleido.Process.StepProcessingMessage? left, Kaleido.Process.StepProcessingMessage? right) -> bool

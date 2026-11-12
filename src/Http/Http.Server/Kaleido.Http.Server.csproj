@@ -10,7 +10,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Server\Kaleido.Server.csproj" />
+		<ProjectReference Include="..\..\Transports\Kaleido.Server\Kaleido.Server.csproj" />
 		<ProjectReference Include="..\Http\Kaleido.Http.csproj" />
 	</ItemGroup>
 

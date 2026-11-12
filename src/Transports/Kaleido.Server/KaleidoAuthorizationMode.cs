@@ -1,4 +1,4 @@
-namespace Kaleido;
+namespace Kaleido.Server;
 
 /// <summary>
 /// How Kaleido enforces capability authorization (process steps, query
@@ -8,11 +8,9 @@ namespace Kaleido;
 public enum KaleidoAuthorizationMode
 {
     /// <summary>
-    /// Nothing is enforced: declared roles/policies, process ownership and
-    /// registry filtering are all skipped. For samples, local development,
-    /// and hosts without authentication; chosen explicitly (the default is
-    /// <see cref="Authenticated"/>). A startup warning is logged when
-    /// capabilities declare authorization that this mode ignores.
+    /// The host does not enforce capability roles or policies. Intended for deliberately open
+    /// local or test hosts; choose it explicitly (the default is <see cref="Authenticated"/>).
+    /// Transport adapters may warn when a capability declares a rule this mode ignores.
     /// </summary>
     None = 0,
 

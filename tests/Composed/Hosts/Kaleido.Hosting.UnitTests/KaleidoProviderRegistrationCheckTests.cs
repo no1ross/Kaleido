@@ -2,73 +2,71 @@ using Kaleido.Exceptions;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Storage.UnitTests;
+namespace Kaleido.Hosting.UnitTests;
 
-// ADR 0028 (#438): a store the service uses is never left in memory by accident.
-public sealed class KaleidoStoreSelectionCheckTests
-    : SutFixture
+public sealed class KaleidoProviderRegistrationCheckTests : SutFixture
 {
-    private static KaleidoStoreSelectionCheck CreateSut(IServiceCollection services) => new(services);
-
-    // Capabilities contribute only the stores they use; the check aggregates their choices.
-    private static ServiceCollection Defaults(params string[] stores)
-    {
-        var services = new ServiceCollection();
-        if (stores.Length > 0)
-        {
-            services.AddSingleton(new KaleidoStoreSelectionContributor(_ => stores));
-        }
-
-        return services;
-    }
+    private static KaleidoProviderRegistrationCheck CreateSut(IServiceCollection services) => new(services);
 
     private static Task StartAsync(IServiceCollection services) =>
         CreateSut(services).StartAsync(TestContext.Current.CancellationToken);
 
     [Fact]
-    public async Task SeveralContributors_LeftAtTheDefaults_DoNotStart_NamingAllStores()
+    public async Task StartAsync_WithNoCapabilitiesOrEventing_NeedsNoStore()
     {
-        var services = Defaults("process state (IKaleidoContextStore)");
-        services.AddSingleton(new KaleidoStoreSelectionContributor(_ => ["idempotency records (IKaleidoIdempotencyStore)"]));
-
-        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(services));
-
-        Assert.Equal(ConfigurationErrorCodes.StoresNotChosen, exception.Code);
-        Assert.Contains("process state (IKaleidoContextStore)", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("idempotency records (IKaleidoIdempotencyStore)", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("AddInMemoryStores()", exception.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task TheExplicitInMemoryChoice_Starts()
-    {
-        var services = Defaults("process state (IKaleidoContextStore)", "idempotency records (IKaleidoIdempotencyStore)");
-        services.AddSingleton(typeof(KaleidoInMemoryStoresChoice), KaleidoInMemoryStoresChoice.Explicit);
+        var services = new ServiceCollection();
 
         await StartAsync(services);
         await CreateSut(services).StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
-    public async Task DurableStores_Start()
+    public async Task StartAsync_WithProcessSteps_RequiresOnlyContextState()
     {
-        await StartAsync(Defaults());
-    }
-
-    [Fact]
-    public async Task OneStoreLeftInMemory_IsTheOneNamed()
-    {
-        var services = Defaults("process state (IKaleidoContextStore)");
+        var services = new ServiceCollection();
+        services.AddSingleton(new KaleidoProcessOptions());
 
         var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(services));
 
-        Assert.Contains("process state", exception.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("idempotency records", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(ConfigurationErrorCodes.StoresNotChosen, exception.Code);
+        Assert.Contains("process state (IProcessContextStore)", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("idempotency", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void AServiceWithoutStoreContributors_NeedsNoChoice()
+    public async Task StartAsync_WithEventing_RequiresAnOutbox()
     {
-        Assert.Empty(KaleidoStoreSelectionCheck.InMemoryStoresInUse(Defaults()));
+        var services = new ServiceCollection();
+        services.AddSingleton(new KaleidoEventOptions());
+
+        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(services));
+
+        Assert.Equal(ConfigurationErrorCodes.StoresNotChosen, exception.Code);
+        Assert.Contains("event outbox (IKaleidoOutboxStore)", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StartAsync_WithBothCapabilities_ReportsEachMissingStore()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new KaleidoProcessOptions());
+        services.AddSingleton(new KaleidoEventOptions());
+
+        var exception = await Assert.ThrowsAsync<KaleidoConfigurationException>(() => StartAsync(services));
+
+        Assert.Contains("process state (IProcessContextStore)", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("event outbox (IKaleidoOutboxStore)", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StartAsync_WithExplicitStores_AcceptsAnyImplementation()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new KaleidoProcessOptions());
+        services.AddSingleton(new KaleidoEventOptions());
+        services.AddSingleton(Mock.Of<IProcessContextStore>());
+        services.AddSingleton(Mock.Of<IKaleidoOutboxStore>());
+
+        await StartAsync(services);
     }
 }

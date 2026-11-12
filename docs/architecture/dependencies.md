@@ -1,6 +1,6 @@
 # Processed project dependencies
 
-The graph below states actual, directly relevant references for projects processed or actively being extracted under #585/#586. The Server.Next assembly is a temporary non-packable shell, not a final package name. An arrow points **from a project to a project it references**:
+The graph below states actual, directly relevant references for projects processed or actively being extracted under #585/#586. The prior Server.Next authorization shell was merged into the final neutral Server project; HTTP and Registry adapters remain unfinished. An arrow points **from a project to a project it references**:
 
 ```text
 Kaleido.Process   ──► Kaleido.Eventing ──► Kaleido
@@ -8,7 +8,8 @@ Kaleido.Process   ──► Kaleido.Eventing ──► Kaleido
 Kaleido.Queryable ──► Kaleido.Eventing ──► Kaleido
                   ╰────────────────────────────► Kaleido
 Kaleido.Process.Server ──► Kaleido.Process, Kaleido
-Kaleido.Server.Next ─────────────────────────► Kaleido
+Kaleido.Server ──────────────────────────────► Kaleido
+Kaleido.Hosting ──► Kaleido.Server, Kaleido.Eventing, Kaleido.Process, Kaleido.Queryable, Kaleido
 ```
 
 `Kaleido.Process.Server` owns transport-neutral idempotency admission/replay and references generic Process and foundation, never HTTP. `Kaleido` must not reference either capability or Eventing. Eventing provides generic envelopes, outbox/writer/relay/redaction seams and does not reference Process or Queryable; each capability owns its own payloads, stable discriminators and typed dispatch registration. Both capabilities reference foundation for identity, CLR metadata mechanics, correlation and shared authorization declarations/metadata; the temporary Registry.Next shell was removed by owner decision (#586, superseding #595). The Eventing placement and its compatibility `<RootNamespace>Kaleido</RootNamespace>` are **temporary shallow-extraction choices**, not the final package design (#592). Moving a single Eventing assembly above Process and Queryable without moving its generic contracts would create a cycle; revisit that design in #592 rather than introducing one now.

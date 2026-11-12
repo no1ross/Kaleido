@@ -3,7 +3,7 @@
 		<Compile Include="..\..\Shared\SutFixture.cs" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-		<ProjectReference Include="..\..\..\src\Transports\Kaleido.Server\Kaleido.Server.Next.csproj" />
+		<ProjectReference Include="..\..\..\src\Transports\Kaleido.Server\Kaleido.Server.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="Kaleido.Registry" />

@@ -1,4 +1,3 @@
-using Kaleido.Platform.Registry;
 using Kaleido.Processor.Registry;
 using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Authentication;
@@ -33,7 +32,6 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger("Kaleido.Startup");
 
-        ValidateCentralRegistry(endpoints.ServiceProvider);
         ValidateAuthorization(endpoints.ServiceProvider, logger);
 
         var hasProcess = endpoints.ServiceProvider.GetService<IProcessorStepRegistry>() is not null;
@@ -73,17 +71,6 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
         }
 
         return new RouteHandlerBuilder(builders);
-    }
-
-    private static void ValidateCentralRegistry(IServiceProvider services)
-    {
-        using var scope = services.CreateScope();
-        if (scope.ServiceProvider.GetService<IKaleidoRegistrySource>() is null)
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.RegistryNotConfigured,
-                "A Kaleido HTTP host requires the central registry. Configure Kaleido:BaseUrl with the gateway address and call AddControlRegistryClient() before MapKaleidoHttp().");
-        }
     }
 
     // Startup authorization checks, by mode:

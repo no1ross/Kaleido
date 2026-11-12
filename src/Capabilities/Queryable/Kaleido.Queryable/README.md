@@ -8,6 +8,8 @@ Call `AddKaleido(configuration, options)` with an explicit `Assemblies` scan set
 
 ## Sources, views and execution
 
+A console job or transport adapter can resolve the public scoped `IQueryableService` after `AddQueryable()` and call `QueryAsync<TQuery, TResult>(request, cancellationToken)` for a locally registered source or view. Supply a public `QueryRequest`/`IQueryRequest` and read its `QueryResult<T>` directly; the concrete `QueryableService`, source/view catalogs and query planners remain internal. The host authenticates and authorizes access to the source or view before calling this in-process service; its query validation does not enforce declared roles/policies. Local execution needs no central Registry or HTTP transport.
+
 The source is the identity; the query context describes how it is queried. Discovery is interface-only: local `IQuerySource<T>` / `IQuerySourceAsync<T>` and delegated `IDelegatedQuerySource<…>` types need `[QuerySource]`; `IQueryViewSource<…>` / async views need `[QueryView]`. Each needs a nonempty display name and description. One type is exactly one capability; a source name is unique within a service and a view name is unique within its source. One query context may back several sources.
 
 `QueryableService` dispatches by queried type to a local source, a view over its local source, or a delegated source; there is no fallback. It validates the consumer's request against the source context before execution, including delegated requests. A local source can always be queried directly. A delegated source returns its downstream `QueryResult<T>` unchanged; `QuerySourceKind` is unpublished internal metadata.

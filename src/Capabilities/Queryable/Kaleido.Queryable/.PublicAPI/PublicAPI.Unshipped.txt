@@ -118,6 +118,8 @@ Kaleido.Queryable.IDelegatedQuerySource<TQueryContext, TResult, TParameters>
 Kaleido.Queryable.IDelegatedQuerySource<TQueryContext, TResult, TParameters>.ExecuteAsync(Kaleido.Queryable.Query.IQueryRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
 Kaleido.Queryable.IDelegatedQuerySource<TQueryContext, TResult>
 Kaleido.Queryable.ILocalQuerySource<TQueryContext>
+Kaleido.Queryable.IQueryableService
+Kaleido.Queryable.IQueryableService.QueryAsync<TQuery, TResult>(Kaleido.Queryable.Query.IQueryRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
 Kaleido.Queryable.IQueryContext
 Kaleido.Queryable.IQueryParameters
 Kaleido.Queryable.IQuerySource<TQueryContext>

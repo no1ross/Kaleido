@@ -6,14 +6,17 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 |---|---|
 | `Kaleido.UnitTests` | `src/Core/Kaleido` foundation only; do not reference Process, Queryable or Eventing |
 | `Kaleido.Eventing.UnitTests` | `src/Events/Kaleido.Eventing` generic event writer, outbox, relay and redaction |
-| `Kaleido.Process.UnitTests` | `src/Capabilities/Process/Kaleido.Process` steps, runtime and stores |
+| `Kaleido.Process.UnitTests` | `src/Capabilities/Process/Kaleido.Process` steps, runtime and state stores |
+| `Kaleido.Process.Server.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Server` neutral idempotency admission/replay |
 | `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
 | `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |
-| `Kaleido.Server.UnitTests` | `src/Server` authorization, caller/correlation and registry filtering |
+| `Kaleido.Server.UnitTests` | `src/Transports/Kaleido.Server` neutral authorization options and registration |
 | `Kaleido.Client.UnitTests` | `src/Client` participation, hydration and transport selection |
 | `Kaleido.Http.UnitTests` | `src/Http/Http` versioned URL and route shapes |
 | `Kaleido.Http.Server.UnitTests` | `src/Http/Http.Server` endpoint adapters |
 | `Kaleido.Http.Client.UnitTests` | `src/Http/Http.Client` HTTP clients and handlers |
+| `Kaleido.Hosting.UnitTests` | `src/Composed/Hosts/Kaleido.Hosting` neutral registration and provider-presence checks |
+| `Kaleido.FunctionalTests` | Non-web console `IHost` scenarios exercising public Process/Queryable APIs with no ASP.NET or central Registry participation |
 | `Kaleido.Http.FunctionalTests` | HTTP server/client contracts with TestServer and the central registry |
 | `Kaleido.Registry.UnitTests` | `src/Registry/Registry` registration, trust, leases, views, cache and store |
 | `Kaleido.Registry.Http.UnitTests` | `src/Registry/Registry.Http` endpoint mapping |
@@ -98,6 +101,8 @@ functional or integration tests.
 ## Functional test fixtures
 
 ### What a functional test is for
+`tests/FunctionalTests/Kaleido.FunctionalTests` is the non-web host suite: a consumer-owned `IHostedService` starts real Process/Queryable work through public APIs with **no generic runtime friend access**. Keep HTTP server/client and future gRPC server/client functional flows in their own protocol projects. These suites are scenario-scoped, so KAL1006's `SutFixture` rule applies to `.UnitTests` assemblies, not functional tests.
+
 A functional test proves that real Kaleido components agree with each other: it configures a host,
 performs a consumer action, and asserts the consumer-visible result (records, state read back with
 `GET /processes/{id}`, error codes, registry metadata, MCP tool results) - not which collaborator
