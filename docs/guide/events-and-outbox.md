@@ -7,7 +7,7 @@ data warehouse, a compliance store or other services. The examples continue the 
 ## Which events, and when
 
 | Event | `EventType` | Written when | In the state's transaction |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `ProcessCreated` | `process.created.v1` | a process starts | yes |
 | `ProcessStepCompleted` | `process.step-completed.v1` | a step completes | yes |
 | `ProcessPlanBuilt` | `process.plan-built.v1` | the runtime planned what a call may run | no |
@@ -30,7 +30,7 @@ Every service writes every event to its outbox store, in the same transaction as
 publisher. One relay publishes them ([ADR 0036](../decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)):
 
 | Part | Registration | Runs where |
-|---|---|---|
+| --- | --- | --- |
 | **The event writer and outbox default** | `AddEventing(options?)` after `AddKaleido()` | every host writing or relaying events |
 | **The durable outbox store** | `AddOutboxStore<T>()` or `AddSqliteOutboxStore`, on the context store's database when state is persisted with it | in each event-writing service |
 | **The relay** and its `IEventPublisher` | `AddOutboxRelay<TPublisher>()` | on one host per outbox database: one of the services, or a host with nothing else |
@@ -89,7 +89,7 @@ Placing, confirming and shipping an order publishes `process.created.v1`, three
 ## The guarantees
 
 | Situation | What happens (durable outbox store) |
-|---|---|
+| --- | --- |
 | The publisher (broker) is down | events wait in the store; retried with backoff, parked after the last attempt |
 | A service or the relay host restarts | nothing lost; the relay continues |
 | A relay instance crashes mid-publish | the claim's lease expires; another relay instance publishes it (**at least once**: consumers deduplicate by `EventId`) |
@@ -147,7 +147,7 @@ kaleido
 ```
 
 | Registration | Effect |
-|---|---|
+| --- | --- |
 | `AddEventRedaction(...)` | the events' redactor per classification (`ErasingRedactor`, a hashing redactor, ...) |
 | `AddEventRedactor<T>()` | your own `IKaleidoEventRedactor` |
 | (neither) | classified fields are erased, with a warning at startup |
