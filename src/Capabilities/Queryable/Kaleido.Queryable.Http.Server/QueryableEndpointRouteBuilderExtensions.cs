@@ -1,20 +1,17 @@
 using System.Reflection;
-using Kaleido.Platform;
 using Kaleido.Queryable.Registry;
-using Kaleido.Server;
-using Kaleido.Server.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.Server.Queryable;
+namespace Kaleido.Queryable.Http.Server;
 
 /// <summary>
 /// Provides endpoint registration extensions for Kaleido Queryable.
 /// </summary>
-internal static partial class QueryableEndpointRouteBuilderExtensions
+public static partial class QueryableEndpointRouteBuilderExtensions
 {
     /// <summary>
     /// Maps all Kaleido Queryable endpoints and returns the route group so hosts can
@@ -25,7 +22,7 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
     /// <c>{source}/{view}/query</c>. All sources are mapped the same way — how a source fulfils
     /// the query is not visible to the caller.
     /// </remarks>
-    internal static RouteGroupBuilder MapQueryable(
+    public static RouteGroupBuilder MapQueryable(
         this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
@@ -39,13 +36,14 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
             throw new KaleidoConfigurationException(
                 QueryableErrorCodes.InvalidRegistration,
                 "Cannot map Queryable endpoints: Queryable runtime is not registered. " +
-                "Use MapKaleidoHttp() to map Kaleido endpoints.");
+                "Call AddQueryable() before mapping Queryable endpoints.");
         }
 
         var serviceOptions =
             endpoints.ServiceProvider
                 .GetRequiredService<KaleidoServiceOptions>();
 
+        var serverOptions = endpoints.ServiceProvider.GetRequiredService<KaleidoServerOptions>();
         var serviceName = serviceOptions.ServiceName;
         var version = serviceOptions.ServiceVersion ?? throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidServiceVersion, "A Kaleido HTTP service must name the version in its routes.");
 
@@ -60,7 +58,7 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
             endpoints.MapGroup(
                 routePrefix)
             .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
-            .AddEndpointFilter<Kaleido.Server.Observability.KaleidoCorrelationEndpointFilter>()
+            .AddEndpointFilter<KaleidoCorrelationEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
 
@@ -70,18 +68,18 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
 
         foreach (var source in queryableRegistry.Registrations)
         {
-            if (serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
+            if (serverOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
                 || source.Authorization.IsExplicit())
             {
-                group.MapQuerySource(source, serviceOptions);
+                group.MapQuerySource(source, serverOptions);
             }
 
             // ZeroTrust maps only capabilities with an explicit rule.
             foreach (var view in source.Views.Where(x =>
-                         serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
+                         serverOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
                          || x.Authorization.IsExplicit()))
             {
-                group.MapQueryView(source, view, serviceOptions);
+                group.MapQueryView(source, view, serverOptions);
             }
         }
 
@@ -92,7 +90,7 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
         this IEndpointRouteBuilder endpoints,
         QueryableSourceRegistryItem source,
         QueryableViewRegistryItem view,
-        KaleidoServiceOptions options)
+        KaleidoServerOptions options)
     {
         var method = typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
@@ -123,7 +121,7 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
     private static void MapQuerySource(
         this IEndpointRouteBuilder endpoints,
         QueryableSourceRegistryItem source,
-        KaleidoServiceOptions options)
+        KaleidoServerOptions options)
     {
         var method = typeof(QueryableEndpointRouteBuilderExtensions)
             .GetMethod(
@@ -153,7 +151,7 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
         string route,
         QueryableSourceRegistryItem source,
         QueryableViewRegistryItem view,
-        KaleidoServiceOptions options)
+        KaleidoServerOptions options)
         where TQueryView : class
         where TView : class
         where TViewParameters : class
@@ -197,7 +195,7 @@ internal static partial class QueryableEndpointRouteBuilderExtensions
         IEndpointRouteBuilder endpoints,
         string route,
         QueryableSourceRegistryItem source,
-        KaleidoServiceOptions options)
+        KaleidoServerOptions options)
         where TSource : class
         where TResult : class
         where TParameters : class

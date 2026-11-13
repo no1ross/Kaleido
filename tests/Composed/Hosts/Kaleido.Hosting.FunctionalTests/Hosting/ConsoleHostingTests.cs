@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using Kaleido.Hosting;
 using Kaleido.Process;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Storage;
@@ -11,7 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Kaleido.FunctionalTests.Hosting;
+namespace Kaleido.Hosting.FunctionalTests.Hosting;
 
 public sealed class ConsoleHostingTests
 {

@@ -59,7 +59,7 @@ public class ConsoleHostingTests
     [Xunit.Fact]
     public void HostStartsAndRuns() { }
 }" + Stubs);
-        test.AssemblyName = "Kaleido.FunctionalTests";
+        test.AssemblyName = "Kaleido.Hosting.FunctionalTests";
 
         await test.RunAsync();
     }

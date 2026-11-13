@@ -27,6 +27,7 @@
 		<InternalsVisibleTo Include="Kaleido.Mcp" />
 		<InternalsVisibleTo Include="Kaleido.Process.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Hosting.Http" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
 		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />

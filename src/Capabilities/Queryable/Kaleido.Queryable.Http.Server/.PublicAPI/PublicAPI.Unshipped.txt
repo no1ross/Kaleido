@@ -1,0 +1,3 @@
+#nullable enable
+Kaleido.Queryable.Http.Server.QueryableEndpointRouteBuilderExtensions
+static Kaleido.Queryable.Http.Server.QueryableEndpointRouteBuilderExtensions.MapQueryable(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!

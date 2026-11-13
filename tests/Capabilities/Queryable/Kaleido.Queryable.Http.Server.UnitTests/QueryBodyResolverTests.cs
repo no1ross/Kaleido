@@ -1,8 +1,7 @@
 using System.Text.Json;
 using Kaleido.Exceptions;
-using Kaleido.Platform.Queryable;
 
-namespace Kaleido.Http.Server.Queryable.UnitTests;
+namespace Kaleido.Queryable.Http.Server.UnitTests;
 
 public sealed class QueryBodyResolverTests
     : Kaleido.UnitTests.SutFixture

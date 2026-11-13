@@ -3,6 +3,6 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" />
-		<ProjectReference Include="..\..\..\src\Composed\Hosts\Kaleido.Hosting\Kaleido.Hosting.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Composed\Hosts\Kaleido.Hosting\Kaleido.Hosting.csproj" />
 	</ItemGroup>
 </Project>

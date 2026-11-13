@@ -5,6 +5,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Registry\Registry\Kaleido.Registry.csproj" />
-		<ProjectReference Include="..\..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+		<ProjectReference Include="..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
 	</ItemGroup>
 </Project>

@@ -12,4 +12,7 @@
 		<Using Include="Kaleido.Http" />
 		<Using Include="Kaleido.Queryable.Query" />
 	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server" />
+	</ItemGroup>
 </Project>

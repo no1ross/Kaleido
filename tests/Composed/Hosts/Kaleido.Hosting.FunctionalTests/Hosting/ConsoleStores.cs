@@ -3,7 +3,7 @@ using Kaleido.Process.Exceptions;
 using Kaleido.Process.Storage;
 using Kaleido.Storage;
 
-namespace Kaleido.FunctionalTests.Hosting;
+namespace Kaleido.Hosting.FunctionalTests.Hosting;
 
 internal sealed class ConsoleProcessStore : IProcessContextStore
 {

@@ -30,6 +30,7 @@
   <Folder Name="/src/Capabilities/Queryable/">
     <Project Path="src/Capabilities/Queryable/Kaleido.Queryable/Kaleido.Queryable.csproj" />
     <Project Path="src/Capabilities/Queryable/Kaleido.Queryable.Http/Kaleido.Queryable.Http.csproj" />
+    <Project Path="src/Capabilities/Queryable/Kaleido.Queryable.Http.Server/Kaleido.Queryable.Http.Server.csproj" />
   </Folder>
   <Folder Name="/src/Composed/Hosts/">
     <Project Path="src/Composed/Hosts/Kaleido.Hosting/Kaleido.Hosting.csproj" />
@@ -84,9 +85,12 @@
   <Folder Name="/test/Capabilities/Queryable/">
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.UnitTests/Kaleido.Queryable.UnitTests.csproj" />
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.UnitTests/Kaleido.Queryable.Http.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.Server.UnitTests/Kaleido.Queryable.Http.Server.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.Server.FunctionalTests/Kaleido.Queryable.Http.Server.FunctionalTests.csproj" />
   </Folder>
   <Folder Name="/test/Composed/Hosts/">
     <Project Path="tests/Composed/Hosts/Kaleido.Hosting.UnitTests/Kaleido.Hosting.UnitTests.csproj" />
+    <Project Path="tests/Composed/Hosts/Kaleido.Hosting.FunctionalTests/Kaleido.Hosting.FunctionalTests.csproj" />
   </Folder>
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />
@@ -97,14 +101,13 @@
     <Project Path="tests/Kaleido.Analyzers.UnitTests/Kaleido.Analyzers.UnitTests.csproj" />
     <Project Path="tests/Client.UnitTests/Kaleido.Client.UnitTests.csproj" />
     <Project Path="tests/Kaleido.IntegrationTests/Kaleido.IntegrationTests.csproj" />
-    <Project Path="tests/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
     <Project Path="tests/Platform.UnitTests/Kaleido.Platform.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Events/">
     <Project Path="tests/Events/Kaleido.Eventing.UnitTests/Kaleido.Eventing.UnitTests.csproj" />
   </Folder>
-  <Folder Name="/test/FunctionalTests/">
-    <Project Path="tests/FunctionalTests/Kaleido.FunctionalTests/Kaleido.FunctionalTests.csproj" />
+  <Folder Name="/test/Core/">
+    <Project Path="tests/Core/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Http/">
     <Project Path="tests/Http/Http.Client.UnitTests/Kaleido.Http.Client.UnitTests.csproj" />

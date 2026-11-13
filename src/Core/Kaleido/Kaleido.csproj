@@ -46,6 +46,7 @@
 		<InternalsVisibleTo Include="Kaleido.Process.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Queryable" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Platform" />
 		<InternalsVisibleTo Include="Kaleido.Server" />
 		<InternalsVisibleTo Include="Kaleido.Client" />

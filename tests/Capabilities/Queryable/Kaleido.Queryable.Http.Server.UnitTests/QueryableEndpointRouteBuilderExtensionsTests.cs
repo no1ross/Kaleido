@@ -1,10 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Kaleido.Exceptions;
-using Kaleido.Http.Server.Queryable;
-using Kaleido.Queryable.Registry;
 using Kaleido.Registry;
-using Kaleido.Server;
 using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -13,7 +10,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.Server.Queryable.UnitTests;
+namespace Kaleido.Queryable.Http.Server.UnitTests;
 
 public sealed class QueryableEndpointRouteBuilderExtensionsTests
     : SutFixture
@@ -74,6 +71,20 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
 
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context")));
         Assert.NotNull(FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view")));
+    }
+
+    [Fact]
+    public void MapQueryable_DeclaresJsonRequestSchemas()
+    {
+        var endpoints = CreateEndpoints();
+        endpoints.MapQueryable();
+
+        var source = FindEndpoint(endpoints, QueryableEndpointNames.QuerySourceEndpointName("test-context"));
+        var view = FindEndpoint(endpoints, QueryableEndpointNames.QueryViewEndpointName("test-context", "test-view"));
+        Assert.Contains("application/json", Assert.IsAssignableFrom<IAcceptsMetadata>(source!.Metadata.GetMetadata<IAcceptsMetadata>()).ContentTypes);
+        Assert.Contains("application/json", Assert.IsAssignableFrom<IAcceptsMetadata>(view!.Metadata.GetMetadata<IAcceptsMetadata>()).ContentTypes);
+        Assert.Equal(typeof(QueryApiRequest), source.Metadata.GetMetadata<IAcceptsMetadata>()!.RequestType);
+        Assert.Equal(typeof(QueryApiRequest), view.Metadata.GetMetadata<IAcceptsMetadata>()!.RequestType);
     }
 
     [Fact]
@@ -289,11 +300,12 @@ public sealed class QueryableEndpointRouteBuilderExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddRouting();
-        builder.Services.AddSingleton(new KaleidoHttpOptions());
+        builder.Services.AddSingleton(new KaleidoHttpServerOptions());
 
         builder.Services.AddSingleton(queryable.Object);
         builder.Services.AddSingleton<IQueryableRegistry>(CreateQueryableRegistry(sourceAuthorization, viewAuthorization, sourceDisplayName));
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1", AuthorizationMode = mode });
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1" });
+        builder.Services.AddSingleton(new KaleidoServerOptions { AuthorizationMode = mode });
 
         if (exceptionHandler is not null)
         {

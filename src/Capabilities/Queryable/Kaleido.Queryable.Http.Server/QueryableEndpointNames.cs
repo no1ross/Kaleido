@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Server.Queryable;
+namespace Kaleido.Queryable.Http.Server;
 
 internal static class QueryableEndpointNames
 {

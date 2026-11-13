@@ -11,7 +11,7 @@ This is the entry point for Kaleido's architecture by **behavioral owner**. The 
 - [Process](capabilities/process.md), [authoring patterns](capabilities/process-authoring.md) and [information requests](capabilities/information-requests.md) — step runtime, state and Process event ownership.
 - [Queryable](capabilities/queryable.md) and [authoring patterns](capabilities/queryable-authoring.md) — sources, views, query runtime and Queryable event ownership.
 - [Cross-project implementation boundaries](implementation.md) — exceptions, async, DI, statics and test-enforced constraints.
-- [HTTP transport patterns](transports/http.md) — shared wire and generic ASP.NET mechanics are owned; capability adapters, clients and composed endpoints remain pending.
+- [HTTP transport patterns](transports/http.md) — shared wire, generic ASP.NET mechanics and local Queryable endpoints are owned; Process HTTP, clients and combined composition remain pending.
 - Canonical **non-architecture** references stay in [coding conventions](../CONVENTIONS.md), the [error-code catalog](../ERROR_CODES.md) and [versioning/support policy](../VERSIONING.md). Their pages are not duplicated under architecture.
 
 Other capability, registry, transport, observability, provider and composition pages should be added **when their projects are processed**. A project [README](../../src/Core/Kaleido/README.md) explains what the package is and how consumers use it; [AGENTS.md](../../AGENTS.md) states modification constraints. Neither should duplicate these architectural details.

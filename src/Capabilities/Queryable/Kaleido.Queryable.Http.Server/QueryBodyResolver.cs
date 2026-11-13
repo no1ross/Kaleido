@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace Kaleido.Http.Server.Queryable;
+namespace Kaleido.Queryable.Http.Server;
 
 /// <summary>
 /// Converts a <see cref="QueryApiBody"/> (the HTTP transport shape with string enums
