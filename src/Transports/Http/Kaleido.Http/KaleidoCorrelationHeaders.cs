@@ -1,4 +1,4 @@
-namespace Kaleido.Platform;
+namespace Kaleido.Http;
 
 /// <summary>
 /// HTTP header names used to propagate Kaleido correlation context between services.

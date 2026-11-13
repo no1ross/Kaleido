@@ -148,7 +148,7 @@ These indicate a framework bug or broken DI wiring, not a user error.
 
 ## `KaleidoErrorCodes` - shared HTTP error-body codes
 
-Declared in `Kaleido.Platform` alongside `KaleidoErrorResponse` ([ADR 0039](./decisions/0039-protocol-neutral-package-boundaries.md)).
+Declared in the shared HTTP wire project `Kaleido.Http` alongside `KaleidoErrorResponse` (current ownership under [ADR 0041](./decisions/0041-capability-owned-project-boundaries.md); earlier placement in ADR 0039 is historical).
 
 | Constant | Code | Meaning |
 |---|---|---|

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+		<ProjectReference Include="..\..\..\..\src\Transports\Http\Kaleido.Http\Kaleido.Http.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />
+		<ProjectReference Include="..\..\..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+</Project>

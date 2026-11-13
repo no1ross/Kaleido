@@ -57,7 +57,7 @@ Process never parses transport input. The transport reads each step into its typ
 
 `KaleidoJsonEndpointFilter` is applied to all Kaleido route groups — it wraps `IValueHttpResult` responses in `Results.Json(..., KaleidoJsonOptions.Options)` so enums serialize as strings. Do not call `ConfigureHttpJsonOptions` — it affects all endpoints in the host app, not just Kaleido's.
 
-`KaleidoJsonOptions.Options` (in `Kaleido.Platform`) is the single shared `JsonSerializerOptions` for all Kaleido HTTP serialization. Every `ReadFromJsonAsync`/`JsonContent.Create` call in Kaleido code must pass it explicitly.
+`KaleidoJsonOptions.Options` (in `Kaleido.Http`) is the single shared `JsonSerializerOptions` for all Kaleido HTTP serialization. Every `ReadFromJsonAsync`/`JsonContent.Create` call in Kaleido code must pass it explicitly.
 
 When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Platform` — samples and consumers should only reference `Kaleido.Platform`, not `Kaleido.Http.Server` (which carries ASP.NET Core dependencies).
 
@@ -70,7 +70,7 @@ When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` a
 
 ## What not to change casually
 
-The processed foundation/Process/Queryable/Eventing invariants are in their child AGENTS files above. For the unmigrated shared wire layer, do not change `Kaleido.Platform` contract shapes without coordinating the corresponding server and client adapters.
+The processed foundation/Process/Queryable/Eventing invariants are in their child AGENTS files above. Shared HTTP JSON/header/error behavior belongs to `Kaleido.Http` without Platform, ASP.NET or capability/Registry references. The remaining Platform capability/Registry wire shapes are not migrated yet; coordinate their future owner moves with server/client adapters.
 
 ---
 

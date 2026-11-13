@@ -53,7 +53,7 @@ A project's README explains its software; the [architecture map](./docs/architec
 | [`Kaleido.Platform`](./src/Platform/README.md) | shared registry/wire contracts, JSON, headers and metadata; changes ripple into server and client | endpoint mapping, runtime planning |
 | [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md) | neutral authorization mode/default | ASP.NET, Registry client, runtime logic |
 | [`Kaleido.Client`](./src/Client/README.md) | neutral clients, call context, registry participation, hydration, transport choice | HTTP wire implementation |
-| [`Kaleido.Http`](./src/Http/Http/README.md) | shared HTTP route and URL shapes | server endpoints or outbound calls |
+| [`Kaleido.Http`](./src/Transports/Http/Kaleido.Http/README.md) | shared HTTP JSON, headers, errors and route prefix | ASP.NET, capability/Registry URLs |
 | [`Kaleido.Http.Server`](./src/Http/Http.Server/README.md) | shared ASP.NET filters and caller handling (migration pending) | Registry wiring, capability execution |
 | [`Kaleido.Hosting`](./src/Composed/Hosts/Kaleido.Hosting/README.md) | neutral capability registration and required-store checks | transport, provider choice, mandatory Registry client |
 | [`Kaleido.Http.Client`](./src/Http/Http.Client/README.md) | one gateway HTTP client (`Kaleido:BaseUrl`), published-route calls, credentials and resilience | per-service addresses, server mapping |

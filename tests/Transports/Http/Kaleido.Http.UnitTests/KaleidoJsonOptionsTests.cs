@@ -1,12 +1,12 @@
 using System.Text.Json;
 using Kaleido.Observability;
-using Kaleido.Processor;
+using Kaleido.Process;
 using Kaleido.Queryable;
 using Kaleido.Queryable.Query;
 using Kaleido.Registry;
 using Kaleido.UnitTests;
 
-namespace Kaleido.Platform.UnitTests;
+namespace Kaleido.Http.UnitTests;
 
 public sealed class KaleidoJsonOptionsTests
     : SutFixture

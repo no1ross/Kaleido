@@ -1,6 +1,6 @@
 # Kaleido.Platform
 
-This ASP.NET-free shared model contains the registry, Process and Queryable contracts, JSON conventions and HTTP header names consumed by Kaleido's server and client projects. Runtime planning remains in core; endpoint mapping remains in protocol adapters.
+This unmigrated shared model still contains central Registry, Process and Queryable published contracts. Shared HTTP JSON options, header names/sanitization and structured error bodies have moved to [`Kaleido.Http`](../Transports/Http/Kaleido.Http/README.md); capability-specific request/response contracts leave Platform when their owners are processed. Runtime planning stays with Process/Queryable; endpoint mapping stays with transport adapters. Do not treat Platform as the permanent owner of wire mechanics.
 
 > How this project fits into a whole service, with tested examples: the [consumer guide](../../docs/guide/README.md). This README is the reference for the project.
 
@@ -39,7 +39,7 @@ For `POST /{service}/{version}/processes/steps/{step}`, the JSON request is an `
   Every source is presented the same way; how the service fulfils it is not part of the contract. `QueryUrl` is null only in a caller-filtered registry, when the caller may use some of the source's views but not the source itself.
 - `QueryableViewResponse` — a view of a source (`QueryUrl`, `Parameters`, `OutputFields`, paging)
 - `QueryableFieldMetadata` / `QueryableQueryParameter` / `QueryableQueryProperty` / `QueryablePagingMetadata` — a source's query fields, a source's or view's parameters and result fields, and its paging
-- Errors use the shared `KaleidoErrorResponse` / `KaleidoError` (with the shared codes in `KaleidoErrorCodes`), defined here: `{ "errors": [{ "code", "message" }] }`; query validation failures are 400 with `qry_*` codes ([`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
+- Errors use the shared `KaleidoErrorResponse` / `KaleidoError` (with the shared codes in `KaleidoErrorCodes`), now owned by `Kaleido.Http`: `{ "errors": [{ "code", "message" }] }`; query validation failures are 400 with `qry_*` codes ([`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
 - `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated query sources calling a remote source or view)
 
 ### JSON enum values
@@ -94,8 +94,7 @@ When a contract must change, also update:
 Some contracts carry core types as they are: `InformationRequest`, `ProcessMessage`, `KaleidoCaller`,
 the Process state enums, `AuthorizationMetadata`, `FilterOperator`/`MatchMode` (field metadata) and
 `QueryResult<T>`. They are part of this contract surface too: a change to one of them is a wire
-change, and `KaleidoJsonOptionsTests` fixes their JSON. The inventory, and the small amount of
-behavior this project holds on purpose (header sanitizing and `ToApiBody()`), are recorded by
+change, and the `Kaleido.Http.UnitTests` fixture for `KaleidoJsonOptions` fixes their JSON. The inventory and the remaining `ToApiBody()` conversion are recorded by
 the [ADR 0017 amendment](../../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds); [ADR 0039](../../docs/decisions/0039-protocol-neutral-package-boundaries.md) supersedes its old package and snapshot-store placement.
 
 ---
@@ -105,6 +104,6 @@ the [ADR 0017 amendment](../../docs/decisions/0017-transport-contract-placement.
 - `Processor/ProcessContracts.cs` — Process request/response shapes; the client interfaces live in `Kaleido.Client/Processor`.
 - `Queryable/QueryableContracts.cs` and `Queryable/QueryApiBody.cs` — Queryable request/response shapes; the client interfaces live in `Kaleido.Client/Queryable`.
 - `Registry/KaleidoRegistry.cs` and `Registry/RegistryControlContracts.cs` — central capabilities, availability/status and `RegistryServiceRoute`/`RegistryTransportRoute`. The registry host owns storage; participants hydrate the copy through `Kaleido.Client`.
-- `KaleidoJsonOptions.cs`, `KaleidoCorrelationHeaders.cs`, `HttpHeaderSanitizer.cs` — shared JSON and HTTP header behavior.
+- Shared JSON, HTTP headers/sanitization and error bodies now live in [`Kaleido.Http`](../Transports/Http/Kaleido.Http/README.md).
 
 The published registry contracts are separate from core's internal registry descriptors. `Kaleido.Http.Server` projects runtime metadata into them (#356).

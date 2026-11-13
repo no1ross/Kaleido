@@ -12,7 +12,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |
 | `Kaleido.Server.UnitTests` | `src/Transports/Kaleido.Server` neutral authorization options and registration |
 | `Kaleido.Client.UnitTests` | `src/Client` participation, hydration and transport selection |
-| `Kaleido.Http.UnitTests` | `src/Http/Http` versioned URL and route shapes |
+| `Kaleido.Http.UnitTests` | `src/Transports/Http/Kaleido.Http` shared JSON/header/error wire and route prefix |
 | `Kaleido.Http.Server.UnitTests` | `src/Http/Http.Server` endpoint adapters |
 | `Kaleido.Http.Client.UnitTests` | `src/Http/Http.Client` HTTP clients and handlers |
 | `Kaleido.Hosting.UnitTests` | `src/Composed/Hosts/Kaleido.Hosting` neutral registration and provider-presence checks |

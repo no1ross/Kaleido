@@ -1,0 +1,46 @@
+#nullable enable
+const Kaleido.Http.HttpHeaderSanitizerExtensions.MaxLength = 256 -> int
+const Kaleido.Http.KaleidoCorrelationHeaders.CallingProcessor = "X-Kaleido-Calling-Processor" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.CallingStep = "X-Kaleido-Calling-Step" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.Origin = "X-Kaleido-Origin" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.OriginTool = "X-Kaleido-Origin-Tool" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.ProcessId = "X-Kaleido-Process-Id" -> string!
+const Kaleido.Http.KaleidoCorrelationHeaders.RequestId = "X-Kaleido-Request-Id" -> string!
+const Kaleido.Http.KaleidoErrorCodes.ArgumentError = "argument_error" -> string!
+const Kaleido.Http.KaleidoErrorCodes.FrameworkError = "framework_error" -> string!
+Kaleido.Http.HttpHeaderSanitizerExtensions
+Kaleido.Http.KaleidoCorrelationHeaders
+Kaleido.Http.KaleidoError
+Kaleido.Http.KaleidoError.<Clone>$() -> Kaleido.Http.KaleidoError!
+Kaleido.Http.KaleidoError.Code.get -> string!
+Kaleido.Http.KaleidoError.Code.init -> void
+Kaleido.Http.KaleidoError.Deconstruct(out string! Code, out string! Message, out string? Field) -> void
+Kaleido.Http.KaleidoError.Equals(Kaleido.Http.KaleidoError? other) -> bool
+Kaleido.Http.KaleidoError.Field.get -> string?
+Kaleido.Http.KaleidoError.Field.init -> void
+Kaleido.Http.KaleidoError.KaleidoError(string! Code, string! Message, string? Field = null) -> void
+Kaleido.Http.KaleidoError.Message.get -> string!
+Kaleido.Http.KaleidoError.Message.init -> void
+Kaleido.Http.KaleidoErrorCodes
+Kaleido.Http.KaleidoErrorResponse
+Kaleido.Http.KaleidoErrorResponse.<Clone>$() -> Kaleido.Http.KaleidoErrorResponse!
+Kaleido.Http.KaleidoErrorResponse.Deconstruct(out System.Collections.Generic.IReadOnlyList<Kaleido.Http.KaleidoError!>! Errors) -> void
+Kaleido.Http.KaleidoErrorResponse.Equals(Kaleido.Http.KaleidoErrorResponse? other) -> bool
+Kaleido.Http.KaleidoErrorResponse.Errors.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Http.KaleidoError!>!
+Kaleido.Http.KaleidoErrorResponse.Errors.init -> void
+Kaleido.Http.KaleidoErrorResponse.KaleidoErrorResponse(System.Collections.Generic.IReadOnlyList<Kaleido.Http.KaleidoError!>! Errors) -> void
+Kaleido.Http.KaleidoHttpRoutePrefix
+Kaleido.Http.KaleidoJsonOptions
+override Kaleido.Http.KaleidoError.Equals(object? obj) -> bool
+override Kaleido.Http.KaleidoError.GetHashCode() -> int
+override Kaleido.Http.KaleidoError.ToString() -> string!
+override Kaleido.Http.KaleidoErrorResponse.Equals(object? obj) -> bool
+override Kaleido.Http.KaleidoErrorResponse.GetHashCode() -> int
+override Kaleido.Http.KaleidoErrorResponse.ToString() -> string!
+static Kaleido.Http.HttpHeaderSanitizerExtensions.Sanitize(this string? value) -> string?
+static Kaleido.Http.KaleidoError.operator !=(Kaleido.Http.KaleidoError? left, Kaleido.Http.KaleidoError? right) -> bool
+static Kaleido.Http.KaleidoError.operator ==(Kaleido.Http.KaleidoError? left, Kaleido.Http.KaleidoError? right) -> bool
+static Kaleido.Http.KaleidoErrorResponse.operator !=(Kaleido.Http.KaleidoErrorResponse? left, Kaleido.Http.KaleidoErrorResponse? right) -> bool
+static Kaleido.Http.KaleidoErrorResponse.operator ==(Kaleido.Http.KaleidoErrorResponse? left, Kaleido.Http.KaleidoErrorResponse? right) -> bool
+static Kaleido.Http.KaleidoHttpRoutePrefix.Service(string! serviceName, string! serviceVersion) -> string!
+static readonly Kaleido.Http.KaleidoJsonOptions.Options -> System.Text.Json.JsonSerializerOptions!

@@ -1,4 +1,4 @@
-namespace Kaleido.Platform;
+namespace Kaleido.Http;
 
 /// <summary>
 /// Standard error response returned by Kaleido endpoints when a request fails.

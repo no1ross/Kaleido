@@ -295,10 +295,10 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Eventing`](src/Events/Kaleido.Eventing) | Generic event writer, redaction, outbox store and relay |
 | [`Kaleido.Process`](src/Capabilities/Process/Kaleido.Process) | Process steps, state, recovery and persistence seams |
 | [`Kaleido.Queryable`](src/Capabilities/Queryable/Kaleido.Queryable) | Query source/view registration and execution |
-| [`Kaleido.Platform`](src/Platform) | Shared registry, Process and Queryable contracts, headers and JSON conventions |
-| [`Kaleido.Server`](src/Server) | Shared ASP.NET Core authorization, caller and endpoint services |
+| [`Kaleido.Platform`](src/Platform) | Remaining unmigrated Registry, Process and Queryable published contracts |
+| [`Kaleido.Server`](src/Transports/Kaleido.Server) | Transport-neutral authorization mode and service defaults |
 | [`Kaleido.Client`](src/Client) | Neutral clients, registry participation and transport choice |
-| [`Kaleido.Http`](src/Http/Http) | Shared HTTP route and URL vocabulary |
+| [`Kaleido.Http`](src/Transports/Http/Kaleido.Http) | Shared HTTP JSON, headers, error body and versioned route prefix |
 | [`Kaleido.Http.Server`](src/Http/Http.Server) | Service HTTP endpoints and execution adapters |
 | [`Kaleido.Http.Client`](src/Http/Http.Client) | Registry-resolved calls over one gateway HTTP client |
 | [`Kaleido.Registry`](src/Registry/Registry) | Control registry, store contract, leases, views and HybridCache |
