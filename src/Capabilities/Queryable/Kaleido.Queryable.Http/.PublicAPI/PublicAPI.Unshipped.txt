@@ -1,0 +1,121 @@
+#nullable enable
+Kaleido.Queryable.Http.QueryableContractUrls
+Kaleido.Queryable.Http.QueryApiBody
+Kaleido.Queryable.Http.QueryApiBody.Filter.get -> Kaleido.Queryable.Http.QueryApiFilterNode?
+Kaleido.Queryable.Http.QueryApiBody.Filter.init -> void
+Kaleido.Queryable.Http.QueryApiBody.Page.get -> Kaleido.Queryable.Http.QueryApiPage?
+Kaleido.Queryable.Http.QueryApiBody.Page.init -> void
+Kaleido.Queryable.Http.QueryApiBody.QueryApiBody() -> void
+Kaleido.Queryable.Http.QueryApiBody.QueryApiBody(Kaleido.Queryable.Http.QueryApiBody! original) -> void
+Kaleido.Queryable.Http.QueryApiBody.SearchText.get -> string?
+Kaleido.Queryable.Http.QueryApiBody.SearchText.init -> void
+Kaleido.Queryable.Http.QueryApiBody.Sort.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Http.QueryApiSort!>?
+Kaleido.Queryable.Http.QueryApiBody.Sort.init -> void
+Kaleido.Queryable.Http.QueryApiBodyExtensions
+Kaleido.Queryable.Http.QueryApiFilterCondition
+Kaleido.Queryable.Http.QueryApiFilterCondition.<Clone>$() -> Kaleido.Queryable.Http.QueryApiFilterCondition!
+Kaleido.Queryable.Http.QueryApiFilterCondition.Equals(Kaleido.Queryable.Http.QueryApiFilterCondition? other) -> bool
+Kaleido.Queryable.Http.QueryApiFilterCondition.Field.get -> string!
+Kaleido.Queryable.Http.QueryApiFilterCondition.Field.init -> void
+Kaleido.Queryable.Http.QueryApiFilterCondition.Operator.get -> string!
+Kaleido.Queryable.Http.QueryApiFilterCondition.Operator.init -> void
+Kaleido.Queryable.Http.QueryApiFilterCondition.QueryApiFilterCondition() -> void
+Kaleido.Queryable.Http.QueryApiFilterCondition.Values.get -> System.Collections.Generic.IReadOnlyList<System.Text.Json.JsonElement>?
+Kaleido.Queryable.Http.QueryApiFilterCondition.Values.init -> void
+Kaleido.Queryable.Http.QueryApiFilterGroup
+Kaleido.Queryable.Http.QueryApiFilterGroup.<Clone>$() -> Kaleido.Queryable.Http.QueryApiFilterGroup!
+Kaleido.Queryable.Http.QueryApiFilterGroup.Equals(Kaleido.Queryable.Http.QueryApiFilterGroup? other) -> bool
+Kaleido.Queryable.Http.QueryApiFilterGroup.Filters.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Http.QueryApiFilterNode!>?
+Kaleido.Queryable.Http.QueryApiFilterGroup.Filters.init -> void
+Kaleido.Queryable.Http.QueryApiFilterGroup.Operator.get -> string!
+Kaleido.Queryable.Http.QueryApiFilterGroup.Operator.init -> void
+Kaleido.Queryable.Http.QueryApiFilterGroup.QueryApiFilterGroup() -> void
+Kaleido.Queryable.Http.QueryApiFilterNode
+Kaleido.Queryable.Http.QueryApiFilterNode.<Clone>$() -> Kaleido.Queryable.Http.QueryApiFilterNode!
+Kaleido.Queryable.Http.QueryApiFilterNode.Condition.get -> Kaleido.Queryable.Http.QueryApiFilterCondition?
+Kaleido.Queryable.Http.QueryApiFilterNode.Condition.init -> void
+Kaleido.Queryable.Http.QueryApiFilterNode.Equals(Kaleido.Queryable.Http.QueryApiFilterNode? other) -> bool
+Kaleido.Queryable.Http.QueryApiFilterNode.Group.get -> Kaleido.Queryable.Http.QueryApiFilterGroup?
+Kaleido.Queryable.Http.QueryApiFilterNode.Group.init -> void
+Kaleido.Queryable.Http.QueryApiFilterNode.QueryApiFilterNode() -> void
+Kaleido.Queryable.Http.QueryApiPage
+Kaleido.Queryable.Http.QueryApiPage.<Clone>$() -> Kaleido.Queryable.Http.QueryApiPage!
+Kaleido.Queryable.Http.QueryApiPage.Equals(Kaleido.Queryable.Http.QueryApiPage? other) -> bool
+Kaleido.Queryable.Http.QueryApiPage.Offset.get -> int?
+Kaleido.Queryable.Http.QueryApiPage.Offset.init -> void
+Kaleido.Queryable.Http.QueryApiPage.QueryApiPage() -> void
+Kaleido.Queryable.Http.QueryApiPage.Size.get -> int?
+Kaleido.Queryable.Http.QueryApiPage.Size.init -> void
+Kaleido.Queryable.Http.QueryApiRequest
+Kaleido.Queryable.Http.QueryApiRequest.<Clone>$() -> Kaleido.Queryable.Http.QueryApiRequest!
+Kaleido.Queryable.Http.QueryApiRequest.Deconstruct(out Kaleido.Queryable.Http.QueryApiBody? Query) -> void
+Kaleido.Queryable.Http.QueryApiRequest.Equals(Kaleido.Queryable.Http.QueryApiRequest? other) -> bool
+Kaleido.Queryable.Http.QueryApiRequest.Query.get -> Kaleido.Queryable.Http.QueryApiBody?
+Kaleido.Queryable.Http.QueryApiRequest.Query.init -> void
+Kaleido.Queryable.Http.QueryApiRequest.QueryApiRequest(Kaleido.Queryable.Http.QueryApiBody? Query = null) -> void
+Kaleido.Queryable.Http.QueryApiRequest<TParameters>
+Kaleido.Queryable.Http.QueryApiRequest<TParameters>.Deconstruct(out TParameters? Parameters, out Kaleido.Queryable.Http.QueryApiBody? Query) -> void
+Kaleido.Queryable.Http.QueryApiRequest<TParameters>.Parameters.get -> TParameters?
+Kaleido.Queryable.Http.QueryApiRequest<TParameters>.Parameters.init -> void
+Kaleido.Queryable.Http.QueryApiRequest<TParameters>.Query.get -> Kaleido.Queryable.Http.QueryApiBody?
+Kaleido.Queryable.Http.QueryApiRequest<TParameters>.Query.init -> void
+Kaleido.Queryable.Http.QueryApiRequest<TParameters>.QueryApiRequest(TParameters? Parameters = null, Kaleido.Queryable.Http.QueryApiBody? Query = null) -> void
+Kaleido.Queryable.Http.QueryApiSort
+Kaleido.Queryable.Http.QueryApiSort.<Clone>$() -> Kaleido.Queryable.Http.QueryApiSort!
+Kaleido.Queryable.Http.QueryApiSort.Direction.get -> string!
+Kaleido.Queryable.Http.QueryApiSort.Direction.init -> void
+Kaleido.Queryable.Http.QueryApiSort.Equals(Kaleido.Queryable.Http.QueryApiSort? other) -> bool
+Kaleido.Queryable.Http.QueryApiSort.Field.get -> string!
+Kaleido.Queryable.Http.QueryApiSort.Field.init -> void
+Kaleido.Queryable.Http.QueryApiSort.QueryApiSort() -> void
+Kaleido.Queryable.Http.QueryApiSort.Sequence.get -> int?
+Kaleido.Queryable.Http.QueryApiSort.Sequence.init -> void
+override Kaleido.Queryable.Http.QueryApiBody.Equals(object? obj) -> bool
+override Kaleido.Queryable.Http.QueryApiBody.GetHashCode() -> int
+override Kaleido.Queryable.Http.QueryApiBody.ToString() -> string!
+override Kaleido.Queryable.Http.QueryApiFilterCondition.Equals(object? obj) -> bool
+override Kaleido.Queryable.Http.QueryApiFilterCondition.GetHashCode() -> int
+override Kaleido.Queryable.Http.QueryApiFilterCondition.ToString() -> string!
+override Kaleido.Queryable.Http.QueryApiFilterGroup.Equals(object? obj) -> bool
+override Kaleido.Queryable.Http.QueryApiFilterGroup.GetHashCode() -> int
+override Kaleido.Queryable.Http.QueryApiFilterGroup.ToString() -> string!
+override Kaleido.Queryable.Http.QueryApiFilterNode.Equals(object? obj) -> bool
+override Kaleido.Queryable.Http.QueryApiFilterNode.GetHashCode() -> int
+override Kaleido.Queryable.Http.QueryApiFilterNode.ToString() -> string!
+override Kaleido.Queryable.Http.QueryApiPage.Equals(object? obj) -> bool
+override Kaleido.Queryable.Http.QueryApiPage.GetHashCode() -> int
+override Kaleido.Queryable.Http.QueryApiPage.ToString() -> string!
+override Kaleido.Queryable.Http.QueryApiRequest.Equals(object? obj) -> bool
+override Kaleido.Queryable.Http.QueryApiRequest.GetHashCode() -> int
+override Kaleido.Queryable.Http.QueryApiRequest.ToString() -> string!
+override Kaleido.Queryable.Http.QueryApiRequest<TParameters>.Equals(object? obj) -> bool
+override Kaleido.Queryable.Http.QueryApiRequest<TParameters>.GetHashCode() -> int
+override Kaleido.Queryable.Http.QueryApiRequest<TParameters>.ToString() -> string!
+override Kaleido.Queryable.Http.QueryApiSort.Equals(object? obj) -> bool
+override Kaleido.Queryable.Http.QueryApiSort.GetHashCode() -> int
+override Kaleido.Queryable.Http.QueryApiSort.ToString() -> string!
+static Kaleido.Queryable.Http.QueryableContractUrls.QuerySourceQuery(string! serviceName, string! serviceVersion, string! sourceName) -> string!
+static Kaleido.Queryable.Http.QueryableContractUrls.QueryViewQuery(string! serviceName, string! serviceVersion, string! sourceName, string! viewName) -> string!
+static Kaleido.Queryable.Http.QueryApiBody.operator !=(Kaleido.Queryable.Http.QueryApiBody? left, Kaleido.Queryable.Http.QueryApiBody? right) -> bool
+static Kaleido.Queryable.Http.QueryApiBody.operator ==(Kaleido.Queryable.Http.QueryApiBody? left, Kaleido.Queryable.Http.QueryApiBody? right) -> bool
+static Kaleido.Queryable.Http.QueryApiBodyExtensions.ToApiBody(this Kaleido.Queryable.Query.QueryBody? body) -> Kaleido.Queryable.Http.QueryApiBody?
+static Kaleido.Queryable.Http.QueryApiFilterCondition.operator !=(Kaleido.Queryable.Http.QueryApiFilterCondition? left, Kaleido.Queryable.Http.QueryApiFilterCondition? right) -> bool
+static Kaleido.Queryable.Http.QueryApiFilterCondition.operator ==(Kaleido.Queryable.Http.QueryApiFilterCondition? left, Kaleido.Queryable.Http.QueryApiFilterCondition? right) -> bool
+static Kaleido.Queryable.Http.QueryApiFilterGroup.operator !=(Kaleido.Queryable.Http.QueryApiFilterGroup? left, Kaleido.Queryable.Http.QueryApiFilterGroup? right) -> bool
+static Kaleido.Queryable.Http.QueryApiFilterGroup.operator ==(Kaleido.Queryable.Http.QueryApiFilterGroup? left, Kaleido.Queryable.Http.QueryApiFilterGroup? right) -> bool
+static Kaleido.Queryable.Http.QueryApiFilterNode.operator !=(Kaleido.Queryable.Http.QueryApiFilterNode? left, Kaleido.Queryable.Http.QueryApiFilterNode? right) -> bool
+static Kaleido.Queryable.Http.QueryApiFilterNode.operator ==(Kaleido.Queryable.Http.QueryApiFilterNode? left, Kaleido.Queryable.Http.QueryApiFilterNode? right) -> bool
+static Kaleido.Queryable.Http.QueryApiPage.operator !=(Kaleido.Queryable.Http.QueryApiPage? left, Kaleido.Queryable.Http.QueryApiPage? right) -> bool
+static Kaleido.Queryable.Http.QueryApiPage.operator ==(Kaleido.Queryable.Http.QueryApiPage? left, Kaleido.Queryable.Http.QueryApiPage? right) -> bool
+static Kaleido.Queryable.Http.QueryApiRequest.operator !=(Kaleido.Queryable.Http.QueryApiRequest? left, Kaleido.Queryable.Http.QueryApiRequest? right) -> bool
+static Kaleido.Queryable.Http.QueryApiRequest.operator ==(Kaleido.Queryable.Http.QueryApiRequest? left, Kaleido.Queryable.Http.QueryApiRequest? right) -> bool
+static Kaleido.Queryable.Http.QueryApiSort.operator !=(Kaleido.Queryable.Http.QueryApiSort? left, Kaleido.Queryable.Http.QueryApiSort? right) -> bool
+static Kaleido.Queryable.Http.QueryApiSort.operator ==(Kaleido.Queryable.Http.QueryApiSort? left, Kaleido.Queryable.Http.QueryApiSort? right) -> bool
+virtual Kaleido.Queryable.Http.QueryApiBody.<Clone>$() -> Kaleido.Queryable.Http.QueryApiBody!
+virtual Kaleido.Queryable.Http.QueryApiBody.EqualityContract.get -> System.Type!
+virtual Kaleido.Queryable.Http.QueryApiBody.Equals(Kaleido.Queryable.Http.QueryApiBody? other) -> bool
+virtual Kaleido.Queryable.Http.QueryApiBody.PrintMembers(System.Text.StringBuilder! builder) -> bool
+~Kaleido.Queryable.Http.QueryApiRequest<TParameters>.<Clone>$() -> Kaleido.Queryable.Http.QueryApiRequest<TParameters>!
+~Kaleido.Queryable.Http.QueryApiRequest<TParameters>.Equals(Kaleido.Queryable.Http.QueryApiRequest<TParameters>? other) -> bool
+~static Kaleido.Queryable.Http.QueryApiRequest<TParameters>.operator !=(Kaleido.Queryable.Http.QueryApiRequest<TParameters>? left, Kaleido.Queryable.Http.QueryApiRequest<TParameters>? right) -> bool
+~static Kaleido.Queryable.Http.QueryApiRequest<TParameters>.operator ==(Kaleido.Queryable.Http.QueryApiRequest<TParameters>? left, Kaleido.Queryable.Http.QueryApiRequest<TParameters>? right) -> bool

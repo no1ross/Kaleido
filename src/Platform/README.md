@@ -29,8 +29,7 @@ See also:
 For `POST /{service}/{version}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Http/Http.Server/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
 
 ### Queryable contracts
-- `QueryApiRequest` / `QueryApiRequest<TParameters>` — query request body (search, filter, sort, page, optional view parameters)
-- `QueryApiBody` / `QueryApiFilterNode` / `QueryApiFilterCondition` / `QueryApiFilterGroup` / `QueryApiSort` / `QueryApiPage` — transport-level query body (string enums, raw `JsonElement` values)
+- Query request envelopes, `QueryApiBody` and its filter/sort/page wire records now belong to [`Kaleido.Queryable.Http`](../Capabilities/Queryable/Kaleido.Queryable.Http/README.md), not this remaining Registry response model.
 - `QueryableSourceResponse` — a query source in the registry response. It carries:
   - `Name` (what a client passes to address it), `ServiceName`, `ServiceVersion` and the published `QueryUrl`;
   - `DisplayName`, `Description`, `Pageable` and `Authorization`;
@@ -40,7 +39,7 @@ For `POST /{service}/{version}/processes/steps/{step}`, the JSON request is an `
 - `QueryableViewResponse` — a view of a source (`QueryUrl`, `Parameters`, `OutputFields`, paging)
 - `QueryableFieldMetadata` / `QueryableQueryParameter` / `QueryableQueryProperty` / `QueryablePagingMetadata` — a source's query fields, a source's or view's parameters and result fields, and its paging
 - Errors use the shared `KaleidoErrorResponse` / `KaleidoError` (with the shared codes in `KaleidoErrorCodes`), now owned by `Kaleido.Http`: `{ "errors": [{ "code", "message" }] }`; query validation failures are 400 with `qry_*` codes ([`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
-- `QueryApiBodyExtensions.ToApiBody()` — converts a runtime `QueryBody` to `QueryApiBody` for callers that receive a `QueryBody` and need to forward it over HTTP (e.g. delegated query sources calling a remote source or view)
+- `QueryApiBodyExtensions.ToApiBody()` now belongs to `Kaleido.Queryable.Http`; it converts a runtime `QueryBody` to the HTTP request shape for an outbound Queryable caller.
 
 ### JSON enum values
 
@@ -94,7 +93,7 @@ When a contract must change, also update:
 Some contracts carry core types as they are: `InformationRequest`, `ProcessMessage`, `KaleidoCaller`,
 the Process state enums, `AuthorizationMetadata`, `FilterOperator`/`MatchMode` (field metadata) and
 `QueryResult<T>`. They are part of this contract surface too: a change to one of them is a wire
-change, and the `Kaleido.Http.UnitTests` fixture for `KaleidoJsonOptions` fixes their JSON. The inventory and the remaining `ToApiBody()` conversion are recorded by
+change, and the `Kaleido.Http.UnitTests` fixture for `KaleidoJsonOptions` fixes their JSON. The historical placement of this contract surface is recorded by
 the [ADR 0017 amendment](../../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds); [ADR 0039](../../docs/decisions/0039-protocol-neutral-package-boundaries.md) supersedes its old package and snapshot-store placement.
 
 ---
@@ -102,7 +101,7 @@ the [ADR 0017 amendment](../../docs/decisions/0017-transport-contract-placement.
 ## Where to look
 
 - `Processor/ProcessContracts.cs` — Process request/response shapes; the client interfaces live in `Kaleido.Client/Processor`.
-- `Queryable/QueryableContracts.cs` and `Queryable/QueryApiBody.cs` — Queryable request/response shapes; the client interfaces live in `Kaleido.Client/Queryable`.
+- `Queryable/QueryableContracts.cs` — still-unmigrated published Queryable Registry response models. HTTP request envelopes, `QueryApiBody` and its conversion are now in [`Kaleido.Queryable.Http`](../Capabilities/Queryable/Kaleido.Queryable.Http/README.md); client adapters are migrated separately.
 - `Registry/KaleidoRegistry.cs` and `Registry/RegistryControlContracts.cs` — central capabilities, availability/status and `RegistryServiceRoute`/`RegistryTransportRoute`. The registry host owns storage; participants hydrate the copy through `Kaleido.Client`.
 - Shared JSON, HTTP headers/sanitization and error bodies now live in [`Kaleido.Http`](../Transports/Http/Kaleido.Http/README.md).
 

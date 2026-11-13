@@ -51,7 +51,7 @@ This is a shared contract boundary. Treat it like a public API:
 Middleware and endpoint mapping code should adapt contracts and wire the runtime. It should not reimplement runtime planning or execution logic that belongs in `Kaleido`.
 
 ### Transport contract boundary
-A query request is never read as a core type (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`): `QueryApiBody` and its sub-types in `Kaleido.Platform` are the request wire contract — string enums, `JsonElement` values. `QueryBodyResolver` (in `Kaleido.Http.Server`) converts between them before handing to core. Some core shapes do travel as they are in responses and registry metadata (`InformationRequest`, `ProcessMessage`, `KaleidoCaller`, the Process state enums, `AuthorizationMetadata`, `FilterOperator`/`MatchMode` in field metadata, `QueryResult<T>`): they are supported wire contracts, changed additively only after 1.0 and pinned by snapshot tests ([ADR 0017 amendment](../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds)).
+A query request is never read as a core type (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`): `QueryApiBody` and its sub-types in `Kaleido.Queryable.Http` are the HTTP request wire contract — string enums, `JsonElement` values. `QueryBodyResolver` (in `Kaleido.Http.Server`) converts between them before handing to core. Some core shapes do travel as they are in responses and registry metadata (`InformationRequest`, `ProcessMessage`, `KaleidoCaller`, the Process state enums, `AuthorizationMetadata`, `FilterOperator`/`MatchMode` in field metadata, `QueryResult<T>`): they are supported wire contracts, changed additively only after 1.0 and pinned by snapshot tests ([ADR 0017 amendment](../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds)).
 
 Process never parses transport input. The transport reads each step into its type (`ProcessExecutionService` uses `KaleidoJsonOptions` and returns 400 for invalid input); the runtime receives typed steps only. `Kaleido.Process` must not depend on `System.Text.Json`; replacement build-time enforcement is tracked in #591. The event outbox uses JSON for its own redacted storage format (ADR 0013, #344).
 
@@ -59,7 +59,7 @@ Process never parses transport input. The transport reads each step into its typ
 
 `KaleidoJsonOptions.Options` (in `Kaleido.Http`) is the single shared `JsonSerializerOptions` for all Kaleido HTTP serialization. Every `ReadFromJsonAsync`/`JsonContent.Create` call in Kaleido code must pass it explicitly.
 
-When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Platform` — samples and consumers should only reference `Kaleido.Platform`, not `Kaleido.Http.Server` (which carries ASP.NET Core dependencies).
+When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Queryable.Http`; clients depend on the wire project, not `Kaleido.Http.Server` (which carries ASP.NET Core dependencies).
 
 ---
 

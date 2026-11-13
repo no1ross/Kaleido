@@ -13,6 +13,6 @@
 		<ProjectReference Include="..\..\..\src\Http\Http.Server\Kaleido.Http.Server.csproj" />
 		<ProjectReference Include="..\..\..\src\Mcp\Mcp\Kaleido.Mcp.csproj" />
 		<ProjectReference Include="..\..\..\src\Platform\Kaleido.Platform.csproj" />
-		<ProjectReference Include="..\..\..\src\Http\Http\Kaleido.Http.csproj" />
+		<ProjectReference Include="..\..\..\src\Transports\Http\Kaleido.Http\Kaleido.Http.csproj" />
 	</ItemGroup>
 </Project>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<Compile Include="..\..\..\Shared\SutFixture.cs" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http\Kaleido.Queryable.Http.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Queryable.Http" />
+	</ItemGroup>
+</Project>

@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Queryable.UnitTests;
+namespace Kaleido.Queryable.Http.UnitTests;
 
 public sealed class QueryableContractUrlsTests : Kaleido.UnitTests.SutFixture
 {

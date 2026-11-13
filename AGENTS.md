@@ -49,8 +49,8 @@ A project's README explains its software; the [architecture map](./docs/architec
 | [`Kaleido`](./src/Core/Kaleido/README.md) | foundation: identity, shared metadata, correlation and options binding | Eventing/outbox, capability runtimes, provider choice, transport |
 | [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md) | generic event envelope, redaction, writer, outbox store/relay and health | Process/Queryable event payloads or a transport; placement temporary (#592) |
 | [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md) | steps, state, recovery, events and public neutral invocation | Queryable, central registry, idempotency admission, HTTP |
-| [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | query sources/views, events and public neutral invocation | Process, central registry, HTTP |
-| [`Kaleido.Platform`](./src/Platform/README.md) | shared registry/wire contracts, JSON, headers and metadata; changes ripple into server and client | endpoint mapping, runtime planning |
+| [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md), [`Kaleido.Queryable.Http`](./src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) | local query runtime/events; HTTP query request/route wire | central Registry, ASP.NET |
+| [`Kaleido.Platform`](./src/Platform/README.md) | remaining mixed Registry/capability contracts (migration pending) | runtime, shared HTTP wire |
 | [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md) | neutral authorization mode/default | ASP.NET, Registry client, runtime logic |
 | [`Kaleido.Client`](./src/Client/README.md) | neutral clients, call context, registry participation, hydration, transport choice | HTTP wire implementation |
 | [`Kaleido.Http`](./src/Transports/Http/Kaleido.Http/README.md) | shared HTTP JSON, headers, errors and route prefix | ASP.NET, capability/Registry URLs |

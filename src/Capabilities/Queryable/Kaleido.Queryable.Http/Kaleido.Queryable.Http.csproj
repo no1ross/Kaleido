@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Queryable HTTP request contracts, wire conversion and versioned query routes shared by clients and servers.</Description>
+		<PackageTags>kaleido;queryable;http;contracts</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Queryable\Kaleido.Queryable.csproj" />
+		<ProjectReference Include="..\..\..\Transports\Http\Kaleido.Http\Kaleido.Http.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Queryable.Query" />
+	</ItemGroup>
+</Project>

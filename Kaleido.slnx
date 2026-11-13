@@ -29,6 +29,7 @@
   </Folder>
   <Folder Name="/src/Capabilities/Queryable/">
     <Project Path="src/Capabilities/Queryable/Kaleido.Queryable/Kaleido.Queryable.csproj" />
+    <Project Path="src/Capabilities/Queryable/Kaleido.Queryable.Http/Kaleido.Queryable.Http.csproj" />
   </Folder>
   <Folder Name="/src/Composed/Hosts/">
     <Project Path="src/Composed/Hosts/Kaleido.Hosting/Kaleido.Hosting.csproj" />
@@ -82,6 +83,7 @@
   </Folder>
   <Folder Name="/test/Capabilities/Queryable/">
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.UnitTests/Kaleido.Queryable.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.UnitTests/Kaleido.Queryable.Http.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Composed/Hosts/">
     <Project Path="tests/Composed/Hosts/Kaleido.Hosting.UnitTests/Kaleido.Hosting.UnitTests.csproj" />
