@@ -54,7 +54,7 @@ A project's README explains its software; the [architecture map](./docs/architec
 | [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md) | neutral authorization mode/default | ASP.NET, Registry client, runtime logic |
 | [`Kaleido.Client`](./src/Client/README.md) | neutral clients, call context, registry participation, hydration, transport choice | HTTP wire implementation |
 | [`Kaleido.Http`](./src/Transports/Http/Kaleido.Http/README.md) | shared HTTP JSON, headers, errors and route prefix | ASP.NET, capability/Registry URLs |
-| [`Kaleido.Http.Server`](./src/Http/Http.Server/README.md) | shared ASP.NET filters and caller handling (migration pending) | Registry wiring, capability execution |
+| [`Kaleido.Http.Server`](./src/Transports/Http/Kaleido.Http.Server/README.md) | shared ASP.NET filters, correlation and caller handling | Registry wiring, capability execution |
 | [`Kaleido.Hosting`](./src/Composed/Hosts/Kaleido.Hosting/README.md) | neutral capability registration and required-store checks | transport, provider choice, mandatory Registry client |
 | [`Kaleido.Http.Client`](./src/Http/Http.Client/README.md) | one gateway HTTP client (`Kaleido:BaseUrl`), published-route calls, credentials and resilience | per-service addresses, server mapping |
 | [`Kaleido.Mcp`](./src/Mcp/Mcp/README.md) | caller-filtered MCP tools, forms, schemas and invocation | transport or client internals |

@@ -46,7 +46,7 @@ Reference this project when you need to:
 ## What this project is NOT for
 
 This project does not contain:
-- HTTP endpoint publication, DI registration, middleware, or transport services (see [`Kaleido.Http.Server`](../../Http/Http.Server/README.md))
+- HTTP endpoint publication, DI registration, middleware, or transport services (see [`Kaleido.Http.Server`](../../Transports/Http/Kaleido.Http.Server/README.md))
 - HTTP contract types (see [`Kaleido.Platform`](../../Platform/README.md))
 - Remote HTTP client consumption (see [`Kaleido.Http.Client`](../../Http/Http.Client/README.md))
 - SQLite state persistence (see [`Kaleido.Provider.SQLite`](../../Providers/Kaleido.Provider.SQLite/README.md))

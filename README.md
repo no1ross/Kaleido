@@ -300,7 +300,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Server`](src/Transports/Kaleido.Server) | Transport-neutral authorization mode and service defaults |
 | [`Kaleido.Client`](src/Client) | Neutral clients, registry participation and transport choice |
 | [`Kaleido.Http`](src/Transports/Http/Kaleido.Http) | Shared HTTP JSON, headers, error body and versioned route prefix |
-| [`Kaleido.Http.Server`](src/Http/Http.Server) | Service HTTP endpoints and execution adapters |
+| [`Kaleido.Http.Server`](src/Transports/Http/Kaleido.Http.Server) | Generic ASP.NET correlation, authorization, JSON/body binding and exception filters |
 | [`Kaleido.Http.Client`](src/Http/Http.Client) | Registry-resolved calls over one gateway HTTP client |
 | [`Kaleido.Registry`](src/Registry/Registry) | Control registry, store contract, leases, views and HybridCache |
 | [`Kaleido.Registry.Http`](src/Registry/Registry.Http) | Control-registry HTTP endpoints |
@@ -350,7 +350,7 @@ dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name k
 - [Architecture map](docs/architecture/README.md) (the legacy [`ARCHITECTURE.md`](ARCHITECTURE.md) retains only unmigrated sections)
 - [Process authoring: steps, handlers, lookups](docs/architecture/capabilities/process-authoring.md) and [Queryable authoring: sources and views](docs/architecture/capabilities/queryable-authoring.md)
 - [Core runtime](src/Core/Kaleido/README.md)
-- [HTTP transport](src/Http/Http.Server/README.md) and [contracts](src/Platform/README.md)
+- [HTTP transport](src/Transports/Http/Kaleido.Http.Server/README.md) and [contracts](src/Platform/README.md)
 - [HTTP clients](src/Http/Http.Client/README.md)
 - [MCP adapter](src/Mcp/Mcp/README.md)
 - [Information requests](docs/architecture/capabilities/information-requests.md)

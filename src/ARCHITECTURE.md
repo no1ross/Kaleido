@@ -30,9 +30,9 @@ The not-yet-processed OpenTelemetry provider supplies `AddOpenTelemetry()` or cu
 
 #### Registration and pipeline
 
-- `Kaleido.Server` owns caller/authorization, correlation, endpoint filters, error handling and the filtered in-host registry view. Its filters on each Kaleido route group are `KaleidoExceptionEndpointFilter`, `KaleidoCorrelationEndpointFilter`, `KaleidoJsonEndpointFilter` and `KaleidoCallerContextEndpointFilter`.
-- `KaleidoHttpServiceCollectionExtensions` in `Kaleido.Http.Server` provides `AddHttp()`; it registers routing, `IHttpContextAccessor` and the active HTTP execution adapters. The host configures its own middleware pipeline (#295).
-- `HttpCorrelationContextReader` in `Kaleido.Server` sanitizes inbound HTTP headers into `KaleidoCorrelationContext`.
+- Transport-neutral `Kaleido.Server` owns authorization mode and service defaults. Generic `Kaleido.Http.Server` owns the ASP.NET caller, authorization, correlation, endpoint filters and generic error handling; its filters on Kaleido route groups are `KaleidoExceptionEndpointFilter`, `KaleidoCorrelationEndpointFilter`, `KaleidoJsonEndpointFilter` and `KaleidoCallerContextEndpointFilter`.
+- `KaleidoHttpServerServiceCollectionExtensions` in `Kaleido.Http.Server` provides `AddHttp()`; it registers routing, `IHttpContextAccessor` and generic HTTP services, not capability execution or central Registry participation. The host configures its own middleware pipeline (#295).
+- `HttpCorrelationContextReader` in `Kaleido.Http.Server` sanitizes inbound HTTP headers into `KaleidoCorrelationContext`.
 
 #### HTTP transport services
 

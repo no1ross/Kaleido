@@ -310,7 +310,7 @@ dotnet_naming_rule.camel_case_for_private_internal_fields.severity = warning
 dotnet_naming_rule.interfaces_should_be_i_pascal.severity = warning
 dotnet_naming_rule.parameters_should_be_camel_case.severity = warning
 
-[src/{Platform,Server,Client,Http/Http}/{*.cs,**/*.cs}]
+[src/{Platform,Server,Client,Http/Http,Transports/Http/Kaleido.Http.Server}/{*.cs,**/*.cs}]
 dotnet_diagnostic.MA0182.severity = none
 
 ; Core internal seams used through InternalsVisibleTo by the extracted capability assemblies

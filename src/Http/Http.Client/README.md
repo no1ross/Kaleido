@@ -8,7 +8,7 @@ See also:
 
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - [`../../AGENTS.md`](../../AGENTS.md)
-- [`../Http.Server/README.md`](../Http.Server/README.md)
+- [`../../Capabilities/Process/Kaleido.Process.Http.Server/README.md`](../../Capabilities/Process/Kaleido.Process.Http.Server/README.md)
 - [`../../Platform/README.md`](../../Platform/README.md)
 
 ---
@@ -212,7 +212,7 @@ The process client sends an `Idempotency-Key` (a new GUID) with **every execute 
 
 **Your own retries.** A new call is a new request with a new key, so calling again after a timeout, a crash or a lost answer would run the step again. To make the *logical* operation safe to repeat, pass your own key: `ExecuteAsync(request, idempotencyKey, ct)` and the by-name `ExecuteStepAsync(stepName, step, processId, idempotencyKey, ct)` send it instead of a new GUID, so repeating the call with the same key and the same request gets the stored answer (`null` keeps a new key per call). Keys are scoped per service version and caller, up to 200 characters; the same key with a different request is refused (`pro_idempotency_key_reused`). The typed `ExecuteStepAsync<TStep>` overloads always send a new key.
 
-This is not exactly-once for a handler's own external calls: a service that stops inside a handler after calling another system may have done that work (see [`Kaleido.Http`](../Http.Server/README.md#idempotent-execution-idempotency-key)). The MCP adapter calls services through these clients and derives one key per logical tool call ([MCP retries](../../Mcp/Mcp/README.md)).
+This is not exactly-once for a handler's own external calls: a service that stops inside a handler after calling another system may have done that work (see [`Kaleido.Http`](../../Capabilities/Process/Kaleido.Process.Http.Server/README.md#idempotent-execution-idempotency-key)). The MCP adapter calls services through these clients and derives one key per logical tool call ([MCP retries](../../Mcp/Mcp/README.md)).
 
 **When another call changed the process first** (two calls for the same process at the same time - a double submit, two agents on one case), the service refuses the second save with **409** `pro_process_conflict`; the client throws `KaleidoHttpClientException` with `Code = httpclient_conflict` and the service's errors. Nothing of that call was saved. Read the process state again and decide on the next step - do not repeat the call blindly.
 
@@ -388,7 +388,7 @@ service records the call with its process. An explicit `processId` passed to
 
 This project does not contain:
 
-- server-side endpoint mapping (see [`Kaleido.Http.Server`](../Http.Server/README.md))
+- server-side endpoint mapping (see [`Kaleido.Http.Server`](../../Capabilities/Process/Kaleido.Process.Http.Server/README.md))
 - runtime planning or execution logic (see [`Kaleido`](../../Core/Kaleido/README.md))
 - process state management
 

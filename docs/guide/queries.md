@@ -53,7 +53,7 @@ flowchart LR
 - It **counts** the total only when the page cannot tell (a full page, or an empty page past the
   start); `totalCount` is always the number of matching results.
 
-The query wire contract and endpoint behavior: [`Kaleido.Http.Server` README](../../src/Http/Http.Server/README.md). Source and view URLs are published per service version in the central registry; .NET clients use those `QueryUrl` values rather than constructing paths.
+The query wire contract and endpoint behavior: [`Kaleido.Http.Server` README](../../src/Capabilities/Process/Kaleido.Process.Http.Server/README.md). Source and view URLs are published per service version in the central registry; .NET clients use those `QueryUrl` values rather than constructing paths.
 
 ## Views
 

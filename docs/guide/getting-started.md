@@ -200,7 +200,7 @@ sequenceDiagram
   unfiltered copy fresh from `/registry/availability` and revisioned `/registry/capabilities`.
 
 The routes, the body shapes and the error answers are in the
-[`Kaleido.Http.Server` README](../../src/Http/Http.Server/README.md).
+[`Kaleido.Http.Server` README](../../src/Capabilities/Process/Kaleido.Process.Http.Server/README.md).
 
 ## 6. Publish it to AI agents (MCP)
 

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Generic ASP.NET Core HTTP server filters, correlation and authorization for Kaleido endpoints.</Description>
+		<PackageTags>kaleido;aspnetcore;http;rest;endpoints</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Kaleido.Server\Kaleido.Server.csproj" />
+		<ProjectReference Include="..\Kaleido.Http\Kaleido.Http.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Server" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Composed hosts and capability adapters reuse the generic HTTP filters. -->
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Hosting.Http" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
+	</ItemGroup>
+</Project>

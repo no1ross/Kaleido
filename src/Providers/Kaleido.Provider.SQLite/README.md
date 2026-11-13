@@ -94,7 +94,7 @@ The compare and the write must be one step: a row version / ETag / `WHERE Versio
 
 ### Idempotent results
 
-`IKaleidoIdempotencyStore` (`AdmitAsync` / `CompleteAsync` / `ReleaseAsync`) keeps the lifecycle of execute requests sent with an `Idempotency-Key`: the key is admitted before the step runs, so a retry never runs alongside the first attempt and gets its answer instead of running the step again ([`Kaleido.Http`](../../Http/Http.Server/README.md#idempotent-execution-idempotency-key), [ADR 0019](../../../docs/decisions/0019-idempotent-execution-admission.md)). The SQLite store keeps them next to the process state, in the same database - no extra store for the integrator:
+`IKaleidoIdempotencyStore` (`AdmitAsync` / `CompleteAsync` / `ReleaseAsync`) keeps the lifecycle of execute requests sent with an `Idempotency-Key`: the key is admitted before the step runs, so a retry never runs alongside the first attempt and gets its answer instead of running the step again ([`Kaleido.Http`](../../Capabilities/Process/Kaleido.Process.Http.Server/README.md#idempotent-execution-idempotency-key), [ADR 0019](../../../docs/decisions/0019-idempotent-execution-admission.md)). The SQLite store keeps them next to the process state, in the same database - no extra store for the integrator:
 
 - `AdmitAsync(admission)` stores the record (state `InProgress`, with its `AdmissionId` and `LeaseUntilUtc`) when no record exists for the key, or only an expired one, and returns `null`; otherwise it stores nothing and returns the existing record. It must be **one atomic insert-if-absent** - two admissions of the same key at once never both get `null` (a unique key with `INSERT ... ON CONFLICT DO NOTHING`, a conditional put). Delete expired records here (or in a background job) so they do not pile up.
 - `CompleteAsync(result)` replaces the record with `result` - state `Completed` (the answer) or `OutcomeUnknown` (the attempt failed after it may have run) - **only while the record is still `InProgress` under the same `AdmissionId`**, and returns whether it did. Never an insert.
@@ -204,7 +204,7 @@ The default in-memory stores are sufficient for tests and single-request process
 
 - it is not a production-grade store (see header)
 - the Process runtime itself (see [`Kaleido`](../../Core/Kaleido/README.md))
-- HTTP endpoint publication (see [`Kaleido.Http`](../../Http/Http.Server/README.md))
+- HTTP endpoint publication (see [`Kaleido.Http`](../../Capabilities/Process/Kaleido.Process.Http.Server/README.md))
 - other persistence providers (EF Core, Redis, etc.) — write your own per the contract above
 
 ---

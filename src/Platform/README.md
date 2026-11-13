@@ -6,7 +6,7 @@ This unmigrated shared model still contains central Registry, Process and Querya
 
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
-- [`../Http/Http.Server/README.md`](../Http/Http.Server/README.md)
+- [`../Capabilities/Process/Kaleido.Process.Http.Server/README.md`](../Capabilities/Process/Kaleido.Process.Http.Server/README.md)
 - [`../Http/Http.Client/README.md`](../Http/Http.Client/README.md)
 
 ---
@@ -26,7 +26,7 @@ See also:
 - `ProcessStepResponse` — detailed step metadata record
 - `ProcessFieldMetadata` / `ProcessFieldLookup` / `ProcessOutputFieldMetadata` / `ProcessStepResultMetadata` — a step's input fields (with their lookup) and its typed result fields
 
-For `POST /{service}/{version}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Http/Http.Server/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
+For `POST /{service}/{version}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Capabilities/Process/Kaleido.Process.Http.Server/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
 
 ### Queryable contracts
 - Query request envelopes, `QueryApiBody` and its filter/sort/page wire records now belong to [`Kaleido.Queryable.Http`](../Capabilities/Queryable/Kaleido.Queryable.Http/README.md), not this remaining Registry response model.
