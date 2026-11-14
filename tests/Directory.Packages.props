@@ -16,8 +16,8 @@
         <!-- Analyzer testing packages (Kaleido.Analyzers.UnitTests) -->
         <!-- 1.6.0 is the latest line requiring only Microsoft.CodeAnalysis >= 3.9.0;
              newer lines force CodeAnalysis >= 4.9.2 and conflict with the tools/ 4.8.0 pin -->
-        <PackageVersion Include="Basic.Reference.Assemblies" Version="1.6.0" />
-        <PackageVersion Include="Basic.Reference.Assemblies.Net80" Version="1.6.0" />
+        <PackageVersion Include="Basic.Reference.Assemblies" Version="1.8.14" />
+        <PackageVersion Include="Basic.Reference.Assemblies.Net80" Version="1.8.14" />
         <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
         <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" />
     </ItemGroup>
