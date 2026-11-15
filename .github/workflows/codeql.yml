@@ -29,7 +29,7 @@ jobs:
         fetch-depth: 0  # NBGV needs full history for version height
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68  # v6.0.0
+      uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73  # v6.1.0
       with:
         global-json-file: global.json
 
@@ -38,7 +38,7 @@ jobs:
     # analyzed (paths-ignore cannot filter a full build of a compiled language). The samples live in
     # their own repositories (#95).
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
+      uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066  # v4.39.3
       with:
         languages: csharp
         build-mode: manual
@@ -56,6 +56,6 @@ jobs:
         dotnet build "$RUNNER_TEMP/CodeQL.sln" --configuration Release --no-restore
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
+      uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066  # v4.39.3
       with:
         category: "/language:csharp"
