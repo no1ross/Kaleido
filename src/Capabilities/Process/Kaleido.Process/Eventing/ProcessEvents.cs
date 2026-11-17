@@ -133,6 +133,9 @@ public sealed record PlanBuilt : ProcessEventBase
     /// <summary>The processor the process had been handed off to before this request, if any.</summary>
     public string? TargetProcessorName { get; init; }
 
+    /// <summary>The target's pinned version when the process had been handed off.</summary>
+    public string? TargetProcessorVersion { get; init; }
+
     /// <summary>
     /// The available steps before this request, as stored in the process state: set when the
     /// process awaits step selection, and empty for a new process (its initial steps are not stored).
@@ -212,6 +215,9 @@ public sealed record StepCompleted : ProcessEventBase
     /// <summary>The processor the step handed the process off to, if any.</summary>
     public string? TargetProcessorName { get; init; }
 
+    /// <summary>The target's pinned version when this step handed off the process.</summary>
+    public string? TargetProcessorVersion { get; init; }
+
     /// <summary>
     /// The steps the caller may submit next after this step; set when <see cref="ProcessState"/> is
     /// <see cref="ProcessExecutionState.AwaitingStepSelection"/>, otherwise empty.
@@ -248,6 +254,9 @@ public sealed record ExecutionCompleted : ProcessEventBase
 
     /// <summary>The processor the process was handed off to, if any.</summary>
     public string? TargetProcessorName { get; init; }
+
+    /// <summary>The target's pinned version when the process was handed off.</summary>
+    public string? TargetProcessorVersion { get; init; }
 
     /// <summary>
     /// The steps the caller may submit next, as stored in the process state; set when

@@ -256,7 +256,7 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
 
     /// <summary>Hands off using a neutral Process result and the target step's published name.</summary>
     /// <param name="targetProcessorName">The service that takes over the process.</param>
-    /// <param name="targetResult">The target's response to the handler's call.</param>
+    /// <param name="targetResult">The target's response, including the service version it executed on.</param>
     /// <param name="targetStepName">The step submitted on the target service.</param>
     /// <returns>The target's result, next step names, information request and messages as a hand-off.</returns>
     /// <exception cref="ArgumentException">A name is blank or the result contains no matching step.</exception>
@@ -265,12 +265,18 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(targetProcessorName);
         ArgumentNullException.ThrowIfNull(targetResult);
+        if (!KaleidoServiceOptions.IsValidServiceVersion(targetResult.ServiceVersion))
+        {
+            throw new ArgumentException("The target's Process result must name its service version.", nameof(targetResult));
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(targetStepName);
         var step = targetResult.Steps.FirstOrDefault(x => string.Equals(x.StepName, targetStepName, StringComparison.OrdinalIgnoreCase))
             ?? throw new ArgumentException($"The result does not contain step '{targetStepName}'.", nameof(targetStepName));
         return FromContinuation(new HandOffContinuation
         {
             TargetProcessorName = targetProcessorName,
+            TargetProcessorVersion = targetResult.ServiceVersion,
             Succeeded = step.ExecutionStatus == StepExecutionStatus.Completed,
             Rejected = step.ExecutionStatus == StepExecutionStatus.Rejected,
             BusinessMessages = step.BusinessMessages,
@@ -330,7 +336,7 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
     /// <summary>Hands off a neutral target result while returning a typed response from this step.</summary>
     /// <typeparam name="TProcessStepResult">The response this handler returns to its caller.</typeparam>
     /// <param name="targetProcessorName">The service that takes over the process.</param>
-    /// <param name="targetResult">The target's response to the handler's call.</param>
+    /// <param name="targetResult">The target's response, including the service version it executed on.</param>
     /// <param name="targetStepName">The step submitted on the target service.</param>
     /// <param name="response">The response this handler returns to its caller.</param>
     /// <returns>The typed handler result and target's neutral hand-off continuation.</returns>

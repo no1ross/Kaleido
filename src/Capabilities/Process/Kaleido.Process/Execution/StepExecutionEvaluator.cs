@@ -107,6 +107,8 @@ internal sealed class StepExecutionEvaluator(
         var problem =
             string.Equals(target, serviceOptions.ServiceName, StringComparison.OrdinalIgnoreCase)
                 ? $"'{currentCandidate.StepName}' handed the process off to '{target}', which is this service; hand off to another service, or continue with a step of this one."
+            : !KaleidoServiceOptions.IsValidServiceVersion(handOff.TargetProcessorVersion)
+                ? $"'{currentCandidate.StepName}' handed the process off to '{target}' without its service version; a continuing process cannot route by name alone."
             : !handOff.Succeeded || handOff.Rejected
                 ? $"'{currentCandidate.StepName}' handed the process off to '{target}', but the step it ran there did not complete, so '{target}' did not take the process over; reject the step instead."
             : handOff.RequiredStep is { } required && handOff.AvailableSteps.Contains(required, StringComparer.OrdinalIgnoreCase)

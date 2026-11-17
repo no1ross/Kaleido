@@ -135,13 +135,16 @@ public sealed record ProcessContext
 
     /// <summary>
     /// When set, the process has been handed off to this processor.
-    /// The consumer must call the target processor's state endpoint to continue.
+    /// The consumer uses <see cref="TargetProcessorVersion"/> to read and continue at that target's version.
     /// </summary>
     public string? TargetProcessorName
     {
         get;
         init;
     }
+
+    /// <summary>The service version taking over the handed-off process; null when no target is known.</summary>
+    public string? TargetProcessorVersion { get; init; }
 
     /// <summary>
     /// The currently available next steps on the local processor

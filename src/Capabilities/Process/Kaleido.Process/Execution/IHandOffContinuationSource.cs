@@ -1,14 +1,14 @@
 namespace Kaleido.Process.Execution;
 
 /// <summary>
-/// The answer of a service a process is handed off to, as a step handler received it: the Kaleido
-/// client's step and execute responses implement it, so a handler passes the response it got from the
-/// target straight to <see cref="ProcessStepHandlerResult.HandOff(string, IHandOffContinuationSource)"/>.
+/// A projection of a target service's process answer for a step handler that does not use
+/// <see cref="ProcessResult"/> directly. It must carry the target's service version so the
+/// continuation remains pinned after hand-off.
 /// </summary>
 public interface IHandOffContinuationSource
 {
     /// <summary>The answer in core terms, for the hand-off to <paramref name="targetProcessorName"/>.</summary>
     /// <param name="targetProcessorName">The service that answered and takes the process over.</param>
-    /// <returns>The target's outcome, messages, next steps by name, questions and notice.</returns>
+    /// <returns>The target's version, outcome, messages, next step names, questions and notice.</returns>
     HandOffContinuation ToHandOffContinuation(string targetProcessorName);
 }

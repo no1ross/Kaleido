@@ -390,6 +390,21 @@ public sealed class ProcessorEventFactoryTests
         Assert.Equal("1", result.Context.ServiceVersion);
     }
 
+    [Fact]
+    public void ProcessEvents_CarryThePinnedHandOffVersion()
+    {
+        var context = Loaded() with { TargetProcessorName = "target", TargetProcessorVersion = "2" };
+        var plan = Sut.CreatePlanBuilt(new KaleidoCorrelationContext(), context, NoSteps(), new ExecutionPlanResult { Candidates = [] }, 0);
+        var step = Sut.CreateStepCompleted(new KaleidoCorrelationContext(), context, new StepCandidate { StepName = "start" },
+            new ProcessExecutionOutcome { StepName = "start", Status = StepExecutionStatus.Completed }, ExecutionDecisionType.HandOff, new StepInvocationResult());
+        var execution = Sut.CreateExecutionCompleted(new KaleidoCorrelationContext(), context,
+            new ProcessExecutionResult { ProcessId = context.ProcessId, State = ProcessExecutionState.HandOff, TargetProcessorName = "target", TargetProcessorVersion = "2" });
+
+        Assert.Equal("2", plan.Event.TargetProcessorVersion);
+        Assert.Equal("2", step.Event.TargetProcessorVersion);
+        Assert.Equal("2", execution.Event.TargetProcessorVersion);
+    }
+
     // Plan built reads the state; it writes none.
     [Fact]
     public void CreatePlanBuilt_CarriesTheVersionItRead()

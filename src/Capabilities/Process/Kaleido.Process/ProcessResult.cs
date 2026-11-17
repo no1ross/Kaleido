@@ -6,9 +6,11 @@ namespace Kaleido.Process;
 /// </summary>
 /// <remarks>
 /// <see cref="State"/>, <see cref="RequiredStep"/>, <see cref="RequiredInformationRequest"/>,
-/// <see cref="TargetProcessorName"/> and <see cref="AvailableSteps"/> are taken from the process state
-/// after the last step this request ran; when no step changed it, they are the state the request
-/// started from. Inspect <see cref="Steps"/> for submitted steps that were invalid, already satisfied,
+/// <see cref="TargetProcessorName"/>, <see cref="TargetProcessorVersion"/> and <see cref="AvailableSteps"/>
+/// are taken from the process state after the last step this request ran; when no step changed it,
+/// they are the state the request started from. <see cref="ServiceVersion"/> identifies this service,
+/// while <see cref="TargetProcessorVersion"/> pins a handed-off process to the target's version.
+/// Inspect <see cref="Steps"/> for submitted steps that were invalid, already satisfied,
 /// rejected or canceled: an overall process state alone does not say that every submitted step ran.
 /// Use <see cref="ProcessId"/> when submitting a later request to the same process.
 /// </remarks>
@@ -17,6 +19,9 @@ public sealed record ProcessResult
 {
     /// <summary>The process instance the request ran against; newly generated when the request created the process without an id.</summary>
     public required Guid ProcessId { get; init; }
+
+    /// <summary>The service version that executed this request; use it to pin a later call to this process.</summary>
+    public string? ServiceVersion { get; init; }
 
     /// <summary>The process's stored execution state after this request; inspect <see cref="Steps"/>
     /// for what happened to each submitted step.</summary>
@@ -55,6 +60,9 @@ public sealed record ProcessResult
         get;
         init;
     }
+
+    /// <summary>The target's service version when this request handed the process to another service.</summary>
+    public string? TargetProcessorVersion { get; init; }
 
     /// <summary>
     /// A notice from the target processor on the request that hands off (for example, that some

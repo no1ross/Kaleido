@@ -104,6 +104,7 @@ internal sealed class ProcessorEventFactory(
             RequiredStep = context.RequiredStep,
             RequiredInformationRequest = context.RequiredInformationRequest,
             TargetProcessorName = context.TargetProcessorName,
+            TargetProcessorVersion = context.TargetProcessorVersion,
             AvailableSteps = context.AvailableSteps,
             SubmittedStepNames = submittedStepNames,
             SubmittedStepCount = submittedStepNames.Length,
@@ -169,6 +170,7 @@ internal sealed class ProcessorEventFactory(
             RequiredStep = context.RequiredStep,
             RequiredInformationRequest = context.RequiredInformationRequest,
             TargetProcessorName = context.TargetProcessorName,
+            TargetProcessorVersion = context.TargetProcessorVersion,
             AvailableSteps = context.AvailableSteps,
             StepLatestRequestId = stepContext?.LatestRequestId,
             StepLastExecuted = stepContext?.LastExecuted,
@@ -197,6 +199,7 @@ internal sealed class ProcessorEventFactory(
             RequiredStep = executionResult.RequiredStep,
             RequiredInformationRequest = executionResult.RequiredInformationRequest,
             TargetProcessorName = executionResult.TargetProcessorName,
+            TargetProcessorVersion = executionResult.TargetProcessorVersion,
             AvailableSteps = executionResult.AvailableSteps,
             ExecutedStepCount = executionResult.Outcomes.Count,
         };

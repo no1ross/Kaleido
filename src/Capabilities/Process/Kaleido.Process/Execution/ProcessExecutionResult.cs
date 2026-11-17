@@ -33,6 +33,8 @@ internal sealed record ProcessExecutionResult
         init;
     }
 
+    public string? TargetProcessorVersion { get; init; }
+
     public IReadOnlyCollection<string> AvailableSteps
     {
         get;

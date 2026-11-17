@@ -29,6 +29,9 @@ public sealed record ProcessStateSnapshot
     /// <summary>The service taking over a handed-off process, when any.</summary>
     public string? TargetProcessorName { get; init; }
 
+    /// <summary>The target's version for a handed-off process, required to resume it there.</summary>
+    public string? TargetProcessorVersion { get; init; }
+
     /// <summary>The names of the next steps available on this service.</summary>
     public IReadOnlyCollection<string> AvailableSteps { get; init; } = [];
 
@@ -65,6 +68,7 @@ public sealed record ProcessStateSnapshot
             RequiredStep = context.RequiredStep,
             RequiredInformationRequest = context.RequiredInformationRequest,
             TargetProcessorName = context.TargetProcessorName,
+            TargetProcessorVersion = context.TargetProcessorVersion,
             AvailableSteps = [.. context.AvailableSteps],
             Steps = [.. context.Steps.OrderBy(step => step.StepName, StringComparer.OrdinalIgnoreCase).Select(step => new ProcessStateStep
             {

@@ -57,4 +57,24 @@ public sealed class ProcessStateSnapshotTests : Kaleido.UnitTests.SutFixture<Pro
         Assert.DoesNotContain(typeof(ProcessStateSnapshot).GetProperties(), property => property.Name is "Version" or "LatestRequestId" or "ExecuteUrl" or "Bindings");
         Assert.DoesNotContain(typeof(ProcessStateStep).GetProperties(), property => property.Name is "LatestRequestId" or "ExecuteUrl" or "Bindings");
     }
+
+    [Fact]
+    public void FromContext_AHandOffKeepsTheTargetVersionForLaterStateReads()
+    {
+        var context = new ProcessContext
+        {
+            ProcessId = Guid.NewGuid(),
+            ProcessorName = "origin",
+            ProcessorVersion = "1",
+            State = ProcessExecutionState.HandOff,
+            TargetProcessorName = "target",
+            TargetProcessorVersion = "2",
+        };
+
+        var snapshot = ProcessStateSnapshot.FromContext(context);
+
+        Assert.Equal("1", snapshot.ServiceVersion);
+        Assert.Equal("target", snapshot.TargetProcessorName);
+        Assert.Equal("2", snapshot.TargetProcessorVersion);
+    }
 }

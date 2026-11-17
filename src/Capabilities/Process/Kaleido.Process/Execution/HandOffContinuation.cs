@@ -23,6 +23,9 @@ public sealed record HandOffContinuation
     /// <summary>The service that takes the process over.</summary>
     public required string TargetProcessorName { get; init; }
 
+    /// <summary>The target's service version; a continuing process must stay on it.</summary>
+    public string? TargetProcessorVersion { get; init; }
+
     /// <summary><see langword="true"/> when the target's step completed.</summary>
     public bool Succeeded { get; init; }
 

@@ -380,7 +380,7 @@ public sealed class ProcessorStateUpdaterTests
         {
             Type = ExecutionDecisionType.AwaitingRequiredStep,
             RequiredStep = "required-step",
-            HandOff = new HandOffContinuation { TargetProcessorName = "target-processor" },
+            HandOff = new HandOffContinuation { TargetProcessorName = "target-processor", TargetProcessorVersion = "2" },
             AvailableSteps = ["step1", "step2"]
         };
 
@@ -388,6 +388,7 @@ public sealed class ProcessorStateUpdaterTests
 
         Assert.Equal("required-step", result.RequiredStep);
         Assert.Equal("target-processor", result.TargetProcessorName);
+        Assert.Equal("2", result.TargetProcessorVersion);
         Assert.Equal(2, result.AvailableSteps.Count);
     }
 

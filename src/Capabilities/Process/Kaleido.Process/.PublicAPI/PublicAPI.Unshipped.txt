@@ -126,6 +126,8 @@ Kaleido.Process.Context.ProcessContext.Steps.get -> System.Collections.Generic.I
 Kaleido.Process.Context.ProcessContext.Steps.init -> void
 Kaleido.Process.Context.ProcessContext.TargetProcessorName.get -> string?
 Kaleido.Process.Context.ProcessContext.TargetProcessorName.init -> void
+Kaleido.Process.Context.ProcessContext.TargetProcessorVersion.get -> string?
+Kaleido.Process.Context.ProcessContext.TargetProcessorVersion.init -> void
 Kaleido.Process.Context.ProcessContext.UpdatedBy.get -> Kaleido.Observability.KaleidoCaller?
 Kaleido.Process.Context.ProcessContext.UpdatedBy.init -> void
 Kaleido.Process.Context.ProcessContext.UpdatedUtc.get -> System.DateTimeOffset
@@ -168,6 +170,8 @@ Kaleido.Process.Eventing.ExecutionCompleted.State.get -> Kaleido.Process.Process
 Kaleido.Process.Eventing.ExecutionCompleted.State.init -> void
 Kaleido.Process.Eventing.ExecutionCompleted.TargetProcessorName.get -> string?
 Kaleido.Process.Eventing.ExecutionCompleted.TargetProcessorName.init -> void
+Kaleido.Process.Eventing.ExecutionCompleted.TargetProcessorVersion.get -> string?
+Kaleido.Process.Eventing.ExecutionCompleted.TargetProcessorVersion.init -> void
 Kaleido.Process.Eventing.IProcessEvent
 Kaleido.Process.Eventing.PlanBuilt
 Kaleido.Process.Eventing.PlanBuilt.AvailableSteps.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
@@ -192,6 +196,8 @@ Kaleido.Process.Eventing.PlanBuilt.SubmittedStepNames.get -> System.Collections.
 Kaleido.Process.Eventing.PlanBuilt.SubmittedStepNames.init -> void
 Kaleido.Process.Eventing.PlanBuilt.TargetProcessorName.get -> string?
 Kaleido.Process.Eventing.PlanBuilt.TargetProcessorName.init -> void
+Kaleido.Process.Eventing.PlanBuilt.TargetProcessorVersion.get -> string?
+Kaleido.Process.Eventing.PlanBuilt.TargetProcessorVersion.init -> void
 Kaleido.Process.Eventing.PlanBuiltCandidate
 Kaleido.Process.Eventing.PlanBuiltCandidate.<Clone>$() -> Kaleido.Process.Eventing.PlanBuiltCandidate!
 Kaleido.Process.Eventing.PlanBuiltCandidate.CandidateStatus.get -> Kaleido.Process.StepCandidateStatus
@@ -266,6 +272,8 @@ Kaleido.Process.Eventing.StepCompleted.StepName.get -> string!
 Kaleido.Process.Eventing.StepCompleted.StepName.init -> void
 Kaleido.Process.Eventing.StepCompleted.TargetProcessorName.get -> string?
 Kaleido.Process.Eventing.StepCompleted.TargetProcessorName.init -> void
+Kaleido.Process.Eventing.StepCompleted.TargetProcessorVersion.get -> string?
+Kaleido.Process.Eventing.StepCompleted.TargetProcessorVersion.init -> void
 Kaleido.Process.Exceptions.ProcessConcurrencyException
 Kaleido.Process.Exceptions.ProcessConcurrencyException.Code.get -> string!
 Kaleido.Process.Exceptions.ProcessConcurrencyException.ProcessConcurrencyException(System.Guid processId) -> void
@@ -293,6 +301,8 @@ Kaleido.Process.Execution.HandOffContinuation.Succeeded.get -> bool
 Kaleido.Process.Execution.HandOffContinuation.Succeeded.init -> void
 Kaleido.Process.Execution.HandOffContinuation.TargetProcessorName.get -> string!
 Kaleido.Process.Execution.HandOffContinuation.TargetProcessorName.init -> void
+Kaleido.Process.Execution.HandOffContinuation.TargetProcessorVersion.get -> string?
+Kaleido.Process.Execution.HandOffContinuation.TargetProcessorVersion.init -> void
 Kaleido.Process.Execution.IHandOffContinuationSource
 Kaleido.Process.Execution.IHandOffContinuationSource.ToHandOffContinuation(string! targetProcessorName) -> Kaleido.Process.Execution.HandOffContinuation!
 Kaleido.Process.Execution.IProcessStepHandler<TProcessStep, TProcessStepResult>
@@ -527,12 +537,16 @@ Kaleido.Process.ProcessResult.RequiredInformationRequest.get -> Kaleido.Process.
 Kaleido.Process.ProcessResult.RequiredInformationRequest.init -> void
 Kaleido.Process.ProcessResult.RequiredStep.get -> string?
 Kaleido.Process.ProcessResult.RequiredStep.init -> void
+Kaleido.Process.ProcessResult.ServiceVersion.get -> string?
+Kaleido.Process.ProcessResult.ServiceVersion.init -> void
 Kaleido.Process.ProcessResult.State.get -> Kaleido.Process.ProcessExecutionState
 Kaleido.Process.ProcessResult.State.init -> void
 Kaleido.Process.ProcessResult.Steps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Process.ProcessStepResult!>!
 Kaleido.Process.ProcessResult.Steps.init -> void
 Kaleido.Process.ProcessResult.TargetProcessorName.get -> string?
 Kaleido.Process.ProcessResult.TargetProcessorName.init -> void
+Kaleido.Process.ProcessResult.TargetProcessorVersion.get -> string?
+Kaleido.Process.ProcessResult.TargetProcessorVersion.init -> void
 Kaleido.Process.ProcessServiceCollectionExtensions
 Kaleido.Process.ProcessStateSnapshot
 Kaleido.Process.ProcessStateSnapshot.<Clone>$() -> Kaleido.Process.ProcessStateSnapshot!
@@ -562,6 +576,8 @@ Kaleido.Process.ProcessStateSnapshot.Steps.get -> System.Collections.Generic.IRe
 Kaleido.Process.ProcessStateSnapshot.Steps.init -> void
 Kaleido.Process.ProcessStateSnapshot.TargetProcessorName.get -> string?
 Kaleido.Process.ProcessStateSnapshot.TargetProcessorName.init -> void
+Kaleido.Process.ProcessStateSnapshot.TargetProcessorVersion.get -> string?
+Kaleido.Process.ProcessStateSnapshot.TargetProcessorVersion.init -> void
 Kaleido.Process.ProcessStateSnapshot.UpdatedBy.get -> Kaleido.Observability.KaleidoCaller?
 Kaleido.Process.ProcessStateSnapshot.UpdatedBy.init -> void
 Kaleido.Process.ProcessStateSnapshot.UpdatedUtc.get -> System.DateTimeOffset

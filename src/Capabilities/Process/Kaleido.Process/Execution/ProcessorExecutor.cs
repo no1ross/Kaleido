@@ -316,6 +316,9 @@ internal sealed class ProcessorExecutor(
             TargetProcessorName =
                 context.TargetProcessorName,
 
+            TargetProcessorVersion =
+                context.TargetProcessorVersion,
+
             AvailableSteps =
                 context.AvailableSteps,
 

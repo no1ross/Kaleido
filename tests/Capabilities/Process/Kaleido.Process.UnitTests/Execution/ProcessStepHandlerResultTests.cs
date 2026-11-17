@@ -28,6 +28,7 @@ public sealed class ProcessStepHandlerResultTests
         new()
         {
             TargetProcessorName = "billing",
+            TargetProcessorVersion = "2",
             Succeeded = true,
             BusinessMessages = [Note],
             FrameworkMessages = [Diagnostic],
@@ -228,6 +229,7 @@ public sealed class ProcessStepHandlerResultTests
         Assert.True(result.Succeeded);
         var continuation = Assert.IsType<HandOffContinuation>(result.HandOffContinuation);
         Assert.Equal("billing", continuation.TargetProcessorName);
+        Assert.Equal("2", continuation.TargetProcessorVersion);
         Assert.Equal(succeeded, continuation.Succeeded);
         Assert.Equal(rejected, continuation.Rejected);
         Assert.Equal("AnswerStep", continuation.RequiredStep);
@@ -255,9 +257,20 @@ public sealed class ProcessStepHandlerResultTests
         Assert.Equal("targetStepName", exception.ParamName);
     }
 
+    [Fact]
+    public void HandOff_FromNeutralProcessResult_RejectsAnUnversionedTarget()
+    {
+        var target = TargetResult(StepExecutionStatus.Completed) with { ServiceVersion = null };
+
+        var exception = Assert.Throws<ArgumentException>(() => ProcessStepHandlerResult.HandOff("billing", target, "SubmitStep"));
+
+        Assert.Equal("targetResult", exception.ParamName);
+    }
+
     private static ProcessResult TargetResult(StepExecutionStatus status) => new()
     {
         ProcessId = Guid.NewGuid(),
+        ServiceVersion = "2",
         State = ProcessExecutionState.AwaitingInformation,
         RequiredStep = "AnswerStep",
         RequiredInformationRequest = Request,

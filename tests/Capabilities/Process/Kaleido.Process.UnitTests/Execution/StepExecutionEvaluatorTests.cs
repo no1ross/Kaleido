@@ -376,7 +376,20 @@ public sealed class StepExecutionEvaluatorTests
 
     // The target's answer, as a handler hands off with it (#198).
     private static HandOffContinuation HandOffTo(string target) =>
-        new() { TargetProcessorName = target, Succeeded = true, AvailableSteps = ["ValidateMemberStep"] };
+        new() { TargetProcessorName = target, TargetProcessorVersion = "2", Succeeded = true, AvailableSteps = ["ValidateMemberStep"] };
+
+    [Fact]
+    public void Evaluate_AHandOffWithoutATargetVersion_IsAProcessViolation()
+    {
+        var decision = CreateSut(["step-b"]).Evaluate(
+            CreateCandidate<StepA>("step-a"),
+            new StepInvocationResult { Succeeded = true, HandOff = HandOffTo("radiology") with { TargetProcessorVersion = null } },
+            [],
+            CreateContext());
+
+        Assert.Equal(ExecutionDecisionType.ProcessViolation, decision.Type);
+        Assert.Equal(ProcessorErrorCodes.InvalidHandOff, Assert.Single(decision.Messages).Code);
+    }
 
     [Fact]
     public void Evaluate_AHandOff_CarriesTheTargetsAnswer()

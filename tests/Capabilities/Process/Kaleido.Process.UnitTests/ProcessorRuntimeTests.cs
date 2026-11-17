@@ -250,6 +250,7 @@ public sealed class ProcessorRuntimeTests
         var handOff = new HandOffContinuation
         {
             TargetProcessorName = "radiology",
+            TargetProcessorVersion = "2",
             Succeeded = true,
             RequiredStep = "CaptureMriInfoStep",
             InformationRequest = questions,
@@ -267,7 +268,7 @@ public sealed class ProcessorRuntimeTests
         var processor = new Mock<IProcessorExecutor>();
         processor
             .Setup(x => x.ExecuteAsync(It.IsAny<IReadOnlyCollection<StepCandidate>>(), It.IsAny<ProcessContext>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CreateExecutionResult(processId) with { State = ProcessExecutionState.HandOff, TargetProcessorName = "radiology", HandOff = handOff });
+            .ReturnsAsync(CreateExecutionResult(processId) with { State = ProcessExecutionState.HandOff, TargetProcessorName = "radiology", TargetProcessorVersion = "2", HandOff = handOff });
 
         var runtime =
             CreateSut(
@@ -283,6 +284,8 @@ public sealed class ProcessorRuntimeTests
         var result = await runtime.ExecuteAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal("radiology", result.TargetProcessorName);
+        Assert.Equal("1", result.ServiceVersion);
+        Assert.Equal("2", result.TargetProcessorVersion);
         Assert.Equal("CaptureMriInfoStep", result.RequiredStep);
         Assert.Same(questions, result.RequiredInformationRequest);
         Assert.Equal(["ValidateMemberStep"], result.AvailableSteps);

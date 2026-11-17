@@ -207,7 +207,7 @@ internal sealed class ProcessorRuntime(
         context.State == ProcessExecutionState.HandOff &&
         correlationAccessor.Current.CallingProcessorName is { Length: > 0 } calling &&
         string.Equals(calling, context.TargetProcessorName, StringComparison.OrdinalIgnoreCase)
-            ? context with { State = ProcessExecutionState.Active, TargetProcessorName = null }
+            ? context with { State = ProcessExecutionState.Active, TargetProcessorName = null, TargetProcessorVersion = null }
             : context;
 
     // A new process (or one handed off from another processor): initialized, observed, and saved
@@ -266,7 +266,7 @@ internal sealed class ProcessorRuntime(
             .ToArray();
     }
 
-    private static ProcessResult CreateResult(
+    private ProcessResult CreateResult(
         ExecutionPlanResult plan,
         ProcessExecutionResult executionResult)
     {
@@ -277,17 +277,19 @@ internal sealed class ProcessorRuntime(
                     x => x,
                     StringComparer.OrdinalIgnoreCase);
 
-        // On the request that hands off, the next steps are the target's answer (#198), by name: the
-        // transport resolves them against the target's registry. The saved state keeps only the name.
+        // On the request that hands off, the next steps are the target's answer (#198), by name.
+        // The saved state and this result keep the target's selected service version, not a route URL.
         var handOff = executionResult.HandOff;
 
         return new ProcessResult
         {
             ProcessId = executionResult.ProcessId,
+            ServiceVersion = serviceOptions.ServiceVersion,
             State = executionResult.State,
             RequiredStep = handOff is null ? executionResult.RequiredStep : handOff.RequiredStep,
             RequiredInformationRequest = handOff is null ? executionResult.RequiredInformationRequest : handOff.InformationRequest,
             TargetProcessorName = executionResult.TargetProcessorName,
+            TargetProcessorVersion = executionResult.TargetProcessorVersion,
             AvailableSteps = handOff is null ? executionResult.AvailableSteps : handOff.AvailableSteps,
             Notice = handOff?.Notice,
             Steps = [.. plan.Candidates.Select(candidate => StepResult(candidate, outcomes))],
