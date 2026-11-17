@@ -8,7 +8,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Eventing.UnitTests` | `src/Events/Kaleido.Eventing` generic event writer, outbox, relay and redaction |
 | `Kaleido.Process.UnitTests` | `src/Capabilities/Process/Kaleido.Process` steps, runtime and state stores |
 | `Kaleido.Process.Server.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Server` neutral idempotency admission/replay |
-| `Kaleido.Process.Http.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Http` versioned route wire and HTTP Registry bindings |
+| `Kaleido.Process.Http.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Http` HTTP input envelopes, versioned routes and Registry bindings |
 | `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
 | `Kaleido.Queryable.Client.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Client` neutral outbound client contracts |
 | `Kaleido.Queryable.Http.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http` request wire conversion and versioned query routes |

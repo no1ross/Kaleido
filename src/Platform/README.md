@@ -13,20 +13,12 @@ See also:
 
 ## What lives here
 
-### Process and registry contracts
-- `ExecuteProcessRequest` — multi-step execute request body
-- `ProcessExecutionResponse` — multi-step execute response (results, required step, available steps)
-- `ProcessExecutionStepResponse` — per-step result within an execute response
-- `ExecuteStepRequest<TStep>` — typed per-step execute request body
-- `StepExecutionResponse` / `StepExecutionResponse<TResult>` — per-step execute response
-- `ProcessStateResponse` — process state read response
-- `ProcessStepSummary` — lightweight step summary used in registry and state responses
-- `ProcessRequiredStep` — the step a process requires next: the fields of a `ProcessStepSummary` (including its execute URL) plus the pending information request, if any
-- `ProcessorRegistryResponse` — processor metadata, its versioned execute URL, process-state URL template and all steps
-- `ProcessStepResponse` — detailed step metadata record
-- `ProcessFieldMetadata` / `ProcessFieldLookup` / `ProcessOutputFieldMetadata` / `ProcessStepResultMetadata` — a step's input fields (with their lookup) and its typed result fields
+### Legacy Process response and registry copies awaiting removal
+- HTTP `ExecuteProcessRequest`, `ProcessStepRequest` and `ExecuteStepRequest<TStep>` **inputs** now live in [`Kaleido.Process.Http`](../Capabilities/Process/Kaleido.Process.Http/README.md); a Process service maps them into generic `ProcessRequest` before execution.
+- `ProcessExecutionResponse`, `StepExecutionResponse` and `ProcessStateResponse` are old response shapes still parked here only while the higher Process HTTP adapter is migrated. Their `executeUrl` and extra Registry metadata are **not** the greenfield result contract: generic Process's `ProcessResult`/`ProcessStepResult`/`ProcessStateSnapshot` now own the neutral results ([ADR 0047](../../docs/decisions/0047-process-response-step-identity-registry-owned-bindings.md)).
+- The old `ProcessRequiredStep` belongs to the parked response view, not the new neutral `ProcessResult.RequiredStep`/`RequiredInformationRequest`. `ProcessorRegistryResponse`, `ProcessStepResponse`, `ProcessStepSummary`, and field/lookup/output metadata remain duplicate declarations; portable Process descriptions live in [`Kaleido.Registry`](../Capabilities/Registry/Kaleido.Registry/README.md).
 
-For `POST /{service}/{version}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Capabilities/Process/Kaleido.Process.Http.Server/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
+For `POST /{service}/{version}/processes/steps/{step}`, the [`Kaleido.Process.Http`](../Capabilities/Process/Kaleido.Process.Http/README.md) JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Capabilities/Process/Kaleido.Process.Http.Server/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
 
 ### Queryable contracts already rehomed
 - HTTP query request envelopes, `QueryApiBody` and filter/sort/page wire records belong to [`Kaleido.Queryable.Http`](../Capabilities/Queryable/Kaleido.Queryable.Http/README.md).
@@ -93,7 +85,7 @@ the [ADR 0017 amendment](../../docs/decisions/0017-transport-contract-placement.
 
 ## Where to look
 
-- `Processor/ProcessContracts.cs` — Process request/response shapes; the client interfaces live in `Kaleido.Client/Processor`.
+- `Processor/ProcessContracts.cs` — parked old Process response and Registry metadata shapes; Process HTTP inputs moved to `Kaleido.Process.Http`, while the still-unmigrated Process client interfaces live in `src/Client/Processor`.
 - `Queryable/QueryableContracts.cs` — still-unmigrated published Queryable Registry response models. HTTP request envelopes, `QueryApiBody` and its conversion are now in [`Kaleido.Queryable.Http`](../Capabilities/Queryable/Kaleido.Queryable.Http/README.md); client adapters are migrated separately.
 - `Registry/KaleidoRegistry.cs` and `Registry/RegistryControlContracts.cs` — central capabilities, availability/status and `RegistryServiceRoute`/`RegistryTransportRoute`. The registry host owns storage; participants hydrate the copy through `Kaleido.Client`.
 - Shared JSON, HTTP headers/sanitization and error bodies now live in [`Kaleido.Http`](../Transports/Http/Kaleido.Http/README.md).
