@@ -61,6 +61,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0043](./0043-required-service-identity-and-shared-authorization-declarations.md) | Every service has a version, InstanceId is internal, and shared authorization declarations/metadata live in Core | Accepted | #585, #586, #588, #595 |
 | [0044](./0044-process-server-idempotency-ownership.md) | Generic Process owns state/transactions; Process.Server owns neutral idempotency admission and opaque replay | Accepted | #589, #587, #600, #602 |
 | [0045](./0045-registry-publication-build-identity-and-snapshot-versions.md) | Registry contracts/server/client split, service Product BuildVersion publications, provider-owned storage and neutral snapshot versions | Accepted | #585, #610, #611, #577 |
+| [0046](./0046-neutral-queryable-outbound-client-requests.md) | Queryable outbound client methods take neutral QueryRequest; HTTP adapters convert to wire requests and use published Registry bindings | Accepted | #585, #615, #616, #577, #530 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

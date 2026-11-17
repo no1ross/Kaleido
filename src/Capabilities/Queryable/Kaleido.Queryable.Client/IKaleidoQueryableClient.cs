@@ -1,11 +1,9 @@
-using Kaleido.Platform.Queryable;
-
-namespace Kaleido.Client.Queryable;
+namespace Kaleido.Queryable.Client;
 
 /// <summary>
 /// Client for a remote service's Queryable capabilities. Sources and views are addressed by their
 /// published names (strings): the caller lives in another service and cannot reference the remote
-/// types. Each query uses its published URL from the host's unfiltered hydrated central registry.
+/// types. Each query uses its published transport binding from the host's hydrated unfiltered Registry.
 /// </summary>
 public interface IKaleidoQueryableClient
 {
@@ -18,14 +16,13 @@ public interface IKaleidoQueryableClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The query result.</returns>
     /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails;
-    /// a source or view the service does not have, or the caller may not use, arrives as the
-    /// service's own 404 or 403.
+    /// An adapter reports failures in its own transport's terms; the called service still enforces
+    /// the source or view's authorization.
     /// </remarks>
     Task<QueryResult<TView>> QueryViewAsync<TParameters, TView>(
         string source,
         string view,
-        QueryApiRequest<TParameters> request,
+        QueryRequest<TParameters> request,
         CancellationToken cancellationToken)
         where TParameters : class
         where TView : class;
@@ -37,13 +34,12 @@ public interface IKaleidoQueryableClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The query result.</returns>
     /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails;
-    /// a source or view the service does not have, or the caller may not use, arrives as the
-    /// service's own 404 or 403.
+    /// An adapter reports failures in its own transport's terms; the called service still enforces
+    /// the source or view's authorization.
     /// </remarks>
     Task<QueryResult<TResult>> QuerySourceAsync<TResult>(
         string source,
-        QueryApiRequest request,
+        QueryRequest request,
         CancellationToken cancellationToken)
         where TResult : class;
 
@@ -55,13 +51,12 @@ public interface IKaleidoQueryableClient
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The query result.</returns>
     /// <remarks>
-    /// The HTTP client implementation throws <c>KaleidoHttpClientException</c> when the remote call fails;
-    /// a source or view the service does not have, or the caller may not use, arrives as the
-    /// service's own 404 or 403.
+    /// An adapter reports failures in its own transport's terms; the called service still enforces
+    /// the source or view's authorization.
     /// </remarks>
     Task<QueryResult<TResult>> QuerySourceAsync<TParameters, TResult>(
         string source,
-        QueryApiRequest<TParameters> request,
+        QueryRequest<TParameters> request,
         CancellationToken cancellationToken)
         where TParameters : class
         where TResult : class;

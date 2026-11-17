@@ -10,6 +10,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Process.Server.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Server` neutral idempotency admission/replay |
 | `Kaleido.Process.Http.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Http` versioned route wire and HTTP Registry bindings |
 | `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
+| `Kaleido.Queryable.Client.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Client` neutral outbound client contracts |
 | `Kaleido.Queryable.Http.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http` request wire conversion and versioned query routes |
 | `Kaleido.Queryable.Http.Server.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http.Server` request conversion and endpoint mapping |
 | `Kaleido.Queryable.Http.Server.FunctionalTests` | Local Queryable source/view requests through ASP.NET TestServer, without central Registry |

@@ -1,4 +1,4 @@
-namespace Kaleido.Client.Queryable;
+namespace Kaleido.Queryable.Client;
 
 /// <summary>Creates Queryable clients for services published by the central registry.</summary>
 public interface IKaleidoQueryableClientFactory

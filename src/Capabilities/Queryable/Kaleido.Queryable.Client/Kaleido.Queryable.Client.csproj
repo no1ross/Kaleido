@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Transport-neutral outbound Queryable client and service/version factory contracts.</Description>
+		<PackageTags>kaleido;queryable;client;contracts</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Queryable\Kaleido.Queryable.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Queryable.Query" />
+	</ItemGroup>
+</Project>

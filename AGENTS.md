@@ -49,10 +49,10 @@ Project READMEs explain behavior, the [architecture map](./docs/architecture/REA
 | [`Kaleido`](./src/Core/Kaleido/README.md) | foundation: identity, shared metadata, correlation and options binding | Eventing/outbox, capability runtimes, provider choice, transport |
 | [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md) | generic event envelope, redaction, writer, outbox store/relay and health | Process/Queryable event payloads or a transport; placement temporary (#592) |
 | [Process](./src/Capabilities/Process/Kaleido.Process/README.md), [HTTP](./src/Capabilities/Process/Kaleido.Process.Http/README.md) | local runtime/Registry projection; HTTP bindings | Queryable, Registry authority/client |
-| [Queryable](./src/Capabilities/Queryable/Kaleido.Queryable/README.md), [HTTP](./src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) | local runtime/Registry projection; HTTP requests/bindings | Process, Registry authority/client |
+| [Queryable](./src/Capabilities/Queryable/Kaleido.Queryable/README.md), [Client](./src/Capabilities/Queryable/Kaleido.Queryable.Client/README.md), [HTTP](./src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) | local runtime, neutral remote contract; HTTP requests/bindings | Process, Registry authority/client |
 | [`Kaleido.Platform`](./src/Platform/README.md) | remaining mixed Registry/capability contracts (migration pending) | runtime, shared HTTP wire |
 | [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md) | neutral authorization mode/default | ASP.NET, Registry client, runtime logic |
-| [`src/Client`](./src/Client/README.md) | unmigrated remote Process/Queryable client interfaces; #585 migration source | Registry participation or shared HTTP credential pipeline |
+| [`src/Client`](./src/Client/README.md) | unmigrated remote Process interfaces; #585 source | Registry participation or shared HTTP credential pipeline |
 | [`Kaleido.Http`](./src/Transports/Http/Kaleido.Http/README.md) | shared HTTP JSON, headers, errors and route prefix | ASP.NET, capability/Registry URLs |
 | [`Kaleido.Http.Server`](./src/Transports/Http/Kaleido.Http.Server/README.md) | shared ASP.NET filters, correlation and caller handling | Registry wiring, capability execution |
 | [`Kaleido.Hosting`](./src/Composed/Hosts/Kaleido.Hosting/README.md) | neutral capability registration and required-store checks | transport, provider choice, mandatory Registry client |

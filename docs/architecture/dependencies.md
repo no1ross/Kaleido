@@ -7,6 +7,7 @@ Kaleido.Registry ──► Kaleido (Core)
 Kaleido.Eventing ──► Kaleido
 Kaleido.Process ──► Kaleido, Kaleido.Eventing, Kaleido.Registry
 Kaleido.Queryable ──► Kaleido, Kaleido.Eventing, Kaleido.Registry
+Kaleido.Queryable.Client ──► Kaleido.Queryable (neutral request/result contracts; no transport)
 Kaleido.Process.Server ──► Kaleido.Process, Kaleido
 Kaleido.Server ──► Kaleido
 Kaleido.Registry.Server ──► Kaleido.Registry, Kaleido.Server

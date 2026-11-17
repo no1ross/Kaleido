@@ -1,5 +1,5 @@
-# Kaleido.Client
+# Kaleido.Client (unmigrated source)
 
-Kaleido client base, with no ASP.NET Core: the processor and queryable client contracts libraries call, and what a call made for a caller is (call context, purpose, on-behalf-of modes). It also owns `IKaleidoRegistryClient` and the protocol-neutral registration, heartbeat, hydrated central-registry copy and readiness check; protocol packages provide the wire client.
+This old preview project retains the Process outbound client contracts that still depend on the former Platform placement. It is **not** the active Registry participant or the owner of Queryable's new neutral remote-client API. The Registry participant and its hydrated unfiltered in-memory source now live in [`Kaleido.Registry.Client`](../Capabilities/Registry/Kaleido.Registry.Client/README.md); the shared outbound HTTP call-purpose, credential and correlation mechanics live in [`Kaleido.Http.Client`](../Transports/Http/Kaleido.Http.Client/README.md).
 
-See the [repository README](https://github.com/no1ross/Kaleido#readme) and [ARCHITECTURE.md](https://github.com/no1ross/Kaleido/blob/master/ARCHITECTURE.md).
+`IKaleidoQueryableClient` and its factory are being moved to [`Kaleido.Queryable.Client`](../Capabilities/Queryable/Kaleido.Queryable.Client/README.md), taking generic `QueryRequest` instead of an HTTP request DTO. The actual HTTP adaptation and lookup of published Registry bindings follow in Queryable.Http.Client (#616). The old Process contracts and combined client references remain parked under #585; do not build this project to validate the independent Queryable client contract unit or reintroduce a Registry/Platform dependency into it.

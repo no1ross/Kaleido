@@ -294,11 +294,12 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Eventing`](src/Events/Kaleido.Eventing) | Generic event writer, redaction, outbox store and relay |
 | [`Kaleido.Process`](src/Capabilities/Process/Kaleido.Process) / [`Kaleido.Process.Http`](src/Capabilities/Process/Kaleido.Process.Http) | Local Process runtime/Registry projection; versioned HTTP wire/bindings |
 | [`Kaleido.Queryable`](src/Capabilities/Queryable/Kaleido.Queryable) | Query source/view registration and execution |
+| [`Kaleido.Queryable.Client`](src/Capabilities/Queryable/Kaleido.Queryable.Client) | Neutral outbound source/view client and service-version factory contracts |
 | [`Kaleido.Queryable.Http`](src/Capabilities/Queryable/Kaleido.Queryable.Http) | HTTP query request bodies, CLR-to-wire conversion and versioned query routes |
 | [`Kaleido.Queryable.Http.Server`](src/Capabilities/Queryable/Kaleido.Queryable.Http.Server) | ASP.NET source/view query endpoints over the local Queryable catalog |
 | [`Kaleido.Platform`](src/Platform) | Remaining unmigrated Registry, Process and Queryable published contracts |
 | [`Kaleido.Server`](src/Transports/Kaleido.Server) | Transport-neutral authorization mode and service defaults |
-| [`src/Client`](src/Client) | Unmigrated remote Process/Queryable client contracts (#585) |
+| [`src/Client`](src/Client) | Unmigrated remote Process client contracts (#585) |
 | [`Kaleido.Http`](src/Transports/Http/Kaleido.Http) | Shared HTTP JSON, headers, errors and route prefix |
 | [`Kaleido.Http.Server`](src/Transports/Http/Kaleido.Http.Server) | Generic ASP.NET filters and caller handling |
 | [`Kaleido.Http.Client`](src/Transports/Http/Kaleido.Http.Client) | Shared named gateway HTTP pipeline and caller-credential guard |
