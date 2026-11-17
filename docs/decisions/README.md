@@ -62,6 +62,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0044](./0044-process-server-idempotency-ownership.md) | Generic Process owns state/transactions; Process.Server owns neutral idempotency admission and opaque replay | Accepted | #589, #587, #600, #602 |
 | [0045](./0045-registry-publication-build-identity-and-snapshot-versions.md) | Registry contracts/server/client split, service Product BuildVersion publications, provider-owned storage and neutral snapshot versions | Accepted | #585, #610, #611, #577 |
 | [0046](./0046-neutral-queryable-outbound-client-requests.md) | Queryable outbound client methods take neutral QueryRequest; HTTP adapters convert to wire requests and use published Registry bindings | Accepted | #585, #615, #616, #577, #530 |
+| [0047](./0047-process-response-step-identity-registry-owned-bindings.md) | Process uses neutral results/state; Registry alone owns callable step bindings | Accepted | #585, #619, #617, #618, #577 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

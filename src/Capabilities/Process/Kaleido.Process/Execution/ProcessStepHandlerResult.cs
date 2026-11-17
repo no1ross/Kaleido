@@ -251,12 +251,40 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
             TargetProcessorName = targetProcessorName,
         };
 
-        return new()
+        return FromContinuation(continuation);
+    }
+
+    /// <summary>Hands off using a neutral Process result and the target step's published name.</summary>
+    /// <param name="targetProcessorName">The service that takes over the process.</param>
+    /// <param name="targetResult">The target's response to the handler's call.</param>
+    /// <param name="targetStepName">The step submitted on the target service.</param>
+    /// <returns>The target's result, next step names, information request and messages as a hand-off.</returns>
+    /// <exception cref="ArgumentException">A name is blank or the result contains no matching step.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="targetResult"/> is null.</exception>
+    public static ProcessStepHandlerResult HandOff(string targetProcessorName, ProcessResult targetResult, string targetStepName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetProcessorName);
+        ArgumentNullException.ThrowIfNull(targetResult);
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetStepName);
+        var step = targetResult.Steps.FirstOrDefault(x => string.Equals(x.StepName, targetStepName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ArgumentException($"The result does not contain step '{targetStepName}'.", nameof(targetStepName));
+        return FromContinuation(new HandOffContinuation
         {
-            Succeeded = true,
-            HandOffContinuation = continuation,
-            Messages = continuation.BusinessMessages,
-        };
+            TargetProcessorName = targetProcessorName,
+            Succeeded = step.ExecutionStatus == StepExecutionStatus.Completed,
+            Rejected = step.ExecutionStatus == StepExecutionStatus.Rejected,
+            BusinessMessages = step.BusinessMessages,
+            FrameworkMessages = [.. step.RuntimeMessages.Select(message => new ProcessMessage
+            {
+                Type = message.Type,
+                Code = message.Code,
+                Message = message.Message,
+            })],
+            RequiredStep = targetResult.RequiredStep,
+            InformationRequest = targetResult.RequiredInformationRequest,
+            AvailableSteps = [.. targetResult.AvailableSteps],
+            Notice = targetResult.Notice,
+        });
     }
 
     /// <summary>
@@ -298,6 +326,31 @@ public sealed record ProcessStepHandlerResult : IProcessStepHandlerResult
 
         return handOff with { Response = response };
     }
+
+    /// <summary>Hands off a neutral target result while returning a typed response from this step.</summary>
+    /// <typeparam name="TProcessStepResult">The response this handler returns to its caller.</typeparam>
+    /// <param name="targetProcessorName">The service that takes over the process.</param>
+    /// <param name="targetResult">The target's response to the handler's call.</param>
+    /// <param name="targetStepName">The step submitted on the target service.</param>
+    /// <param name="response">The response this handler returns to its caller.</param>
+    /// <returns>The typed handler result and target's neutral hand-off continuation.</returns>
+    public static ProcessStepHandlerResult<TProcessStepResult> HandOff<TProcessStepResult>(
+        string targetProcessorName,
+        ProcessResult targetResult,
+        string targetStepName,
+        TProcessStepResult response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        ProcessStepHandlerResult<TProcessStepResult> handOff = HandOff(targetProcessorName, targetResult, targetStepName);
+        return handOff with { Response = response };
+    }
+
+    private static ProcessStepHandlerResult FromContinuation(HandOffContinuation continuation) => new()
+    {
+        Succeeded = true,
+        HandOffContinuation = continuation,
+        Messages = continuation.BusinessMessages,
+    };
 
     /// <summary>
     /// Signals a successful step with a typed response and no specific next step required; the

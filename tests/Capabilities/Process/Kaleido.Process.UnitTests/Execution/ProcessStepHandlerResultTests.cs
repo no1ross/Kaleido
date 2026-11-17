@@ -216,6 +216,63 @@ public sealed class ProcessStepHandlerResultTests
         Assert.Equal("targetProcessorName", exception.ParamName);
     }
 
+    [Theory]
+    [InlineData(StepExecutionStatus.Completed, true, false)]
+    [InlineData(StepExecutionStatus.Rejected, false, true)]
+    public void HandOff_FromNeutralProcessResult_UsesTheNamedStepAndNextState(StepExecutionStatus status, bool succeeded, bool rejected)
+    {
+        var target = TargetResult(status);
+
+        var result = ProcessStepHandlerResult.HandOff("billing", target, "submitSTEP");
+
+        Assert.True(result.Succeeded);
+        var continuation = Assert.IsType<HandOffContinuation>(result.HandOffContinuation);
+        Assert.Equal("billing", continuation.TargetProcessorName);
+        Assert.Equal(succeeded, continuation.Succeeded);
+        Assert.Equal(rejected, continuation.Rejected);
+        Assert.Equal("AnswerStep", continuation.RequiredStep);
+        Assert.Same(Request, continuation.InformationRequest);
+        Assert.Equal(["AnswerStep"], continuation.AvailableSteps);
+        Assert.Equal([Note], continuation.BusinessMessages);
+        Assert.Equal(("trace", "A diagnostic."), (Assert.Single(continuation.FrameworkMessages).Code, Assert.Single(continuation.FrameworkMessages).Message));
+        Assert.Equal([Note], result.Messages);
+    }
+
+    [Fact]
+    public void HandOff_FromNeutralProcessResult_CanReturnALocalTypedResponse()
+    {
+        var result = ProcessStepHandlerResult.HandOff("billing", TargetResult(StepExecutionStatus.Completed), "SubmitStep", new Response("case-1"));
+
+        Assert.Equal("case-1", result.Response?.Value);
+        Assert.Equal("AnswerStep", result.HandOffContinuation?.RequiredStep);
+    }
+
+    [Fact]
+    public void HandOff_FromNeutralProcessResult_RejectsAMissingStep()
+    {
+        var exception = Assert.Throws<ArgumentException>(() => ProcessStepHandlerResult.HandOff("billing", TargetResult(StepExecutionStatus.Completed), "missing"));
+
+        Assert.Equal("targetStepName", exception.ParamName);
+    }
+
+    private static ProcessResult TargetResult(StepExecutionStatus status) => new()
+    {
+        ProcessId = Guid.NewGuid(),
+        State = ProcessExecutionState.AwaitingInformation,
+        RequiredStep = "AnswerStep",
+        RequiredInformationRequest = Request,
+        AvailableSteps = ["AnswerStep"],
+        Steps = [new ProcessStepResult
+        {
+            StepName = "SubmitStep",
+            CandidateStatus = StepCandidateStatus.Built,
+            IncludedInExecutionPlan = true,
+            ExecutionStatus = status,
+            BusinessMessages = [Note],
+            RuntimeMessages = [new StepProcessingMessage { Type = Diagnostic.Type, Code = Diagnostic.Code, Message = Diagnostic.Message }],
+        }],
+    };
+
     [Fact]
     public void SuccessWithResponse_IsATypedSuccess()
     {
