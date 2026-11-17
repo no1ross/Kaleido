@@ -13,6 +13,7 @@ public sealed class QueryableRegistryTests
         new(
             sourceRegistry,
             viewRegistry,
+            new KaleidoServiceOptions { ServiceName = "queryable", ServiceVersion = "1" },
             logger ?? NullLogger<QueryableRegistry>.Instance);
 
     [Fact]
@@ -184,16 +185,47 @@ public sealed class QueryableRegistryTests
                 [new QueryParameterMetadata { Name = "Ssn", Type = typeof(string), DataType = dataType, Classifications = phi }],
                 [new QueryOutputFieldMetadata { Name = "Name", Type = typeof(string), DataType = dataType, Classifications = phi }]));
 
-        var item = CreateSut(
-                [new QuerySourceRegistration(typeof(LocalSource), typeof(object), typeof(object), typeof(EmptyQueryViewParameters), metadata)],
-                [view])
-            .Registrations.Single();
+        var sut = CreateSut(
+            [new QuerySourceRegistration(typeof(LocalSource), typeof(object), typeof(object), typeof(EmptyQueryViewParameters), metadata)],
+            [view]);
+        var item = Assert.Single(sut.Registrations);
 
         Assert.Equal(phi, item.Fields.Single().Classifications);
         Assert.Equal(phi, item.Parameters.Single().Classifications);
         Assert.Equal(phi, item.OutputFields.Single().Classifications);
         Assert.Equal(phi, item.Views.Single().Parameters.Single().Classifications);
         Assert.Equal(phi, item.Views.Single().OutputFields.Single().Classifications);
+
+        var published = Assert.Single(sut.Published);
+        Assert.Equal(("queryable", "1", "LocalSource"), (published.ServiceName, published.ServiceVersion, published.Name));
+        Assert.Equal(phi, Assert.Single(published.Fields).Classifications);
+        Assert.Equal(phi, Assert.Single(published.Parameters).Classifications);
+        Assert.Equal(phi, Assert.Single(published.OutputFields).Classifications);
+        Assert.Equal(phi, Assert.Single(Assert.Single(published.Views).Parameters).Classifications);
+        Assert.Equal(phi, Assert.Single(Assert.Single(published.Views).OutputFields).Classifications);
+        Assert.Empty(published.Bindings.Http);
+    }
+
+    [Fact]
+    public void Published_UsesStableStringTokensWithoutClrTypes()
+    {
+        var dataType = new DataTypeDescriptor("string");
+        var metadata = new QuerySourceMetadata("LocalSource", "desc", "display", null, QuerySourceKind.Local, null,
+            [new FieldMetadata
+            {
+                Name = "Name", FieldType = typeof(string), DataType = dataType, IsFilterable = true,
+                FilterOperators = [FilterOperator.Equals, FilterOperator.NotEquals],
+                IsSearchable = true, MatchMode = MatchMode.StartsWith,
+            }], [], [], AuthorizationMetadata.Unspecified);
+        var registry = CreateSut(
+            [new QuerySourceRegistration(typeof(LocalSource), typeof(object), typeof(object), typeof(EmptyQueryViewParameters), metadata)], []);
+
+        var published = Assert.Single(registry.Published);
+        var field = Assert.Single(published.Fields);
+        Assert.Equal(["equals", "notEquals"], field.FilterOperators);
+        Assert.Equal("startsWith", field.MatchMode);
+        Assert.Equal("string", field.DataType.Type);
+        Assert.DoesNotContain(typeof(QueryableRegistryItem).GetProperties(), property => property.PropertyType == typeof(Type));
     }
 
     private static QuerySourceRegistration Source(

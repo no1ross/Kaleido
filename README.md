@@ -33,7 +33,7 @@ You implement the business behavior. Kaleido describes the capabilities, validat
 Applications use those capabilities through HTTP. A compatible AI agent connects through the **Model Context Protocol (MCP)** adapter and receives the tools, schemas, instructions, lookup details, and continuation guidance needed to interact with them. It does not need a separately programmed, product-specific workflow before connecting.
 
 | Building block | Purpose | Example |
-|---|---|---|
+| --- | --- | --- |
 | **Queryable** | Publish business information through typed, searchable sources and views. | Find a member or provider. |
 | **Process** | Execute business actions with validation, dependencies, availability rules, and resumable state. | Capture a member, select a provider, or submit a request. |
 | **Registry** | Describe the available capabilities, their inputs, constraints, relationships, and routes. | Supply discovery metadata for applications and MCP tools for AI. |
@@ -45,7 +45,7 @@ Applications use those capabilities through HTTP. A compatible AI agent connects
 **Kaleido is for** a contract-first process and query layer over the systems of record you already run: one definition of each business action and query, used the same way by screens, integrations and AI agents. It modernizes the experience over systems that cannot be replaced yet.
 
 | Kaleido is not | Instead |
-|---|---|
+| --- | --- |
 | A general workflow or orchestration engine | No timers, scheduled waits, sagas or compensation. A process moves when a consumer runs its next step; long-running orchestration stays with a dedicated engine. |
 | A system of record | Kaleido keeps the process state (progress, pending questions, who ran what). Business data stays in your systems, behind your handlers and sources. |
 | A decision maker | Your handlers decide; Kaleido applies the rules you declare ([ADR 0001](docs/decisions/0001-process-engine-not-decision-maker.md)). |
@@ -102,7 +102,7 @@ public sealed record CaptureMemberStep : IProcessStep
 ```
 
 | Declaration | Meaning |
-|---|---|
+| --- | --- |
 | `ProcessStep` | Describes the action and its purpose; the type's name is its identity. |
 | `AvailableAfter<ValidateMemberStep>` | Makes completion of validation an availability condition; it does not automatically execute this step or make it the required next step. |
 | `Required` and the property type | Declare required input and its shape. |
@@ -166,7 +166,10 @@ Reference the relevant projects, or matching preview packages from your availabl
 
 ### Publish a business service over HTTP
 
-Run a separate [control registry](src/Registry/Registry/README.md) and configure `Kaleido:BaseUrl`
+> [!NOTE]
+> The combined Process/Queryable/MCP example below is historical during #585 and is not yet a runnable recipe: Process ASP.NET mapping, the general in-memory provider and dynamic outbound clients still have their own migration units. For currently tested standalone hosts, see [local Queryable HTTP](src/Capabilities/Queryable/Kaleido.Queryable.Http.Server/README.md), the [in-memory Registry authority](src/Capabilities/Registry/Kaleido.Registry.Server/README.md), and [explicit Registry HTTP participation](src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md). `AddProcess()` and `AddQueryable()` alone do not make central network calls.
+
+Run a separate [control registry](src/Capabilities/Registry/Kaleido.Registry.Server/README.md) and configure `Kaleido:BaseUrl`
 with the gateway's address. Map `/registry` to the registry host and `/orders/1` to this service's
 host in the gateway's deployment configuration. The registry never holds instance addresses.
 
@@ -196,9 +199,7 @@ app.MapKaleidoHttp();
 app.Run();
 ```
 
-`AddEventing()` registers the outbox-backed writer and binds `Kaleido:Events`; `AddProcess()` registers steps and handlers, and `AddQueryable()` registers sources and views. `AddKaleido()` installs only the shared baseline. The HTTP service publishes versioned capability URLs to the central registry. `MapKaleidoHttp()` requires a central-registry source: business services register one with
-`AddControlRegistryClient()`, and a control-registry host has its own via `AddControlRegistry()`.
-`ServiceVersion` is required for service endpoints.
+`AddEventing()` registers the outbox-backed writer and binds `Kaleido:Events`; `AddProcess()` registers steps and handlers, and `AddQueryable()` registers sources and views. `AddKaleido()` installs only the shared baseline. The prior mandatory `AddControlRegistryClient()` and combined `MapKaleidoHttp()` recipe is superseded: local capability endpoints require no Registry client, and `AddRegistryHttpParticipation()` is an explicit opt-in for publishing installed HTTP bindings. Combined Hosting/Process HTTP mapping remains a later #585 unit. `ServiceVersion` is required for versioned service endpoints.
 
 `Assemblies` is required even for client-only hosts. A missing or empty list fails at `AddKaleido()` with `missing_assembly`; there is no implicit calling-assembly scan.
 
@@ -217,7 +218,7 @@ per-service client list:
 }
 ```
 
-Register central participation and the one outbound gateway client before adding MCP:
+The older MCP registration below is also a historical preview example while its outbound Process/Queryable client owners migrate under #585; it is not a current runnable host recipe. The Registry participant now opts in explicitly with `AddRegistryHttpParticipation()`, and MCP still requires a host-provided exchanged caller credential before it can invoke another service:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -241,16 +242,14 @@ app.MapKaleidoMcp("/mcp");
 app.Run();
 ```
 
-Connect an MCP-compatible agent to `/mcp`. `AddHttpClients()` sends to the gateway and resolves
-capability URLs from the host's hydrated central registry; `AddHttpClients()` rejects nonempty
-`Kaleido:Clients` entries at registration.
+In the historical example, `AddHttpClients()` resolved capability URLs from the host's hydrated Registry and rejected `Kaleido:Clients` entries. The processed shared `Kaleido.Http.Client` now supplies the named gateway/credential pipeline only; dynamic Process/Queryable/MCP consumption remains a later unit. An MCP host will connect agents to `/mcp` after that adapter is migrated.
 `AddMcp()` requires `Exchange`: the agent's user's token cannot be passed unchanged to another
 service. With authentication, add an `AddKaleidoClientHandler<THandler>()` that exchanges it
 ([which token a service sends](docs/guide/callers-and-correlation.md#which-token-a-service-sends),
 #574). This local-only example has no sign-in. Use `https` outside local development and configure
 the gateway's per-version destinations in the same deployment as each service.
 
-See the [HTTP client](src/Http/Http.Client/README.md) and [MCP adapter](src/Mcp/Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
+See the [shared HTTP client pipeline](src/Transports/Http/Kaleido.Http.Client/README.md), [Registry HTTP participant](src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md) and [MCP adapter](src/Mcp/Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
 
 ### Choose process storage
 
@@ -290,21 +289,22 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 ## Packages
 
 | Package | Purpose |
-|---|---|
+| --- | --- |
 | [`Kaleido`](src/Core/Kaleido) | Foundation: identity, metadata, correlation and builder |
 | [`Kaleido.Eventing`](src/Events/Kaleido.Eventing) | Generic event writer, redaction, outbox store and relay |
-| [`Kaleido.Process`](src/Capabilities/Process/Kaleido.Process) | Process steps, state, recovery and persistence seams |
+| [`Kaleido.Process`](src/Capabilities/Process/Kaleido.Process) / [`Kaleido.Process.Http`](src/Capabilities/Process/Kaleido.Process.Http) | Local Process runtime/Registry projection; versioned HTTP wire/bindings |
 | [`Kaleido.Queryable`](src/Capabilities/Queryable/Kaleido.Queryable) | Query source/view registration and execution |
 | [`Kaleido.Queryable.Http`](src/Capabilities/Queryable/Kaleido.Queryable.Http) | HTTP query request bodies, CLR-to-wire conversion and versioned query routes |
 | [`Kaleido.Queryable.Http.Server`](src/Capabilities/Queryable/Kaleido.Queryable.Http.Server) | ASP.NET source/view query endpoints over the local Queryable catalog |
 | [`Kaleido.Platform`](src/Platform) | Remaining unmigrated Registry, Process and Queryable published contracts |
 | [`Kaleido.Server`](src/Transports/Kaleido.Server) | Transport-neutral authorization mode and service defaults |
-| [`Kaleido.Client`](src/Client) | Neutral clients, registry participation and transport choice |
-| [`Kaleido.Http`](src/Transports/Http/Kaleido.Http) | Shared HTTP JSON, headers, error body and versioned route prefix |
-| [`Kaleido.Http.Server`](src/Transports/Http/Kaleido.Http.Server) | Generic ASP.NET correlation, authorization, JSON/body binding and exception filters |
-| [`Kaleido.Http.Client`](src/Http/Http.Client) | Registry-resolved calls over one gateway HTTP client |
-| [`Kaleido.Registry`](src/Registry/Registry) | Control registry, store contract, leases, views and HybridCache |
-| [`Kaleido.Registry.Http`](src/Registry/Registry.Http) | Control-registry HTTP endpoints |
+| [`src/Client`](src/Client) | Unmigrated remote Process/Queryable client contracts (#585) |
+| [`Kaleido.Http`](src/Transports/Http/Kaleido.Http) | Shared HTTP JSON, headers, errors and route prefix |
+| [`Kaleido.Http.Server`](src/Transports/Http/Kaleido.Http.Server) | Generic ASP.NET filters and caller handling |
+| [`Kaleido.Http.Client`](src/Transports/Http/Kaleido.Http.Client) | Shared named gateway HTTP pipeline and caller-credential guard |
+| [`Kaleido.Registry`](src/Capabilities/Registry/Kaleido.Registry) | Core-only Registry descriptions, bindings and read contracts |
+| [`Kaleido.Registry.Server`](src/Capabilities/Registry/Kaleido.Registry.Server) / [`Kaleido.Registry.Client`](src/Capabilities/Registry/Kaleido.Registry.Client) | Separate central authority and explicit participant |
+| [`Kaleido.Registry.Http`](src/Capabilities/Registry/Kaleido.Registry.Http) / [`Server`](src/Capabilities/Registry/Kaleido.Registry.Http.Server) / [`Client`](src/Capabilities/Registry/Kaleido.Registry.Http.Client) | Fixed HTTP URLs, listener and participant adapter |
 | [`Kaleido.Mcp`](src/Mcp/Mcp) | Caller-visible registry-derived MCP tools and guided continuation |
 | [`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite) | Reference process, outbox, idempotency and registry stores |
 | [`Kaleido.Observability.OpenTelemetry`](src/Observability/Observability.OpenTelemetry) | Opt-in telemetry export |
@@ -352,7 +352,7 @@ dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name k
 - [Process authoring: steps, handlers, lookups](docs/architecture/capabilities/process-authoring.md) and [Queryable authoring: sources and views](docs/architecture/capabilities/queryable-authoring.md)
 - [Core runtime](src/Core/Kaleido/README.md)
 - [HTTP transport](src/Transports/Http/Kaleido.Http.Server/README.md) and [contracts](src/Platform/README.md)
-- [HTTP clients](src/Http/Http.Client/README.md)
+- [Shared HTTP client pipeline](src/Transports/Http/Kaleido.Http.Client/README.md) and [Registry HTTP client](src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md)
 - [MCP adapter](src/Mcp/Mcp/README.md)
 - [Information requests](docs/architecture/capabilities/information-requests.md)
 - [Authorization](docs/architecture/authorization.md)

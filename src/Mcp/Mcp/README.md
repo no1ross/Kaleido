@@ -326,7 +326,7 @@ error, as the runtimes treat a refused request. A failure of the adapter or the 
 `error`, and its span is an error. The `kaleido.error.code` tag is always one of the codes above
 (`mcp_internal_error` for anything else), never a downstream service's own code.
 
-**Retries.** Tool calls go through the Kaleido clients: their resilience pipeline retries transient failures of one call with the same `Idempotency-Key`, so the service answers a retry it has already completed with the stored answer instead of running the step twice ([`Kaleido.Http.Client`](../../Http/Http.Client/README.md#resilience)). When the *agent* calls a tool again (after a timeout, a lost answer, a restart), that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
+**Retries.** Tool calls previously used the Process HTTP client's keyed retry policy; its dynamic outbound adapter remains in the #585 migration, while the shared [`Kaleido.Http.Client`](../../Transports/Http/Kaleido.Http.Client/README.md#resilience) currently retries safe GET/HEAD reads only. Process-specific `Idempotency-Key` retries must be restored in their own client owner before relying on this behavior. When the *agent* calls a tool again (after a timeout, a lost answer, a restart), that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
 - a non-`[Repeatable]` step continuing a process, with the same inputs for the same process: same key, so the stored answer comes back (within the service's idempotency retention);
 - answers to one information request: same key for the same answers;
 - a `[Repeatable]` step, or an initial step starting a new process (no `processId`): a new key each time, because two such calls are two operations. Here a repeated call runs again; read the process (`get_process_state`) before repeating one whose outcome is unknown.
@@ -444,7 +444,7 @@ its package and gateway configuration move to this layout with its next framewor
 - Every tool call is made **for the agent's user**: it carries the token the host's handler exchanged
   for that user (`Kaleido:OnBehalfOfCalls = Exchange`, required), and Kaleido guarantees it is never the
   agent's token and never the host's own service credential; an anonymous user stays anonymous
-  ([`Kaleido.Http.Client`](../../Http/Http.Client/README.md#what-a-call-carries-the-callers-token-or-the-services-own-574), #574).
+  ([`Kaleido.Http.Client`](../../Transports/Http/Kaleido.Http.Client/README.md#what-a-call-carries-the-callers-token-or-the-services-own-574), #574).
   The services authorize the user, not the adapter.
 - Questions and lookups go to the user through forms where the client supports them; the model
   never answers for the user.

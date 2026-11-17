@@ -1,0 +1,20 @@
+# Kaleido.Http.Client
+
+This is the shared **outbound HTTP-client pipeline** for Registry, Process and Queryable adapters. It is lower than those adapters and depends on the foundation and shared [`Kaleido.Http`](../Kaleido.Http/README.md) wire only—not Platform, the central Registry authority, ASP.NET, or a particular capability. `IHttpClientFactory` is the existing factory: each adapter registers a named gateway client, then builds its own fixed Registry request or dynamically resolved capability request. There is no new generic client factory or request hierarchy here.
+
+## Resilience
+
+The shared named-client pipeline bounds a whole call and each attempt, retries transient failures only on GET/HEAD, and uses a circuit breaker. Configure its `Kaleido:Resilience` options on the gateway; Process-specific idempotent execution retry stays with Process's outbound adapter.
+
+## What a call carries: the caller's token, or the service's own (#574)
+
+A per-request HTTP extension stamps the Core correlation context's end-to-end request ID, origin, origin tool and process ID before an adapter sends its request. It sanitizes header values and never forwards inbound per-hop calling-processor/step tags. It reads the adapter's scoped context at send time, rather than capturing a scoped accessor in a pooled `IHttpClientFactory` handler; Process-specific forwarding and calling-step tags remain with the Process outbound adapter.
+
+`AddKaleidoHttpClientPipeline(options?)` binds `KaleidoClientOptions` (`Kaleido:BaseUrl`, `Kaleido:Resilience`, `Kaleido:OnBehalfOfCalls`) with configuration overriding code, validates the gateway address and registers the shared filter. A named client is enrolled explicitly through the package's internal registration seam; other host `HttpClient`s are untouched. `AddKaleidoClientHandler<THandler>()` adds a host-owned credential handler to enrolled clients in registration order. The innermost `KaleidoOnBehalfOfGuard` enforces the final token policy after those handlers. A host's handler reads `KaleidoCallContext.Of(request)` to learn whether the request is the service's own or is on behalf of its authenticated caller. Never log `CallerAuthorization` or copy a caller token into a service-own request.
+
+- **`ServiceOwn`**: shared Registry refresh, registration and heartbeat use whatever app-only credential the host handler supplies.
+- **`OnBehalfOfCaller`**: caller-filtered discovery or a later capability call uses the caller's credential under explicit `Forward` (same audience) or a host-provided exchanged credential under `Exchange`. Exchange refuses an absent/unchanged inbound token before sending; MCP hosts require it. Anonymous caller requests carry no authorization.
+
+The shared resilience pipeline bounds attempts and retries transient failures on GET/HEAD; it does not contain Process's `Idempotency-Key` or `409 Retry-After` execution policy. The latter remains with Process's outbound adapter when that owner is migrated. `KaleidoHttpClientException` and its stable error codes retain service errors across HTTP failures; Registry-specific failures use `KaleidoRegistryClientException` in [`Kaleido.Registry.Client`](../../../Capabilities/Registry/Kaleido.Registry.Client/README.md).
+
+`Kaleido.Registry.Http.Client` owns the known `/registry` endpoints, conditional ETags and Registry participation. Process/Queryable service-name factories and dynamic published-route resolution are **not** implemented here; their older source remains parked under #585 until their capability client migrations. Local-only services never need this pipeline.

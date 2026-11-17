@@ -32,13 +32,13 @@ while its processes still need to run. The registry publishes logical routes and
 instance addresses ([ADR 0040](../decisions/0040-central-registry-only-and-versioned-routes.md)).
 
 | Concern | How it stays correct |
-|---|---|
+| --- | --- |
 | Two calls for one process on two instances | the state is saved conditionally on its version: the second gets **409** `pro_process_conflict` and can retry on the new state |
 | A retried call on another instance | the idempotency record is in the shared store, so the retry is answered from it |
 | Every instance runs the event relay | events are **claimed with a lease**: one instance publishes each; a crashed instance's claims expire and are taken over (at least once) |
 | In-memory stores | each instance sees only its own processes and events: **not** for several instances |
 | An MCP form (a guided lookup, an answers or confirmation form) or an `answersToken` answered on another instance | the state is protected with ASP.NET Data Protection: the instances must share one key ring ([below](#mcp-on-several-instances-one-key-ring)), or the form is refused and the user searches again |
-| Registry on several nodes | the store is authoritative; each node's HybridCache keeps a short-lived merged view and revisioned capabilities. `IDistributedCache` is optional on the registry host, with a store fallback if it fails ([registry cache](../../src/Registry/Registry/README.md#cache-kaleidoregistrycache)) |
+| Registry on several nodes | the store is authoritative; each node's HybridCache keeps a short-lived merged view and revisioned capabilities. `IDistributedCache` is optional on the registry host, with a store fallback if it fails ([registry cache](../../src/Capabilities/Registry/Kaleido.Registry.Server/README.md#cache-kaleidoregistrycache)) |
 
 ### MCP on several instances: one key ring
 
@@ -76,9 +76,9 @@ The unmigrated SQLite reference provider previously had the host create its sche
 ## Health
 
 | Check | Registered by |
-|---|---|
+| --- | --- |
 | The outbox (`kaleido-outbox`): a relay was seen draining it within `Kaleido:Events:RelaySeenWithin`, and no backlog (oldest due event within `BacklogMaxAge`, at most `BacklogMaxCount` due); `Degraded` otherwise (`OutboxHealthFailureStatus`) | `AddKaleido()`, every service ([Events and the outbox](events-and-outbox.md#is-a-relay-running)) |
-| Initial registration and central read (`kaleido-registration`) | `AddControlRegistryClient()`; stays ready after its first successful registration/read ([client README](../../src/Http/Http.Client/README.md#taking-part-in-the-control-registry)) |
+| Initial registration and central read (`kaleido-registration`) | `AddRegistryHttpParticipation()`; publishers register then read, reader-only hosts read without publishing ([participant README](../../src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md#taking-part-in-the-control-registry)) |
 | Registry store (`kaleido-registry-store`) and expected versions (`kaleido-registry-completeness`) | `AddControlRegistry()` on the registry host |
 | Your database | you (the SQLite provider registers none) |
 
@@ -111,7 +111,7 @@ kaleido.AddOpenTelemetry();   // export target under Kaleido:OpenTelemetry in co
 ```
 
 | Meter | Watch |
-|---|---|
+| --- | --- |
 | `Kaleido.Processor` | `kaleido.processor.execution_failures`, `kaleido.processor.step_failures`, `kaleido.processor.execution.duration` |
 | `Kaleido.Queryable` | `kaleido.queryable.execution_failures`, `kaleido.queryable.execution.duration` |
 | `Kaleido.Events` | `kaleido.events.failed` (publishing retries), `kaleido.events.parked` (gave up: needs a person), `kaleido.events.enqueue_failures` (events lost) |

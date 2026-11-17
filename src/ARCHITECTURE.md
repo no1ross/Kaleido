@@ -84,13 +84,13 @@ The not-yet-processed OpenTelemetry provider supplies `AddOpenTelemetry()` or cu
 
 - Request: `ExecuteProcessRequest`, `ExecuteStepRequest<TStep>`
 - Response: `ProcessExecutionResponse`, `ProcessExecutionStepResponse`, `StepExecutionResponse`, `StepExecutionResponse<TResult>`, `ProcessStateResponse`
-- Reference types: `ProcessRequiredStep`, `ProcessStepSummary`, `ProcessorRegistryResponse`, `ProcessStepResponse`
+- Registry discovery: `ProcessRegistryItem`, `ProcessStepSummary`, `ProcessStepResponse`; runtime continuations still use `ProcessRequiredStep`
 
 #### Queryable contracts
 
 - Request: `QueryApiRequest`, `QueryApiRequest<TParameters>` — accepts `QueryApiBody` (transport shape)
 - Transport body: `QueryApiBody`, `QueryApiFilterNode`, `QueryApiFilterCondition`, `QueryApiFilterGroup`, `QueryApiSort`, `QueryApiPage` — string enums, raw `JsonElement` filter values
-- Response: `QueryableSourceResponse` (carries `ServiceName`, `ServiceVersion` and `QueryUrl`), `QueryableFieldMetadata`, `QueryableViewResponse`; errors use the shared `KaleidoErrorResponse` in `Kaleido.Platform`.
+- Registry publication: `QueryableRegistryItem` carries `ServiceName`, `ServiceVersion`, portable `QueryableRegistryField`/`QueryableRegistryViewItem` descriptions and nested transport `Bindings`; errors use `KaleidoErrorResponse` from `Kaleido.Http`. HTTP query responses use the Queryable-owned result model.
 - `QueryApiBodyExtensions.ToApiBody()` — converts runtime `QueryBody` → `QueryApiBody` for core callers forwarding over HTTP (e.g. delegated query sources)
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` with `JsonStringEnumConverter` for all Kaleido HTTP serialization
 
@@ -250,4 +250,4 @@ Metadata is derived from CLR types at startup:
 - `TypeDescriber` (internal) converts CLR property types to `DataTypeDescriptor` values
 - `ConstraintMapper` (internal) converts `ValidationAttribute` usage to `ConstraintContract` values
 - Both are used by the Queryable and Process runtimes when building discovery metadata for HTTP endpoints
-- The runtime registry descriptors (`DataTypeDescriptor`, `ConstraintContract`, the `Kaleido.Process.Registry` and `Kaleido.Queryable.Metadata` types) are internal. The published contracts in `Kaleido.Platform` have their own types (`DataTypeMetadata`, `ConstraintMetadata`, `ProcessFieldLookup`, `QueryablePagingMetadata`, …), and `Kaleido.Http.Server` maps to them (`RegistryMetadataMapper`, `ProcessorResponseFactory`, `QueryableRegistryItemExtensions`), so a change to a core descriptor is never a wire change by accident (#356)
+- The runtime registry descriptors (`DataTypeDescriptor`, `ConstraintContract`, the `Kaleido.Process.Registry` and `Kaleido.Queryable.Metadata` types) remain private. Generic Process and Queryable each project once into Registry-owned `DataTypeMetadata`, `ConstraintMetadata`, `ProcessFieldLookup` and `QueryableRegistryPaging`; installed HTTP adapters add only callable operation bindings. `Kaleido.Registry.Server` never interprets CLR types, and query execution still uses its local catalog.

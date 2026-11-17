@@ -1,0 +1,3 @@
+# Kaleido.Registry.Http
+
+This package owns only the Registry's **known HTTP route contract**: the `/registry` group, registration/heartbeat/deregistration templates and fixed URLs for Registry reads. It is shared by [`Kaleido.Registry.Http.Server`](../Kaleido.Registry.Http.Server/README.md) and [`Kaleido.Registry.Http.Client`](../Kaleido.Registry.Http.Client/README.md) through internal friend access so neither endpoint mapper nor client independently invents Registry URLs. It owns no ASP.NET listener, persistence, participant lifecycle, capability descriptions or dynamic Process/Queryable routes.

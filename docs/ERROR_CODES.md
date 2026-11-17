@@ -7,7 +7,7 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 ## Exception types
 
 | Type | Namespace | HTTP result | Code set |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `KaleidoValidationException` | `Kaleido.Exceptions` | 400 Bad Request, or a failed Process step outcome | `QueryableErrorCodes` (`qry_*`), `ProcessorErrorCodes` (`pro_*`), or a handler-supplied domain code |
 | `KaleidoConfigurationException` | `Kaleido.Exceptions` | 500 Internal Server Error | the owning area's codes: `ConfigurationErrorCodes` (core), `QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes`, `McpErrorCodes`, `OpenTelemetryErrorCodes` |
 | `KaleidoFrameworkException` | `Kaleido.Exceptions` | 500 Internal Server Error | `FrameworkErrorCodes` |
@@ -29,7 +29,7 @@ HTTP middleware exposes a validation exception's `Code` and `Message` in a 400 e
 One Queryable-owned catalog (`Kaleido.Queryable`), all prefixed `qry_`. Startup registration codes are raised as `KaleidoConfigurationException` at startup (they stop the host and never reach a response); request-validation codes as `KaleidoValidationException` (400 body).
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `MissingAttribute` | `qry_missing_attribute` | Query source or view missing `[QuerySource]`/`[QueryView]`, or with an empty `DisplayName`/`Description` (startup) |
 | `MissingSource` | `qry_missing_source` | Query view references a type that is not a registered local query source (startup) |
 | `DuplicateRegistration` | `qry_duplicate_registration` | Two sources share a type name, or two views of one source share a type name (startup) |
@@ -64,7 +64,7 @@ One Processor-owned catalog supplies `pro_*` strings to startup exceptions, plan
 Both message collections are present on Process execution responses. `BusinessMessages` contains handler-authored messages; `FrameworkMessages` is empty unless the HTTP host sets `AddHttp(new() { IncludeFrameworkMessages = true })`. A different transport may encode an empty collection differently, but must preserve the same meaning.
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `MissingAttribute` | `pro_missing_attribute` | `IProcessStep` type missing `[ProcessStep]`, or `[ProcessStep]` with an empty `DisplayName`/`Description`, at startup |
 | `MissingHandler` | `pro_missing_handler` | Step has no registered handler |
 | `InvalidHandler` | `pro_invalid_handler` | Handler signature is invalid |
@@ -114,7 +114,7 @@ Information-request validation is structural only; see [`INFORMATION_REQUESTS.md
 Core service-setup and authorization-settings codes. Area startup codes live with their area (`QueryableErrorCodes`, `ProcessorErrorCodes`, `HttpClientErrorCodes`, `SqliteErrorCodes`).
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `InvalidServiceName` | `invalid_service_name` | `ServiceName` is null, empty, or invalid |
 | `InvalidServiceVersion` | `invalid_service_version` | `ServiceVersion` is missing or empty, longer than `MaxServiceVersionLength`, or not an ASCII letter or digit followed by letters, digits, `.`, `-` and `_` (#552) |
 | `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
@@ -137,7 +137,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 These indicate a framework bug or broken DI wiring, not a user error.
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `ReflectionError` | `reflection_error` | Required method or property not found via reflection |
 | `TypeMismatch` | `type_mismatch` | Resolved type does not match the expected type |
 | `MissingRegistration` | `missing_registration` | Required entry not found in an internal registry |
@@ -151,7 +151,7 @@ These indicate a framework bug or broken DI wiring, not a user error.
 Declared in the shared HTTP wire project `Kaleido.Http` alongside `KaleidoErrorResponse` (current ownership under [ADR 0041](./decisions/0041-capability-owned-project-boundaries.md); earlier placement in ADR 0039 is historical).
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `ArgumentError` | `argument_error` | 400 (415 for a non-JSON content type): a body Kaleido cannot read - malformed JSON, a value that does not fit its type, a `required` member left out (on `POST /{service}/{version}/processes/execute` the message names the step and JSON path, and nothing runs), a malformed correlation header such as a non-GUID `X-Kaleido-Process-Id` |
 | `FrameworkError` | `framework_error` | 500 for an unexpected failure; the message is generic and never carries the exception's detail |
 
@@ -162,7 +162,7 @@ Declared in the shared HTTP wire project `Kaleido.Http` alongside `KaleidoErrorR
 Every HTTP client code is prefixed `httpclient_`; startup validates the one gateway URL and shared client settings.
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `EmptyResponse` | `httpclient_empty_response` | Remote request succeeded but returned no payload |
 | `RequestFailed` | `httpclient_request_failed` | Remote request failed with a non-success HTTP status (including a step, source or view the service does not have, 404, or the caller may not use, 403); the service's own errors are in `Errors` when its body carried any, whatever the status |
 | `ValidationFailed` | `httpclient_validation_failed` | Remote request failed with structured validation errors (400 with a Kaleido error body) |
@@ -177,7 +177,7 @@ Every HTTP client code is prefixed `httpclient_`; startup validates the one gate
 ## `RegistryClientErrorCodes` — neutral central-registry client diagnostics
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `RequestFailed` | `registryclient_request_failed` | A registry call failed; the transport status is present if it answered |
 | `EmptyResponse` | `registryclient_empty_response` | The central registry answered successfully without a required document |
 | `InvalidResponse` | `registryclient_invalid_response` | The central registry answered with an invalid document |
@@ -190,7 +190,7 @@ Every HTTP client code is prefixed `httpclient_`; startup validates the one gate
 The reference provider owns its own code; core knows nothing about it.
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `InvalidConnectionString` | `invalid_connection_string` | A SQLite store's connection string cannot be parsed at registration |
 | `ConnectionStringMismatch` | `connection_string_mismatch` | `AddSqliteContextStore`, `AddSqliteOutboxStore` and `AddSqliteIdempotencyStore` were given different connection strings; they share one database |
 
@@ -199,17 +199,17 @@ The reference provider owns its own code; core knows nothing about it.
 ## `OpenTelemetryErrorCodes` - OpenTelemetry provider (`Kaleido.Observability.OpenTelemetry`)
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `InvalidOptions` | `otel_invalid_options` | A `Kaleido:OpenTelemetry` setting cannot be used (or read): a protocol other than `grpc`/`http/protobuf`, or a malformed `key=value` list (startup, `KaleidoConfigurationException`) |
 
 ---
 
-## `RegistryErrorCodes` - control registry (`Kaleido.Platform`)
+## `RegistryErrorCodes` - control registry (`Kaleido.Registry`)
 
-Answered by the control registry's HTTP endpoints (`Kaleido.Registry.Http`) in a `KaleidoErrorResponse` (#553), and shared so the participants that register with it and read it recognize them; see [the registry's README](../src/Registry/Registry/README.md).
+Answered by the central HTTP listener (`Kaleido.Registry.Http.Server`) in a `KaleidoErrorResponse` (#553), and shared so participants recognize them; see [the authority README](../src/Capabilities/Registry/Kaleido.Registry.Server/README.md).
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `RegistrantNotAllowed` | `registry_registrant_not_allowed` | 403: the caller is not a service application (`Kaleido:Registry:RegistrantPolicy`), or may not register, renew or remove an instance of that service (no app role naming it, `Kaleido:Registry:RegistrantRolePrefix`, and not in `Kaleido:Registry:Registrants`) |
 | `ReaderNotAllowed` | `registry_reader_not_allowed` | 403: only Kaleido hosts (`Kaleido:Registry:ReaderPolicy`) read the documents for keeping a copy fresh (`/registry/capabilities`, `/registry/availability`) and the status (`/registry/status`); anyone else reads `GET /registry`, filtered for them |
 | `InstanceUnknown` | `registry_instance_unknown` | 404: the registry does not know the instance (it restarted, failed over or removed it); the instance registers again |
@@ -220,7 +220,7 @@ Answered by the control registry's HTTP endpoints (`Kaleido.Registry.Http`) in a
 Startup codes surface through `KaleidoConfigurationException`. At request time a tool-call problem is a tool result with `isError: true` and one of these codes, never an HTTP or protocol error; what the agent does with each is in [the adapter's README](../src/Mcp/Mcp/README.md).
 
 | Constant | Code | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `MissingHttp` | `mcp_missing_http` | `AddMcp()` needs `AddHttp()` on the same builder (startup) |
 | `MissingClients` | `mcp_missing_clients` | `AddMcp()` needs `AddHttpClients()` and its one gateway client at `Kaleido:BaseUrl` (startup) |
 | `OnBehalfOfCallsNotExchanged` | `mcp_on_behalf_of_calls_not_exchanged` | `AddMcp()` requires `Kaleido:OnBehalfOfCalls = Exchange`: the agent's user's token is issued for the MCP server and must not be passed through; the host exchanges it with its own handler (startup, #574) |

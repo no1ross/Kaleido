@@ -1,0 +1,7 @@
+# Kaleido.Process.Http
+
+This Process-owned HTTP wire project builds versioned logical Process URLs from the shared [`Kaleido.Http`](../../../Transports/Http/Kaleido.Http/README.md) route prefix. It depends on generic [`Kaleido.Process`](../Kaleido.Process/README.md) and lower Registry contracts, not ASP.NET or the central Registry authority/client. The Process ASP.NET endpoint mapper remains in the separate, not-yet-gated `Kaleido.Process.Http.Server` owner under #585.
+
+Generic Process projects a CLR-rich local catalog into Registry-owned `ProcessRegistryItem` descriptions with **no** HTTP binding. `AddProcessHttpBindings()` explicitly installs this transport's contribution: POST execute/step operations and a GET process-state template beneath `/{service}/{version}/processes`. It changes only nested HTTP `Bindings`, not names, fields, constraints, authorization or other descriptive metadata. Register it only when this host actually maps Process HTTP endpoints; local Process execution does not depend on Registry participation.
+
+The source/view equivalents are owned independently by [`Kaleido.Queryable.Http`](../../Queryable/Kaleido.Queryable.Http/README.md). The Process-specific ASP.NET route templates/endpoint names, idempotent execution retry and dynamic outbound client migration remain with their owning higher projects, not this wire project.

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Transport-neutral public Registry descriptions, registration, bindings and read models.</Description>
+		<PackageTags>kaleido;registry;contracts;discovery</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\Core\Kaleido\Kaleido.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Kaleido" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Capability publishers, participant clients and listeners share internal publication and source seams. -->
+		<InternalsVisibleTo Include="Kaleido.Process" />
+		<InternalsVisibleTo Include="Kaleido.Process.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Queryable" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Process.Http" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Client" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Server" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Provider.SQLite.UnitTests" />
+	</ItemGroup>
+</Project>

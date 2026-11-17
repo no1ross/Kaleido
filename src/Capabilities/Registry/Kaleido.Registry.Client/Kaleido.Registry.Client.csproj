@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Transport-neutral Registry participation, hydration, leases and selection for service hosts.</Description>
+		<PackageTags>kaleido;registry;client;participation</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Registry\Kaleido.Registry.csproj" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Logging" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Registry" />
+	</ItemGroup>
+</Project>

@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Shared gateway HTTP client configuration, caller credential policy and request pipeline for Registry, Process and Queryable adapters.</Description>
+		<PackageTags>kaleido;http;client;httpclient</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+		<PackageReference Include="Microsoft.Extensions.Http" />
+		<PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\Core\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\Kaleido.Http\Kaleido.Http.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Configuration" />
+		<Using Include="Kaleido.Http.Client.Pipeline" />
+		<Using Include="Kaleido.Http.Client.Resilience" />
+		<Using Include="Kaleido.Http.Client.Transport" />
+		<Using Include="Kaleido.Observability" />
+	</ItemGroup>
+	<ItemGroup>
+		<!-- The MCP adapter calls services as the caller, and for a process, through these clients' forwarding scopes, which are not public API. -->
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Client" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
+	</ItemGroup>
+</Project>

@@ -104,6 +104,7 @@ public static class ProcessServiceCollectionExtensions
                 processOptions,
                 sp.GetRequiredService<IProcessorStepRegistry>(),
                 sp.GetRequiredService<ILogger<ProcessorRegistry>>()));
+        builder.Services.AddSingleton<IKaleidoLocalCapabilities>(sp => (IKaleidoLocalCapabilities)sp.GetRequiredService<IProcessorRegistry>());
     }
 
     private static void RegisterFrameworkServices(IServiceCollection services)

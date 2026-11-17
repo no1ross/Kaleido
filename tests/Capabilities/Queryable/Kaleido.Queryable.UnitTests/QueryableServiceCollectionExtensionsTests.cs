@@ -90,6 +90,9 @@ public sealed class QueryableServiceCollectionExtensionsTests : Kaleido.UnitTest
         Assert.Same(
             provider.GetRequiredService<QueryViewRegistry>(),
             views);
+        var local = Assert.Single(provider.GetServices<IKaleidoLocalCapabilities>());
+        Assert.Same(provider.GetRequiredService<IQueryableRegistry>(), local);
+        Assert.Equal("test-service", Assert.Single(local.Capabilities().Queryables).ServiceName);
     }
 
     [Fact]

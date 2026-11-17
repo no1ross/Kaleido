@@ -39,7 +39,7 @@ flowchart LR
 ## Reading order
 
 | Page | What you learn |
-|---|---|
+| --- | --- |
 | [Getting started](getting-started.md) | A service from zero: a query source, two steps, HTTP, then MCP |
 | [Settings example](examples/kaleido-settings.jsonc) | Complete Core and Queryable JSON settings, with code-only inputs noted; add other owners as their projects are processed |
 | [Processes](processes.md) | Steps, handlers, relationships, outcomes, changing a step |

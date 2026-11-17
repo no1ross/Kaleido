@@ -7,7 +7,7 @@ This unmigrated shared model still contains central Registry, Process and Querya
 See also:
 - [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
 - [`../Capabilities/Process/Kaleido.Process.Http.Server/README.md`](../Capabilities/Process/Kaleido.Process.Http.Server/README.md)
-- [`../Http/Http.Client/README.md`](../Http/Http.Client/README.md)
+- [`../Transports/Http/Kaleido.Http.Client/README.md`](../Transports/Http/Kaleido.Http.Client/README.md)
 
 ---
 
@@ -28,18 +28,11 @@ See also:
 
 For `POST /{service}/{version}/processes/steps/{step}`, the JSON request is an `ExecuteStepRequest<TStep>` envelope such as `{"processStep":{"field":"value"}}`. The route selects the step, and an existing process id is supplied in the optional `X-Kaleido-Process-Id` header, not the body. Omit it to start a new process; an id that does not exist is rejected (`pro_process_not_found`) unless the call is a handoff from another processor (ADR 0009). See the [per-step HTTP contract](../Capabilities/Process/Kaleido.Process.Http.Server/README.md#per-step-process-execution-contract) for the typed and untyped response shapes.
 
-### Queryable contracts
-- Query request envelopes, `QueryApiBody` and its filter/sort/page wire records now belong to [`Kaleido.Queryable.Http`](../Capabilities/Queryable/Kaleido.Queryable.Http/README.md), not this remaining Registry response model.
-- `QueryableSourceResponse` — a query source in the registry response. It carries:
-  - `Name` (what a client passes to address it), `ServiceName`, `ServiceVersion` and the published `QueryUrl`;
-  - `DisplayName`, `Description`, `Pageable` and `Authorization`;
-  - `Fields` (query rules), `Parameters`, `OutputFields` and `Views`.
-
-  Every source is presented the same way; how the service fulfils it is not part of the contract. `QueryUrl` is null only in a caller-filtered registry, when the caller may use some of the source's views but not the source itself.
-- `QueryableViewResponse` — a view of a source (`QueryUrl`, `Parameters`, `OutputFields`, paging)
-- `QueryableFieldMetadata` / `QueryableQueryParameter` / `QueryableQueryProperty` / `QueryablePagingMetadata` — a source's query fields, a source's or view's parameters and result fields, and its paging
-- Errors use the shared `KaleidoErrorResponse` / `KaleidoError` (with the shared codes in `KaleidoErrorCodes`), now owned by `Kaleido.Http`: `{ "errors": [{ "code", "message" }] }`; query validation failures are 400 with `qry_*` codes ([`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md))
-- `QueryApiBodyExtensions.ToApiBody()` now belongs to `Kaleido.Queryable.Http`; it converts a runtime `QueryBody` to the HTTP request shape for an outbound Queryable caller.
+### Queryable contracts already rehomed
+- HTTP query request envelopes, `QueryApiBody` and filter/sort/page wire records belong to [`Kaleido.Queryable.Http`](../Capabilities/Queryable/Kaleido.Queryable.Http/README.md).
+- The published query source/view descriptions are Registry-owned [`QueryableRegistryItem`](../Capabilities/Registry/Kaleido.Registry/README.md) and `QueryableRegistryViewItem`; their fields, parameters, outputs and paging are Registry metadata with stable string tokens. Queryable projects its own local catalog once; HTTP adds nested `Bindings.Http` paths only when mapped. Caller filtering removes forbidden source bindings while retaining visible views; it does not change the local runtime catalog.
+- Structured errors use shared `KaleidoErrorResponse` / `KaleidoError` in `Kaleido.Http`; query validation returns 400 with `qry_*` codes ([`docs/ERROR_CODES.md`](../../docs/ERROR_CODES.md)).
+- `QueryApiBodyExtensions.ToApiBody()` belongs to `Kaleido.Queryable.Http`; it adapts a CLR `QueryBody` for outbound HTTP. This remaining Platform package is migration source for other contracts, not the owner of central Registry publication.
 
 ### JSON enum values
 

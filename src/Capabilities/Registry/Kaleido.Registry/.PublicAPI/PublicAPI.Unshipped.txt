@@ -1,0 +1,642 @@
+#nullable enable
+abstract Kaleido.Registry.ProcessStepContract.<Clone>$() -> Kaleido.Registry.ProcessStepContract!
+const Kaleido.Registry.RegistryErrorCodes.InstanceUnknown = "registry_instance_unknown" -> string!
+const Kaleido.Registry.RegistryErrorCodes.InvalidRegistration = "registry_invalid_registration" -> string!
+const Kaleido.Registry.RegistryErrorCodes.ReaderNotAllowed = "registry_reader_not_allowed" -> string!
+const Kaleido.Registry.RegistryErrorCodes.RegistrantNotAllowed = "registry_registrant_not_allowed" -> string!
+const Kaleido.Registry.RegistryInstanceStateNames.NotReady = "notReady" -> string!
+const Kaleido.Registry.RegistryInstanceStateNames.Ready = "ready" -> string!
+const Kaleido.Registry.RegistryInstanceStateNames.Unknown = "unknown" -> string!
+const Kaleido.Registry.RegistryStatusNames.Available = "available" -> string!
+const Kaleido.Registry.RegistryStatusNames.Degraded = "degraded" -> string!
+const Kaleido.Registry.RegistryStatusNames.NotReported = "notReported" -> string!
+const Kaleido.Registry.RegistryStatusNames.Unavailable = "unavailable" -> string!
+const Kaleido.Registry.RegistryStatusNames.Unknown = "unknown" -> string!
+Kaleido.Registry.ConstraintMetadata
+Kaleido.Registry.ConstraintMetadata.<Clone>$() -> Kaleido.Registry.ConstraintMetadata!
+Kaleido.Registry.ConstraintMetadata.ConstraintMetadata() -> void
+Kaleido.Registry.ConstraintMetadata.Equals(Kaleido.Registry.ConstraintMetadata? other) -> bool
+Kaleido.Registry.ConstraintMetadata.Parameters.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ConstraintParameterMetadata!>!
+Kaleido.Registry.ConstraintMetadata.Parameters.init -> void
+Kaleido.Registry.ConstraintMetadata.Type.get -> string!
+Kaleido.Registry.ConstraintMetadata.Type.init -> void
+Kaleido.Registry.ConstraintParameterMetadata
+Kaleido.Registry.ConstraintParameterMetadata.<Clone>$() -> Kaleido.Registry.ConstraintParameterMetadata!
+Kaleido.Registry.ConstraintParameterMetadata.ConstraintParameterMetadata() -> void
+Kaleido.Registry.ConstraintParameterMetadata.Equals(Kaleido.Registry.ConstraintParameterMetadata? other) -> bool
+Kaleido.Registry.ConstraintParameterMetadata.Name.get -> string!
+Kaleido.Registry.ConstraintParameterMetadata.Name.init -> void
+Kaleido.Registry.ConstraintParameterMetadata.Value.get -> object?
+Kaleido.Registry.ConstraintParameterMetadata.Value.init -> void
+Kaleido.Registry.DataTypeMetadata
+Kaleido.Registry.DataTypeMetadata.<Clone>$() -> Kaleido.Registry.DataTypeMetadata!
+Kaleido.Registry.DataTypeMetadata.DataTypeMetadata(string! Type, string? Format = null, bool Nullable = false, System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.EnumValueMetadata!>? EnumValues = null, Kaleido.Registry.DataTypeMetadata? ItemType = null) -> void
+Kaleido.Registry.DataTypeMetadata.Deconstruct(out string! Type, out string? Format, out bool Nullable, out System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.EnumValueMetadata!>? EnumValues, out Kaleido.Registry.DataTypeMetadata? ItemType) -> void
+Kaleido.Registry.DataTypeMetadata.EnumValues.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.EnumValueMetadata!>?
+Kaleido.Registry.DataTypeMetadata.EnumValues.init -> void
+Kaleido.Registry.DataTypeMetadata.Equals(Kaleido.Registry.DataTypeMetadata? other) -> bool
+Kaleido.Registry.DataTypeMetadata.Format.get -> string?
+Kaleido.Registry.DataTypeMetadata.Format.init -> void
+Kaleido.Registry.DataTypeMetadata.ItemType.get -> Kaleido.Registry.DataTypeMetadata?
+Kaleido.Registry.DataTypeMetadata.ItemType.init -> void
+Kaleido.Registry.DataTypeMetadata.Nullable.get -> bool
+Kaleido.Registry.DataTypeMetadata.Nullable.init -> void
+Kaleido.Registry.DataTypeMetadata.Type.get -> string!
+Kaleido.Registry.DataTypeMetadata.Type.init -> void
+Kaleido.Registry.EnumValueMetadata
+Kaleido.Registry.EnumValueMetadata.<Clone>$() -> Kaleido.Registry.EnumValueMetadata!
+Kaleido.Registry.EnumValueMetadata.Deconstruct(out int Value, out string! Name, out string? Description) -> void
+Kaleido.Registry.EnumValueMetadata.Description.get -> string?
+Kaleido.Registry.EnumValueMetadata.Description.init -> void
+Kaleido.Registry.EnumValueMetadata.EnumValueMetadata(int Value, string! Name, string? Description) -> void
+Kaleido.Registry.EnumValueMetadata.Equals(Kaleido.Registry.EnumValueMetadata? other) -> bool
+Kaleido.Registry.EnumValueMetadata.Name.get -> string!
+Kaleido.Registry.EnumValueMetadata.Name.init -> void
+Kaleido.Registry.EnumValueMetadata.Value.get -> int
+Kaleido.Registry.EnumValueMetadata.Value.init -> void
+Kaleido.Registry.KaleidoRegistry
+Kaleido.Registry.KaleidoRegistry.Errors.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryReadError!>!
+Kaleido.Registry.KaleidoRegistry.Errors.init -> void
+Kaleido.Registry.KaleidoRegistry.GeneratedAt.get -> System.DateTimeOffset
+Kaleido.Registry.KaleidoRegistry.GeneratedAt.init -> void
+Kaleido.Registry.KaleidoRegistry.IsPartial.get -> bool
+Kaleido.Registry.KaleidoRegistry.IsPartial.init -> void
+Kaleido.Registry.KaleidoRegistry.KaleidoRegistry() -> void
+Kaleido.Registry.KaleidoRegistry.KaleidoRegistry(Kaleido.Registry.KaleidoRegistry! original) -> void
+Kaleido.Registry.KaleidoRegistry.Missing.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryMissingService!>!
+Kaleido.Registry.KaleidoRegistry.Missing.init -> void
+Kaleido.Registry.KaleidoRegistry.Processes.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ProcessRegistryItem!>!
+Kaleido.Registry.KaleidoRegistry.Processes.init -> void
+Kaleido.Registry.KaleidoRegistry.Queryables.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.QueryableRegistryItem!>!
+Kaleido.Registry.KaleidoRegistry.Queryables.init -> void
+Kaleido.Registry.KaleidoRegistry.Revision.get -> string?
+Kaleido.Registry.KaleidoRegistry.Revision.init -> void
+Kaleido.Registry.KaleidoRegistry.Routes.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryServiceRoute!>!
+Kaleido.Registry.KaleidoRegistry.Routes.init -> void
+Kaleido.Registry.KaleidoRegistryAvailability
+Kaleido.Registry.KaleidoRegistryAvailability.<Clone>$() -> Kaleido.Registry.KaleidoRegistryAvailability!
+Kaleido.Registry.KaleidoRegistryAvailability.AvailabilityInterval.get -> System.TimeSpan
+Kaleido.Registry.KaleidoRegistryAvailability.AvailabilityInterval.init -> void
+Kaleido.Registry.KaleidoRegistryAvailability.CapabilitiesRevision.get -> string?
+Kaleido.Registry.KaleidoRegistryAvailability.CapabilitiesRevision.init -> void
+Kaleido.Registry.KaleidoRegistryAvailability.Equals(Kaleido.Registry.KaleidoRegistryAvailability? other) -> bool
+Kaleido.Registry.KaleidoRegistryAvailability.GeneratedAt.get -> System.DateTimeOffset
+Kaleido.Registry.KaleidoRegistryAvailability.GeneratedAt.init -> void
+Kaleido.Registry.KaleidoRegistryAvailability.KaleidoRegistryAvailability() -> void
+Kaleido.Registry.KaleidoRegistryAvailability.Revision.get -> string?
+Kaleido.Registry.KaleidoRegistryAvailability.Revision.init -> void
+Kaleido.Registry.KaleidoRegistryAvailability.Services.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryServiceAvailability!>!
+Kaleido.Registry.KaleidoRegistryAvailability.Services.init -> void
+Kaleido.Registry.KaleidoRegistryStatus
+Kaleido.Registry.KaleidoRegistryStatus.<Clone>$() -> Kaleido.Registry.KaleidoRegistryStatus!
+Kaleido.Registry.KaleidoRegistryStatus.Equals(Kaleido.Registry.KaleidoRegistryStatus? other) -> bool
+Kaleido.Registry.KaleidoRegistryStatus.GeneratedAt.get -> System.DateTimeOffset
+Kaleido.Registry.KaleidoRegistryStatus.GeneratedAt.init -> void
+Kaleido.Registry.KaleidoRegistryStatus.KaleidoRegistryStatus() -> void
+Kaleido.Registry.KaleidoRegistryStatus.Revision.get -> string?
+Kaleido.Registry.KaleidoRegistryStatus.Revision.init -> void
+Kaleido.Registry.KaleidoRegistryStatus.Services.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryServiceStatus!>!
+Kaleido.Registry.KaleidoRegistryStatus.Services.init -> void
+Kaleido.Registry.ProcessFieldLookup
+Kaleido.Registry.ProcessFieldLookup.<Clone>$() -> Kaleido.Registry.ProcessFieldLookup!
+Kaleido.Registry.ProcessFieldLookup.Display.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Registry.ProcessFieldLookup.Display.init -> void
+Kaleido.Registry.ProcessFieldLookup.Equals(Kaleido.Registry.ProcessFieldLookup? other) -> bool
+Kaleido.Registry.ProcessFieldLookup.Field.get -> string!
+Kaleido.Registry.ProcessFieldLookup.Field.init -> void
+Kaleido.Registry.ProcessFieldLookup.Group.get -> string!
+Kaleido.Registry.ProcessFieldLookup.Group.init -> void
+Kaleido.Registry.ProcessFieldLookup.ProcessFieldLookup() -> void
+Kaleido.Registry.ProcessFieldLookup.Service.get -> string!
+Kaleido.Registry.ProcessFieldLookup.Service.init -> void
+Kaleido.Registry.ProcessFieldLookup.Source.get -> string!
+Kaleido.Registry.ProcessFieldLookup.Source.init -> void
+Kaleido.Registry.ProcessFieldLookup.View.get -> string?
+Kaleido.Registry.ProcessFieldLookup.View.init -> void
+Kaleido.Registry.ProcessFieldMetadata
+Kaleido.Registry.ProcessFieldMetadata.<Clone>$() -> Kaleido.Registry.ProcessFieldMetadata!
+Kaleido.Registry.ProcessFieldMetadata.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Registry.ProcessFieldMetadata.Classifications.init -> void
+Kaleido.Registry.ProcessFieldMetadata.Constraints.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ConstraintMetadata!>!
+Kaleido.Registry.ProcessFieldMetadata.Constraints.init -> void
+Kaleido.Registry.ProcessFieldMetadata.DataType.get -> Kaleido.Registry.DataTypeMetadata!
+Kaleido.Registry.ProcessFieldMetadata.DataType.init -> void
+Kaleido.Registry.ProcessFieldMetadata.Description.get -> string?
+Kaleido.Registry.ProcessFieldMetadata.Description.init -> void
+Kaleido.Registry.ProcessFieldMetadata.DisplayName.get -> string?
+Kaleido.Registry.ProcessFieldMetadata.DisplayName.init -> void
+Kaleido.Registry.ProcessFieldMetadata.Equals(Kaleido.Registry.ProcessFieldMetadata? other) -> bool
+Kaleido.Registry.ProcessFieldMetadata.Lookup.get -> Kaleido.Registry.ProcessFieldLookup?
+Kaleido.Registry.ProcessFieldMetadata.Lookup.init -> void
+Kaleido.Registry.ProcessFieldMetadata.Name.get -> string!
+Kaleido.Registry.ProcessFieldMetadata.Name.init -> void
+Kaleido.Registry.ProcessFieldMetadata.Notice.get -> Kaleido.KaleidoNotice?
+Kaleido.Registry.ProcessFieldMetadata.Notice.init -> void
+Kaleido.Registry.ProcessFieldMetadata.ProcessFieldMetadata() -> void
+Kaleido.Registry.ProcessFieldMetadata.Prompt.get -> string?
+Kaleido.Registry.ProcessFieldMetadata.Prompt.init -> void
+Kaleido.Registry.ProcessOutputFieldMetadata
+Kaleido.Registry.ProcessOutputFieldMetadata.<Clone>$() -> Kaleido.Registry.ProcessOutputFieldMetadata!
+Kaleido.Registry.ProcessOutputFieldMetadata.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Registry.ProcessOutputFieldMetadata.Classifications.init -> void
+Kaleido.Registry.ProcessOutputFieldMetadata.DataType.get -> Kaleido.Registry.DataTypeMetadata!
+Kaleido.Registry.ProcessOutputFieldMetadata.DataType.init -> void
+Kaleido.Registry.ProcessOutputFieldMetadata.Description.get -> string?
+Kaleido.Registry.ProcessOutputFieldMetadata.Description.init -> void
+Kaleido.Registry.ProcessOutputFieldMetadata.Equals(Kaleido.Registry.ProcessOutputFieldMetadata? other) -> bool
+Kaleido.Registry.ProcessOutputFieldMetadata.Name.get -> string!
+Kaleido.Registry.ProcessOutputFieldMetadata.Name.init -> void
+Kaleido.Registry.ProcessOutputFieldMetadata.ProcessOutputFieldMetadata() -> void
+Kaleido.Registry.ProcessRegistryItem
+Kaleido.Registry.ProcessRegistryItem.<Clone>$() -> Kaleido.Registry.ProcessRegistryItem!
+Kaleido.Registry.ProcessRegistryItem.Bindings.get -> Kaleido.Registry.RegistryTransportBindings!
+Kaleido.Registry.ProcessRegistryItem.Bindings.init -> void
+Kaleido.Registry.ProcessRegistryItem.Description.get -> string?
+Kaleido.Registry.ProcessRegistryItem.Description.init -> void
+Kaleido.Registry.ProcessRegistryItem.DisplayName.get -> string?
+Kaleido.Registry.ProcessRegistryItem.DisplayName.init -> void
+Kaleido.Registry.ProcessRegistryItem.Equals(Kaleido.Registry.ProcessRegistryItem? other) -> bool
+Kaleido.Registry.ProcessRegistryItem.InitialSteps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ProcessStepSummary!>!
+Kaleido.Registry.ProcessRegistryItem.InitialSteps.init -> void
+Kaleido.Registry.ProcessRegistryItem.IsEntryProcessor.get -> bool
+Kaleido.Registry.ProcessRegistryItem.IsEntryProcessor.init -> void
+Kaleido.Registry.ProcessRegistryItem.Name.get -> string!
+Kaleido.Registry.ProcessRegistryItem.Name.init -> void
+Kaleido.Registry.ProcessRegistryItem.ProcessRegistryItem() -> void
+Kaleido.Registry.ProcessRegistryItem.ServiceName.get -> string!
+Kaleido.Registry.ProcessRegistryItem.ServiceName.init -> void
+Kaleido.Registry.ProcessRegistryItem.ServiceVersion.get -> string?
+Kaleido.Registry.ProcessRegistryItem.ServiceVersion.init -> void
+Kaleido.Registry.ProcessRegistryItem.Status.get -> string!
+Kaleido.Registry.ProcessRegistryItem.Status.init -> void
+Kaleido.Registry.ProcessRegistryItem.Steps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ProcessStepResponse!>?
+Kaleido.Registry.ProcessRegistryItem.Steps.init -> void
+Kaleido.Registry.ProcessStepContract
+Kaleido.Registry.ProcessStepContract.Authorization.get -> Kaleido.Registry.AuthorizationMetadata?
+Kaleido.Registry.ProcessStepContract.Authorization.init -> void
+Kaleido.Registry.ProcessStepContract.Bindings.get -> Kaleido.Registry.RegistryTransportBindings!
+Kaleido.Registry.ProcessStepContract.Bindings.init -> void
+Kaleido.Registry.ProcessStepContract.Description.get -> string?
+Kaleido.Registry.ProcessStepContract.Description.init -> void
+Kaleido.Registry.ProcessStepContract.Destructive.get -> bool
+Kaleido.Registry.ProcessStepContract.Destructive.init -> void
+Kaleido.Registry.ProcessStepContract.DisplayName.get -> string?
+Kaleido.Registry.ProcessStepContract.DisplayName.init -> void
+Kaleido.Registry.ProcessStepContract.External.get -> bool
+Kaleido.Registry.ProcessStepContract.External.init -> void
+Kaleido.Registry.ProcessStepContract.IsInformationStep.get -> bool
+Kaleido.Registry.ProcessStepContract.IsInformationStep.init -> void
+Kaleido.Registry.ProcessStepContract.Name.get -> string!
+Kaleido.Registry.ProcessStepContract.Name.init -> void
+Kaleido.Registry.ProcessStepContract.ProcessStepContract() -> void
+Kaleido.Registry.ProcessStepContract.ProcessStepContract(Kaleido.Registry.ProcessStepContract! original) -> void
+Kaleido.Registry.ProcessStepContract.Repeatable.get -> bool
+Kaleido.Registry.ProcessStepContract.Repeatable.init -> void
+Kaleido.Registry.ProcessStepContract.RequiresConfirmation.get -> bool
+Kaleido.Registry.ProcessStepContract.RequiresConfirmation.init -> void
+Kaleido.Registry.ProcessStepResponse
+Kaleido.Registry.ProcessStepResponse.AvailableAfter.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ProcessStepSummary!>!
+Kaleido.Registry.ProcessStepResponse.AvailableAfter.init -> void
+Kaleido.Registry.ProcessStepResponse.AvailableUntil.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ProcessStepSummary!>!
+Kaleido.Registry.ProcessStepResponse.AvailableUntil.init -> void
+Kaleido.Registry.ProcessStepResponse.Dependencies.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ProcessStepSummary!>!
+Kaleido.Registry.ProcessStepResponse.Dependencies.init -> void
+Kaleido.Registry.ProcessStepResponse.Equals(Kaleido.Registry.ProcessStepResponse? other) -> bool
+Kaleido.Registry.ProcessStepResponse.Fields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ProcessFieldMetadata!>!
+Kaleido.Registry.ProcessStepResponse.Fields.init -> void
+Kaleido.Registry.ProcessStepResponse.IsInitial.get -> bool
+Kaleido.Registry.ProcessStepResponse.IsInitial.init -> void
+Kaleido.Registry.ProcessStepResponse.ProcessStepResponse() -> void
+Kaleido.Registry.ProcessStepResponse.Result.get -> Kaleido.Registry.ProcessStepResultMetadata?
+Kaleido.Registry.ProcessStepResponse.Result.init -> void
+Kaleido.Registry.ProcessStepResultMetadata
+Kaleido.Registry.ProcessStepResultMetadata.<Clone>$() -> Kaleido.Registry.ProcessStepResultMetadata!
+Kaleido.Registry.ProcessStepResultMetadata.Equals(Kaleido.Registry.ProcessStepResultMetadata? other) -> bool
+Kaleido.Registry.ProcessStepResultMetadata.OutputFields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ProcessOutputFieldMetadata!>!
+Kaleido.Registry.ProcessStepResultMetadata.OutputFields.init -> void
+Kaleido.Registry.ProcessStepResultMetadata.ProcessStepResultMetadata() -> void
+Kaleido.Registry.ProcessStepSummary
+Kaleido.Registry.ProcessStepSummary.Equals(Kaleido.Registry.ProcessStepSummary? other) -> bool
+Kaleido.Registry.ProcessStepSummary.ProcessStepSummary() -> void
+Kaleido.Registry.QueryableRegistryField
+Kaleido.Registry.QueryableRegistryField.<Clone>$() -> Kaleido.Registry.QueryableRegistryField!
+Kaleido.Registry.QueryableRegistryField.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Registry.QueryableRegistryField.Classifications.init -> void
+Kaleido.Registry.QueryableRegistryField.DataType.get -> Kaleido.Registry.DataTypeMetadata!
+Kaleido.Registry.QueryableRegistryField.DataType.init -> void
+Kaleido.Registry.QueryableRegistryField.Description.get -> string?
+Kaleido.Registry.QueryableRegistryField.Description.init -> void
+Kaleido.Registry.QueryableRegistryField.Equals(Kaleido.Registry.QueryableRegistryField? other) -> bool
+Kaleido.Registry.QueryableRegistryField.FilterOperators.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+Kaleido.Registry.QueryableRegistryField.FilterOperators.init -> void
+Kaleido.Registry.QueryableRegistryField.IsFilterable.get -> bool
+Kaleido.Registry.QueryableRegistryField.IsFilterable.init -> void
+Kaleido.Registry.QueryableRegistryField.IsSearchable.get -> bool
+Kaleido.Registry.QueryableRegistryField.IsSearchable.init -> void
+Kaleido.Registry.QueryableRegistryField.IsSortable.get -> bool
+Kaleido.Registry.QueryableRegistryField.IsSortable.init -> void
+Kaleido.Registry.QueryableRegistryField.MatchMode.get -> string?
+Kaleido.Registry.QueryableRegistryField.MatchMode.init -> void
+Kaleido.Registry.QueryableRegistryField.Name.get -> string!
+Kaleido.Registry.QueryableRegistryField.Name.init -> void
+Kaleido.Registry.QueryableRegistryField.QueryableRegistryField() -> void
+Kaleido.Registry.QueryableRegistryField.SearchPriority.get -> int?
+Kaleido.Registry.QueryableRegistryField.SearchPriority.init -> void
+Kaleido.Registry.QueryableRegistryItem
+Kaleido.Registry.QueryableRegistryItem.<Clone>$() -> Kaleido.Registry.QueryableRegistryItem!
+Kaleido.Registry.QueryableRegistryItem.Authorization.get -> Kaleido.Registry.AuthorizationMetadata?
+Kaleido.Registry.QueryableRegistryItem.Authorization.init -> void
+Kaleido.Registry.QueryableRegistryItem.Bindings.get -> Kaleido.Registry.RegistryTransportBindings!
+Kaleido.Registry.QueryableRegistryItem.Bindings.init -> void
+Kaleido.Registry.QueryableRegistryItem.Description.get -> string?
+Kaleido.Registry.QueryableRegistryItem.Description.init -> void
+Kaleido.Registry.QueryableRegistryItem.DisplayName.get -> string?
+Kaleido.Registry.QueryableRegistryItem.DisplayName.init -> void
+Kaleido.Registry.QueryableRegistryItem.Equals(Kaleido.Registry.QueryableRegistryItem? other) -> bool
+Kaleido.Registry.QueryableRegistryItem.Fields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.QueryableRegistryField!>!
+Kaleido.Registry.QueryableRegistryItem.Fields.init -> void
+Kaleido.Registry.QueryableRegistryItem.Name.get -> string!
+Kaleido.Registry.QueryableRegistryItem.Name.init -> void
+Kaleido.Registry.QueryableRegistryItem.OutputFields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.QueryableRegistryOutputField!>!
+Kaleido.Registry.QueryableRegistryItem.OutputFields.init -> void
+Kaleido.Registry.QueryableRegistryItem.Pageable.get -> Kaleido.Registry.QueryableRegistryPaging?
+Kaleido.Registry.QueryableRegistryItem.Pageable.init -> void
+Kaleido.Registry.QueryableRegistryItem.Parameters.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.QueryableRegistryParameter!>!
+Kaleido.Registry.QueryableRegistryItem.Parameters.init -> void
+Kaleido.Registry.QueryableRegistryItem.QueryableRegistryItem() -> void
+Kaleido.Registry.QueryableRegistryItem.ServiceName.get -> string!
+Kaleido.Registry.QueryableRegistryItem.ServiceName.init -> void
+Kaleido.Registry.QueryableRegistryItem.ServiceVersion.get -> string?
+Kaleido.Registry.QueryableRegistryItem.ServiceVersion.init -> void
+Kaleido.Registry.QueryableRegistryItem.Source.get -> string?
+Kaleido.Registry.QueryableRegistryItem.Source.init -> void
+Kaleido.Registry.QueryableRegistryItem.Status.get -> string!
+Kaleido.Registry.QueryableRegistryItem.Status.init -> void
+Kaleido.Registry.QueryableRegistryItem.Views.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.QueryableRegistryViewItem!>!
+Kaleido.Registry.QueryableRegistryItem.Views.init -> void
+Kaleido.Registry.QueryableRegistryOutputField
+Kaleido.Registry.QueryableRegistryOutputField.<Clone>$() -> Kaleido.Registry.QueryableRegistryOutputField!
+Kaleido.Registry.QueryableRegistryOutputField.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Registry.QueryableRegistryOutputField.Classifications.init -> void
+Kaleido.Registry.QueryableRegistryOutputField.DataType.get -> Kaleido.Registry.DataTypeMetadata!
+Kaleido.Registry.QueryableRegistryOutputField.DataType.init -> void
+Kaleido.Registry.QueryableRegistryOutputField.Description.get -> string?
+Kaleido.Registry.QueryableRegistryOutputField.Description.init -> void
+Kaleido.Registry.QueryableRegistryOutputField.Equals(Kaleido.Registry.QueryableRegistryOutputField? other) -> bool
+Kaleido.Registry.QueryableRegistryOutputField.Name.get -> string!
+Kaleido.Registry.QueryableRegistryOutputField.Name.init -> void
+Kaleido.Registry.QueryableRegistryOutputField.QueryableRegistryOutputField() -> void
+Kaleido.Registry.QueryableRegistryPaging
+Kaleido.Registry.QueryableRegistryPaging.<Clone>$() -> Kaleido.Registry.QueryableRegistryPaging!
+Kaleido.Registry.QueryableRegistryPaging.Deconstruct(out int DefaultSize, out int MaxSize, out string? DefaultSortField) -> void
+Kaleido.Registry.QueryableRegistryPaging.DefaultSize.get -> int
+Kaleido.Registry.QueryableRegistryPaging.DefaultSize.init -> void
+Kaleido.Registry.QueryableRegistryPaging.DefaultSortField.get -> string?
+Kaleido.Registry.QueryableRegistryPaging.DefaultSortField.init -> void
+Kaleido.Registry.QueryableRegistryPaging.Equals(Kaleido.Registry.QueryableRegistryPaging? other) -> bool
+Kaleido.Registry.QueryableRegistryPaging.MaxSize.get -> int
+Kaleido.Registry.QueryableRegistryPaging.MaxSize.init -> void
+Kaleido.Registry.QueryableRegistryPaging.QueryableRegistryPaging(int DefaultSize, int MaxSize, string? DefaultSortField = null) -> void
+Kaleido.Registry.QueryableRegistryParameter
+Kaleido.Registry.QueryableRegistryParameter.<Clone>$() -> Kaleido.Registry.QueryableRegistryParameter!
+Kaleido.Registry.QueryableRegistryParameter.Classifications.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Kaleido.Registry.QueryableRegistryParameter.Classifications.init -> void
+Kaleido.Registry.QueryableRegistryParameter.Constraints.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ConstraintMetadata!>!
+Kaleido.Registry.QueryableRegistryParameter.Constraints.init -> void
+Kaleido.Registry.QueryableRegistryParameter.DataType.get -> Kaleido.Registry.DataTypeMetadata!
+Kaleido.Registry.QueryableRegistryParameter.DataType.init -> void
+Kaleido.Registry.QueryableRegistryParameter.Description.get -> string?
+Kaleido.Registry.QueryableRegistryParameter.Description.init -> void
+Kaleido.Registry.QueryableRegistryParameter.Equals(Kaleido.Registry.QueryableRegistryParameter? other) -> bool
+Kaleido.Registry.QueryableRegistryParameter.Name.get -> string!
+Kaleido.Registry.QueryableRegistryParameter.Name.init -> void
+Kaleido.Registry.QueryableRegistryParameter.QueryableRegistryParameter() -> void
+Kaleido.Registry.QueryableRegistryViewItem
+Kaleido.Registry.QueryableRegistryViewItem.<Clone>$() -> Kaleido.Registry.QueryableRegistryViewItem!
+Kaleido.Registry.QueryableRegistryViewItem.Authorization.get -> Kaleido.Registry.AuthorizationMetadata?
+Kaleido.Registry.QueryableRegistryViewItem.Authorization.init -> void
+Kaleido.Registry.QueryableRegistryViewItem.Bindings.get -> Kaleido.Registry.RegistryTransportBindings!
+Kaleido.Registry.QueryableRegistryViewItem.Bindings.init -> void
+Kaleido.Registry.QueryableRegistryViewItem.Description.get -> string?
+Kaleido.Registry.QueryableRegistryViewItem.Description.init -> void
+Kaleido.Registry.QueryableRegistryViewItem.DisplayName.get -> string?
+Kaleido.Registry.QueryableRegistryViewItem.DisplayName.init -> void
+Kaleido.Registry.QueryableRegistryViewItem.Equals(Kaleido.Registry.QueryableRegistryViewItem? other) -> bool
+Kaleido.Registry.QueryableRegistryViewItem.Name.get -> string!
+Kaleido.Registry.QueryableRegistryViewItem.Name.init -> void
+Kaleido.Registry.QueryableRegistryViewItem.OutputFields.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.QueryableRegistryOutputField!>!
+Kaleido.Registry.QueryableRegistryViewItem.OutputFields.init -> void
+Kaleido.Registry.QueryableRegistryViewItem.Pageable.get -> Kaleido.Registry.QueryableRegistryPaging?
+Kaleido.Registry.QueryableRegistryViewItem.Pageable.init -> void
+Kaleido.Registry.QueryableRegistryViewItem.Parameters.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.QueryableRegistryParameter!>!
+Kaleido.Registry.QueryableRegistryViewItem.Parameters.init -> void
+Kaleido.Registry.QueryableRegistryViewItem.QueryableRegistryViewItem() -> void
+Kaleido.Registry.RegistryErrorCodes
+Kaleido.Registry.RegistryHeartbeat
+Kaleido.Registry.RegistryHeartbeat.<Clone>$() -> Kaleido.Registry.RegistryHeartbeat!
+Kaleido.Registry.RegistryHeartbeat.Equals(Kaleido.Registry.RegistryHeartbeat? other) -> bool
+Kaleido.Registry.RegistryHeartbeat.Healthy.get -> bool
+Kaleido.Registry.RegistryHeartbeat.Healthy.init -> void
+Kaleido.Registry.RegistryHeartbeat.RegistryHeartbeat() -> void
+Kaleido.Registry.RegistryHttpOperation
+Kaleido.Registry.RegistryHttpOperation.<Clone>$() -> Kaleido.Registry.RegistryHttpOperation!
+Kaleido.Registry.RegistryHttpOperation.Equals(Kaleido.Registry.RegistryHttpOperation? other) -> bool
+Kaleido.Registry.RegistryHttpOperation.Method.get -> string!
+Kaleido.Registry.RegistryHttpOperation.Method.init -> void
+Kaleido.Registry.RegistryHttpOperation.Operation.get -> string!
+Kaleido.Registry.RegistryHttpOperation.Operation.init -> void
+Kaleido.Registry.RegistryHttpOperation.Path.get -> string!
+Kaleido.Registry.RegistryHttpOperation.Path.init -> void
+Kaleido.Registry.RegistryHttpOperation.RegistryHttpOperation() -> void
+Kaleido.Registry.RegistryInstanceRegistration
+Kaleido.Registry.RegistryInstanceRegistration.<Clone>$() -> Kaleido.Registry.RegistryInstanceRegistration!
+Kaleido.Registry.RegistryInstanceRegistration.BuildVersion.get -> string!
+Kaleido.Registry.RegistryInstanceRegistration.BuildVersion.init -> void
+Kaleido.Registry.RegistryInstanceRegistration.Equals(Kaleido.Registry.RegistryInstanceRegistration? other) -> bool
+Kaleido.Registry.RegistryInstanceRegistration.InstanceId.get -> System.Guid
+Kaleido.Registry.RegistryInstanceRegistration.InstanceId.init -> void
+Kaleido.Registry.RegistryInstanceRegistration.Processes.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.ProcessRegistryItem!>!
+Kaleido.Registry.RegistryInstanceRegistration.Processes.init -> void
+Kaleido.Registry.RegistryInstanceRegistration.Queryables.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.QueryableRegistryItem!>!
+Kaleido.Registry.RegistryInstanceRegistration.Queryables.init -> void
+Kaleido.Registry.RegistryInstanceRegistration.RegistryInstanceRegistration() -> void
+Kaleido.Registry.RegistryInstanceRegistration.ServiceName.get -> string!
+Kaleido.Registry.RegistryInstanceRegistration.ServiceName.init -> void
+Kaleido.Registry.RegistryInstanceRegistration.ServiceVersion.get -> string!
+Kaleido.Registry.RegistryInstanceRegistration.ServiceVersion.init -> void
+Kaleido.Registry.RegistryInstanceRegistration.Transports.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryTransportRoute!>!
+Kaleido.Registry.RegistryInstanceRegistration.Transports.init -> void
+Kaleido.Registry.RegistryInstanceStateNames
+Kaleido.Registry.RegistryInstanceStatus
+Kaleido.Registry.RegistryInstanceStatus.<Clone>$() -> Kaleido.Registry.RegistryInstanceStatus!
+Kaleido.Registry.RegistryInstanceStatus.Equals(Kaleido.Registry.RegistryInstanceStatus? other) -> bool
+Kaleido.Registry.RegistryInstanceStatus.InstanceId.get -> System.Guid
+Kaleido.Registry.RegistryInstanceStatus.InstanceId.init -> void
+Kaleido.Registry.RegistryInstanceStatus.LastHeartbeatUtc.get -> System.DateTimeOffset
+Kaleido.Registry.RegistryInstanceStatus.LastHeartbeatUtc.init -> void
+Kaleido.Registry.RegistryInstanceStatus.RegistryInstanceStatus() -> void
+Kaleido.Registry.RegistryInstanceStatus.State.get -> string!
+Kaleido.Registry.RegistryInstanceStatus.State.init -> void
+Kaleido.Registry.RegistryLease
+Kaleido.Registry.RegistryLease.<Clone>$() -> Kaleido.Registry.RegistryLease!
+Kaleido.Registry.RegistryLease.Equals(Kaleido.Registry.RegistryLease? other) -> bool
+Kaleido.Registry.RegistryLease.HeartbeatInterval.get -> System.TimeSpan
+Kaleido.Registry.RegistryLease.HeartbeatInterval.init -> void
+Kaleido.Registry.RegistryLease.InstanceId.get -> System.Guid
+Kaleido.Registry.RegistryLease.InstanceId.init -> void
+Kaleido.Registry.RegistryLease.LeaseUntilUtc.get -> System.DateTimeOffset
+Kaleido.Registry.RegistryLease.LeaseUntilUtc.init -> void
+Kaleido.Registry.RegistryLease.RegistryLease() -> void
+Kaleido.Registry.RegistryMissingService
+Kaleido.Registry.RegistryMissingService.<Clone>$() -> Kaleido.Registry.RegistryMissingService!
+Kaleido.Registry.RegistryMissingService.Equals(Kaleido.Registry.RegistryMissingService? other) -> bool
+Kaleido.Registry.RegistryMissingService.Reason.get -> string!
+Kaleido.Registry.RegistryMissingService.Reason.init -> void
+Kaleido.Registry.RegistryMissingService.RegistryMissingService() -> void
+Kaleido.Registry.RegistryMissingService.ServiceName.get -> string!
+Kaleido.Registry.RegistryMissingService.ServiceName.init -> void
+Kaleido.Registry.RegistryMissingService.ServiceVersion.get -> string?
+Kaleido.Registry.RegistryMissingService.ServiceVersion.init -> void
+Kaleido.Registry.RegistryReadError
+Kaleido.Registry.RegistryReadError.<Clone>$() -> Kaleido.Registry.RegistryReadError!
+Kaleido.Registry.RegistryReadError.Equals(Kaleido.Registry.RegistryReadError? other) -> bool
+Kaleido.Registry.RegistryReadError.Reason.get -> string!
+Kaleido.Registry.RegistryReadError.Reason.init -> void
+Kaleido.Registry.RegistryReadError.RegistryReadError() -> void
+Kaleido.Registry.RegistryReadError.Source.get -> string!
+Kaleido.Registry.RegistryReadError.Source.init -> void
+Kaleido.Registry.RegistryServiceAvailability
+Kaleido.Registry.RegistryServiceAvailability.<Clone>$() -> Kaleido.Registry.RegistryServiceAvailability!
+Kaleido.Registry.RegistryServiceAvailability.Equals(Kaleido.Registry.RegistryServiceAvailability? other) -> bool
+Kaleido.Registry.RegistryServiceAvailability.IsCurrent.get -> bool
+Kaleido.Registry.RegistryServiceAvailability.IsCurrent.init -> void
+Kaleido.Registry.RegistryServiceAvailability.RegistryServiceAvailability() -> void
+Kaleido.Registry.RegistryServiceAvailability.ServiceName.get -> string!
+Kaleido.Registry.RegistryServiceAvailability.ServiceName.init -> void
+Kaleido.Registry.RegistryServiceAvailability.ServiceVersion.get -> string!
+Kaleido.Registry.RegistryServiceAvailability.ServiceVersion.init -> void
+Kaleido.Registry.RegistryServiceAvailability.Status.get -> string!
+Kaleido.Registry.RegistryServiceAvailability.Status.init -> void
+Kaleido.Registry.RegistryServiceAvailability.Transports.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryTransportRoute!>!
+Kaleido.Registry.RegistryServiceAvailability.Transports.init -> void
+Kaleido.Registry.RegistryServiceRoute
+Kaleido.Registry.RegistryServiceRoute.<Clone>$() -> Kaleido.Registry.RegistryServiceRoute!
+Kaleido.Registry.RegistryServiceRoute.Equals(Kaleido.Registry.RegistryServiceRoute? other) -> bool
+Kaleido.Registry.RegistryServiceRoute.RegistryServiceRoute() -> void
+Kaleido.Registry.RegistryServiceRoute.ServiceName.get -> string!
+Kaleido.Registry.RegistryServiceRoute.ServiceName.init -> void
+Kaleido.Registry.RegistryServiceRoute.ServiceVersion.get -> string!
+Kaleido.Registry.RegistryServiceRoute.ServiceVersion.init -> void
+Kaleido.Registry.RegistryServiceRoute.Transports.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryTransportRoute!>!
+Kaleido.Registry.RegistryServiceRoute.Transports.init -> void
+Kaleido.Registry.RegistryServiceStatus
+Kaleido.Registry.RegistryServiceStatus.<Clone>$() -> Kaleido.Registry.RegistryServiceStatus!
+Kaleido.Registry.RegistryServiceStatus.Equals(Kaleido.Registry.RegistryServiceStatus? other) -> bool
+Kaleido.Registry.RegistryServiceStatus.Instances.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryInstanceStatus!>!
+Kaleido.Registry.RegistryServiceStatus.Instances.init -> void
+Kaleido.Registry.RegistryServiceStatus.IsCurrent.get -> bool
+Kaleido.Registry.RegistryServiceStatus.IsCurrent.init -> void
+Kaleido.Registry.RegistryServiceStatus.ReadyInstances.get -> int
+Kaleido.Registry.RegistryServiceStatus.ReadyInstances.init -> void
+Kaleido.Registry.RegistryServiceStatus.RegistryServiceStatus() -> void
+Kaleido.Registry.RegistryServiceStatus.ServiceName.get -> string!
+Kaleido.Registry.RegistryServiceStatus.ServiceName.init -> void
+Kaleido.Registry.RegistryServiceStatus.ServiceVersion.get -> string!
+Kaleido.Registry.RegistryServiceStatus.ServiceVersion.init -> void
+Kaleido.Registry.RegistryServiceStatus.Status.get -> string!
+Kaleido.Registry.RegistryServiceStatus.Status.init -> void
+Kaleido.Registry.RegistryServiceStatus.Transports.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryTransportRoute!>!
+Kaleido.Registry.RegistryServiceStatus.Transports.init -> void
+Kaleido.Registry.RegistryServiceStatus.UnknownInstances.get -> int
+Kaleido.Registry.RegistryServiceStatus.UnknownInstances.init -> void
+Kaleido.Registry.RegistryStatusNames
+Kaleido.Registry.RegistryTransportBindings
+Kaleido.Registry.RegistryTransportBindings.<Clone>$() -> Kaleido.Registry.RegistryTransportBindings!
+Kaleido.Registry.RegistryTransportBindings.Equals(Kaleido.Registry.RegistryTransportBindings? other) -> bool
+Kaleido.Registry.RegistryTransportBindings.Http.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Registry.RegistryHttpOperation!>!
+Kaleido.Registry.RegistryTransportBindings.Http.init -> void
+Kaleido.Registry.RegistryTransportBindings.RegistryTransportBindings() -> void
+Kaleido.Registry.RegistryTransportRoute
+Kaleido.Registry.RegistryTransportRoute.<Clone>$() -> Kaleido.Registry.RegistryTransportRoute!
+Kaleido.Registry.RegistryTransportRoute.Equals(Kaleido.Registry.RegistryTransportRoute? other) -> bool
+Kaleido.Registry.RegistryTransportRoute.GatewayRoute.get -> string!
+Kaleido.Registry.RegistryTransportRoute.GatewayRoute.init -> void
+Kaleido.Registry.RegistryTransportRoute.RegistryTransportRoute() -> void
+Kaleido.Registry.RegistryTransportRoute.Transport.get -> string!
+Kaleido.Registry.RegistryTransportRoute.Transport.init -> void
+override Kaleido.Registry.ConstraintMetadata.Equals(object? obj) -> bool
+override Kaleido.Registry.ConstraintMetadata.GetHashCode() -> int
+override Kaleido.Registry.ConstraintMetadata.ToString() -> string!
+override Kaleido.Registry.ConstraintParameterMetadata.Equals(object? obj) -> bool
+override Kaleido.Registry.ConstraintParameterMetadata.GetHashCode() -> int
+override Kaleido.Registry.ConstraintParameterMetadata.ToString() -> string!
+override Kaleido.Registry.DataTypeMetadata.Equals(object? obj) -> bool
+override Kaleido.Registry.DataTypeMetadata.GetHashCode() -> int
+override Kaleido.Registry.DataTypeMetadata.ToString() -> string!
+override Kaleido.Registry.EnumValueMetadata.Equals(object? obj) -> bool
+override Kaleido.Registry.EnumValueMetadata.GetHashCode() -> int
+override Kaleido.Registry.EnumValueMetadata.ToString() -> string!
+override Kaleido.Registry.KaleidoRegistry.Equals(object? obj) -> bool
+override Kaleido.Registry.KaleidoRegistry.GetHashCode() -> int
+override Kaleido.Registry.KaleidoRegistry.ToString() -> string!
+override Kaleido.Registry.KaleidoRegistryAvailability.Equals(object? obj) -> bool
+override Kaleido.Registry.KaleidoRegistryAvailability.GetHashCode() -> int
+override Kaleido.Registry.KaleidoRegistryAvailability.ToString() -> string!
+override Kaleido.Registry.KaleidoRegistryStatus.Equals(object? obj) -> bool
+override Kaleido.Registry.KaleidoRegistryStatus.GetHashCode() -> int
+override Kaleido.Registry.KaleidoRegistryStatus.ToString() -> string!
+override Kaleido.Registry.ProcessFieldLookup.Equals(object? obj) -> bool
+override Kaleido.Registry.ProcessFieldLookup.GetHashCode() -> int
+override Kaleido.Registry.ProcessFieldLookup.ToString() -> string!
+override Kaleido.Registry.ProcessFieldMetadata.Equals(object? obj) -> bool
+override Kaleido.Registry.ProcessFieldMetadata.GetHashCode() -> int
+override Kaleido.Registry.ProcessFieldMetadata.ToString() -> string!
+override Kaleido.Registry.ProcessOutputFieldMetadata.Equals(object? obj) -> bool
+override Kaleido.Registry.ProcessOutputFieldMetadata.GetHashCode() -> int
+override Kaleido.Registry.ProcessOutputFieldMetadata.ToString() -> string!
+override Kaleido.Registry.ProcessRegistryItem.Equals(object? obj) -> bool
+override Kaleido.Registry.ProcessRegistryItem.GetHashCode() -> int
+override Kaleido.Registry.ProcessRegistryItem.ToString() -> string!
+override Kaleido.Registry.ProcessStepContract.Equals(object? obj) -> bool
+override Kaleido.Registry.ProcessStepContract.GetHashCode() -> int
+override Kaleido.Registry.ProcessStepContract.ToString() -> string!
+override Kaleido.Registry.ProcessStepResponse.<Clone>$() -> Kaleido.Registry.ProcessStepResponse!
+override Kaleido.Registry.ProcessStepResponse.Equals(object? obj) -> bool
+override Kaleido.Registry.ProcessStepResponse.GetHashCode() -> int
+override Kaleido.Registry.ProcessStepResponse.ToString() -> string!
+override Kaleido.Registry.ProcessStepResultMetadata.Equals(object? obj) -> bool
+override Kaleido.Registry.ProcessStepResultMetadata.GetHashCode() -> int
+override Kaleido.Registry.ProcessStepResultMetadata.ToString() -> string!
+override Kaleido.Registry.ProcessStepSummary.<Clone>$() -> Kaleido.Registry.ProcessStepSummary!
+override Kaleido.Registry.ProcessStepSummary.Equals(object? obj) -> bool
+override Kaleido.Registry.ProcessStepSummary.GetHashCode() -> int
+override Kaleido.Registry.ProcessStepSummary.ToString() -> string!
+override Kaleido.Registry.QueryableRegistryField.Equals(object? obj) -> bool
+override Kaleido.Registry.QueryableRegistryField.GetHashCode() -> int
+override Kaleido.Registry.QueryableRegistryField.ToString() -> string!
+override Kaleido.Registry.QueryableRegistryItem.Equals(object? obj) -> bool
+override Kaleido.Registry.QueryableRegistryItem.GetHashCode() -> int
+override Kaleido.Registry.QueryableRegistryItem.ToString() -> string!
+override Kaleido.Registry.QueryableRegistryOutputField.Equals(object? obj) -> bool
+override Kaleido.Registry.QueryableRegistryOutputField.GetHashCode() -> int
+override Kaleido.Registry.QueryableRegistryOutputField.ToString() -> string!
+override Kaleido.Registry.QueryableRegistryPaging.Equals(object? obj) -> bool
+override Kaleido.Registry.QueryableRegistryPaging.GetHashCode() -> int
+override Kaleido.Registry.QueryableRegistryPaging.ToString() -> string!
+override Kaleido.Registry.QueryableRegistryParameter.Equals(object? obj) -> bool
+override Kaleido.Registry.QueryableRegistryParameter.GetHashCode() -> int
+override Kaleido.Registry.QueryableRegistryParameter.ToString() -> string!
+override Kaleido.Registry.QueryableRegistryViewItem.Equals(object? obj) -> bool
+override Kaleido.Registry.QueryableRegistryViewItem.GetHashCode() -> int
+override Kaleido.Registry.QueryableRegistryViewItem.ToString() -> string!
+override Kaleido.Registry.RegistryHeartbeat.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryHeartbeat.GetHashCode() -> int
+override Kaleido.Registry.RegistryHeartbeat.ToString() -> string!
+override Kaleido.Registry.RegistryHttpOperation.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryHttpOperation.GetHashCode() -> int
+override Kaleido.Registry.RegistryHttpOperation.ToString() -> string!
+override Kaleido.Registry.RegistryInstanceRegistration.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryInstanceRegistration.GetHashCode() -> int
+override Kaleido.Registry.RegistryInstanceRegistration.ToString() -> string!
+override Kaleido.Registry.RegistryInstanceStatus.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryInstanceStatus.GetHashCode() -> int
+override Kaleido.Registry.RegistryInstanceStatus.ToString() -> string!
+override Kaleido.Registry.RegistryLease.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryLease.GetHashCode() -> int
+override Kaleido.Registry.RegistryLease.ToString() -> string!
+override Kaleido.Registry.RegistryMissingService.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryMissingService.GetHashCode() -> int
+override Kaleido.Registry.RegistryMissingService.ToString() -> string!
+override Kaleido.Registry.RegistryReadError.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryReadError.GetHashCode() -> int
+override Kaleido.Registry.RegistryReadError.ToString() -> string!
+override Kaleido.Registry.RegistryServiceAvailability.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryServiceAvailability.GetHashCode() -> int
+override Kaleido.Registry.RegistryServiceAvailability.ToString() -> string!
+override Kaleido.Registry.RegistryServiceRoute.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryServiceRoute.GetHashCode() -> int
+override Kaleido.Registry.RegistryServiceRoute.ToString() -> string!
+override Kaleido.Registry.RegistryServiceStatus.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryServiceStatus.GetHashCode() -> int
+override Kaleido.Registry.RegistryServiceStatus.ToString() -> string!
+override Kaleido.Registry.RegistryTransportBindings.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryTransportBindings.GetHashCode() -> int
+override Kaleido.Registry.RegistryTransportBindings.ToString() -> string!
+override Kaleido.Registry.RegistryTransportRoute.Equals(object? obj) -> bool
+override Kaleido.Registry.RegistryTransportRoute.GetHashCode() -> int
+override Kaleido.Registry.RegistryTransportRoute.ToString() -> string!
+override sealed Kaleido.Registry.ProcessStepResponse.Equals(Kaleido.Registry.ProcessStepContract? other) -> bool
+override sealed Kaleido.Registry.ProcessStepSummary.Equals(Kaleido.Registry.ProcessStepContract? other) -> bool
+static Kaleido.Registry.ConstraintMetadata.operator !=(Kaleido.Registry.ConstraintMetadata? left, Kaleido.Registry.ConstraintMetadata? right) -> bool
+static Kaleido.Registry.ConstraintMetadata.operator ==(Kaleido.Registry.ConstraintMetadata? left, Kaleido.Registry.ConstraintMetadata? right) -> bool
+static Kaleido.Registry.ConstraintParameterMetadata.operator !=(Kaleido.Registry.ConstraintParameterMetadata? left, Kaleido.Registry.ConstraintParameterMetadata? right) -> bool
+static Kaleido.Registry.ConstraintParameterMetadata.operator ==(Kaleido.Registry.ConstraintParameterMetadata? left, Kaleido.Registry.ConstraintParameterMetadata? right) -> bool
+static Kaleido.Registry.DataTypeMetadata.operator !=(Kaleido.Registry.DataTypeMetadata? left, Kaleido.Registry.DataTypeMetadata? right) -> bool
+static Kaleido.Registry.DataTypeMetadata.operator ==(Kaleido.Registry.DataTypeMetadata? left, Kaleido.Registry.DataTypeMetadata? right) -> bool
+static Kaleido.Registry.EnumValueMetadata.operator !=(Kaleido.Registry.EnumValueMetadata? left, Kaleido.Registry.EnumValueMetadata? right) -> bool
+static Kaleido.Registry.EnumValueMetadata.operator ==(Kaleido.Registry.EnumValueMetadata? left, Kaleido.Registry.EnumValueMetadata? right) -> bool
+static Kaleido.Registry.KaleidoRegistry.operator !=(Kaleido.Registry.KaleidoRegistry? left, Kaleido.Registry.KaleidoRegistry? right) -> bool
+static Kaleido.Registry.KaleidoRegistry.operator ==(Kaleido.Registry.KaleidoRegistry? left, Kaleido.Registry.KaleidoRegistry? right) -> bool
+static Kaleido.Registry.KaleidoRegistryAvailability.operator !=(Kaleido.Registry.KaleidoRegistryAvailability? left, Kaleido.Registry.KaleidoRegistryAvailability? right) -> bool
+static Kaleido.Registry.KaleidoRegistryAvailability.operator ==(Kaleido.Registry.KaleidoRegistryAvailability? left, Kaleido.Registry.KaleidoRegistryAvailability? right) -> bool
+static Kaleido.Registry.KaleidoRegistryStatus.operator !=(Kaleido.Registry.KaleidoRegistryStatus? left, Kaleido.Registry.KaleidoRegistryStatus? right) -> bool
+static Kaleido.Registry.KaleidoRegistryStatus.operator ==(Kaleido.Registry.KaleidoRegistryStatus? left, Kaleido.Registry.KaleidoRegistryStatus? right) -> bool
+static Kaleido.Registry.ProcessFieldLookup.operator !=(Kaleido.Registry.ProcessFieldLookup? left, Kaleido.Registry.ProcessFieldLookup? right) -> bool
+static Kaleido.Registry.ProcessFieldLookup.operator ==(Kaleido.Registry.ProcessFieldLookup? left, Kaleido.Registry.ProcessFieldLookup? right) -> bool
+static Kaleido.Registry.ProcessFieldMetadata.operator !=(Kaleido.Registry.ProcessFieldMetadata? left, Kaleido.Registry.ProcessFieldMetadata? right) -> bool
+static Kaleido.Registry.ProcessFieldMetadata.operator ==(Kaleido.Registry.ProcessFieldMetadata? left, Kaleido.Registry.ProcessFieldMetadata? right) -> bool
+static Kaleido.Registry.ProcessOutputFieldMetadata.operator !=(Kaleido.Registry.ProcessOutputFieldMetadata? left, Kaleido.Registry.ProcessOutputFieldMetadata? right) -> bool
+static Kaleido.Registry.ProcessOutputFieldMetadata.operator ==(Kaleido.Registry.ProcessOutputFieldMetadata? left, Kaleido.Registry.ProcessOutputFieldMetadata? right) -> bool
+static Kaleido.Registry.ProcessRegistryItem.operator !=(Kaleido.Registry.ProcessRegistryItem? left, Kaleido.Registry.ProcessRegistryItem? right) -> bool
+static Kaleido.Registry.ProcessRegistryItem.operator ==(Kaleido.Registry.ProcessRegistryItem? left, Kaleido.Registry.ProcessRegistryItem? right) -> bool
+static Kaleido.Registry.ProcessStepContract.operator !=(Kaleido.Registry.ProcessStepContract? left, Kaleido.Registry.ProcessStepContract? right) -> bool
+static Kaleido.Registry.ProcessStepContract.operator ==(Kaleido.Registry.ProcessStepContract? left, Kaleido.Registry.ProcessStepContract? right) -> bool
+static Kaleido.Registry.ProcessStepResponse.operator !=(Kaleido.Registry.ProcessStepResponse? left, Kaleido.Registry.ProcessStepResponse? right) -> bool
+static Kaleido.Registry.ProcessStepResponse.operator ==(Kaleido.Registry.ProcessStepResponse? left, Kaleido.Registry.ProcessStepResponse? right) -> bool
+static Kaleido.Registry.ProcessStepResultMetadata.operator !=(Kaleido.Registry.ProcessStepResultMetadata? left, Kaleido.Registry.ProcessStepResultMetadata? right) -> bool
+static Kaleido.Registry.ProcessStepResultMetadata.operator ==(Kaleido.Registry.ProcessStepResultMetadata? left, Kaleido.Registry.ProcessStepResultMetadata? right) -> bool
+static Kaleido.Registry.ProcessStepSummary.operator !=(Kaleido.Registry.ProcessStepSummary? left, Kaleido.Registry.ProcessStepSummary? right) -> bool
+static Kaleido.Registry.ProcessStepSummary.operator ==(Kaleido.Registry.ProcessStepSummary? left, Kaleido.Registry.ProcessStepSummary? right) -> bool
+static Kaleido.Registry.QueryableRegistryField.operator !=(Kaleido.Registry.QueryableRegistryField? left, Kaleido.Registry.QueryableRegistryField? right) -> bool
+static Kaleido.Registry.QueryableRegistryField.operator ==(Kaleido.Registry.QueryableRegistryField? left, Kaleido.Registry.QueryableRegistryField? right) -> bool
+static Kaleido.Registry.QueryableRegistryItem.operator !=(Kaleido.Registry.QueryableRegistryItem? left, Kaleido.Registry.QueryableRegistryItem? right) -> bool
+static Kaleido.Registry.QueryableRegistryItem.operator ==(Kaleido.Registry.QueryableRegistryItem? left, Kaleido.Registry.QueryableRegistryItem? right) -> bool
+static Kaleido.Registry.QueryableRegistryOutputField.operator !=(Kaleido.Registry.QueryableRegistryOutputField? left, Kaleido.Registry.QueryableRegistryOutputField? right) -> bool
+static Kaleido.Registry.QueryableRegistryOutputField.operator ==(Kaleido.Registry.QueryableRegistryOutputField? left, Kaleido.Registry.QueryableRegistryOutputField? right) -> bool
+static Kaleido.Registry.QueryableRegistryPaging.operator !=(Kaleido.Registry.QueryableRegistryPaging? left, Kaleido.Registry.QueryableRegistryPaging? right) -> bool
+static Kaleido.Registry.QueryableRegistryPaging.operator ==(Kaleido.Registry.QueryableRegistryPaging? left, Kaleido.Registry.QueryableRegistryPaging? right) -> bool
+static Kaleido.Registry.QueryableRegistryParameter.operator !=(Kaleido.Registry.QueryableRegistryParameter? left, Kaleido.Registry.QueryableRegistryParameter? right) -> bool
+static Kaleido.Registry.QueryableRegistryParameter.operator ==(Kaleido.Registry.QueryableRegistryParameter? left, Kaleido.Registry.QueryableRegistryParameter? right) -> bool
+static Kaleido.Registry.QueryableRegistryViewItem.operator !=(Kaleido.Registry.QueryableRegistryViewItem? left, Kaleido.Registry.QueryableRegistryViewItem? right) -> bool
+static Kaleido.Registry.QueryableRegistryViewItem.operator ==(Kaleido.Registry.QueryableRegistryViewItem? left, Kaleido.Registry.QueryableRegistryViewItem? right) -> bool
+static Kaleido.Registry.RegistryHeartbeat.operator !=(Kaleido.Registry.RegistryHeartbeat? left, Kaleido.Registry.RegistryHeartbeat? right) -> bool
+static Kaleido.Registry.RegistryHeartbeat.operator ==(Kaleido.Registry.RegistryHeartbeat? left, Kaleido.Registry.RegistryHeartbeat? right) -> bool
+static Kaleido.Registry.RegistryHttpOperation.operator !=(Kaleido.Registry.RegistryHttpOperation? left, Kaleido.Registry.RegistryHttpOperation? right) -> bool
+static Kaleido.Registry.RegistryHttpOperation.operator ==(Kaleido.Registry.RegistryHttpOperation? left, Kaleido.Registry.RegistryHttpOperation? right) -> bool
+static Kaleido.Registry.RegistryInstanceRegistration.operator !=(Kaleido.Registry.RegistryInstanceRegistration? left, Kaleido.Registry.RegistryInstanceRegistration? right) -> bool
+static Kaleido.Registry.RegistryInstanceRegistration.operator ==(Kaleido.Registry.RegistryInstanceRegistration? left, Kaleido.Registry.RegistryInstanceRegistration? right) -> bool
+static Kaleido.Registry.RegistryInstanceStatus.operator !=(Kaleido.Registry.RegistryInstanceStatus? left, Kaleido.Registry.RegistryInstanceStatus? right) -> bool
+static Kaleido.Registry.RegistryInstanceStatus.operator ==(Kaleido.Registry.RegistryInstanceStatus? left, Kaleido.Registry.RegistryInstanceStatus? right) -> bool
+static Kaleido.Registry.RegistryLease.operator !=(Kaleido.Registry.RegistryLease? left, Kaleido.Registry.RegistryLease? right) -> bool
+static Kaleido.Registry.RegistryLease.operator ==(Kaleido.Registry.RegistryLease? left, Kaleido.Registry.RegistryLease? right) -> bool
+static Kaleido.Registry.RegistryMissingService.operator !=(Kaleido.Registry.RegistryMissingService? left, Kaleido.Registry.RegistryMissingService? right) -> bool
+static Kaleido.Registry.RegistryMissingService.operator ==(Kaleido.Registry.RegistryMissingService? left, Kaleido.Registry.RegistryMissingService? right) -> bool
+static Kaleido.Registry.RegistryReadError.operator !=(Kaleido.Registry.RegistryReadError? left, Kaleido.Registry.RegistryReadError? right) -> bool
+static Kaleido.Registry.RegistryReadError.operator ==(Kaleido.Registry.RegistryReadError? left, Kaleido.Registry.RegistryReadError? right) -> bool
+static Kaleido.Registry.RegistryServiceAvailability.operator !=(Kaleido.Registry.RegistryServiceAvailability? left, Kaleido.Registry.RegistryServiceAvailability? right) -> bool
+static Kaleido.Registry.RegistryServiceAvailability.operator ==(Kaleido.Registry.RegistryServiceAvailability? left, Kaleido.Registry.RegistryServiceAvailability? right) -> bool
+static Kaleido.Registry.RegistryServiceRoute.operator !=(Kaleido.Registry.RegistryServiceRoute? left, Kaleido.Registry.RegistryServiceRoute? right) -> bool
+static Kaleido.Registry.RegistryServiceRoute.operator ==(Kaleido.Registry.RegistryServiceRoute? left, Kaleido.Registry.RegistryServiceRoute? right) -> bool
+static Kaleido.Registry.RegistryServiceStatus.operator !=(Kaleido.Registry.RegistryServiceStatus? left, Kaleido.Registry.RegistryServiceStatus? right) -> bool
+static Kaleido.Registry.RegistryServiceStatus.operator ==(Kaleido.Registry.RegistryServiceStatus? left, Kaleido.Registry.RegistryServiceStatus? right) -> bool
+static Kaleido.Registry.RegistryTransportBindings.operator !=(Kaleido.Registry.RegistryTransportBindings? left, Kaleido.Registry.RegistryTransportBindings? right) -> bool
+static Kaleido.Registry.RegistryTransportBindings.operator ==(Kaleido.Registry.RegistryTransportBindings? left, Kaleido.Registry.RegistryTransportBindings? right) -> bool
+static Kaleido.Registry.RegistryTransportRoute.operator !=(Kaleido.Registry.RegistryTransportRoute? left, Kaleido.Registry.RegistryTransportRoute? right) -> bool
+static Kaleido.Registry.RegistryTransportRoute.operator ==(Kaleido.Registry.RegistryTransportRoute? left, Kaleido.Registry.RegistryTransportRoute? right) -> bool
+virtual Kaleido.Registry.KaleidoRegistry.<Clone>$() -> Kaleido.Registry.KaleidoRegistry!
+virtual Kaleido.Registry.KaleidoRegistry.EqualityContract.get -> System.Type!
+virtual Kaleido.Registry.KaleidoRegistry.Equals(Kaleido.Registry.KaleidoRegistry? other) -> bool
+virtual Kaleido.Registry.KaleidoRegistry.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Kaleido.Registry.ProcessStepContract.EqualityContract.get -> System.Type!
+virtual Kaleido.Registry.ProcessStepContract.Equals(Kaleido.Registry.ProcessStepContract? other) -> bool
+virtual Kaleido.Registry.ProcessStepContract.PrintMembers(System.Text.StringBuilder! builder) -> bool

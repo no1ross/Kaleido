@@ -1,3 +1,0 @@
-#nullable enable
-Kaleido.Registry.Http.ControlRegistryEndpointRouteBuilderExtensions
-static Kaleido.Registry.Http.ControlRegistryEndpointRouteBuilderExtensions.MapKaleidoControlRegistry(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!

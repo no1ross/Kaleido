@@ -1,6 +1,6 @@
 # 0040. One authoritative registry publishes versioned logical routes
 
-- **Status:** Accepted
+- **Status:** Accepted; registration revision/hash rule superseded by 0045
 - **Date:** 2026-11-09
 - **Related:** #581, #577, #553, ADR 0037, ADR 0039
 

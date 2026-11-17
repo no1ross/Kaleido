@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Fixed-endpoint Registry HTTP client, conditional reads and explicit participant transport wiring.</Description>
+		<PackageTags>kaleido;registry;http;client</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Registry.Client\Kaleido.Registry.Client.csproj" />
+		<ProjectReference Include="..\Kaleido.Registry.Http\Kaleido.Registry.Http.csproj" />
+		<ProjectReference Include="..\..\..\Transports\Http\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
+		<PackageReference Include="Microsoft.Extensions.Http" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Configuration" />
+		<Using Include="Kaleido.Http.Client.Registration" />
+		<Using Include="Kaleido.Http.Client.Pipeline" />
+		<Using Include="Kaleido.Http.Client.Transport" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Client" />
+		<Using Include="Kaleido.Registry.Http" />
+	</ItemGroup>
+</Project>

@@ -1,0 +1,3 @@
+#nullable enable
+Kaleido.Process.Http.ProcessHttpRegistryBindingServiceCollectionExtensions
+static Kaleido.Process.Http.ProcessHttpRegistryBindingServiceCollectionExtensions.AddProcessHttpBindings(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

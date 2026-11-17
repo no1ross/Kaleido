@@ -3,26 +3,32 @@
 Unit-test suites generally mirror source and analyzer projects; functional and integration suites exercise composed behavior:
 
 | Test project | Tests code in |
-|---|---|
+| --- | --- |
 | `Kaleido.UnitTests` | `src/Core/Kaleido` foundation only; do not reference Process, Queryable or Eventing |
 | `Kaleido.Eventing.UnitTests` | `src/Events/Kaleido.Eventing` generic event writer, outbox, relay and redaction |
 | `Kaleido.Process.UnitTests` | `src/Capabilities/Process/Kaleido.Process` steps, runtime and state stores |
 | `Kaleido.Process.Server.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Server` neutral idempotency admission/replay |
+| `Kaleido.Process.Http.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Http` versioned route wire and HTTP Registry bindings |
 | `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
 | `Kaleido.Queryable.Http.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http` request wire conversion and versioned query routes |
 | `Kaleido.Queryable.Http.Server.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http.Server` request conversion and endpoint mapping |
 | `Kaleido.Queryable.Http.Server.FunctionalTests` | Local Queryable source/view requests through ASP.NET TestServer, without central Registry |
 | `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |
 | `Kaleido.Server.UnitTests` | `src/Transports/Kaleido.Server` neutral authorization options and registration |
-| `Kaleido.Client.UnitTests` | `src/Client` participation, hydration and transport selection |
+| `Kaleido.Client.UnitTests` | Unmigrated remote Process/Queryable client contracts under `src/Client` |
 | `Kaleido.Http.UnitTests` | `src/Transports/Http/Kaleido.Http` shared JSON/header/error wire and route prefix |
 | `Kaleido.Http.Server.UnitTests` | `src/Transports/Http/Kaleido.Http.Server` generic ASP.NET infrastructure |
-| `Kaleido.Http.Client.UnitTests` | `src/Http/Http.Client` HTTP clients and handlers |
+| `Kaleido.Http.Client.UnitTests` | `src/Transports/Http/Kaleido.Http.Client` shared outbound pipeline and credential guard |
 | `Kaleido.Hosting.UnitTests` | `src/Composed/Hosts/Kaleido.Hosting` neutral registration and provider-presence checks |
 | `Kaleido.Hosting.FunctionalTests` | Non-web console `IHost` scenarios exercising public Process/Queryable APIs with no ASP.NET or central Registry participation |
 | `Kaleido.Http.FunctionalTests` | HTTP server/client contracts with TestServer and the central registry |
-| `Kaleido.Registry.UnitTests` | `src/Registry/Registry` registration, trust, leases, views, cache and store |
-| `Kaleido.Registry.Http.UnitTests` | `src/Registry/Registry.Http` endpoint mapping |
+| `Kaleido.Registry.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry` portable contracts and API |
+| `Kaleido.Registry.Server.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry.Server` authority, store, leases, status and cache |
+| `Kaleido.Registry.Client.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry.Client` neutral publication and hydration |
+| `Kaleido.Registry.Http.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry.Http` fixed URL contract |
+| `Kaleido.Registry.Http.Server.UnitTests` / `.FunctionalTests` | Registry ASP.NET listener and direct TestServer without a participant client |
+| `Kaleido.Registry.Http.Client.UnitTests` / `.FunctionalTests` | Fixed-endpoint HTTP calls, ETags and service JWTs |
+| `Kaleido.Registry.IntegrationTests` | Composed public Queryable/HTTP publisher, authority and inbound JWT caller exchange |
 | `Kaleido.Mcp.UnitTests` | `src/Mcp/Mcp` catalogs, schemas, tool invoker and naming |
 | `Kaleido.Mcp.FunctionalTests` | MCP over a real host and the SDK client |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Providers/Kaleido.Provider.SQLite` store and transaction fidelity |

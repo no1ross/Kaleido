@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Process HTTP route wire and Registry operation bindings; no ASP.NET Core runtime.</Description>
+		<PackageTags>kaleido;process;http;contracts</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Process\Kaleido.Process.csproj" />
+		<ProjectReference Include="..\..\Registry\Kaleido.Registry\Kaleido.Registry.csproj" />
+		<ProjectReference Include="..\..\..\Transports\Http\Kaleido.Http\Kaleido.Http.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Registry" />
+	</ItemGroup>
+	<ItemGroup>
+		<!-- The ASP.NET Process adapter maps and names these versioned routes. -->
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Server" />
+	</ItemGroup>
+</Project>

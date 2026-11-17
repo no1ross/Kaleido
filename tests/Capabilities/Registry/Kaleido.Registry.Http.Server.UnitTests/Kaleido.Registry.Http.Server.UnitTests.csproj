@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Server\Kaleido.Registry.Http.Server.csproj" />
+		<ProjectReference Include="..\..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Server" />
+		<Using Include="Kaleido.Http.Server.Authorization" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Http.Server" />
+		<Using Include="Kaleido.Registry.Server" />
+		<Using Include="Kaleido.UnitTests" />
+		<Using Include="Microsoft.Extensions.Time.Testing" />
+		<Using Include="Moq" />
+	</ItemGroup>
+</Project>

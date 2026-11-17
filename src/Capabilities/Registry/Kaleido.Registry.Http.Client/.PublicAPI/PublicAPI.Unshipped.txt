@@ -1,0 +1,4 @@
+#nullable enable
+Kaleido.Registry.Http.Client.KaleidoRegistryHttpClientServiceCollectionExtensions
+static Kaleido.Registry.Http.Client.KaleidoRegistryHttpClientServiceCollectionExtensions.AddRegistryHttpClient(this Kaleido.IKaleidoBuilder! builder, Kaleido.Http.Client.Configuration.KaleidoClientOptions? options = null) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Registry.Http.Client.KaleidoRegistryHttpClientServiceCollectionExtensions.AddRegistryHttpParticipation(this Kaleido.IKaleidoBuilder! builder, Kaleido.Http.Client.Configuration.KaleidoClientOptions? options = null) -> Kaleido.IKaleidoBuilder!

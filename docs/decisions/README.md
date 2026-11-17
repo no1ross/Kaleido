@@ -15,7 +15,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 ## Index
 
 | # | Decision | Status | Related |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | [0001](./0001-process-engine-not-decision-maker.md) | Kaleido is a process engine, never a business decision maker | Accepted | foundational |
 | [0002](./0002-information-request-contract.md) | Information requests use Kaleido's own contract, modelled on the FHIR Questionnaire structure | Accepted | #142 |
 | [0003](./0003-schema-not-content.md) | The framework owns the schema, the implementer owns the content; two kinds of steps | Accepted | #142 |
@@ -55,11 +55,12 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0037](./0037-the-control-registry.md) | Initial control-registry design: push registration, caller-filtered discovery, store-owned state and versioned gateway routes; implementation phases completed in ADR 0040 | Superseded by [0040](./0040-central-registry-only-and-versioned-routes.md) | #553, #581 |
 | [0038](./0038-the-authentication-model.md) | The host authenticates (plain ASP.NET, claims mapped by the host), ASP.NET authorizes every surface; a call made for a caller forwards its token (`Forward`, the default) or carries the token the host's own handler exchanged (`Exchange`, required on an MCP host); the service's own calls carry its app-only token; the credential provider seam is removed | Accepted | #574 |
 | [0039](./0039-protocol-neutral-package-boundaries.md) | Historical Platform, Client and Server package boundaries | Superseded by [0041](./0041-capability-owned-project-boundaries.md) | #581, #577 |
-| [0040](./0040-central-registry-only-and-versioned-routes.md) | One authoritative registry, versioned logical gateway routes, registry-driven clients and HybridCache; no service registries or host fan-out | Accepted | #581, #577, #553 |
+| [0040](./0040-central-registry-only-and-versioned-routes.md) | One authoritative registry, versioned logical gateway routes, registry-driven clients and HybridCache; no service registries or host fan-out | Accepted; content-hash publication rule superseded by [0045](./0045-registry-publication-build-identity-and-snapshot-versions.md) | #581, #577, #553, #610 |
 | [0041](./0041-capability-owned-project-boundaries.md) | Project and registration boundaries follow behavioral ownership; migrate from the foundation outward | Accepted | #585, #586, #588 |
 | [0042](./0042-event-types-belong-to-capabilities.md) | Process and Queryable own their event discriminators, not lower-level Eventing | Accepted | #585, #589, #590 |
 | [0043](./0043-required-service-identity-and-shared-authorization-declarations.md) | Every service has a version, InstanceId is internal, and shared authorization declarations/metadata live in Core | Accepted | #585, #586, #588, #595 |
 | [0044](./0044-process-server-idempotency-ownership.md) | Generic Process owns state/transactions; Process.Server owns neutral idempotency admission and opaque replay | Accepted | #589, #587, #600, #602 |
+| [0045](./0045-registry-publication-build-identity-and-snapshot-versions.md) | Registry contracts/server/client split, service Product BuildVersion publications, provider-owned storage and neutral snapshot versions | Accepted | #585, #610, #611, #577 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

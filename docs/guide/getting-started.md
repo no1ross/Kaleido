@@ -125,7 +125,7 @@ public sealed class ConfirmOrderHandler : IProcessStepHandler<ConfirmOrderStep>
 
 ## 4. Publish it over HTTP
 
-Run a separate [control registry host](../../src/Registry/Registry/README.md#a-registry-host) and
+Run a separate [control registry host](../../src/Capabilities/Registry/Kaleido.Registry.Server/README.md#a-registry-host) and
 configure `Kaleido:BaseUrl` with the gateway's URL. Map `/registry` to the registry host and
 `/orders/1` to the Orders host; the registry carries logical routes, never host addresses.
 Register Kaleido with the assemblies to scan, then map its endpoints. Kaleido finds the source,

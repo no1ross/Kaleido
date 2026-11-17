@@ -45,6 +45,9 @@ public sealed class ProcessServiceCollectionExtensionsTests
 
         var registry =
             provider.GetRequiredService<IProcessorRegistry>();
+        var publication = Assert.Single(provider.GetServices<IKaleidoLocalCapabilities>());
+        Assert.Same(registry, publication);
+        Assert.Equal("test-processor", Assert.Single(publication.Capabilities().Processes).ServiceName);
 
         var registration =
             Assert.Single(registry.Registrations);

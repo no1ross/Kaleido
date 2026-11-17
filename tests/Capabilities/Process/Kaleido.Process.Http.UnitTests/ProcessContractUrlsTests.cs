@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Processor.UnitTests;
+namespace Kaleido.Process.Http.UnitTests;
 
 public sealed class ProcessContractUrlsTests : Kaleido.UnitTests.SutFixture
 {

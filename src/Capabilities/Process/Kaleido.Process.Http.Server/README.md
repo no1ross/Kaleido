@@ -57,8 +57,8 @@ Reference this project when you need to:
 
 This project does not contain:
 - runtime business logic — that is [`Kaleido`](../../../Core/Kaleido/README.md)
-- shared published contracts — that is [`Kaleido.Platform`](../../../Platform/README.md)
-- remote HTTP client consumption — that is [`Kaleido.Http.Client`](../../../Http/Http.Client/README.md)
+- portable published Registry descriptions — that is [`Kaleido.Registry`](../../Registry/Kaleido.Registry/README.md); remaining Platform contracts await their owners
+- the shared outbound credential pipeline — that is [`Kaleido.Http.Client`](../../../Transports/Http/Kaleido.Http.Client/README.md); dynamic Process client migration is separate
 
 ---
 
@@ -127,7 +127,7 @@ A process execute request - `POST /{service}/{version}/processes/execute` or a s
 The key is **admitted in the store before the step runs**, atomically (ADR 0019). What a request with a key gets:
 
 | Situation | Answer |
-|---|---|
+| --- | --- |
 | First request with the key | the step runs; a successful (2xx) answer is stored with the key |
 | Same key and request, **while the first one still runs** | **409** `pro_idempotency_in_progress` with `Retry-After`; the step does **not** run. Retry after the delay |
 | Same key and request, **after the first one answered** | the stored answer again, with `Idempotent-Replayed: true` and the `X-Kaleido-Process-Id` header of the answer; the step does not run again |
@@ -145,7 +145,7 @@ Details:
 - Answers are kept for `KaleidoHttpOptions.IdempotencyRetention` (default **24 hours**, independent of the unknown-outcome retention: `AddHttp(new() { IdempotencyRetention = TimeSpan.FromHours(4) })`) by the idempotency store (`IProcessIdempotencyStore.AdmitAsync`/`CompleteAsync`/`ReleaseAsync`) - the SQLite reference store keeps them in its own `IdempotentResults` table in the same database, so there is nothing extra to set up.
 - Each admission has its own id, and only that attempt can finalize it (#441): a successful (2xx) answer is stored; a **4xx** - the request was refused before anything was committed (validation, authorization, a concurrent change) - releases the key, so it may be retried with the same key; anything else marks the outcome unknown. An attempt that outlived its record (it expired and the key was admitted again) cannot overwrite or delete the newer record. Storing the outcome never changes the request's own answer: a store failure is logged at Error.
 - To resolve an unknown outcome sooner than its retention, an operator reads the process state and deletes the key's record from the idempotency store.
-- **Any HTTP client** gets this, not only Kaleido's: send `Idempotency-Key: <a new unique value>` with each logical call, re-send the **same key and the same request** on a retry, wait `Retry-After` seconds on `pro_idempotency_in_progress`, and read the process state on `pro_idempotency_outcome_unknown`. The Kaleido clients do all of it automatically ([`Kaleido.Http.Client`](../../../Http/Http.Client/README.md#idempotent-execute-calls)).
+- **Any HTTP client** gets this, not only Kaleido's: send `Idempotency-Key: <a new unique value>` with each logical call, re-send the **same key and the same request** on a retry, wait `Retry-After` seconds on `pro_idempotency_in_progress`, and read the process state on `pro_idempotency_outcome_unknown`. The old Process HTTP client contains this behavior, but its dynamic outbound adapter has not completed the #585 migration; the shared [`Kaleido.Http.Client`](../../../Transports/Http/Kaleido.Http.Client/README.md#resilience) retries safe GET/HEAD calls only. Do not claim Process-specific keyed retries are available from the shared pipeline.
 
 ## Concurrent calls (`409 pro_process_conflict`)
 
@@ -224,6 +224,6 @@ keeps its last good copy marked partial without changing readiness after initial
 
 - `QueryableEndpointRouteBuilderExtensions.cs` — Queryable route publication
 - `ProcessorEndpointRouteBuilderExtensions.cs` — Process route publication
-- [`../../../Registry/Registry.Http/README.md`](../../../Registry/Registry.Http/README.md) — control-registry HTTP API on its own host
-- `../Http/Processor/ProcessRoutes.cs` — shared `ProcessContractUrls`, `ProcessRoutePaths`, `ProcessEndpointNames`
-- `../Http/Queryable/QueryableRoutes.cs` — shared `QueryableContractUrls`
+- [Registry HTTP listener](../../Registry/Kaleido.Registry.Http.Server/README.md) — control-registry API on its own host
+- [`ProcessContractUrls`](../Kaleido.Process.Http/ProcessContractUrls.cs) — Process-owned versioned HTTP URLs; this ASP.NET owner retains `ProcessRoutePaths` and `ProcessEndpointNames`
+- [`QueryableContractUrls`](../../Queryable/Kaleido.Queryable.Http/QueryableContractUrls.cs) — Queryable-owned versioned HTTP URLs

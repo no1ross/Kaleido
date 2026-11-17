@@ -1,5 +1,6 @@
 #nullable enable
 Kaleido.Queryable.Http.QueryableContractUrls
+Kaleido.Queryable.Http.QueryableHttpRegistryBindingServiceCollectionExtensions
 Kaleido.Queryable.Http.QueryApiBody
 Kaleido.Queryable.Http.QueryApiBody.Filter.get -> Kaleido.Queryable.Http.QueryApiFilterNode?
 Kaleido.Queryable.Http.QueryApiBody.Filter.init -> void
@@ -96,6 +97,7 @@ override Kaleido.Queryable.Http.QueryApiSort.GetHashCode() -> int
 override Kaleido.Queryable.Http.QueryApiSort.ToString() -> string!
 static Kaleido.Queryable.Http.QueryableContractUrls.QuerySourceQuery(string! serviceName, string! serviceVersion, string! sourceName) -> string!
 static Kaleido.Queryable.Http.QueryableContractUrls.QueryViewQuery(string! serviceName, string! serviceVersion, string! sourceName, string! viewName) -> string!
+static Kaleido.Queryable.Http.QueryableHttpRegistryBindingServiceCollectionExtensions.AddQueryableHttpBindings(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
 static Kaleido.Queryable.Http.QueryApiBody.operator !=(Kaleido.Queryable.Http.QueryApiBody? left, Kaleido.Queryable.Http.QueryApiBody? right) -> bool
 static Kaleido.Queryable.Http.QueryApiBody.operator ==(Kaleido.Queryable.Http.QueryApiBody? left, Kaleido.Queryable.Http.QueryApiBody? right) -> bool
 static Kaleido.Queryable.Http.QueryApiBodyExtensions.ToApiBody(this Kaleido.Queryable.Query.QueryBody? body) -> Kaleido.Queryable.Http.QueryApiBody?

@@ -7,10 +7,11 @@ decided at 1.0. Nothing here promises a support period or a date.
 
 - Package versions come from [`version.json`](../version.json)
   ([Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning)): `1.0.0-preview.{height}`,
-  where the height is the number of commits since the version was last changed. All eight
-  packages (the seven `src/` packages and `Kaleido.Analyzers`) share one version. Only master and
+  where the height is the number of commits since the version was last changed. All shipped
+  packages in one release share one version. Only master and
   `v*` tags build that public version; any other branch adds the commit (`-g<commit>`), so a package
   packed from a topic branch is never mistaken for a published one (#526).
+- **A service's Registry build label is not the Kaleido package version.** `ServiceName + ServiceVersion` identifies its logical route and Process-state scope. An opted-in publisher's `BuildVersion` comes from the **service application's** entry-assembly Product/AssemblyInformationalVersion before `+commit` metadata (e.g. `1.0.0-preview.616`), even when its compatible `ServiceVersion` stays fixed ([ADR 0045](decisions/0045-registry-publication-build-identity-and-snapshot-versions.md)). Registry snapshot versions and HTTP weak ETags are separate opaque change tokens, never version numbers.
 - **The packages move together.** Each package depends on its sibling Kaleido packages at exactly
   its own version (`[x.y.z]`, #431): the transports, the client and the MCP adapter use core's
   internal seams (`InternalsVisibleTo`), which the public API baseline does not cover, so a mixed set
@@ -40,7 +41,7 @@ commitment.
 Each package records its public API in two files in its project's `.PublicAPI` folder (`Microsoft.CodeAnalysis.PublicApiAnalyzers`, #313):
 
 | File | Holds |
-|---|---|
+| --- | --- |
 | `PublicAPI.Shipped.txt` | the API of the released versions (empty until 1.0) |
 | `PublicAPI.Unshipped.txt` | what changed since the last release (during the preview, the whole API) |
 
@@ -60,7 +61,7 @@ Each package records its public API in two files in its project's `.PublicAPI` f
 ## Runtime
 
 - The packages target **`net8.0`**: a service runs on .NET 8 or later. `Kaleido.Server`,
-  `Kaleido.Http.Server`, `Kaleido.Registry.Http` and `Kaleido.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`).
+  `Kaleido.Http.Server`, `Kaleido.Queryable.Http.Server`, `Kaleido.Registry.Http.Server` and `Kaleido.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`).
 - The repository builds with the **.NET 10 SDK** pinned in [`global.json`](../global.json) (#578). Moving to a newer SDK is a deliberate change with its own issue; the packages' target framework does not follow the SDK.
 - CI builds and tests on Linux with the .NET 8 runtime installed, so the target framework is the
   runtime the tests run on.
@@ -84,7 +85,7 @@ decision (#579).
 ### Deployment modes
 
 | Publish mode | 1.0 |
-|---|---|
+| --- | --- |
 | Framework-dependent or self-contained (JIT) | Supported |
 | Trimmed (`PublishTrimmed`) | **Not supported** |
 | NativeAOT (`PublishAot`) | **Not supported** |

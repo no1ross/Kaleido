@@ -9,18 +9,22 @@ internal interface IQueryableRegistry
 {
     /// <summary>The registered query sources (local and delegated), ordered by name.</summary>
     IReadOnlyCollection<QueryableSourceRegistryItem> Registrations { get; }
+
+    IReadOnlyCollection<QueryableRegistryItem> Published { get; }
 }
 
-internal sealed partial class QueryableRegistry : IQueryableRegistry
+internal sealed partial class QueryableRegistry : IQueryableRegistry, IKaleidoLocalCapabilities
 {
 
     public QueryableRegistry(
         IQuerySourceRegistry sourceRegistry,
         IQueryViewRegistry viewRegistry,
+        KaleidoServiceOptions serviceOptions,
         ILogger<QueryableRegistry> logger)
     {
         ArgumentNullException.ThrowIfNull(sourceRegistry);
         ArgumentNullException.ThrowIfNull(viewRegistry);
+        ArgumentNullException.ThrowIfNull(serviceOptions);
         ArgumentNullException.ThrowIfNull(logger);
 
         Registrations =
@@ -33,11 +37,16 @@ internal sealed partial class QueryableRegistry : IQueryableRegistry
                             .ToArray()))
                 .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
+        Published = [.. Registrations.Select(source => ToPublished(source, serviceOptions))];
 
         LogRegistryBuilt(logger, Registrations.Count);
     }
 
     public IReadOnlyCollection<QueryableSourceRegistryItem> Registrations { get; }
+
+    public IReadOnlyCollection<QueryableRegistryItem> Published { get; }
+
+    public KaleidoRegistry Capabilities() => new() { Queryables = Published };
 
     private static QueryableSourceRegistryItem Project(
         QuerySourceRegistration registration,
@@ -155,6 +164,108 @@ internal sealed partial class QueryableRegistry : IQueryableRegistry
             Classifications = metadata.Classifications,
         };
     }
+
+    private static QueryableRegistryItem ToPublished(QueryableSourceRegistryItem source, KaleidoServiceOptions service) => new()
+    {
+        ServiceName = service.ServiceName,
+        ServiceVersion = service.ServiceVersion,
+        Name = source.Name,
+        Description = source.Description,
+        DisplayName = source.DisplayName,
+        Source = source.Source,
+        Pageable = ToPublished(source.Pageable),
+        Authorization = source.Authorization,
+        Fields = [.. source.Fields.Select(field => new QueryableRegistryField
+        {
+            Name = field.Name,
+            Description = field.Description,
+            DataType = ToPublished(field.DataType),
+            Classifications = field.Classifications,
+            IsFilterable = field.IsFilterable,
+            FilterOperators = [.. field.FilterOperators.Select(OperatorToken)],
+            IsSearchable = field.IsSearchable,
+            SearchPriority = field.SearchPriority,
+            MatchMode = field.MatchMode is { } mode ? MatchToken(mode) : null,
+            IsSortable = field.IsSortable,
+        })],
+        Parameters = [.. source.Parameters.Select(ToPublished)],
+        OutputFields = [.. source.OutputFields.Select(ToPublished)],
+        Views = [.. source.Views.Select(ToPublished)],
+    };
+
+    private static QueryableRegistryViewItem ToPublished(QueryableViewRegistryItem view) => new()
+    {
+        Name = view.Name,
+        Description = view.Description,
+        DisplayName = view.DisplayName,
+        Pageable = ToPublished(view.Pageable),
+        Authorization = view.Authorization,
+        Parameters = [.. view.Parameters.Select(ToPublished)],
+        OutputFields = [.. view.OutputFields.Select(ToPublished)],
+    };
+
+    private static QueryableRegistryParameter ToPublished(QueryableParameterDescriptor parameter) => new()
+    {
+        Name = parameter.Name,
+        Description = parameter.Description,
+        DataType = ToPublished(parameter.DataType),
+        Classifications = parameter.Classifications,
+        Constraints = [.. parameter.Constraints.Select(constraint => new ConstraintMetadata
+        {
+            Type = constraint.Type,
+            Parameters = [.. constraint.Parameters.Select(value => new ConstraintParameterMetadata { Name = value.Name, Value = value.Value })],
+        })],
+    };
+
+    private static QueryableRegistryOutputField ToPublished(QueryableOutputFieldDescriptor field) => new()
+    {
+        Name = field.Name,
+        Description = field.Description,
+        DataType = ToPublished(field.DataType),
+        Classifications = field.Classifications,
+    };
+
+    private static QueryableRegistryPaging? ToPublished(PageableMetadata? paging) =>
+        paging is null ? null : new(paging.DefaultSize, paging.MaxSize, paging.DefaultSortField);
+
+    private static DataTypeMetadata ToPublished(DataTypeDescriptor descriptor) => new(
+        descriptor.Type,
+        descriptor.Format,
+        descriptor.Nullable,
+        descriptor.EnumValues?.Select(value => new EnumValueMetadata(value.Value, value.Name, value.Description)).ToArray(),
+        descriptor.ItemType is { } item ? ToPublished(item) : null);
+
+    private static string OperatorToken(FilterOperator operation) => operation switch
+    {
+        FilterOperator.Equals => "equals",
+        FilterOperator.NotEquals => "notEquals",
+        FilterOperator.GreaterThan => "greaterThan",
+        FilterOperator.LessThan => "lessThan",
+        FilterOperator.GreaterThanOrEqual => "greaterThanOrEqual",
+        FilterOperator.LessThanOrEqual => "lessThanOrEqual",
+        FilterOperator.Contains => "contains",
+        FilterOperator.NotContains => "notContains",
+        FilterOperator.StartsWith => "startsWith",
+        FilterOperator.EndsWith => "endsWith",
+        FilterOperator.In => "in",
+        FilterOperator.NotIn => "notIn",
+        FilterOperator.Between => "between",
+        FilterOperator.NotBetween => "notBetween",
+        FilterOperator.IsNull => "isNull",
+        FilterOperator.IsNotNull => "isNotNull",
+        FilterOperator.IsTrue => "isTrue",
+        FilterOperator.IsFalse => "isFalse",
+        _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+    };
+
+    private static string MatchToken(MatchMode mode) => mode switch
+    {
+        MatchMode.Exact => "exact",
+        MatchMode.StartsWith => "startsWith",
+        MatchMode.EndsWith => "endsWith",
+        MatchMode.Contains => "contains",
+        _ => throw new ArgumentOutOfRangeException(nameof(mode)),
+    };
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Queryable registry built with {SourceCount} sources.")]
     private static partial void LogRegistryBuilt(ILogger logger, int sourceCount);

@@ -11,7 +11,7 @@ resulting principal. Each step, source and view is a **capability**, and `Author
 what a capability without a rule means:
 
 | Mode | A capability without a rule | Roles / policy rules |
-|---|---|---|
+| --- | --- | --- |
 | `None` | open | not enforced (local evaluation only) |
 | `Authenticated` (default) | any signed-in caller | enforced |
 | `ZeroTrust` | not published, not callable | enforced |
@@ -33,7 +33,7 @@ public sealed record RefundOrderStep : IProcessStep;
 What the test shows, under `Authenticated`:
 
 | Caller | Registry | Calls |
-|---|---|---|
+| --- | --- | --- |
 | anonymous | - | **401** |
 | signed in, role `clerk` | every step and source, **without** Refund order | Refund order: **403** |
 | signed in, role `manager` | everything, Refund order included | Refund order runs |
@@ -53,11 +53,11 @@ handlers' and sources' job: [Queries - Who may query, and which rows](queries.md
 When a service calls another Kaleido service (a handler or delegated source using a Kaleido client,
 the MCP adapter calling for a user), a call made **for a caller** and the service's **own** calls
 (registry refresh, heartbeat, health probe) carry different tokens (#574,
-[client README](../../src/Http/Http.Client/README.md)). A call made for a caller is set by
+[client README](../../src/Transports/Http/Kaleido.Http.Client/README.md)). A call made for a caller is set by
 `Kaleido:OnBehalfOfCalls`, a setting, not a token:
 
 | `Kaleido:OnBehalfOfCalls` | A call made for a caller carries | The service's own calls carry |
-|---|---|---|
+| --- | --- | --- |
 | `Forward` (default) | the caller's token, unchanged | what your handlers set, e.g. a client-credentials token |
 | `Exchange` (required on an MCP host) | the token your handler exchanged for the caller, never the inbound one | the same |
 
@@ -125,7 +125,7 @@ sequenceDiagram
 ```
 
 | Header | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `X-Kaleido-Request-Id` | end to end | the user action; generated when missing |
 | `X-Kaleido-Process-Id` | end to end | the process the call belongs to |
 | `X-Kaleido-Origin` / `X-Kaleido-Origin-Tool` | end to end | the front door (`mcp`) and the tool; informational, never an authorization input |

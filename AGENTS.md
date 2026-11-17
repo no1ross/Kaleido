@@ -1,6 +1,6 @@
 # Kaleido contributor guide
 
-This is the repository-level contributor guide for Kaleido: 15 shipped projects and four gRPC placeholders during #585 (see [Project boundaries](#project-boundaries)). Read the [architecture map](./docs/architecture/README.md), then the README and scoped AGENTS.md of the project you are changing. The coding conventions are in [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); this file stays under 16,000 bytes so agent tooling loads it whole (#455, checked in CI).
+This is the contributor guide for Kaleido's #585 migration (see [Project boundaries](#project-boundaries)). Read the [architecture map](./docs/architecture/README.md), then the README and scoped AGENTS.md of the project you are changing. The coding conventions are in [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); this file stays under 16,000 bytes so agent tooling loads it whole (#455, checked in CI).
 
 ## Build and test commands
 
@@ -42,38 +42,39 @@ CI (`build.yml`) also checks, and you run before committing:
 
 ## Project boundaries
 
-A project's README explains its software; the [architecture map](./docs/architecture/README.md) explains design, and scoped AGENTS files tell agents what to preserve. The two legacy ARCHITECTURE.md files are being retired as each area moves. This table states ownership boundaries, not type lists.
+Project READMEs explain behavior, the [architecture map](./docs/architecture/README.md) explains design, and scoped AGENTS files preserve local invariants. This table states owners, not type lists.
 
 | Project | Owns | Does not own |
 | --- | --- | --- |
 | [`Kaleido`](./src/Core/Kaleido/README.md) | foundation: identity, shared metadata, correlation and options binding | Eventing/outbox, capability runtimes, provider choice, transport |
 | [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md) | generic event envelope, redaction, writer, outbox store/relay and health | Process/Queryable event payloads or a transport; placement temporary (#592) |
-| [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md) | steps, state, recovery, events and public neutral invocation | Queryable, central registry, idempotency admission, HTTP |
-| [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md), [`Kaleido.Queryable.Http`](./src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) | local query runtime/events; HTTP query request/route wire | central Registry, ASP.NET |
+| [Process](./src/Capabilities/Process/Kaleido.Process/README.md), [HTTP](./src/Capabilities/Process/Kaleido.Process.Http/README.md) | local runtime/Registry projection; HTTP bindings | Queryable, Registry authority/client |
+| [Queryable](./src/Capabilities/Queryable/Kaleido.Queryable/README.md), [HTTP](./src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) | local runtime/Registry projection; HTTP requests/bindings | Process, Registry authority/client |
 | [`Kaleido.Platform`](./src/Platform/README.md) | remaining mixed Registry/capability contracts (migration pending) | runtime, shared HTTP wire |
 | [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md) | neutral authorization mode/default | ASP.NET, Registry client, runtime logic |
-| [`Kaleido.Client`](./src/Client/README.md) | neutral clients, call context, registry participation, hydration, transport choice | HTTP wire implementation |
+| [`src/Client`](./src/Client/README.md) | unmigrated remote Process/Queryable client interfaces; #585 migration source | Registry participation or shared HTTP credential pipeline |
 | [`Kaleido.Http`](./src/Transports/Http/Kaleido.Http/README.md) | shared HTTP JSON, headers, errors and route prefix | ASP.NET, capability/Registry URLs |
 | [`Kaleido.Http.Server`](./src/Transports/Http/Kaleido.Http.Server/README.md) | shared ASP.NET filters, correlation and caller handling | Registry wiring, capability execution |
 | [`Kaleido.Hosting`](./src/Composed/Hosts/Kaleido.Hosting/README.md) | neutral capability registration and required-store checks | transport, provider choice, mandatory Registry client |
-| [`Kaleido.Http.Client`](./src/Http/Http.Client/README.md) | one gateway HTTP client (`Kaleido:BaseUrl`), published-route calls, credentials and resilience | per-service addresses, server mapping |
+| [`Kaleido.Http.Client`](./src/Transports/Http/Kaleido.Http.Client/README.md) | shared named `IHttpClientFactory` gateway pipeline, caller credential guard, safe reads | Registry URLs, dynamic capability routing, Process idempotency |
 | [`Kaleido.Mcp`](./src/Mcp/Mcp/README.md) | caller-filtered MCP tools, forms, schemas and invocation | transport or client internals |
-| [`Kaleido.Registry`](./src/Registry/Registry/README.md) | control registry, leases, store contract, merged views and HybridCache | instance addresses and gateway routing |
-| [`Kaleido.Registry.Http`](./src/Registry/Registry.Http/README.md) | control-registry HTTP API | registry state or runtime rules |
+| [`Kaleido.Registry`](./src/Capabilities/Registry/Kaleido.Registry/README.md) | Core-only portable Registry item/binding/read contracts | authority, HTTP/gRPC implementation |
+| [Registry.Server](./src/Capabilities/Registry/Kaleido.Registry.Server/README.md), [Client](./src/Capabilities/Registry/Kaleido.Registry.Client/README.md) | authority state; explicit participation | transport, capability runtime |
+| [Registry.Http](./src/Capabilities/Registry/Kaleido.Registry.Http/README.md), [Server](./src/Capabilities/Registry/Kaleido.Registry.Http.Server/README.md), [Client](./src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md) | fixed URLs; HTTP listener/client | persistence, planning |
 | [`Kaleido.Observability.OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md) | OpenTelemetry wiring | instrumentation emitted by core |
 | [`Kaleido.Provider.SQLite`](./src/Providers/Kaleido.Provider.SQLite/README.md) | reference core and registry stores and transactions on SQLite | production-provider guarantees |
 | [gRPC placeholders](./src/Grpc/Grpc/README.md) (`Kaleido.Grpc*`, `Kaleido.Registry.Grpc`) | future protocol boundaries, not packable yet | a gRPC implementation |
 
 ## General contributor rules
 
-- **Kaleido is a process engine; it never makes business decisions** ([ADR 0001](./docs/decisions/0001-process-engine-not-decision-maker.md)). It applies declared rules (the step graph, declared roles/policies, structural validation) and records what happened; what to ask, who may access a case, which path to take and what wording to use belong to the implementer. New capabilities are mechanisms, never content.
+- **Kaleido never makes business decisions** ([ADR 0001](./docs/decisions/0001-process-engine-not-decision-maker.md)). It applies declared structural rules and records outcomes; case access, questions, decisions and wording belong to implementers. Capabilities are mechanisms, never content.
 - Keep concerns in the correct project.
 - `Kaleido` (core) should remain free of transport-specific behavior.
 - `Kaleido.Http.Server` should adapt and publish; it should not reimplement runtime logic.
-- `Kaleido.Platform` is shared — changes here ripple into both server and client projects.
+- Unmigrated `Kaleido.Platform` contracts remain migration sources; processed projects must not reintroduce a Platform project dependency.
 - Keep transport layers thin.
 - Prefer explicit registration and discoverability over hidden behavior.
-- Match documentation to the actual code and runtime behavior. In #585, each processed project updates its consumer README, focused `docs/architecture/` explanation and applicable hierarchical AGENTS scope before its project commit; move reached content out of the two legacy ARCHITECTURE.md files. Add a narrower `.editorconfig` only for genuinely area-specific differences, and prefer source analyzers to editorconfig for dependency rules (#591). The target HTTP/gRPC AGENTS scopes contain no migrated code yet; do not move those projects just to populate them.
+- In #585 each processed owner updates its README, focused architecture and scoped AGENTS before commit; retire reached legacy ARCHITECTURE content. Use scoped `.editorconfig` only for area-specific differences and prefer source analyzers for dependencies (#591). Do not move unrelated HTTP/gRPC placeholders merely to populate folders.
 - When you change contracts or metadata semantics, review the downstream docs and tests for the affected area.
 - Define response semantics before choosing a serialization format: keep distinct message streams separate and represent an empty collection consistently across transports. Options control which messages adapters populate, not JSON-specific field presence.
 

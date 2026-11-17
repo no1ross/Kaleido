@@ -26,6 +26,15 @@
   <Folder Name="/src/Capabilities/Process/">
     <Project Path="src/Capabilities/Process/Kaleido.Process/Kaleido.Process.csproj" />
     <Project Path="src/Capabilities/Process/Kaleido.Process.Server/Kaleido.Process.Server.csproj" />
+    <Project Path="src/Capabilities/Process/Kaleido.Process.Http/Kaleido.Process.Http.csproj" />
+  </Folder>
+  <Folder Name="/src/Capabilities/Registry/">
+    <Project Path="src/Capabilities/Registry/Kaleido.Registry/Kaleido.Registry.csproj" />
+    <Project Path="src/Capabilities/Registry/Kaleido.Registry.Server/Kaleido.Registry.Server.csproj" />
+    <Project Path="src/Capabilities/Registry/Kaleido.Registry.Client/Kaleido.Registry.Client.csproj" />
+    <Project Path="src/Capabilities/Registry/Kaleido.Registry.Http/Kaleido.Registry.Http.csproj" />
+    <Project Path="src/Capabilities/Registry/Kaleido.Registry.Http.Server/Kaleido.Registry.Http.Server.csproj" />
+    <Project Path="src/Capabilities/Registry/Kaleido.Registry.Http.Client/Kaleido.Registry.Http.Client.csproj" />
   </Folder>
   <Folder Name="/src/Capabilities/Queryable/">
     <Project Path="src/Capabilities/Queryable/Kaleido.Queryable/Kaleido.Queryable.csproj" />
@@ -54,9 +63,6 @@
     <Project Path="src/Grpc/Grpc.Client/Kaleido.Grpc.Client.csproj" />
     <Project Path="src/Grpc/Grpc.Server/Kaleido.Grpc.Server.csproj" />
   </Folder>
-  <Folder Name="/src/Http/">
-    <Project Path="src/Http/Http.Client/Kaleido.Http.Client.csproj" />
-  </Folder>
   <Folder Name="/src/Mcp/">
     <Project Path="src/Mcp/Mcp/Kaleido.Mcp.csproj" />
   </Folder>
@@ -67,9 +73,7 @@
     <Project Path="src/Providers/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
   </Folder>
   <Folder Name="/src/Registry/">
-    <Project Path="src/Registry/Registry/Kaleido.Registry.csproj" />
     <Project Path="src/Registry/Registry.Grpc/Kaleido.Registry.Grpc.csproj" />
-    <Project Path="src/Registry/Registry.Http/Kaleido.Registry.Http.csproj" />
   </Folder>
   <Folder Name="/src/Transports/">
     <Project Path="src/Transports/Kaleido.Server/Kaleido.Server.csproj" />
@@ -77,10 +81,23 @@
   <Folder Name="/src/Transports/Http/">
     <Project Path="src/Transports/Http/Kaleido.Http/Kaleido.Http.csproj" />
     <Project Path="src/Transports/Http/Kaleido.Http.Server/Kaleido.Http.Server.csproj" />
+    <Project Path="src/Transports/Http/Kaleido.Http.Client/Kaleido.Http.Client.csproj" />
   </Folder>
   <Folder Name="/test/Capabilities/Process/">
     <Project Path="tests/Capabilities/Process/Kaleido.Process.UnitTests/Kaleido.Process.UnitTests.csproj" />
     <Project Path="tests/Capabilities/Process/Kaleido.Process.Server.UnitTests/Kaleido.Process.Server.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Process/Kaleido.Process.Http.UnitTests/Kaleido.Process.Http.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/test/Capabilities/Registry/">
+    <Project Path="tests/Capabilities/Registry/Kaleido.Registry.UnitTests/Kaleido.Registry.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Registry/Kaleido.Registry.Server.UnitTests/Kaleido.Registry.Server.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Registry/Kaleido.Registry.Client.UnitTests/Kaleido.Registry.Client.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Registry/Kaleido.Registry.Http.UnitTests/Kaleido.Registry.Http.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Registry/Kaleido.Registry.Http.Server.UnitTests/Kaleido.Registry.Http.Server.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Registry/Kaleido.Registry.Http.Client.UnitTests/Kaleido.Registry.Http.Client.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Registry/Kaleido.Registry.Http.Server.FunctionalTests/Kaleido.Registry.Http.Server.FunctionalTests.csproj" />
+    <Project Path="tests/Capabilities/Registry/Kaleido.Registry.Http.Client.FunctionalTests/Kaleido.Registry.Http.Client.FunctionalTests.csproj" />
+    <Project Path="tests/Capabilities/Registry/Kaleido.Registry.IntegrationTests/Kaleido.Registry.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/test/Capabilities/Queryable/">
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.UnitTests/Kaleido.Queryable.UnitTests.csproj" />
@@ -110,7 +127,6 @@
     <Project Path="tests/Core/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Http/">
-    <Project Path="tests/Http/Http.Client.UnitTests/Kaleido.Http.Client.UnitTests.csproj" />
     <Project Path="tests/Http/Http.FunctionalTests/Kaleido.Http.FunctionalTests.csproj" />
   </Folder>
   <Folder Name="/test/Transports/">
@@ -119,6 +135,7 @@
   <Folder Name="/test/Transports/Http/">
     <Project Path="tests/Transports/Http/Kaleido.Http.UnitTests/Kaleido.Http.UnitTests.csproj" />
     <Project Path="tests/Transports/Http/Kaleido.Http.Server.UnitTests/Kaleido.Http.Server.UnitTests.csproj" />
+    <Project Path="tests/Transports/Http/Kaleido.Http.Client.UnitTests/Kaleido.Http.Client.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Mcp/">
     <Project Path="tests/Mcp/Mcp.FunctionalTests/Kaleido.Mcp.FunctionalTests.csproj" />
@@ -129,10 +146,6 @@
   </Folder>
   <Folder Name="/test/Providers/">
     <Project Path="tests/Providers/Kaleido.Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
-  </Folder>
-  <Folder Name="/test/Registry/">
-    <Project Path="tests/Registry/Registry.Http.UnitTests/Kaleido.Registry.Http.UnitTests.csproj" />
-    <Project Path="tests/Registry/Registry.UnitTests/Kaleido.Registry.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <File Path="tools/Directory.Packages.props" />

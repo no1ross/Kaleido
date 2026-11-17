@@ -80,6 +80,7 @@ public static class QueryableServiceCollectionExtensions
         builder.Services.TryAddSingleton<IQueryViewRegistry>(sp => sp.GetRequiredService<QueryViewRegistry>());
 
         builder.Services.TryAddSingleton<IQueryableRegistry, QueryableRegistry>();
+        builder.Services.AddSingleton<IKaleidoLocalCapabilities>(sp => (IKaleidoLocalCapabilities)sp.GetRequiredService<IQueryableRegistry>());
 
         RegisterFrameworkServices(builder.Services);
 
