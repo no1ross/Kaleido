@@ -34,6 +34,8 @@
 		<!-- The MCP adapter calls services as the caller, and for a process, through these clients' forwarding scopes, which are not public API. -->
 		<InternalsVisibleTo Include="Kaleido.Mcp" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client.UnitTests" />
 		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
 		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />

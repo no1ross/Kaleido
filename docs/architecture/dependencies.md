@@ -18,6 +18,7 @@ Kaleido.Http.Server ──► Kaleido.Server, Kaleido.Http
 Kaleido.Process.Http ──► Kaleido.Process, Kaleido.Registry, Kaleido.Http
 Kaleido.Queryable.Http ──► Kaleido.Queryable, Kaleido.Http
 Kaleido.Queryable.Http.Server ──► Kaleido.Queryable, Kaleido.Queryable.Http, Kaleido.Http.Server
+Kaleido.Queryable.Http.Client ──► Kaleido.Queryable.Client, Kaleido.Queryable.Http, Kaleido.Registry.Client, Kaleido.Http.Client
 Kaleido.Registry.Http (fixed Registry URL contract; no project references)
 Kaleido.Registry.Http.Server ──► Kaleido.Registry, Kaleido.Registry.Server, Kaleido.Registry.Http, Kaleido.Http.Server
 Kaleido.Registry.Http.Client ──► Kaleido.Registry.Client, Kaleido.Registry.Http, Kaleido.Http.Client

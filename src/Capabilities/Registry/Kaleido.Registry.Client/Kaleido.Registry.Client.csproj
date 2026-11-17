@@ -16,4 +16,8 @@
 		<Using Include="Kaleido.Exceptions" />
 		<Using Include="Kaleido.Registry" />
 	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client.UnitTests" />
+	</ItemGroup>
 </Project>

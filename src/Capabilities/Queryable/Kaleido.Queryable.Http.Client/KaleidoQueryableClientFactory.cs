@@ -1,8 +1,10 @@
-namespace Kaleido.Http.Client.Queryable;
+namespace Kaleido.Queryable.Http.Client;
 
 internal sealed class KaleidoQueryableClientFactory(
     IKaleidoRegistryTargetResolver targets,
-    IKaleidoClientTransport transport)
+    IHttpClientFactory httpClientFactory,
+    IKaleidoInboundCallerAccessor inboundCaller,
+    IKaleidoCorrelationContextAccessor correlation)
     : IKaleidoQueryableClientFactory
 {
     public IKaleidoQueryableClient GetClient(string serviceName) => CreateClient(serviceName, serviceVersion: null);
@@ -16,6 +18,6 @@ internal sealed class KaleidoQueryableClientFactory(
     private KaleidoQueryableClient CreateClient(string serviceName, string? serviceVersion)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceName);
-        return new KaleidoQueryableClient(serviceName, serviceVersion, targets, transport);
+        return new KaleidoQueryableClient(serviceName, serviceVersion, targets, httpClientFactory, inboundCaller, correlation);
     }
 }

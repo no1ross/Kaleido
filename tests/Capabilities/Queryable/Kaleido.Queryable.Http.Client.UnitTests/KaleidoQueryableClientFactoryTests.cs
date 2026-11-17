@@ -1,11 +1,14 @@
-namespace Kaleido.Http.Client.Queryable.UnitTests;
+namespace Kaleido.Queryable.Http.Client.UnitTests;
 
 public sealed class KaleidoQueryableClientFactoryTests : Kaleido.UnitTests.SutFixture
 {
     private readonly Mock<IKaleidoRegistryTargetResolver> targets = new();
-    private readonly Mock<IKaleidoClientTransport> transport = new();
+    private readonly Mock<IHttpClientFactory> clients = new();
+    private readonly Mock<IKaleidoInboundCallerAccessor> inboundCaller = new();
+    private readonly Mock<IKaleidoCorrelationContextAccessor> correlation = new();
 
-    private KaleidoQueryableClientFactory CreateSut() => new(targets.Object, transport.Object);
+    private KaleidoQueryableClientFactory CreateSut() =>
+        new(targets.Object, clients.Object, inboundCaller.Object, correlation.Object);
 
     [Fact]
     public void GetClient_CreatesAClientForAnyServiceNameWithoutEndpointConfiguration()

@@ -6,6 +6,7 @@
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Client\Kaleido.Registry.Http.Client.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Server\Kaleido.Registry.Http.Server.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Server\Kaleido.Queryable.Http.Server.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Client\Kaleido.Queryable.Http.Client.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
 	</ItemGroup>
 	<ItemGroup>
@@ -21,6 +22,8 @@
 		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Queryable.Http" />
 		<Using Include="Kaleido.Queryable.Http.Server" />
+		<Using Include="Kaleido.Queryable.Http.Client" />
+		<Using Include="Kaleido.Queryable.Client" />
 		<Using Include="Kaleido.Queryable.Query" />
 		<Using Include="Kaleido.Registry" />
 		<Using Include="Kaleido.Registry.Client" />

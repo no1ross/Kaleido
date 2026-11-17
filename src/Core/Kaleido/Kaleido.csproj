@@ -59,6 +59,8 @@
 		<InternalsVisibleTo Include="Kaleido.Registry.Client.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Client" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Server" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
 		<!-- The OpenTelemetry provider lays its configuration section over the options from code with core's overlay (ADR 0030). -->

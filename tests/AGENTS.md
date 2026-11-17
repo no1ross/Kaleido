@@ -12,6 +12,8 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
 | `Kaleido.Queryable.Client.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Client` neutral outbound client contracts |
 | `Kaleido.Queryable.Http.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http` request wire conversion and versioned query routes |
+| `Kaleido.Queryable.Http.Client.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http.Client` published binding selection and HTTP request adaptation |
+| `Kaleido.Queryable.Http.Client.FunctionalTests` | Non-web Registry reader hydrates at startup and calls a real Queryable TestServer without central Registry per query |
 | `Kaleido.Queryable.Http.Server.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http.Server` request conversion and endpoint mapping |
 | `Kaleido.Queryable.Http.Server.FunctionalTests` | Local Queryable source/view requests through ASP.NET TestServer, without central Registry |
 | `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |
@@ -29,7 +31,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Registry.Http.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry.Http` fixed URL contract |
 | `Kaleido.Registry.Http.Server.UnitTests` / `.FunctionalTests` | Registry ASP.NET listener and direct TestServer without a participant client |
 | `Kaleido.Registry.Http.Client.UnitTests` / `.FunctionalTests` | Fixed-endpoint HTTP calls, ETags and service JWTs |
-| `Kaleido.Registry.IntegrationTests` | Composed public Queryable/HTTP publisher, authority and inbound JWT caller exchange |
+| `Kaleido.Registry.IntegrationTests` | Composed Queryable publisher, hydrated outbound client, authority and inbound JWT caller exchange |
 | `Kaleido.Mcp.UnitTests` | `src/Mcp/Mcp` catalogs, schemas, tool invoker and naming |
 | `Kaleido.Mcp.FunctionalTests` | MCP over a real host and the SDK client |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Providers/Kaleido.Provider.SQLite` store and transaction fidelity |

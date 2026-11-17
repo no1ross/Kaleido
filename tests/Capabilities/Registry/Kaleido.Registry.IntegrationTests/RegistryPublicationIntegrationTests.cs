@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Http;
 
 namespace Kaleido.Registry.IntegrationTests;
 
@@ -14,6 +16,95 @@ public sealed class RegistryPublicationIntegrationTests
     {
         await using var authority = await StartAuthorityAsync();
         var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var publisher = await StartPublisherAsync(authority, registered);
+        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        using var response = await authority.GetTestClient().GetAsync("/registry/capabilities", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var registry = await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        var source = Assert.Single(Assert.IsType<KaleidoRegistry>(registry).Queryables);
+        Assert.Equal("CatalogSource", source.Name);
+        Assert.Equal("/catalog/1/queryable/catalogsource/query", Assert.Single(source.Bindings.Http).Path);
+
+        using var mapped = await publisher.GetTestClient().GetAsync("/catalog/1/queryable/catalogsource/query", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, mapped.StatusCode);
+        await publisher.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task HydratedReader_QueriesThePublishedQueryableHttpBinding(bool queryableClientFirst)
+    {
+        await using var authority = await StartAuthorityAsync();
+        var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var publisher = await StartPublisherAsync(authority, registered);
+        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var read = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Kaleido:BaseUrl"] = "http://localhost/",
+        });
+        var kaleido = builder.Services.AddKaleido(builder.Configuration, new()
+        {
+            ServiceName = "reader",
+            ServiceVersion = "1",
+            Assemblies = [typeof(RegistryPublicationIntegrationTests).Assembly],
+            TypeFilter = _ => false,
+        });
+        if (queryableClientFirst)
+        {
+            kaleido.AddQueryableHttpClient().AddRegistryHttpParticipation();
+        }
+        else
+        {
+            kaleido.AddRegistryHttpParticipation().AddQueryableHttpClient();
+        }
+        builder.Services.Configure<HttpClientFactoryOptions>("kaleido-registry", options =>
+            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new ObserveReadHandler(read)
+            {
+                InnerHandler = authority.GetTestServer().CreateHandler(),
+            }));
+        builder.Services.Configure<HttpClientFactoryOptions>("kaleido-queryable", options =>
+            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = publisher.GetTestServer().CreateHandler()));
+        await using var consumer = builder.Build();
+        using var scope = consumer.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<IKaleidoQueryableClientFactory>().GetClient("catalog");
+        var unavailable = await Assert.ThrowsAsync<KaleidoRegistryClientException>(() =>
+            client.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken));
+        Assert.Equal(RegistryClientErrorCodes.RouteUnavailable, unavailable.Code);
+
+        await consumer.StartAsync(TestContext.Current.CancellationToken);
+        await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(consumer);
+        var result = await client.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken);
+
+        Assert.Equal("one", Assert.Single(result.Results).Name);
+        await consumer.StopAsync(TestContext.Current.CancellationToken);
+        await publisher.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static async Task WaitUntilReadyAsync(WebApplication consumer)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+        var health = consumer.Services.GetRequiredService<HealthCheckService>();
+        while (true)
+        {
+            timeout.Token.ThrowIfCancellationRequested();
+            var report = await health.CheckHealthAsync(check => check.Name == "kaleido-registration", timeout.Token);
+            if (report.Status == HealthStatus.Healthy)
+            {
+                return;
+            }
+
+            await Task.Yield();
+        }
+    }
+
+    private static async Task<WebApplication> StartPublisherAsync(WebApplication authority, TaskCompletionSource<bool> registered)
+    {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -41,21 +132,10 @@ public sealed class RegistryPublicationIntegrationTests
             {
                 InnerHandler = authority.GetTestServer().CreateHandler(),
             }));
-        await using var publisher = builder.Build();
-        publisher.MapQueryable();
-
-        await publisher.StartAsync(TestContext.Current.CancellationToken);
-        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-        using var response = await authority.GetTestClient().GetAsync("/registry/capabilities", TestContext.Current.CancellationToken);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var registry = await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
-        var source = Assert.Single(Assert.IsType<KaleidoRegistry>(registry).Queryables);
-        Assert.Equal("CatalogSource", source.Name);
-        Assert.Equal("/catalog/1/queryable/catalogsource/query", Assert.Single(source.Bindings.Http).Path);
-
-        using var mapped = await publisher.GetTestClient().GetAsync("/catalog/1/queryable/catalogsource/query", TestContext.Current.CancellationToken);
-        Assert.Equal(HttpStatusCode.MethodNotAllowed, mapped.StatusCode);
-        await publisher.StopAsync(TestContext.Current.CancellationToken);
+        var app = builder.Build();
+        app.MapQueryable();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        return app;
     }
 
     private static async Task<WebApplication> StartAuthorityAsync()
@@ -90,6 +170,22 @@ public sealed class RegistryPublicationIntegrationTests
     public sealed class CatalogRecord : IQueryContext
     {
         public string Name { get; init; } = string.Empty;
+    }
+
+    private sealed class ObserveReadHandler(TaskCompletionSource<bool> observed) : DelegatingHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var response = await base.SendAsync(request, cancellationToken);
+            if (request.Method == HttpMethod.Get
+                && string.Equals(request.RequestUri?.AbsolutePath, "/registry/capabilities", StringComparison.Ordinal)
+                && response.IsSuccessStatusCode)
+            {
+                observed.TrySetResult(true);
+            }
+
+            return response;
+        }
     }
 
     private sealed class ObserveRegistrationHandler(TaskCompletionSource<bool> observed) : DelegatingHandler

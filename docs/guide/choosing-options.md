@@ -8,9 +8,10 @@ other.
 
 | I want to | Register | See |
 | --- | --- | --- |
-| Publish a versioned service over HTTP | `AddHttp()` + `AddControlRegistryClient()` + `MapKaleidoHttp()`; set `ServiceVersion` and `Kaleido:BaseUrl` | [Getting started](getting-started.md#4-publish-it-over-http) |
+| Publish a local Queryable service over HTTP | `AddEventing()` + `AddQueryable()` + `AddServer()` + `AddHttp()`; choose its outbox store and `MapQueryable()`; no central client required | [Queryable HTTP server](../../src/Capabilities/Queryable/Kaleido.Queryable.Http.Server/README.md) |
 | Participate in Registry over HTTP | `AddRegistryHttpParticipation()`; one gateway at `Kaleido:BaseUrl` and a hydrated unfiltered Registry | [Registry HTTP client](../../src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md) |
-| Publish to AI agents | `AddHttp()` + `AddHttpClients()` + `AddControlRegistryClient()` + `AddMcp()` and `MapKaleidoMcp("/mcp")` | [Getting started](getting-started.md#6-publish-it-to-ai-agents-mcp) |
+| Call a remote Queryable source or view | Register `AddRegistryHttpParticipation()` + `AddQueryableHttpClient()`, start the host to hydrate Registry, then use `IKaleidoQueryableClientFactory` with a neutral `QueryRequest` | [Queryable HTTP client](../../src/Capabilities/Queryable/Kaleido.Queryable.Http.Client/README.md) |
+| Publish to AI agents | The old `AddHttpClients()`/combined MCP recipe is parked until its Process client/MCP owners migrate under #585 | [Historical quick start](../../README.md#expose-registered-services-through-an-mcp-host) |
 | Publish several services to agents in one place | a separate MCP host reading the central registry; configure gateway routes per service version, not clients per service | [README quick start](../../README.md#expose-registered-services-through-an-mcp-host) |
 
 ## Central registry

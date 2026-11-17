@@ -41,6 +41,7 @@
     <Project Path="src/Capabilities/Queryable/Kaleido.Queryable.Client/Kaleido.Queryable.Client.csproj" />
     <Project Path="src/Capabilities/Queryable/Kaleido.Queryable.Http/Kaleido.Queryable.Http.csproj" />
     <Project Path="src/Capabilities/Queryable/Kaleido.Queryable.Http.Server/Kaleido.Queryable.Http.Server.csproj" />
+    <Project Path="src/Capabilities/Queryable/Kaleido.Queryable.Http.Client/Kaleido.Queryable.Http.Client.csproj" />
   </Folder>
   <Folder Name="/src/Composed/Hosts/">
     <Project Path="src/Composed/Hosts/Kaleido.Hosting/Kaleido.Hosting.csproj" />
@@ -106,6 +107,8 @@
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.UnitTests/Kaleido.Queryable.Http.UnitTests.csproj" />
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.Server.UnitTests/Kaleido.Queryable.Http.Server.UnitTests.csproj" />
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.Server.FunctionalTests/Kaleido.Queryable.Http.Server.FunctionalTests.csproj" />
+    <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.Client.UnitTests/Kaleido.Queryable.Http.Client.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.Client.FunctionalTests/Kaleido.Queryable.Http.Client.FunctionalTests.csproj" />
   </Folder>
   <Folder Name="/test/Composed/Hosts/">
     <Project Path="tests/Composed/Hosts/Kaleido.Hosting.UnitTests/Kaleido.Hosting.UnitTests.csproj" />

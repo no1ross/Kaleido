@@ -157,7 +157,7 @@ public sealed class ShippingRateSource
 
 Kaleido validates the caller's query against `ShippingRateQueryContext` first, then hands the request
 (query and parameters) to the source, and returns its `QueryResult` **untouched**, paging included:
-the order and the total are the downstream's. The neutral outbound [`Kaleido.Queryable.Client`](../../src/Capabilities/Queryable/Kaleido.Queryable.Client/README.md) now accepts the same `QueryRequest`/`QueryRequest<TParameters>` the source receives. Its later HTTP adapter (#616) converts the CLR `QueryBody` with [`ToApiBody()`](../../src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) before sending; no caller must build `QueryApiRequest` or JSON filter values. This contract-only checkpoint is not yet a runnable remote query client.
+the order and the total are the downstream's. The neutral outbound [`Kaleido.Queryable.Client`](../../src/Capabilities/Queryable/Kaleido.Queryable.Client/README.md) now accepts the same `QueryRequest`/`QueryRequest<TParameters>` the source receives. The [HTTP adapter](../../src/Capabilities/Queryable/Kaleido.Queryable.Http.Client/README.md) (#616) converts the CLR `QueryBody` with [`ToApiBody()`](../../src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) before sending; no caller must build `QueryApiRequest` or JSON filter values. A host opts into Registry hydration with `AddRegistryHttpParticipation()` before remote Queryable calls; local sources still need no central participation.
 
 ## Who may query, and which rows
 

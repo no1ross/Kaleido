@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Client\Kaleido.Queryable.Http.Client.csproj" />
+		<ProjectReference Include="..\..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="System.Net" />
+		<Using Include="System.Net.Http.Json" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Configuration" />
+		<Using Include="Kaleido.Http.Client.Pipeline" />
+		<Using Include="Kaleido.Http.Client.Transport" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Queryable.Client" />
+		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Client" />
+		<Using Include="Kaleido.UnitTests" />
+		<Using Include="Moq" />
+		<Using Include="Moq.Protected" />
+	</ItemGroup>
+</Project>
