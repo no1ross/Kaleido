@@ -17,8 +17,8 @@ public static class KaleidoInMemoryProvidersServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.Services.TryAddSingleton<IKaleidoContextStore, InMemoryKaleidoContextStore>();
-        builder.Services.TryAddSingleton<IKaleidoIdempotencyStore, InMemoryKaleidoIdempotencyStore>();
+        builder.Services.TryAddSingleton<IProcessContextStore, InMemoryProcessContextStore>();
+        builder.Services.TryAddSingleton<IProcessIdempotencyStore, InMemoryProcessIdempotencyStore>();
         builder.Services.TryAddSingleton<IKaleidoOutboxStore, InMemoryKaleidoOutboxStore>();
         return builder;
     }

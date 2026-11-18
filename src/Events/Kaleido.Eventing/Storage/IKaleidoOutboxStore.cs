@@ -2,8 +2,8 @@ namespace Kaleido.Storage;
 
 /// <summary>
 /// The storage of Kaleido's outbox: every event a service writes, waiting for the relay to hand it to
-/// <see cref="IEventPublisher"/>, with its delivery state. In memory by default; durable with a provider
-/// (e.g. <c>AddSqliteOutboxStore</c>) or your own (<c>AddOutboxStore&lt;T&gt;()</c>). Every service writes to
+/// <see cref="IEventPublisher"/>, with its delivery state. A host explicitly chooses an in-memory
+/// provider for development or a durable implementation (e.g. <c>AddOutboxStore&lt;T&gt;()</c>). Every service writes to
 /// it; the relay (<c>AddOutboxRelay&lt;TPublisher&gt;()</c>) runs in one host on its database (ADR 0023, #552).
 /// </summary>
 /// <remarks>
@@ -19,10 +19,9 @@ namespace Kaleido.Storage;
 /// <see cref="ClaimEventsAsync"/> claims any service's entries.
 /// </para>
 /// <para>
-/// <strong>Atomic with the process state</strong> when both are on one database and
-/// <c>IKaleidoTransactions</c> covers it (e.g. <c>AddSqliteContextStore</c> and
-/// <c>AddSqliteOutboxStore</c> on one SQLite database): write in the open transaction when there is
-/// one, on your own otherwise. Keep the outbox on the context store's database: an outbox on another
+/// <strong>Atomic with the process state</strong> only when both stores participate in the same
+/// provider session/transaction (not merely the same database). Write inside that open session
+/// when one exists, and on your own otherwise. Keep the outbox on the context store's database: an outbox on another
 /// database writes its events on their own, and if the transition's commit then fails, they are still
 /// relayed, describing a state that was never saved.
 /// </para>

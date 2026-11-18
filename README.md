@@ -308,7 +308,8 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Registry.Server`](src/Capabilities/Registry/Kaleido.Registry.Server) / [`Kaleido.Registry.Client`](src/Capabilities/Registry/Kaleido.Registry.Client) | Separate central authority and explicit participant |
 | [`Kaleido.Registry.Http`](src/Capabilities/Registry/Kaleido.Registry.Http) / [`Server`](src/Capabilities/Registry/Kaleido.Registry.Http.Server) / [`Client`](src/Capabilities/Registry/Kaleido.Registry.Http.Client) | Fixed HTTP URLs, listener and participant adapter |
 | [`Kaleido.Mcp`](src/Mcp/Mcp) | Caller-visible registry-derived MCP tools and guided continuation |
-| [`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite) | Reference process, outbox, idempotency and registry stores |
+| [`Kaleido.Provider`](src/Providers/Kaleido.Provider) | Temporary, non-packable explicit in-memory store registration for tests/development |
+| [`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite) | Reference process, outbox, idempotency and registry stores (migration pending) |
 | [`Kaleido.Observability.OpenTelemetry`](src/Observability/Observability.OpenTelemetry) | Opt-in telemetry export |
 | [`Kaleido.Analyzers`](tools/analyzers/Kaleido.Analyzers) | Consumer compile-time checks (`KAL2xxx`), included by `Kaleido` |
 

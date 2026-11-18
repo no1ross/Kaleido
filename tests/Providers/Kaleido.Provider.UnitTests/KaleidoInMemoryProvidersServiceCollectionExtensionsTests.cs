@@ -1,15 +1,16 @@
-using Kaleido.UnitTests;
+using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kaleido.Provider.UnitTests;
 
-public sealed class KaleidoInMemoryProvidersServiceCollectionExtensionsTests : SutFixture
+public sealed class KaleidoInMemoryProvidersServiceCollectionExtensionsTests : Kaleido.UnitTests.SutFixture
 {
     private static IKaleidoBuilder NewBuilder(IServiceCollection? services = null) =>
         (services ?? new ServiceCollection()).AddKaleido(new ConfigurationBuilder().Build(), new()
         {
             ServiceName = "test-service",
+            ServiceVersion = "1",
             Assemblies = [typeof(KaleidoInMemoryProvidersServiceCollectionExtensionsTests).Assembly],
         });
 
@@ -22,12 +23,18 @@ public sealed class KaleidoInMemoryProvidersServiceCollectionExtensionsTests : S
         var builder = NewBuilder();
 
         Assert.Same(builder, builder.AddInMemoryProviders());
-        Assert.Equal(typeof(InMemoryKaleidoContextStore), Single<IKaleidoContextStore>(builder.Services).ImplementationType);
-        Assert.Equal(typeof(InMemoryKaleidoIdempotencyStore), Single<IKaleidoIdempotencyStore>(builder.Services).ImplementationType);
+        Assert.Equal(typeof(InMemoryProcessContextStore), Single<IProcessContextStore>(builder.Services).ImplementationType);
+        Assert.Equal(typeof(InMemoryProcessIdempotencyStore), Single<IProcessIdempotencyStore>(builder.Services).ImplementationType);
         Assert.Equal(typeof(InMemoryKaleidoOutboxStore), Single<IKaleidoOutboxStore>(builder.Services).ImplementationType);
-        Assert.All(builder.Services.Where(x => x.ServiceType == typeof(IKaleidoContextStore) ||
-            x.ServiceType == typeof(IKaleidoIdempotencyStore) || x.ServiceType == typeof(IKaleidoOutboxStore)),
+        Assert.All(builder.Services.Where(x => x.ServiceType == typeof(IProcessContextStore)
+            || x.ServiceType == typeof(IProcessIdempotencyStore) || x.ServiceType == typeof(IKaleidoOutboxStore)),
             x => Assert.Equal(ServiceLifetime.Singleton, x.Lifetime));
+        using var provider = builder.Services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        using var first = provider.CreateScope();
+        using var second = provider.CreateScope();
+        Assert.Same(first.ServiceProvider.GetRequiredService<IProcessContextStore>(), second.ServiceProvider.GetRequiredService<IProcessContextStore>());
+        Assert.Same(first.ServiceProvider.GetRequiredService<IProcessIdempotencyStore>(), second.ServiceProvider.GetRequiredService<IProcessIdempotencyStore>());
+        Assert.Same(first.ServiceProvider.GetRequiredService<IKaleidoOutboxStore>(), second.ServiceProvider.GetRequiredService<IKaleidoOutboxStore>());
     }
 
     [Fact]
@@ -35,8 +42,8 @@ public sealed class KaleidoInMemoryProvidersServiceCollectionExtensionsTests : S
     {
         var services = NewBuilder().AddInMemoryProviders().AddInMemoryProviders().Services;
 
-        Single<IKaleidoContextStore>(services);
-        Single<IKaleidoIdempotencyStore>(services);
+        Single<IProcessContextStore>(services);
+        Single<IProcessIdempotencyStore>(services);
         Single<IKaleidoOutboxStore>(services);
     }
 
@@ -50,15 +57,74 @@ public sealed class KaleidoInMemoryProvidersServiceCollectionExtensionsTests : S
         NewBuilder(services).AddInMemoryProviders();
 
         Assert.Same(store, Single<IKaleidoOutboxStore>(services).ImplementationInstance);
-        Single<IKaleidoContextStore>(services);
-        Single<IKaleidoIdempotencyStore>(services);
+        Single<IProcessContextStore>(services);
+        Single<IProcessIdempotencyStore>(services);
+    }
+
+    [Fact]
+    public void AddInMemoryProviders_AfterDurableStoreChoices_PreservesAllThree()
+    {
+        var builder = NewBuilder()
+            .AddContextStore<DurableContextStore>()
+            .AddIdempotencyStore<DurableIdempotencyStore>()
+            .AddOutboxStore<DurableOutboxStore>()
+            .AddInMemoryProviders();
+
+        Assert.Equal(typeof(DurableContextStore), Single<IProcessContextStore>(builder.Services).ImplementationType);
+        Assert.Equal(typeof(DurableIdempotencyStore), Single<IProcessIdempotencyStore>(builder.Services).ImplementationType);
+        Assert.Equal(typeof(DurableOutboxStore), Single<IKaleidoOutboxStore>(builder.Services).ImplementationType);
+        Assert.All(builder.Services.Where(x => x.ServiceType == typeof(IProcessContextStore)
+            || x.ServiceType == typeof(IProcessIdempotencyStore) || x.ServiceType == typeof(IKaleidoOutboxStore)),
+            x => Assert.Equal(ServiceLifetime.Scoped, x.Lifetime));
+    }
+
+    [Fact]
+    public void AddInMemoryProviders_BeforeDurableStoreChoices_AllowsReplacementOfAllThree()
+    {
+        var builder = NewBuilder().AddInMemoryProviders()
+            .AddContextStore<DurableContextStore>()
+            .AddIdempotencyStore<DurableIdempotencyStore>()
+            .AddOutboxStore<DurableOutboxStore>();
+
+        Assert.Equal(typeof(DurableContextStore), Single<IProcessContextStore>(builder.Services).ImplementationType);
+        Assert.Equal(typeof(DurableIdempotencyStore), Single<IProcessIdempotencyStore>(builder.Services).ImplementationType);
+        Assert.Equal(typeof(DurableOutboxStore), Single<IKaleidoOutboxStore>(builder.Services).ImplementationType);
+        Assert.All(builder.Services.Where(x => x.ServiceType == typeof(IProcessContextStore)
+            || x.ServiceType == typeof(IProcessIdempotencyStore) || x.ServiceType == typeof(IKaleidoOutboxStore)),
+            x => Assert.Equal(ServiceLifetime.Scoped, x.Lifetime));
     }
 
     [Fact]
     public void AddInMemoryProviders_NullBuilder_Throws()
     {
-        IKaleidoBuilder? builder = null;
+        var method = Assert.IsAssignableFrom<MethodInfo>(typeof(KaleidoInMemoryProvidersServiceCollectionExtensions)
+            .GetMethod(nameof(KaleidoInMemoryProvidersServiceCollectionExtensions.AddInMemoryProviders)));
 
-        Assert.Throws<ArgumentNullException>(() => builder!.AddInMemoryProviders());
+        var exception = Assert.Throws<TargetInvocationException>(() => method.Invoke(null, [null]));
+
+        Assert.IsType<ArgumentNullException>(exception.InnerException);
+    }
+
+    private sealed class DurableContextStore : IProcessContextStore
+    {
+        public Task<ProcessContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<ProcessContext> SaveAsync(ProcessContext context, CancellationToken cancellationToken) => throw new NotImplementedException();
+    }
+
+    private sealed class DurableIdempotencyStore : IProcessIdempotencyStore
+    {
+        public Task<IdempotencyRecord?> AdmitAsync(IdempotencyRecord admission, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<bool> CompleteAsync(IdempotencyRecord result, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<bool> ReleaseAsync(string key, Guid admissionId, CancellationToken cancellationToken) => throw new NotImplementedException();
+    }
+
+    private sealed class DurableOutboxStore : IKaleidoOutboxStore
+    {
+        public Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<IReadOnlyList<KaleidoOutboxEvent>> ClaimEventsAsync(int maxCount, TimeSpan lease, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task CompleteEventAsync(Guid eventId, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task FailEventAsync(Guid eventId, DateTimeOffset? retryAtUtc, string errorMessage, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task RecordRelayAsync(KaleidoOutboxRelay relay, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<KaleidoOutboxStatus> GetStatusAsync(DateTimeOffset now, CancellationToken cancellationToken) => throw new NotImplementedException();
     }
 }

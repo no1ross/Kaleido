@@ -14,7 +14,7 @@ Optional: `IProcessTransactions`, one transaction around a state change and its 
 
 This heading is retained for existing links, but the former in-memory defaults are now an **explicit** provider choice:
 
-`AddProcess()` does not register in-memory state or idempotency stores. The later Provider's `AddInMemoryProviders()` explicitly selects available in-memory Process/Process.Server/Eventing implementations for development; those stores lose state, events and replay records on restart and do not share records across instances. Choose durable implementations before production.
+`AddProcess()` does not register in-memory state or idempotency stores. [`Kaleido.Provider`](../../src/Providers/Kaleido.Provider/README.md)'s explicit `AddInMemoryProviders()` selects available in-memory Process/Process.Server/Eventing implementations for development; those stores lose state, events and replay records on restart and do not share records across instances. Choose durable implementations before production.
 
 ## Three ways to persist
 
@@ -22,7 +22,7 @@ This heading is retained for existing links, but the former in-memory defaults a
 |---|---|---|
 | SQLite reference provider | `AddSqliteContextStore`, `AddSqliteOutboxStore`, `AddSqliteIdempotencyStore` (one database) | samples, local development, a reference to copy ([README](../../src/Providers/Kaleido.Provider.SQLite/README.md)) |
 | Your own stores | `AddContextStore<T>()`, `AddOutboxStore<T>()`, `AddIdempotencyStore<T>()`, `AddTransactions<T>()` | production, on your database |
-| In memory (explicit later Provider choice) | `AddInMemoryProviders()` | tests, local evaluation |
+| In memory ([explicit Provider choice](../../src/Providers/Kaleido.Provider/README.md)) | `AddInMemoryProviders()` | tests, local evaluation |
 
 The SQLite provider does not create its schema: the host does, once at startup
 (`EnsureCreatedAsync`, shown in the provider README), and it never migrates an existing database.
@@ -337,7 +337,7 @@ return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemb
     .AddInMemoryStores();
 ```
 
-Choose stores explicitly: Process state via `AddContextStore<T>()`, Eventing outbox via `AddOutboxStore<T>()`, and neutral server admission via Process.Server's `AddIdempotencyStore<T>()` when that capability is used. The later Provider offers `AddInMemoryProviders()` for development; the old `AddInMemoryStores()` and `stores_not_chosen` sample wiring above belongs to the unmigrated higher integration, not generic `AddProcess()` ([ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md), [ADR 0044](../decisions/0044-process-server-idempotency-ownership.md)).
+Choose stores explicitly: Process state via `AddContextStore<T>()`, Eventing outbox via `AddOutboxStore<T>()`, and neutral server admission via Process.Server's `AddIdempotencyStore<T>()` when that capability is used. [`Kaleido.Provider`](../../src/Providers/Kaleido.Provider/README.md) offers `AddInMemoryProviders()` for development; the old `AddInMemoryStores()` and `stores_not_chosen` sample wiring above belongs to the unmigrated higher integration, not generic `AddProcess()` ([ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md), [ADR 0044](../decisions/0044-process-server-idempotency-ownership.md)).
 
 The outbox store above also serves the relay (`AddOutboxRelay<TPublisher>()`, on this service or on
 another host reading the same database): its claims are leased compare-and-sets, so several relay

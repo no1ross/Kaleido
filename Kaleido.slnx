@@ -75,6 +75,7 @@
     <Project Path="src/Observability/Observability.OpenTelemetry/Kaleido.Observability.OpenTelemetry.csproj" />
   </Folder>
   <Folder Name="/src/Providers/">
+    <Project Path="src/Providers/Kaleido.Provider/Kaleido.Provider.csproj" />
     <Project Path="src/Providers/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
   </Folder>
   <Folder Name="/src/Registry/">
@@ -158,6 +159,8 @@
     <Project Path="tests/Observability/Observability.OpenTelemetry.UnitTests/Kaleido.Observability.OpenTelemetry.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Providers/">
+    <Project Path="tests/Providers/Kaleido.Provider.UnitTests/Kaleido.Provider.UnitTests.csproj" />
+    <Project Path="tests/Providers/Kaleido.Provider.FunctionalTests/Kaleido.Provider.FunctionalTests.csproj" />
     <Project Path="tests/Providers/Kaleido.Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tools/">

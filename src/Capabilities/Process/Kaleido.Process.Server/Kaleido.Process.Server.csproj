@@ -12,4 +12,9 @@
 		<Using Include="Kaleido" />
 		<Using Include="Kaleido.Exceptions" />
 	</ItemGroup>
+	<ItemGroup>
+		<!-- The explicit Provider choice registers this internal reference store without exposing it as consumer API. -->
+		<InternalsVisibleTo Include="Kaleido.Provider" />
+		<InternalsVisibleTo Include="Kaleido.Provider.UnitTests" />
+	</ItemGroup>
 </Project>
