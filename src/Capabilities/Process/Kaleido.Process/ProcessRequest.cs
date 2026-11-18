@@ -1,14 +1,17 @@
 namespace Kaleido.Process;
 
 /// <summary>
-/// A local request to <see cref="IProcessorRuntime.ExecuteAsync"/> containing typed Process steps
-/// for a new or existing process instance. This is not a transport or JSON request body.
+/// A transport-neutral request containing typed Process steps for a new or existing process.
+/// It is shared by local <see cref="IProcessorRuntime.ExecuteAsync"/> and outbound Process clients;
+/// it is not a JSON request body.
 /// </summary>
 /// <remarks>
 /// Use <see cref="ForStep{TStep}"/> for one declared step. To submit several steps in one
 /// request, provide a <see cref="ProcessorRequest"/> whose <see cref="ProcessorRequest.Steps"/>
-/// map contains their registered type names and typed instances. The runtime plans them under
-/// the process rules and reports each submitted step's outcome in <see cref="ProcessResult.Steps"/>.
+/// map contains their registered type names and typed instances. A remote caller may put a local
+/// mirror object under the target's published step name instead of implementing <see cref="IProcessStep"/>
+/// in the calling service. The runtime plans them under the process rules and reports each
+/// submitted step's outcome in <see cref="ProcessResult.Steps"/>.
 /// The host authenticates and authorizes those steps before calling the runtime.
 /// </remarks>
 public sealed record ProcessRequest

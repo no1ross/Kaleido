@@ -1,6 +1,6 @@
 # Kaleido.Process.Http.Server
 
-ASP.NET Core adaptation of the local [Process runtime](../Kaleido.Process/README.md). This project maps versioned execute, per-step and state routes with the [shared HTTP server filters](../../../Transports/Http/Kaleido.Http.Server/README.md). It does **not** need a central Registry client to serve requests; an application separately opts in to publishing its [Process HTTP bindings](../Kaleido.Process.Http/README.md) when it participates in the Registry. The combined `MapKaleidoHttp()` host composition and outbound Process client are separate #585 owners.
+ASP.NET Core adaptation of the local [Process runtime](../Kaleido.Process/README.md). This project maps versioned execute, per-step and state routes with the [shared HTTP server filters](../../../Transports/Http/Kaleido.Http.Server/README.md). It does **not** need a central Registry client to serve requests; an application separately opts in to publishing its [Process HTTP bindings](../Kaleido.Process.Http/README.md) when it participates in the Registry. The combined `MapKaleidoHttp()` host composition and the outbound HTTP adapter for [`Kaleido.Process.Client`](../Kaleido.Process.Client/README.md) are separate #585 owners.
 
 ## Register and map
 

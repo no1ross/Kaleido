@@ -25,6 +25,7 @@
   </Folder>
   <Folder Name="/src/Capabilities/Process/">
     <Project Path="src/Capabilities/Process/Kaleido.Process/Kaleido.Process.csproj" />
+    <Project Path="src/Capabilities/Process/Kaleido.Process.Client/Kaleido.Process.Client.csproj" />
     <Project Path="src/Capabilities/Process/Kaleido.Process.Server/Kaleido.Process.Server.csproj" />
     <Project Path="src/Capabilities/Process/Kaleido.Process.Http/Kaleido.Process.Http.csproj" />
     <Project Path="src/Capabilities/Process/Kaleido.Process.Http.Server/Kaleido.Process.Http.Server.csproj" />
@@ -88,6 +89,7 @@
   </Folder>
   <Folder Name="/test/Capabilities/Process/">
     <Project Path="tests/Capabilities/Process/Kaleido.Process.UnitTests/Kaleido.Process.UnitTests.csproj" />
+    <Project Path="tests/Capabilities/Process/Kaleido.Process.Client.UnitTests/Kaleido.Process.Client.UnitTests.csproj" />
     <Project Path="tests/Capabilities/Process/Kaleido.Process.Server.UnitTests/Kaleido.Process.Server.UnitTests.csproj" />
     <Project Path="tests/Capabilities/Process/Kaleido.Process.Http.UnitTests/Kaleido.Process.Http.UnitTests.csproj" />
     <Project Path="tests/Capabilities/Process/Kaleido.Process.Http.Server.UnitTests/Kaleido.Process.Http.Server.UnitTests.csproj" />
