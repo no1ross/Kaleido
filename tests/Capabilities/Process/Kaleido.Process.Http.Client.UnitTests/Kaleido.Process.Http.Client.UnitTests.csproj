@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Process\Kaleido.Process.Http.Client\Kaleido.Process.Http.Client.csproj" />
+		<ProjectReference Include="..\..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="System.Net" />
+		<Using Include="System.Net.Http.Json" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Configuration" />
+		<Using Include="Kaleido.Http.Client.Pipeline" />
+		<Using Include="Kaleido.Http.Client.Transport" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Client" />
+		<Using Include="Kaleido.Process.Http" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Client" />
+		<Using Include="Kaleido.UnitTests" />
+		<Using Include="Moq" />
+		<Using Include="Moq.Protected" />
+	</ItemGroup>
+</Project>

@@ -17,6 +17,9 @@
 		<Using Include="Kaleido.Registry" />
 	</ItemGroup>
 	<ItemGroup>
+		<!-- Process HTTP client and fixtures resolve only the participant's already-hydrated target view. -->
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Client.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client.UnitTests" />
 	</ItemGroup>

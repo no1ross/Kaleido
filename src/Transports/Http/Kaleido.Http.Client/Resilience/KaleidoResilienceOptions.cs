@@ -11,11 +11,10 @@ namespace Kaleido.Http.Client.Resilience;
 /// and registry clients.
 /// </para>
 /// <para>
-/// <strong>Only safe requests are retried:</strong> reads (GET, HEAD) and requests that carry an
-/// <c>Idempotency-Key</c> - the Kaleido process client sends one with every execute call, and the service
-/// answers a retry with the stored result instead of running the step again. A request without either is
-/// never retried. Retries re-send the same request, so the correlation headers (the same request id) and
-/// the idempotency key stay the same.
+/// The shared pipeline retries safe reads (GET, HEAD) only. The Process HTTP client's own named
+/// pipeline additionally retries transient POST failures only with one stable <c>Idempotency-Key</c>;
+/// unrelated POSTs are never made retryable. Its retries preserve the same request, correlation
+/// headers and key so the called service can replay its stored answer.
 /// </para>
 /// <para>
 /// The timeout, retry and circuit-breaker settings come from <see cref="KaleidoResilienceSettings"/>

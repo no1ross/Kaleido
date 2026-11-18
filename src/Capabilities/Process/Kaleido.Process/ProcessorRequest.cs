@@ -8,8 +8,9 @@ namespace Kaleido.Process;
 public sealed record ProcessorRequest
 {
     /// <summary>
-    /// The submitted steps keyed by their declared CLR type names (case-insensitive). Each value
-    /// is an instance of that registered <see cref="IProcessStep"/> type, never an unparsed body.
+    /// Submitted steps keyed by their published names (case-insensitive). Local runtime calls use
+    /// registered <see cref="IProcessStep"/> instances; outbound clients may use typed local mirror
+    /// objects under the remote step's published name. Neither stores an unparsed HTTP body here.
     /// </summary>
     /// <remarks>
     /// The runtime plans each entry as a candidate. Unknown names, mismatched value types and

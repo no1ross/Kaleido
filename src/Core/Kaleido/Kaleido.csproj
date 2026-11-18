@@ -59,6 +59,9 @@
 		<InternalsVisibleTo Include="Kaleido.Registry.Client.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Client" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Client.UnitTests" />
+		<!-- Process HTTP client and fixtures read the scoped inbound caller to request exchanged credentials safely. -->
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Client.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Server" />

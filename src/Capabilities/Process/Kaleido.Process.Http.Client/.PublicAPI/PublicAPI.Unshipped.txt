@@ -1,0 +1,3 @@
+#nullable enable
+Kaleido.Process.Http.Client.ProcessHttpClientServiceCollectionExtensions
+static Kaleido.Process.Http.Client.ProcessHttpClientServiceCollectionExtensions.AddProcessHttpClient(this Kaleido.IKaleidoBuilder! builder, Kaleido.Http.Client.Configuration.KaleidoClientOptions? options = null) -> Kaleido.IKaleidoBuilder!
