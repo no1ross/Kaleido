@@ -1,10 +1,10 @@
 using System.Text;
 using System.Text.Json;
-using Kaleido.Exceptions;
+using Kaleido.Http.Server.Middleware;
+using Kaleido.Observability;
 using Kaleido.Registry;
-using Kaleido.Server;
-using Kaleido.Storage;
-using Kaleido.UnitTests;
+using Kaleido.Process.Registry;
+using Kaleido.Process.Server.Idempotency;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.Server.Processor.UnitTests;
+namespace Kaleido.Process.Http.Server.UnitTests;
 
 public sealed class ProcessorEndpointRouteBuilderExtensionsTests
     : SutFixture
@@ -41,6 +41,16 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         var exception = Assert.Throws<KaleidoConfigurationException>(endpoints.MapProcessor);
 
         Assert.Equal(ProcessorErrorCodes.InvalidRegistration, exception.Code);
+    }
+
+    [Fact]
+    public void MapProcessor_WhenIdempotencyStoreIsMissing_FailsAtMappingRatherThanTheFirstRequest()
+    {
+        var endpoints = CreateEndpoints(registerIdempotency: false);
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(endpoints.MapProcessor);
+
+        Assert.Equal(ConfigurationErrorCodes.InvalidOptions, exception.Code);
     }
 
     [Fact]
@@ -79,6 +89,9 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/1/processes/execute"));
         Assert.NotEmpty(FindEndpointsByRoute(endpoints, "/workflows/1/processes/{processId}"));
         Assert.Single(FindEndpointsByRoute(endpoints, "/workflows/1/processes/steps/test-step"));
+        Assert.Empty(FindEndpointsByRoute(endpoints, "/workflows/processes/execute"));
+        Assert.Empty(FindEndpointsByRoute(endpoints, "/workflows/processes/{processId}"));
+        Assert.Empty(FindEndpointsByRoute(endpoints, "/workflows/processes/steps/test-step"));
     }
 
     [Fact]
@@ -98,6 +111,24 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
             executionEndpoint.Metadata.GetMetadata<ITagsMetadata>();
 
         Assert.Contains("Test Step", executionTags!.Tags);
+    }
+
+    [Fact]
+    public void MapProcessor_ExecuteAndStateKeepTheirEndpointDescriptions()
+    {
+        var endpoints = CreateEndpoints();
+        endpoints.MapProcessor();
+
+        var execute = Assert.IsType<RouteEndpoint>(FindEndpoint(endpoints, ProcessEndpointNames.ExecuteEndpointName));
+        var state = Assert.IsType<RouteEndpoint>(FindEndpoint(endpoints, ProcessEndpointNames.ProcessEndpointName));
+        Assert.Equal("Execute one or more process steps.", execute.Metadata.GetMetadata<IEndpointSummaryMetadata>()?.Summary);
+        Assert.Contains("submit all information", execute.Metadata.GetMetadata<IEndpointDescriptionMetadata>()?.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Processes", Assert.IsAssignableFrom<ITagsMetadata>(execute.Metadata.GetMetadata<ITagsMetadata>()).Tags);
+        Assert.Equal("Get processor process state.", state.Metadata.GetMetadata<IEndpointSummaryMetadata>()?.Summary);
+        Assert.Contains("does not execute any process step", state.Metadata.GetMetadata<IEndpointDescriptionMetadata>()?.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Processes", Assert.IsAssignableFrom<ITagsMetadata>(state.Metadata.GetMetadata<ITagsMetadata>()).Tags);
+        Assert.Contains(execute.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>(), x => x.Type == typeof(ProcessResult));
+        Assert.Contains(state.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>(), x => x.Type == typeof(ProcessStateSnapshot));
     }
 
     [Fact]
@@ -145,7 +176,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         Assert.NotNull(endpoint);
         Assert.Single(FindEndpointsByRoute(endpoints, "/test-processor/1/processes/steps/untyped-step"));
         var produces = endpoint.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>();
-        Assert.Contains(produces, x => x.Type == typeof(StepExecutionResponse));
+        Assert.Contains(produces, x => x.Type == typeof(ProcessResult));
         Assert.Contains("Untyped Step", endpoint.Metadata.GetMetadata<ITagsMetadata>()!.Tags);
     }
 
@@ -171,8 +202,8 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         Assert.Equal(typeof(ExecuteStepRequest<UntypedStep>), untyped.Metadata.GetMetadata<IAcceptsMetadata>()!.RequestType);
         Assert.Contains("application/json", typed.Metadata.GetMetadata<IAcceptsMetadata>()!.ContentTypes);
         Assert.Contains("application/json", untyped.Metadata.GetMetadata<IAcceptsMetadata>()!.ContentTypes);
-        Assert.Contains(typed.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>(), x => x.Type == typeof(StepExecutionResponse<TestResponse>));
-        Assert.Contains(untyped.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>(), x => x.Type == typeof(StepExecutionResponse));
+        Assert.Contains(typed.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>(), x => x.Type == typeof(ProcessResult));
+        Assert.Contains(untyped.Metadata.GetOrderedMetadata<IProducesResponseTypeMetadata>(), x => x.Type == typeof(ProcessResult));
     }
 
     [Theory]
@@ -224,7 +255,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
     {
         execution
             .Setup(x => x.ExecuteAsync(It.IsAny<ExecuteProcessRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ProcessExecutionResponse { ProcessId = ProcessId });
+            .ReturnsAsync(new ProcessResult { ProcessId = ProcessId, State = ProcessExecutionState.AwaitingStepSelection });
         var endpoints = CreateEndpoints();
         endpoints.MapProcessor();
 
@@ -247,7 +278,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
     {
         state
             .Setup(x => x.GetCurrentState(ProcessId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ProcessStateResponse { ProcessId = ProcessId });
+            .ReturnsAsync(new ProcessStateSnapshot { ProcessId = ProcessId, ServiceName = "test-processor" });
         var endpoints = CreateEndpoints();
         endpoints.MapProcessor();
 
@@ -265,7 +296,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
     {
         state
             .Setup(x => x.GetCurrentState(ProcessId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ProcessStateResponse?)null);
+            .ReturnsAsync((ProcessStateSnapshot?)null);
         var endpoints = CreateEndpoints();
         endpoints.MapProcessor();
 
@@ -282,8 +313,20 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
     public async Task TypedStepEndpoint_ExecutesTheTypedStep_AndAnswersOk()
     {
         execution
-            .Setup(x => x.ExecuteAsync<TestStep, TestResponse>(It.IsAny<ExecuteStepRequest<TestStep>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new StepExecutionResponse<TestResponse> { ProcessId = ProcessId, StepName = "Test-Step", Result = new TestResponse() });
+            .Setup(x => x.ExecuteStepAsync(It.IsAny<ExecuteStepRequest<TestStep>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessResult
+            {
+                ProcessId = ProcessId,
+                State = ProcessExecutionState.AwaitingStepSelection,
+                Steps = [new ProcessStepResult
+                {
+                    StepName = "Test-Step",
+                    CandidateStatus = StepCandidateStatus.Built,
+                    IncludedInExecutionPlan = true,
+                    ExecutionStatus = StepExecutionStatus.Completed,
+                    Response = new TestResponse(),
+                }],
+            });
         var endpoints = CreateEndpoints();
         endpoints.MapProcessor();
 
@@ -295,9 +338,9 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
         var json = ReadJson(context);
         Assert.Equal(ProcessId, json.GetProperty("processId").GetGuid());
-        Assert.Equal("Test-Step", json.GetProperty("stepName").GetString());
+        Assert.Equal("Test-Step", json.GetProperty("steps")[0].GetProperty("stepName").GetString());
         execution.Verify(
-            x => x.ExecuteAsync<TestStep, TestResponse>(It.Is<ExecuteStepRequest<TestStep>>(r => r.ProcessStep != null), It.IsAny<CancellationToken>()),
+            x => x.ExecuteStepAsync(It.Is<ExecuteStepRequest<TestStep>>(r => r.ProcessStep != null), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -305,8 +348,19 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
     public async Task UntypedStepEndpoint_ExecutesTheUntypedStep_AndAnswersOk()
     {
         execution
-            .Setup(x => x.ExecuteAsync<UntypedStep>(It.IsAny<ExecuteStepRequest<UntypedStep>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new StepExecutionResponse { ProcessId = ProcessId, StepName = "Untyped-Step" });
+            .Setup(x => x.ExecuteStepAsync(It.IsAny<ExecuteStepRequest<UntypedStep>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessResult
+            {
+                ProcessId = ProcessId,
+                State = ProcessExecutionState.AwaitingStepSelection,
+                Steps = [new ProcessStepResult
+                {
+                    StepName = "Untyped-Step",
+                    CandidateStatus = StepCandidateStatus.Built,
+                    IncludedInExecutionPlan = true,
+                    ExecutionStatus = StepExecutionStatus.Completed,
+                }],
+            });
         var endpoints = CreateEndpoints(
             registrations: [CreateRegistration(typeof(UntypedStep), null, "Untyped-Step", AuthorizationMetadata.Unspecified)]);
         endpoints.MapProcessor();
@@ -317,9 +371,9 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
             body: """{"processStep":{}}""");
 
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
-        Assert.Equal("Untyped-Step", ReadJson(context).GetProperty("stepName").GetString());
+        Assert.Equal("Untyped-Step", ReadJson(context).GetProperty("steps")[0].GetProperty("stepName").GetString());
         execution.Verify(
-            x => x.ExecuteAsync<UntypedStep>(It.IsAny<ExecuteStepRequest<UntypedStep>>(), It.IsAny<CancellationToken>()),
+            x => x.ExecuteStepAsync(It.IsAny<ExecuteStepRequest<UntypedStep>>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -345,7 +399,7 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
 
         Assert.Equal(StatusCodes.Status415UnsupportedMediaType, context.Response.StatusCode);
         execution.Verify(
-            x => x.ExecuteAsync<UntypedStep>(It.IsAny<ExecuteStepRequest<UntypedStep>>(), It.IsAny<CancellationToken>()),
+            x => x.ExecuteStepAsync(It.IsAny<ExecuteStepRequest<UntypedStep>>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -432,20 +486,26 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         AuthorizationMetadata? stepAuthorization = null,
         IReadOnlyCollection<ProcessStepRegistration>? registrations = null,
         Mock<ILogger>? startupLogger = null,
-        IKaleidoExceptionHandler? exceptionHandler = null)
+        IKaleidoExceptionHandler? exceptionHandler = null,
+        bool registerIdempotency = true)
     {
         var builder =
             WebApplication.CreateBuilder();
 
         builder.Services.AddRouting();
-        builder.Services.AddSingleton(new KaleidoHttpOptions());
+        builder.Services.AddSingleton(new KaleidoProcessHttpOptions());
+        builder.Services.AddSingleton(new KaleidoHttpServerOptions());
+        builder.Services.AddSingleton(new KaleidoServerOptions { AuthorizationMode = mode });
         builder.Services.AddSingleton<IProcessExecutionService>(execution.Object);
         builder.Services.AddSingleton<IProcessStateService>(state.Object);
         builder.Services.AddSingleton<IProcessorStepRegistry>(CreateRegistry(
             registrations ?? [CreateRegistration(typeof(TestStep), typeof(TestResponse), "Test-Step", stepAuthorization ?? AuthorizationMetadata.Unspecified)]));
-        builder.Services.AddSingleton<IProcessorRegistry>(CreateProcessorRegistry());
-        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1", DisplayName = "Test Processor", AuthorizationMode = mode });
-        builder.Services.AddSingleton(Mock.Of<IKaleidoIdempotencyStore>());
+        builder.Services.AddSingleton(new KaleidoServiceOptions { ServiceName = serviceName, ServiceVersion = "1", DisplayName = "Test Processor" });
+        if (registerIdempotency)
+        {
+            builder.Services.AddSingleton(Mock.Of<IProcessIdempotencyStore>());
+        }
+
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton(Mock.Of<IKaleidoCorrelationContextAccessor>(x => x.Current == new KaleidoCorrelationContext()));
 
@@ -495,43 +555,6 @@ public sealed class ProcessorEndpointRouteBuilderExtensionsTests
         registry
             .Setup(x => x.InitialRegistrations)
             .Returns(registrations);
-
-        return registry.Object;
-    }
-
-    private static IProcessorRegistry CreateProcessorRegistry()
-    {
-        var registry =
-            new Mock<IProcessorRegistry>();
-
-        registry
-            .Setup(x => x.Registrations)
-            .Returns(
-            [
-                new ProcessorRegistryItem
-                {
-                    InitialSteps =
-                    [
-                        new ProcessorStepSummary
-                        {
-                            Name = "Test-Step",
-                            Description = "Test step",
-                            DisplayName = "Test Step",
-                            Repeatable = false
-                        }
-                    ],
-                    Steps =
-                    [
-                        new ProcessorStepRegistryItem
-                        {
-                            Name = "Test-Step",
-                            Description = "Test step",
-                            DisplayName = "Test Step",
-                            Repeatable = false
-                        }
-                    ]
-                }
-            ]);
 
         return registry.Object;
     }

@@ -1,79 +1,45 @@
 using System.Text.Json;
-using Kaleido.Exceptions;
-using Kaleido.Platform;
+using Kaleido.Http;
+using Kaleido.Http.Server.Authorization;
+using Kaleido.Observability;
+using Kaleido.Process.Registry;
 using Kaleido.Registry;
-using Kaleido.Server.Authorization;
-using Kaleido.UnitTests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Kaleido.Http.Server.Processor.UnitTests;
+namespace Kaleido.Process.Http.Server.UnitTests;
 
-public sealed class ProcessExecutionServiceTests
-    : SutFixture
+public sealed class ProcessExecutionServiceTests : Kaleido.UnitTests.SutFixture
 {
-    private ProcessExecutionService CreateSut() =>
-        CreateSut(
-            Mock.Of<IProcessorStepRegistry>(),
-            Mock.Of<IProcessorRuntime>(),
-            AnyResponses());
+    private static readonly KaleidoNotice TargetNotice = new("target_notice", "The target left something out.");
+    private readonly Mock<IProcessorRuntime> runtime = new();
 
-    private static ProcessExecutionService CreateSut(
-        IProcessorStepRegistry registry,
-        IProcessorRuntime runtime,
-        IProcessExecutionResponseFactory responseFactory,
+    private ProcessExecutionService CreateSut(
+        IProcessorStepRegistry? registry = null,
+        IProcessorRuntime? processor = null,
         Guid? contextProcessId = null,
         IKaleidoAuthorizer? authorizer = null,
         IHttpContextAccessor? httpContextAccessor = null,
         ILogger<ProcessExecutionService>? logger = null,
         IProcessContinuationFilter? continuations = null,
-        IHandOffStepResolver? handOffSteps = null)
+        KaleidoProcessHttpOptions? options = null)
     {
         var correlation = new Mock<IKaleidoCorrelationContextAccessor>();
-        correlation
-            .Setup(x => x.Current)
-            .Returns(new KaleidoCorrelationContext
-            {
-                RequestId = Guid.NewGuid().ToString(),
-                ProcessId = contextProcessId
-            });
-
-        var stepAuthorizer = new Mock<IKaleidoAuthorizer>();
-        stepAuthorizer
-            .Setup(x => x.AuthorizeAsync(
-                It.IsAny<AuthorizationMetadata?>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
+        correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext { RequestId = Guid.NewGuid().ToString(), ProcessId = contextProcessId });
+        var authorized = new Mock<IKaleidoAuthorizer>();
+        authorized.Setup(x => x.AuthorizeAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-
         return new ProcessExecutionService(
             httpContextAccessor ?? new HttpContextAccessor { HttpContext = new DefaultHttpContext() },
-            registry,
-            runtime,
-            new KaleidoServiceOptions { ServiceName = "test-processor" },
+            registry ?? Mock.Of<IProcessorStepRegistry>(),
+            processor ?? runtime.Object,
+            new KaleidoServiceOptions { ServiceName = "test-processor", ServiceVersion = "1" },
             correlation.Object,
-            responseFactory,
-            authorizer ?? stepAuthorizer.Object,
             continuations ?? PassThrough(),
-            handOffSteps ?? Mock.Of<IHandOffStepResolver>(MockBehavior.Strict),
+            authorizer ?? authorized.Object,
+            options ?? new KaleidoProcessHttpOptions(),
             logger ?? NullLogger<ProcessExecutionService>.Instance);
-    }
-
-    // A response for any result: what the tests that do not look at it need.
-    private static IProcessExecutionResponseFactory AnyResponses()
-    {
-        var factory = new Mock<IProcessExecutionResponseFactory>();
-        factory
-            .Setup(x => x.CreateExecutionResponse(It.IsAny<ProcessResult>(), It.IsAny<IProcessorStepRegistry>()))
-            .Returns((ProcessResult result, IProcessorStepRegistry _) => new ProcessExecutionResponse { ProcessId = result.ProcessId });
-        factory
-            .Setup(x => x.CreateStepResponse(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>()))
-            .Returns((ProcessResult result, ProcessStepResult step, IProcessorStepRegistry _) => new StepExecutionResponse { ProcessId = result.ProcessId, StepName = step.StepName });
-        factory
-            .Setup(x => x.CreateStepResponse<TestResponse>(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>()))
-            .Returns((ProcessResult result, ProcessStepResult step, IProcessorStepRegistry _) => new StepExecutionResponse<TestResponse> { ProcessId = result.ProcessId, StepName = step.StepName });
-        return factory.Object;
     }
 
     // #524: what the caller is described is the continuation filter's decision, for the execute and
@@ -82,54 +48,51 @@ public sealed class ProcessExecutionServiceTests
     public async Task TheResponses_DescribeTheCallerOnlyWhatTheFilterPermits()
     {
         var registration = CreateRegistration();
-        var runtime = new Mock<IProcessorRuntime>();
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CreateProcessResult(registration.Metadata.Name, new TestResponse()));
-        var sut = CreateSut(CreateRegistry(registration), runtime.Object, AnyResponses(), continuations: NothingPermitted());
+        var result = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with
+        {
+            RequiredStep = "NextStep",
+            RequiredInformationRequest = new InformationRequest { InformationRequestId = "questions" },
+        };
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
+        var sut = CreateSut(CreateRegistry(registration), continuations: NothingPermitted());
 
-        var execute = await sut.ExecuteAsync(
-            new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = registration.Metadata.Name, Request = JsonSerializer.SerializeToElement(new { }) }] },
-            CancellationToken.None);
-        var step = await sut.ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+        var execute = await sut.ExecuteAsync(Request(registration.Metadata.Name), CancellationToken.None);
+        var step = await sut.ExecuteStepAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
 
         Assert.Equal(ProcessContinuationFilter.NotPermitted, execute.Notice);
         Assert.Equal(ProcessContinuationFilter.NotPermitted, step.Notice);
-        Assert.Null(step.RequiredStep);
+        Assert.Null(execute.RequiredStep);
+        Assert.Null(step.RequiredInformationRequest);
         Assert.Empty(step.AvailableSteps);
     }
 
-    private static readonly ProcessStepSummary TargetStep =
-        new() { Name = "ValidateMemberStep", ExecuteUrl = "/radiology/processes/steps/validatememberstep" };
-
-    private static readonly KaleidoNotice TargetNotice = new("target_notice", "The target left something out.");
-
-    // #198: after a hand-off the caller is answered with the target's next steps, as the resolver
-    // finds them in the target's registry, then checked for the caller like local steps - on the
-    // execute and the per-step responses alike. Nothing local is offered.
+    // #198: after a hand-off the caller is answered with the target's already authorized next
+    // step names and its pinned version. The local adapter does not resolve the target's Registry
+    // routes, on either the execute or per-step response. Nothing local is offered.
     [Fact]
     public async Task AfterAHandOff_TheResponsesOfferTheTargetsSteps_CheckedForTheCaller()
     {
         var registration = CreateRegistration();
-        var handOff = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with { TargetProcessorName = "radiology", AvailableSteps = [TargetStep.Name] };
-        var runtime = new Mock<IProcessorRuntime>();
+        var handOff = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with
+        {
+            TargetProcessorName = "radiology",
+            TargetProcessorVersion = "2",
+            AvailableSteps = ["ValidateMemberStep"],
+        };
         runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(handOff);
-        var resolver = new Mock<IHandOffStepResolver>();
-        resolver.Setup(x => x.ResolveAsync(handOff, It.IsAny<CancellationToken>())).ReturnsAsync(new ProcessContinuation(RequiredStep: null, [TargetStep], Notice: null));
         var filter = new Mock<IProcessContinuationFilter>();
-        filter
-            .Setup(x => x.FilterAsync(handOff.ProcessId, null, It.Is<IReadOnlyCollection<ProcessStepSummary>>(s => s.SequenceEqual(new[] { TargetStep })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ProcessContinuation(RequiredStep: null, [TargetStep], Notice: null));
-        var sut = CreateSut(CreateRegistry(registration), runtime.Object, AnyResponses(), continuations: filter.Object, handOffSteps: resolver.Object);
+        filter.Setup(x => x.FilterAsync(handOff.ProcessId, null, It.Is<IReadOnlyCollection<string>>(names => names.Single() == "ValidateMemberStep"), "radiology", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessContinuation(null, ["ValidateMemberStep"], null));
+        var sut = CreateSut(CreateRegistry(registration), continuations: filter.Object);
 
-        var execute = await sut.ExecuteAsync(
-            new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = registration.Metadata.Name, Request = JsonSerializer.SerializeToElement(new { }) }] },
-            CancellationToken.None);
-        var step = await sut.ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+        var execute = await sut.ExecuteAsync(Request(registration.Metadata.Name), CancellationToken.None);
+        var step = await sut.ExecuteStepAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
 
-        Assert.Equal([TargetStep], execute.AvailableSteps);
-        Assert.Equal([TargetStep], step.AvailableSteps);
-        filter.Verify(x => x.FilterAsync(handOff.ProcessId, null, It.Is<IReadOnlyCollection<ProcessStepSummary>>(s => s.SequenceEqual(new[] { TargetStep })), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Assert.Equal(["ValidateMemberStep"], execute.AvailableSteps);
+        Assert.Equal(["ValidateMemberStep"], step.AvailableSteps);
+        Assert.Equal("2", execute.TargetProcessorVersion);
+        Assert.Equal("2", step.TargetProcessorVersion);
+        filter.Verify(x => x.FilterAsync(handOff.ProcessId, null, It.IsAny<IReadOnlyCollection<string>>(), "radiology", It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     // The target's notice reaches the caller; the caller check's own notice takes its place when it
@@ -140,25 +103,22 @@ public sealed class ProcessExecutionServiceTests
     public async Task AfterAHandOff_TheNotice_IsTheTargetsUnlessTheCallerCheckSetsOne(bool callerCheckLeavesStepsOut)
     {
         var registration = CreateRegistration();
-        var handOff = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with { TargetProcessorName = "radiology" };
-        var runtime = new Mock<IProcessorRuntime>();
+        var handOff = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with { TargetProcessorName = "radiology", TargetProcessorVersion = "2", Notice = TargetNotice };
         runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(handOff);
-        var resolver = new Mock<IHandOffStepResolver>();
-        resolver.Setup(x => x.ResolveAsync(handOff, It.IsAny<CancellationToken>())).ReturnsAsync(new ProcessContinuation(RequiredStep: null, [TargetStep], TargetNotice));
-        var sut = CreateSut(CreateRegistry(registration), runtime.Object, AnyResponses(), continuations: callerCheckLeavesStepsOut ? NothingPermitted() : PassThrough(), handOffSteps: resolver.Object);
+        var sut = CreateSut(CreateRegistry(registration), continuations: callerCheckLeavesStepsOut ? NothingPermitted() : PassThrough());
 
-        var step = await sut.ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+        var result = await sut.ExecuteStepAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
 
-        Assert.Equal(callerCheckLeavesStepsOut ? ProcessContinuationFilter.NotPermitted : TargetNotice, step.Notice);
+        Assert.Equal(callerCheckLeavesStepsOut ? ProcessContinuationFilter.NotPermitted : TargetNotice, result.Notice);
     }
 
     // The continuation filter (its own fixture) leaves the response as it is.
     private static IProcessContinuationFilter PassThrough()
     {
         var filter = new Mock<IProcessContinuationFilter>();
-        filter
-            .Setup(x => x.FilterAsync(It.IsAny<Guid>(), It.IsAny<ProcessRequiredStep?>(), It.IsAny<IReadOnlyCollection<ProcessStepSummary>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid _, ProcessRequiredStep? required, IReadOnlyCollection<ProcessStepSummary> available, CancellationToken _) => new ProcessContinuation(required, available, Notice: null));
+        filter.Setup(x => x.FilterAsync(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, string? required, IReadOnlyCollection<string> available, string? _, CancellationToken _) =>
+                new ProcessContinuation(required, available, Notice: null));
         return filter.Object;
     }
 
@@ -166,38 +126,50 @@ public sealed class ProcessExecutionServiceTests
     private static IProcessContinuationFilter NothingPermitted()
     {
         var filter = new Mock<IProcessContinuationFilter>();
-        filter
-            .Setup(x => x.FilterAsync(It.IsAny<Guid>(), It.IsAny<ProcessRequiredStep?>(), It.IsAny<IReadOnlyCollection<ProcessStepSummary>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ProcessContinuation(RequiredStep: null, AvailableSteps: [], ProcessContinuationFilter.NotPermitted));
+        filter.Setup(x => x.FilterAsync(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessContinuation(null, [], ProcessContinuationFilter.NotPermitted));
         return filter.Object;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExecuteAsync_FrameworkMessagesFollowTheProcessHttpOption_WithoutRemovingBusinessMessages(bool includeFrameworkMessages)
+    {
+        var registration = CreateRegistration();
+        var result = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        var diagnostic = new StepProcessingMessage { Type = MessageType.Warning, Code = "trace", Message = "Framework detail." };
+        var business = new ProcessMessage { Type = MessageType.Information, Code = "accepted", Message = "Accepted." };
+        result = result with
+        {
+            Steps = [result.Steps.Single() with { RuntimeMessages = [diagnostic], BusinessMessages = [business] }],
+        };
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
+
+        var response = await CreateSut(CreateRegistry(registration), options: new KaleidoProcessHttpOptions
+        {
+            IncludeFrameworkMessages = includeFrameworkMessages,
+        }).ExecuteAsync(Request(registration.Metadata.Name), TestContext.Current.CancellationToken);
+
+        var step = Assert.Single(response.Steps);
+        Assert.Equal(includeFrameworkMessages ? [diagnostic] : [], step.RuntimeMessages);
+        Assert.Equal([business], step.BusinessMessages);
+        Assert.Equal([diagnostic], Assert.Single(result.Steps).RuntimeMessages);
     }
 
     [Fact]
     public async Task ExecuteAsync_ProcessRequest_EchoesTheProcessIdHeader_AndLogsAtDebug()
     {
         var registration = CreateRegistration();
-        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse());
-        var runtime = new Mock<IProcessorRuntime>();
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(processResult);
-        var httpContext = new DefaultHttpContext();
+        var result = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
+        var http = new DefaultHttpContext();
         var logger = CreateLogger();
 
-        await CreateSut(
-                CreateRegistry(registration),
-                runtime.Object,
-                AnyResponses(),
-                httpContextAccessor: new HttpContextAccessor { HttpContext = httpContext },
-                logger: logger.Object)
-            .ExecuteAsync(
-                new ExecuteProcessRequest
-                {
-                    Steps = [new ProcessStepRequest { StepName = registration.Metadata.Name, Request = JsonSerializer.SerializeToElement(new { }) }]
-                },
-                CancellationToken.None);
+        await CreateSut(CreateRegistry(registration), httpContextAccessor: new HttpContextAccessor { HttpContext = http }, logger: logger.Object)
+            .ExecuteAsync(Request(registration.Metadata.Name), CancellationToken.None);
 
-        Assert.Equal(processResult.ProcessId.ToString(), httpContext.Response.Headers[KaleidoCorrelationHeaders.ProcessId].ToString());
+        Assert.Equal(result.ProcessId.ToString(), http.Response.Headers[KaleidoCorrelationHeaders.ProcessId].ToString());
         Assert.Equal(["Executing process for processor test-processor with 1 submitted step(s)."], DebugLogs(logger));
     }
 
@@ -205,64 +177,39 @@ public sealed class ProcessExecutionServiceTests
     public async Task ExecuteAsync_Step_EchoesTheProcessIdHeader_AndLogsAtDebug()
     {
         var registration = CreateRegistration();
-        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse());
-        var runtime = new Mock<IProcessorRuntime>();
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(processResult);
-        var httpContext = new DefaultHttpContext();
+        var result = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
+        var http = new DefaultHttpContext();
         var logger = CreateLogger();
 
-        await CreateSut(
-                CreateRegistry(registration),
-                runtime.Object,
-                AnyResponses(),
-                httpContextAccessor: new HttpContextAccessor { HttpContext = httpContext },
-                logger: logger.Object)
-            .ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+        await CreateSut(CreateRegistry(registration), httpContextAccessor: new HttpContextAccessor { HttpContext = http }, logger: logger.Object)
+            .ExecuteStepAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
 
-        Assert.Equal(processResult.ProcessId.ToString(), httpContext.Response.Headers[KaleidoCorrelationHeaders.ProcessId].ToString());
+        Assert.Equal(result.ProcessId.ToString(), http.Response.Headers[KaleidoCorrelationHeaders.ProcessId].ToString());
         Assert.Equal(["Executing step Test-Step for processor test-processor."], DebugLogs(logger));
     }
 
     [Fact]
     public async Task ExecuteAsync_OutsideAnHttpRequest_ReturnsTheResponseWithoutHeaders()
     {
-        var registration = CreateRegistration();
-        var registry = CreateRegistry(registration);
-        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse());
-        var runtime = new Mock<IProcessorRuntime>();
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(processResult);
-        var expected = new ProcessExecutionResponse { ProcessId = processResult.ProcessId };
-        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
-        responseFactory
-            .Setup(x => x.CreateExecutionResponse(processResult, registry))
-            .Returns(expected);
+        var result = CreateProcessResult("any", new TestResponse());
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
 
-        var response = await CreateSut(
-                registry,
-                runtime.Object,
-                responseFactory.Object,
-                httpContextAccessor: new HttpContextAccessor())
-            .ExecuteAsync(new ExecuteProcessRequest { Steps = [] }, CancellationToken.None);
+        var response = await CreateSut(httpContextAccessor: new HttpContextAccessor()).ExecuteAsync(new ExecuteProcessRequest(), CancellationToken.None);
 
-        Assert.Equal(expected, response);
+        Assert.Equal(result.ProcessId, response.ProcessId);
+        Assert.Equal(result.Steps.Select(x => x.StepName), response.Steps.Select(x => x.StepName));
     }
 
     [Fact]
     public async Task ExecuteAsync_Step_WhenTheResultHasNoEntryForTheStep_ThrowsAFrameworkError()
     {
         var registration = CreateRegistration();
-        var runtime = new Mock<IProcessorRuntime>();
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateProcessResult("Other-Step", new TestResponse()));
 
-        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() =>
-            CreateSut(CreateRegistry(registration), runtime.Object, AnyResponses())
-                .ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() => CreateSut(CreateRegistry(registration))
+            .ExecuteStepAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None));
 
         Assert.Equal(ProcessorErrorCodes.MissingStepResult, exception.Code);
         Assert.Equal("Process result for step 'Test-Step' contained no entry for that step.", exception.Message);
@@ -272,29 +219,20 @@ public sealed class ProcessExecutionServiceTests
     public async Task ExecuteAsync_Step_WhenTheStepAppearsMoreThanOnce_ReportsTheEntryThatRan()
     {
         var registration = CreateRegistration();
-        var ran = CreateProcessResult(registration.Metadata.Name, new TestResponse()).Steps.Single();
-        var pending = ran with { ExecutionStatus = StepExecutionStatus.Pending, Response = null };
-        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with
+        var completed = CreateProcessResult(registration.Metadata.Name, new TestResponse()).Steps.Single();
+        var pending = completed with { ExecutionStatus = StepExecutionStatus.Pending, Response = null };
+        var result = CreateProcessResult(registration.Metadata.Name, new TestResponse()) with
         {
-            Steps = [pending, ran with { StepName = "test-step" }, pending],
+            Steps = [pending, completed with { StepName = "test-step" }, pending],
         };
-        var runtime = new Mock<IProcessorRuntime>();
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(processResult);
-        ProcessStepResult? reported = null;
-        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
-        responseFactory
-            .Setup(x => x.CreateStepResponse(It.IsAny<ProcessResult>(), It.IsAny<ProcessStepResult>(), It.IsAny<IProcessorStepRegistry>()))
-            .Callback((ProcessResult _, ProcessStepResult step, IProcessorStepRegistry _) => reported = step)
-            .Returns(new StepExecutionResponse { ProcessId = processResult.ProcessId, StepName = registration.Metadata.Name });
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
 
-        await CreateSut(CreateRegistry(registration), runtime.Object, responseFactory.Object)
-            .ExecuteAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
+        var response = await CreateSut(CreateRegistry(registration))
+            .ExecuteStepAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
 
-        Assert.NotNull(reported);
-        Assert.Equal(StepExecutionStatus.Completed, reported.ExecutionStatus);
-        Assert.Equal("test-step", reported.StepName);
+        Assert.Equal(result.ProcessId, response.ProcessId);
+        Assert.Equal(result.Steps.Select(x => x.StepName), response.Steps.Select(x => x.StepName));
+        Assert.Contains(response.Steps, step => step.ExecutionStatus == StepExecutionStatus.Completed && step.StepName == "test-step");
     }
 
     private static Mock<ILogger<ProcessExecutionService>> CreateLogger()
@@ -314,300 +252,119 @@ public sealed class ProcessExecutionServiceTests
     public async Task ExecuteAsync_ProcessRequest_MapsRequestAndReturnsResponse()
     {
         var registration = CreateRegistration();
-        var registry = CreateRegistry(registration);
+        var result = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        ProcessRequest? captured = null;
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<ProcessRequest, CancellationToken>((request, _) => captured = request)
+            .ReturnsAsync(result);
+        var processId = Guid.NewGuid();
 
-        ProcessRequest? capturedRequest = null;
-        var runtime = new Mock<IProcessorRuntime>();
-        var processResult = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        var response = await CreateSut(CreateRegistry(registration), contextProcessId: processId)
+            .ExecuteAsync(Request(registration.Metadata.Name, new { value = "abc" }), CancellationToken.None);
 
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<ProcessRequest, CancellationToken>((request, _) => capturedRequest = request)
-            .ReturnsAsync(processResult);
-
-        var contextProcessId = Guid.NewGuid();
-
-        var expectedResponse = new ProcessExecutionResponse
-        {
-            ProcessId = processResult.ProcessId,
-            AvailableSteps = [],
-            Results = []
-        };
-
-        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
-        responseFactory
-            .Setup(x => x.CreateExecutionResponse(
-                processResult,
-                registry))
-            .Returns(expectedResponse);
-
-        var service = CreateSut(registry, runtime.Object, responseFactory.Object, contextProcessId);
-
-        var request = new ExecuteProcessRequest
-        {
-            Steps =
-            [
-                new ProcessStepRequest
-                {
-                    StepName = registration.Metadata.Name,
-                    Request = JsonSerializer.SerializeToElement(new { value = "abc" })
-                }
-            ]
-        };
-
-        var response = await service.ExecuteAsync(request, CancellationToken.None);
-
-        Assert.NotNull(capturedRequest);
-        Assert.Equal(contextProcessId, capturedRequest.ProcessId);
-        Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
-
-        Assert.Equal(expectedResponse, response);
-        responseFactory.Verify(
-            x => x.CreateExecutionResponse(
-                processResult,
-                registry),
-            Times.Once);
+        Assert.NotNull(captured);
+        Assert.Equal(processId, captured.ProcessId);
+        Assert.True(captured.Processor.Steps.ContainsKey(registration.Metadata.Name));
+        Assert.Equal(result.ProcessId, response.ProcessId);
+        Assert.Equal(result.Steps.Select(x => x.StepName), response.Steps.Select(x => x.StepName));
     }
 
     [Fact]
     public async Task ExecuteAsync_TypedStep_UsesRegistrationNameAndReturnsTypedResponse()
     {
         var registration = CreateRegistration();
-        var registry = CreateRegistry(registration);
+        var result = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        ProcessRequest? captured = null;
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<ProcessRequest, CancellationToken>((request, _) => captured = request)
+            .ReturnsAsync(result);
 
-        ProcessRequest? capturedRequest = null;
-        var runtime = new Mock<IProcessorRuntime>();
+        var response = await CreateSut(CreateRegistry(registration), contextProcessId: Guid.NewGuid())
+            .ExecuteStepAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
 
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<ProcessRequest, CancellationToken>((request, _) => capturedRequest = request)
-            .ReturnsAsync(CreateProcessResult(registration.Metadata.Name, new TestResponse()));
-
-        var expectedResponse = new StepExecutionResponse<TestResponse>
-        {
-            ProcessId = Guid.NewGuid(),
-            StepName = registration.Metadata.Name
-        };
-
-        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
-        responseFactory
-            .Setup(x => x.CreateStepResponse<TestResponse>(
-                It.IsAny<ProcessResult>(),
-                It.IsAny<ProcessStepResult>(),
-                registry))
-            .Returns(expectedResponse);
-
-        var service = CreateSut(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());
-
-        var request = new ExecuteStepRequest<TestStep>
-        {
-            ProcessStep = new TestStep()
-        };
-
-        var response = await service.ExecuteAsync<TestStep, TestResponse>(request, CancellationToken.None);
-
-        Assert.NotNull(capturedRequest);
-        Assert.True(capturedRequest.Processor.Steps.ContainsKey(registration.Metadata.Name));
-        Assert.Equal(expectedResponse, response);
+        Assert.NotNull(captured);
+        Assert.True(captured.Processor.Steps.ContainsKey(registration.Metadata.Name));
+        Assert.Equal(result.ProcessId, response.ProcessId);
+        Assert.Equal(result.Steps.Select(x => x.StepName), response.Steps.Select(x => x.StepName));
+        Assert.IsType<TestResponse>(Assert.Single(response.Steps).Response);
     }
 
     [Fact]
     public async Task ExecuteAsync_UntypedStep_UsesRegistrationNameAndReturnsResponse()
     {
         var registration = CreateRegistration();
-        var registry = CreateRegistry(registration);
+        var result = CreateProcessResult(registration.Metadata.Name, new TestResponse());
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
 
-        var runtime = new Mock<IProcessorRuntime>();
+        var response = await CreateSut(CreateRegistry(registration))
+            .ExecuteStepAsync(new ExecuteStepRequest<TestStep> { ProcessStep = new TestStep() }, CancellationToken.None);
 
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CreateProcessResult(registration.Metadata.Name, new TestResponse()));
-
-        var expectedResponse = new StepExecutionResponse
-        {
-            ProcessId = Guid.NewGuid(),
-            StepName = registration.Metadata.Name
-        };
-
-        var responseFactory = new Mock<IProcessExecutionResponseFactory>();
-        responseFactory
-            .Setup(x => x.CreateStepResponse(
-                It.IsAny<ProcessResult>(),
-                It.IsAny<ProcessStepResult>(),
-                registry))
-            .Returns(expectedResponse);
-
-        var service = CreateSut(registry, runtime.Object, responseFactory.Object, Guid.NewGuid());
-
-        var request = new ExecuteStepRequest<TestStep>
-        {
-            ProcessStep = new TestStep()
-        };
-
-        var response = await service.ExecuteAsync(request, CancellationToken.None);
-
-        Assert.Equal(expectedResponse, response);
+        Assert.Equal(result.ProcessId, response.ProcessId);
+        Assert.Equal(result.Steps.Select(x => x.StepName), response.Steps.Select(x => x.StepName));
+        Assert.Equal(registration.Metadata.Name, Assert.Single(response.Steps).StepName);
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenStepNotAuthorized_Throws()
     {
         var registration = CreateRegistration();
-        var registry = CreateRegistry(registration);
-        var runtime = new Mock<IProcessorRuntime>();
-
         var authorizer = new Mock<IKaleidoAuthorizer>();
-        authorizer
-            .Setup(x => x.AuthorizeAsync(
-                It.IsAny<AuthorizationMetadata?>(),
-                registration.Metadata.Name,
-                It.IsAny<CancellationToken>()))
-            .ThrowsAsync(
-                new KaleidoAuthorizationException(
-                    registration.Metadata.Name,
-                    callerIsAuthenticated: true));
+        authorizer.Setup(x => x.AuthorizeAsync(It.IsAny<AuthorizationMetadata?>(), registration.Metadata.Name, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KaleidoAuthorizationException(registration.Metadata.Name, callerIsAuthenticated: true));
 
-        var service = CreateSut(
-            registry,
-            runtime.Object,
-            AnyResponses(),
-            authorizer: authorizer.Object);
-
-        var request = new ExecuteProcessRequest
-        {
-            Steps =
-            [
-                new ProcessStepRequest
-                {
-                    StepName = registration.Metadata.Name,
-                    Request = JsonSerializer.SerializeToElement(new { value = "abc" })
-                }
-            ]
-        };
-
-        await Assert.ThrowsAsync<KaleidoAuthorizationException>(
-            () => service.ExecuteAsync(request, CancellationToken.None));
-
-        runtime.Verify(
-            x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        await Assert.ThrowsAsync<KaleidoAuthorizationException>(() => CreateSut(CreateRegistry(registration), authorizer: authorizer.Object)
+            .ExecuteAsync(Request(registration.Metadata.Name), CancellationToken.None));
+        runtime.Verify(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenAStepIsSubmittedTwice_RejectsTheRequestBeforeRunning()
     {
-        var runtime = new Mock<IProcessorRuntime>();
-        var service = CreateSut(
-            Mock.Of<IProcessorStepRegistry>(),
-            runtime.Object,
-            AnyResponses());
-
         var request = new ExecuteProcessRequest
         {
             Steps =
             [
                 new ProcessStepRequest { StepName = "CaptureMember", Request = JsonSerializer.SerializeToElement(new { }) },
                 new ProcessStepRequest { StepName = "capturemember", Request = JsonSerializer.SerializeToElement(new { }) },
-            ]
+            ],
         };
 
-        var exception = await Assert.ThrowsAsync<KaleidoValidationException>(
-            () => service.ExecuteAsync(request, CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<KaleidoValidationException>(() => CreateSut().ExecuteAsync(request, CancellationToken.None));
 
         Assert.Equal(ProcessorErrorCodes.InvalidRequest, exception.Code);
         Assert.Contains("'capturemember'", exception.Message, StringComparison.Ordinal);
-        runtime.Verify(
-            x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        runtime.Verify(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenAnySubmittedStepDenied_RejectsWholeRequestBeforeRunning()
     {
-        var allowed = CreateRegistration();
-        var registry = new Mock<IProcessorStepRegistry>();
-        registry.Setup(x => x.Find(allowed.Metadata.Name)).Returns(allowed);
-
-        var runtime = new Mock<IProcessorRuntime>();
-
+        var registration = CreateRegistration();
         var authorizer = new Mock<IKaleidoAuthorizer>();
-        authorizer
-            .Setup(x => x.AuthorizeAsync(
-                It.IsAny<AuthorizationMetadata?>(),
-                allowed.Metadata.Name,
-                It.IsAny<CancellationToken>()))
+        authorizer.Setup(x => x.AuthorizeAsync(It.IsAny<AuthorizationMetadata?>(), registration.Metadata.Name, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        authorizer
-            .Setup(x => x.AuthorizeAsync(
-                It.IsAny<AuthorizationMetadata?>(),
-                "Denied",
-                It.IsAny<CancellationToken>()))
-            .ThrowsAsync(
-                new KaleidoAuthorizationException(
-                    "Denied",
-                    callerIsAuthenticated: false));
-
-        var service = CreateSut(
-            registry.Object,
-            runtime.Object,
-            AnyResponses(),
-            authorizer: authorizer.Object);
-
+        authorizer.Setup(x => x.AuthorizeAsync(It.IsAny<AuthorizationMetadata?>(), "Denied", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new KaleidoAuthorizationException("Denied", callerIsAuthenticated: false));
         var request = new ExecuteProcessRequest
         {
-            Steps =
-            [
-                new ProcessStepRequest
-                {
-                    StepName = allowed.Metadata.Name,
-                    Request = JsonSerializer.SerializeToElement(new { value = "abc" })
-                },
-                new ProcessStepRequest
-                {
-                    StepName = "Denied",
-                    Request = JsonSerializer.SerializeToElement(new { })
-                }
-            ]
+            Steps = [new ProcessStepRequest { StepName = registration.Metadata.Name, Request = JsonSerializer.SerializeToElement(new { }) },
+                new ProcessStepRequest { StepName = "Denied", Request = JsonSerializer.SerializeToElement(new { }) }],
         };
 
-        await Assert.ThrowsAsync<KaleidoAuthorizationException>(
-            () => service.ExecuteAsync(request, CancellationToken.None));
-
-        runtime.Verify(
-            x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        await Assert.ThrowsAsync<KaleidoAuthorizationException>(() => CreateSut(CreateRegistry(registration), authorizer: authorizer.Object)
+            .ExecuteAsync(request, CancellationToken.None));
+        runtime.Verify(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenStepUnknown_AuthorizesAsUndeclared()
     {
-        var registry = new Mock<IProcessorStepRegistry>();
         var authorizer = new Mock<IKaleidoAuthorizer>();
-
-        var service = CreateSut(
-            registry.Object,
-            CompletingRuntime(),
-            AnyResponses(),
-            authorizer: authorizer.Object);
-
-        var exception = await Assert.ThrowsAsync<KaleidoValidationException>(() => service.ExecuteAsync(
-            new ExecuteProcessRequest
-            {
-                Steps =
-                [
-                    new ProcessStepRequest
-                    {
-                        StepName = "NoSuchStep",
-                        Request = JsonSerializer.SerializeToElement(new { })
-                    }
-                ]
-            },
-            CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<KaleidoValidationException>(() => CreateSut(authorizer: authorizer.Object)
+            .ExecuteAsync(Request("NoSuchStep"), CancellationToken.None));
 
         // Authorized as undeclared first (fail closed), then rejected before anything runs (#344).
-        authorizer.Verify(
-            x => x.AuthorizeAsync(null, "NoSuchStep", It.IsAny<CancellationToken>()),
-            Times.Once);
+        authorizer.Verify(x => x.AuthorizeAsync(null, "NoSuchStep", It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(ProcessorErrorCodes.UnknownStep, exception.Code);
         Assert.Contains("'NoSuchStep'", exception.Message, StringComparison.Ordinal);
     }
@@ -616,22 +373,35 @@ public sealed class ProcessExecutionServiceTests
     [Fact]
     public async Task ExecuteAsync_BuildsEachStepAsItsStepType_BeforeTheRuntime()
     {
-        var registry = TypedInputRegistry();
+        var registration = CreateRegistration(typeof(TypedInputStep), nameof(TypedInputStep));
         ProcessRequest? captured = null;
-        var runtime = new Mock<IProcessorRuntime>();
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
             .Callback<ProcessRequest, CancellationToken>((request, _) => captured = request)
             .ReturnsAsync(CreateProcessResult(nameof(TypedInputStep), new TestResponse()));
         var itemId = Guid.NewGuid();
 
-        await CreateSut(registry, runtime.Object, AnyResponses()).ExecuteAsync(
-            new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = "typedinputstep", Request = JsonSerializer.SerializeToElement(new { itemId }) }] },
-            TestContext.Current.CancellationToken);
+        await CreateSut(CreateRegistry(registration)).ExecuteAsync(Request("typedinputstep", new { itemId }), TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
-        var step = Assert.IsType<TypedInputStep>(captured.Processor.Steps["TypedInputStep"]);
+        var step = Assert.IsType<TypedInputStep>(captured.Processor.Steps[nameof(TypedInputStep)]);
         Assert.Equal(itemId, step.ItemId);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenStepInputIsOmitted_RejectsBeforeRunning()
+    {
+        var registration = CreateRegistration();
+        var request = new ExecuteProcessRequest
+        {
+            Steps = [new ProcessStepRequest { StepName = registration.Metadata.Name, Request = default }],
+        };
+
+        var error = await Assert.ThrowsAsync<BadHttpRequestException>(() => CreateSut(CreateRegistry(registration))
+            .ExecuteAsync(request, TestContext.Current.CancellationToken));
+
+        Assert.Equal(StatusCodes.Status400BadRequest, error.StatusCode);
+        Assert.Contains("Step 'Test-Step'", error.Message, StringComparison.Ordinal);
+        runtime.Verify(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]
@@ -640,122 +410,77 @@ public sealed class ProcessExecutionServiceTests
     [InlineData("null", "no input")]
     public async Task ExecuteAsync_AStepThatCannotBeBuilt_IsRejected_NamingTheStep_AndNothingRuns(string input, string named)
     {
-        var runtime = new Mock<IProcessorRuntime>();
+        var registration = CreateRegistration(typeof(TypedInputStep), nameof(TypedInputStep));
         using var json = JsonDocument.Parse(input);
 
-        var exception = await Assert.ThrowsAsync<Microsoft.AspNetCore.Http.BadHttpRequestException>(() =>
-            CreateSut(TypedInputRegistry(), runtime.Object, AnyResponses()).ExecuteAsync(
-                new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = nameof(TypedInputStep), Request = json.RootElement.Clone() }] },
+        var exception = await Assert.ThrowsAsync<BadHttpRequestException>(() => CreateSut(CreateRegistry(registration))
+            .ExecuteAsync(new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = nameof(TypedInputStep), Request = json.RootElement.Clone() }] },
                 TestContext.Current.CancellationToken));
 
-        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
         Assert.Contains("Step 'TypedInputStep'", exception.Message, StringComparison.Ordinal);
         Assert.Contains(named, exception.Message, StringComparison.Ordinal);
         runtime.Verify(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    private static IProcessorStepRegistry TypedInputRegistry()
-    {
-        var registration = new ProcessStepRegistration(
-            typeof(TypedInputStep),
-            null,
-            typeof(TestStepHandler),
-            [],
-            [],
-            [],
-            new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata { Name = nameof(TypedInputStep), Description = "Typed input", DisplayName = "Typed input" });
-        var registry = new Mock<IProcessorStepRegistry>();
-        registry.Setup(x => x.Find(It.Is<string>(n => string.Equals(n, nameof(TypedInputStep), StringComparison.OrdinalIgnoreCase)))).Returns(registration);
-        return registry.Object;
-    }
-
-    public sealed record TypedInputStep : IProcessStep
-    {
-        public required Guid ItemId { get; init; }
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenNoStepsSubmitted_AuthorizesAsUndeclared()
     {
         var authorizer = new Mock<IKaleidoAuthorizer>();
-
-        var service = CreateSut(
-            Mock.Of<IProcessorStepRegistry>(),
-            CompletingRuntime(),
-            AnyResponses(),
-            authorizer: authorizer.Object);
-
-        await service.ExecuteAsync(
-            new ExecuteProcessRequest { Steps = [] },
-            CancellationToken.None);
-
-        authorizer.Verify(
-            x => x.AuthorizeAsync(null, It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    private static IProcessorRuntime CompletingRuntime()
-    {
-        var runtime = new Mock<IProcessorRuntime>();
-        runtime
-            .Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
+        authorizer.Setup(x => x.AuthorizeAsync(null, It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        runtime.Setup(x => x.ExecuteAsync(It.IsAny<ProcessRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateProcessResult("any", new TestResponse()));
-        return runtime.Object;
+
+        await CreateSut(authorizer: authorizer.Object).ExecuteAsync(new ExecuteProcessRequest(), CancellationToken.None);
+
+        authorizer.Verify(x => x.AuthorizeAsync(null, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    private static ProcessResult CreateProcessResult(string stepName, object response) =>
-        new()
+    private static ExecuteProcessRequest Request(string stepName, object? body = null) => new()
+    {
+        Steps = [new ProcessStepRequest { StepName = stepName, Request = JsonSerializer.SerializeToElement(body ?? new { }, KaleidoJsonOptions.Options) }],
+    };
+
+    private static ProcessResult CreateProcessResult(string stepName, object response) => new()
+    {
+        ProcessId = Guid.NewGuid(),
+        State = ProcessExecutionState.Active,
+        AvailableSteps = [stepName],
+        Steps = [new ProcessStepResult
         {
-            ProcessId = Guid.NewGuid(),
-            State = ProcessExecutionState.Active,
-            AvailableSteps = [stepName],
-            Steps =
-            [
-                new ProcessStepResult
-                {
-                    StepName = stepName,
-                    CandidateStatus = StepCandidateStatus.Built,
-                    IncludedInExecutionPlan = true,
-                    Response = response,
-                    ExecutionStatus = StepExecutionStatus.Completed,
-                    RuntimeMessages = [],
-                    BusinessMessages = []
-                }
-            ]
-        };
+            StepName = stepName,
+            CandidateStatus = StepCandidateStatus.Built,
+            IncludedInExecutionPlan = true,
+            Response = response,
+            ExecutionStatus = StepExecutionStatus.Completed,
+        }],
+    };
 
     private static IProcessorStepRegistry CreateRegistry(ProcessStepRegistration registration)
     {
         var registry = new Mock<IProcessorStepRegistry>();
-
-        registry.Setup(x => x.GetRegistration(typeof(TestStep))).Returns(registration);
+        registry.Setup(x => x.GetRegistration(registration.StepType)).Returns(registration);
         registry.Setup(x => x.GetRegistration(registration.Metadata.Name)).Returns(registration);
-        registry.Setup(x => x.Find(registration.Metadata.Name)).Returns(registration);
-
+        registry.Setup(x => x.Find(It.Is<string>(name => string.Equals(name, registration.Metadata.Name, StringComparison.OrdinalIgnoreCase)))).Returns(registration);
         return registry.Object;
     }
 
-    private static ProcessStepRegistration CreateRegistration() =>
-        new(
-            typeof(TestStep),
-            typeof(TestResponse),
-            typeof(TestStepHandler),
-            [],
-            [],
-            [],
+    private static ProcessStepRegistration CreateRegistration(Type? stepType = null, string name = "Test-Step") =>
+        new(stepType ?? typeof(TestStep), typeof(TestResponse), typeof(TestStepHandler), [], [], [],
             new RepeatableOptions { Enabled = false },
-            new ProcessStepMetadata { Name = "Test-Step", Description = "Test step", DisplayName = "Test Step" });
+            new ProcessStepMetadata { Name = name, Description = "Test step", DisplayName = "Test Step" });
 
     public sealed record TestStep : IProcessStep;
     public sealed record TestResponse;
 
     public sealed class TestStepHandler : IProcessStepHandler<TestStep, TestResponse>
     {
-        public Task<ProcessStepHandlerResult<TestResponse>> ExecuteAsync(
-            TestStep step,
-            ProcessStepContext context,
-            CancellationToken cancellationToken) =>
+        public Task<ProcessStepHandlerResult<TestResponse>> ExecuteAsync(TestStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
+    }
+
+    public sealed record TypedInputStep : IProcessStep
+    {
+        public required Guid ItemId { get; init; }
     }
 }

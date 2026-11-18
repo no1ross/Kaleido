@@ -77,7 +77,7 @@ are dropped (the response echo reflects the resolved `RequestId`, so callers see
 what was used). `ProcessId` is always honored: it is a resumable process handle, not an
 identity claim.
 
-Trust is governed by `KaleidoHttpOptions.TrustCorrelationIdentity` (`Func<HttpContext, bool>`).
+Trust is governed by `KaleidoHttpServerOptions.TrustCorrelationIdentity` (`Func<HttpContext, bool>`).
 The default is adaptive:
 
 - **No authentication infrastructure registered** (no `IAuthenticationSchemeProvider`) —

@@ -1,297 +1,129 @@
 using System.Reflection;
-using Kaleido.Processor;
-using Kaleido.Processor.Registry;
-using Kaleido.Server;
-using Kaleido.Server.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.Server.Processor;
+namespace Kaleido.Process.Http.Server;
 
-internal static partial class ProcessorEndpointRouteBuilderExtensions
+/// <summary>Maps Process execution and state endpoints over the locally registered runtime.</summary>
+public static partial class ProcessorEndpointRouteBuilderExtensions
 {
-    /// <summary>
-    /// Maps all Kaleido Process endpoints and returns the route group so hosts can
-    /// compose conventions (e.g. <c>.RequireAuthorization()</c>) onto every endpoint.
-    /// </summary>
-    internal static RouteGroupBuilder MapProcessor(
-        this IEndpointRouteBuilder endpoints)
+    /// <summary>Maps the versioned local Process endpoints without requiring central Registry participation.</summary>
+    /// <param name="endpoints">The ASP.NET route builder.</param>
+    /// <returns>The Process route group for host conventions.</returns>
+    public static RouteGroupBuilder MapProcessor(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-
-        var registry =
-            endpoints.ServiceProvider
-                .GetService<IProcessorStepRegistry>();
-
-        if (registry is null)
+        var registry = endpoints.ServiceProvider.GetService<IProcessorStepRegistry>()
+            ?? throw new KaleidoConfigurationException(ProcessorErrorCodes.InvalidRegistration,
+                "Cannot map Process endpoints without AddProcess().");
+        if (!endpoints.ServiceProvider.GetRequiredService<IServiceProviderIsService>().IsService(typeof(IProcessIdempotencyStore)))
         {
-            throw new KaleidoConfigurationException(
-                ProcessorErrorCodes.InvalidRegistration,
-                "Cannot map Process endpoints: Process runtime is not registered. " +
-                "Use MapKaleidoHttp() to map Kaleido endpoints.");
+            throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidOptions,
+                "Choose an IProcessIdempotencyStore with AddIdempotencyStore<T>() before MapProcessor().");
         }
 
-        var serviceOptions =
-            endpoints.ServiceProvider
-                .GetRequiredService<KaleidoServiceOptions>();
-
-        var serviceName = serviceOptions.ServiceName;
-        var version = serviceOptions.ServiceVersion ?? throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidServiceVersion, "A Kaleido HTTP service must name the version in its routes.");
-
-        var logger =
-            endpoints.ServiceProvider
-                .GetRequiredService<ILoggerFactory>()
-                .CreateLogger("Kaleido.Processor.Startup");
-
-        var routePrefix = ProcessContractUrls.ProcessesPrefix(serviceName, version);
-
-        var group =
-            endpoints.MapGroup(
-                routePrefix)
+        var options = endpoints.ServiceProvider.GetRequiredService<KaleidoServiceOptions>();
+        var server = endpoints.ServiceProvider.GetRequiredService<KaleidoServerOptions>();
+        var version = options.ServiceVersion ?? throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidServiceVersion,
+            "A Process HTTP service must name a version in its published routes.");
+        var prefix = ProcessContractUrls.ProcessesPrefix(options.ServiceName, version);
+        var group = endpoints.MapGroup(prefix)
             .AddEndpointFilter<KaleidoExceptionEndpointFilter>()
-            .AddEndpointFilter<Kaleido.Server.Observability.KaleidoCorrelationEndpointFilter>()
+            .AddEndpointFilter<ProcessHttpExceptionEndpointFilter>()
+            .AddEndpointFilter<KaleidoCorrelationEndpointFilter>()
             .AddEndpointFilter<KaleidoJsonEndpointFilter>()
-            // Post-auth caller (CallerName/CallerId/CallerActor) for created-by tags and the outgoing calls.
             .AddEndpointFilter<KaleidoCallerContextEndpointFilter>();
+        LogMapped(endpoints, prefix, registry);
 
-        LogEndpointsMapped(logger, routePrefix, registry.Registrations.Count, registry.InitialRegistrations.Count);
+        var requireCaller = !registry.Registrations.Any(step => step.Metadata.Authorization.AllowAnonymous);
+        group.MapExecuteEndpoint(server, requireCaller);
+        group.MapProcessStateEndpoint(server, requireCaller);
 
-        // When enforcing, the generic execute and state endpoints require an
-        // authenticated caller unless an anonymous caller could legitimately
-        // use them, i.e. the processor has an AllowAnonymous step. Per-step
-        // checks inside the handlers still apply either way.
-        var requireCaller =
-            !registry.Registrations.Any(step => step.Metadata.Authorization.AllowAnonymous);
-
-        group.MapExecuteEndpoint(serviceOptions, requireCaller);
-
-        group.MapProcessStateEndpoint(serviceOptions, requireCaller);
-
-        // ZeroTrust maps only capabilities with an explicit rule.
         foreach (var step in registry.Registrations.Where(x =>
-                     serviceOptions.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust
-                     || x.Metadata.Authorization.IsExplicit()))
+                     server.AuthorizationMode != KaleidoAuthorizationMode.ZeroTrust || x.Metadata.Authorization.IsExplicit()))
         {
-            group.MapProcessStep(step, serviceOptions);
+            var method = typeof(ProcessorEndpointRouteBuilderExtensions).GetMethod(nameof(MapStep), BindingFlags.Static | BindingFlags.NonPublic)
+                ?? throw new KaleidoFrameworkException(FrameworkErrorCodes.ReflectionError, "Cannot map the Process step endpoint.");
+            method.MakeGenericMethod(step.StepType).Invoke(null, [group, step, server]);
         }
 
         return group;
     }
 
-    private static void MapExecuteEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        KaleidoServiceOptions options,
-        bool requireCaller)
+    private static void MapExecuteEndpoint(this RouteGroupBuilder group, KaleidoServerOptions server, bool requireCaller)
     {
-        // A request can carry any mix of steps, so ProcessExecutionService
-        // checks every submitted step against its own [KaleidoAuthorization]
-        // before anything runs and rejects the whole request if any check
-        // fails. Route level adds only "authenticated caller" when no step
-        // allows anonymous callers (and only when enforcing).
-        var builder = endpoints.MapPost(
-                ProcessRoutePaths.Execute,
-                // Bound by Kaleido's own JSON rules, as the per-step routes are: a malformed body gets
-                // Kaleido's 400, never the host's answer, and the host's HttpJsonOptions do not rewrite
-                // this endpoint's contract (#521). The idempotency fingerprint reads its raw JSON.
-                async (
-                    KaleidoJsonBody<ExecuteProcessRequest> request,
-                    IProcessExecutionService execution,
-                    CancellationToken cancellationToken) =>
-                {
-                    var result =
-                        await execution.ExecuteAsync(
-                            request.Value,
-                            cancellationToken);
-
-                    return Results.Ok(result);
-                })
-            .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
+        var execute = group.MapPost(ProcessRoutePaths.Execute,
+                async (KaleidoJsonBody<ExecuteProcessRequest> request, IProcessExecutionService service, CancellationToken cancellationToken) =>
+                    Results.Ok(await service.ExecuteAsync(request.Value, cancellationToken)))
+            .AddEndpointFilter<ProcessIdempotencyEndpointFilter>()
             .WithName(ProcessEndpointNames.ExecuteEndpointName)
-            .Accepts<ExecuteProcessRequest>("application/json")
             .WithTags("Processes")
-            .Produces<ProcessExecutionResponse>()
+            .Accepts<ExecuteProcessRequest>("application/json")
+            .Produces<ProcessResult>()
             .WithSummary("Execute one or more process steps.")
-            .WithDescription(
-                "Executes one or more process steps from a single request. " +
-                "This endpoint is useful when a consumer wants to submit all information currently available and let the process determine what can happen next.");
-
+            .WithDescription("Executes one or more process steps from a single request. " +
+                "Submit all information currently available and let the process determine what can happen next.");
         if (requireCaller)
         {
-            builder.RequireKaleidoAuthorization(options);
+            execute.RequireKaleidoAuthorization(server);
         }
     }
 
-    private static void MapProcessStateEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        KaleidoServiceOptions options,
-        bool requireCaller)
+    private static void MapProcessStateEndpoint(this RouteGroupBuilder group, KaleidoServerOptions server, bool requireCaller)
     {
-        var builder = endpoints.MapGet(
-                ProcessRoutePaths.Process,
-                async (
-                    string processId,
-                    IProcessStateService stateService,
-                    CancellationToken cancellationToken) =>
+        var state = group.MapGet(ProcessRoutePaths.Process,
+                async (string processId, IProcessStateService service, CancellationToken cancellationToken) =>
                 {
-                    // Parsed here, not bound as a Guid: a malformed id is answered inside the
-                    // endpoint (400 argument_error by the exception filter), never by binding first.
-                    var process =
-                        await stateService.GetCurrentState(
-                            Guid.TryParse(processId, out var id)
-                                ? id
-                                : throw new BadHttpRequestException($"The process id '{processId}' is not a valid GUID."),
-                            cancellationToken);
-
-                    return process is null
-                        ? Results.NotFound()
-                        : Results.Ok(process);
+                    var id = Guid.TryParse(processId, out var parsed)
+                        ? parsed
+                        : throw new BadHttpRequestException($"The process id '{processId}' is not a valid GUID.");
+                    var process = await service.GetCurrentState(id, cancellationToken);
+                    return process is null ? Results.NotFound() : Results.Ok(process);
                 })
             .WithName(ProcessEndpointNames.ProcessEndpointName)
             .WithTags("Processes")
-            .Produces<ProcessStateResponse>()
+            .Produces<ProcessStateSnapshot>()
             .Produces(StatusCodes.Status404NotFound)
             .WithSummary("Get processor process state.")
-            .WithDescription(
-                "Returns the current state of a processor process, including executed steps and currently available next steps. " +
-                "This endpoint does not execute any process step.");
-
+            .WithDescription("Returns the current state of a processor process, including recorded step statuses " +
+                "and currently available next steps. This endpoint does not execute any process step.");
         if (requireCaller)
         {
-            builder.RequireKaleidoAuthorization(options);
+            state.RequireKaleidoAuthorization(server);
         }
     }
 
-    private static void MapProcessStep(
-        this IEndpointRouteBuilder endpoints,
-        ProcessStepRegistration step,
-        KaleidoServiceOptions options)
+    private static void LogMapped(IEndpointRouteBuilder endpoints, string prefix, IProcessorStepRegistry registry)
     {
-        ArgumentNullException.ThrowIfNull(step);
-
-        var stepName =
-            step.Metadata.Name.ToLowerInvariant();
-
-        endpoints.MapStepExecutionEndpoint(
-            step,
-            ProcessRoutePaths.ExecuteStep(stepName),
-            options);
-    }
-
-    private static void MapStepExecutionEndpoint(
-        this IEndpointRouteBuilder endpoints,
-        ProcessStepRegistration step,
-        string route,
-        KaleidoServiceOptions options)
-    {
-        if (step.StepResultType is null)
+        var logger = endpoints.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Kaleido.Process.Startup");
+        if (logger.IsEnabled(LogLevel.Information))
         {
-            var method = typeof(ProcessorEndpointRouteBuilderExtensions)
-                .GetMethod(
-                    nameof(MapUntypedStepExecutionEndpoint),
-                    BindingFlags.NonPublic | BindingFlags.Static)
-                ?? throw new KaleidoFrameworkException(
-                    FrameworkErrorCodes.ReflectionError,
-                    $"Method '{nameof(MapUntypedStepExecutionEndpoint)}' not found.");
-
-            method
-                .MakeGenericMethod(step.StepType)
-                .Invoke(
-                    null,
-                    [endpoints, route, step, options]);
-        }
-        else
-        {
-            var method = typeof(ProcessorEndpointRouteBuilderExtensions)
-                .GetMethod(
-                    nameof(MapTypedStepExecutionEndpoint),
-                    BindingFlags.NonPublic | BindingFlags.Static)
-                ?? throw new KaleidoFrameworkException(
-                    FrameworkErrorCodes.ReflectionError,
-                    $"Method '{nameof(MapTypedStepExecutionEndpoint)}' not found.");
-
-            method
-                .MakeGenericMethod(
-                    step.StepType,
-                    step.StepResultType)
-                .Invoke(
-                    null,
-                    [endpoints, route, step, options]);
+            LogEndpointsMapped(logger, prefix, registry.Registrations.Count, registry.InitialRegistrations.Count);
         }
     }
 
-    private static void MapTypedStepExecutionEndpoint<TProcessStep, TResponse>(
-        IEndpointRouteBuilder endpoints,
-        string route,
-        ProcessStepRegistration step,
-        KaleidoServiceOptions options)
+    private static void MapStep<TStep>(IEndpointRouteBuilder endpoints, ProcessStepRegistration step, KaleidoServerOptions options)
+        where TStep : class
     {
-        endpoints.MapPost(
-                route,
-                async (
-                    KaleidoJsonBody<ExecuteStepRequest<TProcessStep>> request,
-                    IProcessExecutionService execution,
-                    CancellationToken cancellationToken) =>
-                {
-                    var result =
-                        await execution.ExecuteAsync<TProcessStep, TResponse>(
-                            request.Value,
-                            cancellationToken);
-
-                    return Results.Ok(result);
-                })
-            .ConfigureStepExecutionEndpoint<TProcessStep>(step, options)
-            .Produces<StepExecutionResponse<TResponse>>();
-    }
-
-    private static void MapUntypedStepExecutionEndpoint<TProcessStep>(
-        IEndpointRouteBuilder endpoints,
-        string route,
-        ProcessStepRegistration step,
-        KaleidoServiceOptions options)
-    {
-        endpoints.MapPost(
-                route,
-                async (
-                    KaleidoJsonBody<ExecuteStepRequest<TProcessStep>> request,
-                    IProcessExecutionService execution,
-                    CancellationToken cancellationToken) =>
-                {
-                    var result =
-                        await execution.ExecuteAsync<TProcessStep>(
-                            request.Value,
-                            cancellationToken);
-
-                    return Results.Ok(result);
-                })
-            .ConfigureStepExecutionEndpoint<TProcessStep>(step, options)
-            .Produces<StepExecutionResponse>();
-    }
-
-    private static RouteHandlerBuilder ConfigureStepExecutionEndpoint<TProcessStep>(
-        this RouteHandlerBuilder builder,
-        ProcessStepRegistration step,
-        KaleidoServiceOptions options) =>
-        builder
-            .AddEndpointFilter<KaleidoIdempotencyEndpointFilter>()
+        endpoints.MapPost(ProcessRoutePaths.ExecuteStep(step.Metadata.Name.ToLowerInvariant()),
+                async (KaleidoJsonBody<ExecuteStepRequest<TStep>> request, IProcessExecutionService service, CancellationToken cancellationToken) =>
+                    Results.Ok(await service.ExecuteStepAsync(request.Value, cancellationToken)))
+            .AddEndpointFilter<ProcessIdempotencyEndpointFilter>()
             .WithKaleidoAuthorization(step.Metadata.Authorization, options)
-            .WithName(
-                ProcessEndpointNames.StepExecutionEndpointName(
-                    step.Metadata.Name.ToLowerInvariant()))
+            .WithName(ProcessEndpointNames.StepExecutionEndpointName(step.Metadata.Name.ToLowerInvariant()))
             .WithTags(step.Metadata.DisplayName)
-            .WithSummary(
-                $"Execute {step.Metadata.DisplayName}.")
-            .WithDescription(
-                $"Executes the '{step.Metadata.DisplayName}' process step. " +
+            .WithSummary($"Execute {step.Metadata.DisplayName}.")
+            .WithDescription($"Executes the '{step.Metadata.DisplayName}' process step. " +
                 "Send a JSON body with a required processStep property containing the step input. " +
                 "To resume, send X-Kaleido-Process-Id as a request header; omit it to create a new process. " +
-                "The response includes processId, outcome, requiredStep, availableSteps, businessMessages, " +
-                "and frameworkMessages (empty by default). Typed steps also include result. " +
-                "The process id is echoed in the X-Kaleido-Process-Id response header.")
-            .Accepts<ExecuteStepRequest<TProcessStep>>(
-                "application/json");
+                "The ProcessResult includes processId, state, requiredStep, availableSteps and step outcomes; " +
+                "the process id is echoed in the X-Kaleido-Process-Id response header.")
+            .Accepts<ExecuteStepRequest<TStep>>("application/json")
+            .Produces<ProcessResult>();
+    }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Process endpoints mapped at route prefix {RoutePrefix} with {ProcessStepCount} process steps and {InitialStepCount} initial steps.")]
     private static partial void LogEndpointsMapped(ILogger logger, string routePrefix, int processStepCount, int initialStepCount);

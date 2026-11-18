@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Process\Kaleido.Process.Http.Server\Kaleido.Process.Http.Server.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\..\..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Server" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Context" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Process.Http" />
+		<Using Include="Kaleido.Process.Http.Server" />
+		<Using Include="Kaleido.Process.Server" />
+		<Using Include="Kaleido.Process.Server.Idempotency" />
+		<Using Include="Kaleido.Process.Storage" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Server" />
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+</Project>

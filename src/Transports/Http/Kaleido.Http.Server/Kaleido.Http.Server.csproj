@@ -28,6 +28,8 @@
 		<InternalsVisibleTo Include="Kaleido.Process.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server.UnitTests" />
+		<!-- Process adapter fixtures verify shared exception and authorization filters without exposing them publicly. -->
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Server.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Hosting.Http" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server" />

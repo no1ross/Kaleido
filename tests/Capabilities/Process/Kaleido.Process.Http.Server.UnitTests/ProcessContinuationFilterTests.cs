@@ -1,53 +1,59 @@
 using Kaleido.Registry;
-using Kaleido.Server.Authorization;
-using Kaleido.UnitTests;
+using Kaleido.Http.Server.Authorization;
+using Kaleido.Process.Registry;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.Server.Processor.UnitTests;
+namespace Kaleido.Process.Http.Server.UnitTests;
 
 // #524: a caller is never described a step they may not run.
-public sealed class ProcessContinuationFilterTests
-    : SutFixture
+public sealed class ProcessContinuationFilterTests : Kaleido.UnitTests.SutFixture
 {
     private static readonly Guid ProcessId = Guid.Parse("6b1f0a3c-2d4e-4f58-9a7b-0c1d2e3f4a5b");
-
     private static readonly AuthorizationMetadata Clerks = new(null, ["clerk"]);
     private static readonly AuthorizationMetadata Admins = new(null, ["admin"]);
 
+    private readonly Mock<IProcessorStepRegistry> registry = new();
+    private readonly Dictionary<string, ProcessStepRegistration> steps = new(StringComparer.OrdinalIgnoreCase);
     private readonly Mock<IKaleidoAuthorizer> authorizer = new();
     private readonly Mock<ILogger<ProcessContinuationFilter>> logger = new();
 
     public ProcessContinuationFilterTests()
     {
+        registry.Setup(x => x.Find(It.IsAny<string>()))
+            .Returns((string name) => steps.GetValueOrDefault(name));
         // The caller is a clerk.
         authorizer.Setup(x => x.IsEnforced).Returns(true);
         authorizer.Setup(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((AuthorizationMetadata? authorization, CancellationToken _) => authorization == Clerks);
-        authorizer.Setup(x => x.FilterAsync(It.IsAny<IEnumerable<ProcessStepSummary>>(), It.IsAny<Func<ProcessStepSummary, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((IEnumerable<ProcessStepSummary> items, Func<ProcessStepSummary, AuthorizationMetadata?> rule, CancellationToken _) =>
-                (IReadOnlyList<ProcessStepSummary>)items.Where(x => rule(x) == Clerks).ToList());
+        authorizer.Setup(x => x.FilterAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<Func<string, AuthorizationMetadata?>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<string> items, Func<string, AuthorizationMetadata?> rule, CancellationToken _) =>
+                (IReadOnlyList<string>)items.Where(name => rule(name) == Clerks).ToArray());
         logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
     }
 
-    private ProcessContinuationFilter CreateSut() => new(authorizer.Object, logger.Object);
+    private ProcessContinuationFilter CreateSut() => new(registry.Object, authorizer.Object, logger.Object);
 
-    private static ProcessStepSummary Step(string name, AuthorizationMetadata rule) =>
-        new() { Name = name, Authorization = rule, ExecuteUrl = $"/svc/processes/steps/{name.ToLowerInvariant()}" };
+    private string Step(string name, AuthorizationMetadata rule)
+    {
+        steps[name] = new ProcessStepRegistration(typeof(object), null, typeof(object), [], [], [],
+            new RepeatableOptions { Enabled = false },
+            new ProcessStepMetadata { Name = name, Description = name, DisplayName = name, Authorization = rule });
+        return name;
+    }
 
-    private static ProcessRequiredStep Required(string name, AuthorizationMetadata rule) =>
-        new() { Name = name, Authorization = rule, ExecuteUrl = $"/svc/processes/steps/{name.ToLowerInvariant()}" };
+    private string Required(string name, AuthorizationMetadata rule) => Step(name, rule);
 
     private string[] Warnings() =>
         [.. logger.Invocations
             .Where(x => x.Method.Name == nameof(ILogger.Log) && (LogLevel)x.Arguments[0] == LogLevel.Warning)
-            .Select(x => x.Arguments[2].ToString()!)];
+            .Select(x => x.Arguments[2]?.ToString() ?? string.Empty)];
 
     [Fact]
     public async Task ARequiredStepTheCallerMayRun_IsKept_WithoutANotice()
     {
         var required = Required("Review", Clerks);
 
-        var continuation = await CreateSut().FilterAsync(ProcessId, required, [], TestContext.Current.CancellationToken);
+        var continuation = await CreateSut().FilterAsync(ProcessId, required, [], null, TestContext.Current.CancellationToken);
 
         Assert.Same(required, continuation.RequiredStep);
         Assert.Null(continuation.Notice);
@@ -58,7 +64,7 @@ public sealed class ProcessContinuationFilterTests
     [Fact]
     public async Task ARequiredStepTheCallerMayNotRun_IsLeftOut_WithTheNotice_AndAWarningNamingIt()
     {
-        var continuation = await CreateSut().FilterAsync(ProcessId, Required("Approve", Admins), [], TestContext.Current.CancellationToken);
+        var continuation = await CreateSut().FilterAsync(ProcessId, Required("Approve", Admins), [], null, TestContext.Current.CancellationToken);
 
         Assert.Null(continuation.RequiredStep);
         Assert.Equal(ProcessorErrorCodes.NotPermitted, continuation.Notice?.Code);
@@ -70,9 +76,9 @@ public sealed class ProcessContinuationFilterTests
     [Fact]
     public async Task AvailableStepsTheCallerMayNotRun_AreLeftOut_WithoutANotice_WhileOthersRemain()
     {
-        var continuation = await CreateSut().FilterAsync(ProcessId, null, [Step("Note", Clerks), Step("Approve", Admins)], TestContext.Current.CancellationToken);
+        var continuation = await CreateSut().FilterAsync(ProcessId, null, [Step("Note", Clerks), Step("Approve", Admins)], null, TestContext.Current.CancellationToken);
 
-        Assert.Equal(["Note"], continuation.AvailableSteps.Select(x => x.Name));
+        Assert.Equal(["Note"], continuation.AvailableSteps);
         Assert.Null(continuation.Notice);
         Assert.Empty(Warnings());
     }
@@ -80,7 +86,7 @@ public sealed class ProcessContinuationFilterTests
     [Fact]
     public async Task NoAvailableStepTheCallerMayRun_LeavesAnEmptyList_WithTheNotice_AndAWarningNamingThem()
     {
-        var continuation = await CreateSut().FilterAsync(ProcessId, null, [Step("Approve", Admins), Step("Reject", Admins)], TestContext.Current.CancellationToken);
+        var continuation = await CreateSut().FilterAsync(ProcessId, null, [Step("Approve", Admins), Step("Reject", Admins)], null, TestContext.Current.CancellationToken);
 
         Assert.Empty(continuation.AvailableSteps);
         Assert.Equal(ProcessContinuationFilter.NotPermitted, continuation.Notice);
@@ -91,7 +97,7 @@ public sealed class ProcessContinuationFilterTests
     [Fact]
     public async Task NothingToContinueWith_HasNoNotice()
     {
-        var continuation = await CreateSut().FilterAsync(ProcessId, null, [], TestContext.Current.CancellationToken);
+        var continuation = await CreateSut().FilterAsync(ProcessId, null, [], null, TestContext.Current.CancellationToken);
 
         Assert.Null(continuation.RequiredStep);
         Assert.Empty(continuation.AvailableSteps);
@@ -103,9 +109,9 @@ public sealed class ProcessContinuationFilterTests
     {
         authorizer.Setup(x => x.IsEnforced).Returns(false);
         var required = Required("Approve", Admins);
-        IReadOnlyCollection<ProcessStepSummary> available = [Step("Reject", Admins)];
+        IReadOnlyCollection<string> available = [Step("Reject", Admins)];
 
-        var continuation = await CreateSut().FilterAsync(ProcessId, required, available, TestContext.Current.CancellationToken);
+        var continuation = await CreateSut().FilterAsync(ProcessId, required, available, null, TestContext.Current.CancellationToken);
 
         Assert.Same(required, continuation.RequiredStep);
         Assert.Same(available, continuation.AvailableSteps);
@@ -113,8 +119,31 @@ public sealed class ProcessContinuationFilterTests
     }
 
     [Fact]
+    public async Task HandOffToAnotherService_UsesTheTargetsAlreadyFilteredStepNames()
+    {
+        var continuation = await CreateSut().FilterAsync(ProcessId, "ExternalStep", ["ExternalStep"], "target", TestContext.Current.CancellationToken);
+
+        Assert.Equal("ExternalStep", continuation.RequiredStep);
+        Assert.Equal(["ExternalStep"], continuation.AvailableSteps);
+        authorizer.Verify(x => x.CanAccessAsync(It.IsAny<AuthorizationMetadata?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AnUnknownNextStep_IsAFrameworkError(bool required)
+    {
+        var step = "Ghost-Step";
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(() => CreateSut().FilterAsync(
+            ProcessId, required ? step : null, required ? [] : [step], null, TestContext.Current.CancellationToken));
+
+        Assert.Equal(FrameworkErrorCodes.MissingRegistration, exception.Code);
+        Assert.Contains(step, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task FilterAsync_WithoutTheAvailableSteps_Throws()
     {
-        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().FilterAsync(ProcessId, null, null!, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().FilterAsync(ProcessId, null, null!, null, TestContext.Current.CancellationToken));
     }
 }

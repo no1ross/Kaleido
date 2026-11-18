@@ -1,14 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Kaleido.Platform;
-using Kaleido.Processor;
-using Kaleido.Server;
-using Kaleido.Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.Server.Processor;
+namespace Kaleido.Process.Http.Server;
 
 /// <summary>
 /// Makes process execution idempotent for a request sent with an <c>Idempotency-Key</c> header: the
@@ -28,15 +24,15 @@ namespace Kaleido.Http.Server.Processor;
 /// </para>
 /// <para>
 /// Each admission has its own id (#441), and the attempt finalizes only that admission: a 2xx answer is
-/// stored (kept for <see cref="KaleidoHttpOptions.IdempotencyRetention"/>); a 4xx answer, or a refusal
+/// stored (kept for <see cref="KaleidoProcessHttpOptions.IdempotencyRetention"/>); a 4xx answer, or a refusal
 /// raised before anything ran (validation, authorization, a concurrent change before the handler),
 /// releases the key so it may be retried; anything else (a 5xx, an unexpected error, a cancellation, a
 /// step that ran but whose outcome was not saved - a conflict after the handler included, #537) marks
 /// the outcome unknown,
 /// because the step may have run. A key whose outcome is unknown - marked so, or still running after
-/// <see cref="KaleidoHttpOptions.IdempotencyLease"/> - is answered 409
+/// <see cref="KaleidoProcessHttpOptions.IdempotencyLease"/> - is answered 409
 /// <c>pro_idempotency_outcome_unknown</c> and not run again until
-/// <see cref="KaleidoHttpOptions.IdempotencyUnknownOutcomeRetention"/> passes.
+/// <see cref="KaleidoProcessHttpOptions.IdempotencyUnknownOutcomeRetention"/> passes.
 /// </para>
 /// <para>
 /// Finalization is written with <see cref="CancellationToken.None"/>: a request whose caller has gone (a
@@ -46,15 +42,18 @@ namespace Kaleido.Http.Server.Processor;
 /// store (e.g. the SQLite store) is fine.
 /// </para>
 /// </remarks>
-internal sealed partial class KaleidoIdempotencyEndpointFilter(
-    IKaleidoIdempotencyStore store,
-    KaleidoHttpOptions httpOptions,
+internal sealed partial class ProcessIdempotencyEndpointFilter(
+    IProcessIdempotencyStore store,
+    KaleidoProcessHttpOptions httpOptions,
     KaleidoServiceOptions serviceOptions,
     IKaleidoCorrelationContextAccessor correlationAccessor,
     TimeProvider time,
-    ILogger<KaleidoIdempotencyEndpointFilter> logger)
+    ILogger<ProcessIdempotencyEndpointFilter> logger)
     : IEndpointFilter
 {
+    private const string ReplayFormat = "kaleido-process-http-json-v1";
+    private sealed record HttpReplay(int StatusCode, string Body);
+
     private const int MaxKeyLength = 200;
 
     // A GUID's 32 hex digits pass; a counter or a word does not.
@@ -85,14 +84,14 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
         }
 
         var now = time.GetUtcNow();
-        var admission = new IdempotentResult
+        var admission = new IdempotencyRecord
         {
             Key = Scope(caller, key),
             ProcessorName = serviceOptions.ServiceName,
             ProcessorVersion = serviceOptions.ServiceVersion,
             AdmissionId = Guid.NewGuid(),
             RequestHash = Hash(context),
-            State = IdempotentResultState.InProgress,
+            State = IdempotencyState.InProgress,
             LeaseUntilUtc = now + httpOptions.IdempotencyLease,
 
             // Not freed by the replay retention: until it finishes, this attempt may run its step.
@@ -114,11 +113,11 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
         }
         catch (Exception exception)
         {
-            await FinalizeAsync(key, admission, IsRefusal(exception) ? Outcome.Refused : Outcome.Unknown, result: null);
+            await FinalizeAsync(admission, IsRefusal(exception) ? Outcome.Refused : Outcome.Unknown, result: null);
             throw;
         }
 
-        await FinalizeAsync(key, admission, OutcomeOf(result), result);
+        await FinalizeAsync(admission, OutcomeOf(result), result);
 
         return result;
     }
@@ -147,15 +146,15 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
     private static bool IsRefusal(Exception exception) =>
         exception is KaleidoValidationException
             or KaleidoAuthorizationException
-            or KaleidoConcurrencyException
-            or Kaleido.Processor.Recovery.ProcessRecoveringException
+            or ProcessConcurrencyException
+            or ProcessRecoveringException
             or BadHttpRequestException
             or JsonException
             or ArgumentException;
 
     // The attempt's own admission is finalized, even when the caller has gone; the request's answer
     // never depends on it.
-    private async Task FinalizeAsync(string key, IdempotentResult admission, Outcome outcome, object? result)
+    private async Task FinalizeAsync(IdempotencyRecord admission, Outcome outcome, object? result)
     {
         bool accepted;
 
@@ -172,49 +171,51 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
         // an OperationCanceledException of the store's own (a timeout) included - is logged (#517).
         catch (Exception exception)
         {
-            LogFinalizationFailed(logger, exception, key, admission.Key, outcome);
+            LogFinalizationFailed(logger, exception, admission.Key, outcome);
             return;
         }
 
         if (!accepted)
         {
-            LogFinalizationNotAccepted(logger, key, admission.Key, outcome);
+            LogFinalizationNotAccepted(logger, admission.Key, outcome);
         }
     }
 
-    private IdempotentResult Answered(IdempotentResult admission, object? result) =>
-        admission with
+    private IdempotencyRecord Answered(IdempotencyRecord admission, object? result)
+    {
+        var answer = new HttpReplay(
+            (result as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK,
+            result is IValueHttpResult value ? JsonSerializer.Serialize(value.Value, KaleidoJsonOptions.Options) : string.Empty);
+        return admission with
         {
-            State = IdempotentResultState.Completed,
-            StatusCode = (result as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK,
-            Response = result is IValueHttpResult value ? JsonSerializer.Serialize(value.Value, KaleidoJsonOptions.Options) : string.Empty,
+            State = IdempotencyState.Completed,
+            Replay = new IdempotencyReplay(ReplayFormat, JsonSerializer.SerializeToUtf8Bytes(answer, KaleidoJsonOptions.Options)),
             ExpiresUtc = time.GetUtcNow() + httpOptions.IdempotencyRetention,
         };
+    }
 
-    private IdempotentResult Unknown(IdempotentResult admission) =>
+    private IdempotencyRecord Unknown(IdempotencyRecord admission) =>
         admission with
         {
-            State = IdempotentResultState.OutcomeUnknown,
+            State = IdempotencyState.OutcomeUnknown,
             ExpiresUtc = time.GetUtcNow() + httpOptions.IdempotencyUnknownOutcomeRetention,
         };
 
-    // The stored record's key is a hash of the caller's scope: the log names both, so an operator finds
-    // the record.
-    [LoggerMessage(Level = LogLevel.Error, Message = "The outcome ({Outcome}) of the request with Idempotency-Key '{IdempotencyKey}' (record '{RecordKey}') could not be stored; the request's own answer is unchanged.")]
-    private static partial void LogFinalizationFailed(ILogger logger, Exception exception, string idempotencyKey, string recordKey, Outcome outcome);
+    // The scoped record key is a hash of the caller's identity and idempotency key; logs never expose
+    // the caller's raw key.
+    [LoggerMessage(Level = LogLevel.Error, Message = "The outcome ({Outcome}) of the idempotent request (record '{RecordKey}') could not be stored; the request's own answer is unchanged.")]
+    private static partial void LogFinalizationFailed(ILogger logger, Exception exception, string recordKey, Outcome outcome);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "The outcome ({Outcome}) of the request with Idempotency-Key '{IdempotencyKey}' (record '{RecordKey}') was not stored: its admission no longer holds the key (it expired, or the key was admitted again).")]
-    private static partial void LogFinalizationNotAccepted(ILogger logger, string idempotencyKey, string recordKey, Outcome outcome);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The outcome ({Outcome}) of the idempotent request (record '{RecordKey}') was not stored: its admission no longer holds the key (it expired, or the key was admitted again).")]
+    private static partial void LogFinalizationNotAccepted(ILogger logger, string recordKey, Outcome outcome);
     private const string AnonymousKind = "anonymous";
 
     // Scoped per service, service version and caller: two callers cannot see each other's answers, and a
     // key never replays across versions sharing a database (#552). The caller is its stable subject id
     // when the principal has one (a renamed user keeps their keys; two users with the same display name
     // stay apart), else its name; its kind keeps an id and a name from colliding.
-    // Version 2 (#552): the tuple {service, service version, identity kind, identity, key}, each part
-    // length-framed so no two tuples read the same whatever characters they contain (an unversioned
-    // service frames an empty version, which no version can be), hashed to a fixed length. Records
-    // admitted in the earlier formats no longer match; they expire by their retention.
+    // The v2 record-key format (#552) length-frames {service, version, identity kind, identity, key}
+    // before hashing, so distinct caller scopes cannot collide by inserting separators.
     private string Scope((string Kind, string Value) caller, string key) =>
         RecordKey(serviceOptions.ServiceName, serviceOptions.ServiceVersion, caller.Kind, caller.Value, key);
 
@@ -249,7 +250,7 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
 
     // The answer for a key another request holds: a different request is refused; a running one is
     // retried later; one that never finished is not run again; a completed one is replayed.
-    private IResult Answer(HttpContext http, IdempotentResult existing, string requestHash)
+    private IResult Answer(HttpContext http, IdempotencyRecord existing, string requestHash)
     {
         if (!string.Equals(existing.RequestHash, requestHash, StringComparison.Ordinal))
         {
@@ -259,7 +260,7 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
                 $"The {KaleidoIdempotencyHeaders.IdempotencyKey} was already used with a different request. Use a new key for a new call.");
         }
 
-        if (existing.State == IdempotentResultState.InProgress && existing.LeaseUntilUtc > time.GetUtcNow())
+        if (existing.State == IdempotencyState.InProgress && existing.LeaseUntilUtc > time.GetUtcNow())
         {
             http.Response.Headers.RetryAfter = RetryAfterSeconds;
 
@@ -270,7 +271,7 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
         }
 
         // Still in progress after its lease (it never finished), or failed after it may have run.
-        if (existing.State != IdempotentResultState.Completed)
+        if (existing.State != IdempotencyState.Completed)
         {
             return Error(
                 StatusCodes.Status409Conflict,
@@ -278,16 +279,40 @@ internal sealed partial class KaleidoIdempotencyEndpointFilter(
                 $"The first request with this {KaleidoIdempotencyHeaders.IdempotencyKey} did not finish with an answer, so it may or may not have run; it is not run again with this key. Read the process state and decide on the next step (a new call takes a new key).");
         }
 
+        if (ReadReplay(existing.Replay) is not { } answer)
+        {
+            return Error(StatusCodes.Status409Conflict, ProcessorErrorCodes.IdempotencyOutcomeUnknown,
+                "The stored answer has an unknown format; do not run this request again with the same key.");
+        }
+
         http.Response.Headers[KaleidoIdempotencyHeaders.Replayed] = "true";
 
         // The process id travels in the header as on the first answer (#514): a new process's id is
         // known only from the stored answer.
-        if (ProcessIdOf(existing.Response) is { } processId)
+        if (ProcessIdOf(answer.Body) is { } processId)
         {
             http.Response.Headers[KaleidoCorrelationHeaders.ProcessId] = processId;
         }
 
-        return Results.Text(existing.Response, "application/json", Encoding.UTF8, existing.StatusCode);
+        return Results.Text(answer.Body, "application/json", Encoding.UTF8, answer.StatusCode);
+    }
+
+    private static HttpReplay? ReadReplay(IdempotencyReplay? replay)
+    {
+        if (replay is not { Format: ReplayFormat })
+        {
+            return null;
+        }
+
+        try
+        {
+            var answer = JsonSerializer.Deserialize<HttpReplay>(replay.Payload, KaleidoJsonOptions.Options);
+            return answer is { StatusCode: >= 200 and < 300, Body: not null } ? answer : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string? ProcessIdOf(string response)

@@ -1,0 +1,22 @@
+#nullable enable
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.<Clone>$() -> Kaleido.Process.Http.Server.KaleidoProcessHttpOptions!
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.Equals(Kaleido.Process.Http.Server.KaleidoProcessHttpOptions? other) -> bool
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.IdempotencyLease.get -> System.TimeSpan
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.IdempotencyLease.init -> void
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.IdempotencyRetention.get -> System.TimeSpan
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.IdempotencyRetention.init -> void
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.IdempotencyUnknownOutcomeRetention.get -> System.TimeSpan
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.IdempotencyUnknownOutcomeRetention.init -> void
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.IncludeFrameworkMessages.get -> bool
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.IncludeFrameworkMessages.init -> void
+Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.KaleidoProcessHttpOptions() -> void
+Kaleido.Process.Http.Server.ProcessHttpServerServiceCollectionExtensions
+Kaleido.Process.Http.Server.ProcessorEndpointRouteBuilderExtensions
+override Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.Equals(object? obj) -> bool
+override Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.GetHashCode() -> int
+override Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.ToString() -> string!
+static Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.operator !=(Kaleido.Process.Http.Server.KaleidoProcessHttpOptions? left, Kaleido.Process.Http.Server.KaleidoProcessHttpOptions? right) -> bool
+static Kaleido.Process.Http.Server.KaleidoProcessHttpOptions.operator ==(Kaleido.Process.Http.Server.KaleidoProcessHttpOptions? left, Kaleido.Process.Http.Server.KaleidoProcessHttpOptions? right) -> bool
+static Kaleido.Process.Http.Server.ProcessHttpServerServiceCollectionExtensions.AddProcessHttpServer(this Kaleido.IKaleidoBuilder! builder, Kaleido.Process.Http.Server.KaleidoProcessHttpOptions? options = null) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Process.Http.Server.ProcessorEndpointRouteBuilderExtensions.MapProcessor(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
