@@ -79,7 +79,7 @@ The [commented configuration inventory](../../../docs/guide/examples/kaleido-set
 `AddKaleido()`:
 - validates the `IServiceCollection`
 - registers the scoped correlation accessor (using `TryAddScoped` so a pre-existing registration wins)
-- registers no store implementation or store-choice check. `AddInMemoryProviders()` is an explicit development/test choice; durable providers register their own stores. Planned Hosting composition (#597) will check required provider registrations at startup.
+- registers no store implementation or store-choice check. [`Kaleido.Provider.InMemory`](../../Providers/Kaleido.Provider.InMemory/README.md) offers explicit development/test stores; durable providers register their own implementations. Hosting checks only that required provider registrations are present at startup, never their technology.
 - registers no capability runtime, event writer, publisher or transport; those owners currently register on the returned builder
 - returns an `IKaleidoBuilder`
 

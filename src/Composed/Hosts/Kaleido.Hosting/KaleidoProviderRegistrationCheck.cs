@@ -22,7 +22,7 @@ internal sealed class KaleidoProviderRegistrationCheck(IServiceCollection servic
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.StoresNotChosen,
-                $"No provider is registered for {string.Join(", ", missing)}. Register durable stores or call AddInMemoryProviders() for development and tests.");
+                $"No provider is registered for {string.Join(", ", missing)}. Register durable stores or reference Kaleido.Provider.InMemory and call AddInMemoryProviders() for development and tests; Kaleido.Provider.SQLite offers local reference storage via AddSqliteProviders(connectionName).");
         }
 
         return Task.CompletedTask;

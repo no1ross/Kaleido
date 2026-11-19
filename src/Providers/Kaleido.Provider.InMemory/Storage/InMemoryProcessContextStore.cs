@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
-using Kaleido.Process.Context;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Process.Storage;
+namespace Kaleido.Provider.InMemory.Storage;
 
 // Explicit in-memory process-state storage for development and tests. State only: a transition's
 // events are added by the outbox integration (no transaction in memory; neither write can fail). Each

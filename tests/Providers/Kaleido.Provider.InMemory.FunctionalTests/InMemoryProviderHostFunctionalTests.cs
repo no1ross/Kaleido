@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Kaleido.Provider.FunctionalTests;
+namespace Kaleido.Provider.InMemory.FunctionalTests;
 
 public sealed class InMemoryProviderHostFunctionalTests
 {

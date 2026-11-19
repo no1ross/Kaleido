@@ -1,6 +1,6 @@
 # 0048. Providers are explicit; memory is never a default
 
-- **Status:** Accepted; supersedes the default-store/marker mechanism of [ADR 0028](0028-stores-are-chosen-explicitly.md)
+- **Status:** Accepted; supersedes the default-store/marker mechanism of [ADR 0028](0028-stores-are-chosen-explicitly.md); temporary Provider placement and ordering superseded by [ADR 0049](0049-one-provider-per-store.md)
 - **Date:** 2026-11-18
 - **Related:** #585, #598, #597, #559, #587; ADR 0020, ADR 0023, ADR 0044
 

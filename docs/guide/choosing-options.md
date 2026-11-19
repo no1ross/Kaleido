@@ -26,7 +26,7 @@ other.
 
 | Situation | Register | See |
 | --- | --- | --- |
-| Tests, local evaluation | `AddInMemoryStores()` explicitly (lost on restart) | [Persistence](persistence.md#the-defaults-are-in-memory) |
+| Tests, local evaluation | [`AddInMemoryProviders()`](../../src/Providers/Kaleido.Provider.InMemory/README.md) or one `AddInMemory*Provider()` explicitly (lost on restart) | [Persistence](persistence.md) |
 | Samples, local development, a reference | `AddSqliteContextProvider(connectionString)` | [SQLite README](../../src/Providers/Kaleido.Provider.SQLite/README.md) |
 | Production | `AddContextStore<T>()` on your database | [Persistence](persistence.md#your-own-stores-on-ef-core) |
 

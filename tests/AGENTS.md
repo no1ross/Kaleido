@@ -34,6 +34,8 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Registry.IntegrationTests` | Composed Queryable publisher, hydrated outbound client, authority and inbound JWT caller exchange |
 | `Kaleido.Mcp.UnitTests` | `src/Mcp/Mcp` catalogs, schemas, tool invoker and naming |
 | `Kaleido.Mcp.FunctionalTests` | MCP over a real host and the SDK client |
+| `Kaleido.Provider.InMemory.UnitTests` | `src/Providers/Kaleido.Provider.InMemory` single-store registration, warnings, lease/fencing and state fidelity |
+| `Kaleido.Provider.InMemory.FunctionalTests` | Explicit memory in a composed Production `IHost`, retained across request scopes |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Providers/Kaleido.Provider.SQLite` store and transaction fidelity |
 | `Kaleido.Provider.SQLite.FunctionalTests` | Real file-backed Process/SQLite host restart, opaque replay and state/outbox rollback |
 | `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Observability/Observability.OpenTelemetry` registration and telemetry names |

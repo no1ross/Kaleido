@@ -253,7 +253,7 @@ See the [shared HTTP client pipeline](src/Transports/Http/Kaleido.Http.Client/RE
 
 ### Choose process storage
 
-Every store a service uses is chosen explicitly: Process state, Process.Server idempotency admission and Eventing outbox have **no implicit in-memory defaults** ([ADR 0048](docs/decisions/0048-explicit-provider-registration-without-default-stores.md)). The temporary `Kaleido.Provider.AddInMemoryProviders()` is a deliberate local/test choice; none of its records survives a restart or is shared between instances. For local persistence, configure `ConnectionStrings:orders` and choose the SQLite reference provider in the business-service registration **before `builder.Build()`**. The preceding combined-host snippets still show unmigrated `AddInMemoryStores()` composition under #585; they are not a current owner-level wiring recipe.
+Every store a service uses is chosen explicitly: Process state, Process.Server idempotency admission and Eventing outbox have **no implicit in-memory defaults** ([ADR 0048](docs/decisions/0048-explicit-provider-registration-without-default-stores.md)). [`Kaleido.Provider.InMemory`](src/Providers/Kaleido.Provider.InMemory/README.md)'s `AddInMemoryProviders()` is a deliberate local/test choice; none of its records survives a restart or is shared between instances. Two different providers for one store conflict in either registration order ([ADR 0049](docs/decisions/0049-one-provider-per-store.md)). For local persistence, configure `ConnectionStrings:orders` and choose the SQLite reference provider in the business-service registration **before `builder.Build()`**. The preceding combined-host snippets still show unmigrated `AddInMemoryStores()` composition under #585; they are not a current owner-level wiring recipe.
 
 ```csharp
 // appsettings: ConnectionStrings:orders = "Data Source=kaleido-process.db"
@@ -306,7 +306,8 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Registry.Server`](src/Capabilities/Registry/Kaleido.Registry.Server) / [`Kaleido.Registry.Client`](src/Capabilities/Registry/Kaleido.Registry.Client) | Separate central authority and explicit participant |
 | [`Kaleido.Registry.Http`](src/Capabilities/Registry/Kaleido.Registry.Http) / [`Server`](src/Capabilities/Registry/Kaleido.Registry.Http.Server) / [`Client`](src/Capabilities/Registry/Kaleido.Registry.Http.Client) | Fixed HTTP URLs, listener and participant adapter |
 | [`Kaleido.Mcp`](src/Mcp/Mcp) | Caller-visible registry-derived MCP tools and guided continuation |
-| [`Kaleido.Provider`](src/Providers/Kaleido.Provider) | Temporary, non-packable explicit in-memory store registration for tests/development |
+| [`Kaleido.Provider`](src/Providers/Kaleido.Provider) | Dependency bundle for Process, Process.Server and Eventing store contracts (no provider selection) |
+| [`Kaleido.Provider.InMemory`](src/Providers/Kaleido.Provider.InMemory) | Explicit singleton in-memory state, admission and outbox implementations for tests/development |
 | [`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite) | One reference SQLite implementation of Process state/transactions, neutral admission, Eventing outbox and Registry authority stores |
 | [`Kaleido.Observability.OpenTelemetry`](src/Observability/Observability.OpenTelemetry) | Opt-in telemetry export |
 | [`Kaleido.Analyzers`](tools/analyzers/Kaleido.Analyzers) | Consumer compile-time checks (`KAL2xxx`), included by `Kaleido` |

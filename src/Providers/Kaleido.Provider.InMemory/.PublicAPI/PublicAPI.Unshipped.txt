@@ -1,0 +1,6 @@
+#nullable enable
+Kaleido.Provider.InMemory.KaleidoInMemoryProvidersServiceCollectionExtensions
+static Kaleido.Provider.InMemory.KaleidoInMemoryProvidersServiceCollectionExtensions.AddInMemoryProviders(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Provider.InMemory.KaleidoInMemoryProvidersServiceCollectionExtensions.AddInMemoryContextProvider(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Provider.InMemory.KaleidoInMemoryProvidersServiceCollectionExtensions.AddInMemoryOutboxProvider(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Provider.InMemory.KaleidoInMemoryProvidersServiceCollectionExtensions.AddInMemoryIdempotencyProvider(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

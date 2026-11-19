@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<Description>Temporary explicit registration for Kaleido in-memory store providers.</Description>
-		<IsPackable>false</IsPackable>
+		<Description>Common provider dependency bundle for Process, Process.Server and Eventing store contracts.</Description>
+		<PackageTags>kaleido;provider;contracts</PackageTags>
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
@@ -9,10 +9,5 @@
 		<ProjectReference Include="..\..\Capabilities\Process\Kaleido.Process.Server\Kaleido.Process.Server.csproj" />
 		<ProjectReference Include="..\..\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
-	</ItemGroup>
-	<ItemGroup>
-		<Using Include="Kaleido.Storage" />
-		<Using Include="Kaleido.Process.Storage" />
-		<Using Include="Kaleido.Process.Server.Idempotency" />
 	</ItemGroup>
 </Project>

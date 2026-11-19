@@ -66,14 +66,14 @@ public static class ProcessServiceCollectionExtensions
         return builder;
     }
 
-    /// <summary>Registers a scoped process-state store instead of the in-memory default.</summary>
+    /// <summary>Explicitly registers a scoped process-state store; a different provider choice conflicts.</summary>
     /// <typeparam name="TStore">The process-state store implementation.</typeparam>
     /// <param name="builder">The Kaleido builder.</param>
     /// <returns>The same builder, for chaining.</returns>
     /// <exception cref="KaleidoConfigurationException">Another context store has already been chosen.</exception>
     public static IKaleidoBuilder AddContextStore<TStore>(this IKaleidoBuilder builder)
         where TStore : class, IProcessContextStore =>
-        KaleidoServiceCollectionExtensions.Replace<IProcessContextStore, TStore, InMemoryProcessContextStore>(builder, "context store");
+        KaleidoServiceCollectionExtensions.Replace<IProcessContextStore, TStore, TStore>(builder, "context store");
 
     /// <summary>Registers the scoped transaction used to save Process state and its event atomically on one database.</summary>
     /// <typeparam name="TTransactions">The persistence-specific transaction implementation.</typeparam>

@@ -5,7 +5,7 @@ watch. The wiring examples are compiled (`docs/guide/examples/Deployment`).
 
 ## Several instances
 
-The generic Process runtime now owns `IProcessContextStore`/`IProcessTransactions` and Process.Server owns neutral `IProcessIdempotencyStore` replay (format plus opaque bytes). `AddProcess()` selects neither an in-memory context store nor an idempotency store; the later Provider's `AddInMemoryProviders()` is an explicit development choice. The existing HTTP and SQLite adapters remain unmigrated (#587), so the examples below describe deployment requirements, **not** a currently working Process.Server/HTTP/SQLite integration or a replay-row migration.
+The generic Process runtime now owns `IProcessContextStore`/`IProcessTransactions` and Process.Server owns neutral `IProcessIdempotencyStore` replay (format plus opaque bytes). `AddProcess()` selects neither an in-memory context store nor an idempotency store; [`Kaleido.Provider.InMemory`](../../src/Providers/Kaleido.Provider.InMemory/README.md)'s `AddInMemoryProviders()` is an explicit development choice, never a multi-instance store. The HTTP and SQLite adapters now use neutral Process.Server admission/replay (#618/#623), but old HTTP-shaped SQLite rows are not migrated automatically; the examples below describe deployment requirements, not a promise of backward-compatible data conversion.
 
 Kaleido keeps no state in the instance once the stores are durable, so instances can be added and
 removed freely. They share the database:
@@ -71,7 +71,7 @@ services.AddDataProtection()
 ## The database schema
 
 Kaleido never creates or migrates your schema. With your own stores it is yours (migrations as usual).
-The unmigrated SQLite reference provider previously had the host create its schema once at startup (`EnsureCreatedAsync`); it does not migrate existing rows or implement the new Process.Server replay contract yet (#587) ([provider README](../../src/Providers/Kaleido.Provider.SQLite/README.md)).
+The [SQLite reference provider](../../src/Providers/Kaleido.Provider.SQLite/README.md) creates a **new** schema through an explicit host `EnsureCreatedAsync()` call and implements opaque Process.Server replay on that schema. It does not migrate old HTTP-shaped replay columns or Registry registration keys: plan a deliberate migration before reusing an existing database (#587/#623).
 
 ## Health
 

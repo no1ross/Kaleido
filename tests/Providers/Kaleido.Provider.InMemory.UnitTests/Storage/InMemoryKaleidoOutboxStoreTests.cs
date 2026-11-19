@@ -2,7 +2,7 @@ using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Kaleido.Storage.UnitTests;
+namespace Kaleido.Provider.InMemory.Storage.UnitTests;
 
 public sealed class InMemoryKaleidoOutboxStoreTests
     : SutFixture

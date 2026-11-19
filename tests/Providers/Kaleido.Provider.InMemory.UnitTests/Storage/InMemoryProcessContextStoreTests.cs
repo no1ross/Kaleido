@@ -1,8 +1,7 @@
-using Kaleido.Process.Context;
 using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Process.Storage.UnitTests;
+namespace Kaleido.Provider.InMemory.Storage.UnitTests;
 
 public sealed class InMemoryProcessContextStoreTests
     : SutFixture

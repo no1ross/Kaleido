@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Storage;
+namespace Kaleido.Provider.InMemory.Storage;
 
 // Explicit in-memory storage of the built-in outbox. It survives a publisher outage, not a
 // restart; each instance relays only the events it wrote itself.

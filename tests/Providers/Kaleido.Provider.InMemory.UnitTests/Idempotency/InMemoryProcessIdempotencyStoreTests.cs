@@ -2,7 +2,7 @@ using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Kaleido.Process.Server.Idempotency.UnitTests;
+namespace Kaleido.Provider.InMemory.Idempotency.UnitTests;
 
 public sealed class InMemoryProcessIdempotencyStoreTests
     : SutFixture
@@ -162,6 +162,24 @@ public sealed class InMemoryProcessIdempotencyStoreTests
         await sut.AdmitAsync(Admission("svc:alice:old", time.GetUtcNow().AddMinutes(-1)), TestContext.Current.CancellationToken);
 
         Assert.Null(await sut.AdmitAsync(Admission("svc:alice:old"), TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData(-1, true)]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    public async Task CompleteAndReleaseAsync_AroundExpiry_RejectAbandonedAdmissions(int ticksFromTheEnd, bool holdsKey)
+    {
+        var sut = CreateSut();
+        var expires = time.GetUtcNow().AddHours(1);
+        var complete = Admission("svc:alice:complete", expires);
+        var release = Admission("svc:alice:release", expires);
+        await sut.AdmitAsync(complete, TestContext.Current.CancellationToken);
+        await sut.AdmitAsync(release, TestContext.Current.CancellationToken);
+        time.SetUtcNow(expires + TimeSpan.FromTicks(ticksFromTheEnd));
+
+        Assert.Equal(holdsKey, await sut.CompleteAsync(Completed(complete, "answer"), TestContext.Current.CancellationToken));
+        Assert.Equal(holdsKey, await sut.ReleaseAsync(release.Key, release.AdmissionId, TestContext.Current.CancellationToken));
     }
 
     // A record is kept until its retention ends: just before, the key still refuses; at the end it is

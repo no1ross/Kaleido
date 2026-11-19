@@ -14,15 +14,16 @@ Optional: `IProcessTransactions`, one transaction around a state change and its 
 
 This heading is retained for existing links, but the former in-memory defaults are now an **explicit** provider choice:
 
-`AddProcess()` does not register in-memory state or idempotency stores. [`Kaleido.Provider`](../../src/Providers/Kaleido.Provider/README.md)'s explicit `AddInMemoryProviders()` selects available in-memory Process/Process.Server/Eventing implementations for development; those stores lose state, events and replay records on restart and do not share records across instances. Choose durable implementations before production.
+`AddProcess()` does not register in-memory state or idempotency stores. [`Kaleido.Provider.InMemory`](../../src/Providers/Kaleido.Provider.InMemory/README.md)'s explicit `AddInMemoryProviders()` selects available in-memory Process/Process.Server/Eventing implementations for development; those stores lose state, events and replay records on restart and do not share records across instances. Choose durable implementations before production. A second, different provider for one store is a configuration conflict in either registration order (ADR 0049).
 
-## Three ways to persist
+## Choose a storage provider
 
 | Choice | Registration | For |
 |---|---|---|
 | SQLite reference provider | `AddSqliteProviders("orders")` or individual `AddSqliteContextProvider`, `AddSqliteOutboxProvider`, `AddSqliteIdempotencyProvider` (one service database); `AddSqliteRegistryProvider` for the authority's separate database | samples, local development, a reference to copy ([README](../../src/Providers/Kaleido.Provider.SQLite/README.md)) |
 | Your own stores | `AddContextStore<T>()`, `AddOutboxStore<T>()`, `AddIdempotencyStore<T>()`, `AddTransactions<T>()` | production, on your database |
-| In memory ([explicit Provider choice](../../src/Providers/Kaleido.Provider/README.md)) | `AddInMemoryProviders()` | tests, local evaluation |
+| MongoDB provider (not implemented) | write your own store implementations using the same contracts until a provider exists | future option, not shipped |
+| In memory ([explicit Provider.InMemory](../../src/Providers/Kaleido.Provider.InMemory/README.md)) | `AddInMemoryProviders()` or an individual `AddInMemory*Provider()` | tests, local evaluation |
 
 The SQLite provider does not create its schema: the host does, once at startup
 (`EnsureCreatedAsync`, shown in the provider README), and it never migrates an existing database.
@@ -337,7 +338,7 @@ return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemb
     .AddInMemoryStores();
 ```
 
-Choose stores explicitly: Process state via `AddContextStore<T>()`, Eventing outbox via `AddOutboxStore<T>()`, and neutral server admission via Process.Server's `AddIdempotencyStore<T>()` when that capability is used. [`Kaleido.Provider`](../../src/Providers/Kaleido.Provider/README.md) offers `AddInMemoryProviders()` for development; the old `AddInMemoryStores()` and `stores_not_chosen` sample wiring above belongs to the unmigrated higher integration, not generic `AddProcess()` ([ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md), [ADR 0044](../decisions/0044-process-server-idempotency-ownership.md)).
+Choose stores explicitly: Process state via `AddContextStore<T>()`, Eventing outbox via `AddOutboxStore<T>()`, and neutral server admission via Process.Server's `AddIdempotencyStore<T>()` when that capability is used. [`Kaleido.Provider.InMemory`](../../src/Providers/Kaleido.Provider.InMemory/README.md) offers `AddInMemoryProviders()` for development; the old `AddInMemoryStores()` sample wiring above belongs to the unmigrated higher integration, not generic `AddProcess()`. Hosting still reports `stores_not_chosen` when a required store has no provider ([ADR 0049](../decisions/0049-one-provider-per-store.md), [ADR 0044](../decisions/0044-process-server-idempotency-ownership.md)).
 
 The outbox store above also serves the relay (`AddOutboxRelay<TPublisher>()`, on this service or on
 another host reading the same database): its claims are leased compare-and-sets, so several relay

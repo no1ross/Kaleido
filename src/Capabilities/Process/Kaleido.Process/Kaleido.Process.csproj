@@ -26,8 +26,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Kaleido.Provider" />
-		<InternalsVisibleTo Include="Kaleido.Provider.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Platform" />
 		<InternalsVisibleTo Include="Kaleido.Server" />
 		<InternalsVisibleTo Include="Kaleido.Client" />

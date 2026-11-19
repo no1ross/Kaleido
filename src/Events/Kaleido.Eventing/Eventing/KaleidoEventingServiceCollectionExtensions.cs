@@ -157,5 +157,5 @@ public static class KaleidoEventingServiceCollectionExtensions
     /// <exception cref="KaleidoConfigurationException">Another outbox store was chosen.</exception>
     public static IKaleidoBuilder AddOutboxStore<TStore>(this IKaleidoBuilder builder)
         where TStore : class, IKaleidoOutboxStore =>
-        KaleidoServiceCollectionExtensions.Replace<IKaleidoOutboxStore, TStore, InMemoryKaleidoOutboxStore>(builder, "outbox store", ConfigurationErrorCodes.ConflictingOutbox);
+        KaleidoServiceCollectionExtensions.Replace<IKaleidoOutboxStore, TStore, TStore>(builder, "outbox store", ConfigurationErrorCodes.ConflictingOutbox);
 }

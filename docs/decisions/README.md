@@ -63,7 +63,8 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0045](./0045-registry-publication-build-identity-and-snapshot-versions.md) | Registry contracts/server/client split, service Product BuildVersion publications, provider-owned storage and neutral snapshot versions | Accepted | #585, #610, #611, #577 |
 | [0046](./0046-neutral-queryable-outbound-client-requests.md) | Queryable outbound client methods take neutral QueryRequest; HTTP adapters convert to wire requests and use published Registry bindings | Accepted | #585, #615, #616, #577, #530 |
 | [0047](./0047-process-response-step-identity-registry-owned-bindings.md) | Process uses neutral results/state; Registry alone owns callable step bindings | Accepted | #585, #619, #617, #618, #577 |
-| [0048](./0048-explicit-provider-registration-without-default-stores.md) | No implicit store implementations; the temporary Provider explicitly registers singleton memory stores and Hosting checks only presence | Accepted | #585, #598, #597, #559, #587 |
+| [0048](./0048-explicit-provider-registration-without-default-stores.md) | No implicit store implementations; Hosting checks store presence, not technology | Accepted; temporary package placement/ordering superseded by [0049](./0049-one-provider-per-store.md) | #585, #598, #597, #559, #587 |
+| [0049](./0049-one-provider-per-store.md) | One explicit provider per store; concrete memory implementations and aggregate/per-store selection live in Provider.InMemory | Accepted | #585, #559, #598, #623 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

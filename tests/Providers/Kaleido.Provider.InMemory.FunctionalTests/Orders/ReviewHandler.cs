@@ -1,4 +1,4 @@
-namespace Kaleido.Provider.FunctionalTests.Orders;
+namespace Kaleido.Provider.InMemory.FunctionalTests.Orders;
 
 public sealed class ReviewHandler : IProcessStepHandler<ReviewStep>
 {

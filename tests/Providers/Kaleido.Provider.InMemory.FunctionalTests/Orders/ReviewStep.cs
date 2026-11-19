@@ -1,4 +1,4 @@
-namespace Kaleido.Provider.FunctionalTests.Orders;
+namespace Kaleido.Provider.InMemory.FunctionalTests.Orders;
 
 [ProcessStep(DisplayName = "Review order", Description = "Reviews the order for the in-memory provider host")]
 public sealed record ReviewStep : IProcessStep

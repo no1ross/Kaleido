@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Process.Server.Idempotency;
+namespace Kaleido.Provider.InMemory.Idempotency;
 
 // Explicit in-memory idempotency storage for requests sent with an idempotency key.
 internal sealed partial class InMemoryProcessIdempotencyStore : IProcessIdempotencyStore
@@ -88,7 +88,8 @@ internal sealed partial class InMemoryProcessIdempotencyStore : IProcessIdempote
     private bool HoldsTheKey(string key, Guid admissionId) =>
         _results.TryGetValue(key, out var existing)
         && existing.AdmissionId == admissionId
-        && existing.State == IdempotencyState.InProgress;
+        && existing.State == IdempotencyState.InProgress
+        && existing.ExpiresUtc > _time.GetUtcNow();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryProcessIdempotencyStore is active. The records of requests sent with an idempotency key are kept in memory only: lost on restart, so a retry after a restart runs its step again, and each instance knows only its own. Register a durable IProcessIdempotencyStore before deploying to production.")]
     private static partial void LogInMemoryStoreActive(ILogger logger);

@@ -56,6 +56,8 @@ public sealed class KaleidoProviderRegistrationCheckTests : SutFixture
 
         Assert.Contains("process state (IProcessContextStore)", exception.Message, StringComparison.Ordinal);
         Assert.Contains("event outbox (IKaleidoOutboxStore)", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Kaleido.Provider.InMemory", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Kaleido.Provider.SQLite", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

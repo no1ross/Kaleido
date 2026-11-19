@@ -2,7 +2,7 @@ using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.Provider.UnitTests;
+namespace Kaleido.Provider.InMemory.UnitTests;
 
 public sealed class KaleidoInMemoryProvidersServiceCollectionExtensionsTests : Kaleido.UnitTests.SutFixture
 {
@@ -48,28 +48,30 @@ public sealed class KaleidoInMemoryProvidersServiceCollectionExtensionsTests : K
     }
 
     [Fact]
-    public void AddInMemoryProviders_DoesNotReplaceAHostChosenStore()
+    public void AddInMemoryProviders_WithAChosenOutbox_FailsWithoutPartialRegistrations()
     {
         var services = new ServiceCollection();
         var store = Mock.Of<IKaleidoOutboxStore>();
         services.AddSingleton(store);
 
-        NewBuilder(services).AddInMemoryProviders();
+        var conflict = Assert.Throws<KaleidoConfigurationException>(() => NewBuilder(services).AddInMemoryProviders());
 
+        Assert.Equal(ConfigurationErrorCodes.ConflictingOutbox, conflict.Code);
         Assert.Same(store, Single<IKaleidoOutboxStore>(services).ImplementationInstance);
-        Single<IProcessContextStore>(services);
-        Single<IProcessIdempotencyStore>(services);
+        Assert.DoesNotContain(services, x => x.ServiceType == typeof(IProcessContextStore) || x.ServiceType == typeof(IProcessIdempotencyStore));
     }
 
     [Fact]
-    public void AddInMemoryProviders_AfterDurableStoreChoices_PreservesAllThree()
+    public void AddInMemoryProviders_AfterDurableStoreChoices_ConflictsInEitherOrder()
     {
         var builder = NewBuilder()
             .AddContextStore<DurableContextStore>()
             .AddIdempotencyStore<DurableIdempotencyStore>()
-            .AddOutboxStore<DurableOutboxStore>()
-            .AddInMemoryProviders();
+            .AddOutboxStore<DurableOutboxStore>();
 
+        var conflict = Assert.Throws<KaleidoConfigurationException>(builder.AddInMemoryProviders);
+
+        Assert.Equal(ConfigurationErrorCodes.ConflictingStore, conflict.Code);
         Assert.Equal(typeof(DurableContextStore), Single<IProcessContextStore>(builder.Services).ImplementationType);
         Assert.Equal(typeof(DurableIdempotencyStore), Single<IProcessIdempotencyStore>(builder.Services).ImplementationType);
         Assert.Equal(typeof(DurableOutboxStore), Single<IKaleidoOutboxStore>(builder.Services).ImplementationType);
@@ -79,19 +81,64 @@ public sealed class KaleidoInMemoryProvidersServiceCollectionExtensionsTests : K
     }
 
     [Fact]
-    public void AddInMemoryProviders_BeforeDurableStoreChoices_AllowsReplacementOfAllThree()
+    public void AddInMemoryProviders_BeforeDurableStoreChoices_ConflictsWithoutReplacingAnyMemoryStore()
     {
-        var builder = NewBuilder().AddInMemoryProviders()
-            .AddContextStore<DurableContextStore>()
-            .AddIdempotencyStore<DurableIdempotencyStore>()
-            .AddOutboxStore<DurableOutboxStore>();
+        var builder = NewBuilder().AddInMemoryProviders();
 
-        Assert.Equal(typeof(DurableContextStore), Single<IProcessContextStore>(builder.Services).ImplementationType);
-        Assert.Equal(typeof(DurableIdempotencyStore), Single<IProcessIdempotencyStore>(builder.Services).ImplementationType);
-        Assert.Equal(typeof(DurableOutboxStore), Single<IKaleidoOutboxStore>(builder.Services).ImplementationType);
+        Assert.Equal(ConfigurationErrorCodes.ConflictingStore,
+            Assert.Throws<KaleidoConfigurationException>(builder.AddContextStore<DurableContextStore>).Code);
+        Assert.Equal(ConfigurationErrorCodes.ConflictingStore,
+            Assert.Throws<KaleidoConfigurationException>(builder.AddIdempotencyStore<DurableIdempotencyStore>).Code);
+        Assert.Equal(ConfigurationErrorCodes.ConflictingOutbox,
+            Assert.Throws<KaleidoConfigurationException>(builder.AddOutboxStore<DurableOutboxStore>).Code);
+        Assert.Equal(typeof(InMemoryProcessContextStore), Single<IProcessContextStore>(builder.Services).ImplementationType);
+        Assert.Equal(typeof(InMemoryProcessIdempotencyStore), Single<IProcessIdempotencyStore>(builder.Services).ImplementationType);
+        Assert.Equal(typeof(InMemoryKaleidoOutboxStore), Single<IKaleidoOutboxStore>(builder.Services).ImplementationType);
         Assert.All(builder.Services.Where(x => x.ServiceType == typeof(IProcessContextStore)
             || x.ServiceType == typeof(IProcessIdempotencyStore) || x.ServiceType == typeof(IKaleidoOutboxStore)),
-            x => Assert.Equal(ServiceLifetime.Scoped, x.Lifetime));
+            x => Assert.Equal(ServiceLifetime.Singleton, x.Lifetime));
+    }
+
+    [Fact]
+    public void AddInMemoryContextProvider_SelectsOnlyProcessState()
+    {
+        var builder = NewBuilder().AddInMemoryContextProvider();
+
+        Assert.Equal(typeof(InMemoryProcessContextStore), Single<IProcessContextStore>(builder.Services).ImplementationType);
+        Assert.DoesNotContain(builder.Services, x => x.ServiceType == typeof(IProcessIdempotencyStore) || x.ServiceType == typeof(IKaleidoOutboxStore));
+    }
+
+    [Fact]
+    public void AddInMemoryIdempotencyProvider_SelectsOnlyServerAdmission()
+    {
+        var builder = NewBuilder().AddInMemoryIdempotencyProvider();
+
+        Assert.Equal(typeof(InMemoryProcessIdempotencyStore), Single<IProcessIdempotencyStore>(builder.Services).ImplementationType);
+        Assert.DoesNotContain(builder.Services, x => x.ServiceType == typeof(IProcessContextStore) || x.ServiceType == typeof(IKaleidoOutboxStore));
+    }
+
+    [Fact]
+    public void AddInMemoryOutboxProvider_SelectsOnlyEventingOutbox()
+    {
+        var builder = NewBuilder().AddInMemoryOutboxProvider();
+
+        Assert.Equal(typeof(InMemoryKaleidoOutboxStore), Single<IKaleidoOutboxStore>(builder.Services).ImplementationType);
+        Assert.DoesNotContain(builder.Services, x => x.ServiceType == typeof(IProcessContextStore) || x.ServiceType == typeof(IProcessIdempotencyStore));
+    }
+
+    [Fact]
+    public void EachMemoryStore_AfterTheDurableChoice_RejectsTheSecondProvider()
+    {
+        var context = NewBuilder().AddContextStore<DurableContextStore>();
+        var outbox = NewBuilder().AddOutboxStore<DurableOutboxStore>();
+        var admission = NewBuilder().AddIdempotencyStore<DurableIdempotencyStore>();
+
+        Assert.Equal(ConfigurationErrorCodes.ConflictingStore,
+            Assert.Throws<KaleidoConfigurationException>(context.AddInMemoryContextProvider).Code);
+        Assert.Equal(ConfigurationErrorCodes.ConflictingOutbox,
+            Assert.Throws<KaleidoConfigurationException>(outbox.AddInMemoryOutboxProvider).Code);
+        Assert.Equal(ConfigurationErrorCodes.ConflictingStore,
+            Assert.Throws<KaleidoConfigurationException>(admission.AddInMemoryIdempotencyProvider).Code);
     }
 
     [Fact]
