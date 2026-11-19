@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Client.Processor;
+namespace Kaleido.Http.Client.Calls;
 
 /// <summary>
 /// Makes Kaleido client calls carry a process id the inbound request did not send as a header. A
@@ -35,7 +35,9 @@ internal sealed class KaleidoProcessForwarding : IKaleidoProcessForwarding
 {
     private static readonly AsyncLocal<ProcessScope?> Current = new();
 
-    public Guid? ProcessId => Current.Value?.ProcessId;
+    internal static Guid? CurrentProcessId => Current.Value?.ProcessId;
+
+    public Guid? ProcessId => CurrentProcessId;
 
     public IDisposable ForwardProcess(Guid? processId)
     {

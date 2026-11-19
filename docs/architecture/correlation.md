@@ -147,12 +147,14 @@ correlation would be empty and its outbound calls would lose `RequestId`/`Proces
 ```
 step handler / consumer code
   └─ IKaleidoProcessorClient / IKaleidoQueryableClient
-       └─ CorrelationHeaderStamper.Stamp(request)
-            reads IKaleidoCorrelationContextAccessor.Current
-            ├─ forwards RequestId unchanged
-            ├─ ProcessId: the IKaleidoProcessForwarding scope's, else the context's
-            └─ inside a step only: stamps this service (ServiceName) and
-               ExecutingStepName as Calling-Processor / Calling-Step
+       └─ KaleidoHttpCorrelationStamper.StampKaleidoCorrelation(request, context)
+            reads the scoped IKaleidoCorrelationContextAccessor.Current at send time
+            ├─ forwards RequestId, Origin and OriginTool unchanged
+            ├─ ProcessId: explicit Process-execution argument, else the
+            │  IKaleidoProcessForwarding async-flow scope, else the context's
+            │  (state GETs retain ambient correlation, not their resource id)
+            └─ inside a step only: the Process adapter stamps this service
+               and ExecutingStepName as Calling-Processor / Calling-Step
 ```
 
 - **A front door whose callers cannot send headers** (the MCP adapter: the process id is a tool
@@ -163,9 +165,7 @@ step handler / consumer code
 
 - Inbound per-hop values are never forwarded: a call made outside a step (router
   forwarding, registry fan-out, a delegated query source) carries no calling processor or step.
-- The stamper is scoped (`ICorrelationHeaderStamper`), so the stamped values always
-  reflect the correlation context of the request being served — handlers never touch
-  headers manually.
+- The shared HTTP stamper is a per-request extension, **not** a pooled handler holding a scoped service. The adapter reads the current scoped correlation immediately before sending; the forwarding scope uses `AsyncLocal`, restores on disposal and never changes credentials. No code copies an inbound caller token into a service-own Registry read.
 - Values are sanitized before stamping, so a caller-supplied context can never smuggle
   invalid header bytes.
 

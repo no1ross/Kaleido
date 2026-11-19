@@ -28,6 +28,20 @@ public sealed class KaleidoHttpCorrelationStamperTests : Kaleido.UnitTests.SutFi
     }
 
     [Fact]
+    public void Stamp_ExplicitProcessIdWinsOverTheInboundContext()
+    {
+        var inbound = Guid.NewGuid();
+        var explicitId = Guid.NewGuid();
+        var context = new KaleidoCorrelationContext { RequestId = "request-1", ProcessId = inbound };
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://gateway.test/clinic/1/processes");
+
+        request.StampKaleidoCorrelation(context, explicitId);
+
+        Assert.Equal(explicitId.ToString("D"), Assert.Single(request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
+        Assert.Equal("request-1", Assert.Single(request.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
+    }
+
+    [Fact]
     public void Stamp_OmitsMissingOrSanitizedEmptyValues()
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://gateway.test/registry");

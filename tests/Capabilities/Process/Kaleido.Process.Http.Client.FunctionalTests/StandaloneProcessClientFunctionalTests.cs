@@ -82,6 +82,42 @@ public sealed class StandaloneProcessClientFunctionalTests
     }
 
     [Fact]
+    public async Task ExplicitExecuteProcessId_WinsOverAFrontDoorScopeOnTheSameProcessClient()
+    {
+        await using var authority = await StartAuthorityAsync();
+        var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var publisher = await StartPublisherAsync(authority, "2", registered);
+        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var read = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sent = new ConcurrentQueue<string?>();
+        using var consumer = StartConsumer(authority, publisher, publisher, read, onProcess: request =>
+        {
+            if (request.Method == HttpMethod.Post && request.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessId, out var values))
+            {
+                sent.Enqueue(values.SingleOrDefault());
+            }
+        });
+        await consumer.StartAsync(TestContext.Current.CancellationToken);
+        await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(consumer);
+        using var scope = consumer.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient("catalog", "2");
+        var started = await client.ExecuteStepAsync(new Consumer.ReviewOrderStep("A-1"), null, "initial-process", TestContext.Current.CancellationToken);
+        var forwardedId = Guid.NewGuid();
+        var forwarding = new KaleidoProcessForwarding();
+
+        using (forwarding.ForwardProcess(forwardedId))
+        {
+            await client.ExecuteStepAsync(new Consumer.ReviewOrderStep("A-1"), started.ProcessId,
+                "explicit-process", TestContext.Current.CancellationToken);
+        }
+
+        Assert.Equal(started.ProcessId.ToString("D"), Assert.Single(sent));
+        await consumer.StopAsync(TestContext.Current.CancellationToken);
+        await publisher.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task KeyedPost_AfterOneTransientGatewayFailure_RetriesTheSameKeyAndRunsOnce()
     {
         await using var authority = await StartAuthorityAsync();
@@ -152,7 +188,7 @@ public sealed class StandaloneProcessClientFunctionalTests
     }
 
     private static IHost StartConsumer(WebApplication authority, WebApplication versionTwo, WebApplication versionThree, TaskCompletionSource<bool> read,
-        TimeProvider? time = null, RetryProbe? retry = null) =>
+        TimeProvider? time = null, RetryProbe? retry = null, Action<HttpRequestMessage>? onProcess = null) =>
         Host.CreateDefaultBuilder()
             .UseEnvironment("Production")
             .UseDefaultServiceProvider((_, options) =>
@@ -188,7 +224,7 @@ public sealed class StandaloneProcessClientFunctionalTests
                     }));
                 services.Configure<HttpClientFactoryOptions>("kaleido-process", options =>
                     options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new VersionSwitchHandler(
-                        versionTwo.GetTestServer().CreateHandler(), versionThree.GetTestServer().CreateHandler(), retry)));
+                        versionTwo.GetTestServer().CreateHandler(), versionThree.GetTestServer().CreateHandler(), retry, onProcess)));
             })
             .Build();
 
@@ -427,13 +463,15 @@ public sealed class StandaloneProcessClientFunctionalTests
         }
     }
 
-    private sealed class VersionSwitchHandler(HttpMessageHandler two, HttpMessageHandler three, RetryProbe? retry = null) : HttpMessageHandler
+    private sealed class VersionSwitchHandler(HttpMessageHandler two, HttpMessageHandler three, RetryProbe? retry = null,
+        Action<HttpRequestMessage>? observe = null) : HttpMessageHandler
     {
         private readonly HttpMessageInvoker _two = new(two);
         private readonly HttpMessageInvoker _three = new(three);
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            observe?.Invoke(request);
             if (retry?.Reject(request) == true)
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { RequestMessage = request });

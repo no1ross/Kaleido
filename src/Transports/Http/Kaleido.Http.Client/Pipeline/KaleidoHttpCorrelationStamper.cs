@@ -2,7 +2,7 @@ namespace Kaleido.Http.Client.Pipeline;
 
 internal static class KaleidoHttpCorrelationStamper
 {
-    internal static void StampKaleidoCorrelation(this HttpRequestMessage request, KaleidoCorrelationContext context)
+    internal static void StampKaleidoCorrelation(this HttpRequestMessage request, KaleidoCorrelationContext context, Guid? explicitProcessId = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(context);
@@ -22,7 +22,7 @@ internal static class KaleidoHttpCorrelationStamper
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.OriginTool, originTool);
         }
 
-        if (context.ProcessId is { } processId)
+        if ((explicitProcessId ?? KaleidoProcessForwarding.CurrentProcessId ?? context.ProcessId) is { } processId)
         {
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString("D"));
         }

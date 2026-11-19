@@ -1,4 +1,4 @@
-namespace Kaleido.Http.Client.Processor.UnitTests;
+namespace Kaleido.Http.Client.Calls.UnitTests;
 
 public sealed class KaleidoProcessForwardingTests
     : Kaleido.UnitTests.SutFixture
@@ -22,9 +22,11 @@ public sealed class KaleidoProcessForwardingTests
         using (sut.ForwardProcess(id))
         {
             Assert.Equal(id, sut.ProcessId);
+            Assert.Equal(id, KaleidoProcessForwarding.CurrentProcessId);
         }
 
         Assert.Null(sut.ProcessId);
+        Assert.Null(KaleidoProcessForwarding.CurrentProcessId);
     }
 
     [Fact]
@@ -49,16 +51,17 @@ public sealed class KaleidoProcessForwardingTests
     {
         var sut = CreateSut();
         var id = Guid.NewGuid();
+        var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var other = Task.Run(async () =>
         {
-            await Task.Delay(10, TestContext.Current.CancellationToken);
+            await gate.Task;
             return sut.ProcessId;
         }, TestContext.Current.CancellationToken);
 
         using (sut.ForwardProcess(id))
         {
             await Task.Yield();
-
+            gate.SetResult(true);
             Assert.Equal(id, sut.ProcessId);
         }
 

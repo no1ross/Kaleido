@@ -37,8 +37,12 @@
 		<!-- Process HTTP calls use the shared named gateway, caller credential and correlation pipeline. -->
 		<InternalsVisibleTo Include="Kaleido.Process.Http.Client" />
 		<InternalsVisibleTo Include="Kaleido.Process.Http.Client.UnitTests" />
+		<!-- The real Process client gate verifies that an explicit process id wins over a front-door scope. -->
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Client.FunctionalTests" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client.UnitTests" />
+		<!-- The real Queryable client gate verifies a front-door process-id scope crosses the HTTP hop. -->
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client.FunctionalTests" />
 		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
 		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />

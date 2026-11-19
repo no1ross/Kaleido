@@ -94,7 +94,7 @@ internal sealed class KaleidoProcessorClient(
         }
 
         request.Headers.TryAddWithoutValidation(KaleidoIdempotencyHeaders.IdempotencyKey, key);
-        Stamp(request, correlation.Current with { ProcessId = processId });
+        Stamp(request, correlation.Current with { ProcessId = processId }, processId);
         using var response = await httpClientFactory.CreateClient(ClientName).SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
@@ -108,7 +108,7 @@ internal sealed class KaleidoProcessorClient(
         return result;
     }
 
-    private void Stamp(HttpRequestMessage request, KaleidoCorrelationContext context)
+    private void Stamp(HttpRequestMessage request, KaleidoCorrelationContext context, Guid? explicitProcessId = null)
     {
         if (inboundCaller.IsInboundRequest)
         {
@@ -119,7 +119,7 @@ internal sealed class KaleidoProcessorClient(
             KaleidoCallContext.MarkServiceOwn(request);
         }
 
-        request.StampKaleidoCorrelation(context);
+        request.StampKaleidoCorrelation(context, explicitProcessId);
         if (context.ExecutingStepName.Sanitize() is { } step)
         {
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.CallingProcessor, serviceOptions.ServiceName.Sanitize());

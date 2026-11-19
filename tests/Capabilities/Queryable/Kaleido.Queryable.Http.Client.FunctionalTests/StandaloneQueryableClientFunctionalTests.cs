@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
 using Kaleido.Testing.Identity;
@@ -50,7 +51,39 @@ public sealed class StandaloneQueryableClientFunctionalTests
         await publisher.StopAsync(TestContext.Current.CancellationToken);
     }
 
-    private static IHost StartConsumer(WebApplication authority, WebApplication publisher, TaskCompletionSource<bool> read) =>
+    [Fact]
+    public async Task ForwardedProcessId_UsesTheSameQueryableClientAndDoesNotLeakOutsideTheScope()
+    {
+        await using var authority = await StartAuthorityAsync();
+        var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var publisher = await StartPublisherAsync(authority, registered);
+        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var read = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sent = new ConcurrentQueue<string?>();
+        using var consumer = StartConsumer(authority, publisher, read, request =>
+            sent.Enqueue(request.Headers.TryGetValues(KaleidoCorrelationHeaders.ProcessId, out var values) ? values.SingleOrDefault() : null));
+        await consumer.StartAsync(TestContext.Current.CancellationToken);
+        await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(consumer);
+        using var scope = consumer.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<IKaleidoQueryableClientFactory>().GetClient("catalog");
+        var processId = Guid.NewGuid();
+        var forwarding = new KaleidoProcessForwarding();
+
+        using (forwarding.ForwardProcess(processId))
+        {
+            var result = await client.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken);
+            Assert.Equal("one", Assert.Single(result.Results).Name);
+        }
+
+        await client.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken);
+        Assert.Equal([processId.ToString("D"), null], sent.ToArray());
+        await consumer.StopAsync(TestContext.Current.CancellationToken);
+        await publisher.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static IHost StartConsumer(WebApplication authority, WebApplication publisher, TaskCompletionSource<bool> read,
+        Action<HttpRequestMessage>? onQuery = null) =>
         Host.CreateDefaultBuilder()
             .UseEnvironment("Production")
             .UseDefaultServiceProvider((_, options) =>
@@ -80,7 +113,11 @@ public sealed class StandaloneQueryableClientFunctionalTests
                         InnerHandler = authority.GetTestServer().CreateHandler(),
                     }));
                 services.Configure<HttpClientFactoryOptions>("kaleido-queryable", options =>
-                    options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = publisher.GetTestServer().CreateHandler()));
+                    options.HttpMessageHandlerBuilderActions.Add(handlers =>
+                    {
+                        var server = publisher.GetTestServer().CreateHandler();
+                        handlers.PrimaryHandler = onQuery is null ? server : new ObserveQueryHandler(onQuery) { InnerHandler = server };
+                    }));
             })
             .Build();
 
@@ -225,6 +262,15 @@ public sealed class StandaloneQueryableClientFunctionalTests
             }
 
             return response;
+        }
+    }
+
+    private sealed class ObserveQueryHandler(Action<HttpRequestMessage> onQuery) : DelegatingHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            onQuery(request);
+            return base.SendAsync(request, cancellationToken);
         }
     }
 }
