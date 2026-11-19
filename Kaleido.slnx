@@ -48,6 +48,7 @@
   </Folder>
   <Folder Name="/src/Composed/Hosts/">
     <Project Path="src/Composed/Hosts/Kaleido.Hosting/Kaleido.Hosting.csproj" />
+    <Project Path="src/Composed/Hosts/Kaleido.Hosting.Http/Kaleido.Hosting.Http.csproj" />
   </Folder>
   <Folder Name="/src/">
     <File Path="src/AGENTS.md" />
@@ -123,6 +124,8 @@
   <Folder Name="/test/Composed/Hosts/">
     <Project Path="tests/Composed/Hosts/Kaleido.Hosting.UnitTests/Kaleido.Hosting.UnitTests.csproj" />
     <Project Path="tests/Composed/Hosts/Kaleido.Hosting.FunctionalTests/Kaleido.Hosting.FunctionalTests.csproj" />
+    <Project Path="tests/Composed/Hosts/Kaleido.Hosting.Http.UnitTests/Kaleido.Hosting.Http.UnitTests.csproj" />
+    <Project Path="tests/Composed/Hosts/Kaleido.Hosting.Http.FunctionalTests/Kaleido.Hosting.Http.FunctionalTests.csproj" />
   </Folder>
   <Folder Name="/test/">
     <File Path="tests/AGENTS.md" />

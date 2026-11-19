@@ -209,8 +209,8 @@ implementer does, with these hooks:
   (`IKaleidoCorrelationContextAccessor.Current.Caller`). It can look the case up in its own data and
   refuse a caller who may not touch it (`Reject(...)`, or a validation error), before changing
   anything.
-- **The routes.** `MapKaleidoHttp()` returns a convention builder, so a host can add an ASP.NET Core
-  authorization policy to every Kaleido endpoint (`app.MapKaleidoHttp().RequireAuthorization("case-access")`).
+- **The routes.** `MapKaleido()` returns an `IKaleidoHttpEndpointBuilder` and maps no endpoints until the host explicitly chooses them, so a host can add an ASP.NET Core
+  authorization policy to only those selected groups (`app.MapKaleido().MapProcess().MapQueryable().RequireAuthorization("case-access")`).
   Its handler can read the process id from the route value or the request header and check the
   case. This is the only place that also guards **reading** state, where no handler runs.
 - **The store.** A host can register its own `IProcessContextStore` (or wrap the one it uses) that

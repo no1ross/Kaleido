@@ -26,6 +26,7 @@ Kaleido.Registry.Http (fixed Registry URL contract; no project references)
 Kaleido.Registry.Http.Server ──► Kaleido.Registry, Kaleido.Registry.Server, Kaleido.Registry.Http, Kaleido.Http.Server
 Kaleido.Registry.Http.Client ──► Kaleido.Registry.Client, Kaleido.Registry.Http, Kaleido.Http.Client
 Kaleido.Hosting ──► Kaleido.Server, Kaleido.Eventing, Kaleido.Process, Kaleido.Queryable, Kaleido
+Kaleido.Hosting.Http ──► Kaleido.Hosting, Kaleido.Http.Server, Kaleido.Process.Http.Server, Kaleido.Queryable.Http.Server, Kaleido.Registry.Http.Server (explicit endpoint composition)
 Kaleido.Provider ──► Kaleido.Process.Server, Kaleido.Process, Kaleido.Eventing, Kaleido (store-contract dependency bundle)
 Kaleido.Provider.InMemory ──► Kaleido.Provider (explicit in-memory implementations/registration)
 Kaleido.Provider.SQLite ──► Kaleido.Provider, Kaleido.Registry.Server (one SQLite provider for all four stores)

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<ProjectReference Include="..\..\..\..\src\Composed\Hosts\Kaleido.Hosting.Http\Kaleido.Hosting.Http.csproj" />
+		<ProjectReference Include="..\..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Hosting.Http" />
+		<Using Include="Kaleido.Http.Server" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Http.Server" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Server" />
+		<Using Include="Kaleido.UnitTests" />
+	</ItemGroup>
+</Project>

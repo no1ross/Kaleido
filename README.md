@@ -194,12 +194,12 @@ var kaleido = builder.Services
 
 var app = builder.Build();
 
-app.MapKaleidoHttp();
+app.MapKaleido().MapProcess().MapQueryable();
 
 app.Run();
 ```
 
-`AddEventing()` registers the outbox-backed writer and binds `Kaleido:Events`; `AddProcess()` registers steps and handlers, and `AddQueryable()` registers sources and views. `AddKaleido()` installs only the shared baseline. The prior mandatory `AddControlRegistryClient()` and combined `MapKaleidoHttp()` recipe is superseded: local capability endpoints require no Registry client, and `AddRegistryHttpParticipation()` is an explicit opt-in for publishing installed HTTP bindings. `MapProcessor()` and `MapQueryable()` now serve local capability routes independently; combined Hosting composition remains a later #585 unit; Process outbound contracts and their HTTP adapter are separate, explicit projects, with local Process unaffected by Registry participation. `ServiceVersion` is required for versioned service endpoints.
+`AddEventing()` registers the outbox-backed writer and binds `Kaleido:Events`; `AddProcess()` registers steps and handlers, and `AddQueryable()` registers sources and views. `AddKaleido()` installs only the shared baseline. The prior mandatory `AddControlRegistryClient()` and auto-detecting `MapKaleidoHttp()` recipe is superseded: local capability endpoints require no Registry client, and `AddRegistryHttpParticipation()` is an explicit opt-in for publishing installed HTTP bindings. `MapProcessor()` and `MapQueryable()` serve local capability routes independently; [`Kaleido.Hosting.Http`](src/Composed/Hosts/Kaleido.Hosting.Http/README.md) now composes explicitly selected Process, Queryable or central Registry HTTP endpoints through `MapKaleido()`; Process outbound contracts and their HTTP adapter are separate, explicit projects, with local Process unaffected by Registry participation. `ServiceVersion` is required for versioned service endpoints.
 
 `Assemblies` is required even for client-only hosts. A missing or empty list fails at `AddKaleido()` with `missing_assembly`; there is no implicit calling-assembly scan.
 
@@ -302,6 +302,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Http`](src/Transports/Http/Kaleido.Http) | Shared HTTP JSON, headers, errors and route prefix |
 | [`Kaleido.Http.Server`](src/Transports/Http/Kaleido.Http.Server) | Generic ASP.NET filters and caller handling |
 | [`Kaleido.Http.Client`](src/Transports/Http/Kaleido.Http.Client) | Shared named gateway HTTP pipeline and caller-credential guard |
+| [`Kaleido.Hosting`](src/Composed/Hosts/Kaleido.Hosting) / [`Kaleido.Hosting.Http`](src/Composed/Hosts/Kaleido.Hosting.Http) | Neutral host registration and explicit fluent Process/Queryable/central Registry endpoint composition |
 | [`Kaleido.Registry`](src/Capabilities/Registry/Kaleido.Registry) | Core-only Registry descriptions, bindings and read contracts |
 | [`Kaleido.Registry.Server`](src/Capabilities/Registry/Kaleido.Registry.Server) / [`Kaleido.Registry.Client`](src/Capabilities/Registry/Kaleido.Registry.Client) | Separate central authority and explicit participant |
 | [`Kaleido.Registry.Http`](src/Capabilities/Registry/Kaleido.Registry.Http) / [`Server`](src/Capabilities/Registry/Kaleido.Registry.Http.Server) / [`Client`](src/Capabilities/Registry/Kaleido.Registry.Http.Client) | Fixed HTTP URLs, listener and participant adapter |

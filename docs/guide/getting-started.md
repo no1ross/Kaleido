@@ -157,8 +157,10 @@ never keeps them in memory by accident. A deployed service registers durable sto
 
 <!-- snippet: getting-started-map -->
 ```csharp
-endpoints.MapKaleidoHttp();
+endpoints.MapKaleido().MapProcess().MapQueryable();
 ```
+
+The composition maps local endpoints only. A service that other hosts must discover separately registers its HTTP bindings and calls `AddRegistryHttpParticipation()`; a dedicated Registry authority uses `app.MapKaleido().MapCentralRegistry()` instead. The older combined registration snippet above is pending the remaining #585 guide/Platform migration; do not use it as a current project-level startup recipe ([HTTP hosting README](../../src/Composed/Hosts/Kaleido.Hosting.Http/README.md)).
 
 > `AuthorizationMode.None` leaves every capability open, for local evaluation. The default is
 > `Authenticated`; see [Callers and correlation](callers-and-correlation.md).
@@ -239,9 +241,10 @@ add the handler that exchanges the user's token
 
 <!-- snippet: getting-started-mcp-map -->
 ```csharp
-app.MapKaleidoHttp();
 app.MapKaleidoMcp("/mcp");
 ```
+
+An MCP-only reader does not map Process or Queryable endpoints. Its existing combined-client registration above remains a parked #585/#582 integration example pending MCP's own migration; it is not the `Kaleido.Hosting.Http` composition API.
 
 The one gateway client used for registry hydration and service calls needs only the gateway address.
 Its routes map `/registry` to the registry host and `/orders/1` to the Orders host:

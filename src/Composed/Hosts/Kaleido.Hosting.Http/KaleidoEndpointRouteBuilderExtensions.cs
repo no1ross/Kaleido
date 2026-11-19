@@ -1,164 +1,106 @@
-using Kaleido.Processor.Registry;
-using Kaleido.Queryable.Registry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Kaleido.Http.Server;
+namespace Kaleido.Hosting.Http;
 
-/// <summary>
-/// Maps the Kaleido HTTP endpoints registered by <c>AddHttp()</c>: Process, Queryable and the
-/// unified registry. The entry point is <see cref="MapKaleidoHttp"/>, which also runs the startup
-/// authorization checks.
-/// </summary>
+/// <summary>Explicit HTTP endpoint composition over the capability and central Registry owners.</summary>
 public static partial class KaleidoEndpointRouteBuilderExtensions
 {
-    /// <summary>
-    /// Maps all registered Kaleido endpoints in one call.
-    /// The framework auto-detects which runtimes are active (Process and/or Queryable)
-    /// and maps only those. Registry reads and writes go through the central registry.
-    /// Returns an <see cref="IEndpointConventionBuilder"/> that
-    /// propagates conventions (e.g. <c>.RequireAuthorization()</c>) to all mapped endpoints.
-    /// </summary>
-    /// <param name="endpoints">The host's endpoint route builder.</param>
-    /// <returns>A convention builder for every mapped Kaleido endpoint.</returns>
-    public static IEndpointConventionBuilder MapKaleidoHttp(this IEndpointRouteBuilder endpoints)
+    /// <summary>Creates a root for explicitly selected Kaleido HTTP endpoints; maps none by itself.</summary>
+    /// <param name="endpoints">The host's route builder.</param>
+    /// <returns>A builder that shares host conventions across selected endpoint groups.</returns>
+    public static IKaleidoHttpEndpointBuilder MapKaleido(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-
-        var logger = endpoints.ServiceProvider
-            .GetRequiredService<ILoggerFactory>()
-            .CreateLogger("Kaleido.Startup");
-
-        ValidateAuthorization(endpoints.ServiceProvider, logger);
-
-        var hasProcess = endpoints.ServiceProvider.GetService<IProcessorStepRegistry>() is not null;
-        var hasQueryable = endpoints.ServiceProvider.GetService<IQueryableRegistry>() is not null;
-
-        var stepCount = hasProcess
-            ? endpoints.ServiceProvider.GetRequiredService<IProcessorStepRegistry>().Registrations.Count
-            : 0;
-
-        var contextCount = 0;
-        var viewCount = 0;
-
-        if (hasQueryable)
-        {
-            var registrations = endpoints.ServiceProvider
-                .GetRequiredService<IQueryableRegistry>()
-                .Registrations;
-
-            contextCount = registrations.Count;
-            viewCount = registrations.Sum(c => c.Views.Count);
-        }
-
-        LogStarted(logger, stepCount, contextCount, viewCount);
-
-        var builders = new List<IEndpointConventionBuilder>();
-
-        if (hasProcess)
-        {
-            builders.Add(
-                endpoints.MapProcessor());
-        }
-
-        if (hasQueryable)
-        {
-            builders.Add(
-                endpoints.MapQueryable());
-        }
-
-        return new RouteHandlerBuilder(builders);
+        return new KaleidoHttpEndpointBuilder(endpoints.MapGroup(string.Empty));
     }
 
-    // Startup authorization checks, by mode:
-    // - None: warn once that capability authorization is disabled.
-    // - Authenticated / ZeroTrust: fail if no authentication scheme is registered
-    //   (every request would otherwise fail at runtime with no scheme to challenge).
-    // - ZeroTrust: omit capabilities without an explicit authorization rule.
-    private static void ValidateAuthorization(
-        IServiceProvider services,
-        ILogger logger)
+    /// <summary>Maps the local Process execute, step and state endpoints through its HTTP adapter.</summary>
+    /// <param name="builder">The Kaleido HTTP composition root.</param>
+    /// <returns>The same root, ready for another explicit mapping or host conventions.</returns>
+    public static IKaleidoHttpEndpointBuilder MapProcess(this IKaleidoHttpEndpointBuilder builder)
     {
-        var mode = services.GetRequiredService<KaleidoServiceOptions>().AuthorizationMode;
-        var capabilities = ExposedCapabilities(services);
+        var root = RequireRoot(builder);
+        root.RequireAvailable("Process");
+        RequireLocalRuntime<IProcessorRuntime>(root.Endpoints, ProcessorErrorCodes.InvalidRegistration, "AddProcess()");
+        RequireLocalRuntime<KaleidoHttpServerOptions>(root.Endpoints, ConfigurationErrorCodes.InvalidOptions, "AddHttp()");
+        RequireLocalRuntime<KaleidoProcessHttpOptions>(root.Endpoints, ConfigurationErrorCodes.InvalidOptions, "AddProcessHttpServer()");
+        ValidateLocalAuthorization(root);
+        root.Endpoints.MapProcessor();
+        root.MarkMapped("Process");
+        return builder;
+    }
 
-        if (mode == KaleidoAuthorizationMode.None)
+    /// <summary>Maps the local Queryable source and view endpoints through its HTTP adapter.</summary>
+    /// <param name="builder">The Kaleido HTTP composition root.</param>
+    /// <returns>The same root, ready for another explicit mapping or host conventions.</returns>
+    public static IKaleidoHttpEndpointBuilder MapQueryable(this IKaleidoHttpEndpointBuilder builder)
+    {
+        var root = RequireRoot(builder);
+        root.RequireAvailable("Queryable");
+        RequireLocalRuntime<IQueryableService>(root.Endpoints, QueryableErrorCodes.InvalidRegistration, "AddQueryable()");
+        RequireLocalRuntime<KaleidoHttpServerOptions>(root.Endpoints, ConfigurationErrorCodes.InvalidOptions, "AddHttp()");
+        ValidateLocalAuthorization(root);
+        root.Endpoints.MapQueryable();
+        root.MarkMapped("Queryable");
+        return builder;
+    }
+
+    /// <summary>Maps the central Registry authority endpoints, not a service's local catalog.</summary>
+    /// <param name="builder">The Kaleido HTTP composition root.</param>
+    /// <returns>The same root, ready for authority host conventions.</returns>
+    public static IKaleidoHttpEndpointBuilder MapCentralRegistry(this IKaleidoHttpEndpointBuilder builder)
+    {
+        var root = RequireRoot(builder);
+        root.RequireAvailable("CentralRegistry");
+        root.Endpoints.MapKaleidoControlRegistry();
+        root.MarkMapped("CentralRegistry");
+        return builder;
+    }
+
+    private static KaleidoHttpEndpointBuilder RequireRoot(IKaleidoHttpEndpointBuilder? builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        return builder as KaleidoHttpEndpointBuilder
+            ?? throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidOptions,
+                "Use MapKaleido() to create a Kaleido HTTP endpoint composition root.");
+    }
+
+    private static void RequireLocalRuntime<TService>(IEndpointRouteBuilder endpoints, string code, string registration)
+    {
+        if (endpoints.ServiceProvider.GetService<IServiceProviderIsService>()?.IsService(typeof(TService)) != true)
         {
-            LogAuthorizationDisabled(logger);
-            return;
+            throw new KaleidoConfigurationException(code, $"Call {registration} before mapping its HTTP endpoints.");
         }
+    }
 
-        var schemes =
-            services.GetService<IAuthenticationSchemeProvider>()?
-                .GetAllSchemesAsync()
-                .GetAwaiter()
-                .GetResult();
-
-        if (schemes?.Any() != true)
-        {
-            throw new KaleidoConfigurationException(
-                ConfigurationErrorCodes.AuthenticationNotConfigured,
-                $"AuthorizationMode is {mode} but no authentication scheme is registered. " +
-                "Call AddAuthentication(...) with at least one scheme, plus UseAuthentication()/UseAuthorization(), " +
-                "or set AuthorizationMode = None.");
-        }
-
-        if (mode != KaleidoAuthorizationMode.ZeroTrust)
+    private static void ValidateLocalAuthorization(KaleidoHttpEndpointBuilder root)
+    {
+        if (root.LocalAuthorizationChecked)
         {
             return;
         }
 
-        var undeclared =
-            capabilities
-                .Where(c => !c.Authorization.IsExplicit())
-                .Select(c => c.Name)
-                .ToArray();
-
-        if (undeclared.Length > 0)
+        var services = root.Endpoints.ServiceProvider;
+        var server = services.GetService<KaleidoServerOptions>()
+            ?? throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidOptions,
+                "Call AddServer() before mapping local Kaleido HTTP endpoints.");
+        if (server.AuthorizationMode == KaleidoAuthorizationMode.None)
         {
-            LogZeroTrustOmits(logger, undeclared.Length, string.Join(", ", undeclared));
+            LogAuthorizationDisabled(services.GetRequiredService<ILoggerFactory>().CreateLogger("Kaleido.Hosting.Http"));
         }
+        else if (services.GetService<IAuthenticationSchemeProvider>()?.GetAllSchemesAsync().GetAwaiter().GetResult().Any() != true)
+        {
+            throw new KaleidoConfigurationException(ConfigurationErrorCodes.AuthenticationNotConfigured,
+                $"AuthorizationMode is {server.AuthorizationMode} but no authentication scheme is registered. Configure AddAuthentication(...) and the host's authentication middleware.");
+        }
+
+        root.LocalAuthorizationChecked = true;
     }
 
-    // Every capability that gets an endpoint: process steps, query sources,
-    // and query views (views already carry their effective rule: their own
-    // declaration, else their source's).
-    private static List<(string Name, AuthorizationMetadata Authorization)> ExposedCapabilities(
-        IServiceProvider services)
-    {
-        var capabilities = new List<(string Name, AuthorizationMetadata Authorization)>();
-
-        if (services.GetService<IProcessorStepRegistry>() is { } steps)
-        {
-            capabilities.AddRange(
-                steps.Registrations.Select(s =>
-                    ($"step '{s.Metadata.Name}'", s.Metadata.Authorization)));
-        }
-
-        if (services.GetService<IQueryableRegistry>() is { } queryables)
-        {
-            foreach (var source in queryables.Registrations)
-            {
-                capabilities.Add(($"source '{source.Name}'", source.Authorization));
-
-                capabilities.AddRange(
-                    source.Views.Select(v =>
-                        ($"view '{source.Name}/{v.Name}'", v.Authorization)));
-            }
-        }
-
-        return capabilities;
-    }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Kaleido started: {StepCount} process step(s), {ContextCount} query context(s), {ViewCount} query view(s).")]
-    private static partial void LogStarted(ILogger logger, int stepCount, int contextCount, int viewCount);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "AuthorizationMode is None: Kaleido capability authorization, registry filtering, and process ownership are disabled. Set AuthorizationMode to Authenticated or ZeroTrust for enforcement.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "AuthorizationMode is None: Kaleido capability authorization is disabled. Set AuthorizationMode to Authenticated or ZeroTrust for enforcement.")]
     private static partial void LogAuthorizationDisabled(ILogger logger);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "ZeroTrust omits {OmittedCount} capability(ies) without an explicit authorization rule: {Capabilities}. Declare a service default or a capability rule to publish them.")]
-    private static partial void LogZeroTrustOmits(ILogger logger, int omittedCount, string capabilities);
 }

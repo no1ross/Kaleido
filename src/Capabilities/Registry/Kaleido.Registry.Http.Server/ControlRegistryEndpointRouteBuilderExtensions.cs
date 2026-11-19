@@ -32,7 +32,7 @@ public static class ControlRegistryEndpointRouteBuilderExtensions
     /// </para>
     /// <para>
     /// Call <c>AddControlRegistry()</c> and choose a registry store first; the registry host maps nothing
-    /// else of Kaleido's (it does not call <c>MapKaleidoHttp()</c>).
+    /// else of Kaleido's (it may use <c>MapKaleido().MapCentralRegistry()</c> to select only this API).
     /// </para>
     /// </remarks>
     /// <param name="endpoints">The host's endpoints.</param>

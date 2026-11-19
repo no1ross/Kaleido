@@ -61,7 +61,7 @@ The not-yet-processed OpenTelemetry provider supplies `AddOpenTelemetry()` or cu
 
 - `Kaleido.Registry` owns registration, leases, store-backed merged views, transport bindings and HybridCache (`Kaleido:Registry:Cache`). `Kaleido.Registry.Http` maps its fixed `/registry` API through `ControlRegistryEndpointRouteBuilderExtensions`.
 - Services register through `POST /registry/instances`, renew leases and deregister. `GET /registry` filters for ordinary callers; participants hydrate unfiltered `GET /registry/availability` and revisioned `GET /registry/capabilities` conditionally. `GET /registry/status` exposes operations status.
-- `MapKaleidoHttp()` maps only this service's capability endpoints and requires an `IKaleidoRegistrySource`: business hosts use `AddControlRegistryClient()`, while a registry host has its own store-backed source. `CentralRegistrySource` in `Kaleido.Client` keeps participating hosts' unfiltered last-good copy; `KaleidoRegistryService` in `Kaleido.Server` filters discovery per caller. Neither polls another service.
+- `MapKaleido()` maps nothing until the host explicitly chooses `MapProcess()`/`MapQueryable()` for a service or `MapCentralRegistry()` for the authority (ADR 0050). A business service installs Registry participation separately to publish those local HTTP bindings and hydrate its unfiltered last-good copy; the control Registry remains the one authority and its host needs no client. Neither polls another service.
 
 #### HTTP URL generation
 
