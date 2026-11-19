@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Kaleido.Provider.SQLite.Configuration;
 
 [ExcludeFromCodeCoverage]
-internal sealed class ProcessorContextEntityConfiguration
-    : IEntityTypeConfiguration<ProcessorContextEntity>
+internal sealed class ProcessContextEntityConfiguration
+    : IEntityTypeConfiguration<ProcessContextEntity>
 {
     internal const string TableName = "ProcessContexts";
 
     public void Configure(
-        EntityTypeBuilder<ProcessorContextEntity> builder)
+        EntityTypeBuilder<ProcessContextEntity> builder)
     {
         builder.ToTable(TableName);
         // Scoped by the owning processor and its version (#552): processors and versions may share the
@@ -27,6 +27,7 @@ internal sealed class ProcessorContextEntityConfiguration
 
         builder.Property(x => x.State).HasConversion<string>().IsRequired();
         builder.Property(x => x.TargetProcessorName).HasMaxLength(200);
+        builder.Property(x => x.TargetProcessorVersion).HasMaxLength(KaleidoServiceOptions.MaxServiceVersionLength);
         builder.Property(x => x.CreatedUtc).IsRequired();
         builder.Property(x => x.UpdatedUtc).IsRequired();
 
@@ -42,7 +43,7 @@ internal sealed class ProcessorContextEntityConfiguration
 
         builder.HasOne(x => x.RequiredStep)
             .WithOne(x => x.Context)
-            .HasForeignKey<ProcessorRequiredStepEntity>(x => new { x.ProcessorName, x.ProcessorVersion, x.ProcessId })
+            .HasForeignKey<ProcessRequiredStepEntity>(x => new { x.ProcessorName, x.ProcessorVersion, x.ProcessId })
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => x.State);

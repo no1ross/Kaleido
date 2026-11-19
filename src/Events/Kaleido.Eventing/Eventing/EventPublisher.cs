@@ -54,7 +54,7 @@ namespace Kaleido.Eventing;
 /// else):
 /// <code>
 /// builder.Services.AddKaleido(builder.Configuration, new() { ServiceName = "outbox-relay", /* ... */ })
-///     .AddSqliteOutboxStore(connectionString)   // the database the services write their events to
+///     .AddSqliteOutboxProvider(connectionString)   // the database the services write their events to
 ///     .AddOutboxRelay&lt;MyEventPublisher&gt;();
 /// </code>
 /// </para>

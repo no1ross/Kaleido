@@ -1,11 +1,10 @@
 using Kaleido.Provider.SQLite.Entities;
-using Kaleido.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Provider.SQLite;
 
 // The storage of Kaleido's built-in outbox, in the OutboxEvents table: entries are added inside the
-// transition's transaction when SqliteKaleidoTransactions opened one on this DbContext (state and
+// transition's transaction when SqliteProcessTransactions opened one on this DbContext (state and
 // events commit together), on their own otherwise, and leased to the relay of this instance.
 internal sealed class SqliteKaleidoOutboxStore(
     SqliteKaleidoContextDbContext dbContext,

@@ -11,25 +11,69 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
 {
     private const string Database = "Data Source=:memory:";
 
-    public static TheoryData<string> Registrations() => [nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteContextStore), nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteOutboxStore), nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteIdempotencyStore)];
+    public static TheoryData<string> Registrations() => [nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteContextProvider), nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteOutboxProvider), nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteIdempotencyProvider)];
 
     private static IKaleidoBuilder Register(IKaleidoBuilder builder, string registration, string connectionString) =>
         registration switch
         {
-            nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteContextStore) => builder.AddSqliteContextStore(connectionString),
-            nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteOutboxStore) => builder.AddSqliteOutboxStore(connectionString),
-            _ => builder.AddSqliteIdempotencyStore(connectionString),
+            nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteContextProvider) => builder.AddSqliteContextProvider(connectionString),
+            nameof(SqliteKaleidoServiceCollectionExtensions.AddSqliteOutboxProvider) => builder.AddSqliteOutboxProvider(connectionString),
+            _ => builder.AddSqliteIdempotencyProvider(connectionString),
         };
 
-    private static IKaleidoBuilder CreateBuilder(IServiceCollection services)
+    private static IKaleidoBuilder CreateBuilder(IServiceCollection services, IReadOnlyDictionary<string, string?>? configuration = null)
     {
         var mock = new Mock<IKaleidoBuilder>();
         mock.SetupGet(x => x.Services).Returns(services);
+        mock.SetupGet(x => x.Configuration).Returns(new ConfigurationBuilder().AddInMemoryCollection(
+            configuration ?? new Dictionary<string, string?>()).Build());
         return mock.Object;
     }
 
     private static Type? Registered<TService>(IServiceCollection services) =>
         services.LastOrDefault(x => x.ServiceType == typeof(TService))?.ImplementationType;
+
+    [Fact]
+    public void AddSqliteProviders_WithANamedConnection_RegistersExactlyTheThreeServiceStores()
+    {
+        var services = new ServiceCollection();
+        var builder = CreateBuilder(services, new Dictionary<string, string?> { ["ConnectionStrings:orders"] = Database });
+
+        Assert.Same(builder, builder.AddSqliteProviders("orders"));
+        Assert.Equal(typeof(SqliteProcessContextStore), Registered<IProcessContextStore>(services));
+        Assert.Equal(typeof(SqliteProcessTransactions), Registered<IProcessTransactions>(services));
+        Assert.Equal(typeof(SqliteKaleidoOutboxStore), Registered<IKaleidoOutboxStore>(services));
+        Assert.Equal(typeof(SqliteProcessIdempotencyStore), Registered<IProcessIdempotencyStore>(services));
+        Assert.Null(Registered<IKaleidoRegistryStore>(services));
+        Assert.Single(services, x => x.ServiceType == typeof(SqliteKaleidoContextDbContext));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("  ")]
+    public void AddSqliteProviders_WithoutANamedConnection_FailsBeforeRegistering(string? value)
+    {
+        var services = new ServiceCollection();
+        var builder = CreateBuilder(services, new Dictionary<string, string?> { ["ConnectionStrings:orders"] = value });
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddSqliteProviders("orders"));
+
+        Assert.Equal(SqliteErrorCodes.MissingConnectionString, exception.Code);
+        Assert.Contains("ConnectionStrings:orders", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(services);
+    }
+
+    [Fact]
+    public void AddSqliteProviders_WithAnInvalidNamedConnection_FailsBeforeRegistering()
+    {
+        var services = new ServiceCollection();
+        var builder = CreateBuilder(services, new Dictionary<string, string?> { ["ConnectionStrings:orders"] = "NotAnOption=true" });
+
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddSqliteProviders("orders"));
+
+        Assert.Equal(SqliteErrorCodes.InvalidConnectionString, exception.Code);
+        Assert.Empty(services);
+    }
 
     [Theory]
     [MemberData(nameof(Registrations))]
@@ -56,41 +100,41 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
 
     // Each store on its own: only what was asked for is registered.
     [Fact]
-    public void AddSqliteContextStore_RegistersTheContextStoreAndTheTransactions_Only()
+    public void AddSqliteContextProvider_RegistersTheContextStoreAndTheTransactions_Only()
     {
         var services = new ServiceCollection();
 
         var builder = CreateBuilder(services);
-        Assert.Same(builder, builder.AddSqliteContextStore(Database));
+        Assert.Same(builder, builder.AddSqliteContextProvider(Database));
 
-        Assert.Equal(typeof(SqliteKaleidoContextStore), Registered<IKaleidoContextStore>(services));
-        Assert.Equal(typeof(SqliteKaleidoTransactions), Registered<IKaleidoTransactions>(services));
-        Assert.Equal(typeof(SqliteKaleidoTransaction), Registered<ISqliteKaleidoTransaction>(services));
+        Assert.Equal(typeof(SqliteProcessContextStore), Registered<IProcessContextStore>(services));
+        Assert.Equal(typeof(SqliteProcessTransactions), Registered<IProcessTransactions>(services));
+        Assert.Equal(typeof(SqliteProcessTransaction), Registered<ISqliteKaleidoTransaction>(services));
         Assert.Null(Registered<IKaleidoOutboxStore>(services));
-        Assert.Null(Registered<IKaleidoIdempotencyStore>(services));
+        Assert.Null(Registered<IProcessIdempotencyStore>(services));
     }
 
     [Fact]
-    public void AddSqliteOutboxStore_RegistersTheOutboxStore_Only()
+    public void AddSqliteOutboxProvider_RegistersTheOutboxStore_Only()
     {
         var services = new ServiceCollection();
 
-        CreateBuilder(services).AddSqliteOutboxStore(Database);
+        CreateBuilder(services).AddSqliteOutboxProvider(Database);
 
         Assert.Equal(typeof(SqliteKaleidoOutboxStore), Registered<IKaleidoOutboxStore>(services));
-        Assert.Null(Registered<IKaleidoContextStore>(services));
-        Assert.Null(Registered<IKaleidoTransactions>(services));
+        Assert.Null(Registered<IProcessContextStore>(services));
+        Assert.Null(Registered<IProcessTransactions>(services));
     }
 
     [Fact]
-    public void AddSqliteIdempotencyStore_RegistersTheIdempotencyStore_Only()
+    public void AddSqliteIdempotencyProvider_RegistersTheIdempotencyStore_Only()
     {
         var services = new ServiceCollection();
 
-        CreateBuilder(services).AddSqliteIdempotencyStore(Database);
+        CreateBuilder(services).AddSqliteIdempotencyProvider(Database);
 
-        Assert.Equal(typeof(SqliteKaleidoIdempotencyStore), Registered<IKaleidoIdempotencyStore>(services));
-        Assert.Null(Registered<IKaleidoContextStore>(services));
+        Assert.Equal(typeof(SqliteProcessIdempotencyStore), Registered<IProcessIdempotencyStore>(services));
+        Assert.Null(Registered<IProcessContextStore>(services));
         Assert.Null(Registered<IKaleidoOutboxStore>(services));
     }
 
@@ -99,7 +143,7 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        CreateBuilder(services).AddSqliteContextStore(Database).AddSqliteOutboxStore(Database).AddSqliteIdempotencyStore(Database);
+        CreateBuilder(services).AddSqliteContextProvider(Database).AddSqliteOutboxProvider(Database).AddSqliteIdempotencyProvider(Database);
 
         Assert.Single(services, x => x.ServiceType == typeof(SqliteKaleidoContextDbContext));
     }
@@ -107,20 +151,20 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
     [Fact]
     public void ARegistrationWithAnotherConnectionString_Fails()
     {
-        var builder = CreateBuilder(new ServiceCollection()).AddSqliteContextStore(Database);
+        var builder = CreateBuilder(new ServiceCollection()).AddSqliteContextProvider(Database);
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddSqliteOutboxStore("Data Source=other.db"));
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.AddSqliteOutboxProvider("Data Source=other.db"));
 
         Assert.Equal(SqliteErrorCodes.ConnectionStringMismatch, exception.Code);
     }
 
     [Fact]
-    public void AddSqliteContextStore_WhenAnotherContextStoreIsRegistered_Fails()
+    public void AddSqliteContextProvider_WhenAnotherContextStoreIsRegistered_Fails()
     {
         var services = new ServiceCollection();
-        services.AddScoped(_ => Mock.Of<IKaleidoContextStore>());
+        services.AddScoped(_ => Mock.Of<IProcessContextStore>());
 
-        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateBuilder(services).AddSqliteContextStore(Database));
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => CreateBuilder(services).AddSqliteContextProvider(Database));
 
         Assert.Equal(ConfigurationErrorCodes.ConflictingStore, exception.Code);
     }
@@ -132,13 +176,14 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
         services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
             ServiceName = "test-svc",
-            AuthorizationMode = KaleidoAuthorizationMode.None,
+            ServiceVersion = "1",
             Assemblies = [typeof(SqliteKaleidoServiceCollectionExtensionsTests).Assembly],
             TypeFilter = _ => false,
         })
-            .AddSqliteContextStore(Database)
-            .AddSqliteOutboxStore(Database)
-            .AddSqliteIdempotencyStore(Database);
+            .AddEventing()
+            .AddSqliteContextProvider(Database)
+            .AddSqliteOutboxProvider(Database)
+            .AddSqliteIdempotencyProvider(Database);
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         using var scope = provider.CreateScope();
@@ -146,10 +191,10 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
         var dbContext = scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>();
         Assert.Equal("Microsoft.EntityFrameworkCore.Sqlite", dbContext.Database.ProviderName);
         Assert.Equal(Database, dbContext.Database.GetConnectionString());
-        Assert.IsType<SqliteKaleidoContextStore>(scope.ServiceProvider.GetRequiredService<IKaleidoContextStore>());
+        Assert.IsType<SqliteProcessContextStore>(scope.ServiceProvider.GetRequiredService<IProcessContextStore>());
         Assert.IsType<SqliteKaleidoOutboxStore>(scope.ServiceProvider.GetRequiredService<IKaleidoOutboxStore>());
-        Assert.IsType<SqliteKaleidoIdempotencyStore>(scope.ServiceProvider.GetRequiredService<IKaleidoIdempotencyStore>());
-        Assert.IsType<SqliteKaleidoTransactions>(scope.ServiceProvider.GetRequiredService<IKaleidoTransactions>());
+        Assert.IsType<SqliteProcessIdempotencyStore>(scope.ServiceProvider.GetRequiredService<IProcessIdempotencyStore>());
+        Assert.IsType<SqliteProcessTransactions>(scope.ServiceProvider.GetRequiredService<IProcessTransactions>());
 
         // The provider adds no database check of its own; the only check is Kaleido's outbox check (#552).
         var checks = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckServiceOptions>>().Value.Registrations;
@@ -158,29 +203,29 @@ public sealed class SqliteKaleidoServiceCollectionExtensionsTests
 
     // #553: the control registry's store, in the registry host's own database (no process store with it).
     [Fact]
-    public void AddSqliteRegistryStore_RegistersTheRegistryStore_OnItsOwnDatabase()
+    public void AddSqliteRegistryProvider_RegistersTheRegistryStore_OnItsOwnDatabase()
     {
         var services = new ServiceCollection();
 
-        CreateBuilder(services).AddSqliteRegistryStore("Data Source=registry.db");
+        CreateBuilder(services).AddSqliteRegistryProvider("Data Source=registry.db");
 
-        Assert.Equal(typeof(SqliteKaleidoRegistryStore), Registered<Kaleido.Registry.IKaleidoRegistryStore>(services));
-        Assert.Null(Registered<IKaleidoContextStore>(services));
+        Assert.Equal(typeof(SqliteKaleidoRegistryStore), Registered<IKaleidoRegistryStore>(services));
+        Assert.Null(Registered<IProcessContextStore>(services));
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SqliteKaleidoRegistryDbContext>();
         Assert.Equal("Data Source=registry.db", context.Database.GetConnectionString());
-        Assert.IsType<SqliteKaleidoRegistryStore>(scope.ServiceProvider.GetRequiredService<Kaleido.Registry.IKaleidoRegistryStore>());
+        Assert.IsType<SqliteKaleidoRegistryStore>(scope.ServiceProvider.GetRequiredService<IKaleidoRegistryStore>());
     }
 
     [Theory]
     [InlineData("NotAnOption=true")]
     [InlineData("  ")]
-    public void AddSqliteRegistryStore_WithAnInvalidConnectionString_FailsBeforeRegisteringAnything(string connectionString)
+    public void AddSqliteRegistryProvider_WithAnInvalidConnectionString_FailsBeforeRegisteringAnything(string connectionString)
     {
         var services = new ServiceCollection();
 
-        Assert.ThrowsAny<Exception>(() => CreateBuilder(services).AddSqliteRegistryStore(connectionString));
+        Assert.ThrowsAny<Exception>(() => CreateBuilder(services).AddSqliteRegistryProvider(connectionString));
 
         Assert.Empty(services);
     }

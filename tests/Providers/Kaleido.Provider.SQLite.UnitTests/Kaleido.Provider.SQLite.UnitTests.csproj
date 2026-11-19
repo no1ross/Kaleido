@@ -3,7 +3,17 @@
 		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
 		<ProjectReference Include="..\..\..\src\Providers\Kaleido.Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
 		<ProjectReference Include="..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
-		<!-- The registry store contract every registry store passes (IKaleidoRegistryStoreTests, #553). -->
-		<ProjectReference Include="..\..\Registry\Registry.UnitTests\Kaleido.Registry.UnitTests.csproj" />
+		<!-- The active Registry.Server contract fixture every control Registry store passes (#553). -->
+		<ProjectReference Include="..\..\Capabilities\Registry\Kaleido.Registry.Server.UnitTests\Kaleido.Registry.Server.UnitTests.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Context" />
+		<Using Include="Kaleido.Process.Eventing" />
+		<Using Include="Kaleido.Process.Exceptions" />
+		<Using Include="Kaleido.Process.Storage" />
+		<Using Include="Kaleido.Process.Server.Idempotency" />
+		<Using Include="Kaleido.Registry.Server" />
+		<Using Include="Kaleido.Eventing" />
 	</ItemGroup>
 </Project>

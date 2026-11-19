@@ -27,14 +27,14 @@ other.
 | Situation | Register | See |
 | --- | --- | --- |
 | Tests, local evaluation | `AddInMemoryStores()` explicitly (lost on restart) | [Persistence](persistence.md#the-defaults-are-in-memory) |
-| Samples, local development, a reference | `AddSqliteContextStore(connectionString)` | [SQLite README](../../src/Providers/Kaleido.Provider.SQLite/README.md) |
+| Samples, local development, a reference | `AddSqliteContextProvider(connectionString)` | [SQLite README](../../src/Providers/Kaleido.Provider.SQLite/README.md) |
 | Production | `AddContextStore<T>()` on your database | [Persistence](persistence.md#your-own-stores-on-ef-core) |
 
 ## Events
 
 | Situation | Register | Guarantee |
 | --- | --- | --- |
-| Every service | `AddOutboxStore<T>()` (or `AddSqliteOutboxStore`), on the context store's database | its events are written with its state |
+| Every service | `AddOutboxStore<T>()` (or `AddSqliteOutboxProvider`), on the context store's database | its events are written with its state |
 | The host that publishes (one per outbox database: a service, or a host with nothing else) | `AddOutboxRelay<TPublisher>()` | at least once, retried, parked after the last attempt |
 | You run your own bus or dispatcher | your `IEventPublisher`, on the relay host | the relay's, then your bus's |
 | State and event atomic | `AddTransactions<T>()`, with the store and the outbox on the same database | both or neither |
@@ -46,7 +46,7 @@ See [Events and the outbox](events-and-outbox.md).
 | Situation | Register |
 | --- | --- |
 | One instance, tests | `AddInMemoryStores()` or a chosen idempotency store |
-| Several instances, or retries across restarts | `AddIdempotencyStore<T>()` (or `AddSqliteIdempotencyStore`) |
+| Several instances, or retries across restarts | `AddIdempotencyStore<T>()` (or `AddSqliteIdempotencyProvider`) |
 
 See [Processes - Concurrent and repeated calls](processes.md#concurrent-and-repeated-calls).
 

@@ -57,7 +57,7 @@ internal sealed partial class InMemoryProcessContextStore : IProcessContextStore
         return Task.FromResult(saved);
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryProcessContextStore is active. Process state is kept in memory only: lost on restart, and it grows without bound in long-running processes. Register a durable IProcessContextStore (e.g. AddSqliteContextStore, or AddContextStore<T>()) before deploying to production.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "InMemoryProcessContextStore is active. Process state is kept in memory only: lost on restart, and it grows without bound in long-running processes. Register a durable IProcessContextStore (e.g. AddSqliteContextProvider, or AddContextStore<T>()) before deploying to production.")]
     private static partial void LogInMemoryStoreActive(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Process context saved for process {ProcessId} ({StepCount} steps).")]

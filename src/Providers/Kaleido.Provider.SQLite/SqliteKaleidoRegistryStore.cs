@@ -1,5 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Kaleido.Provider.SQLite.Entities;
-using Kaleido.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Provider.SQLite;
@@ -11,16 +12,23 @@ namespace Kaleido.Provider.SQLite;
 internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext dbContext)
     : IKaleidoRegistryStore
 {
-    public async Task AddRegistrationAsync(RegistryRegistrationRecord registration, string capabilities, CancellationToken cancellationToken)
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
+
+    public async Task AddRegistrationAsync(RegistryRegistrationRecord registration, KaleidoRegistry capabilities, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(registration);
+        ArgumentNullException.ThrowIfNull(capabilities);
         var registered = registration.RegisteredUtc.UtcTicks;
+        var payload = JsonSerializer.Serialize(capabilities, JsonOptions);
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
-            INSERT INTO RegistryRegistrations (Revision, ServiceName, ServiceVersion, Capabilities, RegisteredUtc)
-            VALUES ({registration.Revision}, {registration.ServiceName}, {registration.ServiceVersion}, {capabilities}, {registered})
-            ON CONFLICT(Revision) DO NOTHING
+            INSERT INTO RegistryRegistrations (ServiceName, ServiceVersion, BuildVersion, Capabilities, RegisteredUtc)
+            VALUES ({registration.ServiceName}, {registration.ServiceVersion}, {registration.BuildVersion}, {payload}, {registered})
+            ON CONFLICT(ServiceName, ServiceVersion, BuildVersion) DO NOTHING
             """,
             cancellationToken);
     }
@@ -34,10 +42,10 @@ internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext 
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
-            INSERT INTO RegistryInstances (InstanceId, ServiceName, ServiceVersion, Revision, Healthy, RegisteredUtc, LastHeartbeatUtc)
-            VALUES ({id}, {instance.ServiceName}, {instance.ServiceVersion}, {instance.Revision}, {instance.Healthy}, {registered}, {heartbeat})
+            INSERT INTO RegistryInstances (InstanceId, ServiceName, ServiceVersion, BuildVersion, Healthy, RegisteredUtc, LastHeartbeatUtc)
+            VALUES ({id}, {instance.ServiceName}, {instance.ServiceVersion}, {instance.BuildVersion}, {instance.Healthy}, {registered}, {heartbeat})
             ON CONFLICT(InstanceId) DO UPDATE SET
-                ServiceName = excluded.ServiceName, ServiceVersion = excluded.ServiceVersion, Revision = excluded.Revision,
+                ServiceName = excluded.ServiceName, ServiceVersion = excluded.ServiceVersion, BuildVersion = excluded.BuildVersion,
                 Healthy = excluded.Healthy, RegisteredUtc = excluded.RegisteredUtc,
                 LastHeartbeatUtc = excluded.LastHeartbeatUtc
             """,
@@ -71,7 +79,8 @@ internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext 
 
         // A registration no instance runs any more goes with its last instance.
         await dbContext.RegistryRegistrations
-            .Where(r => !dbContext.RegistryInstances.Any(i => i.Revision == r.Revision))
+            .Where(r => !dbContext.RegistryInstances.Any(i => i.ServiceName == r.ServiceName
+                && i.ServiceVersion == r.ServiceVersion && i.BuildVersion == r.BuildVersion))
             .ExecuteDeleteAsync(cancellationToken);
 
         return removed;
@@ -113,7 +122,7 @@ internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext 
     public async Task<RegistryStoreContents> ReadAsync(CancellationToken cancellationToken)
     {
         var registrations = await dbContext.RegistryRegistrations.AsNoTracking()
-            .Select(x => new { x.ServiceName, x.ServiceVersion, x.Revision, x.RegisteredUtc })
+            .Select(x => new { x.ServiceName, x.ServiceVersion, x.BuildVersion, x.RegisteredUtc })
             .ToListAsync(cancellationToken);
         var instances = await dbContext.RegistryInstances.AsNoTracking().ToListAsync(cancellationToken);
         var current = await dbContext.RegistryCurrentVersions.AsNoTracking().ToListAsync(cancellationToken);
@@ -121,25 +130,31 @@ internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext 
 
         return new RegistryStoreContents
         {
-            Registrations = [.. registrations.Select(x => new RegistryRegistrationRecord { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, Revision = x.Revision, RegisteredUtc = Utc(x.RegisteredUtc) })],
+            Registrations = [.. registrations.Select(x => new RegistryRegistrationRecord { ServiceName = x.ServiceName, ServiceVersion = x.ServiceVersion, BuildVersion = x.BuildVersion, RegisteredUtc = Utc(x.RegisteredUtc) })],
             Instances = [.. instances.Select(ToRecord)],
             CurrentVersions = current.ToDictionary(x => x.ServiceName, x => x.ServiceVersion, StringComparer.OrdinalIgnoreCase),
             WatchResumedUtc = resumed is { } ticks ? Utc(ticks) : null,
         };
     }
 
-    public async Task<IReadOnlyDictionary<string, string>> GetCapabilitiesAsync(IReadOnlyCollection<string> revisions, CancellationToken cancellationToken)
+    public async Task<IReadOnlyDictionary<string, KaleidoRegistry>> GetCapabilitiesAsync(
+        string serviceName, string serviceVersion, IReadOnlyCollection<string> buildVersions, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(revisions);
+        ArgumentNullException.ThrowIfNull(buildVersions);
 
-        if (revisions.Count == 0)
+        if (buildVersions.Count == 0)
         {
-            return new Dictionary<string, string>(StringComparer.Ordinal);
+            return new Dictionary<string, KaleidoRegistry>(StringComparer.Ordinal);
         }
 
-        return await dbContext.RegistryRegistrations.AsNoTracking()
-            .Where(x => revisions.Contains(x.Revision))
-            .ToDictionaryAsync(x => x.Revision, x => x.Capabilities, StringComparer.Ordinal, cancellationToken);
+        var registrations = await dbContext.RegistryRegistrations.AsNoTracking()
+            .Where(x => x.ServiceName == serviceName && x.ServiceVersion == serviceVersion && buildVersions.Contains(x.BuildVersion))
+            .Select(x => new { x.BuildVersion, x.Capabilities })
+            .ToListAsync(cancellationToken);
+        return registrations.ToDictionary(x => x.BuildVersion,
+            x => JsonSerializer.Deserialize<KaleidoRegistry>(x.Capabilities, JsonOptions)
+                ?? throw new KaleidoConfigurationException(SqliteErrorCodes.InvalidStoredRecord, "The stored SQLite registry capabilities were empty."),
+            StringComparer.Ordinal);
     }
 
     // The instance, if it is one of the services the caller may change (any, when null). The service
@@ -170,7 +185,7 @@ internal sealed class SqliteKaleidoRegistryStore(SqliteKaleidoRegistryDbContext 
             InstanceId = Guid.ParseExact(x.InstanceId, "N"),
             ServiceName = x.ServiceName,
             ServiceVersion = x.ServiceVersion,
-            Revision = x.Revision,
+            BuildVersion = x.BuildVersion,
             Healthy = x.Healthy,
             RegisteredUtc = Utc(x.RegisteredUtc),
             LastHeartbeatUtc = Utc(x.LastHeartbeatUtc),

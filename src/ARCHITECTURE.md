@@ -149,21 +149,7 @@ Every piece is built by the container; no service creates another.
 
 ---
 
-## 6. Kaleido.Provider.SQLite
-
-### SQLite provider structure
-
-- The existing `SqliteKaleidoContextStore`, `SqliteKaleidoOutboxStore`, `SqliteKaleidoIdempotencyStore` and `SqliteKaleidoTransactions` have not yet been migrated to Process's `IProcessContextStore`/`IProcessTransactions` and Process.Server's `IProcessIdempotencyStore` (#587). A future provider must join state and outbox writes in the **same provider session/transaction**, not just use one database; do not assume this adapter currently interoperates.
-- `SqliteKaleidoServiceCollectionExtensions` currently declares `AddSqliteContextStore`, `AddSqliteOutboxStore` and `AddSqliteIdempotencyStore`; their mapping to the new contracts remains to be migrated (#587)
-
-### SQLite provider invariants
-
-- Generic `AddProcess()` and `AddEventing()` do not select in-memory stores. The later Provider owner explicitly offers `AddInMemoryProviders()` for development; the SQLite provider's references and replay/schema compatibility await its own migration (#587). No existing rows are silently converted.
-- The store must correctly implement state reconciliation so that existing saved contexts remain valid when the step registry changes.
-
----
-
-## 7. Kaleido.Mcp
+## 6. Kaleido.Mcp
 
 ### MCP adapter structure
 

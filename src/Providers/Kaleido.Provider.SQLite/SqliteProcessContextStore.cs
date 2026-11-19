@@ -1,21 +1,17 @@
 using System.Diagnostics.Metrics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Kaleido.Exceptions;
-using Kaleido.Observability;
-using Kaleido.Processor.Context;
 using Kaleido.Provider.SQLite.Entities;
-using Kaleido.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Provider.SQLite;
 
-internal sealed partial class SqliteKaleidoContextStore(
+internal sealed partial class SqliteProcessContextStore(
     SqliteKaleidoContextDbContext dbContext,
-    ILogger<SqliteKaleidoContextStore> logger)
-    : IKaleidoContextStore
+    ILogger<SqliteProcessContextStore> logger)
+    : IProcessContextStore
 {
     // The store owns its instruments (src/AGENTS.md, telemetry conventions); SqliteTelemetry holds only
     // their names (#525).
@@ -33,7 +29,7 @@ internal sealed partial class SqliteKaleidoContextStore(
             SqliteTelemetry.SaveFailuresCounterName,
             description: "Number of failed process context save operations.");
 
-    public async Task<ProcessorContext?> LoadAsync(
+    public async Task<ProcessContext?> LoadAsync(
         ProcessKey key,
         CancellationToken cancellationToken)
     {
@@ -54,7 +50,7 @@ internal sealed partial class SqliteKaleidoContextStore(
                     .AsSplitQuery()
                     .FirstOrDefaultAsync(cancellationToken);
 
-            return entity is null ? null : ToProcessorContext(entity);
+            return entity is null ? null : ToProcessContext(entity);
         }
         // Only the caller's cancellation is not a load failure (#517).
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
@@ -67,8 +63,8 @@ internal sealed partial class SqliteKaleidoContextStore(
         }
     }
 
-    public async Task<ProcessorContext> SaveAsync(
-        ProcessorContext context,
+    public async Task<ProcessContext> SaveAsync(
+        ProcessContext context,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(
@@ -80,7 +76,7 @@ internal sealed partial class SqliteKaleidoContextStore(
             .StartActivity(SqliteTelemetry.SaveActivityName, ActivityKind.Internal);
         activity?.SetTag(KaleidoTelemetryTags.ProcessId, context.ProcessId.ToString());
 
-        // Inside a transition, the transaction SqliteKaleidoTransactions opened on this DbContext covers
+        // Inside a transition, the transaction SqliteProcessTransactions opened on this DbContext covers
         // the save (and the outbox's rows), and its rollback forgets the tracked changes; on its own, the
         // save opens one, and forgets them itself when it fails (#513).
         var ownTransaction = dbContext.Database.CurrentTransaction is null;
@@ -102,7 +98,7 @@ internal sealed partial class SqliteKaleidoContextStore(
             return result;
         }
         // A conflict is not a store failure: the request lost the race and the caller rereads (409).
-        catch (Exception exception) when (exception is not KaleidoConcurrencyException && (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested))
+        catch (Exception exception) when (exception is not ProcessConcurrencyException && (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested))
         {
             SaveFailuresCounter.Add(1);
             activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
@@ -119,8 +115,8 @@ internal sealed partial class SqliteKaleidoContextStore(
     }
 
     // Applies the context to its tracked entity and writes it; the caller's transaction commits it.
-    private async Task<ProcessorContext> SaveTrackedAsync(
-        ProcessorContext context,
+    private async Task<ProcessContext> SaveTrackedAsync(
+        ProcessContext context,
         CancellationToken cancellationToken)
     {
         var entity = await LoadOrAddEntityAsync(context.Key, cancellationToken);
@@ -128,7 +124,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         if (storedVersion != context.Version)
         {
-            throw new KaleidoConcurrencyException(context.ProcessId);
+            throw new ProcessConcurrencyException(context.ProcessId);
         }
 
         entity.Version = context.Version + 1;
@@ -139,6 +135,7 @@ internal sealed partial class SqliteKaleidoContextStore(
         entity.UpdatedById = context.UpdatedBy?.Id;
         entity.State = context.State;
         entity.TargetProcessorName = context.TargetProcessorName;
+        entity.TargetProcessorVersion = context.TargetProcessorVersion;
         entity.CreatedUtc = context.CreatedUtc == default ? DateTimeOffset.UtcNow : context.CreatedUtc;
         entity.UpdatedUtc = context.UpdatedUtc == default ? DateTimeOffset.UtcNow : context.UpdatedUtc;
 
@@ -159,7 +156,7 @@ internal sealed partial class SqliteKaleidoContextStore(
         return context with { Version = entity.Version };
     }
 
-    private async Task InsertProcessAsync(ProcessorContext context, CancellationToken cancellationToken)
+    private async Task InsertProcessAsync(ProcessContext context, CancellationToken cancellationToken)
     {
         const int SqliteConstraintPrimaryKey = 1555;
 
@@ -169,14 +166,14 @@ internal sealed partial class SqliteKaleidoContextStore(
         }
         catch (DbUpdateException exception) when (exception.InnerException is SqliteException { SqliteExtendedErrorCode: SqliteConstraintPrimaryKey })
         {
-            throw new KaleidoConcurrencyException(context.ProcessId, exception);
+            throw new ProcessConcurrencyException(context.ProcessId, exception);
         }
     }
 
     // Another instance saved the row since it was read (the version no longer matches): this save lost
     // the race. Any other failure (a duplicate outbox event, another constraint, a missing table) is a
     // store failure, not a conflict.
-    private async Task SaveChangesAsync(ProcessorContext context, CancellationToken cancellationToken)
+    private async Task SaveChangesAsync(ProcessContext context, CancellationToken cancellationToken)
     {
         try
         {
@@ -184,12 +181,12 @@ internal sealed partial class SqliteKaleidoContextStore(
         }
         catch (DbUpdateConcurrencyException exception)
         {
-            throw new KaleidoConcurrencyException(context.ProcessId, exception);
+            throw new ProcessConcurrencyException(context.ProcessId, exception);
         }
     }
 
     // The tracked entity with its children, or a new one added to the context.
-    private async Task<ProcessorContextEntity> LoadOrAddEntityAsync(
+    private async Task<ProcessContextEntity> LoadOrAddEntityAsync(
         ProcessKey key,
         CancellationToken cancellationToken)
     {
@@ -203,7 +200,7 @@ internal sealed partial class SqliteKaleidoContextStore(
 
         if (entity is null)
         {
-            entity = new ProcessorContextEntity
+            entity = new ProcessContextEntity
             {
                 ProcessorName = key.ProcessorName,
                 ProcessorVersion = StoredVersion(key.ProcessorVersion),
@@ -216,7 +213,7 @@ internal sealed partial class SqliteKaleidoContextStore(
     }
 
     // All three parts of the key (#552): another processor's or version's row is another process.
-    private static IQueryable<ProcessorContextEntity> ByKey(IQueryable<ProcessorContextEntity> contexts, ProcessKey key)
+    private static IQueryable<ProcessContextEntity> ByKey(IQueryable<ProcessContextEntity> contexts, ProcessKey key)
     {
         var version = StoredVersion(key.ProcessorVersion);
 
@@ -231,8 +228,8 @@ internal sealed partial class SqliteKaleidoContextStore(
     // Update children in place so EF generates only the delta — no
     // delete-all/reinsert-all write amplification per save.
     private static void SyncSteps(
-        ProcessorContextEntity entity,
-        ProcessorContext context)
+        ProcessContextEntity entity,
+        ProcessContext context)
     {
         var incoming = context.Steps
             .ToDictionary(x => x.StepName, StringComparer.Ordinal);
@@ -267,7 +264,7 @@ internal sealed partial class SqliteKaleidoContextStore(
             }
 
             entity.Steps.Add(
-                new ProcessorStepContextEntity
+                new ProcessStepContextEntity
                 {
                     ProcessorName = entity.ProcessorName,
                     ProcessorVersion = entity.ProcessorVersion,
@@ -286,8 +283,8 @@ internal sealed partial class SqliteKaleidoContextStore(
     }
 
     private static void SyncAvailableSteps(
-        ProcessorContextEntity entity,
-        ProcessorContext context)
+        ProcessContextEntity entity,
+        ProcessContext context)
     {
         var incoming = context.AvailableSteps
             .ToHashSet(StringComparer.Ordinal);
@@ -311,7 +308,7 @@ internal sealed partial class SqliteKaleidoContextStore(
             }
 
             entity.AvailableSteps.Add(
-                new ProcessorAvailableStepEntity
+                new ProcessAvailableStepEntity
                 {
                     ProcessorName = entity.ProcessorName,
                     ProcessorVersion = entity.ProcessorVersion,
@@ -323,8 +320,8 @@ internal sealed partial class SqliteKaleidoContextStore(
     }
 
     private static void SyncRequiredStep(
-        ProcessorContextEntity entity,
-        ProcessorContext context)
+        ProcessContextEntity entity,
+        ProcessContext context)
     {
         if (context.RequiredStep is null)
         {
@@ -348,7 +345,7 @@ internal sealed partial class SqliteKaleidoContextStore(
             return;
         }
 
-        entity.RequiredStep = new ProcessorRequiredStepEntity
+        entity.RequiredStep = new ProcessRequiredStepEntity
         {
             ProcessorName = entity.ProcessorName,
             ProcessorVersion = entity.ProcessorVersion,
@@ -363,10 +360,10 @@ internal sealed partial class SqliteKaleidoContextStore(
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    private static ProcessorContext ToProcessorContext(
-        ProcessorContextEntity entity)
+    private static ProcessContext ToProcessContext(
+        ProcessContextEntity entity)
     {
-        return new ProcessorContext
+        return new ProcessContext
         {
             ProcessId = entity.ProcessId,
             ProcessorName = entity.ProcessorName,
@@ -382,6 +379,7 @@ internal sealed partial class SqliteKaleidoContextStore(
                     ? JsonSerializer.Deserialize<InformationRequest>(json, JsonOptions)
                     : null,
             TargetProcessorName = entity.TargetProcessorName,
+            TargetProcessorVersion = entity.TargetProcessorVersion,
 
             CreatedUtc = entity.CreatedUtc,
             UpdatedUtc = entity.UpdatedUtc,

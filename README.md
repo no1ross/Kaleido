@@ -253,16 +253,14 @@ See the [shared HTTP client pipeline](src/Transports/Http/Kaleido.Http.Client/RE
 
 ### Choose process storage
 
-Every store a service uses is chosen explicitly: a service with process steps keeps process state and idempotency records, and one that publishes events through Kaleido's outbox keeps an outbox. A store left at its in-memory default stops the host at startup with `stores_not_chosen` ([ADR 0028](docs/decisions/0028-stores-are-chosen-explicitly.md)); `AddInMemoryStores()` above is that choice for local evaluation (nothing survives a restart, nothing is shared between instances). For local persistence, use the SQLite reference provider instead, in the business-service registration **before `builder.Build()`**:
+Every store a service uses is chosen explicitly: Process state, Process.Server idempotency admission and Eventing outbox have **no implicit in-memory defaults** ([ADR 0048](docs/decisions/0048-explicit-provider-registration-without-default-stores.md)). The temporary `Kaleido.Provider.AddInMemoryProviders()` is a deliberate local/test choice; none of its records survives a restart or is shared between instances. For local persistence, configure `ConnectionStrings:orders` and choose the SQLite reference provider in the business-service registration **before `builder.Build()`**. The preceding combined-host snippets still show unmigrated `AddInMemoryStores()` composition under #585; they are not a current owner-level wiring recipe.
 
 ```csharp
-kaleido
-    .AddSqliteContextStore("Data Source=kaleido-process.db")
-    .AddSqliteOutboxStore("Data Source=kaleido-process.db")
-    .AddSqliteIdempotencyStore("Data Source=kaleido-process.db");
+// appsettings: ConnectionStrings:orders = "Data Source=kaleido-process.db"
+kaleido.AddSqliteProviders("orders");
 ```
 
-The SQLite registration above is from the unmigrated provider: it does **not** yet implement the current generic Process and Process.Server contracts (#587). [`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite/README.md) is a **reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Providers/Kaleido.Provider.SQLite/README.md#using-the-example-implementation)), and `EnsureCreated` never migrates an existing database.
+[`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite/README.md) now implements the neutral Process/Process.Server/Eventing stores and Registry.Server's authority store (#623), but is a **single-machine reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Providers/Kaleido.Provider.SQLite/README.md#registration)). `EnsureCreated` never migrates an existing database; do not silently treat old HTTP-shaped replay rows as current opaque replays.
 
 Production deployments provide and validate stores suited to their infrastructure: `IProcessContextStore` (process state), `IKaleidoOutboxStore` (every event until the relay publishes it), `IProcessTransactions` (state and outbox writes joined in one provider transaction) and Process.Server's `IProcessIdempotencyStore` (neutral admission/replay). Every record is scoped by the service and its version, so services may share one database, and one host per outbox database runs the relay (`AddOutboxRelay<TPublisher>()`) - see [ADR 0036](docs/decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md).
 
@@ -309,7 +307,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Registry.Http`](src/Capabilities/Registry/Kaleido.Registry.Http) / [`Server`](src/Capabilities/Registry/Kaleido.Registry.Http.Server) / [`Client`](src/Capabilities/Registry/Kaleido.Registry.Http.Client) | Fixed HTTP URLs, listener and participant adapter |
 | [`Kaleido.Mcp`](src/Mcp/Mcp) | Caller-visible registry-derived MCP tools and guided continuation |
 | [`Kaleido.Provider`](src/Providers/Kaleido.Provider) | Temporary, non-packable explicit in-memory store registration for tests/development |
-| [`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite) | Reference process, outbox, idempotency and registry stores (migration pending) |
+| [`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite) | One reference SQLite implementation of Process state/transactions, neutral admission, Eventing outbox and Registry authority stores |
 | [`Kaleido.Observability.OpenTelemetry`](src/Observability/Observability.OpenTelemetry) | Opt-in telemetry export |
 | [`Kaleido.Analyzers`](tools/analyzers/Kaleido.Analyzers) | Consumer compile-time checks (`KAL2xxx`), included by `Kaleido` |
 

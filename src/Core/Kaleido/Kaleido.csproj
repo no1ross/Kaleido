@@ -65,6 +65,9 @@
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Server" />
+		<!-- SQLite outbox leases use this host's internal instance identity, never a public caller-supplied id. -->
+		<InternalsVisibleTo Include="Kaleido.Provider.SQLite" />
+		<InternalsVisibleTo Include="Kaleido.Provider.SQLite.UnitTests" />
 		<!-- Process HTTP server overlays and validates its own options with the shared foundation binder. -->
 		<InternalsVisibleTo Include="Kaleido.Process.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http" />

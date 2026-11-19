@@ -162,6 +162,7 @@
     <Project Path="tests/Providers/Kaleido.Provider.UnitTests/Kaleido.Provider.UnitTests.csproj" />
     <Project Path="tests/Providers/Kaleido.Provider.FunctionalTests/Kaleido.Provider.FunctionalTests.csproj" />
     <Project Path="tests/Providers/Kaleido.Provider.SQLite.UnitTests/Kaleido.Provider.SQLite.UnitTests.csproj" />
+    <Project Path="tests/Providers/Kaleido.Provider.SQLite.FunctionalTests/Kaleido.Provider.SQLite.FunctionalTests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <File Path="tools/Directory.Packages.props" />

@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Kaleido.Provider.SQLite.Configuration;
 
 [ExcludeFromCodeCoverage]
-internal sealed class ProcessorAvailableStepEntityConfiguration
-    : IEntityTypeConfiguration<ProcessorAvailableStepEntity>
+internal sealed class ProcessAvailableStepEntityConfiguration
+    : IEntityTypeConfiguration<ProcessAvailableStepEntity>
 {
     public void Configure(
-        EntityTypeBuilder<ProcessorAvailableStepEntity> builder)
+        EntityTypeBuilder<ProcessAvailableStepEntity> builder)
     {
         builder.ToTable(
             "ProcessAvailableSteps");

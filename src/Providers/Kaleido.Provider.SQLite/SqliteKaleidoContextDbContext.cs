@@ -6,7 +6,7 @@ namespace Kaleido.Provider.SQLite;
 
 /// <summary>
 /// The EF Core context of the SQLite reference context store: process state, idempotent results, the
-/// event outbox and its relays' heartbeats. Registered by <c>UseSqliteKaleidoContextStore</c>; its tables are internal
+/// event outbox and its relays' heartbeats. Registered by <c>AddSqliteProviders</c> or an individual SQLite service-store choice; its tables are internal
 /// to the provider.
 /// </summary>
 /// <remarks>
@@ -23,24 +23,24 @@ namespace Kaleido.Provider.SQLite;
 /// }
 /// </code>
 /// </example>
-/// <param name="options">The context options, configured by <c>UseSqliteKaleidoContextStore</c>.</param>
+/// <param name="options">The context options, configured by <c>AddSqliteProviders</c>.</param>
 [ExcludeFromCodeCoverage]
 public sealed class SqliteKaleidoContextDbContext(
     DbContextOptions<SqliteKaleidoContextDbContext> options)
     : DbContext(options)
 {
 
-    internal DbSet<ProcessorContextEntity> ProcessContexts =>
-        Set<ProcessorContextEntity>();
+    internal DbSet<ProcessContextEntity> ProcessContexts =>
+        Set<ProcessContextEntity>();
 
-    internal DbSet<ProcessorStepContextEntity> ProcessStepContexts =>
-        Set<ProcessorStepContextEntity>();
+    internal DbSet<ProcessStepContextEntity> ProcessStepContexts =>
+        Set<ProcessStepContextEntity>();
 
-    internal DbSet<ProcessorAvailableStepEntity> ProcessAvailableSteps =>
-        Set<ProcessorAvailableStepEntity>();
+    internal DbSet<ProcessAvailableStepEntity> ProcessAvailableSteps =>
+        Set<ProcessAvailableStepEntity>();
 
-    internal DbSet<ProcessorRequiredStepEntity> ProcessRequiredSteps =>
-        Set<ProcessorRequiredStepEntity>();
+    internal DbSet<ProcessRequiredStepEntity> ProcessRequiredSteps =>
+        Set<ProcessRequiredStepEntity>();
 
     internal DbSet<IdempotentResultEntity> IdempotentResults =>
         Set<IdempotentResultEntity>();
@@ -56,16 +56,16 @@ public sealed class SqliteKaleidoContextDbContext(
         ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(
-            new ProcessorContextEntityConfiguration());
+            new ProcessContextEntityConfiguration());
 
         modelBuilder.ApplyConfiguration(
-            new ProcessorStepContextEntityConfiguration());
+            new ProcessStepContextEntityConfiguration());
 
         modelBuilder.ApplyConfiguration(
-            new ProcessorAvailableStepEntityConfiguration());
+            new ProcessAvailableStepEntityConfiguration());
 
         modelBuilder.ApplyConfiguration(
-            new ProcessorRequiredStepEntityConfiguration());
+            new ProcessRequiredStepEntityConfiguration());
 
         modelBuilder.ApplyConfiguration(
             new IdempotentResultEntityConfiguration());

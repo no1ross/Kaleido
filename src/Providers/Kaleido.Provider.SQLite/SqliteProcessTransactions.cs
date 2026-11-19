@@ -1,17 +1,16 @@
-using Kaleido.Storage;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Kaleido.Provider.SQLite;
 
-// The transactions of process-state transitions on SQLite (registered by AddSqliteContextStore): one
+// The transactions of process-state transitions on SQLite (registered by AddSqliteContextProvider): one
 // database transaction on the shared SqliteKaleidoContextDbContext, so the context store and the
 // outbox store - or an outbox store of the host's own that joins it (ISqliteKaleidoTransaction) - commit together.
-internal sealed class SqliteKaleidoTransactions(SqliteKaleidoContextDbContext dbContext) : IKaleidoTransactions
+internal sealed class SqliteProcessTransactions(SqliteKaleidoContextDbContext dbContext) : IProcessTransactions
 {
-    public async Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken) =>
+    public async Task<IProcessTransaction> BeginAsync(CancellationToken cancellationToken) =>
         new Transaction(dbContext, await dbContext.Database.BeginTransactionAsync(cancellationToken));
 
-    private sealed class Transaction(SqliteKaleidoContextDbContext dbContext, IDbContextTransaction transaction) : IKaleidoTransaction
+    private sealed class Transaction(SqliteKaleidoContextDbContext dbContext, IDbContextTransaction transaction) : IProcessTransaction
     {
         private bool _committed;
 

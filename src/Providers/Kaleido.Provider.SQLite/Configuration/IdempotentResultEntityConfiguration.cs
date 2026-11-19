@@ -19,7 +19,8 @@ internal sealed class IdempotentResultEntityConfiguration
         builder.Property(x => x.ProcessorVersion).HasMaxLength(KaleidoServiceOptions.MaxServiceVersionLength);
         builder.Property(x => x.AdmissionId).HasMaxLength(36).IsRequired();
         builder.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
-        builder.Property(x => x.Response).IsRequired();
+        builder.Property(x => x.ReplayFormat);
+        builder.Property(x => x.ReplayPayload);
 
         // Stored as ticks so expired rows can be found with a plain comparison in SQLite; the store
         // writes these columns with raw SQL (an atomic insert-if-absent), in the same units.

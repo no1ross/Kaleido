@@ -1,4 +1,3 @@
-using Kaleido.Storage;
 namespace Kaleido.Provider.SQLite.Entities;
 
 internal sealed class IdempotentResultEntity
@@ -35,7 +34,7 @@ internal sealed class IdempotentResultEntity
         set;
     } = string.Empty;
 
-    public IdempotentResultState State
+    public IdempotencyState State
     {
         get;
         set;
@@ -47,17 +46,17 @@ internal sealed class IdempotentResultEntity
         set;
     }
 
-    public int StatusCode
+    public string? ReplayFormat
     {
         get;
         set;
     }
 
-    public string Response
+    public byte[]? ReplayPayload
     {
         get;
         set;
-    } = string.Empty;
+    }
 
     public DateTimeOffset ExpiresUtc
     {

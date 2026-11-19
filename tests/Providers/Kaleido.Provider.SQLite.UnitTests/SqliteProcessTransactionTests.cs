@@ -1,4 +1,3 @@
-using Kaleido.Eventing;
 using Kaleido.Provider.SQLite.Entities;
 using Kaleido.Storage;
 using Microsoft.Data.Sqlite;
@@ -7,12 +6,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Kaleido.Provider.SQLite.UnitTests;
 
 // What an outbox store of the host's own on the same database joins to commit with the state (ADR 0023).
-public sealed class SqliteKaleidoTransactionTests
+public sealed class SqliteProcessTransactionTests
     : Kaleido.UnitTests.SutFixture, IDisposable
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
-    public SqliteKaleidoTransactionTests()
+    public SqliteProcessTransactionTests()
     {
         _connection.Open();
         using var db = CreateDbContext();
@@ -24,10 +23,10 @@ public sealed class SqliteKaleidoTransactionTests
     private SqliteKaleidoContextDbContext CreateDbContext() =>
         new(new DbContextOptionsBuilder<SqliteKaleidoContextDbContext>().UseSqlite(_connection).Options);
 
-    private static SqliteKaleidoTransaction CreateSut(SqliteKaleidoContextDbContext dbContext) => new(dbContext);
+    private static SqliteProcessTransaction CreateSut(SqliteKaleidoContextDbContext dbContext) => new(dbContext);
 
     private static KaleidoOutboxEvent Event() =>
-        new() { EventId = Guid.NewGuid(), EventType = KaleidoEventTypes.ProcessStepCompleted, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
+        new() { EventId = Guid.NewGuid(), EventType = ProcessEventTypes.ProcessStepCompleted, Payload = "{}", OccurredUtc = DateTimeOffset.UtcNow };
 
     [Fact]
     public void Current_OutsideATransition_IsNull()

@@ -8,7 +8,7 @@ namespace Kaleido.Provider.SQLite;
 /// database to join - typically an outbox store of the host's own (<c>AddOutboxStore&lt;T&gt;()</c>) writing
 /// its rows in the transaction the SQLite context store saves the state in, so both commit together
 /// (ADR 0023, ADR 0036).
-/// Registered by <c>AddSqliteContextStore</c> (scoped).
+/// Registered by <c>AddSqliteContextProvider</c> (scoped).
 /// </summary>
 /// <remarks>
 /// Atomic only on the same database file: a writer on another database cannot join (no transaction
@@ -43,7 +43,7 @@ public interface ISqliteKaleidoTransaction
     DbTransaction? Current { get; }
 }
 
-internal sealed class SqliteKaleidoTransaction(SqliteKaleidoContextDbContext dbContext) : ISqliteKaleidoTransaction
+internal sealed class SqliteProcessTransaction(SqliteKaleidoContextDbContext dbContext) : ISqliteKaleidoTransaction
 {
     public DbTransaction? Current => dbContext.Database.CurrentTransaction?.GetDbTransaction();
 }

@@ -32,7 +32,7 @@ publisher. One relay publishes them ([ADR 0036](../decisions/0036-stores-scoped-
 | Part | Registration | Runs where |
 | --- | --- | --- |
 | **The event writer and outbox default** | `AddEventing(options?)` after `AddKaleido()` | every host writing or relaying events |
-| **The durable outbox store** | `AddOutboxStore<T>()` or `AddSqliteOutboxStore`, on the context store's database when state is persisted with it | in each event-writing service |
+| **The durable outbox store** | `AddOutboxStore<T>()` or `AddSqliteOutboxProvider`, on the context store's database when state is persisted with it | in each event-writing service |
 | **The relay** and its `IEventPublisher` | `AddOutboxRelay<TPublisher>()` | on one host per outbox database: one of the services, or a host with nothing else |
 
 A host that runs only the relay and publishes no steps or queries also calls `AddProcessEventDispatch()`

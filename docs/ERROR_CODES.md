@@ -127,7 +127,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `InvalidHttpOptions` | `invalid_http_options` | An HTTP transport setting (`Kaleido:Http`, `Kaleido:Http:Map`, or the options passed to `AddHttp`/`MapKaleidoHttp`) is out of range or cannot be read, e.g. a non-positive idempotency lease (startup) |
 | `DuplicateRegistration` | `duplicate_registration` | `AddKaleido()` or `AddHttp()` was called a second time on the same service collection; a host runs one Kaleido service, configured in one call of each |
 | `ConflictingOutbox` | `conflicting_outbox` | Two outbox stores were registered, or two relays with different publishers (`AddOutboxRelay<TPublisher>()`): a service has one outbox store, and a host runs one relay ([ADR 0036](decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)) |
-| `ConflictingStore` | `conflicting_store` | Two different implementations of one store or of the transactions were registered (e.g. `AddSqliteContextStore` and `AddContextStore<T>()`) |
+| `ConflictingStore` | `conflicting_store` | Two different implementations of one store or of the transactions were registered (e.g. `AddSqliteContextProvider` and `AddContextStore<T>()`) |
 | `StoresNotChosen` | `stores_not_chosen` | When the host starts: a store the service uses is still the in-memory default (process state or idempotency records with process steps; the outbox store with a publisher on Kaleido's outbox). Register durable stores, or call `AddInMemoryStores()` ([ADR 0028](decisions/0028-stores-are-chosen-explicitly.md)) |
 
 ---
@@ -192,7 +192,9 @@ The reference provider owns its own code; core knows nothing about it.
 | Constant | Code | Meaning |
 | --- | --- | --- |
 | `InvalidConnectionString` | `invalid_connection_string` | A SQLite store's connection string cannot be parsed at registration |
-| `ConnectionStringMismatch` | `connection_string_mismatch` | `AddSqliteContextStore`, `AddSqliteOutboxStore` and `AddSqliteIdempotencyStore` were given different connection strings; they share one database |
+| `InvalidStoredRecord` | `sqlite_invalid_stored_record` | A persisted completed replay or Registry capability row is missing data required by the current provider; repair/migrate the database rather than replaying a partial answer |
+| `MissingConnectionString` | `sqlite_missing_connection_string` | The requested `ConnectionStrings:{name}` entry for `AddSqliteProviders(name)` is missing or blank |
+| `ConnectionStringMismatch` | `connection_string_mismatch` | `AddSqliteContextProvider`, `AddSqliteOutboxProvider` and `AddSqliteIdempotencyProvider` were given different connection strings; they share one database |
 
 ---
 

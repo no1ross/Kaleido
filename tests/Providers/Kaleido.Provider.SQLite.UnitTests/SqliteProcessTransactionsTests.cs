@@ -5,12 +5,12 @@ namespace Kaleido.Provider.SQLite.UnitTests;
 
 // The transaction of a process-state transition on SQLite: one database transaction on the DbContext
 // the stores share (their atomicity end to end: Kaleido.IntegrationTests/SqliteTransitionTests).
-public sealed class SqliteKaleidoTransactionsTests
+public sealed class SqliteProcessTransactionsTests
     : Kaleido.UnitTests.SutFixture, IDisposable
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
-    public SqliteKaleidoTransactionsTests()
+    public SqliteProcessTransactionsTests()
     {
         _connection.Open();
         using var db = CreateDbContext();
@@ -22,7 +22,7 @@ public sealed class SqliteKaleidoTransactionsTests
     private SqliteKaleidoContextDbContext CreateDbContext() =>
         new(new DbContextOptionsBuilder<SqliteKaleidoContextDbContext>().UseSqlite(_connection).Options);
 
-    private static SqliteKaleidoTransactions CreateSut(SqliteKaleidoContextDbContext dbContext) => new(dbContext);
+    private static SqliteProcessTransactions CreateSut(SqliteKaleidoContextDbContext dbContext) => new(dbContext);
 
     // A write on the DbContext, as a store makes it.
     private static Task<int> WriteAsync(SqliteKaleidoContextDbContext db) =>

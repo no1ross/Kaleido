@@ -11,14 +11,28 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Using Include="Kaleido.Processor" />
-		<Using Include="Kaleido.Processor.Execution" />
+		<Using Include="System.Diagnostics" />
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Context" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Process.Exceptions" />
+		<Using Include="Kaleido.Process.Storage" />
+		<Using Include="Kaleido.Process.Server" />
+		<Using Include="Kaleido.Process.Server.Idempotency" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Server" />
+		<Using Include="Kaleido.Storage" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
-		<!-- One provider per technology implements every Kaleido store it serves: the control registry's too (#553). -->
-		<ProjectReference Include="..\..\Registry\Registry\Kaleido.Registry.csproj" />
+		<ProjectReference Include="..\Kaleido.Provider\Kaleido.Provider.csproj" />
+		<!-- The same SQLite provider also implements the existing control Registry store contract. -->
+		<ProjectReference Include="..\..\Capabilities\Registry\Kaleido.Registry.Server\Kaleido.Registry.Server.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

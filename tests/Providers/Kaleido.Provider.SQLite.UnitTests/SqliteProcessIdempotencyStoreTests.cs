@@ -1,4 +1,5 @@
-using Kaleido.Storage;
+using System.Text;
+using Kaleido.Exceptions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -6,7 +7,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Provider.SQLite.UnitTests;
 
-public sealed class SqliteKaleidoIdempotencyStoreTests
+public sealed class SqliteProcessIdempotencyStoreTests
     : Kaleido.UnitTests.SutFixture
 {
     private static SqliteKaleidoContextDbContext CreateDbContext(IInterceptor? interceptor = null)
@@ -39,21 +40,21 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
 
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 10, 28, 12, 0, 0, TimeSpan.Zero));
 
-    private SqliteKaleidoIdempotencyStore CreateSut(SqliteKaleidoContextDbContext dbContext) => new(dbContext, time);
+    private SqliteProcessIdempotencyStore CreateSut(SqliteKaleidoContextDbContext dbContext) => new(dbContext, time);
 
-    private IdempotentResult Admission(string key, DateTimeOffset? expiresUtc = null, DateTimeOffset? leaseUntilUtc = null, string hash = "hash") =>
+    private IdempotencyRecord Admission(string key, DateTimeOffset? expiresUtc = null, DateTimeOffset? leaseUntilUtc = null, string hash = "hash") =>
         new()
         {
             Key = key,
             AdmissionId = Guid.NewGuid(),
             RequestHash = hash,
-            State = IdempotentResultState.InProgress,
+            State = IdempotencyState.InProgress,
             LeaseUntilUtc = leaseUntilUtc ?? time.GetUtcNow().AddMinutes(5),
             ExpiresUtc = expiresUtc ?? time.GetUtcNow().AddHours(1),
         };
 
-    private static IdempotentResult Completed(IdempotentResult admission, string response) =>
-        admission with { State = IdempotentResultState.Completed, StatusCode = 200, Response = response };
+    private static IdempotencyRecord Completed(IdempotencyRecord admission, string response) =>
+        admission with { State = IdempotencyState.Completed, Replay = new IdempotencyReplay("test/binary", Encoding.UTF8.GetBytes(response)) };
 
     [Fact]
     public async Task AdmitAsync_ANewKey_IsAdmitted_AndASecondAdmissionGetsTheRecordInProgress()
@@ -66,7 +67,7 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
 
         var existing = await sut.AdmitAsync(Admission("svc:alice:k1", hash: "other"), TestContext.Current.CancellationToken);
         Assert.NotNull(existing);
-        Assert.Equal(IdempotentResultState.InProgress, existing.State);
+        Assert.Equal(IdempotencyState.InProgress, existing.State);
         Assert.Equal("hash", existing.RequestHash);
         Assert.Equal(lease.UtcTicks, existing.LeaseUntilUtc.UtcTicks);
     }
@@ -105,7 +106,7 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         var existing = await CreateSut(after).AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken);
 
         Assert.NotNull(existing);
-        Assert.Equal(IdempotentResultState.InProgress, existing.State);
+        Assert.Equal(IdempotencyState.InProgress, existing.State);
         Assert.True(existing.LeaseUntilUtc < time.GetUtcNow());
     }
 
@@ -121,10 +122,49 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
 
         var existing = await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken);
         Assert.NotNull(existing);
-        Assert.Equal(IdempotentResultState.Completed, existing.State);
-        Assert.Equal(200, existing.StatusCode);
-        Assert.Equal("""{"processId":"p"}""", existing.Response);
+        Assert.Equal(IdempotencyState.Completed, existing.State);
+        Assert.Equal("test/binary", Assert.IsType<IdempotencyReplay>(existing.Replay).Format);
+        Assert.Equal("""{"processId":"p"}""", Encoding.UTF8.GetString(existing.Replay.Payload));
         Assert.Equal(admission.AdmissionId, existing.AdmissionId);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_RoundTripsOpaqueBinaryReplayWithoutReinterpretingIt()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var admission = Admission("svc:alice:binary");
+        await sut.AdmitAsync(admission, TestContext.Current.CancellationToken);
+        byte[] payload = [0, 1, 255];
+
+        Assert.True(await sut.CompleteAsync(admission with
+        {
+            State = IdempotencyState.Completed,
+            Replay = new IdempotencyReplay("transport/binary-v2", payload),
+        }, TestContext.Current.CancellationToken));
+        payload[0] = 42;
+        dbContext.ChangeTracker.Clear();
+        var replay = Assert.IsType<IdempotencyReplay>(
+            (await sut.AdmitAsync(Admission(admission.Key), TestContext.Current.CancellationToken))?.Replay);
+        Assert.Equal("transport/binary-v2", replay.Format);
+        Assert.Equal([0, 1, 255], replay.Payload);
+    }
+
+    [Fact]
+    public async Task AdmitAsync_ACompletedRowWithoutReplay_RefusesAnUnsafePartialAnswer()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var admission = Admission("svc:alice:corrupt");
+        await sut.AdmitAsync(admission, TestContext.Current.CancellationToken);
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE IdempotentResults SET State = {(int)IdempotencyState.Completed} WHERE Key = {admission.Key}",
+            TestContext.Current.CancellationToken);
+
+        var failure = await Assert.ThrowsAsync<KaleidoConfigurationException>(() =>
+            sut.AdmitAsync(Admission(admission.Key), TestContext.Current.CancellationToken));
+
+        Assert.Equal(SqliteErrorCodes.InvalidStoredRecord, failure.Code);
     }
 
     [Fact]
@@ -135,9 +175,9 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         var admission = Admission("svc:alice:k1");
         await sut.AdmitAsync(admission, TestContext.Current.CancellationToken);
 
-        Assert.True(await sut.CompleteAsync(admission with { State = IdempotentResultState.OutcomeUnknown }, TestContext.Current.CancellationToken));
+        Assert.True(await sut.CompleteAsync(admission with { State = IdempotencyState.OutcomeUnknown }, TestContext.Current.CancellationToken));
 
-        Assert.Equal(IdempotentResultState.OutcomeUnknown, (await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken))?.State);
+        Assert.Equal(IdempotencyState.OutcomeUnknown, (await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken))?.State);
     }
 
     // A finalized record is final: neither a second completion nor a release changes it.
@@ -153,7 +193,8 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         Assert.False(await sut.CompleteAsync(Completed(admission, "{\"again\":true}"), TestContext.Current.CancellationToken));
         Assert.False(await sut.ReleaseAsync(admission.Key, admission.AdmissionId, TestContext.Current.CancellationToken));
 
-        Assert.Equal("{}", (await sut.AdmitAsync(Admission("svc:alice:done"), TestContext.Current.CancellationToken))?.Response);
+        Assert.Equal("{}", Encoding.UTF8.GetString(Assert.IsType<IdempotencyReplay>(
+            (await sut.AdmitAsync(Admission("svc:alice:done"), TestContext.Current.CancellationToken))?.Replay).Payload));
     }
 
     [Fact]
@@ -167,6 +208,19 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
         Assert.True(await sut.ReleaseAsync(admission.Key, admission.AdmissionId, TestContext.Current.CancellationToken));
 
         Assert.Null(await sut.AdmitAsync(Admission("svc:alice:failed"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task CompleteAsync_AfterExpiryWithoutAReplacement_DoesNotFinalizeAnAbandonedAdmission()
+    {
+        using var dbContext = CreateDbContext();
+        var sut = CreateSut(dbContext);
+        var admission = Admission("svc:alice:expired");
+        Assert.Null(await sut.AdmitAsync(admission, TestContext.Current.CancellationToken));
+        time.Advance(TimeSpan.FromHours(1));
+
+        Assert.False(await sut.CompleteAsync(Completed(admission, "late"), TestContext.Current.CancellationToken));
+        Assert.False(await sut.ReleaseAsync(admission.Key, admission.AdmissionId, TestContext.Current.CancellationToken));
     }
 
     // #441: two service instances on one database file. Instance 1 admits A, whose record expires;
@@ -193,7 +247,7 @@ public sealed class SqliteKaleidoIdempotencyStoreTests
                 var existing = await CreateSut(second).AdmitAsync(Admission("svc:alice:k"), TestContext.Current.CancellationToken);
                 Assert.NotNull(existing);
                 Assert.Equal(b.AdmissionId, existing.AdmissionId);
-                Assert.Equal(IdempotentResultState.InProgress, existing.State);
+                Assert.Equal(IdempotencyState.InProgress, existing.State);
                 Assert.True(await CreateSut(second).CompleteAsync(Completed(b, "{\"from\":\"b\"}"), TestContext.Current.CancellationToken));
             }
         }

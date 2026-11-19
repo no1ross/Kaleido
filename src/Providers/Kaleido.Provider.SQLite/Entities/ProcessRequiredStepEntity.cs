@@ -1,6 +1,6 @@
 namespace Kaleido.Provider.SQLite.Entities;
 
-internal sealed class ProcessorAvailableStepEntity
+internal sealed class ProcessRequiredStepEntity
 {
     // The owning processor and its version (#552): with ProcessId, the key. An unversioned processor's
     // version is stored empty (key columns are never null).
@@ -28,13 +28,14 @@ internal sealed class ProcessorAvailableStepEntity
         set;
     } = string.Empty;
 
-    public int Sequence
+    /// <summary>The pending information request for this step, as JSON; null when none.</summary>
+    public string? InformationRequestJson
     {
         get;
         set;
     }
 
-    public ProcessorContextEntity? Context
+    public ProcessContextEntity? Context
     {
         get;
         set;

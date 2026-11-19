@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Kaleido.Provider.SQLite.Configuration;
 
 [ExcludeFromCodeCoverage]
-internal sealed class ProcessorStepContextEntityConfiguration
-    : IEntityTypeConfiguration<ProcessorStepContextEntity>
+internal sealed class ProcessStepContextEntityConfiguration
+    : IEntityTypeConfiguration<ProcessStepContextEntity>
 {
     public void Configure(
-        EntityTypeBuilder<ProcessorStepContextEntity> builder)
+        EntityTypeBuilder<ProcessStepContextEntity> builder)
     {
         builder.ToTable(
             "ProcessStepContexts");

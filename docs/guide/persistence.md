@@ -20,7 +20,7 @@ This heading is retained for existing links, but the former in-memory defaults a
 
 | Choice | Registration | For |
 |---|---|---|
-| SQLite reference provider | `AddSqliteContextStore`, `AddSqliteOutboxStore`, `AddSqliteIdempotencyStore` (one database) | samples, local development, a reference to copy ([README](../../src/Providers/Kaleido.Provider.SQLite/README.md)) |
+| SQLite reference provider | `AddSqliteProviders("orders")` or individual `AddSqliteContextProvider`, `AddSqliteOutboxProvider`, `AddSqliteIdempotencyProvider` (one service database); `AddSqliteRegistryProvider` for the authority's separate database | samples, local development, a reference to copy ([README](../../src/Providers/Kaleido.Provider.SQLite/README.md)) |
 | Your own stores | `AddContextStore<T>()`, `AddOutboxStore<T>()`, `AddIdempotencyStore<T>()`, `AddTransactions<T>()` | production, on your database |
 | In memory ([explicit Provider choice](../../src/Providers/Kaleido.Provider/README.md)) | `AddInMemoryProviders()` | tests, local evaluation |
 

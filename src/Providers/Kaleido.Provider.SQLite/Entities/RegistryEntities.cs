@@ -2,10 +2,10 @@ namespace Kaleido.Provider.SQLite.Entities;
 
 // The control registry's tables (#553). Times are UTC ticks; ids are Guid "N" strings.
 
-// One build (revision) of a service version, with its capabilities as the registry serialized them.
+// One deployed build of a service version, with its typed capabilities serialized by this provider.
 internal sealed class RegistryRegistrationEntity
 {
-    public string Revision { get; set; } = string.Empty;
+    public string BuildVersion { get; set; } = string.Empty;
 
     public string ServiceName { get; set; } = string.Empty;
 
@@ -25,7 +25,7 @@ internal sealed class RegistryInstanceEntity
 
     public string ServiceVersion { get; set; } = string.Empty;
 
-    public string Revision { get; set; } = string.Empty;
+    public string BuildVersion { get; set; } = string.Empty;
 
     public bool Healthy { get; set; }
 

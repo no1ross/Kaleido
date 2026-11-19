@@ -35,6 +35,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Mcp.UnitTests` | `src/Mcp/Mcp` catalogs, schemas, tool invoker and naming |
 | `Kaleido.Mcp.FunctionalTests` | MCP over a real host and the SDK client |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Providers/Kaleido.Provider.SQLite` store and transaction fidelity |
+| `Kaleido.Provider.SQLite.FunctionalTests` | Real file-backed Process/SQLite host restart, opaque replay and state/outbox rollback |
 | `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Observability/Observability.OpenTelemetry` registration and telemetry names |
 | `Kaleido.Analyzers.UnitTests` | consumer `KAL2xxx` rules |
 | `Kaleido.Analyzers.Source.UnitTests` | contributor `KAL0xxx` rules |

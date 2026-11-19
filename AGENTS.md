@@ -62,7 +62,7 @@ Project READMEs explain behavior, the [architecture map](./docs/architecture/REA
 | [Registry.Server](./src/Capabilities/Registry/Kaleido.Registry.Server/README.md), [Client](./src/Capabilities/Registry/Kaleido.Registry.Client/README.md) | authority state; explicit participation | transport, capability runtime |
 | [Registry.Http](./src/Capabilities/Registry/Kaleido.Registry.Http/README.md), [Server](./src/Capabilities/Registry/Kaleido.Registry.Http.Server/README.md), [Client](./src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md) | fixed URLs; HTTP listener/client | persistence, planning |
 | [`Kaleido.Observability.OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md) | OpenTelemetry wiring | instrumentation emitted by core |
-| [`Kaleido.Provider.SQLite`](./src/Providers/Kaleido.Provider.SQLite/README.md) | reference core and registry stores and transactions on SQLite | production-provider guarantees |
+| [`Kaleido.Provider.SQLite`](./src/Providers/Kaleido.Provider.SQLite/README.md) | reference Process/Eventing/Registry stores on SQLite | multi-node production guarantees |
 | [gRPC placeholders](./src/Grpc/Grpc/README.md) (`Kaleido.Grpc*`, `Kaleido.Registry.Grpc`) | future protocol boundaries, not packable yet | a gRPC implementation |
 
 ## General contributor rules

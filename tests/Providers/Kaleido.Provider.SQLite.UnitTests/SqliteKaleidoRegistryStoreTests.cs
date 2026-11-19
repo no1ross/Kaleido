@@ -1,5 +1,6 @@
+using Kaleido.Exceptions;
 using Kaleido.Registry;
-using Kaleido.Registry.UnitTests;
+using Kaleido.Registry.Server.UnitTests;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,11 +50,11 @@ public sealed class SqliteKaleidoRegistryStoreTests
             InstanceId = Guid.NewGuid(),
             ServiceName = "radiology",
             ServiceVersion = "2026-11",
-            Revision = "r1",
+            BuildVersion = "1.0.0",
             RegisteredUtc = registered,
             LastHeartbeatUtc = registered.AddTicks(1),
         };
-        await CreateSut().AddRegistrationAsync(new RegistryRegistrationRecord { ServiceName = "radiology", ServiceVersion = "2026-11", Revision = "r1", RegisteredUtc = registered }, "{}", Cancel);
+        await CreateSut().AddRegistrationAsync(new RegistryRegistrationRecord { ServiceName = "radiology", ServiceVersion = "2026-11", BuildVersion = "1.0.0", RegisteredUtc = registered }, new KaleidoRegistry(), Cancel);
         await CreateSut().SaveInstanceAsync(instance, Cancel);
 
         var contents = await CreateSut().ReadAsync(Cancel);
@@ -62,6 +63,52 @@ public sealed class SqliteKaleidoRegistryStoreTests
         Assert.Equal(instance, read);
         Assert.Equal(TimeSpan.Zero, read.RegisteredUtc.Offset);
         Assert.Equal(registered, Assert.Single(contents.Registrations).RegisteredUtc);
+    }
+
+    [Fact]
+    public async Task GetCapabilitiesAsync_RoundTripsQueryableBindingsWithoutAQueryableRuntimeDependency()
+    {
+        var registration = new RegistryRegistrationRecord
+        {
+            ServiceName = "radiology",
+            ServiceVersion = "1",
+            BuildVersion = "build-query",
+            RegisteredUtc = new DateTimeOffset(2026, 11, 18, 12, 0, 0, TimeSpan.Zero),
+        };
+        var capabilities = new KaleidoRegistry
+        {
+            Queryables = [new QueryableRegistryItem
+            {
+                ServiceName = "radiology",
+                ServiceVersion = "1",
+                Name = "Directory",
+                Bindings = new RegistryTransportBindings
+                {
+                    Http = [new RegistryHttpOperation { Operation = "query", Method = "POST", Path = "/radiology/1/queryable/directory/query" }],
+                },
+            }],
+        };
+        await CreateSut().AddRegistrationAsync(registration, capabilities, Cancel);
+
+        var versions = await CreateSut().GetCapabilitiesAsync("radiology", "1", [registration.BuildVersion], Cancel);
+
+        var source = Assert.Single(Assert.Single(versions).Value.Queryables);
+        Assert.Equal("Directory", source.Name);
+        Assert.Equal("/radiology/1/queryable/directory/query", Assert.Single(source.Bindings.Http).Path);
+    }
+
+    [Fact]
+    public async Task GetCapabilitiesAsync_AnEmptyStoredCapability_RefusesToPresentAFalsePublication()
+    {
+        using var context = Context();
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO RegistryRegistrations (ServiceName, ServiceVersion, BuildVersion, Capabilities, RegisteredUtc) VALUES ('radiology', '1', 'broken', 'null', 0)",
+            TestContext.Current.CancellationToken);
+
+        var failure = await Assert.ThrowsAsync<KaleidoConfigurationException>(() =>
+            CreateSut().GetCapabilitiesAsync("radiology", "1", ["broken"], Cancel));
+
+        Assert.Equal(SqliteErrorCodes.InvalidStoredRecord, failure.Code);
     }
 
     public void Dispose()

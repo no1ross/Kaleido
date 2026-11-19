@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Kaleido.Provider.SQLite.Configuration;
 
-// Service names compare without case, as everywhere in Kaleido; versions and revisions exactly.
+// Service names compare without case, as everywhere in Kaleido; route and build versions exactly.
 [ExcludeFromCodeCoverage]
 internal sealed class RegistryRegistrationEntityConfiguration
     : IEntityTypeConfiguration<RegistryRegistrationEntity>
@@ -12,10 +12,10 @@ internal sealed class RegistryRegistrationEntityConfiguration
     public void Configure(EntityTypeBuilder<RegistryRegistrationEntity> builder)
     {
         builder.ToTable("RegistryRegistrations");
-        builder.HasKey(x => x.Revision);
-        builder.Property(x => x.Revision).HasMaxLength(64);
+        builder.HasKey(x => new { x.ServiceName, x.ServiceVersion, x.BuildVersion });
         builder.Property(x => x.ServiceName).HasMaxLength(200).UseCollation("NOCASE").IsRequired();
         builder.Property(x => x.ServiceVersion).HasMaxLength(KaleidoServiceOptions.MaxServiceVersionLength).IsRequired();
+        builder.Property(x => x.BuildVersion).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Capabilities).IsRequired();
     }
 }
@@ -31,11 +31,11 @@ internal sealed class RegistryInstanceEntityConfiguration
         builder.Property(x => x.InstanceId).HasMaxLength(32);
         builder.Property(x => x.ServiceName).HasMaxLength(200).UseCollation("NOCASE").IsRequired();
         builder.Property(x => x.ServiceVersion).HasMaxLength(KaleidoServiceOptions.MaxServiceVersionLength).IsRequired();
-        builder.Property(x => x.Revision).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.BuildVersion).HasMaxLength(200).IsRequired();
 
         // The sweep removes by last heartbeat; registrations are kept while an instance runs them.
         builder.HasIndex(x => x.LastHeartbeatUtc);
-        builder.HasIndex(x => x.Revision);
+        builder.HasIndex(x => new { x.ServiceName, x.ServiceVersion, x.BuildVersion });
     }
 }
 

@@ -21,7 +21,7 @@ public abstract class IKaleidoRegistryStoreTests
 
     // Insert-if-absent: many instances of one build send the same registration.
     [Fact]
-    public async Task ARegistration_IsStoredOnce_PerRevision_WithItsCapabilities()
+    public async Task ARegistration_IsStoredOnce_PerBuildVersion_WithItsCapabilities()
     {
         var store = CreateStore();
 
@@ -30,9 +30,10 @@ public abstract class IKaleidoRegistryStoreTests
         await store.AddRegistrationAsync(V2.Record, V2.Capabilities, Cancel);
 
         Assert.Equal([V1.Record, V2.Record], (await CreateStore().ReadAsync(Cancel)).Registrations.OrderBy(x => x.ServiceVersion, StringComparer.Ordinal));
-        Assert.Equal(
-            new Dictionary<string, KaleidoRegistry> { [V1.Record.BuildVersion] = V1.Capabilities },
-            await CreateStore().GetCapabilitiesAsync(V1.Record.ServiceName, V1.Record.ServiceVersion, [V1.Record.BuildVersion, "gone"], Cancel));
+        var capabilities = await CreateStore().GetCapabilitiesAsync(V1.Record.ServiceName, V1.Record.ServiceVersion, [V1.Record.BuildVersion, "gone"], Cancel);
+        var published = Assert.Single(capabilities);
+        Assert.Equal(V1.Record.BuildVersion, published.Key);
+        Assert.Equivalent(V1.Capabilities, published.Value, strict: true);
         Assert.Empty(await CreateStore().GetCapabilitiesAsync(V1.Record.ServiceName, V1.Record.ServiceVersion, [], Cancel));
     }
 
