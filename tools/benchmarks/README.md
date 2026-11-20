@@ -17,7 +17,7 @@ documented, with the machine it ran on.
 
 A full page is when the query engine counts the results: it reads the page (50 rows), then the
 total through `IQueryContextExecutor<TView>`. EF Core with SQLite (in memory), every row matching;
-Kaleido's default executor against an executor using EF Core's `CountAsync`/`ToListAsync`.
+Kaleido's default executor registered through `AddKaleido(...).AddQueryable()` against an executor using EF Core's `CountAsync`/`ToListAsync`.
 
 | Rows | Default executor | Provider executor (`SELECT COUNT`) |
 |---|---|---|

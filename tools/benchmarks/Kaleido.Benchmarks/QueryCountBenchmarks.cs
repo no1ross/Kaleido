@@ -57,17 +57,18 @@ public class QueryCountBenchmarks : IDisposable
             transaction.Commit();
         }
 
-        // Kaleido's own default executor, as AddKaleido() registers it for a service with a query source
+        // Kaleido's own default executor, as AddQueryable() registers it for a service with a query source
         // (and no executor of the host's own).
         _services = new ServiceCollection()
             .AddLogging()
             .AddKaleido(new ConfigurationBuilder().Build(), new()
             {
                 ServiceName = "benchmarks",
-                AuthorizationMode = KaleidoAuthorizationMode.None,
+                ServiceVersion = "1",
                 Assemblies = [typeof(QueryCountBenchmarks).Assembly],
                 TypeFilter = type => type == typeof(MemberSource),
             })
+            .AddQueryable()
             .Services
             .BuildServiceProvider();
         _defaultExecutor = _services.GetRequiredService<IQueryContextExecutor<MemberRow>>();
@@ -122,7 +123,7 @@ public sealed class MemberRow : IQueryContext
     public string City { get; set; } = string.Empty;
 }
 
-/// <summary>The source that makes AddKaleido() register the query pipeline for <see cref="MemberRow"/>.</summary>
+/// <summary>The source that makes AddQueryable() register the query pipeline for <see cref="MemberRow"/>.</summary>
 [QuerySource(DisplayName = "Members", Description = "Benchmark members.")]
 public sealed class MemberSource : IQuerySource<MemberRow>
 {

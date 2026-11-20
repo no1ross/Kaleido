@@ -12,5 +12,6 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\..\src\Core\Kaleido\Kaleido.csproj" />
+        <ProjectReference Include="..\..\..\src\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />
     </ItemGroup>
 </Project>
