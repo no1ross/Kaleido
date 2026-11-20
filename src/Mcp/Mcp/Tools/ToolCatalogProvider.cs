@@ -4,14 +4,13 @@ using Microsoft.Extensions.Logging;
 namespace Kaleido.Mcp.Tools;
 
 /// <summary>
-/// Gives the current caller their tools: the host's registry as this caller may see it
-/// (<see cref="IKaleidoRegistryService"/> — the central registry's hydrated copy filtered per caller),
-/// translated into MCP tools.
+/// Gives the authenticated inbound caller tools from the central Registry's caller-filtered read,
+/// translated into MCP tools. The participant's full hydrated copy is used only for stable names.
 /// </summary>
 /// <remarks>
 /// Nothing is cached per caller. The translation is reused per registry revision: the revision
 /// hashes the caller-filtered registry, so the same revision always yields the same tools. Tool
-/// names come from the unfiltered registry (<see cref="IKaleidoUnfilteredRegistry"/>), so what a
+/// names come from the hydrated full registry (<see cref="IKaleidoRegistrySource"/>), so what a
 /// caller may see never changes a name (#435); its revision is part of the key too. The translations
 /// are kept by this host's MCP registration (<see cref="IToolCatalogCache"/>, #464), whose settings are
 /// fixed, and a registry without a revision is translated every time.
@@ -22,8 +21,9 @@ internal interface IToolCatalogProvider
 }
 
 internal sealed partial class ToolCatalogProvider(
-    IKaleidoRegistryService registry,
-    IKaleidoUnfilteredRegistry unfilteredRegistry,
+    IKaleidoRegistryClient registry,
+    IKaleidoRegistrySource unfilteredRegistry,
+    IKaleidoInboundCallerAccessor caller,
     IToolCatalogBuilder catalogBuilder,
     IToolCatalogCache catalogs,
     IMcpObservability observability,
@@ -32,8 +32,15 @@ internal sealed partial class ToolCatalogProvider(
 {
     public async Task<ToolCatalog> GetAsync(CancellationToken cancellationToken)
     {
-        var response = await registry.GetForCallerAsync(refresh: false, cancellationToken: cancellationToken);
-        var nameScope = await unfilteredRegistry.GetUnfilteredAsync(cancellationToken);
+        if (!caller.IsInboundRequest || caller.Principal?.Identity?.IsAuthenticated != true)
+        {
+            return ToolCatalog.Empty;
+        }
+
+        var document = await registry.GetRegistryAsync(etag: null, cancellationToken);
+        var response = document.Value ?? throw new KaleidoRegistryClientException(RegistryClientErrorCodes.EmptyResponse,
+            "The central Registry returned no caller-visible capability document.");
+        var nameScope = await unfilteredRegistry.GetAsync(cancellationToken);
         var revision = response.Revision ?? string.Empty;
 
         // Both revisions hash what they describe; without one, the content is unknown and not kept.

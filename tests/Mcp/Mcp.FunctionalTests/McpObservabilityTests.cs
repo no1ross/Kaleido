@@ -15,7 +15,7 @@ namespace Kaleido.Mcp.FunctionalTests;
 public sealed class McpObservabilityTests(McpClinicFixture fixture)
     : IClassFixture<McpClinicFixture>, IDisposable
 {
-    private static readonly string Nurse = BearerTestAuthHandler.Token("nina");
+    private static readonly string Nurse = TestCallerTokens.Token("nina");
 
     private readonly ConcurrentBag<Activity> activities = [];
     private ActivityListener? listener;

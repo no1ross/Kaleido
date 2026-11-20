@@ -1,4 +1,3 @@
-using Kaleido.Client.Registry;
 using Kaleido.Exceptions;
 using Kaleido.Mcp.Observability;
 using Kaleido.Mcp.Tools;
@@ -17,22 +16,31 @@ namespace Kaleido.Mcp.UnitTests;
 public sealed class KaleidoMcpServiceCollectionExtensionsTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static Mock<IKaleidoBuilder> Builder(ServiceCollection services, IReadOnlyDictionary<string, string?>? settings = null)
+    private static Mock<IKaleidoBuilder> Builder(ServiceCollection services, IReadOnlyDictionary<string, string?>? settings = null,
+        KaleidoServiceOptions? identity = null)
     {
         var builder = new Mock<IKaleidoBuilder>();
         builder.Setup(x => x.Services).Returns(services);
         builder.Setup(x => x.Configuration).Returns(new ConfigurationBuilder().AddInMemoryCollection(settings ?? new Dictionary<string, string?>()).Build());
+        builder.Setup(x => x.ServiceOptions).Returns(identity ?? new KaleidoServiceOptions
+        {
+            ServiceName = "mcp-reader",
+            ServiceVersion = "1",
+            Assemblies = [typeof(KaleidoMcpServiceCollectionExtensionsTests).Assembly],
+        });
         return builder;
     }
 
     private static ServiceCollection HostServices()
     {
         var services = new ServiceCollection();
-        services.AddScoped(_ => Mock.Of<IKaleidoRegistryService>());
-        // AddHttp() registers the unfiltered registry the tool names come from (#435).
-        services.AddScoped(_ => Mock.Of<IKaleidoUnfilteredRegistry>());
+        services.AddSingleton(new Kaleido.Http.Server.KaleidoHttpServerOptions());
+        // The participant holds the full registry; the Registry client fetches the caller's visible view.
+        services.AddSingleton(Mock.Of<IKaleidoRegistrySource>());
         services.AddScoped(_ => Mock.Of<IKaleidoRegistryClient>());
-        // What AddHttpClients() registers for the gateway, and AddKaleido() the inbound caller.
+        services.AddScoped(_ => Mock.Of<IKaleidoProcessorClientFactory>());
+        services.AddScoped(_ => Mock.Of<IKaleidoQueryableClientFactory>());
+        // What the HTTP gateway registers for credential exchange, and AddKaleido() the inbound caller.
         services.AddSingleton(Clients(KaleidoOnBehalfOfCalls.Exchange));
         services.AddScoped(_ => Mock.Of<IKaleidoInboundCallerAccessor>());
         services.AddScoped(_ => Mock.Of<IKaleidoCorrelationContextInitializer>());
@@ -117,9 +125,8 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     [Fact]
     public void AddMcp_WithoutKaleidoClients_FailsWithItsCode()
     {
-        var services = new ServiceCollection();
-        services.AddScoped(_ => Mock.Of<IKaleidoRegistryService>());
-        services.AddScoped(_ => Mock.Of<IKaleidoRegistryClient>());
+        var services = HostServices();
+        services.RemoveAll<IKaleidoProcessorClientFactory>();
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() => Builder(services).Object.AddMcp());
 
@@ -127,14 +134,27 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddMcp_OnAKaleidoHttpHostWithClients_RegistersTheAdapter_AndAppliesTheConfiguration()
+    public void AddMcp_OnAKaleidoHttpHostWithClients_RegistersTheAdapterWithItsServiceIdentity()
     {
         var services = HostServices();
 
-        Builder(services).Object.AddMcp(new() { ServerName = "priorauth" });
+        Builder(services).Object.AddMcp();
 
-        var options = Assert.Single(services, x => x.ServiceType == typeof(KaleidoMcpOptions)).ImplementationInstance;
-        Assert.Equal("priorauth", Assert.IsType<KaleidoMcpOptions>(options).ServerName);
+        Assert.NotNull(RegisteredOptions(services));
+        var server = ServerOptions(services);
+        Assert.Equal(("mcp-reader", "1"), (server.ServerInfo?.Name, server.ServerInfo?.Version));
+    }
+
+    [Fact]
+    public void AddMcp_DoesNotKeepTheHostsMutableListedToolsCollection()
+    {
+        var services = HostServices();
+        var names = new List<string> { "clinic_patient" };
+        Builder(services).Object.AddMcp(new() { ToolListing = McpToolListing.FrontDoor, ListedTools = names });
+
+        names[0] = "clinic_chart";
+
+        Assert.Equal(["clinic_patient"], RegisteredOptions(services).ListedTools);
     }
 
     // #574: fail closed - the agent's token is issued for this MCP server and must not be passed through.
@@ -182,16 +202,35 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
         Assert.Single(services, x => x.ServiceType == typeof(TService)).Lifetime;
 
     [Fact]
-    public void AddMcp_ConfiguresTheServer_WithTheOptionsNameVersionAndInstructions()
+    public void AddMcp_ReportsAddKaleidosServiceNameAndServiceVersionToTheMcpClient()
     {
         var services = HostServices();
-
-        Builder(services).Object.AddMcp(new()
+        var identity = new KaleidoServiceOptions
         {
-            ServerName = "priorauth",
-            ServerVersion = "2.1.0",
-            Instructions = "Be careful.",
-        });
+            ServiceName = "mcp-reader",
+            ServiceVersion = "17",
+            Assemblies = [typeof(KaleidoMcpServiceCollectionExtensionsTests).Assembly],
+        };
+
+        Builder(services, identity: identity).Object.AddMcp();
+
+        var server = ServerOptions(services);
+        Assert.Equal((identity.ServiceName, identity.ServiceVersion),
+            (server.ServerInfo?.Name, server.ServerInfo?.Version));
+    }
+
+    [Fact]
+    public void AddMcp_ConfiguresTheServer_WithTheServiceIdentityAndMcpInstructions()
+    {
+        var services = HostServices();
+        var identity = new KaleidoServiceOptions
+        {
+            ServiceName = "priorauth",
+            ServiceVersion = "2.1.0",
+            Assemblies = [typeof(KaleidoMcpServiceCollectionExtensionsTests).Assembly],
+        };
+
+        Builder(services, identity: identity).Object.AddMcp(new() { Instructions = "Be careful." });
 
         var server = ServerOptions(services);
 
@@ -203,19 +242,25 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
         Assert.Equal("Be careful.", RegisteredOptions(services).Instructions);
     }
 
-    // #463: without a ServerVersion the server reports the host application's version, resolved once.
-    [Fact]
-    public void AddMcp_WithoutAServerVersion_ReportsTheHostApplicationsVersion()
+    // The MCP protocol reports Kaleido's service-version label, not the application's build.
+    [Theory]
+    [InlineData("1")]
+    [InlineData("2026-11")]
+    [InlineData("3.4.5-preview.12")]
+    [InlineData("1.2.3.4")]
+    public void AddMcp_ReportsTheServiceVersionWithoutAssemblyNormalization(string version)
     {
         var services = HostServices();
+        var identity = new KaleidoServiceOptions
+        {
+            ServiceName = "mcp-reader",
+            ServiceVersion = version,
+            Assemblies = [typeof(KaleidoMcpServiceCollectionExtensionsTests).Assembly],
+        };
 
-        Builder(services).Object.AddMcp();
+        Builder(services, identity: identity).Object.AddMcp();
 
-        var expected = KaleidoMcpServerVersion.Resolve(new KaleidoMcpOptions(), System.Reflection.Assembly.GetEntryAssembly()).Value;
-        Assert.Equal(expected, ServerOptions(services).ServerInfo?.Version);
-        var registered = Assert.Single(services, x => x.ServiceType == typeof(KaleidoMcpServerVersion)).ImplementationInstance;
-        Assert.Equal(expected, Assert.IsType<KaleidoMcpServerVersion>(registered).Value);
-        Assert.Null(RegisteredOptions(services).ServerVersion);
+        Assert.Equal(version, ServerOptions(services).ServerInfo?.Version);
     }
 
     // ADR 0030: the Kaleido:Mcp section overrides the options from code, setting by setting; a blank
@@ -224,24 +269,29 @@ public sealed class KaleidoMcpServiceCollectionExtensionsTests
     public void AddMcp_LaysTheKaleidoMcpSectionOverTheOptionsFromCode()
     {
         var services = HostServices();
-        var code = new KaleidoMcpOptions { ServerName = "priorauth", MaxElicitationRounds = 2 };
+        var code = new KaleidoMcpOptions { ToolListing = McpToolListing.FrontDoor, MaxElicitationRounds = 2 };
 
         Builder(services, new Dictionary<string, string?> { ["Kaleido:Mcp:MaxElicitationRounds"] = "4" }).Object.AddMcp(code);
 
         Assert.Equal(4, RegisteredOptions(services).MaxElicitationRounds);
-        Assert.Equal("priorauth", RegisteredOptions(services).ServerName);
+        Assert.Equal(McpToolListing.FrontDoor, RegisteredOptions(services).ToolListing);
         Assert.Equal(2, code.MaxElicitationRounds);
     }
 
-    [Fact]
-    public void AddMcp_ABlankServerNameInConfiguration_FailsWithItsCode()
+    [Theory]
+    [InlineData("ServerName")]
+    [InlineData("ServerVersion")]
+    [InlineData("servername")]
+    [InlineData("serverversion")]
+    public void AddMcp_ObsoleteIdentitySetting_FailsInsteadOfSilentlyIgnoringIt(string setting)
     {
-        var builder = Builder(HostServices(), new Dictionary<string, string?> { ["Kaleido:Mcp:ServerName"] = " " });
+        var builder = Builder(HostServices(), new Dictionary<string, string?> { [$"Kaleido:Mcp:{setting}"] = "old-value" });
 
         var exception = Assert.Throws<KaleidoConfigurationException>(() => builder.Object.AddMcp());
 
         Assert.Equal(McpErrorCodes.InvalidOptions, exception.Code);
-        Assert.StartsWith("Kaleido:Mcp:ServerName ", exception.Message, StringComparison.Ordinal);
+        Assert.Contains($"Kaleido:Mcp:{setting}", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Kaleido:Service", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

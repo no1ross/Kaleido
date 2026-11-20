@@ -19,7 +19,7 @@ public sealed class ConfirmationTests(ConfirmationFixture fixture)
     private const string Mrtr = "2026-07-28";
     private const string SessionElicitation = "2025-11-25";
 
-    private static readonly string Nurse = BearerTestAuthHandler.Token("nina");
+    private static readonly string Nurse = TestCallerTokens.Token("nina");
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 

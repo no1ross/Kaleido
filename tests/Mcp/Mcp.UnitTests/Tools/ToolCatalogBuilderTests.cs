@@ -30,29 +30,39 @@ public sealed class ToolCatalogBuilderTests
 
     private static readonly DataTypeMetadata Text = new("string");
 
-    private static QueryableSourceResponse Patients(string? queryUrl = "/clinic/queryable/patients/query") => new()
+    private static RegistryTransportBindings QueryBinding(string path) => new()
+    {
+        Http = [new RegistryHttpOperation { Operation = "query", Method = "POST", Path = path }],
+    };
+
+    private static RegistryTransportBindings ExecuteBinding(string path) => new()
+    {
+        Http = [new RegistryHttpOperation { Operation = "execute", Method = "POST", Path = path }],
+    };
+
+    private static QueryableRegistryItem Patients(string? queryUrl = "/clinic/queryable/patients/query") => new()
     {
         ServiceName = "clinic",
         Name = "PatientSource",
         DisplayName = "Patients",
         Description = "Patients registered at the clinic",
         Source = "EHR",
-        QueryUrl = queryUrl,
-        Pageable = new QueryablePagingMetadata(25, 100),
+        Bindings = queryUrl is null ? new RegistryTransportBindings() : QueryBinding(queryUrl),
+        Pageable = new QueryableRegistryPaging(25, 100),
         Fields =
         [
-            new QueryableFieldMetadata { Name = "Id", Description = "The id.", DataType = new DataTypeMetadata("integer"), IsFilterable = true, FilterOperators = [FilterOperator.Equals, FilterOperator.In] },
-            new QueryableFieldMetadata { Name = "Name", DataType = Text, IsSearchable = true, SearchPriority = 1, MatchMode = MatchMode.Contains, IsSortable = true }
+            new QueryableRegistryField { Name = "Id", Description = "The id.", DataType = new DataTypeMetadata("integer"), IsFilterable = true, FilterOperators = ["equals", "in"] },
+            new QueryableRegistryField { Name = "Name", DataType = Text, IsSearchable = true, SearchPriority = 1, MatchMode = "contains", IsSortable = true }
         ],
-        Parameters = [new QueryableQueryParameter { Name = "ClinicId", Description = "The clinic.", DataType = Text, Constraints = [new ConstraintMetadata { Type = "Required" }] }],
-        OutputFields = [new QueryableQueryProperty { Name = "Id", DataType = Text }, new QueryableQueryProperty { Name = "Name", DataType = Text }],
+        Parameters = [new QueryableRegistryParameter { Name = "ClinicId", Description = "The clinic.", DataType = Text, Constraints = [new ConstraintMetadata { Type = "Required" }] }],
+        OutputFields = [new QueryableRegistryOutputField { Name = "Id", DataType = Text }, new QueryableRegistryOutputField { Name = "Name", DataType = Text }],
         Views =
         [
-            new QueryableViewResponse { Name = "PatientCardViewSource", DisplayName = "Patient card", Description = "A card.", QueryUrl = "/clinic/queryable/patients/views/card/query" }
+            new QueryableRegistryViewItem { Name = "PatientCardViewSource", DisplayName = "Patient card", Description = "A card.", Bindings = QueryBinding("/clinic/queryable/patients/views/card/query") }
         ]
     };
 
-    private static ProcessorRegistryResponse Visits() => new()
+    private static ProcessRegistryItem Visits() => new()
     {
         ServiceName = "clinic",
         Name = "clinic",
@@ -64,7 +74,7 @@ public sealed class ToolCatalogBuilderTests
                 DisplayName = "Start visit",
                 Description = "Opens a visit",
                 IsInitial = true,
-                ExecuteUrl = "/clinic/processes/steps/StartVisitStep",
+                Bindings = ExecuteBinding("/clinic/processes/steps/StartVisitStep"),
                 Fields =
                 [
                     new ProcessFieldMetadata { Name = "PatientId", Description = "The patient.", DisplayName = "Patient", Prompt = "Which patient?", DataType = new DataTypeMetadata("integer"), Constraints = [new ConstraintMetadata { Type = "Required" }] },
@@ -72,8 +82,8 @@ public sealed class ToolCatalogBuilderTests
                 ],
                 Result = new ProcessStepResultMetadata { OutputFields = [new ProcessOutputFieldMetadata { Name = "VisitId", DataType = Text }] }
             },
-            new ProcessStepResponse { Name = "VisitQuestionsStep", IsInformationStep = true, ExecuteUrl = "/clinic/processes/steps/VisitQuestionsStep" },
-            new ProcessStepResponse { Name = "CloseVisitStep", Description = "Closes the visit", ExecuteUrl = "/clinic/processes/steps/CloseVisitStep" }
+            new ProcessStepResponse { Name = "VisitQuestionsStep", IsInformationStep = true, Bindings = ExecuteBinding("/clinic/processes/steps/VisitQuestionsStep") },
+            new ProcessStepResponse { Name = "CloseVisitStep", Description = "Closes the visit", Bindings = ExecuteBinding("/clinic/processes/steps/CloseVisitStep") }
         ]
     };
 
@@ -97,10 +107,10 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Build_TwoVersionsOfOneCapability_HaveDistinctToolsPinnedToTheirPublishedRoutes()
     {
-        static ProcessorRegistryResponse VersionedVisits(string version) => Visits() with
+        static ProcessRegistryItem VersionedVisits(string version) => Visits() with
         {
             ServiceVersion = version,
-            Steps = [.. (Visits().Steps ?? []).Select(x => x with { ExecuteUrl = $"/clinic/{version}/processes/steps/{x.Name.ToLowerInvariant()}" })],
+            Steps = [.. (Visits().Steps ?? []).Select(x => x with { Bindings = ExecuteBinding($"/clinic/{version}/processes/steps/{x.Name.ToLowerInvariant()}") })],
         };
         var catalog = Build(new KaleidoRegistry { Processes = [VersionedVisits("1"), VersionedVisits("2")] });
 
@@ -108,7 +118,8 @@ public sealed class ToolCatalogBuilderTests
 
         Assert.Equal(["1", "2"], tools.Select(x => x.ServiceVersion));
         Assert.Equal(2, tools.Select(x => x.Definition.Name).Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(["/clinic/1/processes/steps/startvisitstep", "/clinic/2/processes/steps/startvisitstep"], tools.Select(x => x.Url));
+        Assert.Equal(["/clinic/1/processes/steps/startvisitstep", "/clinic/2/processes/steps/startvisitstep"],
+            tools.Select(x => catalog.FindStepMetadata(x.Service, x.CapabilityName, x.ServiceVersion)?.Bindings.Http.Single().Path));
         Assert.Equal(["clinic"], catalog.ProcessServices);
     }
 
@@ -136,7 +147,31 @@ public sealed class ToolCatalogBuilderTests
         var catalog = Build(new KaleidoRegistry { Processes = [Visits()] });
 
         Assert.Null(catalog.Find("clinic_visitquestionsstep"));
-        Assert.Null(catalog.FindByUrl("/clinic/processes/steps/VisitQuestionsStep"));
+        Assert.Null(catalog.FindStep("clinic", "VisitQuestionsStep"));
+        Assert.True(catalog.FindStepMetadata("clinic", "VisitQuestionsStep", serviceVersion: null)?.IsInformationStep);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public void Build_WithoutExactlyOnePublishedQueryOperation_DoesNotOfferAnUncallableSource(int operations)
+    {
+        var query = new RegistryHttpOperation { Operation = "query", Method = "POST", Path = "/clinic/1/queryable/patients/query" };
+        var source = Patients() with { Bindings = new RegistryTransportBindings { Http = Enumerable.Repeat(query, operations).ToArray() }, Views = [] };
+
+        Assert.Null(Build(new KaleidoRegistry { Queryables = [source] }).Find("clinic_patientsource"));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public void Build_WithoutExactlyOnePublishedExecuteOperation_DoesNotOfferAnUncallableStep(int operations)
+    {
+        var execute = new RegistryHttpOperation { Operation = "execute", Method = "POST", Path = "/clinic/1/processes/steps/startvisitstep" };
+        var step = Visits().Steps?.First(x => x.Name == "StartVisitStep") ?? throw new Xunit.Sdk.XunitException("No start step.");
+        var processor = Visits() with { Steps = [step with { Bindings = new RegistryTransportBindings { Http = Enumerable.Repeat(execute, operations).ToArray() } }] };
+
+        Assert.Null(Build(new KaleidoRegistry { Processes = [processor] }).Find("clinic_startvisitstep"));
     }
 
     [Fact]
@@ -149,7 +184,7 @@ public sealed class ToolCatalogBuilderTests
     }
 
     [Fact]
-    public void Build_ASourceWithoutAQueryUrl_HasOnlyItsViews()
+    public void Build_ASourceWithoutAPublishedQueryBinding_HasOnlyItsViews()
     {
         var catalog = Build(new KaleidoRegistry { Queryables = [Patients(queryUrl: null)] });
 
@@ -158,12 +193,12 @@ public sealed class ToolCatalogBuilderTests
     }
 
     [Fact]
-    public void QueryTool_IsReadOnly_Described_AndTargetsTheQueryUrl()
+    public void QueryTool_IsReadOnly_Described_AndNamesThePublishedSource()
     {
         var tool = Tool(Build(new KaleidoRegistry { Queryables = [Patients()] }), "clinic_patientsource");
 
         Assert.Equal(KaleidoToolKind.Query, tool.Kind);
-        Assert.Equal("/clinic/queryable/patients/query", tool.Url);
+        Assert.Equal(("clinic", "PatientSource"), (tool.Service, tool.CapabilityName));
         Assert.True(tool.Definition.Annotations?.ReadOnlyHint);
         Assert.True(tool.Definition.Annotations?.IdempotentHint);
         Assert.StartsWith("Patients: Patients registered at the clinic.", tool.Definition.Description, StringComparison.Ordinal);
@@ -178,8 +213,8 @@ public sealed class ToolCatalogBuilderTests
     {
         var patients = Patients() with
         {
-            OutputFields = [new QueryableQueryProperty { Name = "Id", Description = " The patient's id. ", DataType = Text }, new QueryableQueryProperty { Name = "Name", DataType = Text }],
-            Views = [Patients().Views.First() with { OutputFields = [new QueryableQueryProperty { Name = "Card", Description = "The printed card.", DataType = Text }] }],
+            OutputFields = [new QueryableRegistryOutputField { Name = "Id", Description = " The patient's id. ", DataType = Text }, new QueryableRegistryOutputField { Name = "Name", DataType = Text }],
+            Views = [Patients().Views.First() with { OutputFields = [new QueryableRegistryOutputField { Name = "Card", Description = "The printed card.", DataType = Text }] }],
         };
         var visits = Visits() with
         {
@@ -246,7 +281,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var scoped = Patients() with
         {
-            Parameters = [new QueryableQueryParameter { Name = "ProcessId", Description = "The visit this search is for.", DataType = Text, Constraints = [new ConstraintMetadata { Type = "Required" }] }]
+            Parameters = [new QueryableRegistryParameter { Name = "ProcessId", Description = "The visit this search is for.", DataType = Text, Constraints = [new ConstraintMetadata { Type = "Required" }] }]
         };
 
         var tool = Tool(Build(new KaleidoRegistry { Queryables = [scoped], Processes = [Visits()] }), "clinic_patientsource");
@@ -265,7 +300,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var tool = Tool(Build(new KaleidoRegistry { Queryables = [Patients()] }), "clinic_patientcardviewsource");
 
-        Assert.Equal("/clinic/queryable/patients/views/card/query", tool.Url);
+        Assert.Equal(("clinic", "PatientSource", "PatientCardViewSource"), (tool.Service, tool.SourceName, tool.ViewName));
         Assert.Contains("A view of Patients.", tool.Definition.Description, StringComparison.Ordinal);
         Assert.True(tool.Definition.InputSchema.GetProperty("properties").TryGetProperty("searchText", out _));
     }
@@ -315,7 +350,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_TheDeclaredBehavior_MapsToTheAnnotationsAndTheDescription()
     {
-        var processor = new ProcessorRegistryResponse
+        var processor = new ProcessRegistryItem
         {
             ServiceName = "billing",
             Name = "billing",
@@ -330,7 +365,7 @@ public sealed class ToolCatalogBuilderTests
                     Destructive = true,
                     External = true,
                     RequiresConfirmation = true,
-                    ExecuteUrl = "/billing/processes/steps/ChargeCardStep",
+                    Bindings = ExecuteBinding("/billing/processes/steps/ChargeCardStep"),
                 },
             ],
         };
@@ -351,11 +386,11 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void Tools_WithRequireConfirmation_SayTheUserConfirmsInAForm()
     {
-        var processor = new ProcessorRegistryResponse
+        var processor = new ProcessRegistryItem
         {
             ServiceName = "billing",
             Name = "billing",
-            Steps = [new ProcessStepResponse { Name = "ChargeCardStep", IsInitial = true, RequiresConfirmation = true, ExecuteUrl = "/billing/processes/steps/ChargeCardStep" }],
+            Steps = [new ProcessStepResponse { Name = "ChargeCardStep", IsInitial = true, RequiresConfirmation = true, Bindings = ExecuteBinding("/billing/processes/steps/ChargeCardStep") }],
         };
 
         var tool = Tool(CreateSut(requireConfirmation: true).Build(new KaleidoRegistry { Processes = [processor] }), "billing_chargecardstep");
@@ -377,15 +412,15 @@ public sealed class ToolCatalogBuilderTests
                     Name = "StartVisitStep",
                     Description = "Opens a visit",
                     IsInitial = true,
-                    ExecuteUrl = "/clinic/processes/steps/StartVisitStep",
+                    Bindings = ExecuteBinding("/clinic/processes/steps/StartVisitStep"),
                     Fields = [new ProcessFieldMetadata { Name = "PatientName", Description = "The patient's name.", DataType = Text, Classifications = phi }],
                 },
             ],
         };
         var patients = Patients() with
         {
-            Parameters = [new QueryableQueryParameter { Name = "Ssn", DataType = Text, Classifications = phi }],
-            OutputFields = [new QueryableQueryProperty { Name = "Id", DataType = Text }, new QueryableQueryProperty { Name = "Name", DataType = Text, Classifications = phi }],
+            Parameters = [new QueryableRegistryParameter { Name = "Ssn", DataType = Text, Classifications = phi }],
+            OutputFields = [new QueryableRegistryOutputField { Name = "Id", DataType = Text }, new QueryableRegistryOutputField { Name = "Name", DataType = Text, Classifications = phi }],
         };
         var catalog = Build(new KaleidoRegistry { Queryables = [patients], Processes = [visits] });
 
@@ -449,9 +484,9 @@ public sealed class ToolCatalogBuilderTests
         {
             Fields =
             [
-                new QueryableFieldMetadata { Name = "Id", Description = "The id.", DataType = new DataTypeMetadata("integer"), IsFilterable = true, FilterOperators = [FilterOperator.Equals], IsSearchable = true, SearchPriority = 2, MatchMode = MatchMode.Exact },
-                new QueryableFieldMetadata { Name = "Name", Description = "The patient's full name.", DataType = Text, IsSearchable = true, SearchPriority = 1, MatchMode = MatchMode.Contains },
-                new QueryableFieldMetadata { Name = "Born", Description = "The date of birth.", DataType = Text, IsSortable = true },
+                new QueryableRegistryField { Name = "Id", Description = "The id.", DataType = new DataTypeMetadata("integer"), IsFilterable = true, FilterOperators = ["equals"], IsSearchable = true, SearchPriority = 2, MatchMode = "exact" },
+                new QueryableRegistryField { Name = "Name", Description = "The patient's full name.", DataType = Text, IsSearchable = true, SearchPriority = 1, MatchMode = "contains" },
+                new QueryableRegistryField { Name = "Born", Description = "The date of birth.", DataType = Text, IsSortable = true },
             ],
         };
 
@@ -563,11 +598,11 @@ public sealed class ToolCatalogBuilderTests
         {
             Steps =
             [
-                new ProcessStepResponse { Name = "AStep", Description = "A.", ExecuteUrl = "/a" },
-                new ProcessStepResponse { Name = "BStep", Description = "B.", ExecuteUrl = "/b" },
-                new ProcessStepResponse { Name = "CStep", Description = "C.", ExecuteUrl = "/c" },
-                new ProcessStepResponse { Name = "DStep", Description = "D.", ExecuteUrl = "/d" },
-                new ProcessStepResponse { Name = "EStep", Description = "E.", ExecuteUrl = "/e" }
+                new ProcessStepResponse { Name = "AStep", Description = "A.", Bindings = ExecuteBinding("/a") },
+                new ProcessStepResponse { Name = "BStep", Description = "B.", Bindings = ExecuteBinding("/b") },
+                new ProcessStepResponse { Name = "CStep", Description = "C.", Bindings = ExecuteBinding("/c") },
+                new ProcessStepResponse { Name = "DStep", Description = "D.", Bindings = ExecuteBinding("/d") },
+                new ProcessStepResponse { Name = "EStep", Description = "E.", Bindings = ExecuteBinding("/e") }
             ]
         };
         var scope = new KaleidoRegistry { Processes = [processor with { Steps = processor.Steps!.Take(2).ToArray() }] };
@@ -598,9 +633,9 @@ public sealed class ToolCatalogBuilderTests
         {
             Steps =
             [
-                new ProcessStepResponse { Name = "PStep", Description = "P.", ExecuteUrl = "/p" },
-                new ProcessStepResponse { Name = "QStep", Description = "Q.", ExecuteUrl = "/q" },
-                new ProcessStepResponse { Name = "RStep", Description = "R.", ExecuteUrl = "/r" }
+                new ProcessStepResponse { Name = "PStep", Description = "P.", Bindings = ExecuteBinding("/p") },
+                new ProcessStepResponse { Name = "QStep", Description = "Q.", Bindings = ExecuteBinding("/q") },
+                new ProcessStepResponse { Name = "RStep", Description = "R.", Bindings = ExecuteBinding("/r") }
             ]
         };
 
@@ -637,17 +672,18 @@ public sealed class ToolCatalogBuilderTests
     }
 
     [Fact]
-    public void FindByUrl_MapsAnExecuteUrlBackToItsTool_CaseInsensitively()
+    public void FindStep_MapsANameAndPinnedVersionBackToItsCallerVisibleTool()
     {
-        var catalog = Build(new KaleidoRegistry { Processes = [Visits()] });
+        var catalog = Build(new KaleidoRegistry { Processes = [Visits() with { ServiceVersion = "1" }] });
 
-        Assert.Equal("clinic_closevisitstep", catalog.FindByUrl("/CLINIC/processes/steps/CloseVisitStep")?.Definition.Name);
-        Assert.Null(catalog.FindByUrl(null));
+        Assert.Equal("clinic_closevisitstep", catalog.FindStep("clinic", "CloseVisitStep", "1")?.Definition.Name);
+        Assert.Null(catalog.FindStep("clinic", "CloseVisitStep", "2"));
+        Assert.Equal("CloseVisitStep", catalog.FindStepMetadata("clinic", "closevisitstep", "1")?.Name);
     }
 
     // ── Lookups ──────────────────────────────────────────────────────────────
 
-    private static ProcessorRegistryResponse Referrals(string viewName = "PatientCardViewSource") => new()
+    private static ProcessRegistryItem Referrals(string viewName = "PatientCardViewSource") => new()
     {
         ServiceName = "referrals",
         Name = "referrals",
@@ -658,7 +694,7 @@ public sealed class ToolCatalogBuilderTests
                 Name = "ReferPatientStep",
                 Description = "Refers a patient",
                 IsInitial = true,
-                ExecuteUrl = "/referrals/processes/steps/ReferPatientStep",
+                Bindings = ExecuteBinding("/referrals/processes/steps/ReferPatientStep"),
                 Fields =
                 [
                     new ProcessFieldMetadata
@@ -794,7 +830,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var catalog = Build(new KaleidoRegistry
         {
-            Processes = [new ProcessorRegistryResponse { ServiceName = "clinic", Name = "clinic", Steps = null }]
+            Processes = [new ProcessRegistryItem { ServiceName = "clinic", Name = "clinic", Steps = null }]
         });
 
         Assert.Empty(catalog.Tools);
@@ -804,13 +840,13 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void QueryTool_OfAnUndescribedSource_FallsBackToItsName_AndIsReported()
     {
-        var bare = new QueryableSourceResponse
+        var bare = new QueryableRegistryItem
         {
             ServiceName = "clinic",
             Name = "PatientSource",
-            QueryUrl = "/clinic/queryable/patients/query",
-            Fields = [new QueryableFieldMetadata { Name = "Name", Description = "The name.", DataType = Text, IsSearchable = true }],
-            Views = [new QueryableViewResponse { Name = "PatientCardViewSource", QueryUrl = "/clinic/queryable/patients/views/card/query" }]
+            Bindings = QueryBinding("/clinic/queryable/patients/query"),
+            Fields = [new QueryableRegistryField { Name = "Name", Description = "The name.", DataType = Text, IsSearchable = true }],
+            Views = [new QueryableRegistryViewItem { Name = "PatientCardViewSource", Bindings = QueryBinding("/clinic/queryable/patients/views/card/query") }]
         };
 
         var catalog = Build(new KaleidoRegistry { Queryables = [bare] });
@@ -834,15 +870,15 @@ public sealed class ToolCatalogBuilderTests
         {
             Fields =
             [
-                new QueryableFieldMetadata
+                new QueryableRegistryField
                 {
                     Name = "Kind",
                     DataType = new DataTypeMetadata("string", EnumValues: [new EnumValueMetadata(0, "Outpatient", null), new EnumValueMetadata(1, "Inpatient", null)]),
                     IsFilterable = true,
-                    FilterOperators = [FilterOperator.Equals]
+                    FilterOperators = ["equals"]
                 },
-                new QueryableFieldMetadata { Name = "Born", Description = "Date of birth.", DataType = new DataTypeMetadata("string", "date"), IsFilterable = true, FilterOperators = [FilterOperator.Between] },
-                new QueryableFieldMetadata { Name = "Ignored", DataType = Text, IsFilterable = true, FilterOperators = [] }
+                new QueryableRegistryField { Name = "Born", Description = "Date of birth.", DataType = new DataTypeMetadata("string", "date"), IsFilterable = true, FilterOperators = ["between"] },
+                new QueryableRegistryField { Name = "Ignored", DataType = Text, IsFilterable = true, FilterOperators = [] }
             ]
         };
 
@@ -858,7 +894,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var patients = Patients() with
         {
-            OutputFields = [.. Enumerable.Range(1, 16).Select(i => new QueryableQueryProperty { Name = $"F{i}", DataType = Text })]
+            OutputFields = [.. Enumerable.Range(1, 16).Select(i => new QueryableRegistryOutputField { Name = $"F{i}", DataType = Text })]
         };
 
         var description = Tool(Build(new KaleidoRegistry { Queryables = [patients] }), "clinic_patientsource").Definition.Description;
@@ -872,7 +908,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var scoped = Patients() with
         {
-            Parameters = [new QueryableQueryParameter { Name = "processId", DataType = Text }]
+            Parameters = [new QueryableRegistryParameter { Name = "processId", DataType = Text }]
         };
 
         var tool = Tool(Build(new KaleidoRegistry { Queryables = [scoped] }), "clinic_patientsource");
@@ -893,12 +929,12 @@ public sealed class ToolCatalogBuilderTests
         {
             Views =
             [
-                new QueryableViewResponse
+                new QueryableRegistryViewItem
                 {
                     Name = "PatientCardViewSource",
                     Description = "A card.",
-                    QueryUrl = "/clinic/queryable/patients/views/card/query",
-                    Parameters = [new QueryableQueryParameter { Name = "Since", Description = "From this date.", DataType = Text }]
+                    Bindings = QueryBinding("/clinic/queryable/patients/views/card/query"),
+                    Parameters = [new QueryableRegistryParameter { Name = "Since", Description = "From this date.", DataType = Text }]
                 }
             ]
         };
@@ -913,7 +949,7 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_OfAnUndescribedStep_FallsBackToItsName_IsReported_AndListsWhatClosesIt()
     {
-        var processor = new ProcessorRegistryResponse
+        var processor = new ProcessRegistryItem
         {
             ServiceName = "clinic",
             Name = "clinic",
@@ -922,7 +958,7 @@ public sealed class ToolCatalogBuilderTests
                 new ProcessStepResponse
                 {
                     Name = "WaitStep",
-                    ExecuteUrl = "/clinic/processes/steps/WaitStep",
+                    Bindings = ExecuteBinding("/clinic/processes/steps/WaitStep"),
                     AvailableUntil = [new ProcessStepSummary { Name = "CloseVisitStep" }, new ProcessStepSummary { Name = "CancelVisitStep" }]
                 }
             ]
@@ -945,10 +981,10 @@ public sealed class ToolCatalogBuilderTests
         {
             Steps =
             [
-                new ProcessStepResponse { Name = "AStep", Description = "A.", ExecuteUrl = "/a" },
-                new ProcessStepResponse { Name = "BStep", Description = "B.", ExecuteUrl = "/b" },
-                new ProcessStepResponse { Name = "CStep", Description = "C.", ExecuteUrl = "/c" },
-                new ProcessStepResponse { Name = "DStep", Description = "D.", ExecuteUrl = "/d" }
+                new ProcessStepResponse { Name = "AStep", Description = "A.", Bindings = ExecuteBinding("/a") },
+                new ProcessStepResponse { Name = "BStep", Description = "B.", Bindings = ExecuteBinding("/b") },
+                new ProcessStepResponse { Name = "CStep", Description = "C.", Bindings = ExecuteBinding("/c") },
+                new ProcessStepResponse { Name = "DStep", Description = "D.", Bindings = ExecuteBinding("/d") }
             ]
         };
 
@@ -981,15 +1017,15 @@ public sealed class ToolCatalogBuilderTests
     [Fact]
     public void StepTool_ALookupOfASource_FindsItsQueryTool_AmongToolsOfOtherServicesSourcesAndViews()
     {
-        var appointments = new QueryableSourceResponse { ServiceName = "clinic", Name = "AppointmentSource", Description = "Appointments.", QueryUrl = "/clinic/queryable/appointments/query" };
-        var billingPatients = Patients() with { ServiceName = "billing", QueryUrl = "/billing/queryable/patients/query", Views = [] };
-        var alpha = new ProcessorRegistryResponse
+        var appointments = new QueryableRegistryItem { ServiceName = "clinic", Name = "AppointmentSource", Description = "Appointments.", Bindings = QueryBinding("/clinic/queryable/appointments/query") };
+        var billingPatients = Patients() with { ServiceName = "billing", Bindings = QueryBinding("/billing/queryable/patients/query"), Views = [] };
+        var alpha = new ProcessRegistryItem
         {
             ServiceName = "alpha",
             Name = "alpha",
-            Steps = [new ProcessStepResponse { Name = "PingStep", Description = "Pings.", IsInitial = true, ExecuteUrl = "/alpha/processes/steps/PingStep" }]
+            Steps = [new ProcessStepResponse { Name = "PingStep", Description = "Pings.", IsInitial = true, Bindings = ExecuteBinding("/alpha/processes/steps/PingStep") }]
         };
-        var referrals = new ProcessorRegistryResponse
+        var referrals = new ProcessRegistryItem
         {
             ServiceName = "referrals",
             Name = "referrals",
@@ -999,7 +1035,7 @@ public sealed class ToolCatalogBuilderTests
                 {
                     Name = "ReferPatientStep",
                     Description = "Refers a patient",
-                    ExecuteUrl = "/referrals/processes/steps/ReferPatientStep",
+                    Bindings = ExecuteBinding("/referrals/processes/steps/ReferPatientStep"),
                     Fields =
                     [
                         new ProcessFieldMetadata
@@ -1040,7 +1076,7 @@ public sealed class ToolCatalogBuilderTests
                     Name = "ReferPatientStep",
                     Description = "Refers a patient",
                     IsInitial = true,
-                    ExecuteUrl = "/referrals/processes/steps/ReferPatientStep",
+                    Bindings = ExecuteBinding("/referrals/processes/steps/ReferPatientStep"),
                     Fields =
                     [
                         new ProcessFieldMetadata
@@ -1076,7 +1112,7 @@ public sealed class ToolCatalogBuilderTests
                     Name = "ReferPatientStep",
                     Description = "Refers a patient",
                     IsInitial = true,
-                    ExecuteUrl = "/referrals/processes/steps/ReferPatientStep",
+                    Bindings = ExecuteBinding("/referrals/processes/steps/ReferPatientStep"),
                     Fields =
                     [
                         new ProcessFieldMetadata
@@ -1121,7 +1157,7 @@ public sealed class ToolCatalogBuilderTests
                     Name = "StartVisitStep",
                     Description = "Opens a visit.",
                     IsInitial = true,
-                    ExecuteUrl = "/clinic/processes/steps/StartVisitStep",
+                    Bindings = ExecuteBinding("/clinic/processes/steps/StartVisitStep"),
                     Fields = [new ProcessFieldMetadata { Name = "Phone", DataType = Text, Classifications = pii }],
                     Result = new ProcessStepResultMetadata { OutputFields = [new ProcessOutputFieldMetadata { Name = "VisitId", DataType = Text }, new ProcessOutputFieldMetadata { Name = "Phone", DataType = Text, Classifications = pii }] }
                 }
@@ -1129,7 +1165,7 @@ public sealed class ToolCatalogBuilderTests
         };
         var patients = Patients() with
         {
-            Parameters = [new QueryableQueryParameter { Name = "Ssn", Description = " The SSN. ", DataType = Text, Classifications = pii }]
+            Parameters = [new QueryableRegistryParameter { Name = "Ssn", Description = " The SSN. ", DataType = Text, Classifications = pii }]
         };
 
         var catalog = Build(new KaleidoRegistry { Queryables = [patients], Processes = [visits] });
@@ -1146,7 +1182,7 @@ public sealed class ToolCatalogBuilderTests
     {
         var visits = Visits() with
         {
-            Steps = [new ProcessStepResponse { Name = "NoteStep", Description = "Adds a note.", IsInitial = true, ExecuteUrl = "/clinic/processes/steps/NoteStep", Fields = [new ProcessFieldMetadata { Name = "Note", DataType = Text }] }]
+            Steps = [new ProcessStepResponse { Name = "NoteStep", Description = "Adds a note.", IsInitial = true, Bindings = ExecuteBinding("/clinic/processes/steps/NoteStep"), Fields = [new ProcessFieldMetadata { Name = "Note", DataType = Text }] }]
         };
 
         var tool = Tool(Build(new KaleidoRegistry { Processes = [visits] }), "clinic_notestep");

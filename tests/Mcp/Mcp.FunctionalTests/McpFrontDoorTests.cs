@@ -12,7 +12,7 @@ namespace Kaleido.Mcp.FunctionalTests;
 public sealed class McpFrontDoorTests(FrontDoorFixture fixture)
     : IClassFixture<FrontDoorFixture>
 {
-    private static readonly string Nurse = BearerTestAuthHandler.Token("nina");
+    private static readonly string Nurse = TestCallerTokens.Token("nina");
 
     private static readonly string[] Checkup = ["checkup"];
     private static readonly string[] NotUrgent = ["false"];

@@ -11,8 +11,8 @@ other.
 | Publish a local Queryable service over HTTP | `AddEventing()` + `AddQueryable()` + `AddServer()` + `AddHttp()`; choose its outbox store and `MapQueryable()`; no central client required | [Queryable HTTP server](../../src/Capabilities/Queryable/Kaleido.Queryable.Http.Server/README.md) |
 | Participate in Registry over HTTP | `AddRegistryHttpParticipation()`; one gateway at `Kaleido:BaseUrl` and a hydrated unfiltered Registry | [Registry HTTP client](../../src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md) |
 | Call a remote Queryable source or view | Register `AddRegistryHttpParticipation()` + `AddQueryableHttpClient()`, start the host to hydrate Registry, then use `IKaleidoQueryableClientFactory` with a neutral `QueryRequest` | [Queryable HTTP client](../../src/Capabilities/Queryable/Kaleido.Queryable.Http.Client/README.md) |
-| Publish to AI agents | The old `AddHttpClients()`/combined MCP recipe is parked until its Process client/MCP owners migrate under #585 | [Historical quick start](../../README.md#expose-registered-services-through-an-mcp-host) |
-| Publish several services to agents in one place | a separate MCP host reading the central registry; configure gateway routes per service version, not clients per service | [README quick start](../../README.md#expose-registered-services-through-an-mcp-host) |
+| Publish to AI agents | `AddHttp()` + `AddRegistryHttpParticipation()` + `AddProcessHttpClient()` + `AddQueryableHttpClient()` + `AddMcp()` with token exchange; no local capability runtime required for a reader-only host | [MCP README](../../src/Mcp/Mcp/README.md) |
+| Publish several services to agents in one place | One reader-only MCP host: general tools use caller-filtered Registry discovery, while hydrated metadata and Process results drive pinned continuations; no per-service client URLs | [MCP guide](getting-started.md#6-publish-it-to-ai-agents-mcp) |
 
 ## Central registry
 

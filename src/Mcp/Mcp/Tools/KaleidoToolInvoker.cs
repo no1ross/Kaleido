@@ -2,8 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Kaleido.Platform;
-using Kaleido.Processor;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -33,13 +31,14 @@ internal sealed record KaleidoToolCall
 /// Runs a tool call against Kaleido and turns the outcome into what the model reads.
 /// </summary>
 /// <remarks>
-/// <para>Every call goes through the Kaleido clients (<c>AddHttpClients()</c>) of the tool's service,
-/// by capability name, as the MCP caller (the handler opens the caller's scope).</para>
+/// <para>Every call goes through the current Process or Queryable HTTP client of the tool's
+/// published service/version, by capability name and as the authenticated MCP caller.</para>
 /// <para><b>Queries</b> run the source or view query and return its result.</para>
 /// <para><b>Steps</b> execute the step by name, continuing the given process.
 /// The result is summarized for the model: the outcome, the business messages (verbatim), and
 /// <c>next</c>: the required tool, or the available tools, of the service the process continues on.
-/// After a handoff the target service's state is read, so <c>next</c> names that service's tools.</para>
+/// The immediate hand-off result already contains the target's next-step names and pinned version;
+/// a later state read follows that pinned target for fresh choices.</para>
 /// <para><b>Questions</b> (a required information step) go to the <b>user</b> when the client can
 /// show forms:</para>
 /// <list type="bullet">
@@ -213,12 +212,12 @@ internal sealed partial class KaleidoToolInvoker(
         IReadOnlyDictionary<string, JsonElement> arguments,
         CancellationToken cancellationToken)
     {
-        QueryApiBody? body;
+        QueryBody? body;
         JsonObject? parameters = null;
 
         try
         {
-            body = QueryBody(arguments).Deserialize<QueryApiBody>(KaleidoJsonOptions.Options);
+            body = QueryJsonBody(arguments).Deserialize<QueryBody>(KaleidoJsonOptions.Options);
 
             if (arguments.TryGetValue("parameters", out var given) && given.ValueKind == JsonValueKind.Object)
             {
@@ -257,7 +256,7 @@ internal sealed partial class KaleidoToolInvoker(
     }
 
     // { searchText?, filter?, sort?, page? } from the tool's arguments; several filters are and-ed.
-    private static JsonObject QueryBody(IReadOnlyDictionary<string, JsonElement> arguments)
+    private static JsonObject QueryJsonBody(IReadOnlyDictionary<string, JsonElement> arguments)
     {
         var query = new JsonObject();
 
@@ -293,7 +292,7 @@ internal sealed partial class KaleidoToolInvoker(
 
     private async Task<CallToolResult> RunQueryAsync(
         KaleidoTool tool,
-        QueryApiBody? body,
+        QueryBody? body,
         JsonObject? parameters,
         Guid? processId,
         CancellationToken cancellationToken)
@@ -306,7 +305,7 @@ internal sealed partial class KaleidoToolInvoker(
         }
 
         var client = Queryable(tool);
-        var request = new QueryApiRequest<JsonObject>(parameters, body);
+        var request = new QueryRequest<JsonObject>(parameters, body);
         var source = tool.SourceName ?? tool.CapabilityName;
 
         // The process id goes with the query as X-Kaleido-Process-Id, so the service records it.
@@ -536,7 +535,7 @@ internal sealed partial class KaleidoToolInvoker(
         var requestedVersion = Text(arguments, "serviceVersion");
         var token = DecodeAnswers(Text(arguments, AnswersTokenArgument), processId, service, requestedVersion, informationRequestId);
         var version = requestedVersion ?? token?.ServiceVersion;
-        var pending = await PendingAsync(service, version, processId, cancellationToken);
+        var pending = await PendingAsync(service, version, processId, catalog, cancellationToken);
 
         if (pending.Error is { } error)
         {
@@ -552,7 +551,7 @@ internal sealed partial class KaleidoToolInvoker(
 
         if (token is null)
         {
-            return NoAnswersToken(service, pending, catalog, processId);
+            return NoAnswersToken(service, version, pending, catalog, processId);
         }
 
         var earlier = new Dictionary<string, IReadOnlyList<string>>(token.Answers, StringComparer.Ordinal);
@@ -568,7 +567,8 @@ internal sealed partial class KaleidoToolInvoker(
             {
                 ["processId"] = processId.ToString(),
                 ["service"] = service,
-                ["next"] = Next(service, pending.Step, [], catalog, elicited: false, processId, merged),
+                ["next"] = Next(service, version, pending.Step.Name, pending.Request, [], catalog,
+                    elicited: false, processId, merged),
             });
         }
 
@@ -587,11 +587,11 @@ internal sealed partial class KaleidoToolInvoker(
     // #516: answers are submitted only with the token issued with the questions - never under the
     // current exchange by default, which would take answers to earlier questions for answers to these.
     // The refusal carries the current questions with a fresh token.
-    private CallToolResult NoAnswersToken(string service, PendingQuestions pending, ToolCatalog catalog, Guid processId) =>
+    private CallToolResult NoAnswersToken(string service, string? version, PendingQuestions pending, ToolCatalog catalog, Guid processId) =>
         Error(
             McpErrorCodes.InvalidArguments,
             $"The {AnswersTokenArgument} is missing, or not the one returned with these questions; nothing was submitted. Ask the user the questions below and answer with their {AnswersTokenArgument}, unchanged.",
-            Next(service, pending.Step, [], catalog, elicited: false, processId));
+            Next(service, version, pending.Step.Name, pending.Request, [], catalog, elicited: false, processId));
 
     // The agent's answers as given (Kaleido judges their shape), after the earlier rounds' answers;
     // only answers to questions the answers disable are left out.
@@ -708,7 +708,7 @@ internal sealed partial class KaleidoToolInvoker(
                 cancellationToken);
         }
 
-        var pending = await PendingAsync(state.Service, state.ServiceVersion, state.ProcessId, cancellationToken);
+        var pending = await PendingAsync(state.Service, state.ServiceVersion, state.ProcessId, catalog, cancellationToken);
 
         if (pending.Error is { } error)
         {
@@ -799,7 +799,13 @@ internal sealed partial class KaleidoToolInvoker(
 
         if (!string.IsNullOrWhiteSpace(state.TargetProcessorName))
         {
-            return await StateAsync(state.TargetProcessorName, version: null, processId, catalog, note, cancellationToken);
+            if (!KaleidoServiceOptions.IsValidServiceVersion(state.TargetProcessorVersion))
+            {
+                return Error(McpErrorCodes.ServiceUnavailable,
+                    $"Process {processId} moved to '{state.TargetProcessorName}' without a pinned target service version; do not guess which deployment owns it.");
+            }
+
+            return await StateAsync(state.TargetProcessorName, state.TargetProcessorVersion, processId, catalog, note, cancellationToken);
         }
 
         var summary = new JsonObject
@@ -815,7 +821,8 @@ internal sealed partial class KaleidoToolInvoker(
                 .Where(x => x.Status is StepExecutionStatus.Failed or StepExecutionStatus.Exception)
                 .Select(x => (JsonNode?)x.StepName)
                 .ToArray()),
-            ["next"] = Next(service, state.RequiredStep, state.AvailableSteps, catalog, elicited: false, processId, notice: state.Notice),
+            ["next"] = Next(service, state.ServiceVersion ?? version, state.RequiredStep, state.RequiredInformationRequest,
+                state.AvailableSteps, catalog, elicited: false, processId, notice: state.Notice),
         };
         var selectedVersion = version ?? summary["next"]?["serviceVersion"]?.GetValue<string>();
         if (!string.IsNullOrWhiteSpace(selectedVersion))
@@ -837,52 +844,21 @@ internal sealed partial class KaleidoToolInvoker(
         return Success(summary);
     }
 
-    // The state of the process on the service it was handed off to. The step has completed by now: a
-    // failure to read where it continues must not be reported as the step failing (#537).
-    private async Task<(ProcessStateResponse? State, string? Unread)> TargetStateAsync(string target, Guid processId, CancellationToken cancellationToken)
+    // The Process result already contains the target's immediate next-step names and pinned version
+    // on a hand-off; the Registry supplies their descriptions and bindings, not another choice list.
+    private static (string Service, string? Version, string? Required, InformationRequest? Information,
+        IReadOnlyCollection<string> Available, KaleidoNotice? Notice) NextSteps(string service, ProcessResult result)
     {
-        try
-        {
-            return (await Processor(target).GetProcessStateAsync(processId, cancellationToken), null);
-        }
-        catch (Exception exception) when (exception is KaleidoHttpClientException or KaleidoRegistryClientException or HttpRequestException)
-        {
-            LogTargetStateUnread(logger, exception, target, processId);
-
-            return (null, $"The step completed. The process continues on {target}, whose next steps could not be read; check them with {ToolCatalogBuilder.GetProcessStateTool}.");
-        }
-    }
-
-    // Where the process goes next after a step: the step's own answer, which after a handoff already
-    // carries the target's next steps (#198). Only a handoff answer without them (an older service)
-    // needs the target's state read.
-    private async Task<(string Service, ProcessRequiredStep? Required, IReadOnlyCollection<ProcessStepSummary> Available, KaleidoNotice? Notice, string? Unread)> NextStepsAsync(
-        string service,
-        StepExecutionResponse step,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(step.TargetProcessorName))
-        {
-            return (service, step.RequiredStep, step.AvailableSteps, step.Notice, null);
-        }
-
-        var target = step.TargetProcessorName;
-
-        if (step.RequiredStep is not null || step.AvailableSteps.Count > 0 || step.Notice is not null)
-        {
-            return (target, step.RequiredStep, step.AvailableSteps, step.Notice, null);
-        }
-
-        var (targetState, unread) = await TargetStateAsync(target, step.ProcessId, cancellationToken);
-
-        return (target, targetState?.RequiredStep, targetState?.AvailableSteps ?? [], targetState?.Notice, unread);
+        var target = result.TargetProcessorName;
+        return (target ?? service, target is null ? result.ServiceVersion : result.TargetProcessorVersion,
+            result.RequiredStep, result.RequiredInformationRequest, result.AvailableSteps, result.Notice);
     }
 
     // After a step: follow a handoff to the target, put questions to the user while the client can
     // show forms, and summarize where the process stands.
     private async Task<ToolOutcome> FollowUpAsync(
         string service,
-        StepExecutionResponse<JsonElement> step,
+        ProcessResult step,
         ToolCatalog catalog,
         KaleidoToolCall call,
         JsonArray answered,
@@ -894,14 +870,18 @@ internal sealed partial class KaleidoToolInvoker(
 
         for (; ; round++)
         {
-            var (pendingService, required, available, notice, unread) = await NextStepsAsync(service, step, cancellationToken);
-
-            note ??= unread;
+            var (pendingService, pinnedVersion, requiredName, pending, available, notice) = NextSteps(service, step);
+            var required = requiredName is null ? null : catalog.FindStepMetadata(pendingService, requiredName, pinnedVersion);
+            var outcome = step.Steps.Single();
+            if (requiredName is not null && required is null)
+            {
+                note ??= NotPermittedNote;
+            }
 
             var mode = ElicitationMode(call);
 
-            if (required?.InformationRequest is { } pending &&
-                step.Status == StepExecutionStatus.Completed &&
+            if (required is not null && pending is not null &&
+                outcome.ExecutionStatus == StepExecutionStatus.Completed &&
                 mode != Elicitation.None)
             {
                 if (round >= options.MaxElicitationRounds)
@@ -911,16 +891,16 @@ internal sealed partial class KaleidoToolInvoker(
                 else if (mode == Elicitation.Mrtr)
                 {
                     // Return the form; the client shows it and calls this tool again with the answers.
-                    return AskForAnswers(pendingService, catalog.VersionOf(pendingService, required.ExecuteUrl), step.ProcessId, pending, round, answered, new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal));
+                    return AskForAnswers(pendingService, pinnedVersion, step.ProcessId, pending, round, answered, new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal));
                 }
                 else
                 {
-                    var (next, unanswered) = await AnswerInSessionAsync(call, pendingService, catalog.VersionOf(pendingService, required.ExecuteUrl), required, pending, step.ProcessId, cancellationToken);
+                    var (next, unanswered) = await AnswerInSessionAsync(call, pendingService, pinnedVersion, required, pending, step.ProcessId, cancellationToken);
 
                     if (next is not null)
                     {
                         answered.Add(pending.InformationRequestId);
-                        serviceVersion = catalog.VersionOf(pendingService, required.ExecuteUrl) ?? serviceVersion;
+                        serviceVersion = pinnedVersion ?? serviceVersion;
                         service = pendingService;
                         step = next;
 
@@ -932,18 +912,18 @@ internal sealed partial class KaleidoToolInvoker(
             }
 
             return Success(
-                Summary(service, pendingService, step, new Continuation(required, available, notice), answered, note, catalog, serviceVersion),
-                step.BusinessMessages.Select(x => x.Message));
+                Summary(service, pendingService, step, new Continuation(requiredName, pending, available, notice, pinnedVersion), answered, note, catalog, serviceVersion),
+                outcome.BusinessMessages.Select(x => x.Message));
         }
     }
 
     // Puts the questions to the user and submits the answers. The step before has completed by now: a
     // failure to ask or to submit is a note on its summary, never the step failing (#537, KAL0022).
-    private async Task<(StepExecutionResponse<JsonElement>? Next, string? Note)> AnswerInSessionAsync(
+    private async Task<(ProcessResult? Next, string? Note)> AnswerInSessionAsync(
         KaleidoToolCall call,
         string service,
         string? version,
-        ProcessRequiredStep required,
+        ProcessStepResponse required,
         InformationRequest pending,
         Guid processId,
         CancellationToken cancellationToken)
@@ -1063,10 +1043,10 @@ internal sealed partial class KaleidoToolInvoker(
 
     // The exchange id is the one captured when the questions were shown, never re-read: answers to an
     // earlier exchange are then refused by the service, not taken for answers to the current one (#442).
-    private Task<StepExecutionResponse<JsonElement>> SubmitAsync(
+    private Task<ProcessResult> SubmitAsync(
         string service,
         string? version,
-        ProcessRequiredStep step,
+        ProcessStepResponse step,
         InformationRequest request,
         string exchangeId,
         IReadOnlyList<InformationResponseItem> items,
@@ -1116,15 +1096,17 @@ internal sealed partial class KaleidoToolInvoker(
         string service,
         string? version,
         Guid processId,
+        ToolCatalog catalog,
         CancellationToken cancellationToken)
     {
         var state = await Processor(service, version).GetProcessStateAsync(processId, cancellationToken);
-
-        return state?.RequiredStep is { InformationRequest: { } request } step
-            ? new PendingQuestions(step, request, Error: null)
-            : PendingQuestions.Failed(Error(
-                McpErrorCodes.NoPendingInformationRequest,
-                $"Process {processId} on '{service}' is not waiting for answers. Use get_process_state to see what it needs."));
+        return state?.RequiredStep is { } name
+            && state.RequiredInformationRequest is { } request
+            && catalog.FindStepMetadata(service, name, state.ServiceVersion ?? version) is { } step
+                ? new PendingQuestions(step, request, Error: null)
+                : PendingQuestions.Failed(Error(
+                    McpErrorCodes.NoPendingInformationRequest,
+                    $"Process {processId} on '{service}' is not waiting for a step this caller may answer. Use get_process_state to see what it needs."));
     }
 
     private static Elicitation ElicitationMode(KaleidoToolCall call)
@@ -1146,9 +1128,11 @@ internal sealed partial class KaleidoToolInvoker(
     // Where the process goes next as the user may see it: the steps they may run, and the notice when
     // it continues with steps they may not (#524).
     private sealed record Continuation(
-        ProcessRequiredStep? Required,
-        IReadOnlyCollection<ProcessStepSummary> Available,
-        KaleidoNotice? Notice);
+        string? Required,
+        InformationRequest? Information,
+        IReadOnlyCollection<string> Available,
+        KaleidoNotice? Notice,
+        string? Version);
 
     private const string NotPermittedNote =
         "The process continues with a step this user may not run. Tell them they do not have access to continue it; do not guess or name another step.";
@@ -1156,38 +1140,35 @@ internal sealed partial class KaleidoToolInvoker(
     private JsonObject Summary(
         string service,
         string pendingService,
-        StepExecutionResponse<JsonElement> step,
+        ProcessResult step,
         Continuation continuation,
         JsonArray answered,
         string? note,
         ToolCatalog catalog,
         string? serviceVersion)
     {
-        var (required, available, notice) = continuation;
+        var (required, information, available, notice, version) = continuation;
+        var outcome = step.Steps.Single();
         var summary = new JsonObject
         {
             ["processId"] = step.ProcessId.ToString(),
             ["service"] = service,
-            ["step"] = step.StepName,
-            ["outcome"] = Camel(step.Status.ToString()),
+            ["step"] = outcome.StepName,
+            ["outcome"] = Camel(outcome.ExecutionStatus.ToString()),
         };
 
-        if (step.Result.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
-        {
-            summary["result"] = JsonNode.Parse(step.Result.GetRawText());
-            AddFieldDescriptions(summary, catalog.FindStep(service, step.StepName, serviceVersion), summary["result"]);
-        }
+        AddStepResponse(summary, outcome, catalog.FindStep(service, outcome.StepName, serviceVersion));
 
         // Two streams, kept apart as the step response keeps them: business messages are the
         // implementer's words for the user (verbatim, always); framework messages are Kaleido's
         // diagnostics about the call, for the agent to explain, and only when they matter (warnings
         // and errors, not informational notes such as a repeatable step).
-        if (step.BusinessMessages.Count > 0)
+        if (outcome.BusinessMessages.Count > 0)
         {
-            summary["messages"] = Serialize(step.BusinessMessages);
+            summary["messages"] = Serialize(outcome.BusinessMessages);
         }
 
-        var diagnostics = step.FrameworkMessages.Where(x => x.Type != MessageType.Information).ToArray();
+        var diagnostics = outcome.RuntimeMessages.Where(x => x.Type != MessageType.Information).ToArray();
 
         if (diagnostics.Length > 0)
         {
@@ -1204,7 +1185,8 @@ internal sealed partial class KaleidoToolInvoker(
             summary["handoff"] = step.TargetProcessorName;
         }
 
-        summary["next"] = Next(pendingService, required, available, catalog, elicited: answered.Count > 0, step.ProcessId, notice: notice);
+        summary["next"] = Next(pendingService, version, required, information, available, catalog,
+            elicited: answered.Count > 0, step.ProcessId, notice: notice);
         CopyServiceVersion(summary, service, pendingService, serviceVersion);
 
         if (notice is not null)
@@ -1213,7 +1195,7 @@ internal sealed partial class KaleidoToolInvoker(
             note ??= NotPermittedNote;
         }
 
-        note ??= UnfinishedNote(step.Status, canContinue: required is not null || available.Count > 0);
+        note ??= UnfinishedNote(outcome.ExecutionStatus, canContinue: required is not null || available.Count > 0);
 
         if (note is not null)
         {
@@ -1221,6 +1203,15 @@ internal sealed partial class KaleidoToolInvoker(
         }
 
         return summary;
+    }
+
+    private static void AddStepResponse(JsonObject summary, ProcessStepResult outcome, KaleidoTool? tool)
+    {
+        if (outcome.Response is not null)
+        {
+            summary["result"] = Serialize(outcome.Response);
+            AddFieldDescriptions(summary, tool, summary["result"]);
+        }
     }
 
     private static void CopyServiceVersion(JsonObject summary, string service, string pendingService, string? serviceVersion)
@@ -1275,11 +1266,9 @@ internal sealed partial class KaleidoToolInvoker(
             },
         };
 
-    private static JsonObject NextEnvelope(string service, ProcessRequiredStep? required, IReadOnlyCollection<ProcessStepSummary> available, ToolCatalog catalog)
+    private static JsonObject NextEnvelope(string service, string? version)
     {
         var next = new JsonObject { ["service"] = service };
-        var version = catalog.VersionOf(service, required?.ExecuteUrl)
-            ?? available.Select(x => catalog.VersionOf(service, x.ExecuteUrl)).FirstOrDefault(x => x is not null);
         if (version is not null)
         {
             next["serviceVersion"] = version;
@@ -1290,17 +1279,20 @@ internal sealed partial class KaleidoToolInvoker(
 
     private JsonObject Next(
         string service,
-        ProcessRequiredStep? required,
-        IReadOnlyCollection<ProcessStepSummary> available,
+        string? version,
+        string? required,
+        InformationRequest? information,
+        IReadOnlyCollection<string> available,
         ToolCatalog catalog,
         bool elicited,
         Guid? processId,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? answersSoFar = null,
         KaleidoNotice? notice = null)
     {
-        var next = NextEnvelope(service, required, available, catalog);
+        var next = NextEnvelope(service, version);
+        var requiredMetadata = required is null ? null : catalog.FindStepMetadata(service, required, version);
 
-        if (required is { InformationRequest: { } request })
+        if (information is { } request && requiredMetadata is not null)
         {
             // Only the questions that apply now (ADR 0024): Kaleido applies the conditions, the agent
             // never sees them. Later rounds carry the earlier answers in answersToken.
@@ -1311,8 +1303,8 @@ internal sealed partial class KaleidoToolInvoker(
             next["required"] = new JsonObject
             {
                 ["tool"] = ToolCatalogBuilder.AnswerInformationRequestTool,
-                ["step"] = required.Name,
-                ["displayName"] = required.DisplayName,
+                ["step"] = required,
+                ["displayName"] = requiredMetadata.DisplayName ?? required,
             };
             next["informationRequest"] = ForAgent(pending);
 
@@ -1327,20 +1319,25 @@ internal sealed partial class KaleidoToolInvoker(
         }
         else if (required is not null)
         {
-            next["required"] = catalog.FindByUrl(required.ExecuteUrl) is { } tool
-                ? WithDetails(new JsonObject { ["tool"] = tool.Definition.Name, ["step"] = required.Name, ["displayName"] = required.DisplayName }, tool, catalog, processId)
-                : new JsonObject { ["step"] = required.Name, ["displayName"] = required.DisplayName, ["note"] = "You are not allowed to run this step." };
+            next["required"] = catalog.FindStep(service, required, version) is { } tool
+                ? WithDetails(new JsonObject { ["tool"] = tool.Definition.Name, ["step"] = required, ["displayName"] = tool.Definition.Title ?? required }, tool, catalog, processId)
+                : new JsonObject { ["step"] = required, ["note"] = "You are not allowed to run this step." };
         }
 
-        var tools = OfferedTools(available, catalog, processId);
+        AddOfferedTools(next, service, version, required, available, catalog, processId, notice);
+        return next;
+    }
 
+    private static void AddOfferedTools(JsonObject next, string service, string? version, string? required,
+        IReadOnlyCollection<string> available, ToolCatalog catalog, Guid? processId, KaleidoNotice? notice)
+    {
+        var tools = OfferedTools(service, version, available, catalog, processId);
         if (catalog.IsFrontDoor && HasDetails(next, tools))
         {
             next["howToRun"] = FrontDoorHowToRun;
         }
 
         next["available"] = new JsonArray(tools);
-
         if (tools.Length > 1)
         {
             next["choice"] = "Several steps are available: offer them to the user and let the user choose; do not pick one yourself. A step's 'closes' lists the steps it ends.";
@@ -1355,26 +1352,24 @@ internal sealed partial class KaleidoToolInvoker(
                 ? "No further steps here."
                 : $"No step here is available to you ({ProcessorErrorCodes.NotPermitted}): tell the user they do not have access to continue it; do not guess another step.";
         }
-
-        return next;
     }
 
     // The available steps the caller may run, each with the steps it closes - from the published
     // availableUntil - so the user decides in which order to go, knowing what each choice ends.
-    private static JsonNode[] OfferedTools(IReadOnlyCollection<ProcessStepSummary> available, ToolCatalog catalog, Guid? processId)
+    private static JsonNode[] OfferedTools(string service, string? version, IReadOnlyCollection<string> available, ToolCatalog catalog, Guid? processId)
     {
         var offered = available
-            .Select(x => (Step: x, Tool: catalog.FindByUrl(x.ExecuteUrl)))
+            .Select(name => (Name: name, Tool: catalog.FindStep(service, name, version)))
             .Where(x => x.Tool is not null)
             .ToArray();
 
         return offered
             .Select(x =>
             {
-                var entry = new JsonObject { ["tool"] = x.Tool?.Definition.Name, ["displayName"] = x.Step.DisplayName ?? x.Step.Name };
+                var entry = new JsonObject { ["tool"] = x.Tool?.Definition.Name, ["displayName"] = x.Tool?.Definition.Title ?? x.Name };
 
                 var closes = offered
-                    .Where(other => other.Tool?.ClosedBy.Contains(x.Step.Name, StringComparer.Ordinal) == true)
+                    .Where(other => other.Tool?.ClosedBy.Contains(x.Name, StringComparer.Ordinal) == true)
                     .Select(other => (JsonNode?)other.Tool?.Definition.Name)
                     .ToArray();
 
@@ -1634,12 +1629,12 @@ internal sealed partial class KaleidoToolInvoker(
         string? Action);
 
     private sealed record PendingQuestions(
-        ProcessRequiredStep Step,
+        ProcessStepResponse Step,
         InformationRequest Request,
         CallToolResult? Error)
     {
         public static PendingQuestions Failed(CallToolResult error) =>
-            new(new ProcessRequiredStep { Name = string.Empty }, new InformationRequest { InformationRequestId = string.Empty }, error);
+            new(new ProcessStepResponse { Name = string.Empty }, new InformationRequest { InformationRequestId = string.Empty }, error);
     }
 
     // Debug: the Kaleido client already logged the service's non-success answer at Warning (one
@@ -1652,9 +1647,6 @@ internal sealed partial class KaleidoToolInvoker(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: after a completed step of process {ProcessId}, its questions could not be put to the user or the answers could not be submitted.")]
     private static partial void LogAnswersNotTaken(ILogger logger, Exception exception, Guid processId);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido MCP: the state of process {ProcessId} on {Target}, where a completed step handed it off, could not be read.")]
-    private static partial void LogTargetStateUnread(ILogger logger, Exception exception, string target, Guid processId);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Kaleido MCP tool {Tool} failed unexpectedly.")]
     private static partial void LogToolFailed(ILogger logger, Exception exception, string tool);

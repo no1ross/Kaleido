@@ -12,7 +12,7 @@ public sealed class McpCatalogCacheTests
     private const string RegistryFetched = "Kaleido MCP registry read: fetched";
     private const string RegistryHit = "Kaleido MCP registry read: hit";
 
-    private static readonly string Nurse = BearerTestAuthHandler.Token("nina");
+    private static readonly string Nurse = TestCallerTokens.Token("nina");
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 

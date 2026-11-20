@@ -84,7 +84,7 @@ The [SQLite reference provider](../../src/Providers/Kaleido.Provider.SQLite/READ
 
 <!-- snippet: deployment-health -->
 ```csharp
-// AddControlRegistryClient() adds kaleido-registration; no client probes another service.
+// AddRegistryHttpParticipation() adds kaleido-registration; no client probes another service.
 // Your database is yours to check.
 services.AddHealthChecks()
     .AddDbContextCheck<OrdersDbContext>("orders-database");

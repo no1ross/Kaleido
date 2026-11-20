@@ -224,10 +224,10 @@ Startup codes surface through `KaleidoConfigurationException`. At request time a
 | Constant | Code | Meaning |
 | --- | --- | --- |
 | `MissingHttp` | `mcp_missing_http` | `AddMcp()` needs `AddHttp()` on the same builder (startup) |
-| `MissingClients` | `mcp_missing_clients` | `AddMcp()` needs `AddHttpClients()` and its one gateway client at `Kaleido:BaseUrl` (startup) |
+| `MissingClients` | `mcp_missing_clients` | `AddMcp()` needs the Process and Queryable HTTP clients with a shared gateway `Kaleido:BaseUrl` (startup) |
 | `OnBehalfOfCallsNotExchanged` | `mcp_on_behalf_of_calls_not_exchanged` | `AddMcp()` requires `Kaleido:OnBehalfOfCalls = Exchange`: the agent's user's token is issued for the MCP server and must not be passed through; the host exchanges it with its own handler (startup, #574) |
 | `MissingInstructionsFile` | `mcp_missing_instructions_file` | `Kaleido:Mcp:InstructionsFile` points at a file that does not exist (startup) |
-| `InvalidOptions` | `mcp_invalid_options` | A `Kaleido:Mcp` setting is blank, repeated, conflicting, out of range or unreadable (startup; nothing is clamped or replaced) |
+| `InvalidOptions` | `mcp_invalid_options` | A `Kaleido:Mcp` setting is blank, repeated, conflicting, out of range, unreadable or an obsolete `ServerName`/`ServerVersion` key (startup; use `Kaleido:ServiceName`/`Kaleido:ServiceVersion` for identity) |
 | `UnknownTool` | `mcp_unknown_tool` | The tool is not (or no longer) offered to this caller |
 | `InvalidArguments` | `mcp_invalid_arguments` | The tool arguments are missing a required value or have the wrong shape |
 | `ServiceError` | `mcp_service_error` | The Kaleido service refused or failed the call (its status and errors are included) |

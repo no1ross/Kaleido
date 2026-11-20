@@ -24,7 +24,7 @@ public sealed class KaleidoMcpToolHandlerTests
         Definition = new Tool { Name = "clinic_patient" },
         Kind = KaleidoToolKind.Query,
         Service = "clinic",
-        Url = "/clinic/queryable/patients/query"
+        CapabilityName = "Patient"
     };
 
     public KaleidoMcpToolHandlerTests()

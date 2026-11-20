@@ -1,7 +1,5 @@
 using System.Diagnostics;
-using Kaleido.Http.Client.Transport;
-using Kaleido.Http.Server;
-using Kaleido.Platform;
+using Kaleido.Hosting.Http;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
@@ -11,6 +9,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.AspNetCore.Authentication;
 using ModelContextProtocol.Authentication;
@@ -27,9 +26,6 @@ namespace Kaleido.Mcp.FunctionalTests.Infrastructure;
 /// </summary>
 public class McpClinicFixture : IAsyncLifetime
 {
-    // The host's own clients carry a service credential, as a router's do; tools must never use it.
-    public const string HostServiceToken = "Bearer svc-host|doctor";
-
     // The identity provider and scope the sign-in mode publishes in its protected-resource metadata.
     public const string AuthorizationServer = "https://login.example.test/";
     public const string Scope = "kaleido.mcp";
@@ -37,8 +33,11 @@ public class McpClinicFixture : IAsyncLifetime
     /// <summary>The service a clinic visit is handed off to, hosted only by <see cref="HandOffFixture"/>.</summary>
     public const string WardService = "ward";
 
-    private static readonly string HandOffNamespace = typeof(HandOff.TransferToWardStep).Namespace!;
-    private static readonly string WardNamespace = typeof(HandOff.Ward.AdmitStep).Namespace!;
+    private static readonly string HandOffNamespace = typeof(HandOff.TransferToWardStep).Namespace
+        ?? throw new InvalidOperationException("Hand-off steps need a namespace.");
+    private static readonly string WardNamespace = typeof(HandOff.Ward.AdmitStep).Namespace
+        ?? throw new InvalidOperationException("Ward steps need a namespace.");
+    private static readonly string[] OutboundClientNames = ["kaleido-process", "kaleido-queryable"];
 
     private readonly bool withDownstreamThatIsDown;
     private readonly bool withWard;
@@ -100,7 +99,12 @@ public class McpClinicFixture : IAsyncLifetime
     }
 
     /// <summary>A raw HTTP client on the TestServer, for protocol-level assertions.</summary>
-    public HttpClient CreateHttpClient() => Server.CreateClient();
+    public HttpClient CreateHttpClient()
+    {
+        var client = Server.CreateClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        return client;
+    }
 
     private TestServer Server =>
         host?.GetTestServer() ?? throw new InvalidOperationException("The host has not started.");
@@ -139,23 +143,13 @@ public class McpClinicFixture : IAsyncLifetime
                     {
                         services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Debug).AddProvider(new CapturingLoggerProvider(Logs)));
                         services.AddRouting();
-                        var authentication = services.AddAuthentication(o =>
-                            {
-                                o.DefaultScheme = BearerTestAuthHandler.SchemeName;
-
-                                // Sign-in discovery (#212): the host still validates tokens with its own
-                                // scheme; the MCP SDK's scheme only answers the challenge with the
-                                // protected-resource metadata, so MCP clients find the IdP themselves.
-                                if (withSignIn)
-                                {
-                                    o.DefaultChallengeScheme = McpAuthenticationDefaults.AuthenticationScheme;
-                                }
-                            })
-                            .AddScheme<AuthenticationSchemeOptions, BearerTestAuthHandler>(BearerTestAuthHandler.SchemeName, _ => { });
-
+                        services.AddTestJwtBearer();
                         if (withSignIn)
                         {
-                            authentication.AddMcp(o => o.ResourceMetadata = new ProtectedResourceMetadata
+                            // Sign-in discovery (#212): JWT validates tokens; MCP only answers the
+                            // challenge with protected-resource metadata so clients find the IdP.
+                            services.Configure<AuthenticationOptions>(o => o.DefaultChallengeScheme = McpAuthenticationDefaults.AuthenticationScheme);
+                            services.AddAuthentication().AddMcp(o => o.ResourceMetadata = new ProtectedResourceMetadata
                             {
                                 AuthorizationServers = [AuthorizationServer],
                                 ScopesSupported = [Scope],
@@ -165,7 +159,7 @@ public class McpClinicFixture : IAsyncLifetime
 
                         var settings = new Dictionary<string, string?>
                         {
-                            ["Kaleido:BaseUrl"] = "http://registry.test/",
+                            ["Kaleido:BaseUrl"] = "https://localhost/",
                             ["Kaleido:Mcp:AdditionalInstructions"] = "A visit starts with a patient search.",
                             ["Kaleido:OnBehalfOfCalls"] = "Exchange",
                             ["Kaleido:Resilience:TotalTimeout"] = ClientTimeout.ToString("c", System.Globalization.CultureInfo.InvariantCulture),
@@ -207,24 +201,32 @@ public class McpClinicFixture : IAsyncLifetime
                                 (withLookupStep || (type != typeof(AssignBedStep) && type != typeof(AssignBedHandler)))
                                 && type.Namespace != WardNamespace
                                 && (withWard || type.Namespace != HandOffNamespace),
-                            AuthorizationMode = KaleidoAuthorizationMode.Authenticated,
                         })
-                            .AddInMemoryStores()
+                            .AddHosting(serverOptions: new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
+                            .AddInMemoryProviders()
                             .AddHttp()
-                            .AddHttpClients()
-                            // Tool calls carry a token exchanged for the agent's user, never the agent's own
-                            // (#574); the host's service credential below stays on the service's own calls.
+                            .AddProcessHttpBindings()
+                            .AddQueryableHttpBindings()
+                            .AddProcessHttpServer()
+                            // Tool calls carry exchanged user credentials; registration and hydration use the
+                            // service's own credential (#574).
                             .AddKaleidoClientHandler<TestTokenExchangeHandler>()
-                            .AddControlRegistryClient()
+                            .AddRegistryHttpParticipation(new KaleidoClientOptions { OnBehalfOfCalls = KaleidoOnBehalfOfCalls.Exchange })
+                            .AddProcessHttpClient()
+                            .AddQueryableHttpClient()
                             .AddMcp();
-                        services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => registry!.CreateHandler());
+                        services.Configure<HttpClientFactoryOptions>("kaleido-registry", options =>
+                            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = registry?.CreateHandler()
+                                ?? throw new InvalidOperationException("The Registry authority has not started.")));
 
-                        // One gateway client routes each version's published path to its test host.
-                        services.AddHttpClient(KaleidoClientTransport.ClientName,
-                                client => client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", HostServiceToken))
-                            .ConfigurePrimaryHttpMessageHandler(sp => new GatewayTestRouter(
-                                ((TestServer)sp.GetRequiredService<IServer>()).CreateHandler(),
-                                wardHost?.GetTestServer().CreateHandler(), withDownstreamThatIsDown));
+                        // The shared gateway routes each published version through the real capability clients.
+                        foreach (var clientName in OutboundClientNames)
+                        {
+                            services.Configure<HttpClientFactoryOptions>(clientName, options =>
+                                options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new GatewayTestRouter(
+                                    ((TestServer)handlers.Services.GetRequiredService<IServer>()).CreateHandler(),
+                                    wardHost?.GetTestServer().CreateHandler(), withDownstreamThatIsDown)));
+                        }
                     });
 
                     web.Configure(app =>
@@ -260,7 +262,7 @@ public class McpClinicFixture : IAsyncLifetime
                         app.UseAuthorization();
                         app.UseEndpoints(endpoints =>
                         {
-                            endpoints.MapKaleidoHttp();
+                            endpoints.MapKaleido().MapProcess().MapQueryable();
                             var mcp = endpoints.MapKaleidoMcp("/mcp");
 
                             if (withSignIn)
@@ -287,19 +289,24 @@ public class McpClinicFixture : IAsyncLifetime
                     services.AddRouting();
                     services.AddKaleido(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Kaleido:BaseUrl"] = "http://registry.test/",
+                        ["Kaleido:BaseUrl"] = "https://localhost/",
                     }).Build(), new()
                     {
                         ServiceName = WardService,
                         ServiceVersion = "1",
                         Assemblies = [typeof(McpClinicFixture).Assembly],
                         TypeFilter = type => type.Namespace == WardNamespace,
-                        AuthorizationMode = KaleidoAuthorizationMode.None,
                     })
-                        .AddInMemoryStores()
+                        .AddHosting(serverOptions: new() { AuthorizationMode = KaleidoAuthorizationMode.None })
+                        .AddInMemoryProviders()
                         .AddHttp()
-                        .AddControlRegistryClient();
-                    services.AddHttpClient("kaleido-registry").ConfigurePrimaryHttpMessageHandler(() => registry!.CreateHandler());
+                        .AddProcessHttpBindings()
+                        .AddProcessHttpServer()
+                        .AddKaleidoClientHandler<TestTokenExchangeHandler>()
+                        .AddRegistryHttpParticipation();
+                    services.Configure<HttpClientFactoryOptions>("kaleido-registry", options =>
+                        options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = registry?.CreateHandler()
+                            ?? throw new InvalidOperationException("The Registry authority has not started.")));
                 });
                 web.Configure(app =>
                 {
@@ -309,11 +316,11 @@ public class McpClinicFixture : IAsyncLifetime
                         await next(context);
                     });
                     app.UseRouting();
-                    app.UseEndpoints(endpoints => endpoints.MapKaleidoHttp());
+                    app.UseEndpoints(endpoints => endpoints.MapKaleido().MapProcess());
                 });
             })
             .StartAsync();
-        await registry!.WaitForRegistrationAsync(ward);
+        await (registry ?? throw new InvalidOperationException("The Registry authority has not started.")).WaitForRegistrationAsync(ward);
         return ward;
     }
 
@@ -344,7 +351,7 @@ public class McpClinicFixture : IAsyncLifetime
         var transport = new HttpClientTransport(
             new HttpClientTransportOptions
             {
-                Endpoint = new Uri("http://localhost/mcp"),
+                Endpoint = new Uri("https://localhost/mcp"),
                 TransportMode = HttpTransportMode.StreamableHttp,
                 AdditionalHeaders = headers
             },

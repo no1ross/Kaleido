@@ -16,7 +16,7 @@ namespace Kaleido.Mcp.FunctionalTests;
 public sealed partial class McpSignInTests(OAuthSignInFixture fixture)
     : IClassFixture<OAuthSignInFixture>
 {
-    private static readonly string Nurse = BearerTestAuthHandler.Token("nina");
+    private static readonly string Nurse = TestCallerTokens.Token("nina");
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 

@@ -52,12 +52,6 @@ internal sealed record KaleidoTool
     /// <summary>For a view's query tool: the view's published name (null for a direct source query).</summary>
     public string? ViewName { get; init; }
 
-    /// <summary>
-    /// The capability's URL as published (<c>queryUrl</c> or <c>executeUrl</c>); used to map a
-    /// process's next steps back to version-pinned tool names.
-    /// </summary>
-    public string Url { get; init; } = string.Empty;
-
     /// <summary>For a step: it may start a new process (no processId needed).</summary>
     public bool IsInitial { get; init; }
 
@@ -159,8 +153,8 @@ internal sealed record ToolCatalog
     /// <summary>Services with processes (the values of the built-in tools' <c>service</c> argument).</summary>
     public IReadOnlyList<string> ProcessServices { get; init; } = [];
 
-    /// <summary>Published logical routes of the visible services, used to pin process continuations to their versions.</summary>
-    public IReadOnlyCollection<RegistryServiceRoute> Routes { get; init; } = [];
+    /// <summary>Caller-visible step metadata, including information steps that do not become tools.</summary>
+    public IReadOnlyCollection<ProcessRegistryItem> Processes { get; init; } = [];
 
     /// <summary>Capabilities and inputs without a description ("tool" or "tool.argument").</summary>
     public IReadOnlyList<string> MissingDescriptions { get; init; } = [];
@@ -181,7 +175,6 @@ internal sealed record ToolCatalog
     public IReadOnlyList<string> UnknownListedTools { get; init; } = [];
 
     private FrozenDictionary<string, KaleidoTool>? _byName;
-    private FrozenDictionary<string, KaleidoTool>? _byUrl;
 
     public ToolCatalog()
     {
@@ -196,7 +189,7 @@ internal sealed record ToolCatalog
         IsPartial = original.IsPartial;
         UnavailableServices = original.UnavailableServices;
         ProcessServices = original.ProcessServices;
-        Routes = original.Routes;
+        Processes = original.Processes;
         MissingDescriptions = original.MissingDescriptions;
         TruncatedNames = original.TruncatedNames;
         UnresolvedLookups = original.UnresolvedLookups;
@@ -212,6 +205,13 @@ internal sealed record ToolCatalog
         return _byName.TryGetValue(toolName, out var tool) ? tool : null;
     }
 
+    /// <summary>Caller-visible metadata for a named step, including an information step, on one pinned service version.</summary>
+    public ProcessStepResponse? FindStepMetadata(string service, string? stepName, string? serviceVersion) =>
+        Processes.Where(x => string.Equals(x.ServiceName, service, StringComparison.OrdinalIgnoreCase)
+                && (serviceVersion is null || string.Equals(x.ServiceVersion, serviceVersion, StringComparison.Ordinal)))
+            .SelectMany(x => x.Steps ?? [])
+            .FirstOrDefault(x => string.Equals(x.Name, stepName, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>The tool of step <paramref name="stepName"/> on <paramref name="service"/> and its version, if visible.</summary>
     public KaleidoTool? FindStep(string service, string stepName, string? serviceVersion = null) =>
         Tools.FirstOrDefault(x =>
@@ -220,24 +220,4 @@ internal sealed record ToolCatalog
             string.Equals(x.CapabilityName, stepName, StringComparison.Ordinal) &&
             (serviceVersion is null || string.Equals(x.ServiceVersion, serviceVersion, StringComparison.Ordinal)));
 
-    /// <summary>The tool that calls <paramref name="url"/> (maps next steps back to tool names).</summary>
-    public KaleidoTool? FindByUrl(string? url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            return null;
-        }
-
-        _byUrl ??= Tools
-            .Where(x => !string.IsNullOrWhiteSpace(x.Url))
-            .GroupBy(x => x.Url, StringComparer.OrdinalIgnoreCase)
-            .ToFrozenDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
-
-        return _byUrl.TryGetValue(url, out var tool) ? tool : null;
-    }
-
-    public string? VersionOf(string service, string? url) =>
-        string.IsNullOrWhiteSpace(url) ? null : Routes.FirstOrDefault(route =>
-            string.Equals(route.ServiceName, service, StringComparison.OrdinalIgnoreCase)
-            && route.Transports.Any(transport => url.StartsWith(transport.GatewayRoute + "/", StringComparison.Ordinal)))?.ServiceVersion;
 }

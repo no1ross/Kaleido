@@ -23,6 +23,10 @@
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Client" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Client.UnitTests" />
+		<!-- MCP reads the participant's internal hydrated source for stable tool metadata and client routing. -->
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Server" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server.UnitTests" />

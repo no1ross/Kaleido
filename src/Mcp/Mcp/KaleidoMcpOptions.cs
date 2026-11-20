@@ -6,28 +6,20 @@ namespace Kaleido.Mcp;
 /// setting), validates it and registers it (ADR 0030).
 /// </summary>
 /// <remarks>
-/// The adapter is a layer on top of the Kaleido HTTP stack: the caller's tools come from the host's
-/// registry (<c>IKaleidoRegistryService</c>, filtered per caller), and tool calls go through the
-/// Kaleido clients (<c>AddHttpClients()</c>) for the caller, with the token exchanged for them
-/// (<c>Kaleido:OnBehalfOfCalls = Exchange</c>). It runs in any Kaleido host
-/// that aggregates the services it publishes — a router, or a dedicated MCP host.
+/// The adapter is a layer on top of the Kaleido HTTP stack: general discovery reads the Registry's
+/// caller-filtered view while the participant's hydrated full copy supplies step metadata and
+/// published bindings. Process/Queryable clients call the selected service/version for that caller
+/// with an exchanged token (<c>Kaleido:OnBehalfOfCalls = Exchange</c>). A reader-only MCP host
+/// publishes no empty local service; a host may also expose its own capabilities.
 /// </remarks>
-public sealed record KaleidoMcpOptions
+public sealed record KaleidoMcpOptions : IKaleidoOptions
 {
     /// <summary>The configuration section that overrides these options: <c>Kaleido:Mcp</c>.</summary>
     public const string SectionName = "Kaleido:Mcp";
 
-    /// <summary>The MCP server name reported to clients. Default <c>kaleido</c>; must not be blank.</summary>
-    public string ServerName { get; init; } = "kaleido";
+    string IKaleidoOptions.ConfigurationPath => SectionName;
 
-    /// <summary>
-    /// The version of what this host publishes, reported to MCP clients in the initialize response.
-    /// Raise it when the tools or instructions a client sees change meaningfully. <see langword="null"/>
-    /// (the default) reports the host application's own version: the entry assembly's informational
-    /// version without its <c>+commit</c> suffix, else its assembly version - never Kaleido's package
-    /// version. Must not be blank when set.
-    /// </summary>
-    public string? ServerVersion { get; init; }
+    void IKaleidoOptions.Validate() => Validate(this);
 
     /// <summary>
     /// Replaces the packaged default instructions - what the agent is told when it connects (how
@@ -75,6 +67,8 @@ public sealed record KaleidoMcpOptions
     /// </summary>
     public IReadOnlyList<string> ListedTools { get; init; } = [];
 
+    internal KaleidoMcpOptions Snapshot() => this with { ListedTools = [.. ListedTools] };
+
     /// <summary>
     /// Asks the user, in a form the MCP client shows, before running a step declared
     /// <c>[ProcessStep(RequiresConfirmation = true)]</c>, and runs it only when the user accepts
@@ -99,8 +93,6 @@ public sealed record KaleidoMcpOptions
     // blank, repeated, out-of-range or conflicting value stops startup.
     internal static void Validate(KaleidoMcpOptions options)
     {
-        Require(!string.IsNullOrWhiteSpace(options.ServerName), nameof(ServerName), "must not be blank");
-        Require(options.ServerVersion is null || !string.IsNullOrWhiteSpace(options.ServerVersion), nameof(ServerVersion), "must not be blank when set");
         Require(options.Instructions is null || !string.IsNullOrWhiteSpace(options.Instructions), nameof(Instructions), "must not be blank when set");
         Require(options.InstructionsFile is null || !string.IsNullOrWhiteSpace(options.InstructionsFile), nameof(InstructionsFile), "must not be blank when set");
         Require(options.AdditionalInstructions is null || !string.IsNullOrWhiteSpace(options.AdditionalInstructions), nameof(AdditionalInstructions), "must not be blank when set");

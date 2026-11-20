@@ -30,10 +30,6 @@ Kaleido.Mcp.KaleidoMcpOptions.MaxElicitationRounds.get -> int
 Kaleido.Mcp.KaleidoMcpOptions.MaxElicitationRounds.init -> void
 Kaleido.Mcp.KaleidoMcpOptions.RequireConfirmation.get -> bool
 Kaleido.Mcp.KaleidoMcpOptions.RequireConfirmation.init -> void
-Kaleido.Mcp.KaleidoMcpOptions.ServerName.get -> string!
-Kaleido.Mcp.KaleidoMcpOptions.ServerName.init -> void
-Kaleido.Mcp.KaleidoMcpOptions.ServerVersion.get -> string?
-Kaleido.Mcp.KaleidoMcpOptions.ServerVersion.init -> void
 Kaleido.Mcp.KaleidoMcpOptions.ToolListing.get -> Kaleido.Mcp.McpToolListing
 Kaleido.Mcp.KaleidoMcpOptions.ToolListing.init -> void
 Kaleido.Mcp.KaleidoMcpServiceCollectionExtensions

@@ -11,7 +11,7 @@ public static class McpErrorCodes
     /// <summary><c>AddMcp()</c> needs <c>AddHttp()</c> on the same Kaleido builder.</summary>
     public const string MissingHttp = "mcp_missing_http";
 
-    /// <summary><c>AddMcp()</c> needs the gateway client from <c>AddHttpClients()</c> to call services.</summary>
+    /// <summary><c>AddMcp()</c> needs both Process and Queryable HTTP clients for outbound calls.</summary>
     public const string MissingClients = "mcp_missing_clients";
 
     /// <summary>
@@ -27,7 +27,7 @@ public static class McpErrorCodes
     /// <summary>
     /// A <c>Kaleido:Mcp</c> setting (from configuration or the options passed to <c>AddMcp</c>) is blank,
     /// repeated, conflicting, out of range or cannot be read, e.g. a negative <c>MaxElicitationRounds</c>,
-    /// a blank <c>ServerName</c>, or both <c>Instructions</c> and <c>InstructionsFile</c>. Reported at
+    /// both <c>Instructions</c> and <c>InstructionsFile</c>, or obsolete MCP-specific identity keys. Reported at
     /// startup; nothing is clamped, trimmed or replaced.
     /// </summary>
     public const string InvalidOptions = "mcp_invalid_options";

@@ -1,6 +1,5 @@
 using Kaleido.Mcp.Observability;
 using Kaleido.Mcp.Tools;
-using Kaleido.Server.Observability;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -19,10 +18,10 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// registry as each caller may see it, called through the host's Kaleido clients as that
     /// caller. Map the endpoint with <c>MapKaleidoMcp()</c>.
     /// </summary>
-    /// <param name="builder">The Kaleido builder, after <c>AddHttp()</c> and <c>AddHttpClients()</c>.</param>
+    /// <param name="builder">The Kaleido builder, after generic HTTP, Registry participation and the Process/Queryable HTTP clients.</param>
     /// <param name="options">
-    /// The settings set in code (server name and version, instructions, elicitation rounds, tool
-    /// listing); the <c>Kaleido:Mcp</c> configuration section is laid over a copy of them
+    /// The settings set in code (instructions, elicitation rounds and tool listing); the
+    /// <c>Kaleido:Mcp</c> configuration section is laid over a copy of them
     /// (configuration overrides code, setting by setting; ADR 0030). <see langword="null"/> uses the
     /// defaults.
     /// </param>
@@ -30,9 +29,9 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// <remarks>
     /// <para>The adapter reuses the HTTP stack instead of reimplementing it:</para>
     /// <list type="bullet">
-    /// <item><description><b>Tools</b> come from <see cref="IKaleidoRegistryService"/> — the same
-    /// central registry's hydrated copy, filtered per caller. Every host gets the complete
-    /// registry through its registered central registry client.</description></item>
+    /// <item><description><b>Tools</b> come from the central Registry's caller-filtered read;
+    /// the same participant's hydrated full Registry used by outbound clients supplies stable
+    /// names, descriptions and versioned routes, never a second process choice list.</description></item>
     /// <item><description><b>Calls</b> go through the Kaleido clients of each tool's service, made for the
     /// MCP caller: each carries the token the host's handler exchanged for that user
     /// (<c>Kaleido:OnBehalfOfCalls = Exchange</c>), never the agent's token and never the host's own
@@ -42,8 +41,8 @@ public static class KaleidoMcpServiceCollectionExtensions
     /// </list>
     /// </remarks>
     /// <exception cref="KaleidoConfigurationException">
-    /// <c>AddHttp()</c> was not called first (<see cref="McpErrorCodes.MissingHttp"/>), no Kaleido
-    /// client is configured (<see cref="McpErrorCodes.MissingClients"/>), <c>Kaleido:OnBehalfOfCalls</c> is not
+    /// <c>AddHttp()</c> was not called first (<see cref="McpErrorCodes.MissingHttp"/>), Registry or
+    /// capability clients are missing (<see cref="McpErrorCodes.MissingClients"/>), <c>Kaleido:OnBehalfOfCalls</c> is not
     /// <c>Exchange</c> (<see cref="McpErrorCodes.OnBehalfOfCallsNotExchanged"/>), the instructions file
     /// is missing (<see cref="McpErrorCodes.MissingInstructionsFile"/>), or a setting is out of
     /// range (<see cref="McpErrorCodes.InvalidOptions"/>).
@@ -57,21 +56,19 @@ public static class KaleidoMcpServiceCollectionExtensions
         var services = builder.Services;
 
         RequirePrerequisites(services);
+        RejectObsoleteIdentitySettings(builder);
 
-        options = builder.Configuration
-            .GetSection(KaleidoMcpOptions.SectionName)
-            .BindOver(options ?? new KaleidoMcpOptions(), McpErrorCodes.InvalidOptions);
-        KaleidoMcpOptions.Validate(options);
-        var instructions = KaleidoMcpServerInstructions.Resolve(options);
-        var version = KaleidoMcpServerVersion.Resolve(options, System.Reflection.Assembly.GetEntryAssembly());
+        var configured = builder.BindOptions(options, McpErrorCodes.InvalidOptions).Snapshot();
+        var identity = builder.ServiceOptions;
+        var instructions = KaleidoMcpServerInstructions.Resolve(configured);
 
-        services.AddSingleton(options);
+        services.AddSingleton(configured);
         services.AddSingleton(instructions);
-        services.AddSingleton(version);
 
         services.AddSingleton<IToolNameBuilder, ToolNameBuilder>();
         services.AddSingleton<IToolSchemaBuilder, ToolSchemaBuilder>();
         services.AddSingleton<IToolCatalogBuilder, ToolCatalogBuilder>();
+        services.TryAddSingleton<IKaleidoProcessForwarding, KaleidoProcessForwarding>();
 
         // The translated catalogs belong to this registration: hosts in one process never share them (#464).
         services.AddSingleton<IToolCatalogCache, ToolCatalogCache>();
@@ -92,8 +89,8 @@ public static class KaleidoMcpServiceCollectionExtensions
             {
                 server.ServerInfo = new Implementation
                 {
-                    Name = options.ServerName,
-                    Version = version.Value,
+                    Name = identity.ServiceName,
+                    Version = identity.ServiceVersion,
                 };
                 server.ServerInstructions = instructions.Text;
             })
@@ -108,28 +105,43 @@ public static class KaleidoMcpServiceCollectionExtensions
         return builder;
     }
 
-    // AddHttp() (the registry), the Kaleido clients, and how tool calls are authorized must come first.
+    private static void RejectObsoleteIdentitySettings(IKaleidoBuilder builder)
+    {
+        var obsolete = builder.Configuration.GetSection(KaleidoMcpOptions.SectionName).GetChildren()
+            .FirstOrDefault(section => string.Equals(section.Key, "ServerName", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(section.Key, "ServerVersion", StringComparison.OrdinalIgnoreCase));
+        if (obsolete is not null)
+        {
+            throw new KaleidoConfigurationException(McpErrorCodes.InvalidOptions,
+                $"{obsolete.Path} is obsolete; configure Kaleido:ServiceName and Kaleido:ServiceVersion with AddKaleido() instead.");
+        }
+    }
+
+    // Generic HTTP, the hydrated Registry and both capability clients must be registered before MCP.
     private static void RequirePrerequisites(IServiceCollection services)
     {
-        if (!services.Any(x => x.ServiceType == typeof(IKaleidoRegistryService)))
+        if (!services.Any(x => x.ServiceType == typeof(Kaleido.Http.Server.KaleidoHttpServerOptions)))
         {
             throw new KaleidoConfigurationException(
                 McpErrorCodes.MissingHttp,
                 "AddMcp() needs the Kaleido HTTP stack: call AddHttp() before AddMcp().");
         }
 
-        if (!services.Any(x => x.ServiceType == typeof(IKaleidoRegistryClient)))
+        if (!services.Any(x => x.ServiceType == typeof(IKaleidoRegistrySource))
+            || !services.Any(x => x.ServiceType == typeof(IKaleidoRegistryClient)))
         {
             throw new KaleidoConfigurationException(
                 ConfigurationErrorCodes.RegistryNotConfigured,
-                "AddMcp() requires the central registry client. Configure Kaleido:BaseUrl and call AddControlRegistryClient() before AddMcp().");
+                "AddMcp() needs the central Registry client and its hydrated copy: call AddRegistryHttpParticipation() before AddMcp(). A reader-only MCP host publishes no empty service.");
         }
 
-        if (services.FirstOrDefault(x => x.ImplementationInstance is KaleidoClientOptions)?.ImplementationInstance is not KaleidoClientOptions clients)
+        if (!services.Any(x => x.ServiceType == typeof(IKaleidoProcessorClientFactory))
+            || !services.Any(x => x.ServiceType == typeof(IKaleidoQueryableClientFactory))
+            || services.FirstOrDefault(x => x.ImplementationInstance is KaleidoClientOptions)?.ImplementationInstance is not KaleidoClientOptions clients)
         {
             throw new KaleidoConfigurationException(
                 McpErrorCodes.MissingClients,
-                "AddMcp() calls services through the gateway client: configure Kaleido:BaseUrl and call AddHttpClients() before AddMcp().");
+                "AddMcp() needs the Process and Queryable gateway clients: call AddProcessHttpClient() and AddQueryableHttpClient() before AddMcp().");
         }
 
         // Fail closed: tool calls are made for the agent's user, whose token was issued for this MCP server.

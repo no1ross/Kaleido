@@ -1,9 +1,11 @@
 # Kaleido.Mcp
 
 Publishes central-registry capabilities to AI agents as [MCP](https://modelcontextprotocol.io)
-tools. Tools come from the hydrated registry filtered for each caller; calls use the unfiltered
-registry's published service-version routes through one gateway client **as that caller**. An
-OAuth-protected MCP host exchanges the agent's user token rather than forwarding it unchanged.
+tools. General tool discovery reads the Registry's caller-filtered HTTP view; the participant's
+separate hydrated full Registry supplies stable metadata and version-pinned client bindings, never
+a second process-choice list. Process/Queryable HTTP clients resolve those bindings through the
+shared gateway **as that caller**. An OAuth-protected MCP host exchanges the agent's user token
+rather than forwarding it unchanged; an anonymous caller receives no tools.
 
 > How this project fits into a whole service, with tested examples: the [consumer guide](../../../docs/guide/README.md). This README is the reference for the project.
 
@@ -18,12 +20,13 @@ builder.Services
         ServiceVersion = "1",
         Assemblies = [typeof(Program).Assembly], // required, even without local capabilities
     })
-    .AddInMemoryStores()                              // local evaluation only
+    .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
     .AddHttp()
-    .AddHttpClients()                                 // one gateway: Kaleido:BaseUrl
-    .AddControlRegistryClient()
-    .AddKaleidoClientHandler<TokenExchangeHandler>()  // Kaleido:OnBehalfOfCalls = Exchange
-    .AddMcp(new() { ServerName = "priorauth" });
+    .AddKaleidoClientHandler<TokenExchangeHandler>()  // issues a distinct token for the caller
+    .AddRegistryHttpParticipation(new() { OnBehalfOfCalls = KaleidoOnBehalfOfCalls.Exchange })
+    .AddProcessHttpClient()
+    .AddQueryableHttpClient()
+    .AddMcp();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -39,23 +42,27 @@ exchange handler is shown in
 [Which token a service sends](../../../docs/guide/callers-and-correlation.md#which-token-a-service-sends).
 
 Options (`KaleidoMcpOptions`, passed to `AddMcp(new() { ... })`; the `Kaleido:Mcp` configuration
-section overrides them setting by setting, ADR 0030): `ServerName`, `ServerVersion`, `Instructions`
-or `InstructionsFile` (replace the default instructions; set one, not both),
+section overrides them setting by setting, ADR 0030): `Instructions` or `InstructionsFile`
+(replace the default instructions; set one, not both),
 `AdditionalInstructions` (appended: the business's guidance for its agents), `MaxElicitationRounds`
 (zero or more, default 5; 0 returns every information request to the agent), `ToolListing` (`All`,
 the default, or `FrontDoor`; see [Front door](#front-door)), `ListedTools` (FrontDoor only: extra
 tool names to list) and `RequireConfirmation` (default `false`; see [Confirmation](#confirmation)).
-Nothing is trimmed or replaced: a blank name, version or instructions setting, a blank or repeated
-listed tool, a negative round count or both instruction settings at once fail startup with
-`mcp_invalid_options`.
+Nothing is trimmed or replaced: blank instructions, a blank or repeated listed tool, a negative
+round count or both instruction settings at once fail startup with `mcp_invalid_options`.
+`Kaleido:Mcp:ServerName` and `Kaleido:Mcp:ServerVersion` now fail with that code rather than
+silently overriding or ignoring the host identity: use `Kaleido:ServiceName` and
+`Kaleido:ServiceVersion` from `AddKaleido()` ([ADR 0051](../../../docs/decisions/0051-mcp-uses-service-identity.md)).
 
-Call `AddHttp()`, `AddControlRegistryClient()` and `AddHttpClients()` with a gateway
-`Kaleido:BaseUrl` and `Kaleido:OnBehalfOfCalls = Exchange` **before** `AddMcp()`; otherwise
-startup fails with `mcp_missing_http`, `registry_not_configured`, `mcp_missing_clients` or
-`mcp_on_behalf_of_calls_not_exchanged`. `AddHttpClients()` rejects nonempty
-`Kaleido:Clients` entries. An
-`InstructionsFile` that does not exist fails with `mcp_missing_instructions_file`. The endpoint
-is stateless Streamable HTTP, so it needs no session affinity behind a load balancer.
+Call `AddHttp()`, `AddKaleidoClientHandler<THandler>()`, `AddRegistryHttpParticipation()`,
+`AddProcessHttpClient()` and `AddQueryableHttpClient()` with a gateway `Kaleido:BaseUrl`
+and `Kaleido:OnBehalfOfCalls = Exchange` **before** `AddMcp()`; otherwise startup fails with
+`mcp_missing_http`, `registry_not_configured`, `mcp_missing_clients` or
+`mcp_on_behalf_of_calls_not_exchanged`. A reader-only MCP host does not register local
+Process/Queryable runtimes, stores or an empty service. It uses the one gateway at
+`Kaleido:BaseUrl`, not per-service `Kaleido:Clients` addresses. An `InstructionsFile`
+that does not exist fails with `mcp_missing_instructions_file`. The endpoint is stateless Streamable HTTP,
+so it needs no session affinity behind a load balancer.
 
 ## Tools
 
@@ -72,6 +79,8 @@ have distinct tool identities and routes. `next.serviceVersion` and protected an
 preserve the version that asked a question. `get_process_state` accepts an optional
 `serviceVersion` for older processes; `answer_information_request` accepts it or recovers it from
 the protected `answersToken`. A process id by itself does not identify the version after a rollout.
+
+**Current process choices versus Registry descriptions (#625 migration contract).** The same hydrated full Registry that ordinary Process/Queryable clients use is the adapter's internal catalog for stable tool identity, descriptions, schemas and published bindings. It does **not** compute what one process may do next. An execute result already names its `requiredStep` or `availableSteps` for that process, with the target service/version and target's answer on the immediate hand-off; an MCP continuation matches only those names with `(service, pinned version, step name)` in the held Registry. It does not request another target state or a separate Registry "next steps" list just to expand that answer. A later read of the origin's hand-off state needs the pinned target's state for **fresh** choices. General `tools/list` without a process remains caller-visible discovery: filter what the agent may see instead of exposing the host's full internal snapshot. That filtering is not a competing process-choice list ([Process architecture](../../../docs/architecture/capabilities/process.md#registry-catalog-versus-this-processs-current-choices)). MCP never constructs downstream URLs or selects a continuation by parsing an `executeUrl`; the current clients resolve published bindings.
 
 **Queries and the process id.** A query tool's `processId` argument is the adapter's, not the
 source's: the query is sent inside `IKaleidoProcessForwarding.ForwardProcess(processId)`, so it
@@ -367,12 +376,10 @@ agents' behavior depends on them.
   Kaleido's mechanics stay current with upgrades).
 - `Instructions` / `InstructionsFile` **replace** them entirely; a host doing so owns keeping them
   in step with the adapter's tools after each upgrade.
-- `ServerVersion` is the host's own version of what it publishes, reported to clients in the
-  initialize response; raise it when the tools or instructions a client sees change meaningfully
-  (a capability added or removed, changed inputs, replaced instructions). Left unset, it is the host
-  application's version: the entry assembly's informational version without its `+commit` suffix
-  (e.g. `2.3.0` from `2.3.0+4f1c2ab`), else its assembly version - never the Kaleido package
-  version, which says nothing about what this host publishes (#463).
+- The MCP initialize response identifies this host with `Kaleido:ServiceName` and the same opaque
+  `Kaleido:ServiceVersion` used by its other Kaleido surfaces. It is not a second MCP-specific
+  release number: the Registry separately records an instance's deployed `BuildVersion` from the
+  entry assembly for build-level visibility, without changing `ServiceVersion` ([ADR 0051](../../../docs/decisions/0051-mcp-uses-service-identity.md)).
 
 The instructions are guidance for well-behaved agents; nothing in them is a security control (see
 [Trust boundary](#trust-boundary)).
@@ -406,14 +413,14 @@ builder.Services
         ServiceVersion = "1",
         Assemblies = [typeof(Program).Assembly],
         TypeFilter = _ => false, // this reader publishes no local capabilities
-        AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
     })
-    .AddInMemoryStores() // reader-only local example
+    .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust })
     .AddHttp()
-    .AddHttpClients()                            // one gateway: Kaleido:BaseUrl
-    .AddControlRegistryClient()
     .AddKaleidoClientHandler<OnBehalfOfHandler>() // exchanges the user's token
-    .AddMcp(new() { ServerName = "priorauth" });
+    .AddRegistryHttpParticipation()
+    .AddProcessHttpClient()
+    .AddQueryableHttpClient()
+    .AddMcp();
 
 var app = builder.Build();
 app.UseAuthentication();
@@ -443,7 +450,8 @@ its package and gateway configuration move to this layout with its next framewor
 - **Tool changes follow deployments within the registry check interval:** the host hydrates one full copy of the central registry with separate ETags for availability and capabilities. A deployment and each capability's status reach the tools within one availability check (the registry's interval), without probing every downstream service.
 - Every tool call is made **for the agent's user**: it carries the token the host's handler exchanged
   for that user (`Kaleido:OnBehalfOfCalls = Exchange`, required), and Kaleido guarantees it is never the
-  agent's token and never the host's own service credential; an anonymous user stays anonymous
+  agent's token and never the host's own service credential; an anonymous MCP request lists no
+  tools and cannot trigger a Registry read with service credentials
   ([`Kaleido.Http.Client`](../../Transports/Http/Kaleido.Http.Client/README.md#what-a-call-carries-the-callers-token-or-the-services-own-574), #574).
   The services authorize the user, not the adapter.
 - Questions and lookups go to the user through forms where the client supports them; the model

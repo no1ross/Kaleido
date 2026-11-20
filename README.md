@@ -167,7 +167,7 @@ Reference the relevant projects, or matching preview packages from your availabl
 ### Publish a business service over HTTP
 
 > [!NOTE]
-> The combined Process/Queryable/MCP example below is historical during #585 and is not yet a runnable recipe: Process ASP.NET mapping, the general in-memory provider and dynamic outbound clients still have their own migration units. For currently tested standalone hosts, see [local Queryable HTTP](src/Capabilities/Queryable/Kaleido.Queryable.Http.Server/README.md), the [in-memory Registry authority](src/Capabilities/Registry/Kaleido.Registry.Server/README.md), and [explicit Registry HTTP participation](src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md). `AddProcess()` and `AddQueryable()` alone do not make central network calls.
+> The combined Process/Queryable example below is historical during #585 and is not yet a runnable recipe: its Process ASP.NET mapping and in-memory store names predate the explicit host/provider registrations. For currently tested standalone hosts, see [local Queryable HTTP](src/Capabilities/Queryable/Kaleido.Queryable.Http.Server/README.md), the [in-memory Registry authority](src/Capabilities/Registry/Kaleido.Registry.Server/README.md), and [explicit Registry HTTP participation](src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md). `AddProcess()` and `AddQueryable()` alone do not make central network calls.
 
 Run a separate [control registry](src/Capabilities/Registry/Kaleido.Registry.Server/README.md) and configure `Kaleido:BaseUrl`
 with the gateway's address. Map `/registry` to the registry host and `/orders/1` to this service's
@@ -212,42 +212,52 @@ per-service client list:
 ```json
 {
   "Kaleido": {
-    "BaseUrl": "http://localhost:5100",
+    "BaseUrl": "https://gateway.internal/",
     "OnBehalfOfCalls": "Exchange"
   }
 }
 ```
 
-The older MCP registration below is also a historical preview example while its outbound Process/Queryable client owners migrate under #585; it is not a current runnable host recipe. The Registry participant now opts in explicitly with `AddRegistryHttpParticipation()`, and MCP still requires a host-provided exchanged caller credential before it can invoke another service:
+A reader-only MCP host uses the same hydrated Registry and explicit Process/Queryable clients as other participants. It publishes no empty local capability service. The host authenticates MCP callers and supplies an exchanged credential for each caller's downstream request:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddAuthentication().AddJwtBearer();
+builder.Services.AddAuthorization();
 
 builder.Services
     .AddKaleido(builder.Configuration, new()
     {
         ServiceName = "mcp-reader",
         ServiceVersion = "1",
-        Assemblies = new[] { typeof(Program).Assembly },
-        AuthorizationMode = KaleidoAuthorizationMode.None, // Local evaluation only.
+        Assemblies = [typeof(Program).Assembly],
+        TypeFilter = _ => false,
     })
-    .AddInMemoryStores() // Local evaluation only.
+    .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
     .AddHttp()
-    .AddHttpClients()
-    .AddControlRegistryClient()
-    .AddMcp(new() { ServerName = "business" });
+    .AddKaleidoClientHandler<TokenExchangeHandler>()
+    .AddRegistryHttpParticipation(new() { OnBehalfOfCalls = KaleidoOnBehalfOfCalls.Exchange })
+    .AddProcessHttpClient()
+    .AddQueryableHttpClient()
+    .AddMcp();
 
 var app = builder.Build();
-app.MapKaleidoMcp("/mcp");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapKaleidoMcp("/mcp").RequireAuthorization();
 app.Run();
 ```
 
-In the historical example, `AddHttpClients()` resolved capability URLs from the host's hydrated Registry and rejected `Kaleido:Clients` entries. The processed shared `Kaleido.Http.Client` now supplies the named gateway/credential pipeline only; dynamic Process/Queryable/MCP consumption remains a later unit. An MCP host will connect agents to `/mcp` after that adapter is migrated.
+MCP initialize reports the host's `AddKaleido()` `ServiceName` and `ServiceVersion`; the
+Registry records its deployed `BuildVersion` separately ([ADR 0051](docs/decisions/0051-mcp-uses-service-identity.md)).
+The participant hydrates the Registry's **full** metadata for binding and name resolution;
+`tools/list` uses the Registry's **caller-filtered** view, and a Process result supplies the
+current required/available step names. The client factories, not MCP, resolve versioned routes.
 `AddMcp()` requires `Exchange`: the agent's user's token cannot be passed unchanged to another
-service. With authentication, add an `AddKaleidoClientHandler<THandler>()` that exchanges it
+service. Supply `TokenExchangeHandler` using the host's identity provider
 ([which token a service sends](docs/guide/callers-and-correlation.md#which-token-a-service-sends),
-#574). This local-only example has no sign-in. Use `https` outside local development and configure
-the gateway's per-version destinations in the same deployment as each service.
+#574); a caller without an authenticated identity receives no tools. Configure the gateway's
+per-version destinations in the same deployment as each service.
 
 See the [shared HTTP client pipeline](src/Transports/Http/Kaleido.Http.Client/README.md), [Registry HTTP participant](src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md) and [MCP adapter](src/Mcp/Mcp/README.md) guides for configuration details, and the [consumer guide](docs/guide/README.md) for a complete service built step by step.
 

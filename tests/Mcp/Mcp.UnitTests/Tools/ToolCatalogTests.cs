@@ -5,12 +5,12 @@ namespace Kaleido.Mcp.Tools.UnitTests;
 public sealed class ToolCatalogTests
     : Kaleido.UnitTests.SutFixture
 {
-    private static KaleidoTool Tool(string name, string url = "") =>
-        new() { Definition = new Tool { Name = name }, Kind = KaleidoToolKind.Query, Url = url };
+    private static KaleidoTool Tool(string name, KaleidoToolKind kind = KaleidoToolKind.Query) =>
+        new() { Definition = new Tool { Name = name }, Kind = kind, Service = "clinic", CapabilityName = name };
 
-    private static readonly KaleidoTool Patient = Tool("clinic_patient", "/clinic/queryable/patients/query");
+    private static readonly KaleidoTool Patient = Tool("clinic_patient");
 
-    private static readonly KaleidoTool StartVisit = Tool("clinic_start_visit", "/clinic/processes/steps/startvisit");
+    private static readonly KaleidoTool StartVisit = Tool("clinic_start_visit", KaleidoToolKind.Step);
 
     private static ToolCatalog CreateSut(params KaleidoTool[] tools) => new() { Tools = tools };
 
@@ -40,28 +40,48 @@ public sealed class ToolCatalogTests
     }
 
     [Fact]
-    public void FindByUrl_IgnoresCase()
+    public void FindStepMetadata_IgnoresCase()
     {
-        Assert.Same(StartVisit, CreateSut(Patient, StartVisit).FindByUrl("/CLINIC/processes/steps/StartVisit"));
+        var step = new ProcessStepResponse { Name = "StartVisitStep" };
+        var sut = CreateSut(Patient, StartVisit) with
+        {
+            Processes = [new ProcessRegistryItem { ServiceName = "clinic", Name = "clinic", ServiceVersion = "1", Steps = [step] }],
+        };
+
+        Assert.Same(step, sut.FindStepMetadata("CLINIC", "startvisitstep", "1"));
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    [InlineData("/clinic/unknown")]
-    public void FindByUrl_WithoutAKnownUrl_IsNull(string? url)
+    [InlineData("unknown")]
+    public void FindStepMetadata_WithoutAKnownStep_IsNull(string? name)
     {
-        Assert.Null(CreateSut(Patient, Tool("get_process_state")).FindByUrl(url));
+        var sut = CreateSut(Patient, Tool("get_process_state")) with
+        {
+            Processes = [new ProcessRegistryItem { ServiceName = "clinic", Name = "clinic", Steps = [new ProcessStepResponse { Name = "StartVisitStep" }] }],
+        };
+
+        Assert.Null(sut.FindStepMetadata("clinic", name, serviceVersion: null));
     }
 
-    // Several tools may call the same URL (a front door's hidden step and its listed twin): the first wins.
+    // More than one publication of a version may carry the same step: metadata lookup stays deterministic.
     [Fact]
-    public void FindByUrl_ForASharedUrl_ReturnsTheFirstTool()
+    public void FindStepMetadata_ForDuplicateNames_ReturnsTheFirstPublication()
     {
-        var twin = Tool("clinic_patient_again", Patient.Url);
+        var first = new ProcessStepResponse { Name = "StartVisitStep", DisplayName = "First" };
+        var second = first with { DisplayName = "Second" };
+        var sut = CreateSut(Patient) with
+        {
+            Processes =
+            [
+                new ProcessRegistryItem { ServiceName = "clinic", Name = "clinic", Steps = [first] },
+                new ProcessRegistryItem { ServiceName = "clinic", Name = "clinic", Steps = [second] },
+            ],
+        };
 
-        Assert.Same(Patient, CreateSut(Patient, twin).FindByUrl(Patient.Url));
+        Assert.Same(first, sut.FindStepMetadata("clinic", "StartVisitStep", serviceVersion: null));
     }
 
     // A copy with other tools must not answer from the original's lookups.
@@ -70,26 +90,30 @@ public sealed class ToolCatalogTests
     {
         var original = CreateSut(Patient);
         Assert.Same(Patient, original.Find(Patient.Definition.Name));
-        Assert.Same(Patient, original.FindByUrl(Patient.Url));
-
         var copy = original with { Tools = [StartVisit] };
 
         Assert.Null(copy.Find(Patient.Definition.Name));
-        Assert.Null(copy.FindByUrl(Patient.Url));
         Assert.Same(StartVisit, copy.Find(StartVisit.Definition.Name));
     }
 
     [Fact]
-    public void VersionOf_MatchesThePublishedRouteOfTheCorrectServiceVersion()
+    public void FindStepMetadata_MatchesThePublishedServiceVersionWithoutDerivingItFromAUrl()
     {
-        var v1 = new RegistryServiceRoute { ServiceName = "clinic", ServiceVersion = "1", Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/clinic/1" }] };
-        var v2 = new RegistryServiceRoute { ServiceName = "clinic", ServiceVersion = "2", Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/clinic/2" }] };
-        var sut = CreateSut() with { Routes = [v1, v2] };
+        var v1 = new ProcessStepResponse { Name = "Ask", Description = "First version" };
+        var v2 = v1 with { Description = "Second version" };
+        var sut = CreateSut() with
+        {
+            Processes =
+            [
+                new ProcessRegistryItem { ServiceName = "clinic", ServiceVersion = "1", Name = "clinic", Steps = [v1] },
+                new ProcessRegistryItem { ServiceName = "clinic", ServiceVersion = "2", Name = "clinic", Steps = [v2] },
+            ],
+        };
 
-        Assert.Equal("1", sut.VersionOf("CLINIC", "/clinic/1/processes/steps/ask"));
-        Assert.Equal("2", sut.VersionOf("clinic", "/clinic/2/processes/steps/ask"));
-        Assert.Null(sut.VersionOf("clinic", "/ward/1/processes/steps/ask"));
-        Assert.Equal("1", (sut with { Tools = [] }).VersionOf("clinic", "/clinic/1/processes/steps/ask"));
+        Assert.Same(v1, sut.FindStepMetadata("CLINIC", "ask", "1"));
+        Assert.Same(v2, sut.FindStepMetadata("clinic", "Ask", "2"));
+        Assert.Null(sut.FindStepMetadata("clinic", "Ask", "3"));
+        Assert.Same(v1, (sut with { Tools = [] }).FindStepMetadata("clinic", "Ask", "1"));
     }
 
     [Fact]

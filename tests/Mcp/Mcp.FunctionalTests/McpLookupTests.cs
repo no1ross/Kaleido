@@ -18,8 +18,8 @@ public sealed class McpLookupTests(LookupFixture fixture)
     private const string AssignBed = "clinic_assign_bed";
     private const string StatePrefix = LookupStateRewriter.StatePrefix;
 
-    private static readonly string Nurse = BearerTestAuthHandler.Token("nina");
-    private static readonly string OtherNurse = BearerTestAuthHandler.Token("nora");
+    private static readonly string Nurse = TestCallerTokens.Token("nina");
+    private static readonly string OtherNurse = TestCallerTokens.Token("nora");
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 

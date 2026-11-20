@@ -1,4 +1,5 @@
 using Kaleido.Mcp.Observability;
+using Kaleido.Observability;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -8,8 +9,9 @@ public sealed class ToolCatalogProviderTests
     : Kaleido.UnitTests.SutFixture
 {
     private readonly string revision = "r-1";
-    private readonly Mock<IKaleidoRegistryService> registry = new();
-    private readonly Mock<IKaleidoUnfilteredRegistry> unfiltered = new();
+    private readonly Mock<IKaleidoRegistryClient> registry = new();
+    private readonly Mock<IKaleidoRegistrySource> unfiltered = new();
+    private readonly Mock<IKaleidoInboundCallerAccessor> caller = new();
     private readonly Mock<IToolCatalogBuilder> builder = new();
     private readonly Mock<IMcpObservability> observability = new();
     private readonly string unfilteredRevision = "u-1";
@@ -18,9 +20,12 @@ public sealed class ToolCatalogProviderTests
 
     public ToolCatalogProviderTests()
     {
-        registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => new KaleidoRegistry { Revision = revision });
-        unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
+        caller.SetupGet(x => x.IsInboundRequest).Returns(true);
+        caller.SetupGet(x => x.Principal).Returns(new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(authenticationType: "test")));
+        registry.Setup(x => x.GetRegistryAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new KaleidoRegistryDocument<KaleidoRegistry>(new KaleidoRegistry { Revision = revision }, null, false));
+        unfiltered.Setup(x => x.GetAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => new KaleidoRegistry { Revision = unfilteredRevision });
         builder.Setup(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()))
             .Returns((KaleidoRegistry response, KaleidoRegistry _) => new ToolCatalog { Revision = response.Revision });
@@ -39,6 +44,7 @@ public sealed class ToolCatalogProviderTests
         new(
             registry.Object,
             unfiltered.Object,
+            caller.Object,
             builder.Object,
             cache.Object,
             observability.Object,
@@ -58,8 +64,8 @@ public sealed class ToolCatalogProviderTests
     }
 
     private void RegistryRevisionIs(string? value) =>
-        registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new KaleidoRegistry { Revision = value });
+        registry.Setup(x => x.GetRegistryAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KaleidoRegistryDocument<KaleidoRegistry>(new KaleidoRegistry { Revision = value }, null, false));
 
     [Fact]
     public async Task GetAsync_ReportsWhatTheOwnerShouldFix_AsWarnings_OncePerRevision()
@@ -120,6 +126,30 @@ public sealed class ToolCatalogProviderTests
     }
 
     [Fact]
+    public async Task GetAsync_WithoutAnInboundCaller_ReturnsNoToolsWithoutUsingServiceCredentials()
+    {
+        caller.SetupGet(x => x.IsInboundRequest).Returns(false);
+
+        var catalog = await CreateSut().GetAsync(Cancel);
+
+        Assert.Same(ToolCatalog.Empty, catalog);
+        registry.Verify(x => x.GetRegistryAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        unfiltered.Verify(x => x.GetAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetAsync_AnAnonymousInboundCaller_ReturnsNoToolsWithoutARegistryRead()
+    {
+        caller.SetupGet(x => x.Principal).Returns((System.Security.Claims.ClaimsPrincipal?)null);
+
+        var catalog = await CreateSut().GetAsync(Cancel);
+
+        Assert.Same(ToolCatalog.Empty, catalog);
+        registry.Verify(x => x.GetRegistryAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        unfiltered.Verify(x => x.GetAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GetAsync_ACompleteCatalog_ReportsNothing()
     {
         var logger = new RecordingLogger();
@@ -148,7 +178,7 @@ public sealed class ToolCatalogProviderTests
     [Fact]
     public async Task GetAsync_AnUnfilteredRegistryWithoutARevision_IsTranslatedEveryTime_AndNotKept()
     {
-        unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
+        unfiltered.Setup(x => x.GetAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new KaleidoRegistry { Revision = null });
 
         await CreateSut().GetAsync(Cancel);
@@ -174,7 +204,7 @@ public sealed class ToolCatalogProviderTests
         var catalog = await CreateSut().GetAsync(Cancel);
 
         Assert.Equal(revision, catalog.Revision);
-        registry.Verify(x => x.GetForCallerAsync(false, It.IsAny<CancellationToken>()));
+        registry.Verify(x => x.GetRegistryAsync(null, It.IsAny<CancellationToken>()));
         observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryFetched, revision));
     }
 
@@ -186,7 +216,7 @@ public sealed class ToolCatalogProviderTests
 
         Assert.Same(first, second);
         builder.Verify(x => x.Build(It.IsAny<KaleidoRegistry>(), It.IsAny<KaleidoRegistry>()), Times.Once);
-        registry.Verify(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        registry.Verify(x => x.GetRegistryAsync(null, It.IsAny<CancellationToken>()), Times.Exactly(2));
         observability.Verify(x => x.RegistryRead(McpTelemetry.RegistryHit, revision));
     }
 
@@ -196,8 +226,8 @@ public sealed class ToolCatalogProviderTests
         await CreateSut().GetAsync(Cancel);
 
         var other = "r-2";
-        registry.Setup(x => x.GetForCallerAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new KaleidoRegistry { Revision = other });
+        registry.Setup(x => x.GetRegistryAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new KaleidoRegistryDocument<KaleidoRegistry>(new KaleidoRegistry { Revision = other }, null, false));
 
         var catalog = await CreateSut().GetAsync(Cancel);
 
@@ -221,7 +251,7 @@ public sealed class ToolCatalogProviderTests
     {
         await CreateSut().GetAsync(Cancel);
 
-        unfiltered.Setup(x => x.GetUnfilteredAsync(It.IsAny<CancellationToken>()))
+        unfiltered.Setup(x => x.GetAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new KaleidoRegistry { Revision = "u-2" });
         await CreateSut().GetAsync(Cancel);
 

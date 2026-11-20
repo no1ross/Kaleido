@@ -66,6 +66,7 @@ Framework-shaping decisions, with the alternatives considered and why. Issues an
 | [0048](./0048-explicit-provider-registration-without-default-stores.md) | No implicit store implementations; Hosting checks store presence, not technology | Accepted; temporary package placement/ordering superseded by [0049](./0049-one-provider-per-store.md) | #585, #598, #597, #559, #587 |
 | [0049](./0049-one-provider-per-store.md) | One explicit provider per store; concrete memory implementations and aggregate/per-store selection live in Provider.InMemory | Accepted | #585, #559, #598, #623 |
 | [0050](./0050-explicit-http-host-mapping.md) | Hosting.Http explicitly maps chosen capability or central Registry endpoints; distributed discovery remains central and opt-in | Accepted | #585, #624, #611, #582 |
+| [0051](./0051-mcp-uses-service-identity.md) | MCP initialize reports the host's one Kaleido ServiceName/ServiceVersion; Registry BuildVersion remains separate, and MCP options use shared startup binding | Accepted | #585, #625, #463 |
 
 Earlier decisions still to be recorded (correlation model, authorization responses, error-code
 ownership, telemetry, health checks, event envelopes, case ownership and identity tagging) are

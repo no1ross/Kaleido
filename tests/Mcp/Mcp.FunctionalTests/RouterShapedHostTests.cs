@@ -1,4 +1,3 @@
-using Kaleido.Http.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,19 +29,19 @@ public sealed class RouterShapedHostTests
             Assemblies = [typeof(RouterShapedHostTests).Assembly],
             TypeFilter = _ => false,
             ServiceVersion = "1",
-            AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust,
         })
-            .AddInMemoryStores()
+            .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.ZeroTrust })
             .AddHttp()
-            .AddHttpClients()
             .AddKaleidoClientHandler<Infrastructure.TestTokenExchangeHandler>()
-            .AddControlRegistryClient()
+            .AddRegistryHttpParticipation()
+            .AddProcessHttpClient()
+            .AddQueryableHttpClient()
             .AddMcp();
 
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
 
-        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IKaleidoRegistryService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IKaleidoRegistryClient>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Infrastructure.TestTokenExchangeHandler>());
     }
 }

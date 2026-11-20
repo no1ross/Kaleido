@@ -20,14 +20,14 @@ public sealed class McpTrustTests(McpClinicFixture fixture)
     [Fact]
     public async Task AToolAnotherCallerHas_IsRefused_WithoutCallingTheService()
     {
-        var nurse = BearerTestAuthHandler.Token($"nurse-{Guid.NewGuid():N}");
+        var nurse = TestCallerTokens.Token($"nurse-{Guid.NewGuid():N}");
         await using var client = await fixture.ConnectAsync(nurse);
 
         var result = await client.CallToolAsync("clinic_chart", new Dictionary<string, object?>(), cancellationToken: Cancel);
 
         Assert.True(result.IsError);
         Assert.Contains(McpErrorCodes.UnknownTool, TextOf(result), StringComparison.Ordinal);
-        Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == BearerTestAuthHandler.Exchanged(nurse) && x.Path.Contains("/clinic/1/queryable/", StringComparison.Ordinal));
+        Assert.DoesNotContain(fixture.ServiceRequests, x => TestCallerTokens.IsExchangedFor(x.Authorization, nurse) && x.Path.Contains("/clinic/1/queryable/", StringComparison.Ordinal));
     }
 
     // The user stops waiting: the service call is aborted, and the adapter records one cancellation
@@ -37,7 +37,7 @@ public sealed class McpTrustTests(McpClinicFixture fixture)
     {
         var requestId = $"cancel-{Guid.NewGuid():N}";
         fixture.SlowRequests[requestId] = TimeSpan.FromSeconds(30);
-        await using var client = await fixture.ConnectAsync(BearerTestAuthHandler.Token("nina"), requestId: requestId);
+        await using var client = await fixture.ConnectAsync(TestCallerTokens.Token("nina"), requestId: requestId);
         using var userGivesUp = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
         userGivesUp.CancelAfter(TimeSpan.FromMilliseconds(500));
 
@@ -59,7 +59,7 @@ public sealed class McpTrustTests(McpClinicFixture fixture)
     {
         var requestId = $"slow-{Guid.NewGuid():N}";
         fixture.SlowRequests[requestId] = TimeSpan.FromSeconds(30);
-        await using var client = await fixture.ConnectAsync(BearerTestAuthHandler.Token("nina"), requestId: requestId);
+        await using var client = await fixture.ConnectAsync(TestCallerTokens.Token("nina"), requestId: requestId);
         var started = System.Diagnostics.Stopwatch.StartNew();
 
         var result = await client.CallToolAsync("clinic_patient", new Dictionary<string, object?>(), cancellationToken: Cancel);
@@ -75,7 +75,7 @@ public sealed class McpTrustTests(McpClinicFixture fixture)
     public async Task TheUsersTokenAndToolArguments_NeverReachTheLogsOrSpans()
     {
         var secretUser = $"user-{Guid.NewGuid():N}";
-        var token = BearerTestAuthHandler.Token(secretUser);
+        var token = TestCallerTokens.Token(secretUser);
         var secretSearch = $"search-{Guid.NewGuid():N}";
         await using var client = await fixture.ConnectAsync(token);
 

@@ -41,18 +41,23 @@ internal static class TestTokenIssuer
         string[]? roles = null,
         string app = DefaultUserApp,
         string audience = PlatformAudience,
-        TimeSpan? lifetime = null) =>
-        Issue(
-            new Dictionary<string, object>
-            {
-                ["sub"] = $"user-{name}",
-                [NameClaimType] = name,
-                ["azp"] = app,
-                [RoleClaimType] = roles ?? [],
-            },
-            audience,
-            lifetime,
-            SigningKey);
+        TimeSpan? lifetime = null,
+        string? tokenId = null)
+    {
+        var claims = new Dictionary<string, object>
+        {
+            ["sub"] = $"user-{name}",
+            [NameClaimType] = name,
+            ["azp"] = app,
+            [RoleClaimType] = roles ?? [],
+        };
+        if (tokenId is not null)
+        {
+            claims["jti"] = tokenId;
+        }
+
+        return Issue(claims, audience, lifetime, SigningKey);
+    }
 
     /// <summary>An app-only access token (client credentials): the client, its roles, no user.</summary>
     public static string App(

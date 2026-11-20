@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Kaleido.Client.Processor;
+using Kaleido.Process.Client;
 
 namespace Kaleido.Mcp.FunctionalTests.Infrastructure.HandOff
 {
@@ -20,7 +20,7 @@ namespace Kaleido.Mcp.FunctionalTests.Infrastructure.HandOff
                 idempotencyKey: null,
                 cancellationToken);
 
-            return ProcessStepHandlerResult.HandOff(McpClinicFixture.WardService, admitted);
+            return ProcessStepHandlerResult.HandOff(McpClinicFixture.WardService, admitted, nameof(Ward.AdmitStep));
         }
     }
 }

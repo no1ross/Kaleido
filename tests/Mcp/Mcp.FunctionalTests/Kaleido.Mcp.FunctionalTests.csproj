@@ -3,16 +3,50 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
 		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
 		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
 		<PackageReference Include="ModelContextProtocol.AspNetCore" />
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Include="..\..\Shared\Registry\*.cs" Link="Infrastructure\%(Filename)%(Extension)" />
+		<Compile Include="..\..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\..\..\src\Registry\Registry.Http\Kaleido.Registry.Http.csproj" />
-		<ProjectReference Include="..\..\..\src\Http\Http.Server\Kaleido.Http.Server.csproj" />
 		<ProjectReference Include="..\..\..\src\Mcp\Mcp\Kaleido.Mcp.csproj" />
-		<ProjectReference Include="..\..\..\src\Platform\Kaleido.Platform.csproj" />
-		<ProjectReference Include="..\..\..\src\Transports\Http\Kaleido.Http\Kaleido.Http.csproj" />
+		<ProjectReference Include="..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Server\Kaleido.Registry.Http.Server.csproj" />
+		<ProjectReference Include="..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Client\Kaleido.Registry.Http.Client.csproj" />
+		<ProjectReference Include="..\..\..\src\Capabilities\Process\Kaleido.Process.Http.Server\Kaleido.Process.Http.Server.csproj" />
+		<ProjectReference Include="..\..\..\src\Capabilities\Process\Kaleido.Process.Http.Client\Kaleido.Process.Http.Client.csproj" />
+		<ProjectReference Include="..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Server\Kaleido.Queryable.Http.Server.csproj" />
+		<ProjectReference Include="..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Client\Kaleido.Queryable.Http.Client.csproj" />
+		<ProjectReference Include="..\..\..\src\Composed\Hosts\Kaleido.Hosting.Http\Kaleido.Hosting.Http.csproj" />
+		<ProjectReference Include="..\..\..\src\Providers\Kaleido.Provider.InMemory\Kaleido.Provider.InMemory.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="System.Net.Http.Json" />
+		<Using Include="Kaleido.Hosting" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Configuration" />
+		<Using Include="Kaleido.Http.Client.Registration" />
+		<Using Include="Kaleido.Http.Client.Transport" />
+		<Using Include="Kaleido.Http.Server" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Process.Http" />
+		<Using Include="Kaleido.Process.Http.Client" />
+		<Using Include="Kaleido.Process.Http.Server" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Http" />
+		<Using Include="Kaleido.Queryable.Http.Client" />
+		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Client" />
+		<Using Include="Kaleido.Registry.Http.Client" />
+		<Using Include="Kaleido.Server" />
+		<Using Include="Kaleido.Testing.Identity" />
+		<Using Include="Kaleido.Provider.InMemory" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Testing.Registry" />
 	</ItemGroup>
 </Project>
