@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.IntegrationTests.EfCore;
+namespace Kaleido.Queryable.FunctionalTests.EfCore;
 
 // IQueryContextExecutor<TView> is the extension point for provider-native execution. The default
 // executor counts an async query by enumerating it (the database streams every matching row); an
@@ -84,10 +84,10 @@ public sealed class EfCoreQueryContextExecutorTests : IAsyncLifetime
         services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
             ServiceName = "members",
-            AuthorizationMode = KaleidoAuthorizationMode.None,
+            ServiceVersion = "1",
             Assemblies = [typeof(EfCoreQueryContextExecutorTests).Assembly],
             TypeFilter = type => type.Namespace == typeof(EfCoreQueryContextExecutorTests).Namespace,
-        }).AddInMemoryStores();
+        }).AddEventing().AddQueryable().AddInMemoryOutboxProvider();
 
         // After AddKaleido on purpose: the framework registers its default with TryAdd, so a host's
         // own executor wins whichever order it is registered in.

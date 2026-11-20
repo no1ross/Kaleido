@@ -113,6 +113,7 @@
     <Project Path="tests/Capabilities/Registry/Kaleido.Registry.IntegrationTests/Kaleido.Registry.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/test/Capabilities/Queryable/">
+    <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.FunctionalTests/Kaleido.Queryable.FunctionalTests.csproj" />
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.UnitTests/Kaleido.Queryable.UnitTests.csproj" />
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Client.UnitTests/Kaleido.Queryable.Client.UnitTests.csproj" />
     <Project Path="tests/Capabilities/Queryable/Kaleido.Queryable.Http.UnitTests/Kaleido.Queryable.Http.UnitTests.csproj" />

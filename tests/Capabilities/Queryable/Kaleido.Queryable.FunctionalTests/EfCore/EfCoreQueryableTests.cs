@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.IntegrationTests.EfCore;
+namespace Kaleido.Queryable.FunctionalTests.EfCore;
 
 // Kaleido's queryable runtime against a real EF Core provider (SQLite, translated to SQL). Unit tests
 // run the generated expressions with LINQ to Objects, which accepts anything; a provider rejects
@@ -23,10 +23,10 @@ public sealed class EfCoreQueryableTests : IAsyncLifetime
         services.AddKaleido(new ConfigurationBuilder().Build(), new()
         {
             ServiceName = "members",
-            AuthorizationMode = KaleidoAuthorizationMode.None,
+            ServiceVersion = "1",
             Assemblies = [typeof(EfCoreQueryableTests).Assembly],
             TypeFilter = type => type.Namespace == typeof(EfCoreQueryableTests).Namespace,
-        }).AddInMemoryStores();
+        }).AddEventing().AddQueryable().AddInMemoryOutboxProvider();
 
         _provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 

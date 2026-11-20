@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Providers\Kaleido.Provider.InMemory\Kaleido.Provider.InMemory.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Provider.InMemory" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Query" />
+	</ItemGroup>
+</Project>

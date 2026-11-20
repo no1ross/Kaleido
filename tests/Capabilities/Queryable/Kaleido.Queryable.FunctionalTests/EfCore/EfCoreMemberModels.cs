@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using Microsoft.EntityFrameworkCore;
 
-namespace Kaleido.IntegrationTests.EfCore;
+namespace Kaleido.Queryable.FunctionalTests.EfCore;
 
 public enum MemberPlan
 {

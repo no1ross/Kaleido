@@ -78,4 +78,4 @@ internal sealed class EfCoreQueryContextExecutor<TView> : IQueryContextExecutor<
 builder.Services.AddSingleton(typeof(IQueryContextExecutor<>), typeof(EfCoreQueryContextExecutor<>));
 ```
 
-The framework uses `TryAdd` for its default, so a host's registration wins before or after `AddQueryable()`. The integration example is `tests/Kaleido.IntegrationTests/EfCore/EfCoreQueryContextExecutorTests.cs`.
+The framework uses `TryAdd` for its default, so a host's registration wins before or after `AddQueryable()`. The integration example is `tests/Capabilities/Queryable/Kaleido.Queryable.FunctionalTests/EfCore/EfCoreQueryContextExecutorTests.cs`.

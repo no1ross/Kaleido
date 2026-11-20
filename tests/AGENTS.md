@@ -10,10 +10,11 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Process.Server.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Server` neutral idempotency admission/replay |
 | `Kaleido.Process.Http.UnitTests` | `src/Capabilities/Process/Kaleido.Process.Http` HTTP input envelopes, versioned routes and Registry bindings |
 | `Kaleido.Queryable.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable` runtime and declarations |
+| `Kaleido.Queryable.FunctionalTests` | Real EF Core SQLite query translation and provider-native executor |
 | `Kaleido.Queryable.Client.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Client` neutral outbound client contracts |
 | `Kaleido.Queryable.Http.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http` request wire conversion and versioned query routes |
 | `Kaleido.Queryable.Http.Client.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http.Client` published binding selection and HTTP request adaptation |
-| `Kaleido.Queryable.Http.Client.FunctionalTests` | Non-web Registry reader hydrates at startup and calls a real Queryable TestServer without central Registry per query |
+| `Kaleido.Queryable.Http.Client.FunctionalTests` | Startup hydration and real Queryable TestServer calls without per-query Registry reads |
 | `Kaleido.Queryable.Http.Server.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http.Server` request conversion and endpoint mapping |
 | `Kaleido.Queryable.Http.Server.FunctionalTests` | Local Queryable source/view requests through ASP.NET TestServer, without central Registry |
 | `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |
@@ -44,7 +45,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Analyzers.UnitTests` | consumer `KAL2xxx` rules |
 | `Kaleido.Analyzers.Source.UnitTests` | contributor `KAL0xxx` rules |
 | `Kaleido.Analyzers.Testing.UnitTests` | test `KAL1xxx` rules |
-| `Kaleido.IntegrationTests` | cross-project DI, EF Core, caller credentials and compiled consumer-guide examples |
+| `Kaleido.IntegrationTests` | cross-project DI, caller credentials and compiled consumer-guide examples |
 
 Project-wide imports belong in each test `.csproj` as `<Using Include="..." />`, not `GlobalUsings.cs`. Assembly-boundary checks are pending source analyzers (#591), not SUT unit fixtures.
 
