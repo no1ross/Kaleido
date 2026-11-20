@@ -2,7 +2,7 @@ using Kaleido.Guide.Examples.Deployment;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kaleido.IntegrationTests.Guide;
+namespace Kaleido.Hosting.Http.FunctionalTests.Guide;
 
 // docs/guide/deployment.md, "MCP on several instances: one key ring", run: two instances configured as
 // the guide shows share their Data Protection keys - what one protects, the other reads (#484).

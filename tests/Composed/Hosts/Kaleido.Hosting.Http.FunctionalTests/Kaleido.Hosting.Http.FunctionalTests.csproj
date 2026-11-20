@@ -30,4 +30,7 @@
 		<Using Include="Kaleido.Server" />
 		<Using Include="Kaleido.Storage" />
 	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\..\docs\guide\examples\Kaleido.Guide.Examples.csproj" />
+	</ItemGroup>
 </Project>
