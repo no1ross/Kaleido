@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using Kaleido.Guide.Examples.GettingStarted;
-using Kaleido.Processor;
-using Kaleido.Processor.Execution;
+using Kaleido.Process;
+using Kaleido.Process.Execution;
 
 namespace Kaleido.Guide.Examples.InformationRequests;
 

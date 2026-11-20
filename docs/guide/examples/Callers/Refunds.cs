@@ -1,6 +1,7 @@
 using Kaleido.Guide.Examples.Processes;
-using Kaleido.Processor;
-using Kaleido.Processor.Execution;
+using Kaleido.Process;
+using Kaleido.Process.Execution;
+using Kaleido.Registry;
 
 namespace Kaleido.Guide.Examples.Callers;
 

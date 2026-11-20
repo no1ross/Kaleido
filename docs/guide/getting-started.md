@@ -141,17 +141,18 @@ services.AddKaleido(configuration, new()
     ServiceName = "orders",
     ServiceVersion = "1",
     Assemblies = [typeof(OrderSource).Assembly],
-    AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
 })
     .AddEventing()
     .AddProcess()
     .AddQueryable()
-    .AddInMemoryStores()   // local evaluation only: nothing survives a restart
+    .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.None }) // local evaluation only
+    .AddInMemoryProviders()   // local evaluation only: nothing survives a restart
     .AddHttp()
-    .AddControlRegistryClient();
+    .AddProcessHttpServer()
+    .AddRegistryHttpParticipation();
 ```
 
-`AddKaleido()` installs only the foundation; `AddEventing()` installs the outbox-backed writer and `AddProcess()`/`AddQueryable()` register their runtimes. `AddInMemoryStores()` is a choice: process state, idempotency records and the event outbox live in this process and are lost on restart. Without a choice the host does not start (`stores_not_chosen`): a service
+`AddKaleido()` installs only the foundation; `AddEventing()` installs the outbox-backed writer, `AddProcess()`/`AddQueryable()` register their runtimes, and `AddServer()` configures authorization. `AddInMemoryProviders()` explicitly chooses process state, idempotency records and an event outbox that live in this process and are lost on restart. Without a choice the host does not start (`stores_not_chosen`): a service
 never keeps them in memory by accident. A deployed service registers durable stores instead
 ([Persistence](persistence.md), [ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md)).
 
@@ -160,7 +161,7 @@ never keeps them in memory by accident. A deployed service registers durable sto
 endpoints.MapKaleido().MapProcess().MapQueryable();
 ```
 
-The composition maps local endpoints only. A service that other hosts must discover separately registers its HTTP bindings and calls `AddRegistryHttpParticipation()`; a dedicated Registry authority uses `app.MapKaleido().MapCentralRegistry()` instead. The older combined registration snippet above is pending the remaining #585 guide/Platform migration; do not use it as a current project-level startup recipe ([HTTP hosting README](../../src/Composed/Hosts/Kaleido.Hosting.Http/README.md)).
+The composition maps local endpoints only. This service also opts into Registry participation to publish its HTTP bindings; a dedicated Registry authority uses `app.MapKaleido().MapCentralRegistry()` instead. See the [HTTP hosting README](../../src/Composed/Hosts/Kaleido.Hosting.Http/README.md) for the separate host roles.
 
 > `AuthorizationMode.None` leaves every capability open, for local evaluation. The default is
 > `Authenticated`; see [Callers and correlation](callers-and-correlation.md).
@@ -214,14 +215,18 @@ explicit `MapProcess()`/`MapQueryable()` routes ([MCP README](../../src/Mcp/Mcp/
 
 <!-- snippet: getting-started-mcp -->
 ```csharp
-services.AddAuthentication().AddJwtBearer();
+services.AddAuthentication("Bearer").AddJwtBearer(options =>
+{
+    options.Authority = configuration["Authentication:Authority"];
+    options.Audience = configuration["Authentication:Audience"];
+});
 services.AddAuthorization();
 
 services.AddKaleido(configuration, new()
 {
     ServiceName = "mcp-reader",
     ServiceVersion = "1",
-    Assemblies = [typeof(Program).Assembly],
+    Assemblies = [typeof(OrderSource).Assembly],
     TypeFilter = _ => false,
 })
     .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
@@ -238,7 +243,7 @@ refuses to start unless `Kaleido:OnBehalfOfCalls` is `Exchange`
 (`mcp_on_behalf_of_calls_not_exchanged`). Authenticate the MCP endpoint with the host's JWT scheme
 and provide a handler that exchanges the user's token, not one that forwards it unchanged. Anonymous
 callers receive no tools and cannot trigger a service-credential Registry read
-([Which token a service sends](callers-and-correlation.md#which-token-a-service-sends)).
+([Which token a service sends](callers-and-correlation.md#which-token-a-service-sends)). Configure `Authentication:Authority` and `Authentication:Audience` for the trusted JWT issuer and register the host's `ITokenExchange` implementation before starting this host.
 
 <!-- snippet: getting-started-mcp-map -->
 ```csharp

@@ -12,7 +12,7 @@ public static class Operations
     public static void AddOperations(IServiceCollection services, IKaleidoBuilder kaleido)
     {
         // snippet: deployment-health
-        // AddControlRegistryClient() adds kaleido-registration; no client probes another service.
+        // AddRegistryHttpParticipation() adds kaleido-registration; no client probes another service.
         // Your database is yours to check.
         services.AddHealthChecks()
             .AddDbContextCheck<OrdersDbContext>("orders-database");

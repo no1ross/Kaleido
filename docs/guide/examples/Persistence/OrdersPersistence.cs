@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Kaleido.Eventing;
-using Kaleido.Exceptions;
-using Kaleido.Processor;
-using Kaleido.Processor.Context;
+using Kaleido.Process;
+using Kaleido.Process.Context;
+using Kaleido.Process.Exceptions;
+using Kaleido.Process.Storage;
+using Kaleido.Provider.InMemory;
 using Kaleido.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -90,14 +92,14 @@ public sealed class OutboxRelayRow
 // Process state only, saved conditionally: a stale version is a conflict (409), never an overwrite.
 // Every query matches the whole key - processor, version and id - so another service's or version's
 // process under the same id (a hand-off) is never read or overwritten.
-public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStore
+public sealed class OrdersContextStore(OrdersDbContext db) : IProcessContextStore
 {
-    public async Task<ProcessorContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken) =>
+    public async Task<ProcessContext?> LoadAsync(ProcessKey key, CancellationToken cancellationToken) =>
         await ByKey(db.Processes.AsNoTracking(), key).SingleOrDefaultAsync(cancellationToken) is { } row
-            ? JsonSerializer.Deserialize<ProcessorContext>(row.State)
+            ? JsonSerializer.Deserialize<ProcessContext>(row.State)
             : null;
 
-    public async Task<ProcessorContext> SaveAsync(ProcessorContext context, CancellationToken cancellationToken)
+    public async Task<ProcessContext> SaveAsync(ProcessContext context, CancellationToken cancellationToken)
     {
         var saved = context with { Version = context.Version + 1 };
         var state = JsonSerializer.Serialize(saved);
@@ -106,7 +108,7 @@ public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStor
         {
             if (await ByKey(db.Processes, context.Key).AnyAsync(cancellationToken))
             {
-                throw new KaleidoConcurrencyException(context.ProcessId);
+                throw new ProcessConcurrencyException(context.ProcessId);
             }
 
             db.Processes.Add(new ProcessRow
@@ -125,7 +127,7 @@ public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStor
             .Where(x => x.Version == context.Version)
             .ExecuteUpdateAsync(x => x.SetProperty(p => p.Version, saved.Version).SetProperty(p => p.State, state), cancellationToken);
 
-        return updated == 1 ? saved : throw new KaleidoConcurrencyException(context.ProcessId);
+        return updated == 1 ? saved : throw new ProcessConcurrencyException(context.ProcessId);
     }
 
     private static IQueryable<ProcessRow> ByKey(IQueryable<ProcessRow> rows, ProcessKey key)
@@ -140,9 +142,11 @@ public sealed class OrdersContextStore(OrdersDbContext db) : IKaleidoContextStor
 // snippet: persistence-outbox
 // The outbox on the same DbContext: every event the service writes - a state transition's inside its
 // transaction - and the relay's claims, each leased to one relay instance at a time.
-public sealed class OrdersOutboxStore(OrdersDbContext db, KaleidoServiceOptions service, TimeProvider time) : IKaleidoOutboxStore
+public sealed record OutboxOwner(Guid InstanceId);
+
+public sealed class OrdersOutboxStore(OrdersDbContext db, OutboxOwner owner, TimeProvider time) : IKaleidoOutboxStore
 {
-    private string Owner => service.InstanceId.ToString("N");
+    private string Owner => owner.InstanceId.ToString("N");
 
     public async Task AddAsync(IReadOnlyCollection<KaleidoOutboxEvent> events, CancellationToken cancellationToken)
     {
@@ -249,12 +253,12 @@ public sealed class OrdersOutboxStore(OrdersDbContext db, KaleidoServiceOptions 
 // snippet: persistence-transactions
 // One database transaction per state transition, on the shared DbContext: the state and its event
 // commit together, or neither is kept.
-public sealed class OrdersTransactions(OrdersDbContext db) : IKaleidoTransactions
+public sealed class OrdersTransactions(OrdersDbContext db) : IProcessTransactions
 {
-    public async Task<IKaleidoTransaction> BeginAsync(CancellationToken cancellationToken) =>
+    public async Task<IProcessTransaction> BeginAsync(CancellationToken cancellationToken) =>
         new Transaction(await db.Database.BeginTransactionAsync(cancellationToken));
 
-    private sealed class Transaction(IDbContextTransaction transaction) : IKaleidoTransaction
+    private sealed class Transaction(IDbContextTransaction transaction) : IProcessTransaction
     {
         public Task CommitAsync(CancellationToken cancellationToken) => transaction.CommitAsync(cancellationToken);
 
@@ -269,16 +273,17 @@ public static class OrdersPersistence
     {
         // snippet: persistence-registration
         services.AddDbContext<OrdersDbContext>(o => o.UseSqlite(connectionString));   // scoped
+        services.AddSingleton(new OutboxOwner(Guid.NewGuid()));
 
-        return services.AddKaleido(configuration, new() { ServiceName = "orders", Assemblies = [typeof(OrdersContextStore).Assembly] })
+        return services.AddKaleido(configuration, new() { ServiceName = "orders", ServiceVersion = "1", Assemblies = [typeof(OrdersContextStore).Assembly] })
             .AddEventing()
             .AddProcess()
             .AddContextStore<OrdersContextStore>()
             .AddOutboxStore<OrdersOutboxStore>()
             .AddTransactions<OrdersTransactions>()
             // This example keeps its idempotency records in memory; a production host registers a
-            // durable IKaleidoIdempotencyStore (AddIdempotencyStore<T>(), AddSqliteIdempotencyStore).
-            .AddInMemoryStores();
+            // durable IProcessIdempotencyStore (AddIdempotencyStore<T>(), AddSqliteIdempotencyProvider).
+            .AddInMemoryIdempotencyProvider();
         // end snippet
     }
 }

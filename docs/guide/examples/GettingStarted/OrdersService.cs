@@ -1,10 +1,18 @@
 using Kaleido.Eventing;
+using Kaleido.Guide.Examples.Callers;
+using Kaleido.Http.Client.Calls;
 using Kaleido.Http.Client.Registration;
-using Kaleido.Http.Client.Registry;
+using Kaleido.Hosting.Http;
 using Kaleido.Http.Server;
 using Kaleido.Mcp;
-using Kaleido.Processor;
+using Kaleido.Process;
+using Kaleido.Process.Http.Client;
+using Kaleido.Process.Http.Server;
+using Kaleido.Provider.InMemory;
 using Kaleido.Queryable;
+using Kaleido.Queryable.Http.Client;
+using Kaleido.Registry.Http.Client;
+using Kaleido.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -25,45 +33,50 @@ public static class OrdersService
             ServiceName = "orders",
             ServiceVersion = "1",
             Assemblies = [typeof(OrderSource).Assembly],
-            AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
         })
             .AddEventing()
             .AddProcess()
             .AddQueryable()
-            .AddInMemoryStores()   // local evaluation only: nothing survives a restart
+            .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.None }) // local evaluation only
+            .AddInMemoryProviders()   // local evaluation only: nothing survives a restart
             .AddHttp()
-            .AddControlRegistryClient();
+            .AddProcessHttpServer()
+            .AddRegistryHttpParticipation();
         // end snippet
     }
 
     public static void MapOrders(IEndpointRouteBuilder endpoints)
     {
         // snippet: getting-started-map
-        endpoints.MapKaleidoHttp();
+        endpoints.MapKaleido().MapProcess().MapQueryable();
         // end snippet
     }
 
-    // The same service, also published to AI agents: the MCP adapter builds its tools from the
-    // registry and calls the service's published route through the single gateway client (Kaleido:BaseUrl).
+    // A reader-only MCP host publishes the orders service's tools from the central Registry
+    // and calls its published route through the single gateway client (Kaleido:BaseUrl).
     public static void AddOrdersWithMcp(IServiceCollection services, IConfiguration configuration)
     {
         // snippet: getting-started-mcp
-        services.AddSingleton<OrderBook>();
+        services.AddAuthentication("Bearer").AddJwtBearer(options =>
+        {
+            options.Authority = configuration["Authentication:Authority"];
+            options.Audience = configuration["Authentication:Audience"];
+        });
+        services.AddAuthorization();
 
         services.AddKaleido(configuration, new()
         {
-            ServiceName = "orders",
+            ServiceName = "mcp-reader",
             ServiceVersion = "1",
             Assemblies = [typeof(OrderSource).Assembly],
-            AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
+            TypeFilter = _ => false,
         })
-            .AddEventing()
-            .AddProcess()
-            .AddQueryable()
-            .AddInMemoryStores()   // local evaluation only: nothing survives a restart
+            .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
             .AddHttp()
-            .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
-            .AddControlRegistryClient()
+            .AddKaleidoClientHandler<TokenExchangeHandler>()
+            .AddRegistryHttpParticipation(new() { OnBehalfOfCalls = KaleidoOnBehalfOfCalls.Exchange })
+            .AddProcessHttpClient()
+            .AddQueryableHttpClient()
             .AddMcp();
         // end snippet
     }
@@ -71,8 +84,9 @@ public static class OrdersService
     public static void MapOrdersWithMcp(WebApplication app)
     {
         // snippet: getting-started-mcp-map
-        app.MapKaleidoHttp();
-        app.MapKaleidoMcp("/mcp");
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapKaleidoMcp("/mcp").RequireAuthorization();
         // end snippet
     }
 }

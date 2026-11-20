@@ -89,10 +89,11 @@ public sealed class TokenExchangeHandler(ITokenExchange exchange) : DelegatingHa
 
 <!-- snippet: callers-credentials-registration -->
 ```csharp
-// Kaleido:OnBehalfOfCalls = Exchange: a caller's outbound call never carries the inbound token.
+// Exchange mode: a caller's call never carries the inbound token.
 services.AddKaleido(configuration, new() { ServiceName = "orders", ServiceVersion = "1", Assemblies = [typeof(TokenExchangeHandler).Assembly] })
     .AddKaleidoClientHandler<TokenExchangeHandler>()
     .AddRegistryHttpParticipation(new() { OnBehalfOfCalls = KaleidoOnBehalfOfCalls.Exchange })
+    .AddProcessHttpClient()
     .AddQueryableHttpClient();
 ```
 
