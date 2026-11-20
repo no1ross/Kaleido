@@ -210,15 +210,17 @@ public sealed class ReturnOrderHandler(IKaleidoProcessorClientFactory processors
         ProcessStepContext context,
         CancellationToken cancellationToken)
     {
-        var answer = await processors.GetClient("returns").ExecuteStepAsync(new OpenReturnStep(), cancellationToken);
+        var answer = await processors.GetClient("returns").ExecuteStepAsync(
+            new OpenReturnStep(), context.ProcessId, idempotencyKey: null, cancellationToken);
+        var opened = answer.Steps.Single(step => step.StepName == nameof(OpenReturnStep));
 
         // The returns service did not take the process over: the return cannot start, as it said.
-        if (answer.Status != StepExecutionStatus.Completed)
+        if (opened.ExecutionStatus != StepExecutionStatus.Completed)
         {
-            return ProcessStepHandlerResult.Reject([.. answer.BusinessMessages]);
+            return ProcessStepHandlerResult.Reject([.. opened.BusinessMessages]);
         }
 
-        return ProcessStepHandlerResult.HandOff("returns", answer);
+        return ProcessStepHandlerResult.HandOff("returns", answer, nameof(OpenReturnStep));
     }
 }
 
@@ -227,8 +229,8 @@ public sealed record OpenReturnStep;
 ```
 
 `HandOff` sends nothing: the handler starts the process on the other service itself, with a
-Kaleido client (`AddHttpClients()` with the one `Kaleido:BaseUrl` gateway). It resolves the
-`returns` service's published route from the host's unfiltered central registry and sends this
+transport-neutral Process client (implemented by `AddProcessHttpClient()` over the shared `Kaleido:BaseUrl` gateway). It resolves the
+`returns` service's published route from the host's hydrated unfiltered central registry and sends this
 process's id and the calling processor, so the returns service starts its process under the
 **same id**, which an unknown id only does for such a call from another processor's step
 ([ADR 0009](../decisions/0009-unknown-process-id-only-on-handoff.md)).
@@ -237,23 +239,16 @@ The handler passes that service's answer to `HandOff`, and this step's answer is
 (#198):
 
 - `targetProcessorName` is `"returns"`;
-- `requiredStep` (with its questions, when it asks some) and `availableSteps` are the returns
-  service's next steps, as its registry publishes them, with its execute URLs, and only the ones
-  this caller may run ([Authorization](../architecture/authorization.md));
-- `notice` is its notice, and the step's `businessMessages` are its messages.
+- `targetProcessorVersion` pins the target's actual version (not whichever becomes current later);
+- `requiredStep` (with questions when needed) and `availableSteps` are **names from the returns service's Process result**, not a second Registry-generated choice list or copies of its metadata/execute URLs. They describe what this particular process can submit now. The full Registry already held by the participant describes *those names* and their published versioned operations; it cannot decide which ones this process currently offers ([Authorization](../architecture/authorization.md));
+- `notice` is its notice, and the submitted step's `businessMessages` are its messages.
 
-So a caller follows the URLs and continues on the returns service with the same `processId`, with no
-second call; behind a router it never needs to know the process moved. A step with a typed result
-hands off with its own result too: `HandOff("returns", answer, new ReturnOrderResult { ... })`, built
-from what the returns service returned (`ExecuteStepAsync<TStep, TResponse>`). The other service's
-result is not passed on: your step's result type is your caller's contract. Each `executeUrl`
-includes the target's version; keep that version alongside the `processId` when reading its state
-or continuing it later (`GetClient(serviceName, serviceVersion)`). The id alone cannot select the
-older version after a rollout.
+The consumer uses the answer's `(targetProcessorName, targetProcessorVersion, step name)` to find the step's description and callable binding in its **already-hydrated** Registry, then continues through the same Process client with the same `processId`. There is no extra Registry or target-state read to discover the immediate next choices: the target already answered through the hand-off. A step with a typed result hands off with its own result too: `HandOff("returns", answer, nameof(OpenReturnStep), new ReturnOrderResult { ... })`. That typed result is the origin step's contract; the target's full result is not copied into it. Keep `targetProcessorVersion` alongside the `processId` when reading the target's state later or continuing it (`GetClient(serviceName, serviceVersion)`); the id alone cannot select the older version after a rollout. A **later read of the origin's state** does not replay the target's immediate choice list; read the pinned target if fresh choices are needed. General tool discovery without a current process still filters the Registry for the caller and must never display the internal full copy unchanged ([Process architecture](../architecture/capabilities/process.md#registry-catalog-versus-this-processs-current-choices)).
 
 Hand off only when the other service's step completed: an answer that did not is a process
-violation (the step's status is `exception`). This process keeps only the other service's name, so
-a later call here is refused with `pro_process_ended`, and its state names `targetProcessorName`.
+violation (the step's status is `exception`). The origin stores the target's name and actual
+version, not the target's changing choices: a later call here is refused with `pro_process_ended`,
+and its state names `targetProcessorName` and `targetProcessorVersion`.
 Each processor keeps its own state ([Callers and correlation](callers-and-correlation.md)).
 
 ## Concurrent and repeated calls

@@ -32,7 +32,7 @@ public sealed record ProcessStateSnapshot
     /// <summary>The target's version for a handed-off process, required to resume it there.</summary>
     public string? TargetProcessorVersion { get; init; }
 
-    /// <summary>The names of the next steps available on this service.</summary>
+    /// <summary>The names currently offered by this service's stored process state when awaiting step selection; not all Registry-published steps. A later read of a hand-off origin does not replay the target's immediate next-step answer: use <see cref="TargetProcessorName"/> and <see cref="TargetProcessorVersion"/> to read the target's state.</summary>
     public IReadOnlyCollection<string> AvailableSteps { get; init; } = [];
 
     /// <summary>A caller-scoped notice, when a host cannot expose the next steps to its caller.</summary>

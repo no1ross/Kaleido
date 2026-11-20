@@ -32,8 +32,9 @@ public sealed record ProcessResult
     }
 
     /// <summary>
-    /// The step the process requires next on this processor, or <see langword="null"/> when it does
-    /// not wait for a specific step.
+    /// The step this process requires now on this processor, or the target's required step in the
+    /// immediate hand-off answer; <see langword="null"/> when it does not wait for a specific step.
+    /// This is a name, not a published step description or callable route.
     /// </summary>
     public string? RequiredStep
     {
@@ -76,9 +77,13 @@ public sealed record ProcessResult
     }
 
     /// <summary>
-    /// The steps the caller may submit next, as stored in the process state. Set when
-    /// <see cref="State"/> is <see cref="ProcessExecutionState.AwaitingStepSelection"/>; empty
-    /// otherwise, including for a new process on which no step ran (its initial steps are not stored).
+    /// The step names offered for this process now, not every step published by the Registry.
+    /// Taken from stored state when <see cref="State"/> is <see cref="ProcessExecutionState.AwaitingStepSelection"/>;
+    /// on the request that hands off, these are the target's answer even though this result's state is
+    /// <see cref="ProcessExecutionState.HandOff"/>. Otherwise empty, including before a new process runs
+    /// any step. A consumer looks up these names with the relevant service and pinned version in its
+    /// hydrated Registry to obtain descriptions and callable bindings; the Registry is not a second
+    /// source of process-specific next-step choices.
     /// </summary>
     public IReadOnlyCollection<string> AvailableSteps
     {
