@@ -1,7 +1,7 @@
 namespace Kaleido.Http.Client.Configuration;
 
 /// <summary>
-/// Gateway HTTP client settings, bound from the <c>Kaleido</c> section by <c>AddHttpClients</c>.
+/// Gateway HTTP client settings, bound from the <c>Kaleido</c> section by <c>AddKaleidoHttpClientPipeline()</c>.
 /// </summary>
 public sealed record KaleidoClientOptions : IKaleidoOptions
 {

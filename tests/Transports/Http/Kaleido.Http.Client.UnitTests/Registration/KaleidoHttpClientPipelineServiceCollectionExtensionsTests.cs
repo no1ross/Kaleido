@@ -7,14 +7,17 @@ public sealed class KaleidoHttpClientPipelineServiceCollectionExtensionsTests : 
 {
     private sealed class HostCredentialHandler : DelegatingHandler;
 
-    private static IKaleidoBuilder Builder(IServiceCollection services, string? gateway = "https://gateway.test/")
+    private static IKaleidoBuilder Builder(IServiceCollection services, string? gateway = "https://gateway.test/", bool obsoleteClients = false)
     {
         var builder = new Mock<IKaleidoBuilder>();
         builder.Setup(x => x.Services).Returns(services);
-        builder.Setup(x => x.Configuration).Returns(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        var settings = new Dictionary<string, string?> { ["Kaleido:BaseUrl"] = gateway };
+        if (obsoleteClients)
         {
-            ["Kaleido:BaseUrl"] = gateway,
-        }).Build());
+            settings["Kaleido:Clients:clinic:BaseUrl"] = "https://clinic.test/";
+        }
+
+        builder.Setup(x => x.Configuration).Returns(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
         return builder.Object;
     }
 
@@ -32,6 +35,17 @@ public sealed class KaleidoHttpClientPipelineServiceCollectionExtensionsTests : 
         Assert.Equal(new Uri("https://gateway.test/"), client.BaseAddress);
         Assert.Single(services, x => x.ImplementationInstance is KaleidoClientHandlerRegistration);
         Assert.Single(services, x => x.ImplementationInstance is KaleidoHttpClientName);
+        Assert.Single(services, x => x.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService)
+            && x.ImplementationType == typeof(KaleidoClientTransportCheck));
+    }
+
+    [Fact]
+    public void AddPipeline_RejectsObsoletePerServiceClientAddresses()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => Builder(new ServiceCollection(), obsoleteClients: true).AddKaleidoHttpClientPipeline());
+
+        Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
+        Assert.Contains("Kaleido:Clients", exception.Message, StringComparison.Ordinal);
     }
 
     [Theory]

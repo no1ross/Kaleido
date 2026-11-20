@@ -1,4 +1,3 @@
-using Kaleido.UnitTests;
 using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Registration.UnitTests;
@@ -16,7 +15,7 @@ public sealed class KaleidoClientTransportCheckTests : SutFixture
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(LogLevel.Warning, entry.Level);
-        Assert.Equal("Kaleido client 'kaleido-gateway' calls http://gateway.internal:8080 without HTTPS: a caller's credential would be sent in clear text. Use an https Kaleido:BaseUrl for the gateway.", entry.Message);
+        Assert.Equal("Kaleido gateway calls http://gateway.internal:8080 without HTTPS: a caller's credential would be sent in clear text. Use an https Kaleido:BaseUrl for the gateway.", entry.Message);
     }
 
     [Fact]

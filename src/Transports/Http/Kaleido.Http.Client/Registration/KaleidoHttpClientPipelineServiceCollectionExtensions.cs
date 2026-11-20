@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
 
 namespace Kaleido.Http.Client.Registration;
@@ -14,6 +15,12 @@ public static class KaleidoHttpClientPipelineServiceCollectionExtensions
     public static IKaleidoBuilder AddKaleidoHttpClientPipeline(this IKaleidoBuilder builder, KaleidoClientOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
+        if (builder.Configuration.GetSection("Kaleido:Clients").GetChildren().Any())
+        {
+            throw new KaleidoConfigurationException(HttpClientErrorCodes.InvalidClientOptions,
+                "Kaleido:Clients no longer configures per-service endpoints; use only Kaleido:BaseUrl for the gateway.");
+        }
+
         var services = builder.Services;
         if (services.Any(x => x.ServiceType == typeof(KaleidoClientOptions)))
         {
@@ -33,6 +40,7 @@ public static class KaleidoHttpClientPipelineServiceCollectionExtensions
         }
 
         services.AddSingleton(configured);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, KaleidoClientTransportCheck>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoClientHandlerFilter>());
         return builder;
     }

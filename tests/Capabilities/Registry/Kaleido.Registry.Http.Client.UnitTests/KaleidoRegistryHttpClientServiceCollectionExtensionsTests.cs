@@ -68,7 +68,8 @@ public sealed class KaleidoRegistryHttpClientServiceCollectionExtensionsTests : 
         var builder = Builder(Gateway);
         builder.AddRegistryHttpClient();
 
-        Assert.DoesNotContain(builder.Services, x => x.ServiceType == typeof(IHostedService));
+        Assert.DoesNotContain(builder.Services, x => x.ServiceType == typeof(IHostedService)
+            && x.ImplementationType?.Name is "CentralRegistrySync" or "ControlRegistryRegistrar");
     }
 
     [Fact]

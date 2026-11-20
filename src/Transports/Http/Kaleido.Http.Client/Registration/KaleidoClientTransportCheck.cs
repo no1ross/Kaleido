@@ -17,7 +17,7 @@ internal sealed partial class KaleidoClientTransportCheck(
             && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
             && !uri.IsLoopback)
         {
-            LogCredentialOverPlainConnection(logger, KaleidoClientTransport.ClientName, uri.GetComponents(UriComponents.SchemeAndServer, UriFormat.UriEscaped));
+            LogCredentialOverPlainConnection(logger, uri.GetComponents(UriComponents.SchemeAndServer, UriFormat.UriEscaped));
         }
 
         return Task.CompletedTask;
@@ -25,6 +25,6 @@ internal sealed partial class KaleidoClientTransportCheck(
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido client '{ClientName}' calls {BaseUrl} without HTTPS: a caller's credential would be sent in clear text. Use an https Kaleido:BaseUrl for the gateway.")]
-    private static partial void LogCredentialOverPlainConnection(ILogger logger, string clientName, string baseUrl);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Kaleido gateway calls {BaseUrl} without HTTPS: a caller's credential would be sent in clear text. Use an https Kaleido:BaseUrl for the gateway.")]
+    private static partial void LogCredentialOverPlainConnection(ILogger logger, string baseUrl);
 }
