@@ -114,6 +114,68 @@ public sealed class SqliteProviderHostFunctionalTests
         }
     }
 
+    [Fact]
+    public async Task TheReadmeSequence_OnAFreshDatabase_SavesAndLoadsAProcess()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"kaleido-sqlite-readme-{Guid.NewGuid():N}.db");
+        try
+        {
+            Assert.False(File.Exists(path));
+            using var host = BuildHost(path);
+            await EnsureCreatedAsync(host);
+            var created = new ProcessContext
+            {
+                ProcessId = Guid.NewGuid(),
+                ProcessorName = "orders",
+                ProcessorVersion = "3",
+                State = ProcessExecutionState.Active,
+            };
+
+            using (var writer = host.Services.CreateScope())
+            {
+                var saved = await writer.ServiceProvider.GetRequiredService<IProcessContextStore>()
+                    .SaveAsync(created, TestContext.Current.CancellationToken);
+                Assert.Equal(1, saved.Version);
+            }
+
+            using (var reader = host.Services.CreateScope())
+            {
+                var loaded = await reader.ServiceProvider.GetRequiredService<IProcessContextStore>()
+                    .LoadAsync(created.Key, TestContext.Current.CancellationToken);
+                Assert.Equal(1, Assert.IsType<ProcessContext>(loaded).Version);
+            }
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task WithoutTheSchemaStep_TheFirstSaveFails()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"kaleido-sqlite-no-schema-{Guid.NewGuid():N}.db");
+        try
+        {
+            using var host = BuildHost(path);
+            using var scope = host.Services.CreateScope();
+            await Assert.ThrowsAsync<SqliteException>(() => scope.ServiceProvider.GetRequiredService<IProcessContextStore>()
+                .SaveAsync(new ProcessContext
+                {
+                    ProcessId = Guid.NewGuid(),
+                    ProcessorName = "orders",
+                    ProcessorVersion = "3",
+                    State = ProcessExecutionState.Active,
+                }, TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
     private static IdempotencyRecord Admission(string key)
     {
         var now = TimeProvider.System.GetUtcNow();
