@@ -207,6 +207,50 @@ public sealed class QueryableRegistryTests
     }
 
     [Fact]
+    public void Published_ViewPagingIsIndependentOfTheSource()
+    {
+        var registry = CreateSut(
+            [Source(typeof(LocalSource), "LocalSource", QuerySourceKind.Local)],
+            [new QueryViewRegistration(typeof(string), typeof(int), typeof(EmptyQueryViewParameters), typeof(LocalSource), typeof(object),
+                new QueryViewMetadata("view", "View", "desc", new PageableMetadata(5, 50, "Id"), null, null))]);
+
+        var published = Assert.Single(registry.Published);
+        Assert.Null(published.Pageable);
+        Assert.Equal(new QueryableRegistryPaging(5, 50, "Id"), Assert.Single(published.Views).Pageable);
+    }
+
+    [Fact]
+    public void Published_PreservesNestedEnumTypesAndConstraintParameters()
+    {
+        var dataType = new DataTypeDescriptor("array", ItemType: new DataTypeDescriptor("string", "enum", Nullable: true,
+            EnumValues: [new EnumValueDescriptor(2, "High", "Urgent")]));
+        var metadata = new QuerySourceMetadata("DelegatedSource", "desc", "display", null, QuerySourceKind.Delegated, null,
+            [new FieldMetadata { Name = "Priority", FieldType = typeof(string[]), DataType = dataType }],
+            [new QueryParameterMetadata
+            {
+                Name = "Name",
+                Type = typeof(string),
+                DataType = new DataTypeDescriptor("string"),
+                Constraints = [new ConstraintContract
+                {
+                    Type = "StringLength",
+                    Parameters = [new ConstraintParameterContract { Name = "MaximumLength", Value = 10 }],
+                }],
+            }], [], AuthorizationMetadata.Unspecified);
+        var registry = CreateSut(
+            [new QuerySourceRegistration(typeof(DelegatedSource), typeof(object), typeof(object), typeof(EmptyQueryViewParameters), metadata)], []);
+
+        var published = Assert.Single(registry.Published);
+        var item = Assert.IsType<DataTypeMetadata>(Assert.Single(published.Fields).DataType.ItemType);
+        Assert.Equal(("string", "enum", true), (item.Type, item.Format, item.Nullable));
+        Assert.Equal(new EnumValueMetadata(2, "High", "Urgent"), Assert.Single(item.EnumValues!));
+        var constraint = Assert.Single(Assert.Single(published.Parameters).Constraints);
+        Assert.Equal("StringLength", constraint.Type);
+        var parameter = Assert.Single(constraint.Parameters);
+        Assert.Equal(("MaximumLength", 10), (parameter.Name, parameter.Value));
+    }
+
+    [Fact]
     public void Published_UsesStableStringTokensWithoutClrTypes()
     {
         var dataType = new DataTypeDescriptor("string");

@@ -79,8 +79,13 @@ public sealed class ProcessorRegistryTests
         Assert.Equal(("string", "The member's name."), (member.DataType.Type, member.Description));
         Assert.Equal(["Test:PHI"], member.Classifications);
         Assert.Contains(member.Constraints, constraint => constraint.Type == "Required");
+        var length = Assert.Single(member.Constraints, constraint => constraint.Type == "StringLength");
+        Assert.Contains(length.Parameters, parameter => parameter.Name == "MaximumLength" && Equals(parameter.Value, 10));
+        Assert.Contains(length.Parameters, parameter => parameter.Name == "MinimumLength" && Equals(parameter.Value, 0));
         var lookup = Assert.Single(detail.Fields, x => x.Name == nameof(RegistrationStep.MemberId)).Lookup;
-        Assert.Equal(("member", "MemberSource", "MemberId"), (lookup?.Service, lookup?.Source, lookup?.Field));
+        Assert.Equal(("member", "MemberSource", "Search", "MemberId", "member-group"),
+            (lookup?.Service, lookup?.Source, lookup?.View, lookup?.Field, lookup?.Group));
+        Assert.Equal(["Name"], lookup?.Display);
         Assert.Equal(["Test:PHI"], Assert.Single(detail.Result!.OutputFields).Classifications);
         Assert.DoesNotContain(typeof(Kaleido.Registry.ProcessRegistryItem).GetProperties(), property => property.PropertyType == typeof(Type));
     }
@@ -91,10 +96,11 @@ public sealed class ProcessorRegistryTests
     {
         [TestPhi]
         [Required]
+        [StringLength(10)]
         [Description("The member's name.")]
         public string MemberName { get; init; } = string.Empty;
 
-        [Lookup(Service = "member", Source = "MemberSource", Field = "MemberId")]
+        [Lookup(Service = "member", Source = "MemberSource", View = "Search", Field = "MemberId", Group = "member-group", Display = ["Name"])]
         public Guid MemberId { get; init; }
     }
 
