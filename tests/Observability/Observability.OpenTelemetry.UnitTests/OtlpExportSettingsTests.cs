@@ -127,19 +127,19 @@ public sealed class OtlpExportSettingsTests : SutFixture
     [Fact]
     public void ConfigureResource_DescribesTheService_WithItsKaleidoNameAndTheConfiguredVersionAndAttributes()
     {
-        var instanceId = Guid.NewGuid();
         var resource = ResourceBuilder.CreateEmpty();
 
         new KaleidoOpenTelemetryOptions
         {
             ServiceVersion = "1.2.3",
             ResourceAttributes = "deployment.environment=Development",
-        }.ConfigureResource(resource, new KaleidoServiceOptions { ServiceName = "intake", InstanceId = instanceId });
+        }.ConfigureResource(resource, new KaleidoServiceOptions { ServiceName = "intake", ServiceVersion = "1" });
 
         var attributes = resource.Build().Attributes.ToDictionary(x => x.Key, x => x.Value);
         Assert.Equal("intake", attributes["service.name"]);
         Assert.Equal("1.2.3", attributes["service.version"]);
-        Assert.Equal(instanceId.ToString(), attributes["service.instance.id"]);
+        Assert.True(Guid.TryParse(attributes["service.instance.id"].ToString(), out var instanceId));
+        Assert.NotEqual(Guid.Empty, instanceId);
         Assert.Equal("Development", attributes["deployment.environment"]);
     }
 

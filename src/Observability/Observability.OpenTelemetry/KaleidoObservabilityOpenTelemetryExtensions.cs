@@ -1,5 +1,5 @@
 using Kaleido.Eventing;
-using Kaleido.Processor.Observability;
+using Kaleido.Process.Observability;
 using Kaleido.Queryable.Observability;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,7 +63,7 @@ public static class KaleidoObservabilityOpenTelemetryExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         options = builder.Configuration
-            .GetSection($"{KaleidoServiceOptions.SectionName}:{KaleidoOpenTelemetryOptions.SectionName}")
+            .GetSection($"Kaleido:{KaleidoOpenTelemetryOptions.SectionName}")
             .BindOver(options ?? new KaleidoOpenTelemetryOptions(), OpenTelemetryErrorCodes.InvalidOptions);
 
         if (!options.Logs && !options.Traces && !options.Metrics)
