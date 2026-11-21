@@ -268,8 +268,8 @@ state of an answers form, the `answersToken` the agent passes back, and the stat
 form - which carries exactly the call the user confirmed.
 
 **Several instances share one key ring.** A form shown by one instance can be answered on another, so
-every instance behind a load balancer uses the same Data Protection application name and key storage
-- configured by the host, with its own `AddDataProtection()` call; Kaleido adds none of its own
+every instance behind a load balancer uses the same Data Protection application name and key storage,
+configured by the host with its own `AddDataProtection()` call; Kaleido adds none of its own
 settings. The [deployment guide](../../../docs/guide/deployment.md#mcp-on-several-instances-one-key-ring)
 has the setup. A misconfiguration is reported, never silent: outside Development a host with no key
 storage configured logs a Warning at startup, and an instance that receives a form protected with a
@@ -335,7 +335,12 @@ error, as the runtimes treat a refused request. A failure of the adapter or the 
 `error`, and its span is an error. The `kaleido.error.code` tag is always one of the codes above
 (`mcp_internal_error` for anything else), never a downstream service's own code.
 
-**Retries.** Tool calls previously used the Process HTTP client's keyed retry policy; its dynamic outbound adapter remains in the #585 migration, while the shared [`Kaleido.Http.Client`](../../Transports/Http/Kaleido.Http.Client/README.md#resilience) currently retries safe GET/HEAD reads only. Process-specific `Idempotency-Key` retries must be restored in their own client owner before relying on this behavior. When the *agent* calls a tool again (after a timeout, a lost answer, a restart), that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
+**Retries.** The Process HTTP client retries keyed POSTs on transient failures or a `409` with
+`Retry-After` while the original call is still running; the shared
+[`Kaleido.Http.Client`](../../Transports/Http/Kaleido.Http.Client/README.md#resilience) retries safe
+GET/HEAD reads only. When the *agent* calls a tool again (after a timeout, a lost answer, a restart),
+that is a new call; the adapter gives it the same key only when it is the same logical call (#440):
+
 - a non-`[Repeatable]` step continuing a process, with the same inputs for the same process: same key, so the stored answer comes back (within the service's idempotency retention);
 - answers to one information request: same key for the same answers;
 - a `[Repeatable]` step, or an initial step starting a new process (no `processId`): a new key each time, because two such calls are two operations. Here a repeated call runs again; read the process (`get_process_state`) before repeating one whose outcome is unknown.
