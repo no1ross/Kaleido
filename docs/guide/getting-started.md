@@ -151,7 +151,8 @@ services.AddKaleido(configuration, new()
     .AddProcessHttpServer()
     .AddProcessHttpBindings()
     .AddQueryableHttpBindings()
-    .AddRegistryHttpParticipation();
+    .AddRegistryHttpParticipation()
+    .AddProcessHttpClient();
 ```
 
 `AddKaleido()` installs only the foundation; `AddEventing()` installs the outbox-backed writer, `AddProcess()`/`AddQueryable()` register their runtimes, and `AddServer()` configures authorization. `AddInMemoryProviders()` explicitly chooses process state, idempotency records and an event outbox that live in this process and are lost on restart. Without a choice the host does not start (`stores_not_chosen`): a service
@@ -163,7 +164,7 @@ never keeps them in memory by accident. A deployed service registers durable sto
 endpoints.MapKaleido().MapProcess().MapQueryable();
 ```
 
-The composition maps local endpoints only. This service also opts into Registry participation to publish its HTTP bindings; a dedicated Registry authority uses `app.MapKaleido().MapCentralRegistry()` instead. See the [HTTP hosting README](../../src/Composed/Hosts/Kaleido.Hosting.Http/README.md) for the separate host roles.
+The composition maps local endpoints only. This service also opts into Registry participation to publish its HTTP bindings and adds the Process HTTP client for the later cross-service return hand-off; a local-only service needs neither. A dedicated Registry authority uses `app.MapKaleido().MapCentralRegistry()` instead. See the [HTTP hosting README](../../src/Composed/Hosts/Kaleido.Hosting.Http/README.md) for the separate host roles.
 
 > `AuthorizationMode.None` leaves every capability open, for local evaluation. The default is
 > `Authenticated`; see [Callers and correlation](callers-and-correlation.md).

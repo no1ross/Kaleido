@@ -145,11 +145,11 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 }
 ```
 
-| Handler returns | Answer's `status` | The process |
+| Handler returns | Submitted step's `steps[].executionStatus` | The process |
 |---|---|---|
-| `Success()`, `Success<TNext>()`, `Success(result).Next<TNext>()` | `completed` | moves on; `requiredStep` / `availableSteps` say what is next |
+| `Success()`, `Success<TNext>()`, `Success(result).Next<TNext>()` | `completed` | moves on; name-only `requiredStep` / `availableSteps` say what is next |
 | `RequireInformation<TNext>(request)` | `completed` | waits for answers ([Information requests](information-requests.md)) |
-| `HandOff(processor, answer)` | `completed` | continues on another processor (`targetProcessorName`), whose next steps and messages are the answer's; this one runs none of its steps on it, unless that processor hands it back |
+| `HandOff(processor, answer, stepName)` | `completed` | continues on another processor (`targetProcessorName`, `targetProcessorVersion`), whose next-step names and messages are the answer's; this one runs none of its steps on it, unless that processor hands it back |
 | `Complete(messages)` | `completed` | **ends**: its state is `complete`, even when its rules still offer steps |
 | `Reject(messages)` | `rejected` | **unchanged**: the caller corrects the input or retries ([ADR 0008](../decisions/0008-rejected-outcome-and-retryable-exceptions.md)) |
 | `Failure(messages)` | `failed` | **ends**: its state is `businessFailure`; to try again, start a new process |
@@ -157,8 +157,8 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 | input that fails its validation rules | `validationFailed` | unchanged: the caller corrects the input |
 | the caller cancels while the handler runs | `canceled` | unchanged: the step can be sent again |
 
-The messages are your words for the user (`businessMessages` in the answer), kept apart from Kaleido's
-diagnostics (`frameworkMessages`). The process state is read with `GET /{service}/{version}/processes/{processId}`;
+The messages are your words for the user (`steps[].businessMessages` in the answer), kept apart from Kaleido's
+step diagnostics (`steps[].runtimeMessages`). The process state is read with `GET /{service}/{version}/processes/{processId}`;
 enum values are camelCase on the wire (`businessFailure`, `awaitingRequiredStep`).
 
 A process **ends** as `complete`, `businessFailure` or `handOff`. From then on its state lists no available step, and any step sent to it is answered with status `pending` and `pro_process_ended` ([ADR 0033](../decisions/0033-process-lifecycle-and-admission.md)). Phases are the step graph's (`AvailableAfter` / `AvailableUntil`). A process whose steps stay open after its business outcome (an audit, an appeal) ends with `Complete()`, typically from an internal-only step that a job calls when the process truly ends. Such a step runs after other steps, never as an entry step (KAL2022).

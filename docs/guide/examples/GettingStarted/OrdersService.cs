@@ -45,7 +45,8 @@ public static class OrdersService
             .AddProcessHttpServer()
             .AddProcessHttpBindings()
             .AddQueryableHttpBindings()
-            .AddRegistryHttpParticipation();
+            .AddRegistryHttpParticipation()
+            .AddProcessHttpClient();
         // end snippet
     }
 
