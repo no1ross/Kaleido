@@ -2,8 +2,8 @@
 
     <!-- The guide's examples (docs/guide), compiled so the guide cannot drift from the API: every
          csharp block the guide marks with a snippet comment equals its region here
-         (tools/docs/check-guide-snippets.py), and Kaleido.IntegrationTests runs the getting-started
-         service. Consumer code: Kaleido's consumer analyzers (KAL2xxx) apply, as in a real service. -->
+         (tools/docs/check-guide-snippets.py), and the owner functional suites run its scenarios.
+         Consumer code: Kaleido's consumer analyzers (KAL2xxx) apply, as in a real service. -->
     <PropertyGroup>
         <IsPackable>false</IsPackable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

@@ -136,7 +136,6 @@
     <Project Path="tests/Kaleido.Analyzers.Testing.UnitTests/Kaleido.Analyzers.Testing.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Analyzers.UnitTests/Kaleido.Analyzers.UnitTests.csproj" />
     <Project Path="tests/Client.UnitTests/Kaleido.Client.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.IntegrationTests/Kaleido.IntegrationTests.csproj" />
     <Project Path="tests/Platform.UnitTests/Kaleido.Platform.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Events/">

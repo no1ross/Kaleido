@@ -85,6 +85,5 @@
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
-		<InternalsVisibleTo Include="Kaleido.IntegrationTests" />
 	</ItemGroup>
 </Project>

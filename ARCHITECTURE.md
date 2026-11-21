@@ -68,10 +68,10 @@ are authoritative. A project README describes its own public entry points, not a
 
 ### Tests
 
-[`tests/AGENTS.md`](./tests/AGENTS.md) maps the 18 test projects to their source projects. The
+[`tests/AGENTS.md`](./tests/AGENTS.md) maps test projects to their owner areas. The
 functional suites run service, registry and MCP hosts separately where the boundary matters.
-The consumer guide's [compiled examples](./docs/guide/examples) are exercised by
-`Kaleido.IntegrationTests`; the external samples have their own release cycle.
+The consumer guide's [compiled examples](./docs/guide/examples) are exercised by those
+owner functional suites; the external samples have their own release cycle.
 
 ### Examples and samples
 

@@ -46,7 +46,6 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Analyzers.UnitTests` | consumer `KAL2xxx` rules |
 | `Kaleido.Analyzers.Source.UnitTests` | contributor `KAL0xxx` rules |
 | `Kaleido.Analyzers.Testing.UnitTests` | test `KAL1xxx` rules |
-| `Kaleido.IntegrationTests` | cross-project DI, caller credentials and compiled consumer-guide examples |
 
 Project-wide imports belong in each test `.csproj` as `<Using Include="..." />`, not `GlobalUsings.cs`. Assembly-boundary checks are pending source analyzers (#591), not SUT unit fixtures.
 

@@ -53,5 +53,9 @@ flowchart LR
 
 Every C# example is one **orders** service that grows page by page. It is compiled
 (`docs/guide/examples`, under Kaleido's consumer analyzers), each block on a page is checked against
-it in CI (`tools/docs/check-guide-snippets.py`), and what each page states is run by a test
-(`tests/Kaleido.IntegrationTests/Guide`).
+it in CI (`tools/docs/check-guide-snippets.py`), and its scenarios run in the matching
+[Hosting HTTP](../../tests/Composed/Hosts/Kaleido.Hosting.Http.FunctionalTests/Kaleido.Hosting.Http.FunctionalTests.csproj),
+[SQLite](../../tests/Providers/Kaleido.Provider.SQLite.FunctionalTests/Kaleido.Provider.SQLite.FunctionalTests.csproj),
+[MCP](../../tests/Mcp/Mcp.FunctionalTests/Kaleido.Mcp.FunctionalTests.csproj) and
+[Queryable](../../tests/Capabilities/Queryable/Kaleido.Queryable.FunctionalTests/Kaleido.Queryable.FunctionalTests.csproj)
+functional suites.
