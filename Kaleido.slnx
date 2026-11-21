@@ -140,6 +140,7 @@
     <Project Path="tests/Platform.UnitTests/Kaleido.Platform.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Events/">
+    <Project Path="tests/Events/Kaleido.Eventing.FunctionalTests/Kaleido.Eventing.FunctionalTests.csproj" />
     <Project Path="tests/Events/Kaleido.Eventing.UnitTests/Kaleido.Eventing.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Core/">
