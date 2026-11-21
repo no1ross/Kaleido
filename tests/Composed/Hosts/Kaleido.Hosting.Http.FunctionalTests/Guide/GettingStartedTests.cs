@@ -171,6 +171,83 @@ public sealed class GettingStartedTests : IAsyncLifetime
         Assert.Equal([2], benResult.GetProperty("results").EnumerateArray().Select(invoice => invoice.GetProperty("number").GetInt32()));
     }
 
+    [Fact]
+    public async Task TheGiftWrapHandlerAsks_AndItsAnswersCompleteTheInformationStep()
+    {
+        using var client = _host!.GetTestClient();
+        var (processId, asked) = await AskGiftWrapAsync(client);
+        var required = asked.GetProperty("requiredInformationRequest");
+
+        var answered = await ExecuteStepAsync(client, "giftwrapanswersstep", GiftWrapAnswers(required, ("wrap", "true"), ("paper", "gold")), processId);
+
+        Assert.Equal("GiftWrapAnswersStep", asked.GetProperty("requiredStep").GetString());
+        Assert.Equal("gift-wrap", required.GetProperty("informationRequestId").GetString());
+        var result = Assert.Single(answered.GetProperty("steps").EnumerateArray());
+        Assert.Equal("completed", result.GetProperty("executionStatus").GetString());
+        Assert.Equal("gold", result.GetProperty("response").GetProperty("paper").GetString());
+    }
+
+    [Fact]
+    public async Task GiftWrap_WhenTheConditionIsFalse_NeedsNoPaperAnswer()
+    {
+        using var client = _host!.GetTestClient();
+        var (processId, asked) = await AskGiftWrapAsync(client);
+
+        var answered = await ExecuteStepAsync(client, "giftwrapanswersstep", GiftWrapAnswers(asked.GetProperty("requiredInformationRequest"), ("wrap", "false")), processId);
+
+        var result = Assert.Single(answered.GetProperty("steps").EnumerateArray());
+        Assert.Equal("completed", result.GetProperty("executionStatus").GetString());
+        Assert.Equal(JsonValueKind.Null, result.GetProperty("response").GetProperty("paper").ValueKind);
+    }
+
+    [Fact]
+    public async Task GiftWrap_AnAnswerToADisabledQuestion_RemainsPending()
+    {
+        using var client = _host!.GetTestClient();
+        var (processId, asked) = await AskGiftWrapAsync(client);
+
+        var rejected = await ExecuteStepAsync(client, "giftwrapanswersstep",
+            GiftWrapAnswers(asked.GetProperty("requiredInformationRequest"), ("wrap", "false"), ("paper", "red")), processId);
+
+        Assert.NotEqual("completed", Assert.Single(rejected.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
+        Assert.Equal("gift-wrap", rejected.GetProperty("requiredInformationRequest").GetProperty("informationRequestId").GetString());
+        using var stateResponse = await client.GetAsync($"/orders/1/processes/{processId:D}", Cancel);
+        Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
+        var state = await stateResponse.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, Cancel);
+        Assert.Equal("gift-wrap", state.GetProperty("requiredInformationRequest").GetProperty("informationRequestId").GetString());
+    }
+
+    private static async Task<(Guid ProcessId, JsonElement Asked)> AskGiftWrapAsync(HttpClient client)
+    {
+        var placed = await ExecuteStepAsync(client, "placeorderstep", new { item = "Book" }, null);
+        var processId = placed.GetProperty("processId").GetGuid();
+        await ExecuteStepAsync(client, "confirmorderstep", new { }, processId);
+        return (processId, await ExecuteStepAsync(client, "giftwrapstep", new { }, processId));
+    }
+
+    private static object GiftWrapAnswers(JsonElement required, params (string Item, string Value)[] answers) => new
+    {
+        informationRequestId = required.GetProperty("informationRequestId").GetString(),
+        exchangeId = required.GetProperty("exchangeId").GetString(),
+        items = answers.Select(x => new { itemId = x.Item, answers = new[] { new { value = x.Value } } }).ToArray(),
+    };
+
+    private static async Task<JsonElement> ExecuteStepAsync(HttpClient client, string step, object input, Guid? processId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/orders/1/processes/steps/{step}")
+        {
+            Content = JsonContent.Create(new { processStep = input }, options: KaleidoJsonOptions.Options),
+        };
+        if (processId is { } id)
+        {
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, id.ToString("D"));
+        }
+
+        using var response = await client.SendAsync(request, Cancel);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await response.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, Cancel);
+    }
+
     private static async Task<WebApplication> StartAuthenticatedQueryHostAsync()
     {
         var builder = WebApplication.CreateBuilder();
