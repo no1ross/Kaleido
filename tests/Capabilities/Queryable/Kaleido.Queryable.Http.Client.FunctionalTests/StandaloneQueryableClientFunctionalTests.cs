@@ -44,9 +44,12 @@ public sealed class StandaloneQueryableClientFunctionalTests
         await authority.StopAsync(TestContext.Current.CancellationToken);
         var result = await client.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken);
         var pinned = await factory.GetClient("catalog", "1").QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken);
+        var keyed = scope.ServiceProvider.GetRequiredKeyedService<IKaleidoQueryableClient>("catalog");
+        var keyedResult = await keyed.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal("one", Assert.Single(result.Results).Name);
         Assert.Equal("one", Assert.Single(pinned.Results).Name);
+        Assert.Equal("one", Assert.Single(keyedResult.Results).Name);
         await consumer.StopAsync(TestContext.Current.CancellationToken);
         await publisher.StopAsync(TestContext.Current.CancellationToken);
     }

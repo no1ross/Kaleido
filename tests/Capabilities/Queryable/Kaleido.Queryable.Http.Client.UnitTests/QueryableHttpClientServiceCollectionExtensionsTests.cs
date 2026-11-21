@@ -19,6 +19,8 @@ public sealed class QueryableHttpClientServiceCollectionExtensionsTests : Kaleid
         builder.Object.AddQueryableHttpClient().AddQueryableHttpClient();
 
         Assert.Single(services, x => x.ServiceType == typeof(IKaleidoQueryableClientFactory) && x.ImplementationType == typeof(KaleidoQueryableClientFactory));
+        var keyed = Assert.Single(services, x => x.ServiceType == typeof(IKaleidoQueryableClient) && x.ServiceKey == KeyedService.AnyKey);
+        Assert.Equal(ServiceLifetime.Scoped, keyed.Lifetime);
         Assert.DoesNotContain(services, x => x.ServiceType == typeof(IKaleidoRegistryClient));
     }
 }

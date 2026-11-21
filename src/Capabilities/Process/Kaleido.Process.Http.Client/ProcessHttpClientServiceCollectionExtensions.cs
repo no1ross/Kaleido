@@ -31,6 +31,9 @@ public static class ProcessHttpClientServiceCollectionExtensions
         }
 
         builder.Services.TryAddScoped<IKaleidoProcessorClientFactory, KaleidoProcessorClientFactory>();
+        builder.Services.AddKeyedScoped<IKaleidoProcessorClient>(KeyedService.AnyKey,
+            (provider, key) => provider.GetRequiredService<IKaleidoProcessorClientFactory>()
+                .GetClient(key.RequireServiceName()));
         return builder;
     }
 }

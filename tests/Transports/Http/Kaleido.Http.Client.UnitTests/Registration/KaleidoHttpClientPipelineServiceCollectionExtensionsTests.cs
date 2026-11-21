@@ -75,6 +75,24 @@ public sealed class KaleidoHttpClientPipelineServiceCollectionExtensionsTests : 
 
     [Theory]
     [InlineData(null)]
+    [InlineData(42)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void RequireServiceName_RejectsKeysWithoutAServiceName(object? key)
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(key.RequireServiceName);
+
+        Assert.Equal(HttpClientErrorCodes.UnknownClient, exception.Code);
+    }
+
+    [Fact]
+    public void RequireServiceName_KeepsTheNamedService()
+    {
+        Assert.Equal("radiology", ((object)"radiology").RequireServiceName());
+    }
+
+    [Theory]
+    [InlineData(null)]
     [InlineData("not-a-gateway")]
     [InlineData("https://name:password@gateway.test/")]
     public void AddPipeline_RejectsAnInvalidGateway(string? gateway)

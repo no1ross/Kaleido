@@ -19,6 +19,8 @@ public sealed class ProcessHttpClientServiceCollectionExtensionsTests : Kaleido.
         builder.Object.AddProcessHttpClient().AddProcessHttpClient();
 
         Assert.Single(services, x => x.ServiceType == typeof(IKaleidoProcessorClientFactory) && x.ImplementationType == typeof(KaleidoProcessorClientFactory));
+        var keyed = Assert.Single(services, x => x.ServiceType == typeof(IKaleidoProcessorClient) && x.ServiceKey == KeyedService.AnyKey);
+        Assert.Equal(ServiceLifetime.Scoped, keyed.Lifetime);
         Assert.DoesNotContain(services, x => x.ServiceType == typeof(IKaleidoRegistryClient));
     }
 }

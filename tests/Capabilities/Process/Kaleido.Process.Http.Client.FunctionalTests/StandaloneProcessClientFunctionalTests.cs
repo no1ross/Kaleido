@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using Kaleido.Exceptions;
 using Microsoft.Extensions.Time.Testing;
 using Kaleido.Testing.Identity;
 using Microsoft.AspNetCore.Builder;
@@ -135,6 +136,10 @@ public sealed class StandaloneProcessClientFunctionalTests
         await WaitUntilReadyAsync(consumer);
         using var scope = consumer.Services.CreateScope();
         var factory = scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>();
+        var keyed = scope.ServiceProvider.GetRequiredKeyedService<IKaleidoProcessorClient>("catalog");
+        Assert.Null(await keyed.GetProcessStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
+        var invalid = Assert.Throws<KaleidoConfigurationException>(() => scope.ServiceProvider.GetRequiredKeyedService<IKaleidoProcessorClient>(42));
+        Assert.Equal(HttpClientErrorCodes.UnknownClient, invalid.Code);
 
         var pending = factory.GetClient("catalog", "2").ExecuteStepAsync(new Consumer.ReviewOrderStep("A-1"), null,
             "retry-pinned-call", TestContext.Current.CancellationToken);

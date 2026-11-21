@@ -469,6 +469,7 @@ sections.
 
 ### Fixed
 - **Process HTTP keyed in-progress retry** (#627): only the named Process client retries a keyed POST answered `409` with `Retry-After`, waiting for the server's delay and reusing its original key within the configured attempt budget. Other conflicts, key-reuse `422`, unrelated/unkeyed writes and requests marked `NoRetry` are not retried; safe-read behavior stays in the shared HTTP pipeline.
+- **Service-name keyed client injection** (#627): `AddProcessHttpClient()` and `AddQueryableHttpClient()` again register scoped `IKaleidoProcessorClient` and `IKaleidoQueryableClient` under arbitrary validated service-name keys, alongside their current/pinned version factories. The shared client gateway continues to own only safe-read resilience and key validation, not capability routing.
 - **Release and CI integrity** (#526):
   - a release refuses a commit that is not on master, or whose Build workflow (the full gate) has not passed on
     master, before anything is built or published; RELEASING recommends a `v*` tag ruleset;

@@ -88,4 +88,9 @@ public static class KaleidoHttpClientPipelineServiceCollectionExtensions
         builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, KaleidoClientHandlerFilter>());
         return client;
     }
+
+    internal static string RequireServiceName(this object? key) =>
+        key is string name && !string.IsNullOrWhiteSpace(name)
+            ? name
+            : throw new KaleidoConfigurationException(HttpClientErrorCodes.UnknownClient, "A keyed Kaleido client requires a service name.");
 }

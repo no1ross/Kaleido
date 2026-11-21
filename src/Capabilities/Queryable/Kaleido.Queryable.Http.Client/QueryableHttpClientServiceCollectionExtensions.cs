@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kaleido.Queryable.Http.Client;
@@ -20,6 +21,9 @@ public static class QueryableHttpClientServiceCollectionExtensions
         builder.AddKaleidoHttpClientPipeline(options);
         builder.AddKaleidoNamedClient(KaleidoQueryableClient.ClientName);
         builder.Services.TryAddScoped<IKaleidoQueryableClientFactory, KaleidoQueryableClientFactory>();
+        builder.Services.AddKeyedScoped<IKaleidoQueryableClient>(KeyedService.AnyKey,
+            (provider, key) => provider.GetRequiredService<IKaleidoQueryableClientFactory>()
+                .GetClient(key.RequireServiceName()));
         return builder;
     }
 }
