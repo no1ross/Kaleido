@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Kaleido.Guide.Examples.GettingStarted;
+using Kaleido.Guide.Examples.Queries;
+using Kaleido.Testing.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -16,6 +18,7 @@ public sealed class GettingStartedTests : IAsyncLifetime
 {
     private WebApplication? _host;
     private WebApplication? _registry;
+    private static readonly int[] InvalidFilterValues = [2];
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     public async ValueTask InitializeAsync()
@@ -96,6 +99,108 @@ public sealed class GettingStartedTests : IAsyncLifetime
         Assert.Contains("PlaceOrderStep", body, StringComparison.Ordinal);
         Assert.Contains("ConfirmOrderStep", body, StringComparison.Ordinal);
         Assert.Contains("OrderSource", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AView_ProjectsTheSource_AndPagesOnItsOwn()
+    {
+        using var client = _host!.GetTestClient();
+        foreach (var (item, quantity) in new[] { ("Book", 1), ("Pen", 2), ("Lamp", 3) })
+        {
+            using var placed = await client.PostAsJsonAsync("/orders/1/processes/steps/placeorderstep", new { processStep = new { item, quantity } }, KaleidoJsonOptions.Options, Cancel);
+            Assert.Equal(HttpStatusCode.OK, placed.StatusCode);
+        }
+
+        var page = await PostQueryAsync(client, "ordersource/orderlineview", new { query = new { page = new { size = 2, offset = 0 } } });
+
+        Assert.Equal(["#1 Book", "#2 Pen"], page.GetProperty("results").EnumerateArray().Select(result => result.GetProperty("label").GetString()));
+        Assert.Equal(3, page.GetProperty("totalCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task AViewWithParameters_ReadsThemFromTheQuery()
+    {
+        using var client = _host!.GetTestClient();
+        foreach (var (item, quantity) in new[] { ("Book", 1), ("Pens", 8) })
+        {
+            using var placed = await client.PostAsJsonAsync("/orders/1/processes/steps/placeorderstep", new { processStep = new { item, quantity } }, KaleidoJsonOptions.Options, Cancel);
+            Assert.Equal(HttpStatusCode.OK, placed.StatusCode);
+        }
+
+        var large = await PostQueryAsync(client, "ordersource/largeordersview", new { parameters = new { minimumQuantity = 5 } });
+
+        Assert.Equal("Pens", Assert.Single(large.GetProperty("results").EnumerateArray()).GetProperty("item").GetString());
+    }
+
+    [Fact]
+    public async Task ADelegatedSource_AnswersItself_WithItsParameters()
+    {
+        using var client = _host!.GetTestClient();
+
+        var rates = await PostQueryAsync(client, "shippingratesource", new { parameters = new { country = "NL" } });
+
+        Assert.Equal(["post", "courier"], rates.GetProperty("results").EnumerateArray().Select(rate => rate.GetProperty("carrier").GetString()));
+        Assert.Equal(2, rates.GetProperty("totalCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task AFilterTheQueryContextDoesNotDeclare_IsA400()
+    {
+        using var client = _host!.GetTestClient();
+        using var response = await client.PostAsJsonAsync("/orders/1/queryable/ordersource/query", new
+        {
+            query = new { filter = new { condition = new { field = "Quantity", @operator = "equals", values = InvalidFilterValues } } },
+        }, KaleidoJsonOptions.Options, Cancel);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ASourceFilteredByTheCaller_ReturnsOnlyTheCallersRows()
+    {
+        await using var app = await StartAuthenticatedQueryHostAsync();
+        using var ann = app.GetTestClient();
+        ann.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("ann"));
+        using var ben = app.GetTestClient();
+        ben.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("ben"));
+
+        var annResult = await PostQueryAsync(ann, "myinvoicessource", new { query = new { } });
+        var benResult = await PostQueryAsync(ben, "myinvoicessource", new { query = new { } });
+
+        Assert.Equal([1, 3], annResult.GetProperty("results").EnumerateArray().Select(invoice => invoice.GetProperty("number").GetInt32()));
+        Assert.Equal([2], benResult.GetProperty("results").EnumerateArray().Select(invoice => invoice.GetProperty("number").GetInt32()));
+    }
+
+    private static async Task<WebApplication> StartAuthenticatedQueryHostAsync()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services.AddTestJwtBearer();
+        builder.Services.AddKaleido(builder.Configuration, new()
+        {
+            ServiceName = "orders",
+            ServiceVersion = "1",
+            Assemblies = [typeof(MyInvoicesSource).Assembly],
+            TypeFilter = type => type == typeof(MyInvoicesSource),
+        })
+            .AddEventing()
+            .AddQueryable()
+            .AddInMemoryOutboxProvider()
+            .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
+            .AddHttp();
+        var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapQueryable();
+        await app.StartAsync(Cancel);
+        return app;
+    }
+
+    private static async Task<JsonElement> PostQueryAsync(HttpClient client, string path, object body)
+    {
+        using var response = await client.PostAsJsonAsync($"/orders/1/queryable/{path}/query", body, KaleidoJsonOptions.Options, Cancel);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await response.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, Cancel);
     }
 
     private static async Task<WebApplication> StartRegistryAsync()
