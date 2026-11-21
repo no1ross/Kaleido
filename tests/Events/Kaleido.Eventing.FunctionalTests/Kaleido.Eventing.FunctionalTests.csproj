@@ -1,7 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
 		<PackageReference Include="Microsoft.Extensions.Compliance.Redaction" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" />
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
 		<ProjectReference Include="..\..\..\src\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
 		<ProjectReference Include="..\..\..\src\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />
 		<ProjectReference Include="..\..\..\src\Providers\Kaleido.Provider.InMemory\Kaleido.Provider.InMemory.csproj" />
@@ -13,5 +17,10 @@
 		<Using Include="Kaleido.Queryable" />
 		<Using Include="Kaleido.Queryable.Query" />
 		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\src\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
+	  <ProjectReference Include="..\..\..\src\Providers\Kaleido.Provider.SQLite\Kaleido.Provider.SQLite.csproj" />
+	  <ProjectReference Include="..\..\..\src\Capabilities\Process\Kaleido.Process.Http.Server\Kaleido.Process.Http.Server.csproj" />
 	</ItemGroup>
 </Project>
