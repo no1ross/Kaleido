@@ -7,7 +7,7 @@ public sealed class KaleidoHttpClientPipelineServiceCollectionExtensionsTests : 
 {
     private sealed class HostCredentialHandler : DelegatingHandler;
 
-    private static IKaleidoBuilder Builder(IServiceCollection services, string? gateway = "https://gateway.test/", bool obsoleteClients = false)
+    private static IKaleidoBuilder Builder(IServiceCollection services, string? gateway = "https://gateway.test/", bool obsoleteClients = false, string? onBehalfOfCalls = null)
     {
         var builder = new Mock<IKaleidoBuilder>();
         builder.Setup(x => x.Services).Returns(services);
@@ -15,6 +15,11 @@ public sealed class KaleidoHttpClientPipelineServiceCollectionExtensionsTests : 
         if (obsoleteClients)
         {
             settings["Kaleido:Clients:clinic:BaseUrl"] = "https://clinic.test/";
+        }
+
+        if (onBehalfOfCalls is not null)
+        {
+            settings["Kaleido:OnBehalfOfCalls"] = onBehalfOfCalls;
         }
 
         builder.Setup(x => x.Configuration).Returns(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
@@ -46,6 +51,26 @@ public sealed class KaleidoHttpClientPipelineServiceCollectionExtensionsTests : 
 
         Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
         Assert.Contains("Kaleido:Clients", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddPipeline_MissingGateway_UsesThePublishedErrorCode()
+    {
+        var exception = Assert.Throws<KaleidoConfigurationException>(() => Builder(new ServiceCollection(), gateway: null).AddKaleidoHttpClientPipeline());
+
+        Assert.Equal(HttpClientErrorCodes.MissingBaseUrl, exception.Code);
+    }
+
+    [Theory]
+    [InlineData(null, KaleidoOnBehalfOfCalls.Forward)]
+    [InlineData("Forward", KaleidoOnBehalfOfCalls.Forward)]
+    [InlineData("Exchange", KaleidoOnBehalfOfCalls.Exchange)]
+    public void AddPipeline_UsesTheConfiguredCallerTokenMode(string? configured, KaleidoOnBehalfOfCalls expected)
+    {
+        var services = new ServiceCollection();
+        Builder(services, onBehalfOfCalls: configured).AddKaleidoHttpClientPipeline();
+
+        Assert.Equal(expected, Assert.Single(services.Select(descriptor => descriptor.ImplementationInstance).OfType<KaleidoClientOptions>()).OnBehalfOfCalls);
     }
 
     [Theory]

@@ -117,8 +117,10 @@ public sealed class StandaloneProcessClientFunctionalTests
         await publisher.StopAsync(TestContext.Current.CancellationToken);
     }
 
-    [Fact]
-    public async Task KeyedPost_AfterOneTransientGatewayFailure_RetriesTheSameKeyAndRunsOnce()
+    [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.Conflict)]
+    public async Task KeyedPost_AfterTransientOrInProgressGatewayAnswer_RetriesTheSameKeyAndRunsOnce(HttpStatusCode firstStatus)
     {
         await using var authority = await StartAuthorityAsync();
         var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -126,7 +128,7 @@ public sealed class StandaloneProcessClientFunctionalTests
         await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         var read = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        var probe = new RetryProbe();
+        var probe = new RetryProbe(firstStatus);
         using var consumer = StartConsumer(authority, publisher, publisher, read, time, probe);
         await consumer.StartAsync(TestContext.Current.CancellationToken);
         await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
@@ -436,9 +438,10 @@ public sealed class StandaloneProcessClientFunctionalTests
         }
     }
 
-    private sealed class RetryProbe
+    private sealed class RetryProbe(HttpStatusCode status)
     {
         private int _rejectFirst = 1;
+        public HttpStatusCode Status { get; } = status;
         public TaskCompletionSource<bool> FirstAttempt { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource<bool> SecondAttempt { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ConcurrentQueue<string> Keys { get; } = new();
@@ -474,7 +477,13 @@ public sealed class StandaloneProcessClientFunctionalTests
             observe?.Invoke(request);
             if (retry?.Reject(request) == true)
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { RequestMessage = request });
+                var response = new HttpResponseMessage(retry.Status) { RequestMessage = request };
+                if (retry.Status == HttpStatusCode.Conflict)
+                {
+                    response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(1));
+                }
+
+                return Task.FromResult(response);
             }
 
             return request.RequestUri?.AbsolutePath.StartsWith("/catalog/2/", StringComparison.Ordinal) == true

@@ -13,6 +13,7 @@ public sealed class KaleidoProcessorClientTests : Kaleido.UnitTests.SutFixture, 
     private readonly List<Sent> sent = [];
     private readonly List<HttpClient> created = [];
     private HttpStatusCode responseStatus = HttpStatusCode.OK;
+    private bool emptyResponse;
     private string responseVersion = "1";
 
     private sealed record Sent(HttpMethod Method, string Path, string? Body, string? Key, string? ProcessId,
@@ -91,6 +92,14 @@ public sealed class KaleidoProcessorClientTests : Kaleido.UnitTests.SutFixture, 
             return new HttpResponseMessage(responseStatus)
             {
                 Content = JsonContent.Create(new KaleidoErrorResponse([new KaleidoError("pro_process_conflict", "Changed")]), options: KaleidoJsonOptions.Options),
+            };
+        }
+
+        if (emptyResponse)
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("null", System.Text.Encoding.UTF8, "application/json"),
             };
         }
 
@@ -202,6 +211,19 @@ public sealed class KaleidoProcessorClientTests : Kaleido.UnitTests.SutFixture, 
     }
 
     [Fact]
+    public async Task ExecuteStepAsync_WithoutACallerKey_CreatesAUniqueKeyForEachLogicalCall()
+    {
+        var sut = CreateSut();
+        await sut.ExecuteStepAsync(new MyStep("A-1"), null, null, Cancel);
+        await sut.ExecuteStepAsync(new MyStep("A-2"), null, null, Cancel);
+
+        Assert.InRange(sent.Count, 2, 2);
+        Assert.False(string.IsNullOrWhiteSpace(sent[0].Key));
+        Assert.False(string.IsNullOrWhiteSpace(sent[1].Key));
+        Assert.NotEqual(0, string.CompareOrdinal(sent[0].Key, sent[1].Key));
+    }
+
+    [Fact]
     public async Task ExecuteStepAsync_ByName_UsesExplicitProcessIdAndLocalCallingStepNotInboundStep()
     {
         var ambient = Guid.NewGuid();
@@ -234,6 +256,22 @@ public sealed class KaleidoProcessorClientTests : Kaleido.UnitTests.SutFixture, 
         await Assert.ThrowsAsync<ArgumentException>(() => CreateSut().ExecuteStepAsync(new MyStep("A-1"), null, key, Cancel));
 
         Assert.Empty(sent);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ASuccessfulCallWithoutAPayload_ThrowsEmptyResponse(bool stateRead)
+    {
+        emptyResponse = true;
+        var client = CreateSut();
+
+        var exception = stateRead
+            ? await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.GetProcessStateAsync(ProcessId, Cancel))
+            : await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteStepAsync(new MyStep("A-1"), null, null, Cancel));
+
+        Assert.Equal(HttpClientErrorCodes.EmptyResponse, exception.Code);
+        Assert.Contains("succeeded but returned no payload", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

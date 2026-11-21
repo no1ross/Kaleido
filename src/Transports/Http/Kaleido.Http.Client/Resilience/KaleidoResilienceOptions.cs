@@ -12,8 +12,9 @@ namespace Kaleido.Http.Client.Resilience;
 /// </para>
 /// <para>
 /// The shared pipeline retries safe reads (GET, HEAD) only. The Process HTTP client's own named
-/// pipeline additionally retries transient POST failures only with one stable <c>Idempotency-Key</c>;
-/// unrelated POSTs are never made retryable. Its retries preserve the same request, correlation
+/// pipeline additionally retries keyed POSTs on transient failures or <c>409</c> with
+/// <c>Retry-After</c> while the first attempt still runs; unrelated POSTs and other conflicts are not
+/// retried. <c>NoRetry</c> overrides either pipeline. Retries preserve the same request, correlation
 /// headers and key so the called service can replay its stored answer.
 /// </para>
 /// <para>

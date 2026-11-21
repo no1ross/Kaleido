@@ -26,7 +26,9 @@ internal static class ProcessHttpKeyedResilience
                 args.Context.GetRequestMessage() is { } request
                 && request.Method == HttpMethod.Post
                 && HasOneKey(request)
-                && HttpClientResiliencePredicates.IsTransient(args.Outcome)),
+                && !(request.Options.TryGetValue(KaleidoResilienceOptions.NoRetry, out var noRetry) && noRetry)
+                && (HttpClientResiliencePredicates.IsTransient(args.Outcome)
+                    || args.Outcome.Result is { StatusCode: System.Net.HttpStatusCode.Conflict, Headers.RetryAfter: not null })),
         });
     }
 
