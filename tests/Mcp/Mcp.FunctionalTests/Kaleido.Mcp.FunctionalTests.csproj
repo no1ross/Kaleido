@@ -20,6 +20,7 @@
 		<ProjectReference Include="..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Client\Kaleido.Queryable.Http.Client.csproj" />
 		<ProjectReference Include="..\..\..\src\Composed\Hosts\Kaleido.Hosting.Http\Kaleido.Hosting.Http.csproj" />
 		<ProjectReference Include="..\..\..\src\Providers\Kaleido.Provider.InMemory\Kaleido.Provider.InMemory.csproj" />
+		<ProjectReference Include="..\..\..\docs\guide\examples\Kaleido.Guide.Examples.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Using Include="System.Net.Http.Json" />
