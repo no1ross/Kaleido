@@ -172,6 +172,88 @@ public sealed class GettingStartedTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ARejectedShippingStep_CanBeCorrectedWithoutChangingTheProcess()
+    {
+        using var client = _host!.GetTestClient();
+        var processId = await ConfirmOrderAsync(client);
+
+        var rejected = await ExecuteStepAsync(client, "shiporderstep", new { carrier = "courier", address = "1 Main St" }, processId);
+        var shipped = await ExecuteStepAsync(client, "shiporderstep", new { carrier = "post", address = "1 Main St" }, processId);
+
+        Assert.Equal("rejected", Assert.Single(rejected.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
+        Assert.Contains("ShipOrderStep", Available(rejected));
+        Assert.Equal("completed", Assert.Single(shipped.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
+    }
+
+    [Fact]
+    public async Task AFailedShippingStep_EndsTheProcess()
+    {
+        using var client = _host!.GetTestClient();
+        var processId = await ConfirmOrderAsync(client);
+
+        var failed = await ExecuteStepAsync(client, "shiporderstep", new { carrier = "post", address = "Base 1, Antarctica" }, processId);
+        using var stateResponse = await client.GetAsync($"/orders/1/processes/{processId:D}", Cancel);
+        Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
+        var state = await stateResponse.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, Cancel);
+
+        Assert.Equal("failed", Assert.Single(failed.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
+        Assert.Equal("businessFailure", state.GetProperty("state").GetString());
+    }
+
+    [Fact]
+    public async Task ARequiredConfirmation_HoldsAnotherStepPending()
+    {
+        using var client = _host!.GetTestClient();
+        var placed = await ExecuteStepAsync(client, "placeorderstep", new { item = "Book" }, null);
+
+        var note = await ExecuteStepAsync(client, "addnotestep", new { text = "Leave at the door" }, placed.GetProperty("processId").GetGuid());
+
+        Assert.NotEqual("completed", Assert.Single(note.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
+        Assert.Equal("ConfirmOrderStep", note.GetProperty("requiredStep").GetString());
+    }
+
+    [Fact]
+    public async Task RepeatableNotes_RunAgainWhileConfirmationIsNotOfferedAgain()
+    {
+        using var client = _host!.GetTestClient();
+        var processId = await ConfirmOrderAsync(client);
+
+        var first = await ExecuteStepAsync(client, "addnotestep", new { text = "Leave at the door" }, processId);
+        var second = await ExecuteStepAsync(client, "addnotestep", new { text = "Ring twice" }, processId);
+
+        Assert.Equal("completed", Assert.Single(first.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
+        Assert.Equal("completed", Assert.Single(second.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
+        Assert.Contains("AddNoteStep", Available(second));
+        Assert.DoesNotContain("ConfirmOrderStep", Available(second));
+    }
+
+    [Fact]
+    public async Task AvailableUntil_ClosesCancellationAfterShippingAndShippingAfterCancellation()
+    {
+        using var client = _host!.GetTestClient();
+        var shippedProcess = await ConfirmOrderAsync(client);
+        var cancelledProcess = await ConfirmOrderAsync(client);
+
+        var shipped = await ExecuteStepAsync(client, "shiporderstep", new { carrier = "post", address = "1 Main St" }, shippedProcess);
+        var cancelled = await ExecuteStepAsync(client, "cancelorderstep", new { }, cancelledProcess);
+
+        Assert.DoesNotContain("CancelOrderStep", Available(shipped));
+        Assert.Contains("ReturnOrderStep", Available(shipped));
+        Assert.DoesNotContain("ShipOrderStep", Available(cancelled));
+    }
+
+    private static string[] Available(JsonElement result) =>
+        result.GetProperty("availableSteps").EnumerateArray().Select(step => step.GetString() ?? string.Empty).ToArray();
+
+    private static async Task<Guid> ConfirmOrderAsync(HttpClient client)
+    {
+        var placed = await ExecuteStepAsync(client, "placeorderstep", new { item = "Book" }, null);
+        var processId = placed.GetProperty("processId").GetGuid();
+        await ExecuteStepAsync(client, "confirmorderstep", new { }, processId);
+        return processId;
+    }
+
+    [Fact]
     public async Task TheGiftWrapHandlerAsks_AndItsAnswersCompleteTheInformationStep()
     {
         using var client = _host!.GetTestClient();
