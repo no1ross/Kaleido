@@ -1,9 +1,16 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using Kaleido.Guide.Examples.Callers;
 using Kaleido.Guide.Examples.GettingStarted;
 using Kaleido.Guide.Examples.Processes;
-using Kaleido.Testing.Identity;
+using Kaleido.Http.Client.Calls;
+using Kaleido.Http.Client.Configuration;
+using Kaleido.Http.Client.Registration;
+using Kaleido.Process.Http.Client;
+using Kaleido.Queryable.Http;
 using Kaleido.Registry.Http.Client;
+using Kaleido.Testing.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -51,6 +58,38 @@ public sealed class GuideHandOffFunctionalTests
         var received = await ExecuteAsync(returnsCaller, "returns", "receivereturnstep", new ReceiveReturnStep(), processId);
         Assert.Equal(processId, received.ProcessId);
         Assert.Contains(received.Steps, step => step.StepName == nameof(ReceiveReturnStep) && step.ExecutionStatus == StepExecutionStatus.Completed);
+    }
+
+    [Fact]
+    public async Task TheGuideHandler_ExchangesTheCallerTokenButNotTheRegistryRead()
+    {
+        await using var authority = await StartAuthorityAsync();
+        var returnsRegistered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var returns = await StartReturnsAsync(authority, returnsRegistered);
+        await returnsRegistered.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        var ordersRegistered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var exchange = new SignedTokenExchange();
+        var sent = new ConcurrentQueue<(KaleidoCallPurpose Purpose, bool Exchanged, bool Forwarded)>();
+        await using var orders = await StartOrdersWithExchangeAsync(authority, returns, ordersRegistered, exchange, sent);
+        await ordersRegistered.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        await WaitForRegistryAsync(orders);
+        Assert.Equal(0, exchange.Calls);
+        using var caller = orders.GetTestClient();
+        caller.BaseAddress = new Uri("https://localhost/");
+        caller.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", tokenId: Guid.NewGuid().ToString("N")));
+        var placed = await ExecuteAsync(caller, "orders", "placeorderstep", new { item = "Book" }, null);
+        await ExecuteAsync(caller, "orders", "confirmorderstep", new { }, placed.ProcessId);
+        await ExecuteAsync(caller, "orders", "shiporderstep", new { carrier = "post", address = "1 Main St" }, placed.ProcessId);
+
+        var handedOff = await ExecuteAsync(caller, "orders", "returnorderstep", new ReturnOrderStep(), placed.ProcessId);
+
+        Assert.Equal(("returns", "1"), (handedOff.TargetProcessorName, handedOff.TargetProcessorVersion));
+        Assert.Equal(1, exchange.Calls);
+        Assert.Equal(0, string.CompareOrdinal(caller.DefaultRequestHeaders.Authorization?.ToString(), exchange.Inbound));
+        var outbound = Assert.Single(sent);
+        Assert.Equal(KaleidoCallPurpose.OnBehalfOfCaller, outbound.Purpose);
+        Assert.True(outbound.Exchanged);
+        Assert.False(outbound.Forwarded);
     }
 
     private static async Task<ProcessResult> ExecuteAsync(HttpClient client, string service, string step, object input, Guid? processId)
@@ -148,6 +187,51 @@ public sealed class GuideHandOffFunctionalTests
         return app;
     }
 
+    private static async Task<WebApplication> StartOrdersWithExchangeAsync(WebApplication authority, WebApplication returns,
+        TaskCompletionSource registered, SignedTokenExchange exchange, ConcurrentQueue<(KaleidoCallPurpose Purpose, bool Exchanged, bool Forwarded)> sent)
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:BaseUrl"] = "https://localhost/" });
+        builder.Services.AddTestJwtBearer();
+        builder.Services.AddSingleton<OrderBook>();
+        builder.Services.AddSingleton<ITokenExchange>(exchange);
+        builder.Services.AddKaleido(builder.Configuration, new()
+        {
+            ServiceName = "orders",
+            ServiceVersion = "1",
+            Assemblies = [typeof(OrderSource).Assembly],
+        })
+            .AddEventing()
+            .AddProcess()
+            .AddQueryable()
+            .AddInMemoryProviders()
+            .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
+            .AddHttp()
+            .AddProcessHttpServer()
+            .AddProcessHttpBindings()
+            .AddQueryableHttpBindings()
+            .AddKaleidoClientHandler<TokenExchangeHandler>()
+            .AddRegistryHttpParticipation(new KaleidoClientOptions { OnBehalfOfCalls = KaleidoOnBehalfOfCalls.Exchange })
+            .AddProcessHttpClient();
+        builder.Services.Configure<HttpClientFactoryOptions>("kaleido-registry", options =>
+            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new RegistrationHandler(registered)
+            {
+                InnerHandler = authority.GetTestServer().CreateHandler(),
+            }));
+        builder.Services.Configure<HttpClientFactoryOptions>("kaleido-process", options =>
+            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new CaptureProcessHandler(exchange, sent)
+            {
+                InnerHandler = returns.GetTestServer().CreateHandler(),
+            }));
+        var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapKaleido().MapProcess().MapQueryable();
+        await app.StartAsync(Cancel);
+        return app;
+    }
+
     private static async Task WaitForRegistryAsync(WebApplication orders)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
@@ -163,6 +247,35 @@ public sealed class GuideHandOffFunctionalTests
             }
 
             await Task.Yield();
+        }
+    }
+
+    private sealed class SignedTokenExchange : ITokenExchange
+    {
+        private int calls;
+        public int Calls => Volatile.Read(ref calls);
+        public string? Inbound { get; private set; }
+        public string? Outbound { get; private set; }
+
+        public Task<string> ExchangeAsync(string callerAuthorization, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref calls);
+            Inbound = callerAuthorization;
+            Outbound = "Bearer " + TestTokenIssuer.User("alice", app: "orders-exchange", tokenId: Guid.NewGuid().ToString("N"));
+            return Task.FromResult(Outbound);
+        }
+    }
+
+    private sealed class CaptureProcessHandler(SignedTokenExchange exchange,
+        ConcurrentQueue<(KaleidoCallPurpose Purpose, bool Exchanged, bool Forwarded)> sent) : DelegatingHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var authorization = request.Headers.Authorization?.ToString();
+            sent.Enqueue((KaleidoCallContext.Of(request).Purpose,
+                exchange.Outbound is not null && string.Equals(exchange.Outbound, authorization, StringComparison.Ordinal),
+                exchange.Inbound is not null && string.Equals(exchange.Inbound, authorization, StringComparison.Ordinal)));
+            return base.SendAsync(request, cancellationToken);
         }
     }
 
