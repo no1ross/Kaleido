@@ -40,7 +40,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Provider.InMemory.UnitTests` | `src/Providers/Kaleido.Provider.InMemory` single-store registration, warnings, lease/fencing and state fidelity |
 | `Kaleido.Provider.InMemory.FunctionalTests` | Explicit memory in a composed Production `IHost`, retained across request scopes |
 | `Kaleido.Provider.SQLite.UnitTests` | `src/Providers/Kaleido.Provider.SQLite` store and transaction fidelity |
-| `Kaleido.Provider.SQLite.FunctionalTests` | Real file-backed Process/SQLite host restart, opaque replay and state/outbox rollback |
+| `Kaleido.Provider.SQLite.FunctionalTests` | SQLite host restart, opaque replay, rollback and consumer-authored guide stores |
 | `Kaleido.Observability.OpenTelemetry.UnitTests` | `src/Observability/Observability.OpenTelemetry` registration and telemetry names |
 | `Kaleido.Analyzers.UnitTests` | consumer `KAL2xxx` rules |
 | `Kaleido.Analyzers.Source.UnitTests` | contributor `KAL0xxx` rules |
