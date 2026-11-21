@@ -11,6 +11,7 @@
 
 	<ItemGroup>
 		<!-- The HTTP server, the HTTP clients and the registry's HTTP API share the internal routes. -->
+		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
 		<InternalsVisibleTo Include="Kaleido.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Http.Client" />
 		<InternalsVisibleTo Include="Kaleido.Mcp" />
