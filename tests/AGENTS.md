@@ -26,7 +26,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Http.Client.UnitTests` | `src/Transports/Http/Kaleido.Http.Client` shared outbound pipeline and credential guard |
 | `Kaleido.Hosting.UnitTests` | `src/Composed/Hosts/Kaleido.Hosting` neutral registration and provider-presence checks |
 | `Kaleido.Hosting.Http.UnitTests` | `src/Composed/Hosts/Kaleido.Hosting.Http` explicit fluent mapping and host conventions |
-| `Kaleido.Hosting.Http.FunctionalTests` | HTTP roles, ZeroTrust, async scopes and compiled guide flows |
+| `Kaleido.Hosting.Http.FunctionalTests` | HTTP roles, caller hops, ZeroTrust, async scopes and guide flows |
 | `Kaleido.Hosting.FunctionalTests` | Non-web Process/Queryable jobs without Registry; explicit provider choice |
 | `Kaleido.Http.FunctionalTests` | HTTP server/client contracts with TestServer and the central registry |
 | `Kaleido.Registry.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry` portable contracts and API |
