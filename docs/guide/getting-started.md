@@ -149,6 +149,8 @@ services.AddKaleido(configuration, new()
     .AddInMemoryProviders()   // local evaluation only: nothing survives a restart
     .AddHttp()
     .AddProcessHttpServer()
+    .AddProcessHttpBindings()
+    .AddQueryableHttpBindings()
     .AddRegistryHttpParticipation();
 ```
 

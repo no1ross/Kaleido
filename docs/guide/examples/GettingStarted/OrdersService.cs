@@ -6,10 +6,12 @@ using Kaleido.Hosting.Http;
 using Kaleido.Http.Server;
 using Kaleido.Mcp;
 using Kaleido.Process;
+using Kaleido.Process.Http;
 using Kaleido.Process.Http.Client;
 using Kaleido.Process.Http.Server;
 using Kaleido.Provider.InMemory;
 using Kaleido.Queryable;
+using Kaleido.Queryable.Http;
 using Kaleido.Queryable.Http.Client;
 using Kaleido.Registry.Http.Client;
 using Kaleido.Server;
@@ -41,6 +43,8 @@ public static class OrdersService
             .AddInMemoryProviders()   // local evaluation only: nothing survives a restart
             .AddHttp()
             .AddProcessHttpServer()
+            .AddProcessHttpBindings()
+            .AddQueryableHttpBindings()
             .AddRegistryHttpParticipation();
         // end snippet
     }

@@ -25,7 +25,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Http.Client.UnitTests` | `src/Transports/Http/Kaleido.Http.Client` shared outbound pipeline and credential guard |
 | `Kaleido.Hosting.UnitTests` | `src/Composed/Hosts/Kaleido.Hosting` neutral registration and provider-presence checks |
 | `Kaleido.Hosting.Http.UnitTests` | `src/Composed/Hosts/Kaleido.Hosting.Http` explicit fluent mapping and host conventions |
-| `Kaleido.Hosting.Http.FunctionalTests` | Service/authority TestServer roles, ZeroTrust, host isolation and guide key ring |
+| `Kaleido.Hosting.Http.FunctionalTests` | Service/authority hosts, ZeroTrust, isolation and compiled guide flows |
 | `Kaleido.Hosting.FunctionalTests` | Non-web console `IHost` scenarios exercising public Process/Queryable APIs with no ASP.NET or central Registry participation |
 | `Kaleido.Http.FunctionalTests` | HTTP server/client contracts with TestServer and the central registry |
 | `Kaleido.Registry.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry` portable contracts and API |
