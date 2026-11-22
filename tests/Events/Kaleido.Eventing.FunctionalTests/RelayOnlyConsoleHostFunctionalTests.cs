@@ -1,14 +1,17 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Kaleido.Http;
 using Kaleido.Http.Server;
 using Kaleido.Process;
+using Kaleido.Process.Eventing;
 using Kaleido.Process.Execution;
 using Kaleido.Process.Http.Server;
 using Kaleido.Provider.SQLite;
 using Kaleido.Server;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
@@ -84,6 +87,101 @@ public sealed class RelayOnlyConsoleHostFunctionalTests : IAsyncLifetime
 
         Assert.Equal(written, published.Events.Count);
         Assert.Equal(written, published.Events.Select(item => item.EventId).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task AConsoleRelayHost_AfterTwoPublisherFailures_DeliversEachEventOnce()
+    {
+        var orders = await StartWriterAsync("orders");
+        await ExecuteStepsAsync(orders);
+        var written = await CountAsync("SELECT COUNT(*) FROM OutboxEvents");
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(1));
+        var published = new Published(failFirst: 2);
+
+        await StartRelayAsync(published, time: time);
+        await published.WaitForAttemptsAsync(2).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        for (var tick = 0; tick < 20 && published.Events.Count < written; tick++)
+        {
+            await Task.Yield();
+            time.Advance(TimeSpan.FromSeconds(2));
+        }
+
+        await published.WaitForAttemptsAsync((int)written + 2).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        await WaitForCountAsync("SELECT COUNT(*) FROM OutboxEvents", expected: 0);
+        Assert.Equal(written + 2, published.Attempts);
+        Assert.Equal(written, published.Events.Count);
+        Assert.Equal(written, published.Events.Select(item => item.EventId).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task AnHttpCollector_AfterThreeRefusals_ReceivesEachProcessEventWithItsCorrelation()
+    {
+        var orders = await StartWebWriterAsync("orders");
+        var requestId = $"request-{Guid.NewGuid():N}";
+        using var client = orders.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/orders/1/processes/steps/startstep")
+        {
+            Content = JsonContent.Create(new { processStep = new { } }, options: KaleidoJsonOptions.Options),
+        };
+        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, requestId);
+        using var response = await client.SendAsync(request, Cancel);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel);
+        var processId = Assert.IsType<ProcessResult>(result).ProcessId;
+        var written = await CountAsync("SELECT COUNT(*) FROM OutboxEvents");
+        var collector = new Collector(expected: (int)written, refuseFirst: 3);
+        var collectorHost = await StartCollectorAsync(collector);
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(1));
+
+        await StartCollectorRelayAsync(collectorHost, time);
+        await collector.FirstRefusals.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        await WaitForCountAsync("SELECT COUNT(*) FROM OutboxEvents", expected: 3);
+        for (var tick = 0; tick < 20 && !collector.Completed.IsCompleted; tick++)
+        {
+            await Task.Yield();
+            time.Advance(TimeSpan.FromSeconds(2));
+        }
+
+        await collector.Completed.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        await WaitForCountAsync("SELECT COUNT(*) FROM OutboxEvents", expected: 0);
+        Assert.Equal(3, collector.Refused);
+        var received = collector.Received.ToArray();
+        Assert.Equal(written, received.Length);
+        Assert.Equal(written, received.Select(item => item.GetProperty("event").GetProperty("eventId").GetGuid()).Distinct().Count());
+        Assert.Equal([ProcessEventTypes.ProcessCreated, ProcessEventTypes.ProcessExecutionCompleted,
+            ProcessEventTypes.ProcessPlanBuilt, ProcessEventTypes.ProcessStepCompleted],
+            received.Select(item => item.GetProperty("eventType").GetString()).Order(StringComparer.Ordinal));
+        Assert.All(received, item =>
+        {
+            Assert.Equal(requestId, item.GetProperty("context").GetProperty("requestId").GetString());
+            Assert.Equal(processId, item.GetProperty("context").GetProperty("processId").GetGuid());
+        });
+    }
+
+    [Fact]
+    public async Task AConsoleRelayHost_AfterItsPublisherFailsAndTheHostRestarts_DrainsTheSameRows()
+    {
+        var orders = await StartWriterAsync("orders");
+        await ExecuteStepsAsync(orders);
+        var written = await CountAsync("SELECT COUNT(*) FROM OutboxEvents");
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(1));
+        var failing = new Published(alwaysFail: true);
+        var first = await StartRelayAsync(failing, time: time);
+        await failing.WaitForAttemptsAsync((int)written).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        await WaitForCountAsync("SELECT COUNT(*) FROM OutboxEvents WHERE Attempts = 1", written);
+        await first.StopAsync(Cancel);
+        first.Dispose();
+        hosts.Remove(first);
+        time.Advance(TimeSpan.FromSeconds(3));
+
+        var recovered = new Published();
+        await StartRelayAsync(recovered, time: time);
+        await recovered.WaitForAttemptsAsync((int)written).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        await WaitForCountAsync("SELECT COUNT(*) FROM OutboxEvents", expected: 0);
+
+        Assert.Empty(failing.Events);
+        Assert.Equal(written, recovered.Events.Count);
+        Assert.Equal(written, recovered.Events.Select(item => item.EventId).Distinct().Count());
     }
 
     [Fact]
@@ -168,7 +266,7 @@ public sealed class RelayOnlyConsoleHostFunctionalTests : IAsyncLifetime
         await scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>().Database.EnsureCreatedAsync(Cancel);
     }
 
-    private async Task StartRelayAsync(Published published, int batchSize = 20, int maxRetryAttempts = 9, TimeProvider? time = null)
+    private async Task<IHost> StartRelayAsync(Published published, int batchSize = 20, int maxRetryAttempts = 9, TimeProvider? time = null)
     {
         var host = Builder().ConfigureServices(services =>
         {
@@ -194,6 +292,44 @@ public sealed class RelayOnlyConsoleHostFunctionalTests : IAsyncLifetime
                 .AddQueryableEventDispatch()
                 .AddSqliteOutboxProvider(ConnectionString)
                 .AddOutboxRelay<ConsolePublisher>();
+        }).Build();
+        await host.StartAsync(Cancel);
+        hosts.Add(host);
+        return host;
+    }
+
+    private async Task<WebApplication> StartCollectorAsync(Collector collector)
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        var app = builder.Build();
+        app.MapPost("/collector/events", collector.ReceiveAsync);
+        await app.StartAsync(Cancel);
+        hosts.Add(app);
+        return app;
+    }
+
+    private async Task StartCollectorRelayAsync(WebApplication collector, FakeTimeProvider time)
+    {
+        var host = Builder().ConfigureServices(services =>
+        {
+            services.AddSingleton<TimeProvider>(time);
+            services.AddSingleton(new HttpCollectorPublisher(collector.GetTestClient()));
+            services.AddKaleido(new ConfigurationBuilder().Build(), new()
+            {
+                ServiceName = "outbox-relay",
+                ServiceVersion = "1",
+                Assemblies = [typeof(RelayOnlyConsoleHostFunctionalTests).Assembly],
+                TypeFilter = _ => false,
+            })
+                .AddEventing(new KaleidoEventOptions
+                {
+                    Resilience = new() { MaxRetryAttempts = 4, RetryDelay = TimeSpan.FromSeconds(1), CircuitBreakerMinimumThroughput = 1000 },
+                })
+                .AddProcessEventDispatch()
+                .AddQueryableEventDispatch()
+                .AddSqliteOutboxProvider(ConnectionString)
+                .AddOutboxRelay<HttpCollectorPublisher>();
         }).Build();
         await host.StartAsync(Cancel);
         hosts.Add(host);
@@ -241,7 +377,51 @@ public sealed class RelayOnlyConsoleHostFunctionalTests : IAsyncLifetime
         return (long)(await command.ExecuteScalarAsync(Cancel) ?? 0L);
     }
 
-    private sealed class Published(bool holdFirst = false, bool alwaysFail = false)
+    private sealed class Collector(int expected, int refuseFirst)
+    {
+        private int refused;
+        private int calls;
+        private readonly TaskCompletionSource completed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource firstRefusals = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public ConcurrentQueue<JsonElement> Received { get; } = new();
+        public Task Completed => completed.Task;
+        public Task FirstRefusals => firstRefusals.Task;
+        public int Refused => Volatile.Read(ref refused);
+
+        public async Task<IResult> ReceiveAsync(HttpRequest request)
+        {
+            using var document = await JsonDocument.ParseAsync(request.Body, cancellationToken: request.HttpContext.RequestAborted);
+            if (Interlocked.Increment(ref calls) <= refuseFirst)
+            {
+                if (Interlocked.Increment(ref refused) == refuseFirst)
+                {
+                    firstRefusals.TrySetResult();
+                }
+
+                return Results.StatusCode(503);
+            }
+
+            Received.Enqueue(document.RootElement.Clone());
+            if (Received.Count >= expected)
+            {
+                completed.TrySetResult();
+            }
+
+            return Results.Ok();
+        }
+    }
+
+    private sealed class HttpCollectorPublisher(HttpClient client) : IEventPublisher
+    {
+        public async Task PublishAsync<TEvent, TContext>(KaleidoEventEnvelope<TEvent, TContext> envelope, CancellationToken cancellationToken)
+            where TEvent : IKaleidoEvent
+        {
+            using var response = await client.PostAsJsonAsync("/collector/events", envelope, KaleidoJsonOptions.Options, cancellationToken);
+            response.EnsureSuccessStatusCode();
+        }
+    }
+
+    private sealed class Published(bool holdFirst = false, bool alwaysFail = false, int failFirst = 0)
     {
         private int attempts;
         private readonly ConcurrentDictionary<int, TaskCompletionSource> reached = new();
@@ -285,7 +465,7 @@ public sealed class RelayOnlyConsoleHostFunctionalTests : IAsyncLifetime
                 await released.Task.WaitAsync(cancellationToken);
             }
 
-            if (alwaysFail)
+            if (alwaysFail || count <= failFirst)
             {
                 throw new InvalidOperationException("broker down");
             }

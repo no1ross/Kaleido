@@ -27,6 +27,17 @@ public sealed class EventAndLogRedactionFunctionalTests
     }
 
     [Fact]
+    public async Task AConfiguredMaskingPolicy_MasksTheOutboxPayloadWithoutChangingTheQueryResult()
+    {
+        await using var provider = Build(hostKeepsClassifiedValues: false, keepEventPii: false, maskEventPii: true);
+        var patient = await WrittenPatientAsync(provider);
+
+        Assert.Equal("***", patient.GetProperty("email").GetString());
+        Assert.Equal(string.Empty, patient.GetProperty("diagnosis").GetString());
+        Assert.Equal("Gold", patient.GetProperty("plan").GetString());
+    }
+
+    [Fact]
     public async Task Events_WithoutAnEventPolicy_AreErased_EvenWhenTheLogPolicyWouldKeepThem()
     {
         await using var provider = Build(hostKeepsClassifiedValues: true, keepEventPii: false);
@@ -38,7 +49,7 @@ public sealed class EventAndLogRedactionFunctionalTests
         Assert.Equal(string.Empty, patient.GetProperty("diagnosis").GetString());
     }
 
-    private static ServiceProvider Build(bool hostKeepsClassifiedValues, bool keepEventPii)
+    private static ServiceProvider Build(bool hostKeepsClassifiedValues, bool keepEventPii, bool maskEventPii = false)
     {
         var services = new ServiceCollection();
         services.AddRedaction(redaction =>
@@ -64,6 +75,10 @@ public sealed class EventAndLogRedactionFunctionalTests
         {
             builder.AddEventRedaction(redaction => redaction.SetRedactor<NullRedactor>(new DataClassificationSet(Pii)));
         }
+        else if (maskEventPii)
+        {
+            builder.AddEventRedaction(redaction => redaction.SetRedactor<MaskingRedactor>(new DataClassificationSet(Pii)));
+        }
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }
@@ -79,6 +94,16 @@ public sealed class EventAndLogRedactionFunctionalTests
         var entry = Assert.Single(entries, item => item.EventType == QueryableEventTypes.QueryExecuted);
         using var document = JsonDocument.Parse(entry.Payload);
         return document.RootElement.GetProperty("event").GetProperty("records")[0].Clone();
+    }
+
+    private sealed class MaskingRedactor : Redactor
+    {
+        public override int GetRedactedLength(ReadOnlySpan<char> input) => 3;
+        public override int Redact(ReadOnlySpan<char> source, Span<char> destination)
+        {
+            "***".AsSpan().CopyTo(destination);
+            return 3;
+        }
     }
 
     private sealed class PhiAttribute() : DataClassificationAttribute(Phi);
