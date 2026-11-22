@@ -52,6 +52,11 @@ public sealed class StandaloneProcessClientFunctionalTests
         statusClient.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("status-reader", ["registry-reader"]));
         var status = await statusClient.GetFromJsonAsync<KaleidoRegistryStatus>("/registry/status", KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
         Assert.DoesNotContain(Assert.IsType<KaleidoRegistryStatus>(status).Services, service => service.ServiceName == "reader");
+        var capabilities = await statusClient.GetFromJsonAsync<KaleidoRegistry>("/registry/capabilities", KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        var published = Assert.Single(Assert.IsType<KaleidoRegistry>(capabilities).Processes, process => process.ServiceVersion == "2");
+        Assert.Equal("catalog", published.ServiceName);
+        var initialStep = Assert.Single(published.InitialSteps, step => step.Name == nameof(Publisher.ReviewOrderStep));
+        Assert.Equal("/catalog/2/processes/steps/revieworderstep", Assert.Single(initialStep.Bindings.Http).Path);
         await authority.StopAsync(TestContext.Current.CancellationToken);
 
         var pinned = factory.GetClient("catalog", Assert.IsType<string>(initial.ServiceVersion));

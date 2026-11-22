@@ -42,6 +42,21 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task AService_MapsOnlyItsVersionedStepRoute()
+    {
+        await using var app = await StartAsync();
+        using var client = Client(app);
+        var request = new ExecuteStepRequest<ReviewOrderStep> { ProcessStep = new ReviewOrderStep { Code = "A-1" } };
+
+        using var versioned = await client.PostAsJsonAsync(StepUrl, request, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var unversioned = await client.PostAsJsonAsync("/catalog/processes/steps/revieworderstep", request, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unversioned.StatusCode);
+        Assert.Equal(1, app.Services.GetRequiredService<ReviewRuns>().Count);
+    }
+
+    [Fact]
     public async Task ContinuationNames_AreFilteredForTheCallerOnExecuteAndState()
     {
         await using var app = await StartAsync();
