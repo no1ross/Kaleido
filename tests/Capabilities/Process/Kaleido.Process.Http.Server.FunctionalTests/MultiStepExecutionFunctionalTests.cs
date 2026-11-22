@@ -117,6 +117,99 @@ public sealed class MultiStepExecutionFunctionalTests
         Assert.Contains(nameof(RootStep).ToUpperInvariant(), detail.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task APerStepEnvelope_CreatesOrResumesTheNamedProcess(bool resume)
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        Guid? original = null;
+        if (resume)
+        {
+            using var seeded = await PostStepAsync(client, nameof(SeedStep));
+            Assert.Equal(HttpStatusCode.OK, seeded.StatusCode);
+            original = Assert.IsType<ProcessResult>(await seeded.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).ProcessId;
+        }
+
+        using var response = await PostStepAsync(client, nameof(RootStep), original);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = Assert.IsType<ProcessResult>(await response.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+        Assert.NotEqual(Guid.Empty, result.ProcessId);
+        if (original is { } id)
+        {
+            Assert.Equal(id, result.ProcessId);
+        }
+
+        Assert.Equal(result.ProcessId.ToString("D"), Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
+        var executed = Assert.Single(result.Steps);
+        Assert.Equal(nameof(RootStep), executed.StepName);
+        Assert.Equal(StepExecutionStatus.Completed, executed.ExecutionStatus);
+        Assert.Empty(executed.BusinessMessages);
+        if (resume)
+        {
+            var state = await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{result.ProcessId:D}", KaleidoJsonOptions.Options, Cancel);
+            var snapshot = Assert.IsType<ProcessStateSnapshot>(state);
+            Assert.Contains(snapshot.Steps, step => step.StepName == nameof(SeedStep) && step.Status == StepExecutionStatus.Completed);
+            Assert.Contains(snapshot.Steps, step => step.StepName == nameof(RootStep) && step.Status == StepExecutionStatus.Completed);
+            Assert.Contains(nameof(SecondStep), snapshot.AvailableSteps);
+        }
+    }
+
+    [Fact]
+    public async Task APerStepRequestForAnUnknownProcess_Answers400AndDoesNotCreateIt()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        var missing = Guid.NewGuid();
+        using var response = await PostStepAsync(client, nameof(RootStep), missing);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, Cancel);
+        Assert.Equal(ProcessorErrorCodes.ProcessNotFound, Assert.Single(Assert.IsType<KaleidoErrorResponse>(error).Errors).Code);
+        using var state = await client.GetAsync($"/execution/1/processes/{missing:D}", Cancel);
+        Assert.Equal(HttpStatusCode.NotFound, state.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("""{"processStep":{"on":"2026-10-15"}}""", "itemId")]
+    [InlineData("""{"processStep":{"itemId":"6f1c2a9e-5d3b-4f7a-9c1e-2b8d4e6a0f13","on":"tomorrow"}}""", "$.processStep.on")]
+    public async Task APerStepRequestWithInvalidTypedInput_Answers400NamingItsPath(string body, string field)
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        using var response = await PostStepAsync(client, nameof(InputStep), body: body);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, Cancel);
+        var detail = Assert.Single(Assert.IsType<KaleidoErrorResponse>(error).Errors);
+        Assert.Equal(KaleidoErrorCodes.ArgumentError, detail.Code);
+        Assert.Contains(field, detail.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task APerStepRequest_ReturnsTheHandlersTypedResult()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        var itemId = Guid.NewGuid();
+        var body = JsonSerializer.Serialize(new ExecuteStepRequest<InputStep>
+        {
+            ProcessStep = new InputStep { ItemId = itemId, On = new DateOnly(2026, 10, 15) },
+        }, KaleidoJsonOptions.Options);
+        using var response = await PostStepAsync(client, nameof(InputStep), body: body);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = Assert.IsType<ProcessResult>(await response.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(itemId, Assert.IsType<JsonElement>(Assert.Single(result.Steps).Response).GetProperty("itemId").GetGuid());
+    }
+
+    [Fact]
+    public async Task APerStepRequestWithNonJsonContent_Answers415()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        using var response = await PostStepAsync(client, nameof(InputStep), body: "itemId=1", contentType: "text/plain");
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
     private static ProcessStepRequest Step(string name) => new()
     {
         StepName = name,
@@ -127,6 +220,21 @@ public sealed class MultiStepExecutionFunctionalTests
     {
         using var client = app.GetTestClient();
         return await client.PostAsJsonAsync("/execution/1/processes/execute", new ExecuteProcessRequest { Steps = steps }, KaleidoJsonOptions.Options, Cancel);
+    }
+
+    private static async Task<HttpResponseMessage> PostStepAsync(HttpClient client, string name, Guid? processId = null,
+        string body = "{\"processStep\":{}}", string contentType = "application/json")
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/execution/1/processes/steps/{name.ToLowerInvariant()}")
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, contentType),
+        };
+        if (processId is { } id)
+        {
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, id.ToString("D"));
+        }
+
+        return await client.SendAsync(request, Cancel);
     }
 
     private static async Task<WebApplication> StartAsync()
@@ -193,6 +301,11 @@ public sealed class MultiStepExecutionFunctionalTests
         public DateOnly On { get; init; }
     }
 
+    public sealed record InputResponse(Guid ItemId);
+
+    [ProcessStep(DisplayName = "Seed", Description = "Creates a process before another step")]
+    public sealed record SeedStep : IProcessStep;
+
     [ProcessStep(DisplayName = "Fail", Description = "Returns a business failure")]
     public sealed record FailingStep : IProcessStep;
 
@@ -232,13 +345,19 @@ public sealed class MultiStepExecutionFunctionalTests
             Task.FromResult(ProcessStepHandlerResult.Success());
     }
 
-    public sealed class InputHandler(ReceivedInput received) : IProcessStepHandler<InputStep>
+    public sealed class InputHandler(ReceivedInput received) : IProcessStepHandler<InputStep, InputResponse>
     {
-        public Task<ProcessStepHandlerResult> ExecuteAsync(InputStep step, ProcessStepContext context, CancellationToken cancellationToken)
+        public Task<ProcessStepHandlerResult<InputResponse>> ExecuteAsync(InputStep step, ProcessStepContext context, CancellationToken cancellationToken)
         {
             received.Record(step.ItemId);
-            return Task.FromResult(ProcessStepHandlerResult.Success());
+            return Task.FromResult(ProcessStepHandlerResult.Success(new InputResponse(step.ItemId)));
         }
+    }
+
+    public sealed class SeedHandler : IProcessStepHandler<SeedStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(SeedStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
     }
 
     public sealed class FailingHandler : IProcessStepHandler<FailingStep>
