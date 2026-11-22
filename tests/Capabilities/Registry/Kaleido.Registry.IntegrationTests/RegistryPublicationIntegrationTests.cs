@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Compliance.Classification;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -23,7 +26,28 @@ public sealed class RegistryPublicationIntegrationTests
         var registry = await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
         var source = Assert.Single(Assert.IsType<KaleidoRegistry>(registry).Queryables);
         Assert.Equal("CatalogSource", source.Name);
+        Assert.Equal("Catalog entries", source.Description);
         Assert.Equal("/catalog/1/queryable/catalogsource/query", Assert.Single(source.Bindings.Http).Path);
+        var name = Assert.Single(source.Fields, field => field.Name == nameof(CatalogRecord.Name));
+        Assert.Equal("The record's display name", name.Description);
+        Assert.Equal(["Catalog:Personal"], name.Classifications);
+        Assert.True(name.IsSearchable);
+        var amount = Assert.Single(source.Fields, field => field.Name == nameof(CatalogRecord.Amount));
+        Assert.Equal(["equals", "greaterThanOrEqual", "lessThan", "between"], amount.FilterOperators);
+        Assert.True(amount.IsSortable);
+        var region = Assert.Single(source.Fields, field => field.Name == nameof(CatalogRecord.Region));
+        Assert.False(region.IsFilterable);
+        Assert.False(region.IsSortable);
+        Assert.True(region.IsSearchable);
+        Assert.Equal(3, source.Pageable?.DefaultSize);
+        Assert.Equal(10, source.Pageable?.MaxSize);
+        var view = Assert.Single(source.Views);
+        Assert.Equal("Catalog view", view.DisplayName);
+        Assert.Equal("/catalog/1/queryable/catalogsource/catalogview/query", Assert.Single(view.Bindings.Http).Path);
+        Assert.Single(view.Parameters);
+        Assert.NotEmpty(view.OutputFields);
+        Assert.Equal(2, view.Pageable?.DefaultSize);
+        Assert.Equal(4, view.Pageable?.MaxSize);
 
         using var mapped = await publisher.GetTestClient().GetAsync("/catalog/1/queryable/catalogsource/query", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.MethodNotAllowed, mapped.StatusCode);
@@ -119,7 +143,7 @@ public sealed class RegistryPublicationIntegrationTests
             ServiceName = "catalog",
             ServiceVersion = "1",
             Assemblies = [typeof(RegistryPublicationIntegrationTests).Assembly],
-            TypeFilter = type => type == typeof(CatalogSource),
+            TypeFilter = type => type == typeof(CatalogSource) || type == typeof(CatalogView),
         })
             .AddRegistryHttpParticipation()
             .AddEventing()
@@ -160,16 +184,53 @@ public sealed class RegistryPublicationIntegrationTests
         return app;
     }
 
-    [QuerySource(DisplayName = "Catalog", Description = "Catalog entries")]
+    [QuerySource(DisplayName = "Catalog", Description = "Catalog entries", DefaultSortField = nameof(CatalogRecord.Amount))]
+    [Pageable(DefaultSize = 3, MaxSize = 10)]
     public sealed class CatalogSource : IQuerySource<CatalogRecord>
     {
         public IQueryable<CatalogRecord> CreateQuery(QueryExecutionContext executionContext) =>
             new[] { new CatalogRecord { Name = "one" } }.AsQueryable();
     }
 
+    private static readonly DataClassification Personal = new("Catalog", "Personal");
+
+    [AttributeUsage(AttributeTargets.Property)]
+    private sealed class PersonalAttribute() : DataClassificationAttribute(Personal);
+
     public sealed class CatalogRecord : IQueryContext
     {
+        [Personal]
+        [Description("The record's display name")]
+        [Searchable]
+        [Sortable]
         public string Name { get; init; } = string.Empty;
+
+        [Filterable(FilterOperator.Equals, FilterOperator.GreaterThanOrEqual, FilterOperator.LessThan, FilterOperator.Between)]
+        [Sortable]
+        public decimal Amount { get; init; }
+
+        [Searchable]
+        public string Region { get; init; } = string.Empty;
+    }
+
+    public sealed class CatalogViewParameters : IQueryParameters
+    {
+        [Required]
+        [Description("Category for the catalog view")]
+        public string Category { get; init; } = string.Empty;
+    }
+
+    public sealed class CatalogViewRecord
+    {
+        public string Name { get; init; } = string.Empty;
+    }
+
+    [QueryView(DisplayName = "Catalog view", Description = "Catalog names with a category parameter", DefaultSortField = nameof(CatalogRecord.Name))]
+    [Pageable(DefaultSize = 2, MaxSize = 4)]
+    public sealed class CatalogView : IQueryViewSource<CatalogSource, CatalogRecord, CatalogViewRecord, CatalogViewParameters>
+    {
+        public IQueryable<CatalogViewRecord> CreateView(IQueryable<CatalogRecord> query, QueryExecutionContext executionContext) =>
+            query.Select(record => new CatalogViewRecord { Name = record.Name });
     }
 
     private sealed class ObserveReadHandler(TaskCompletionSource<bool> observed) : DelegatingHandler

@@ -37,6 +37,53 @@ public sealed class QueryableHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task AService_MapsOnlyItsVersionedQueryRoute()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        var request = new { query = new { } };
+        using var versioned = await client.PostAsJsonAsync(SourceUrl, request, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var unversioned = await client.PostAsJsonAsync("/local/queryable/localrecordssource/query", request, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, versioned.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unversioned.StatusCode);
+    }
+
+    [Fact]
+    public async Task AQuery_EchoesOnlyEndToEndCorrelation_NotInboundPerHopIdentity()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        var processId = Guid.NewGuid();
+        client.DefaultRequestHeaders.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, "req-77");
+        client.DefaultRequestHeaders.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString("D"));
+        client.DefaultRequestHeaders.TryAddWithoutValidation(KaleidoCorrelationHeaders.CallingProcessor, "intake");
+        client.DefaultRequestHeaders.TryAddWithoutValidation(KaleidoCorrelationHeaders.CallingStep, "Capture");
+
+        using var response = await client.PostAsJsonAsync(SourceUrl, new { query = new { } }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("req-77", Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
+        Assert.Equal(processId.ToString("D"), Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
+        Assert.False(response.Headers.Contains(KaleidoCorrelationHeaders.CallingProcessor));
+        Assert.False(response.Headers.Contains(KaleidoCorrelationHeaders.CallingStep));
+        Assert.False(response.Headers.Contains("X-Kaleido-Processor-Instance-Id"));
+    }
+
+    [Fact]
+    public async Task AQueryWithoutCorrelationHeaders_GeneratesOnlyItsRequestId()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+
+        using var response = await client.PostAsJsonAsync(SourceUrl, new { query = new { } }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(string.IsNullOrWhiteSpace(Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId))));
+        Assert.False(response.Headers.Contains(KaleidoCorrelationHeaders.ProcessId));
+        Assert.False(response.Headers.Contains(KaleidoCorrelationHeaders.CallingStep));
+    }
+
+    [Fact]
     public async Task LocalView_UsesItsOwnPageAndProjectsResults()
     {
         await using var app = await StartAsync();

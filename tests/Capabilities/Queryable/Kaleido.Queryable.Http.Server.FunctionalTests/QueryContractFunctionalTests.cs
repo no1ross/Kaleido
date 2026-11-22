@@ -365,8 +365,11 @@ public sealed class QueryContractFunctionalTests(ContractHost fixture) : IClassF
     {
         using var response = await PostRawAsync("""{"query":{"filter":{"condition":{"field":"DoesNotExist","operator":"equals","values":["anything"]}}}}""");
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
         var error = await response.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
-        Assert.StartsWith("qry_", error.GetProperty("errors")[0].GetProperty("code").GetString(), StringComparison.Ordinal);
+        var detail = error.GetProperty("errors")[0];
+        Assert.StartsWith("qry_", detail.GetProperty("code").GetString(), StringComparison.Ordinal);
+        Assert.False(string.IsNullOrWhiteSpace(detail.GetProperty("message").GetString()));
     }
 
     [Fact]
