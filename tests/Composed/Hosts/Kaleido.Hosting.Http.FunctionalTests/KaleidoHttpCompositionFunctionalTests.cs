@@ -36,6 +36,90 @@ public sealed class KaleidoHttpCompositionFunctionalTests
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync(QueryUrl, new { query = new { } }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).StatusCode);
     }
 
+    [Fact]
+    public async Task AThrowingHostEndpoint_UsesTheHostErrorPageWithoutKaleidoHeaders()
+    {
+        await using var app = await StartServiceAsync(KaleidoAuthorizationMode.None, hostExceptionHandling: true);
+        using var client = Client(app);
+        using var response = await client.GetAsync("/outside/boom", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal("host error page", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.False(response.Headers.Contains(KaleidoCorrelationHeaders.RequestId));
+    }
+
+    [Fact]
+    public async Task AnOrdinaryHostEndpoint_GetsNoKaleidoCorrelationHeaders()
+    {
+        await using var app = await StartServiceAsync(KaleidoAuthorizationMode.None, hostExceptionHandling: true);
+        using var client = Client(app);
+        using var response = await GetAsync(client, "/outside", requestId: "req-1");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(response.Headers.Contains(KaleidoCorrelationHeaders.RequestId));
+    }
+
+    [Fact]
+    public async Task AKaleidoStateEndpoint_EchoesATrustedRequestIdEvenForNotFound()
+    {
+        await using var app = await StartServiceAsync(KaleidoAuthorizationMode.None, hostExceptionHandling: true);
+        using var client = Client(app);
+        using var response = await GetAsync(client, $"/clinic/1/processes/{Guid.Empty:D}", requestId: "req-1");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("req-1", Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
+    }
+
+    [Fact]
+    public async Task AMalformedProcessHeader_IsKaleidos400InsteadOfTheHostErrorPage()
+    {
+        await using var app = await StartServiceAsync(KaleidoAuthorizationMode.None, hostExceptionHandling: true);
+        using var client = Client(app);
+        using var response = await GetAsync(client, $"/clinic/1/processes/{Guid.Empty:D}", processId: "not-a-guid");
+        await AssertArgumentErrorAsync(response, KaleidoCorrelationHeaders.ProcessId);
+    }
+
+    [Fact]
+    public async Task ANonGuidProcessRoute_IsKaleidos400InsteadOfTheHostErrorPage()
+    {
+        await using var app = await StartServiceAsync(KaleidoAuthorizationMode.None, hostExceptionHandling: true);
+        using var client = Client(app);
+        using var response = await GetAsync(client, "/clinic/1/processes/not-a-guid");
+        await AssertArgumentErrorAsync(response, "not-a-guid");
+    }
+
+    private static HttpClient Client(WebApplication app)
+    {
+        var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", ["reader", "reviewer", "host-allowed"]));
+        return client;
+    }
+
+    private static async Task<HttpResponseMessage> GetAsync(HttpClient client, string path, string? requestId = null, string? processId = null)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (requestId is not null)
+        {
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, requestId);
+        }
+
+        if (processId is not null)
+        {
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId);
+        }
+
+        return await client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    private static async Task AssertArgumentErrorAsync(HttpResponseMessage response, string named)
+    {
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Contains(KaleidoErrorCodes.ArgumentError, body, StringComparison.Ordinal);
+        Assert.Contains(named, body, StringComparison.Ordinal);
+        Assert.DoesNotContain("host error page", body, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -162,7 +246,7 @@ public sealed class KaleidoHttpCompositionFunctionalTests
     }
 
     private static async Task<WebApplication> StartServiceAsync(KaleidoAuthorizationMode mode, bool conventionsBeforeMapping = false,
-        bool mapProcess = true, bool mapQueryable = true)
+        bool mapProcess = true, bool mapQueryable = true, bool hostExceptionHandling = false)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -180,6 +264,15 @@ public sealed class KaleidoHttpCompositionFunctionalTests
             .AddHttp()
             .AddProcessHttpServer();
         var app = builder.Build();
+        if (hostExceptionHandling)
+        {
+            app.UseExceptionHandler(handler => handler.Run(context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                return context.Response.WriteAsync("host error page");
+            }));
+        }
+
         app.UseAuthentication();
         app.UseAuthorization();
         var kaleido = app.MapKaleido();
@@ -204,6 +297,11 @@ public sealed class KaleidoHttpCompositionFunctionalTests
         }
 
         app.MapGet("/outside", () => Results.Text("outside"));
+        if (hostExceptionHandling)
+        {
+            app.MapGet("/outside/boom", IResult () => throw new InvalidOperationException("host failure"));
+        }
+
         await app.StartAsync(TestContext.Current.CancellationToken);
         return app;
     }
