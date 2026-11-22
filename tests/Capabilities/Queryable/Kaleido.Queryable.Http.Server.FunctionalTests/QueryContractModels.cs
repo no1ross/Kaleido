@@ -127,3 +127,29 @@ public sealed class GridView : IQueryViewSource<ContractSource, ContractRecord, 
     public IQueryable<CodeListItem> CreateView(IQueryable<ContractRecord> query, QueryExecutionContext executionContext) =>
         query.Select(record => new CodeListItem { Id = record.Id, Code = record.Code });
 }
+
+public sealed class SummaryParameters : IQueryParameters
+{
+    [Required]
+    [Description("Category for the delegated query")]
+    public string Category { get; init; } = string.Empty;
+}
+
+public sealed record ContractSummary
+{
+    public string Label { get; init; } = string.Empty;
+}
+
+[QuerySource(DisplayName = "Contract summaries", Description = "Delegated summaries with downstream totals")]
+[Pageable(DefaultSize = 2, MaxSize = 5)]
+public sealed class ContractSummarySource(ContractRecords data) : IDelegatedQuerySource<ContractRecord, ContractSummary, SummaryParameters>
+{
+    public Task<QueryResult<ContractSummary>> ExecuteAsync(IQueryRequest<SummaryParameters> request, CancellationToken cancellationToken)
+    {
+        var offset = request.Query?.Page?.Offset ?? 0;
+        var size = request.Query?.Page?.Size ?? 2;
+        var results = data.Records.Where(record => record.Category == request.ViewParameters?.Category)
+            .Select(record => new ContractSummary { Label = $"{record.Code} ({record.Region})" }).ToArray();
+        return Task.FromResult(new QueryResult<ContractSummary>(42, offset, size, results));
+    }
+}

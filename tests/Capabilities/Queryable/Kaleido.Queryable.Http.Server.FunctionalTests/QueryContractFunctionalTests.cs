@@ -18,6 +18,7 @@ public sealed class QueryContractFunctionalTests(ContractHost fixture) : IClassF
     private const string AsyncSourceUrl = "/catalog/1/queryable/asynccontractsource/query";
     private const string AsyncViewUrl = "/catalog/1/queryable/asynccontractsource/codelistview/query";
     private const string GridViewUrl = "/catalog/1/queryable/contractsource/gridview/query";
+    private const string SummaryUrl = "/catalog/1/queryable/contractsummarysource/query";
 
     public static TheoryData<string, string, int[]> Conditions() => new()
     {
@@ -242,6 +243,37 @@ public sealed class QueryContractFunctionalTests(ContractHost fixture) : IClassF
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.Equal([6, 2], direct);
         Assert.Equal(direct, Ids(document.RootElement));
+    }
+
+    [Fact]
+    public async Task ADelegatedSource_KeepsItsDownstreamTotalAndPageUntouched()
+    {
+        using var response = await fixture.Client.PostAsJsonAsync(SummaryUrl,
+            new QueryApiRequest<SummaryParameters>(new SummaryParameters { Category = "Alpha" },
+                new QueryApiBody { Page = new QueryApiPage { Size = 2, Offset = 4 } }),
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = Assert.IsType<QueryResult<ContractSummary>>(await response.Content.ReadFromJsonAsync<QueryResult<ContractSummary>>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(42, result.TotalCount);
+        Assert.Equal(4, result.Offset);
+        Assert.Equal(["AL-001 (East)", "AL-004 (Central)"], result.Results.Select(item => item.Label));
+    }
+
+    [Fact]
+    public async Task ADelegatedSource_RejectsAFilterOnANonFilterableField()
+    {
+        using var response = await PostRawAsync("""{ "parameters": { "category": "Alpha" }, "query": { "filter": { "condition": { "field":"Region", "operator":"equals", "values":["East"] } } } }""", SummaryUrl);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("qry_field_not_filterable", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ADelegatedSource_RejectsAPageBeyondItsOwnMaximum()
+    {
+        using var response = await PostRawAsync("""{ "parameters": { "category": "Alpha" }, "query": { "page": { "size": 50, "offset": 0 } } }""", SummaryUrl);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("qry_invalid_page_size", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
     }
 
     private async Task<int[]> QueryIdsAsync(string json) => Ids(await QueryAsync(json));
