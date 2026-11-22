@@ -85,6 +85,12 @@ public sealed class ContractSource(ContractRecords data) : IQuerySource<Contract
     public IQueryable<ContractRecord> CreateQuery(QueryExecutionContext executionContext) => data.Records.Reverse().AsQueryable();
 }
 
+[QuerySource(DisplayName = "Unpaged records", Description = "Contract records without paging")]
+public sealed class UnpagedContractSource(ContractRecords data) : IQuerySource<ContractRecord>
+{
+    public IQueryable<ContractRecord> CreateQuery(QueryExecutionContext executionContext) => data.Records.AsQueryable();
+}
+
 [QuerySource(DisplayName = "Async contract records", Description = "Asynchronous record query contract", DefaultSortField = nameof(ContractRecord.Id))]
 [Pageable(DefaultSize = 3, MaxSize = 10)]
 public sealed class AsyncContractSource(ContractRecords data) : IQuerySourceAsync<ContractRecord>

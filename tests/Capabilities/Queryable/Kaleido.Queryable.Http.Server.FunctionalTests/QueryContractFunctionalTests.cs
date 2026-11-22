@@ -19,6 +19,7 @@ public sealed class QueryContractFunctionalTests(ContractHost fixture) : IClassF
     private const string AsyncViewUrl = "/catalog/1/queryable/asynccontractsource/codelistview/query";
     private const string GridViewUrl = "/catalog/1/queryable/contractsource/gridview/query";
     private const string SummaryUrl = "/catalog/1/queryable/contractsummarysource/query";
+    private const string UnpagedUrl = "/catalog/1/queryable/unpagedcontractsource/query";
 
     public static TheoryData<string, string, int[]> Conditions() => new()
     {
@@ -274,6 +275,106 @@ public sealed class QueryContractFunctionalTests(ContractHost fixture) : IClassF
         using var response = await PostRawAsync("""{ "parameters": { "category": "Alpha" }, "query": { "page": { "size": 50, "offset": 0 } } }""", SummaryUrl);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("qry_invalid_page_size", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    public static TheoryData<bool, int?, int?, bool, int, int> PageCases { get; } = new()
+    {
+        { false, null, null, false, 3, 6 },
+        { false, 2, 0, false, 2, 6 },
+        { false, 2, 2, false, 2, 6 },
+        { false, 2, 4, false, 2, 6 },
+        { false, 4, 4, false, 2, 6 },
+        { false, 2, 10, false, 0, 6 },
+        { false, null, null, true, 0, 0 },
+        { true, null, null, false, 3, 6 },
+        { true, 2, 0, false, 2, 6 },
+        { true, 2, 2, false, 2, 6 },
+        { true, 2, 4, false, 2, 6 },
+        { true, 4, 4, false, 2, 6 },
+        { true, 2, 10, false, 0, 6 },
+        { true, null, null, true, 0, 0 },
+    };
+
+    [Theory]
+    [MemberData(nameof(PageCases))]
+    public async Task TotalCount_IsTheMatchingRows_RegardlessOfTheReturnedPage(bool view, int? size, int? offset, bool filterToNothing, int returned, int total)
+    {
+        var body = new QueryBody(
+            Filter: filterToNothing ? QueryFilterNode.CreateCondition("Category", FilterOperator.Equals, "NoSuchCategory") : null,
+            Page: size is null ? null : new QueryPage(size.Value, offset ?? 0)).ToApiBody();
+        using var response = view
+            ? await fixture.Client.PostAsJsonAsync(GridViewUrl, new QueryApiRequest<GridParameters>(new GridParameters { Category = "Any" }, body), KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)
+            : await fixture.Client.PostAsJsonAsync(SourceUrl, new QueryApiRequest<object>(null, body), KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(returned, result.GetProperty("results").GetArrayLength());
+        Assert.Equal(total, result.GetProperty("totalCount").GetInt32());
+        Assert.Equal(offset ?? 0, result.GetProperty("offset").GetInt32());
+        Assert.Equal(size ?? 3, result.GetProperty("pageSize").GetInt32());
+    }
+
+    [Fact]
+    public async Task AView_ComposesFilteringSortingAndPagingBeforeProjecting()
+    {
+        var body = new QueryBody(
+            Filter: QueryFilterNode.CreateCondition("IsActive", FilterOperator.IsTrue),
+            Sort: [new QuerySort("Amount", SortDirection.Descending)],
+            Page: new QueryPage(1, 0)).ToApiBody();
+        using var response = await fixture.Client.PostAsJsonAsync(GridViewUrl,
+            new QueryApiRequest<GridParameters>(new GridParameters { Category = "Gamma" }, body),
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(4, result.GetProperty("totalCount").GetInt32());
+        Assert.Equal(6, Assert.Single(result.GetProperty("results").EnumerateArray()).GetProperty("id").GetInt32());
+    }
+
+    [Theory]
+    [InlineData("""{"query":{}}""")]
+    [InlineData("""{"query":{"sort":null}}""")]
+    [InlineData("""{"query":{"sort":[]}}""")]
+    public async Task MissingNullOrEmptySort_UsesTheSourcesDefaultOrder(string json)
+    {
+        var ids = await QueryIdsAsync(json);
+        Assert.Equal([1, 2, 3], ids);
+    }
+
+    [Theory]
+    [InlineData("""{"query":{"filter":{"condition":{"field":"NullableScore","operator":"isnull"}}}}""")]
+    [InlineData("""{"query":{"filter":{"condition":{"field":"NullableScore","operator":"isnull","values":null}}}}""")]
+    [InlineData("""{"query":{"filter":{"condition":{"field":"NullableScore","operator":"isnull","values":[]}}}}""")]
+    public async Task MissingNullOrEmptyValues_MeanNoValues(string json)
+    {
+        var ids = await QueryIdsAsync(json);
+        Assert.Equal([2, 5], ids);
+    }
+
+    [Theory]
+    [InlineData("""{"query":{"filter":{"group":{"operator":"and"}}}}""")]
+    [InlineData("""{"query":{"filter":{"group":{"operator":"and","filters":null}}}}""")]
+    [InlineData("""{"query":{"filter":{"group":{"operator":"and","filters":[]}}}}""")]
+    public async Task MissingNullOrEmptyGroup_IsTheSameValidationError(string json)
+    {
+        using var response = await PostRawAsync(json);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("qry_empty_filter_group", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AnUnknownFilterField_IsRejectedBeforeRunningTheSource()
+    {
+        using var response = await PostRawAsync("""{"query":{"filter":{"condition":{"field":"DoesNotExist","operator":"equals","values":["anything"]}}}}""");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.StartsWith("qry_", error.GetProperty("errors")[0].GetProperty("code").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task APageOnAnUnpagedSource_IsRejected()
+    {
+        using var response = await PostRawAsync("""{"query":{"page":{"size":50,"offset":0}}}""", UnpagedUrl);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("qry_paging_not_supported", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
     }
 
     private async Task<int[]> QueryIdsAsync(string json) => Ids(await QueryAsync(json));
