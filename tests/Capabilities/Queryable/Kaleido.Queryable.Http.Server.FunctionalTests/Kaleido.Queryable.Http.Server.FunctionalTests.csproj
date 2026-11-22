@@ -15,4 +15,7 @@
 		<Using Include="Kaleido.Queryable.Query" />
 		<Using Include="Kaleido.Server" />
 	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\..\src\Providers\Kaleido.Provider.InMemory\Kaleido.Provider.InMemory.csproj" />
+	</ItemGroup>
 </Project>
