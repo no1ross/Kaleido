@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Net.Http.Json;
+using Kaleido.Http.Client.Transport;
 using Kaleido.Testing.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
@@ -50,6 +53,45 @@ public sealed class StandaloneQueryableClientFunctionalTests
         Assert.Equal("one", Assert.Single(result.Results).Name);
         Assert.Equal("one", Assert.Single(pinned.Results).Name);
         Assert.Equal("one", Assert.Single(keyedResult.Results).Name);
+        await consumer.StopAsync(TestContext.Current.CancellationToken);
+        await publisher.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task PublishedClient_RoundTripsTypedRecordsAndViews_AndKeepsServiceErrors()
+    {
+        await using var authority = await StartAuthorityAsync();
+        var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var publisher = await StartPublisherAsync(authority, registered);
+        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var read = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var consumer = StartConsumer(authority, publisher, read);
+        await consumer.StartAsync(TestContext.Current.CancellationToken);
+        await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(consumer);
+        using var scope = consumer.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<IKaleidoQueryableClientFactory>().GetClient("catalog");
+
+        var result = await client.QuerySourceAsync<RichRecord>(nameof(RichSource),
+            new QueryRequest(new QueryBody(Page: new QueryPage(10, 0))), TestContext.Current.CancellationToken);
+        Assert.Equal(6, result.TotalCount);
+        foreach (var (actual, expected) in result.Results.Zip(RichSource.Records))
+        {
+            Assert.Equal((expected.Id, expected.Code, expected.Name, expected.IsActive, expected.Amount, expected.Status),
+                (actual.Id, actual.Code, actual.Name, actual.IsActive, actual.Amount, actual.Status));
+            Assert.Equal((expected.EffectiveDate, expected.NullableScore, expected.ExternalId, expected.CreatedAt),
+                (actual.EffectiveDate, actual.NullableScore, actual.ExternalId, actual.CreatedAt.ToUniversalTime()));
+        }
+
+        var view = await client.QueryViewAsync<RichViewParameters, RichViewRecord>(nameof(RichSource), nameof(RichView),
+            new QueryRequest<RichViewParameters>(new RichViewParameters { Category = "Alpha" }), TestContext.Current.CancellationToken);
+        Assert.Equal(6, view.TotalCount);
+        Assert.Equal([1, 2, 3], view.Results.Select(item => item.Id));
+
+        var invalid = await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.QuerySourceAsync<RichRecord>(nameof(RichSource),
+            new QueryRequest(new QueryBody(Filter: QueryFilterNode.CreateCondition("Region", FilterOperator.Equals, "East"))), TestContext.Current.CancellationToken));
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Contains(invalid.Errors, error => error.Code == "qry_field_not_filterable");
         await consumer.StopAsync(TestContext.Current.CancellationToken);
         await publisher.StopAsync(TestContext.Current.CancellationToken);
     }
@@ -171,7 +213,7 @@ public sealed class StandaloneQueryableClientFunctionalTests
             ServiceName = "catalog",
             ServiceVersion = "1",
             Assemblies = [typeof(StandaloneQueryableClientFunctionalTests).Assembly],
-            TypeFilter = type => type == typeof(CatalogSource),
+            TypeFilter = type => type == typeof(CatalogSource) || type == typeof(RichSource) || type == typeof(RichView),
         })
             .AddKaleidoClientHandler<ServiceTokenHandler>()
             .AddRegistryHttpParticipation()
@@ -222,6 +264,60 @@ public sealed class StandaloneQueryableClientFunctionalTests
     public sealed class CatalogRecord : IQueryContext
     {
         public string Name { get; init; } = string.Empty;
+    }
+
+    public enum RichStatus { Active, Suspended }
+
+    public sealed class RichRecord : IQueryContext
+    {
+        [Sortable]
+        public int Id { get; init; }
+        public string Code { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public bool IsActive { get; init; }
+        public decimal Amount { get; init; }
+        public RichStatus Status { get; init; }
+        [Filterable(FilterOperator.Equals)]
+        public DateOnly EffectiveDate { get; init; }
+        public float? NullableScore { get; init; }
+        public Guid ExternalId { get; init; }
+        public DateTime CreatedAt { get; init; }
+        [Searchable]
+        public string Region { get; init; } = string.Empty;
+    }
+
+    [QuerySource(DisplayName = "Rich records", Description = "Typed values through the published Queryable client", DefaultSortField = nameof(RichRecord.Id))]
+    [Pageable(DefaultSize = 3, MaxSize = 10)]
+    public sealed class RichSource : IQuerySource<RichRecord>
+    {
+        public static IReadOnlyList<RichRecord> Records { get; } =
+        [
+            new() { Id = 1, Code = "AL-001", Name = "Alpha One", IsActive = true, Amount = 10m, Status = RichStatus.Active, EffectiveDate = new DateOnly(2024, 1, 1), NullableScore = 1.1f, ExternalId = Guid.Parse("00000000-0000-0000-0000-000000000001"), CreatedAt = new DateTime(2024, 1, 1, 9, 30, 0, DateTimeKind.Utc), Region = "East" },
+            new() { Id = 2, Code = "BE-002", Name = "Beta Two", IsActive = false, Amount = 25m, Status = RichStatus.Suspended, EffectiveDate = new DateOnly(2024, 1, 5), NullableScore = null, ExternalId = Guid.Parse("00000000-0000-0000-0000-000000000002"), CreatedAt = new DateTime(2024, 1, 2, 9, 30, 0, DateTimeKind.Utc), Region = "West" },
+            new() { Id = 3, Code = "GA-003", Name = "Gamma Three", IsActive = true, Amount = 40m, Status = RichStatus.Active, EffectiveDate = new DateOnly(2024, 2, 1), NullableScore = 3.3f, ExternalId = Guid.Parse("00000000-0000-0000-0000-000000000003"), CreatedAt = new DateTime(2024, 1, 3, 9, 30, 0, DateTimeKind.Utc), Region = "South" },
+            new() { Id = 4, Code = "AL-004", Name = "Alpha Four", IsActive = true, Amount = 55m, Status = RichStatus.Suspended, EffectiveDate = new DateOnly(2024, 2, 15), NullableScore = 4.4f, ExternalId = Guid.Parse("00000000-0000-0000-0000-000000000004"), CreatedAt = new DateTime(2024, 1, 4, 9, 30, 0, DateTimeKind.Utc), Region = "Central" },
+            new() { Id = 5, Code = "DE-005", Name = "Delta Five", IsActive = false, Amount = 70m, Status = RichStatus.Suspended, EffectiveDate = new DateOnly(2024, 3, 1), NullableScore = null, ExternalId = Guid.Parse("00000000-0000-0000-0000-000000000005"), CreatedAt = new DateTime(2024, 1, 5, 9, 30, 0, DateTimeKind.Utc), Region = "North" },
+            new() { Id = 6, Code = "GA-006", Name = "Gamma Six", IsActive = true, Amount = 85m, Status = RichStatus.Active, EffectiveDate = new DateOnly(2024, 3, 20), NullableScore = 6.6f, ExternalId = Guid.Parse("00000000-0000-0000-0000-000000000006"), CreatedAt = new DateTime(2024, 1, 6, 9, 30, 0, DateTimeKind.Utc), Region = "East" },
+        ];
+
+        public IQueryable<RichRecord> CreateQuery(QueryExecutionContext executionContext) => Records.Reverse().AsQueryable();
+    }
+
+    public sealed class RichViewParameters : IQueryParameters
+    {
+        [Required]
+        [Description("Category for the view")]
+        public string Category { get; init; } = string.Empty;
+    }
+
+    public sealed record RichViewRecord(int Id, string Code);
+
+    [QueryView(DisplayName = "Rich view", Description = "Projects identifiers and codes", DefaultSortField = nameof(RichRecord.Id))]
+    [Pageable(DefaultSize = 3, MaxSize = 5)]
+    public sealed class RichView : IQueryViewSource<RichSource, RichRecord, RichViewRecord, RichViewParameters>
+    {
+        public IQueryable<RichViewRecord> CreateView(IQueryable<RichRecord> query, QueryExecutionContext executionContext) =>
+            query.Select(record => new RichViewRecord(record.Id, record.Code));
     }
 
     private sealed class ServiceTokenHandler(KaleidoServiceOptions service) : DelegatingHandler

@@ -141,12 +141,12 @@ that namespace (e.g. `Processor/Behavior`, `IntegrationTests/EfCore`), so they c
 shared fixtures publish.
 
 ### Shared fixture state
-`ProcessorAspNetCoreFixture` and `QueryableAspNetCoreFixture` expose:
+The parked `ProcessorAspNetCoreFixture` exposes:
 - `Client` — a pre-wired `HttpClient` pointed at the TestServer (use for raw HTTP assertions)
 - `ClientFactory` — the Kaleido client factory wired against the TestServer (use for client-level tests)
 - `TestServer` — the underlying `TestServer` instance (use when a test needs its own `CreateHandler()`)
 
-Both fixtures are in `tests/Http/Http.FunctionalTests`.
+It remains in `tests/Http/Http.FunctionalTests` until its other scenarios migrate.
 
 ### Real authentication: the shared test identity (#574)
 Tests of who may call, and of what a call carries for its caller, authenticate as a production service does: ASP.NET's JWT bearer handler over real signed tokens, not a header-driven test scheme.
@@ -178,8 +178,7 @@ var httpClient = new HttpClient(captureHandler) { BaseAddress = new Uri("http://
 services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("kaleido-gateway", httpClient));
 ```
 
-The `FixedHttpClientFactory` pattern used in `ProcessClientHeaderTests` and
-`QueryableClientHeaderTests` is the canonical example.
+The `FixedHttpClientFactory` pattern in the parked `ProcessClientHeaderTests` is the canonical example.
 
 #### Pitfall 2 — Always build with ValidateScopes + ValidateOnBuild
 
