@@ -193,6 +193,76 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task AnonymousStep_IsCallableThroughTypedAndGenericRoutes_ButCannotBypassASecuredStep()
+    {
+        await using var app = await StartAsync(includeAnonymousStep: true);
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        using var typed = await client.PostAsJsonAsync("/catalog/1/processes/steps/publicreviewstep",
+            new ExecuteStepRequest<PublicReviewStep> { ProcessStep = new PublicReviewStep() },
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, typed.StatusCode);
+        var publicStep = new ProcessStepRequest { StepName = nameof(PublicReviewStep), Request = JsonSerializer.SerializeToElement(new PublicReviewStep(), KaleidoJsonOptions.Options) };
+        using var generic = await client.PostAsJsonAsync("/catalog/1/processes/execute",
+            new ExecuteProcessRequest { Steps = [publicStep] }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, generic.StatusCode);
+        Assert.Equal(2, app.Services.GetRequiredService<AnonymousRuns>().Count);
+
+        var securedStep = new ProcessStepRequest { StepName = nameof(ReviewOrderStep), Request = JsonSerializer.SerializeToElement(new ReviewOrderStep { Code = "A-1" }, KaleidoJsonOptions.Options) };
+        using var mixed = await client.PostAsJsonAsync("/catalog/1/processes/execute",
+            new ExecuteProcessRequest { Steps = [publicStep, securedStep] }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, mixed.StatusCode);
+        Assert.Equal(2, app.Services.GetRequiredService<AnonymousRuns>().Count);
+        Assert.Equal(0, app.Services.GetRequiredService<ReviewRuns>().Count);
+
+        using var unknown = await client.PostAsJsonAsync("/catalog/1/processes/execute",
+            new ExecuteProcessRequest { Steps = [new ProcessStepRequest { StepName = "NoSuchStep", Request = JsonSerializer.SerializeToElement(new { }, KaleidoJsonOptions.Options) }] },
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, unknown.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnotherAuthenticatedCaller_CanReadAndContinueAProcess_WhenTheNextStepAllowsIt()
+    {
+        await using var app = await StartAsync(includeOpenStep: true);
+        using var alice = Client(app, user: "alice");
+        using var bob = Client(app, roles: ["viewer"], user: "bob");
+        using var carol = Client(app, roles: [], user: "carol");
+        using var created = await alice.PostAsJsonAsync(StepUrl,
+            new ExecuteStepRequest<ReviewOrderStep> { ProcessStep = new ReviewOrderStep { Code = "A-1" } },
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        var processId = Assert.IsType<ProcessResult>(await created.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).ProcessId;
+        var url = $"/catalog/1/processes/{processId:D}";
+
+        using var before = await bob.GetAsync(url, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, before.StatusCode);
+        using var resume = new HttpRequestMessage(HttpMethod.Post, "/catalog/1/processes/steps/openfollowupstep")
+        {
+            Content = JsonContent.Create(new ExecuteStepRequest<OpenFollowUpStep> { ProcessStep = new OpenFollowUpStep() }, options: KaleidoJsonOptions.Options),
+        };
+        resume.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString("D"));
+        using var continued = await bob.SendAsync(resume, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, continued.StatusCode);
+
+        using var stateResponse = await carol.GetAsync(url, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
+        var state = Assert.IsType<ProcessStateSnapshot>(await stateResponse.Content.ReadFromJsonAsync<ProcessStateSnapshot>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal("alice", state.CreatedBy?.Name);
+        Assert.Equal("bob", state.UpdatedBy?.Name);
+        Assert.Equal("alice", Assert.Single(state.Steps, step => step.StepName == nameof(ReviewOrderStep)).StartedBy?.Name);
+        Assert.Equal("bob", Assert.Single(state.Steps, step => step.StepName == nameof(OpenFollowUpStep)).StartedBy?.Name);
+
+        using var refused = new HttpRequestMessage(HttpMethod.Post, StepUrl)
+        {
+            Content = JsonContent.Create(new ExecuteStepRequest<ReviewOrderStep> { ProcessStep = new ReviewOrderStep { Code = "A-2" } }, options: KaleidoJsonOptions.Options),
+        };
+        refused.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString("D"));
+        using var denied = await bob.SendAsync(refused, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+    }
+
+    [Fact]
     public async Task AService_MapsOnlyItsVersionedStepRoute()
     {
         await using var app = await StartAsync();
@@ -448,7 +518,7 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     private static async Task<WebApplication> StartAsync(bool handOff = false, KaleidoAuthorizationMode authorizationMode = KaleidoAuthorizationMode.Authenticated,
-        bool includePolicyStep = false, bool superuserHandler = false)
+        bool includePolicyStep = false, bool superuserHandler = false, bool includeAnonymousStep = false, bool includeOpenStep = false)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -463,6 +533,7 @@ public sealed class ProcessHttpServerFunctionalTests
             builder.Services.AddSingleton<IAuthorizationHandler, SuperuserRoleHandler>();
         }
         builder.Services.AddSingleton<ReviewRuns>();
+        builder.Services.AddSingleton<AnonymousRuns>();
         builder.Services.AddSingleton(new StoredProcesses());
         builder.Services.AddSingleton(new StoredIdempotency());
         var outbox = new Mock<IKaleidoOutboxStore>();
@@ -477,7 +548,9 @@ public sealed class ProcessHttpServerFunctionalTests
                 ? type == typeof(HandOffStep) || type == typeof(HandOffHandler)
                 : type == typeof(ReviewOrderStep) || type == typeof(ReviewOrderHandler)
                     || type == typeof(AdminOnlyStep) || type == typeof(AdminOnlyHandler)
-                    || (includePolicyStep && (type == typeof(ClinicianStep) || type == typeof(ClinicianHandler))),
+                    || (includePolicyStep && (type == typeof(ClinicianStep) || type == typeof(ClinicianHandler)))
+                    || (includeAnonymousStep && (type == typeof(PublicReviewStep) || type == typeof(PublicReviewHandler)))
+                    || (includeOpenStep && (type == typeof(OpenFollowUpStep) || type == typeof(OpenFollowUpHandler))),
         })
             .AddEventing()
             .AddProcess()
@@ -540,6 +613,36 @@ public sealed class ProcessHttpServerFunctionalTests
 
             return Task.CompletedTask;
         }
+    }
+
+    public sealed class AnonymousRuns
+    {
+        private int count;
+        public int Count => Volatile.Read(ref count);
+        public void Increment() => Interlocked.Increment(ref count);
+    }
+
+    [ProcessStep(DisplayName = "Public review", Description = "A step anyone may submit")]
+    [KaleidoAuthorization(AllowAnonymous = true)]
+    public sealed record PublicReviewStep : IProcessStep;
+
+    public sealed class PublicReviewHandler(AnonymousRuns runs) : IProcessStepHandler<PublicReviewStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(PublicReviewStep step, ProcessStepContext context, CancellationToken cancellationToken)
+        {
+            runs.Increment();
+            return Task.FromResult(ProcessStepHandlerResult.Success());
+        }
+    }
+
+    [ProcessStep(DisplayName = "Open follow up", Description = "Any authenticated caller may continue")]
+    [AvailableAfter<ReviewOrderStep>]
+    public sealed record OpenFollowUpStep : IProcessStep;
+
+    public sealed class OpenFollowUpHandler : IProcessStepHandler<OpenFollowUpStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(OpenFollowUpStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
     }
 
     [ProcessStep(DisplayName = "Admin review", Description = "Reviews the order after its first step")]
