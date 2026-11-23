@@ -52,6 +52,15 @@ public sealed class RegistryPublicationIntegrationTests
         using var mapped = await publisher.GetTestClient().GetAsync("/catalog/1/queryable/catalogsource/query", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.MethodNotAllowed, mapped.StatusCode);
         await publisher.StopAsync(TestContext.Current.CancellationToken);
+
+        using var statusResponse = await authority.GetTestClient().GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, statusResponse.StatusCode);
+        var status = Assert.Single(Assert.IsType<KaleidoRegistryStatus>(await statusResponse.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+        Assert.Equal("catalog", status.ServiceName);
+        Assert.Empty(status.Instances);
+        using var availabilityResponse = await authority.GetTestClient().GetAsync("/registry/availability", TestContext.Current.CancellationToken);
+        var availability = Assert.Single(Assert.IsType<KaleidoRegistryAvailability>(await availabilityResponse.Content.ReadFromJsonAsync<KaleidoRegistryAvailability>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+        Assert.Equal(RegistryStatusNames.Unavailable, availability.Status);
     }
 
     [Theory]
