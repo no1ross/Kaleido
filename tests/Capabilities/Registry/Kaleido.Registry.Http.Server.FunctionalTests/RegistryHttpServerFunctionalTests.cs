@@ -290,6 +290,122 @@ public sealed class RegistryHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task AnonymousRegistryRead_AdvertisesOnlyAnonymousSteps_NotAuthenticatedSources()
+    {
+        await using var app = await StartAsync(enforceAuthorization: true);
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        var registration = Registration(Guid.NewGuid()) with
+        {
+            Processes = [new ProcessRegistryItem
+            {
+                ServiceName = "catalog",
+                Name = "catalog",
+                Steps =
+                [
+                    new ProcessStepResponse { Name = "PublicStep", Authorization = new AuthorizationMetadata(null, []) { AllowAnonymous = true } },
+                    new ProcessStepResponse { Name = "SecuredStep", Authorization = new AuthorizationMetadata(null, ["reviewer"]) },
+                    new ProcessStepResponse { Name = "AuthenticatedStep" },
+                ],
+            }],
+            Queryables = [new QueryableRegistryItem
+            {
+                ServiceName = "catalog",
+                Name = "securedsource",
+                Authorization = new AuthorizationMetadata(null, ["internal"]),
+                Bindings = new RegistryTransportBindings
+                {
+                    Http = [new RegistryHttpOperation { Operation = "query", Method = "POST", Path = "/catalog/1/queryable/securedsource/query" }],
+                },
+            }],
+        };
+        using var publish = new HttpRequestMessage(HttpMethod.Post, "/registry/instances")
+        {
+            Content = JsonContent.Create(registration, options: KaleidoJsonOptions.Options),
+        };
+        publish.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("catalog-app", ["registrant", "Kaleido.Registrant.catalog"]));
+        using var registered = await client.SendAsync(publish, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
+
+        using var response = await client.GetAsync("/registry", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var visible = Assert.IsType<KaleidoRegistry>(await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        var step = Assert.Single(Assert.Single(visible.Processes).Steps!);
+        Assert.Equal("PublicStep", step.Name);
+        Assert.True(step.Authorization?.AllowAnonymous);
+        Assert.Empty(visible.Queryables);
+    }
+
+    [Fact]
+    public async Task ViewAuthorization_RetainsAVisibleViewWithoutExposingItsDeniedSourceBinding()
+    {
+        await using var app = await StartAsync(enforceAuthorization: true);
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        var registration = Registration(Guid.NewGuid()) with
+        {
+            Queryables = [new QueryableRegistryItem
+            {
+                ServiceName = "catalog",
+                Name = "securedsource",
+                Authorization = new AuthorizationMetadata(null, ["internal"]),
+                Bindings = new RegistryTransportBindings
+                {
+                    Http = [new RegistryHttpOperation { Operation = "query", Method = "POST", Path = "/catalog/1/queryable/securedsource/query" }],
+                },
+                Views =
+                [
+                    new QueryableRegistryViewItem
+                    {
+                        Name = "adminview",
+                        Authorization = new AuthorizationMetadata(null, ["admin"]),
+                        Bindings = new RegistryTransportBindings
+                        {
+                            Http = [new RegistryHttpOperation { Operation = "query", Method = "POST", Path = "/catalog/1/queryable/securedsource/adminview/query" }],
+                        },
+                    },
+                    new QueryableRegistryViewItem
+                    {
+                        Name = "internalview",
+                        Authorization = new AuthorizationMetadata(null, ["internal", "admin"]),
+                        Bindings = new RegistryTransportBindings
+                        {
+                            Http = [new RegistryHttpOperation { Operation = "query", Method = "POST", Path = "/catalog/1/queryable/securedsource/internalview/query" }],
+                        },
+                    },
+                ],
+            }],
+        };
+        using var publish = new HttpRequestMessage(HttpMethod.Post, "/registry/instances")
+        {
+            Content = JsonContent.Create(registration, options: KaleidoJsonOptions.Options),
+        };
+        publish.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("catalog-app", ["registrant", "Kaleido.Registrant.catalog"]));
+        using var registered = await client.SendAsync(publish, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
+
+        async Task<KaleidoRegistry> ViewForAsync(string[] roles)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/registry");
+            request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", roles));
+            using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            return Assert.IsType<KaleidoRegistry>(await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        }
+
+        var viewer = await ViewForAsync(["viewer"]);
+        var admin = await ViewForAsync(["admin"]);
+        var internalCaller = await ViewForAsync(["internal"]);
+        Assert.Empty(viewer.Queryables);
+        var adminSource = Assert.Single(admin.Queryables);
+        Assert.Empty(adminSource.Bindings.Http);
+        Assert.Equal(["adminview", "internalview"], adminSource.Views.Select(view => view.Name).Order(StringComparer.Ordinal));
+        var internalSource = Assert.Single(internalCaller.Queryables);
+        Assert.Equal("/catalog/1/queryable/securedsource/query", Assert.Single(internalSource.Bindings.Http).Path);
+        Assert.Equal("internalview", Assert.Single(internalSource.Views).Name);
+    }
+
+    [Fact]
     public async Task BearerRolesAndHostAuthorizationHandler_FilterProcessDiscoveryPerCaller()
     {
         await using var app = await StartAsync(enforceAuthorization: true, superuserHandler: true);
@@ -318,10 +434,10 @@ public sealed class RegistryHttpServerFunctionalTests
         using var registered = await client.SendAsync(publish, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
 
-        async Task<(string[] Steps, string? Revision)> StepsForAsync(string user, string[] roles)
+        async Task<(string[] Steps, string? Revision)> StepsForAsync(string user, string[] roles, bool appOnly = false)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, "/registry");
-            request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User(user, roles));
+            request.Headers.Authorization = TestJwtAuthentication.Bearer(appOnly ? TestTokenIssuer.App(user, roles) : TestTokenIssuer.User(user, roles));
             using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var visible = Assert.IsType<KaleidoRegistry>(await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
@@ -330,10 +446,15 @@ public sealed class RegistryHttpServerFunctionalTests
 
         var reviewer = await StepsForAsync("alice", ["reviewer"]);
         var viewer = await StepsForAsync("alice", ["viewer"]);
+        var wrongCase = await StepsForAsync("alice", ["REVIEWER"]);
+        var appOnly = await StepsForAsync("intake", ["reviewer"], appOnly: true);
         var clinician = await StepsForAsync("carol", ["clinician"]);
         var superuser = await StepsForAsync("root", ["superuser"]);
         Assert.Equal(["OpenStep", "ReviewOrderStep"], reviewer.Steps);
         Assert.Equal(["OpenStep"], viewer.Steps);
+        Assert.Equal(viewer.Steps, wrongCase.Steps);
+        Assert.Equal(viewer.Revision, wrongCase.Revision);
+        Assert.Equal(reviewer.Steps, appOnly.Steps);
         Assert.NotEqual(reviewer.Revision, viewer.Revision);
         Assert.Equal(["ClinicianStep", "OpenStep"], clinician.Steps);
         Assert.Equal(["ClinicianStep", "OpenStep", "ReviewOrderStep"], superuser.Steps);

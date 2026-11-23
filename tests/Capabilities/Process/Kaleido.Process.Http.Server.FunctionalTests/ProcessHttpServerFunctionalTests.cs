@@ -106,7 +106,7 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     [Fact]
-    public async Task AnAppOnlyBearerToken_UsesItsRolesOnTheTypedStepRoute()
+    public async Task AnAppOnlyBearerToken_UsesItsRolesOnTypedAndGenericRoutes()
     {
         await using var app = await StartAsync();
         using var client = app.GetTestClient();
@@ -116,7 +116,18 @@ public sealed class ProcessHttpServerFunctionalTests
             new ExecuteStepRequest<ReviewOrderStep> { ProcessStep = new ReviewOrderStep { Code = "A-1" } },
             KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(1, app.Services.GetRequiredService<ReviewRuns>().Count);
+        var body = new ExecuteProcessRequest
+        {
+            Steps = [new ProcessStepRequest
+            {
+                StepName = nameof(ReviewOrderStep),
+                Request = JsonSerializer.SerializeToElement(new ReviewOrderStep { Code = "A-2" }, KaleidoJsonOptions.Options),
+            }],
+        };
+        using var generic = await client.PostAsJsonAsync("/catalog/1/processes/execute", body,
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, generic.StatusCode);
+        Assert.Equal(2, app.Services.GetRequiredService<ReviewRuns>().Count);
     }
 
     [Fact]
@@ -139,6 +150,34 @@ public sealed class ProcessHttpServerFunctionalTests
         Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
         Assert.Equal(1, app.Services.GetRequiredService<ReviewRuns>().Count);
+    }
+
+    [Theory]
+    [InlineData("reviewer", HttpStatusCode.OK)]
+    [InlineData("REVIEWER", HttpStatusCode.Forbidden)]
+    [InlineData("Reviewer", HttpStatusCode.Forbidden)]
+    [InlineData("viewer", HttpStatusCode.Forbidden)]
+    public async Task ADeclaredRole_MatchesExactlyOnTypedAndGenericRoutes(string role, HttpStatusCode expected)
+    {
+        await using var app = await StartAsync();
+        using var client = Client(app, roles: [role]);
+        var step = new ReviewOrderStep { Code = "A-1" };
+        using var typed = await client.PostAsJsonAsync(StepUrl,
+            new ExecuteStepRequest<ReviewOrderStep> { ProcessStep = step },
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        var body = new ExecuteProcessRequest
+        {
+            Steps = [new ProcessStepRequest { StepName = nameof(ReviewOrderStep), Request = JsonSerializer.SerializeToElement(step, KaleidoJsonOptions.Options) }],
+        };
+        using var generic = await client.PostAsJsonAsync("/catalog/1/processes/execute", body, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(expected, typed.StatusCode);
+        Assert.Equal(expected, generic.StatusCode);
+        if (expected == HttpStatusCode.Forbidden)
+        {
+            Assert.Empty(await typed.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
+        }
+
+        Assert.Equal(expected == HttpStatusCode.OK ? 2 : 0, app.Services.GetRequiredService<ReviewRuns>().Count);
     }
 
     [Fact]
@@ -248,10 +287,15 @@ public sealed class ProcessHttpServerFunctionalTests
         using var stateResponse = await carol.GetAsync(url, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
         var state = Assert.IsType<ProcessStateSnapshot>(await stateResponse.Content.ReadFromJsonAsync<ProcessStateSnapshot>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
-        Assert.Equal("alice", state.CreatedBy?.Name);
-        Assert.Equal("bob", state.UpdatedBy?.Name);
-        Assert.Equal("alice", Assert.Single(state.Steps, step => step.StepName == nameof(ReviewOrderStep)).StartedBy?.Name);
-        Assert.Equal("bob", Assert.Single(state.Steps, step => step.StepName == nameof(OpenFollowUpStep)).StartedBy?.Name);
+        Assert.Equal(("alice", "user-alice"), (state.CreatedBy?.Name, state.CreatedBy?.Id));
+        Assert.Equal(("bob", "user-bob"), (state.UpdatedBy?.Name, state.UpdatedBy?.Id));
+        var reviewed = Assert.Single(state.Steps, step => step.StepName == nameof(ReviewOrderStep));
+        var followedUp = Assert.Single(state.Steps, step => step.StepName == nameof(OpenFollowUpStep));
+        Assert.Equal("alice", reviewed.StartedBy?.Name);
+        Assert.Equal("alice", reviewed.LastUpdatedBy?.Name);
+        Assert.NotNull(reviewed.FirstExecuted);
+        Assert.Equal("bob", followedUp.StartedBy?.Name);
+        Assert.Equal("bob", followedUp.LastUpdatedBy?.Name);
 
         using var refused = new HttpRequestMessage(HttpMethod.Post, StepUrl)
         {
