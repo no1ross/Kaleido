@@ -318,24 +318,25 @@ public sealed class RegistryHttpServerFunctionalTests
         using var registered = await client.SendAsync(publish, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
 
-        async Task<string[]> StepsForAsync(string user, string[] roles)
+        async Task<(string[] Steps, string? Revision)> StepsForAsync(string user, string[] roles)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, "/registry");
             request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User(user, roles));
             using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            var visible = await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
-            return [.. Assert.Single(Assert.IsType<KaleidoRegistry>(visible).Processes).Steps!.Select(step => step.Name).Order(StringComparer.Ordinal)];
+            var visible = Assert.IsType<KaleidoRegistry>(await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+            return ([.. Assert.Single(visible.Processes).Steps!.Select(step => step.Name).Order(StringComparer.Ordinal)], visible.Revision);
         }
 
-        var reviewer = await StepsForAsync("bob", ["reviewer"]);
+        var reviewer = await StepsForAsync("alice", ["reviewer"]);
         var viewer = await StepsForAsync("alice", ["viewer"]);
         var clinician = await StepsForAsync("carol", ["clinician"]);
         var superuser = await StepsForAsync("root", ["superuser"]);
-        Assert.Equal(["OpenStep", "ReviewOrderStep"], reviewer);
-        Assert.Equal(["OpenStep"], viewer);
-        Assert.Equal(["ClinicianStep", "OpenStep"], clinician);
-        Assert.Equal(["ClinicianStep", "OpenStep", "ReviewOrderStep"], superuser);
+        Assert.Equal(["OpenStep", "ReviewOrderStep"], reviewer.Steps);
+        Assert.Equal(["OpenStep"], viewer.Steps);
+        Assert.NotEqual(reviewer.Revision, viewer.Revision);
+        Assert.Equal(["ClinicianStep", "OpenStep"], clinician.Steps);
+        Assert.Equal(["ClinicianStep", "OpenStep", "ReviewOrderStep"], superuser.Steps);
     }
 
     [Fact]
