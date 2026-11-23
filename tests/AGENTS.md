@@ -1,4 +1,4 @@
-## Test project structure
+# Test project structure
 
 Unit-test suites generally mirror source and analyzer projects; functional and integration suites exercise composed behavior:
 
@@ -51,10 +51,12 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 Project-wide imports belong in each test `.csproj` as `<Using Include="..." />`, not `GlobalUsings.cs`. Assembly-boundary checks are pending source analyzers (#591), not SUT unit fixtures.
 
 ## Warnings
+
 Test projects build like `src/`: a warning is an error, and IDE code-style rules (unused usings, naming,
 braces...) run in the build (#406, root [`AGENTS.md`](../AGENTS.md#per-commit-quality-gate)).
 
 ## Testing conventions
+
 - When adding unit tests, scope them to a single class
 - Mock injected dependencies with `Moq`
 - In unit tests, verify that the class behaves as designed at its seam/contract boundary
@@ -91,6 +93,7 @@ Every unit-test fixture must declare its subject under test by inheriting
 computed property, whatever its kind: records and `*Options`/`*Request` types included - has its
 own fixture (KAL1009), and lives in its own file (KAL0019). The definition is in
 [`docs/ANALYZERS.md`](../docs/ANALYZERS.md#types-with-behavior).
+
 - **One SUT, its own logic.** An injected collaborator is mocked, never tested through (KAL1011). A
   record or other data type with behavior may be *used* as input in another fixture, but its logic is
   tested in its own fixture: `ProcessContextTests` covers `HasCompletedStep`; the runtime's tests
@@ -120,6 +123,7 @@ functional or integration tests.
 ## Functional test fixtures
 
 ### What a functional test is for
+
 `tests/Composed/Hosts/Kaleido.Hosting.FunctionalTests` is the non-web host suite: a consumer-owned `IHostedService` starts real Process/Queryable work through public APIs with **no generic runtime friend access**. Keep HTTP server/client and future gRPC server/client functional flows in their own protocol projects. These suites are scenario-scoped, so KAL1006's `SutFixture` rule applies to `.UnitTests` assemblies, not functional tests.
 
 A functional test proves that real Kaleido components agree with each other: it configures a host,
@@ -141,7 +145,9 @@ that namespace (e.g. `Processor/Behavior`, `IntegrationTests/EfCore`), so they c
 shared fixtures publish.
 
 ### Shared fixture state
+
 The parked `ProcessorAspNetCoreFixture` exposes:
+
 - `Client` — a pre-wired `HttpClient` pointed at the TestServer (use for raw HTTP assertions)
 - `ClientFactory` — the Kaleido client factory wired against the TestServer (use for client-level tests)
 - `TestServer` — the underlying `TestServer` instance (use when a test needs its own `CreateHandler()`)
@@ -149,7 +155,9 @@ The parked `ProcessorAspNetCoreFixture` exposes:
 It remains in `tests/Http/Http.FunctionalTests` until its other scenarios migrate.
 
 ### Real authentication: the shared test identity (#574)
+
 Tests of who may call, and of what a call carries for its caller, authenticate as a production service does: ASP.NET's JWT bearer handler over real signed tokens, not a header-driven test scheme.
+
 - `tests/Shared/Identity` (compiled into the functional projects that use it): `TestTokenIssuer` signs user tokens (`sub`, `preferred_username`, `roles`, the app as `azp`), app-only tokens (client credentials: `azp`, `client_id`, no user) and forged ones; `AddTestJwtBearer()` makes a host trust it (`MapInboundClaims = false`, roles in `roles`).
 - Such hosts run as Production and are called over `https://` (TestServer ignores the scheme), so production-only checks apply to them. `JwtAuthorizationFixture` is the example.
 - In MCP Registry tests, reserve `registry-reader` for service credentials: a caller satisfying that policy receives the **unfiltered** Registry. Exchanged test JWTs need a fresh `jti` per hop so same-second issuance cannot reproduce the inbound credential.
