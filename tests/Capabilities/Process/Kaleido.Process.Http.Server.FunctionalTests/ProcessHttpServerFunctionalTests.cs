@@ -156,6 +156,51 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task OneIdempotencyKey_HasIndependentResultsAndReplaysForDifferentCallers()
+    {
+        await using var app = await StartAsync();
+        using var alice = Client(app);
+        using var bob = Client(app, user: "bob");
+        var key = $"shared-{Guid.NewGuid():N}";
+
+        using var first = await SendAsync(alice, "A-1", key);
+        using var second = await SendAsync(bob, "A-1", key);
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        var aliceResult = Assert.IsType<ProcessResult>(await first.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        var bobResult = Assert.IsType<ProcessResult>(await second.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.NotEqual(aliceResult.ProcessId, bobResult.ProcessId);
+
+        using var aliceReplay = await SendAsync(alice, "A-1", key);
+        using var bobReplay = await SendAsync(bob, "A-1", key);
+        Assert.Equal(HttpStatusCode.OK, aliceReplay.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, bobReplay.StatusCode);
+        Assert.Equal("true", Assert.Single(aliceReplay.Headers.GetValues(KaleidoIdempotencyHeaders.Replayed)));
+        Assert.Equal("true", Assert.Single(bobReplay.Headers.GetValues(KaleidoIdempotencyHeaders.Replayed)));
+        Assert.Equal(aliceResult.ProcessId, Assert.IsType<ProcessResult>(await aliceReplay.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).ProcessId);
+        Assert.Equal(bobResult.ProcessId, Assert.IsType<ProcessResult>(await bobReplay.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).ProcessId);
+        Assert.Equal(2, app.Services.GetRequiredService<ReviewRuns>().Count);
+    }
+
+    [Fact]
+    public async Task IdempotencyScope_SeparatesCallerNamesAndKeysContainingASeparator()
+    {
+        await using var app = await StartAsync();
+        using var alice = Client(app);
+        using var other = Client(app, user: "alice:tenant");
+        var suffix = Guid.NewGuid().ToString("N");
+
+        using var first = await SendAsync(alice, "A-1", $"tenant:{suffix}");
+        using var second = await SendAsync(other, "A-1", suffix);
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        var firstResult = Assert.IsType<ProcessResult>(await first.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        var secondResult = Assert.IsType<ProcessResult>(await second.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.NotEqual(firstResult.ProcessId, secondResult.ProcessId);
+        Assert.Equal(2, app.Services.GetRequiredService<ReviewRuns>().Count);
+    }
+
+    [Fact]
     public async Task ACorrectedKeyedRequest_CanRunAfterTheFirstRequestWasRefused()
     {
         await using var app = await StartAsync();
@@ -274,11 +319,11 @@ public sealed class ProcessHttpServerFunctionalTests
         return await client.SendAsync(request, TestContext.Current.CancellationToken);
     }
 
-    private static HttpClient Client(WebApplication app, string[]? roles = null)
+    private static HttpClient Client(WebApplication app, string[]? roles = null, string user = "alice")
     {
         var client = app.GetTestClient();
         client.BaseAddress = new Uri("https://localhost/");
-        client.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", roles ?? ["reviewer"]));
+        client.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User(user, roles ?? ["reviewer"]));
         return client;
     }
 
