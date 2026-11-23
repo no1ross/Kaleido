@@ -206,6 +206,29 @@ public sealed class RegistryHttpServerFunctionalTests
         Assert.NotEqual(during.Headers.ETag, after.Headers.ETag);
     }
 
+    [Theory]
+    [InlineData(-1, true)]
+    [InlineData(0, false)]
+    public async Task RegistryView_ExpiresAtTheConfiguredLifetime(long ticksFromExpiration, bool sameView)
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero));
+        await using var app = await StartAsync(fakeTime: time, registryOptions: new KaleidoRegistryOptions
+        {
+            Cache = new KaleidoRegistryCacheOptions { ViewTtl = TimeSpan.FromSeconds(3) },
+        });
+        using var client = app.GetTestClient();
+        using var registered = await client.PostAsJsonAsync("/registry/instances", Registration(Guid.NewGuid()), KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
+        using var firstResponse = await client.GetAsync("/registry", TestContext.Current.CancellationToken);
+        var first = Assert.IsType<KaleidoRegistry>(await firstResponse.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+
+        time.Advance(TimeSpan.FromSeconds(3) + TimeSpan.FromTicks(ticksFromExpiration));
+        using var secondResponse = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        var second = Assert.IsType<KaleidoRegistryStatus>(await secondResponse.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(sameView ? first.GeneratedAt : time.GetUtcNow(), second.GeneratedAt);
+        Assert.Equal("orders", Assert.Single(first.Queryables).Name);
+    }
+
     [Fact]
     public async Task CapabilitiesAndAvailability_KeepTheirETagsWhenOnlyInstanceStatusChanges()
     {
