@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Kaleido.Testing.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -191,11 +192,27 @@ public sealed class KaleidoHttpCompositionFunctionalTests
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/clinic/1/queryable/undeclaredsource/query", new { query = new { } }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/clinic/1/queryable/undeclaredsource/undeclaredview/query", new { query = new { } }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/clinic/1/processes/steps/undeclaredstep", new { processStep = new { } }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).StatusCode);
+        var undeclared = new ExecuteProcessRequest
+        {
+            Steps = [new ProcessStepRequest
+            {
+                StepName = nameof(Scenarios.UndeclaredStep),
+                Request = JsonSerializer.SerializeToElement(new Scenarios.UndeclaredStep(), KaleidoJsonOptions.Options),
+            }],
+        };
+        using var deniedGeneric = await client.PostAsJsonAsync("/clinic/1/processes/execute", undeclared,
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Forbidden, deniedGeneric.StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/clinic/1/queryable/undeclaredsource/visibleview/query", new { query = new { } }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(QueryUrl, new { query = new { } }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(ProcessUrl,
             new ExecuteStepRequest<Scenarios.ReviewOrderStep> { ProcessStep = new Scenarios.ReviewOrderStep { Code = "A-1" } },
             KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).StatusCode);
+        client.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("bob", ["viewer", "host-allowed"]));
+        using var deniedDeclared = await client.PostAsJsonAsync(ProcessUrl,
+            new ExecuteStepRequest<Scenarios.ReviewOrderStep> { ProcessStep = new Scenarios.ReviewOrderStep { Code = "A-2" } },
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Forbidden, deniedDeclared.StatusCode);
     }
 
     [Fact]

@@ -288,6 +288,42 @@ public sealed class RegistryHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task ZeroTrustRegistry_HidesUndeclaredStepsEvenFromACallerWithAllDeclaredRoles()
+    {
+        await using var app = await StartAsync(enforceAuthorization: true, zeroTrust: true);
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        var registration = Registration(Guid.NewGuid()) with
+        {
+            Queryables = [],
+            Processes = [new ProcessRegistryItem
+            {
+                ServiceName = "catalog",
+                Name = "catalog",
+                Steps =
+                [
+                    new ProcessStepResponse { Name = "DeclaredStep", Authorization = new AuthorizationMetadata(null, ["internal"]) },
+                    new ProcessStepResponse { Name = "UndeclaredStep" },
+                ],
+            }],
+        };
+        using var publish = new HttpRequestMessage(HttpMethod.Post, "/registry/instances")
+        {
+            Content = JsonContent.Create(registration, options: KaleidoJsonOptions.Options),
+        };
+        publish.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("catalog-app", ["registrant", "Kaleido.Registrant.catalog"]));
+        using var registered = await client.SendAsync(publish, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/registry");
+        request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", ["internal", "clinician", "admin"]));
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var visible = await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal("DeclaredStep", Assert.Single(Assert.Single(Assert.IsType<KaleidoRegistry>(visible).Processes).Steps!).Name);
+    }
+
+    [Fact]
     public async Task IdenticalFilteredViews_HaveDistinctValidatorsForDifferentAuthenticatedCallers()
     {
         await using var app = await StartAsync(enforceAuthorization: true);
@@ -343,7 +379,7 @@ public sealed class RegistryHttpServerFunctionalTests
         Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/catalog/1" }],
     };
 
-    private static async Task<WebApplication> StartAsync(bool enforceAuthorization = false, KaleidoRegistryOptions? registryOptions = null)
+    private static async Task<WebApplication> StartAsync(bool enforceAuthorization = false, KaleidoRegistryOptions? registryOptions = null, bool zeroTrust = false)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -364,7 +400,7 @@ public sealed class RegistryHttpServerFunctionalTests
             Assemblies = [typeof(RegistryHttpServerFunctionalTests).Assembly],
             TypeFilter = _ => false,
         })
-            .AddServer(new() { AuthorizationMode = enforceAuthorization ? KaleidoAuthorizationMode.Authenticated : KaleidoAuthorizationMode.None })
+            .AddServer(new() { AuthorizationMode = zeroTrust ? KaleidoAuthorizationMode.ZeroTrust : enforceAuthorization ? KaleidoAuthorizationMode.Authenticated : KaleidoAuthorizationMode.None })
             .AddHttp()
             .AddControlRegistry(enforceAuthorization
                 ? (registryOptions ?? new KaleidoRegistryOptions()) with { RegistrantPolicy = "registry-registrant", ReaderPolicy = "registry-reader" }
