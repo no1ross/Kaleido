@@ -42,6 +42,37 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task AnAuthenticatedCaller_KeepsItsInboundRequestId()
+    {
+        await using var app = await StartAsync(authorizationMode: KaleidoAuthorizationMode.None);
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/catalog/1/processes/{Guid.Empty:D}");
+        request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", ["reviewer"]));
+        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, "req-42");
+
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("req-42", Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
+    }
+
+    [Fact]
+    public async Task AnAnonymousCaller_GetsAGeneratedRequestIdInsteadOfTheOneItSent()
+    {
+        await using var app = await StartAsync(authorizationMode: KaleidoAuthorizationMode.None);
+        using var client = app.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/catalog/1/processes/{Guid.Empty:D}");
+        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, "req-42");
+
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var echoed = Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId));
+        Assert.NotEqual("req-42", echoed);
+        Assert.True(Guid.TryParse(echoed, out _));
+    }
+
+    [Fact]
     public async Task AService_MapsOnlyItsVersionedStepRoute()
     {
         await using var app = await StartAsync();
@@ -251,7 +282,7 @@ public sealed class ProcessHttpServerFunctionalTests
         return client;
     }
 
-    private static async Task<WebApplication> StartAsync(bool handOff = false)
+    private static async Task<WebApplication> StartAsync(bool handOff = false, KaleidoAuthorizationMode authorizationMode = KaleidoAuthorizationMode.Authenticated)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -276,7 +307,7 @@ public sealed class ProcessHttpServerFunctionalTests
             .AddProcess()
             .AddContextStore<TestProcessContextStore>()
             .AddIdempotencyStore<TestIdempotencyStore>()
-            .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
+            .AddServer(new() { AuthorizationMode = authorizationMode })
             .AddHttp()
             .AddProcessHttpServer();
         var app = builder.Build();
