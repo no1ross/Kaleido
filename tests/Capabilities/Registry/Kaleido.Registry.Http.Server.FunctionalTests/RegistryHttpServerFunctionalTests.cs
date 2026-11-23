@@ -56,6 +56,49 @@ public sealed class RegistryHttpServerFunctionalTests
         Assert.False(unrelated.Headers.Contains(KaleidoCorrelationHeaders.RequestId));
     }
 
+    [Theory]
+    [InlineData("anonymous")]
+    [InlineData("user")]
+    [InlineData("wrong-app")]
+    [InlineData("missing-version")]
+    public async Task Registration_RequiresTheOwnServiceApplicationAndAVersion(string caller)
+    {
+        await using var app = await StartAsync(enforceAuthorization: true);
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        var registration = Registration(Guid.NewGuid()) with { ServiceVersion = caller == "missing-version" ? string.Empty : "1" };
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/registry/instances")
+        {
+            Content = JsonContent.Create(registration, options: KaleidoJsonOptions.Options),
+        };
+        var token = caller switch
+        {
+            "anonymous" => null,
+            "user" => TestTokenIssuer.User("alice", ["viewer"], app: "catalog-app"),
+            "wrong-app" => TestTokenIssuer.App("other-app", ["registrant", "Kaleido.Registrant.other"]),
+            "missing-version" => TestTokenIssuer.App("catalog-app", ["registrant", "Kaleido.Registrant.catalog"]),
+            _ => throw new ArgumentOutOfRangeException(nameof(caller)),
+        };
+        if (token is not null)
+        {
+            request.Headers.Authorization = TestJwtAuthentication.Bearer(token);
+        }
+
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        var invalidVersion = caller == "missing-version";
+        Assert.Equal(invalidVersion ? HttpStatusCode.BadRequest : HttpStatusCode.Forbidden, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(invalidVersion ? RegistryErrorCodes.InvalidRegistration : RegistryErrorCodes.RegistrantNotAllowed,
+            Assert.Single(Assert.IsType<KaleidoErrorResponse>(error).Errors).Code);
+
+        using var read = new HttpRequestMessage(HttpMethod.Get, "/registry/capabilities");
+        read.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("reader", ["registry-reader"]));
+        using var capabilities = await client.SendAsync(read, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, capabilities.StatusCode);
+        var published = Assert.IsType<KaleidoRegistry>(await capabilities.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Empty(published.Queryables);
+    }
+
     [Fact]
     public async Task StandaloneAuthority_RegistrationAndRemovalInvalidateTheCachedView()
     {
@@ -83,6 +126,40 @@ public sealed class RegistryHttpServerFunctionalTests
         using var afterRemoval = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
         var noInstances = await afterRemoval.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
         Assert.Empty(Assert.IsType<KaleidoRegistryStatus>(noInstances).Services.SelectMany(x => x.Instances));
+    }
+
+    [Fact]
+    public async Task FirstRegisteredServiceVersion_RemainsCurrentWhenAnotherVersionJoins()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        var first = Registration(Guid.NewGuid());
+        var second = Registration(Guid.NewGuid()) with
+        {
+            ServiceVersion = "2",
+            BuildVersion = "2.0.0-preview.1",
+            Queryables = [new QueryableRegistryItem
+            {
+                ServiceName = "catalog",
+                Name = "orders",
+                Bindings = new RegistryTransportBindings
+                {
+                    Http = [new RegistryHttpOperation { Operation = "query", Method = "POST", Path = "/catalog/2/queryable/orders/query" }],
+                },
+            }],
+            Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/catalog/2" }],
+        };
+        using var firstResponse = await client.PostAsJsonAsync("/registry/instances", first, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var secondResponse = await client.PostAsJsonAsync("/registry/instances", second, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, secondResponse.StatusCode);
+
+        using var statusResponse = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        var status = Assert.IsType<KaleidoRegistryStatus>(await statusResponse.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal([("1", true), ("2", false)], status.Services.OrderBy(service => service.ServiceVersion, StringComparer.Ordinal).Select(service => (service.ServiceVersion, service.IsCurrent)));
+        using var capabilitiesResponse = await client.GetAsync("/registry/capabilities", TestContext.Current.CancellationToken);
+        var capabilities = Assert.IsType<KaleidoRegistry>(await capabilitiesResponse.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(["1", "2"], capabilities.Queryables.Select(item => item.ServiceVersion).Order(StringComparer.Ordinal));
     }
 
     [Fact]
