@@ -322,6 +322,41 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task Escalation_HidesAnAdminRequiredStepFromTheClerk_ButShowsItToTheAdmin()
+    {
+        await using var app = await StartAsync(includeVisibility: true);
+        using var clerk = Client(app, roles: ["vis-clerk"]);
+        using var admin = Client(app, roles: ["vis-admin"]);
+        using var startedResponse = await clerk.PostAsJsonAsync("/catalog/1/processes/steps/visibilitystartstep",
+            new ExecuteStepRequest<VisibilityStartStep> { ProcessStep = new VisibilityStartStep() },
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, startedResponse.StatusCode);
+        var started = Assert.IsType<ProcessResult>(await startedResponse.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal([nameof(VisibilityClerkStep), nameof(VisibilityEscalateStep)], started.AvailableSteps.Order(StringComparer.Ordinal));
+        Assert.Null(started.Notice);
+
+        using var escalate = new HttpRequestMessage(HttpMethod.Post, "/catalog/1/processes/steps/visibilityescalatestep")
+        {
+            Content = JsonContent.Create(new ExecuteStepRequest<VisibilityEscalateStep> { ProcessStep = new VisibilityEscalateStep() }, options: KaleidoJsonOptions.Options),
+        };
+        escalate.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, started.ProcessId.ToString("D"));
+        using var escalatedResponse = await clerk.SendAsync(escalate, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, escalatedResponse.StatusCode);
+        var escalated = Assert.IsType<ProcessResult>(await escalatedResponse.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Null(escalated.RequiredStep);
+        Assert.Empty(escalated.AvailableSteps);
+        Assert.Equal(ProcessorErrorCodes.NotPermitted, escalated.Notice?.Code);
+
+        var url = $"/catalog/1/processes/{started.ProcessId:D}";
+        var clerkState = Assert.IsType<ProcessStateSnapshot>(await clerk.GetFromJsonAsync<ProcessStateSnapshot>(url, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Null(clerkState.RequiredStep);
+        Assert.Empty(clerkState.AvailableSteps);
+        Assert.Equal(ProcessorErrorCodes.NotPermitted, clerkState.Notice?.Code);
+        var adminState = Assert.IsType<ProcessStateSnapshot>(await admin.GetFromJsonAsync<ProcessStateSnapshot>(url, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(nameof(VisibilityAdminStep), adminState.RequiredStep);
+    }
+
+    [Fact]
     public async Task ContinuationNames_AreFilteredForTheCallerOnExecuteAndState()
     {
         await using var app = await StartAsync();
@@ -562,7 +597,8 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     private static async Task<WebApplication> StartAsync(bool handOff = false, KaleidoAuthorizationMode authorizationMode = KaleidoAuthorizationMode.Authenticated,
-        bool includePolicyStep = false, bool superuserHandler = false, bool includeAnonymousStep = false, bool includeOpenStep = false)
+        bool includePolicyStep = false, bool superuserHandler = false, bool includeAnonymousStep = false, bool includeOpenStep = false,
+        bool includeVisibility = false)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -588,8 +624,12 @@ public sealed class ProcessHttpServerFunctionalTests
             ServiceName = "catalog",
             ServiceVersion = "1",
             Assemblies = [typeof(ProcessHttpServerFunctionalTests).Assembly],
-            TypeFilter = type => handOff
-                ? type == typeof(HandOffStep) || type == typeof(HandOffHandler)
+            TypeFilter = type => includeVisibility
+                ? type == typeof(VisibilityStartStep) || type == typeof(VisibilityStartHandler)
+                    || type == typeof(VisibilityClerkStep) || type == typeof(VisibilityClerkHandler)
+                    || type == typeof(VisibilityEscalateStep) || type == typeof(VisibilityEscalateHandler)
+                    || type == typeof(VisibilityAdminStep) || type == typeof(VisibilityAdminHandler)
+                : handOff ? type == typeof(HandOffStep) || type == typeof(HandOffHandler)
                 : type == typeof(ReviewOrderStep) || type == typeof(ReviewOrderHandler)
                     || type == typeof(AdminOnlyStep) || type == typeof(AdminOnlyHandler)
                     || (includePolicyStep && (type == typeof(ClinicianStep) || type == typeof(ClinicianHandler)))
@@ -686,6 +726,50 @@ public sealed class ProcessHttpServerFunctionalTests
     public sealed class OpenFollowUpHandler : IProcessStepHandler<OpenFollowUpStep>
     {
         public Task<ProcessStepHandlerResult> ExecuteAsync(OpenFollowUpStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
+    }
+
+    [ProcessStep(DisplayName = "Visibility start", Description = "Opens a caller-visible process")]
+    [KaleidoAuthorization(Roles = "vis-clerk,vis-admin")]
+    public sealed record VisibilityStartStep : IProcessStep;
+
+    public sealed class VisibilityStartHandler : IProcessStepHandler<VisibilityStartStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(VisibilityStartStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
+    }
+
+    [ProcessStep(DisplayName = "Clerk work", Description = "A clerk records the process")]
+    [KaleidoAuthorization(Roles = "vis-clerk,vis-admin")]
+    [DependsOn<VisibilityStartStep>]
+    [AvailableUntil<VisibilityAdminStep>]
+    public sealed record VisibilityClerkStep : IProcessStep;
+
+    public sealed class VisibilityClerkHandler : IProcessStepHandler<VisibilityClerkStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(VisibilityClerkStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
+    }
+
+    [ProcessStep(DisplayName = "Escalation", Description = "Requires admin work to continue")]
+    [KaleidoAuthorization(Roles = "vis-clerk")]
+    [DependsOn<VisibilityStartStep>]
+    public sealed record VisibilityEscalateStep : IProcessStep;
+
+    public sealed class VisibilityEscalateHandler : IProcessStepHandler<VisibilityEscalateStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(VisibilityEscalateStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success<VisibilityAdminStep>());
+    }
+
+    [ProcessStep(DisplayName = "Admin work", Description = "Resolves a clerk escalation")]
+    [KaleidoAuthorization(Roles = "vis-admin")]
+    [DependsOn<VisibilityStartStep>]
+    public sealed record VisibilityAdminStep : IProcessStep;
+
+    public sealed class VisibilityAdminHandler : IProcessStepHandler<VisibilityAdminStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(VisibilityAdminStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
             Task.FromResult(ProcessStepHandlerResult.Success());
     }
 

@@ -290,6 +290,85 @@ public sealed class RegistryHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task FilteredRegistry_HidesUnauthorizedRelationshipsAndLookupsWithoutDroppingTheInput()
+    {
+        await using var app = await StartAsync(enforceAuthorization: true);
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        var clerkAndAdmin = new AuthorizationMetadata(null, ["vis-clerk", "vis-admin"]);
+        var adminOnly = new AuthorizationMetadata(null, ["vis-admin"]);
+        var registration = Registration(Guid.NewGuid()) with
+        {
+            Queryables = [new QueryableRegistryItem
+            {
+                ServiceName = "catalog",
+                Name = "PatientSource",
+                Authorization = adminOnly,
+                Bindings = new RegistryTransportBindings
+                {
+                    Http = [new RegistryHttpOperation { Operation = "query", Method = "POST", Path = "/catalog/1/queryable/patientsource/query" }],
+                },
+            }],
+            Processes = [new ProcessRegistryItem
+            {
+                ServiceName = "catalog",
+                Name = "catalog",
+                Steps =
+                [
+                    new ProcessStepResponse { Name = "StartStep", Authorization = clerkAndAdmin },
+                    new ProcessStepResponse { Name = "AdminStep", Authorization = adminOnly },
+                    new ProcessStepResponse
+                    {
+                        Name = "ClerkStep",
+                        Authorization = clerkAndAdmin,
+                        Dependencies = [new ProcessStepSummary { Name = "StartStep", Authorization = clerkAndAdmin }],
+                        AvailableUntil = [new ProcessStepSummary { Name = "AdminStep", Authorization = adminOnly }],
+                        Fields = [new ProcessFieldMetadata
+                        {
+                            Name = "PatientId",
+                            DataType = new DataTypeMetadata("string", "uuid"),
+                            Lookup = new ProcessFieldLookup { Service = "catalog", Source = "PatientSource", Field = "Id", Group = "patient" },
+                        }],
+                    },
+                ],
+            }],
+        };
+        using var publish = new HttpRequestMessage(HttpMethod.Post, "/registry/instances")
+        {
+            Content = JsonContent.Create(registration, options: KaleidoJsonOptions.Options),
+        };
+        publish.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("catalog-app", ["registrant", "Kaleido.Registrant.catalog"]));
+        using var registered = await client.SendAsync(publish, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
+
+        async Task<KaleidoRegistry> ForRoleAsync(string role)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/registry");
+            request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", [role]));
+            using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            return Assert.IsType<KaleidoRegistry>(await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        }
+
+        var clerk = await ForRoleAsync("vis-clerk");
+        var admin = await ForRoleAsync("vis-admin");
+        var clerkSteps = Assert.Single(clerk.Processes).Steps!;
+        var clerkStep = Assert.Single(clerkSteps, step => step.Name == "ClerkStep");
+        Assert.Equal("StartStep", Assert.Single(clerkStep.Dependencies).Name);
+        Assert.Empty(clerkStep.AvailableUntil);
+        var input = Assert.Single(clerkStep.Fields);
+        Assert.Null(input.Lookup);
+        Assert.Equal("pro_not_permitted", input.Notice?.Code);
+        Assert.DoesNotContain(clerkSteps, step => step.Name == "AdminStep");
+        Assert.Empty(clerk.Queryables);
+
+        var adminStep = Assert.Single(Assert.Single(admin.Processes).Steps!, step => step.Name == "ClerkStep");
+        Assert.Equal("AdminStep", Assert.Single(adminStep.AvailableUntil).Name);
+        Assert.Equal("PatientSource", Assert.Single(adminStep.Fields).Lookup?.Source);
+        Assert.Equal("PatientSource", Assert.Single(admin.Queryables).Name);
+    }
+
+    [Fact]
     public async Task AnonymousRegistryRead_AdvertisesOnlyAnonymousSteps_NotAuthenticatedSources()
     {
         await using var app = await StartAsync(enforceAuthorization: true);
