@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Kaleido.Testing.Identity;
 using Kaleido.Process.Exceptions;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
@@ -70,6 +72,124 @@ public sealed class ProcessHttpServerFunctionalTests
         var echoed = Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId));
         Assert.NotEqual("req-42", echoed);
         Assert.True(Guid.TryParse(echoed, out _));
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("wrong-audience")]
+    [InlineData("forged")]
+    public async Task AStep_RejectsMissingOrInvalidBearerTokens(string tokenKind)
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        using var request = new HttpRequestMessage(HttpMethod.Post, StepUrl)
+        {
+            Content = JsonContent.Create(new ExecuteStepRequest<ReviewOrderStep> { ProcessStep = new ReviewOrderStep { Code = "A-1" } }, options: KaleidoJsonOptions.Options),
+        };
+        var token = tokenKind switch
+        {
+            "missing" => null,
+            "wrong-audience" => TestTokenIssuer.User("bob", ["reviewer"], audience: "another-api"),
+            "forged" => TestTokenIssuer.Forged("bob", ["reviewer"]),
+            _ => throw new ArgumentOutOfRangeException(nameof(tokenKind)),
+        };
+        if (token is not null)
+        {
+            request.Headers.Authorization = TestJwtAuthentication.Bearer(token);
+        }
+
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("Bearer", Assert.Single(response.Headers.WwwAuthenticate).Scheme);
+        Assert.Equal(0, app.Services.GetRequiredService<ReviewRuns>().Count);
+    }
+
+    [Fact]
+    public async Task AnAppOnlyBearerToken_UsesItsRolesOnTheTypedStepRoute()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        client.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("intake", ["reviewer"]));
+        using var response = await client.PostAsJsonAsync(StepUrl,
+            new ExecuteStepRequest<ReviewOrderStep> { ProcessStep = new ReviewOrderStep { Code = "A-1" } },
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, app.Services.GetRequiredService<ReviewRuns>().Count);
+    }
+
+    [Fact]
+    public async Task GenericExecute_UsesTheBearerTokensStepRole()
+    {
+        await using var app = await StartAsync();
+        using var reviewer = Client(app);
+        using var viewer = Client(app, roles: ["viewer"]);
+        var body = new ExecuteProcessRequest
+        {
+            Steps = [new ProcessStepRequest
+            {
+                StepName = nameof(ReviewOrderStep),
+                Request = JsonSerializer.SerializeToElement(new ReviewOrderStep { Code = "A-1" }, KaleidoJsonOptions.Options),
+            }],
+        };
+
+        using var allowed = await reviewer.PostAsJsonAsync("/catalog/1/processes/execute", body, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var denied = await viewer.PostAsJsonAsync("/catalog/1/processes/execute", body, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        Assert.Equal(1, app.Services.GetRequiredService<ReviewRuns>().Count);
+    }
+
+    [Fact]
+    public async Task NamedHostPolicy_AuthorizesTypedAndGenericBearerCalls()
+    {
+        await using var app = await StartAsync(includePolicyStep: true);
+        using var clinician = Client(app, roles: ["clinician"]);
+        using var reviewer = Client(app);
+        var body = new ExecuteProcessRequest
+        {
+            Steps = [new ProcessStepRequest
+            {
+                StepName = nameof(ClinicianStep),
+                Request = JsonSerializer.SerializeToElement(new ClinicianStep(), KaleidoJsonOptions.Options),
+            }],
+        };
+
+        using var typedAllowed = await clinician.PostAsJsonAsync("/catalog/1/processes/steps/clinicianstep",
+            new ExecuteStepRequest<ClinicianStep> { ProcessStep = new ClinicianStep() }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var genericAllowed = await clinician.PostAsJsonAsync("/catalog/1/processes/execute", body, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var typedDenied = await reviewer.PostAsJsonAsync("/catalog/1/processes/steps/clinicianstep",
+            new ExecuteStepRequest<ClinicianStep> { ProcessStep = new ClinicianStep() }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var genericDenied = await reviewer.PostAsJsonAsync("/catalog/1/processes/execute", body, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, typedAllowed.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, genericAllowed.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, typedDenied.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, genericDenied.StatusCode);
+    }
+
+    [Fact]
+    public async Task HostsOwnSuperuserRoleHandler_AdmitsTypedAndGenericCalls()
+    {
+        await using var app = await StartAsync(superuserHandler: true);
+        using var client = Client(app, roles: ["superuser"]);
+        var body = new ExecuteProcessRequest
+        {
+            Steps = [new ProcessStepRequest
+            {
+                StepName = nameof(ReviewOrderStep),
+                Request = JsonSerializer.SerializeToElement(new ReviewOrderStep { Code = "A-2" }, KaleidoJsonOptions.Options),
+            }],
+        };
+
+        using var typed = await client.PostAsJsonAsync(StepUrl,
+            new ExecuteStepRequest<ReviewOrderStep> { ProcessStep = new ReviewOrderStep { Code = "A-1" } },
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var generic = await client.PostAsJsonAsync("/catalog/1/processes/execute", body,
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, typed.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, generic.StatusCode);
+        Assert.Equal(2, app.Services.GetRequiredService<ReviewRuns>().Count);
     }
 
     [Fact]
@@ -327,11 +447,21 @@ public sealed class ProcessHttpServerFunctionalTests
         return client;
     }
 
-    private static async Task<WebApplication> StartAsync(bool handOff = false, KaleidoAuthorizationMode authorizationMode = KaleidoAuthorizationMode.Authenticated)
+    private static async Task<WebApplication> StartAsync(bool handOff = false, KaleidoAuthorizationMode authorizationMode = KaleidoAuthorizationMode.Authenticated,
+        bool includePolicyStep = false, bool superuserHandler = false)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Services.AddTestJwtBearer();
+        if (includePolicyStep)
+        {
+            builder.Services.AddAuthorization(options => options.AddPolicy("clinician-only", policy => policy.RequireRole("clinician")));
+        }
+
+        if (superuserHandler)
+        {
+            builder.Services.AddSingleton<IAuthorizationHandler, SuperuserRoleHandler>();
+        }
         builder.Services.AddSingleton<ReviewRuns>();
         builder.Services.AddSingleton(new StoredProcesses());
         builder.Services.AddSingleton(new StoredIdempotency());
@@ -346,7 +476,8 @@ public sealed class ProcessHttpServerFunctionalTests
             TypeFilter = type => handOff
                 ? type == typeof(HandOffStep) || type == typeof(HandOffHandler)
                 : type == typeof(ReviewOrderStep) || type == typeof(ReviewOrderHandler)
-                    || type == typeof(AdminOnlyStep) || type == typeof(AdminOnlyHandler),
+                    || type == typeof(AdminOnlyStep) || type == typeof(AdminOnlyHandler)
+                    || (includePolicyStep && (type == typeof(ClinicianStep) || type == typeof(ClinicianHandler))),
         })
             .AddEventing()
             .AddProcess()
@@ -385,6 +516,29 @@ public sealed class ProcessHttpServerFunctionalTests
         {
             runs.Increment();
             return Task.FromResult(ProcessStepHandlerResult.Success());
+        }
+    }
+
+    [ProcessStep(DisplayName = "Clinician review", Description = "Reviews a process under the host policy")]
+    [KaleidoAuthorization(Policy = "clinician-only")]
+    public sealed record ClinicianStep : IProcessStep;
+
+    public sealed class ClinicianHandler : IProcessStepHandler<ClinicianStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(ClinicianStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
+    }
+
+    private sealed class SuperuserRoleHandler : AuthorizationHandler<RolesAuthorizationRequirement>
+    {
+        protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, RolesAuthorizationRequirement requirement)
+        {
+            if (context.User.IsInRole("superuser"))
+            {
+                context.Succeed(requirement);
+            }
+
+            return Task.CompletedTask;
         }
     }
 

@@ -5,6 +5,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Kaleido.Testing.Identity;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
@@ -288,6 +290,55 @@ public sealed class RegistryHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task BearerRolesAndHostAuthorizationHandler_FilterProcessDiscoveryPerCaller()
+    {
+        await using var app = await StartAsync(enforceAuthorization: true, superuserHandler: true);
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        var registration = Registration(Guid.NewGuid()) with
+        {
+            Queryables = [],
+            Processes = [new ProcessRegistryItem
+            {
+                ServiceName = "catalog",
+                Name = "catalog",
+                Steps =
+                [
+                    new ProcessStepResponse { Name = "ReviewOrderStep", Authorization = new AuthorizationMetadata(null, ["reviewer"]) },
+                    new ProcessStepResponse { Name = "ClinicianStep", Authorization = new AuthorizationMetadata("clinician-only", []) },
+                    new ProcessStepResponse { Name = "OpenStep" },
+                ],
+            }],
+        };
+        using var publish = new HttpRequestMessage(HttpMethod.Post, "/registry/instances")
+        {
+            Content = JsonContent.Create(registration, options: KaleidoJsonOptions.Options),
+        };
+        publish.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("catalog-app", ["registrant", "Kaleido.Registrant.catalog"]));
+        using var registered = await client.SendAsync(publish, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
+
+        async Task<string[]> StepsForAsync(string user, string[] roles)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/registry");
+            request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User(user, roles));
+            using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var visible = await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+            return [.. Assert.Single(Assert.IsType<KaleidoRegistry>(visible).Processes).Steps!.Select(step => step.Name).Order(StringComparer.Ordinal)];
+        }
+
+        var reviewer = await StepsForAsync("bob", ["reviewer"]);
+        var viewer = await StepsForAsync("alice", ["viewer"]);
+        var clinician = await StepsForAsync("carol", ["clinician"]);
+        var superuser = await StepsForAsync("root", ["superuser"]);
+        Assert.Equal(["OpenStep", "ReviewOrderStep"], reviewer);
+        Assert.Equal(["OpenStep"], viewer);
+        Assert.Equal(["ClinicianStep", "OpenStep"], clinician);
+        Assert.Equal(["ClinicianStep", "OpenStep", "ReviewOrderStep"], superuser);
+    }
+
+    [Fact]
     public async Task ZeroTrustRegistry_HidesUndeclaredStepsEvenFromACallerWithAllDeclaredRoles()
     {
         await using var app = await StartAsync(enforceAuthorization: true, zeroTrust: true);
@@ -379,7 +430,8 @@ public sealed class RegistryHttpServerFunctionalTests
         Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/catalog/1" }],
     };
 
-    private static async Task<WebApplication> StartAsync(bool enforceAuthorization = false, KaleidoRegistryOptions? registryOptions = null, bool zeroTrust = false)
+    private static async Task<WebApplication> StartAsync(bool enforceAuthorization = false, KaleidoRegistryOptions? registryOptions = null, bool zeroTrust = false,
+        bool superuserHandler = false)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -390,7 +442,15 @@ public sealed class RegistryHttpServerFunctionalTests
             {
                 policies.AddPolicy("registry-registrant", policy => policy.RequireRole("registrant"));
                 policies.AddPolicy("registry-reader", policy => policy.RequireRole("registry-reader"));
+                if (superuserHandler)
+                {
+                    policies.AddPolicy("clinician-only", policy => policy.RequireRole("clinician"));
+                }
             });
+            if (superuserHandler)
+            {
+                builder.Services.AddSingleton<IAuthorizationHandler, SuperuserRoleHandler>();
+            }
         }
 
         builder.Services.AddKaleido(builder.Configuration, new()
@@ -419,5 +479,18 @@ public sealed class RegistryHttpServerFunctionalTests
         app.MapGet("/ordinary", () => Results.Text("host"));
         await app.StartAsync(TestContext.Current.CancellationToken);
         return app;
+    }
+
+    private sealed class SuperuserRoleHandler : AuthorizationHandler<RolesAuthorizationRequirement>
+    {
+        protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, RolesAuthorizationRequirement requirement)
+        {
+            if (context.User.IsInRole("superuser") && requirement.AllowedRoles.Any(role => role is "reviewer" or "clinician"))
+            {
+                context.Succeed(requirement);
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }

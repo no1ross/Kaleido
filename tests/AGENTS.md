@@ -159,7 +159,7 @@ It remains in `tests/Http/Http.FunctionalTests` until its other scenarios migrat
 Tests of who may call, and of what a call carries for its caller, authenticate as a production service does: ASP.NET's JWT bearer handler over real signed tokens, not a header-driven test scheme.
 
 - `tests/Shared/Identity` (compiled into the functional projects that use it): `TestTokenIssuer` signs user tokens (`sub`, `preferred_username`, `roles`, the app as `azp`), app-only tokens (client credentials: `azp`, `client_id`, no user) and forged ones; `AddTestJwtBearer()` makes a host trust it (`MapInboundClaims = false`, roles in `roles`).
-- Such hosts run as Production and are called over `https://` (TestServer ignores the scheme), so production-only checks apply to them. `JwtAuthorizationFixture` is the example.
+- Such hosts run as Production and are called over `https://` (TestServer ignores the scheme), so production-only checks apply to them. `ProcessHttpServerFunctionalTests` is the example.
 - In MCP Registry tests, reserve `registry-reader` for service credentials: a caller satisfying that policy receives the **unfiltered** Registry. Exchanged test JWTs need a fresh `jti` per hop so same-second issuance cannot reproduce the inbound credential.
 
 ### Writing tests that need their own DI container
