@@ -10,8 +10,11 @@ using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Internal;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Registry.Http.Server.FunctionalTests;
 
@@ -201,6 +204,86 @@ public sealed class RegistryHttpServerFunctionalTests
         var published = Assert.IsType<KaleidoRegistry>(await after.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
         Assert.Equal(["orders", "returns"], published.Queryables.Select(item => item.Name).Order(StringComparer.Ordinal));
         Assert.NotEqual(during.Headers.ETag, after.Headers.ETag);
+    }
+
+    [Fact]
+    public async Task CapabilitiesAndAvailability_KeepTheirETagsWhenOnlyInstanceStatusChanges()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero));
+        await using var app = await StartAsync(fakeTime: time);
+        using var client = app.GetTestClient();
+        var first = Registration(Guid.NewGuid());
+        var second = Registration(Guid.NewGuid());
+        using var firstRegistration = await client.PostAsJsonAsync("/registry/instances", first, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, firstRegistration.StatusCode);
+        using var capabilities = await client.GetAsync("/registry/capabilities", TestContext.Current.CancellationToken);
+        using var availability = await client.GetAsync("/registry/availability", TestContext.Current.CancellationToken);
+        using var firstStatus = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        Assert.NotNull(capabilities.Headers.ETag);
+        Assert.NotNull(availability.Headers.ETag);
+        Assert.NotNull(firstStatus.Headers.ETag);
+
+        using var secondRegistration = await client.PostAsJsonAsync("/registry/instances", second, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, secondRegistration.StatusCode);
+        using var sameAvailability = new HttpRequestMessage(HttpMethod.Get, "/registry/availability");
+        sameAvailability.Headers.IfNoneMatch.Add(availability.Headers.ETag);
+        using var unchangedAvailability = await client.SendAsync(sameAvailability, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotModified, unchangedAvailability.StatusCode);
+        using var status = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        Assert.NotEqual(firstStatus.Headers.ETag, status.Headers.ETag);
+        var twoReady = Assert.Single(Assert.IsType<KaleidoRegistryStatus>(await status.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+        Assert.Equal(2, twoReady.ReadyInstances);
+
+        using var firstUnhealthy = await client.PutAsJsonAsync($"/registry/instances/{first.InstanceId:D}/heartbeat", new RegistryHeartbeat { Healthy = false }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var secondUnhealthy = await client.PutAsJsonAsync($"/registry/instances/{second.InstanceId:D}/heartbeat", new RegistryHeartbeat { Healthy = false }, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, firstUnhealthy.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, secondUnhealthy.StatusCode);
+        time.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
+        using var sameCapabilities = new HttpRequestMessage(HttpMethod.Get, "/registry/capabilities");
+        sameCapabilities.Headers.IfNoneMatch.Add(capabilities.Headers.ETag);
+        using var unchangedCapabilities = await client.SendAsync(sameCapabilities, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotModified, unchangedCapabilities.StatusCode);
+        using var noLongerAvailable = await client.GetAsync("/registry/availability", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, noLongerAvailable.StatusCode);
+        var unavailable = Assert.Single(Assert.IsType<KaleidoRegistryAvailability>(await noLongerAvailable.Content.ReadFromJsonAsync<KaleidoRegistryAvailability>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+        Assert.Equal(RegistryStatusNames.Unavailable, unavailable.Status);
+        Assert.NotEqual(availability.Headers.ETag, noLongerAvailable.Headers.ETag);
+    }
+
+    [Fact]
+    public async Task HeartbeatExtendsARegistryLease_AndTheInstanceTurnsUnavailableAfterItExpires()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero));
+        await using var app = await StartAsync(fakeTime: time);
+        using var client = app.GetTestClient();
+        var registration = Registration(Guid.NewGuid());
+        using var first = await client.PostAsJsonAsync("/registry/instances", registration, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        var initialLease = Assert.IsType<RegistryLease>(await first.Content.ReadFromJsonAsync<RegistryLease>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(time.GetUtcNow() + TimeSpan.FromSeconds(30), initialLease.LeaseUntilUtc);
+
+        time.Advance(TimeSpan.FromSeconds(25));
+        using var heartbeat = await client.PutAsJsonAsync($"/registry/instances/{registration.InstanceId:D}/heartbeat", new RegistryHeartbeat(),
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, heartbeat.StatusCode);
+        var renewed = Assert.IsType<RegistryLease>(await heartbeat.Content.ReadFromJsonAsync<RegistryLease>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(time.GetUtcNow() + TimeSpan.FromSeconds(30), renewed.LeaseUntilUtc);
+
+        time.Advance(TimeSpan.FromSeconds(25));
+        using var beforeExpiry = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        var ready = Assert.Single(Assert.IsType<KaleidoRegistryStatus>(await beforeExpiry.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+        Assert.Equal(RegistryStatusNames.Available, ready.Status);
+        Assert.Equal(1, ready.ReadyInstances);
+
+        time.Advance(TimeSpan.FromSeconds(10));
+        using var afterExpiry = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        var unavailable = Assert.Single(Assert.IsType<KaleidoRegistryStatus>(await afterExpiry.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+        Assert.Equal(RegistryStatusNames.Unavailable, unavailable.Status);
+        Assert.Equal(0, unavailable.ReadyInstances);
+        Assert.Equal(RegistryInstanceStateNames.NotReady, Assert.Single(unavailable.Instances).State);
+        using var capabilities = await client.GetAsync("/registry/capabilities", TestContext.Current.CancellationToken);
+        var published = Assert.IsType<KaleidoRegistry>(await capabilities.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal("orders", Assert.Single(published.Queryables).Name);
     }
 
     [Fact]
@@ -750,10 +833,15 @@ public sealed class RegistryHttpServerFunctionalTests
     };
 
     private static async Task<WebApplication> StartAsync(bool enforceAuthorization = false, KaleidoRegistryOptions? registryOptions = null, bool zeroTrust = false,
-        bool superuserHandler = false)
+        bool superuserHandler = false, FakeTimeProvider? fakeTime = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
+        if (fakeTime is not null)
+        {
+            builder.Services.AddSingleton<TimeProvider>(fakeTime);
+            builder.Services.Configure<MemoryCacheOptions>(options => options.Clock = new FakeRegistryClock(fakeTime));
+        }
         if (enforceAuthorization)
         {
             builder.Services.AddTestJwtBearer();
@@ -798,6 +886,11 @@ public sealed class RegistryHttpServerFunctionalTests
         app.MapGet("/ordinary", () => Results.Text("host"));
         await app.StartAsync(TestContext.Current.CancellationToken);
         return app;
+    }
+
+    private sealed class FakeRegistryClock(FakeTimeProvider time) : ISystemClock
+    {
+        public DateTimeOffset UtcNow => time.GetUtcNow();
     }
 
     private sealed class SuperuserRoleHandler : AuthorizationHandler<RolesAuthorizationRequirement>
