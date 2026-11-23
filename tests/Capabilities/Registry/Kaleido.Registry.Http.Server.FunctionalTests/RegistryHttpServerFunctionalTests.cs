@@ -86,6 +86,47 @@ public sealed class RegistryHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task RollingBuild_WaitsToPublishANewQueryableUntilEveryReadyInstanceHasIt()
+    {
+        await using var app = await StartAsync(registryOptions: new KaleidoRegistryOptions
+        {
+            Cache = new KaleidoRegistryCacheOptions { ViewTtl = TimeSpan.FromHours(1) },
+        });
+        using var client = app.GetTestClient();
+        var old = Registration(Guid.NewGuid());
+        var next = Registration(Guid.NewGuid()) with
+        {
+            BuildVersion = "1.0.0-preview.617",
+            Queryables = [.. old.Queryables, new QueryableRegistryItem
+            {
+                ServiceName = "catalog",
+                Name = "returns",
+                Bindings = new RegistryTransportBindings
+                {
+                    Http = [new RegistryHttpOperation { Operation = "query", Method = "POST", Path = "/catalog/1/queryable/returns/query" }],
+                },
+            }],
+        };
+        using var firstRegistration = await client.PostAsJsonAsync("/registry/instances", old, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        using var secondRegistration = await client.PostAsJsonAsync("/registry/instances", next, KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, firstRegistration.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, secondRegistration.StatusCode);
+        using var during = await client.GetAsync("/registry/capabilities", TestContext.Current.CancellationToken);
+        var first = Assert.IsType<KaleidoRegistry>(await during.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal("orders", Assert.Single(first.Queryables).Name);
+        using var status = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        var instances = Assert.IsType<KaleidoRegistryStatus>(await status.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(2, Assert.Single(instances.Services).ReadyInstances);
+
+        using var removed = await client.DeleteAsync($"/registry/instances/{old.InstanceId:D}", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
+        using var after = await client.GetAsync("/registry/capabilities", TestContext.Current.CancellationToken);
+        var published = Assert.IsType<KaleidoRegistry>(await after.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(["orders", "returns"], published.Queryables.Select(item => item.Name).Order(StringComparer.Ordinal));
+        Assert.NotEqual(during.Headers.ETag, after.Headers.ETag);
+    }
+
+    [Fact]
     public async Task StandaloneAuthority_HeartbeatsReportsStatusAndRemovesAnInstance()
     {
         await using var app = await StartAsync();
