@@ -111,20 +111,22 @@ public sealed class KaleidoEndpointRouteBuilderExtensionsTests : SutFixture
     }
 
     [Theory]
+    [InlineData(null)]
     [InlineData(KaleidoAuthorizationMode.Authenticated)]
     [InlineData(KaleidoAuthorizationMode.ZeroTrust)]
-    public void MapProcess_WithoutAnAuthenticationScheme_ThrowsBeforeMapping(KaleidoAuthorizationMode mode)
+    public void MapProcess_WithoutAnAuthenticationScheme_ThrowsBeforeMapping(KaleidoAuthorizationMode? mode)
     {
         var services = WebApplication.CreateBuilder();
         services.Services.AddSingleton(Mock.Of<IProcessorRuntime>());
         services.Services.AddSingleton(new KaleidoHttpServerOptions());
         services.Services.AddSingleton(new KaleidoProcessHttpOptions());
-        services.Services.AddSingleton(new KaleidoServerOptions { AuthorizationMode = mode });
+        services.Services.AddSingleton(mode is { } selected ? new KaleidoServerOptions { AuthorizationMode = selected } : new KaleidoServerOptions());
         using var app = services.Build();
 
         var error = Assert.Throws<KaleidoConfigurationException>(app.MapKaleido().MapProcess);
 
         Assert.Equal(ConfigurationErrorCodes.AuthenticationNotConfigured, error.Code);
+        Assert.Contains("Configure AddAuthentication", error.Message, StringComparison.Ordinal);
         Assert.Empty(((IEndpointRouteBuilder)app).DataSources.SelectMany(x => x.Endpoints));
     }
 

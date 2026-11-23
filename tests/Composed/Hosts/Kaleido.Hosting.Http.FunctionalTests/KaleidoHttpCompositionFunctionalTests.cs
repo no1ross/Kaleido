@@ -153,6 +153,22 @@ public sealed class KaleidoHttpCompositionFunctionalTests
     }
 
     [Fact]
+    public async Task DefaultAuthorizationMode_RejectsAnonymousAndAdmitsAnAuthenticatedCaller()
+    {
+        await using var app = await StartServiceAsync(KaleidoAuthorizationMode.Authenticated, mapQueryable: false, useDefaultAuthorizationMode: true, requireHostPolicy: false);
+        using var client = app.GetTestClient();
+        var step = new ExecuteStepRequest<Scenarios.UndeclaredStep> { ProcessStep = new Scenarios.UndeclaredStep() };
+        using var anonymous = await client.PostAsJsonAsync("/clinic/1/processes/steps/undeclaredstep", step,
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", ["host-allowed"]));
+        using var admitted = await client.PostAsJsonAsync("/clinic/1/processes/steps/undeclaredstep", step,
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, admitted.StatusCode);
+    }
+
+    [Fact]
     public async Task Conventions_AddedBeforeOrAfterCapabilityMapping_ApplyToBothNotTheHost()
     {
         await using var app = await StartServiceAsync(KaleidoAuthorizationMode.Authenticated, conventionsBeforeMapping: true);
@@ -246,7 +262,8 @@ public sealed class KaleidoHttpCompositionFunctionalTests
     }
 
     private static async Task<WebApplication> StartServiceAsync(KaleidoAuthorizationMode mode, bool conventionsBeforeMapping = false,
-        bool mapProcess = true, bool mapQueryable = true, bool hostExceptionHandling = false)
+        bool mapProcess = true, bool mapQueryable = true, bool hostExceptionHandling = false, bool useDefaultAuthorizationMode = false,
+        bool requireHostPolicy = true)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -259,7 +276,7 @@ public sealed class KaleidoHttpCompositionFunctionalTests
             Assemblies = [typeof(KaleidoHttpCompositionFunctionalTests).Assembly],
             TypeFilter = type => type.Namespace == typeof(Scenarios.ReviewOrderStep).Namespace,
         })
-            .AddHosting(serverOptions: new() { AuthorizationMode = mode })
+            .AddHosting(serverOptions: useDefaultAuthorizationMode ? new() : new() { AuthorizationMode = mode })
             .AddInMemoryProviders()
             .AddHttp()
             .AddProcessHttpServer();
@@ -276,7 +293,7 @@ public sealed class KaleidoHttpCompositionFunctionalTests
         app.UseAuthentication();
         app.UseAuthorization();
         var kaleido = app.MapKaleido();
-        if (conventionsBeforeMapping)
+        if (requireHostPolicy && conventionsBeforeMapping)
         {
             kaleido.RequireAuthorization("host-policy");
         }
@@ -291,7 +308,7 @@ public sealed class KaleidoHttpCompositionFunctionalTests
             Assert.Same(kaleido, kaleido.MapProcess());
         }
 
-        if (!conventionsBeforeMapping)
+        if (requireHostPolicy && !conventionsBeforeMapping)
         {
             kaleido.RequireAuthorization("host-policy");
         }
