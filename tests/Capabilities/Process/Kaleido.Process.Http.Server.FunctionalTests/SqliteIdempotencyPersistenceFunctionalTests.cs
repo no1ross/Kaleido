@@ -70,6 +70,104 @@ public sealed class SqliteIdempotencyPersistenceFunctionalTests
     }
 
     [Fact]
+    public async Task TwoServicesInTheSameDatabase_CanKeepSeparateRowsUnderOneProcessId()
+    {
+        var path = NewDatabase();
+        try
+        {
+            await using var orders = await StartAsync(path, "orders");
+            await using var returns = await StartAsync(path, "returns");
+            using var started = await PostAsync(orders.GetTestClient(), "orders", key: null);
+            Assert.Equal(HttpStatusCode.OK, started.StatusCode);
+            var processId = Assert.IsType<ProcessResult>(await started.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).ProcessId;
+            await using (var scope = returns.Services.CreateAsyncScope())
+            {
+                await scope.ServiceProvider.GetRequiredService<IProcessContextStore>().SaveAsync(new ProcessContext
+                {
+                    ProcessId = processId,
+                    ProcessorName = "returns",
+                    ProcessorVersion = "1",
+                    State = ProcessExecutionState.Active,
+                }, Cancel);
+            }
+
+            using var ordersClient = orders.GetTestClient();
+            using var returnsClient = returns.GetTestClient();
+            var origin = Assert.IsType<ProcessStateSnapshot>(await ordersClient.GetFromJsonAsync<ProcessStateSnapshot>($"/orders/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+            var target = Assert.IsType<ProcessStateSnapshot>(await returnsClient.GetFromJsonAsync<ProcessStateSnapshot>($"/returns/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+            Assert.Equal(("orders", processId), (origin.ServiceName, origin.ProcessId));
+            Assert.Equal(("returns", processId), (target.ServiceName, target.ProcessId));
+            Assert.Equal(ProcessExecutionState.Active, target.State);
+            Assert.Equal(2, await CountAsync(path, "ProcessContexts"));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task TheSameKeyOnAnotherVersion_InTheSameDatabase_RunsThereWithoutReplayingTheFirstVersion()
+    {
+        var path = NewDatabase();
+        try
+        {
+            await using var first = await StartAsync(path, "catalog");
+            await using var second = await StartAsync(path, "catalog", version: "2");
+            using var initial = await PostAsync(first.GetTestClient(), "catalog", LogicalKey);
+            using var replay = await PostAsync(first.GetTestClient(), "catalog", LogicalKey);
+            using var otherVersion = await PostAsync(second.GetTestClient(), "catalog", LogicalKey, version: "2");
+            Assert.Equal(HttpStatusCode.OK, initial.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, otherVersion.StatusCode);
+            Assert.Equal("true", Assert.Single(replay.Headers.GetValues(KaleidoIdempotencyHeaders.Replayed)));
+            Assert.False(otherVersion.Headers.Contains(KaleidoIdempotencyHeaders.Replayed));
+            var firstProcess = Assert.IsType<ProcessResult>(await initial.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+            var otherProcess = Assert.IsType<ProcessResult>(await otherVersion.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+            Assert.NotEqual(firstProcess.ProcessId, otherProcess.ProcessId);
+            Assert.Equal(("1", "2"), (firstProcess.ServiceVersion, otherProcess.ServiceVersion));
+            Assert.Equal(2, await CountAsync(path, "ProcessContexts"));
+            Assert.Equal(2, await CountAsync(path, "IdempotentResults"));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task AProcessStoredInOneVersion_CannotBeReadOrContinuedByAnotherVersion()
+    {
+        var path = NewDatabase();
+        try
+        {
+            await using var first = await StartAsync(path, "catalog");
+            await using var second = await StartAsync(path, "catalog", version: "2");
+            using var started = await PostAsync(first.GetTestClient(), "catalog", key: null);
+            Assert.Equal(HttpStatusCode.OK, started.StatusCode);
+            var processId = Assert.IsType<ProcessResult>(await started.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).ProcessId;
+            using var secondClient = second.GetTestClient();
+            using var wrongVersion = await secondClient.GetAsync($"/catalog/2/processes/{processId:D}", Cancel);
+            Assert.Equal(HttpStatusCode.NotFound, wrongVersion.StatusCode);
+            using var continued = await PostAsync(second.GetTestClient(), "catalog", key: null, processId, version: "2");
+            Assert.Equal(HttpStatusCode.BadRequest, continued.StatusCode);
+            var error = Assert.IsType<KaleidoErrorResponse>(await continued.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, Cancel));
+            Assert.Equal(ProcessorErrorCodes.ProcessNotFound, Assert.Single(error.Errors).Code);
+            using var firstClient = first.GetTestClient();
+            var state = Assert.IsType<ProcessStateSnapshot>(await firstClient.GetFromJsonAsync<ProcessStateSnapshot>($"/catalog/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+            Assert.Equal(("catalog", "1", processId), (state.ServiceName, state.ServiceVersion, state.ProcessId));
+            Assert.Equal(1, await CountAsync(path, "ProcessContexts"));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task WithoutAKey_EachRequestCreatesItsOwnProcessAndNoStoredAnswer()
     {
         var path = NewDatabase();
@@ -148,7 +246,7 @@ public sealed class SqliteIdempotencyPersistenceFunctionalTests
 
     private static string NewDatabase() => Path.Combine(Path.GetTempPath(), $"kaleido-idempotency-{Guid.NewGuid():N}.db");
 
-    private static async Task<WebApplication> StartAsync(string path, string service, TimeProvider? clock = null)
+    private static async Task<WebApplication> StartAsync(string path, string service, TimeProvider? clock = null, string version = "1")
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -161,7 +259,7 @@ public sealed class SqliteIdempotencyPersistenceFunctionalTests
         builder.Services.AddKaleido(builder.Configuration, new()
         {
             ServiceName = service,
-            ServiceVersion = "1",
+            ServiceVersion = version,
             Assemblies = [typeof(SqliteIdempotencyPersistenceFunctionalTests).Assembly],
             TypeFilter = type => type == typeof(StartStep) || type == typeof(StartHandler),
         })
@@ -181,11 +279,11 @@ public sealed class SqliteIdempotencyPersistenceFunctionalTests
         return app;
     }
 
-    private static async Task<HttpResponseMessage> PostAsync(HttpClient client, string service, string? key, Guid? processId = null)
+    private static async Task<HttpResponseMessage> PostAsync(HttpClient client, string service, string? key, Guid? processId = null, string version = "1")
     {
         using (client)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"/{service}/1/processes/steps/startstep")
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/{service}/{version}/processes/steps/startstep")
             {
                 Content = JsonContent.Create(new { processStep = new { } }, options: KaleidoJsonOptions.Options),
             };
