@@ -70,6 +70,51 @@ public sealed class SqliteIdempotencyPersistenceFunctionalTests
     }
 
     [Fact]
+    public async Task ARealHandOffAcrossTwoHosts_SharingOneDatabase_KeepsBothProcessRowsAndThePinnedTarget()
+    {
+        var path = NewDatabase();
+        try
+        {
+            await using var returns = await StartAsync(path, "returns");
+            await using var orders = await StartAsync(path, "orders", target: returns);
+            using var opened = await PostAsync(orders.GetTestClient(), "orders", key: null);
+            Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+            var processId = Assert.IsType<ProcessResult>(await opened.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).ProcessId;
+            using var ordersClient = orders.GetTestClient();
+            using var handoffRequest = new HttpRequestMessage(HttpMethod.Post, "/orders/1/processes/steps/shareddbhandoffstep")
+            {
+                Content = JsonContent.Create(new { processStep = new { } }, options: KaleidoJsonOptions.Options),
+            };
+            handoffRequest.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString("D"));
+            using var handoffResponse = await ordersClient.SendAsync(handoffRequest, Cancel);
+            Assert.Equal(HttpStatusCode.OK, handoffResponse.StatusCode);
+            var handedOff = Assert.IsType<ProcessResult>(await handoffResponse.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+            Assert.Equal((ProcessExecutionState.HandOff, "returns", "1"), (handedOff.State, handedOff.TargetProcessorName, handedOff.TargetProcessorVersion));
+            using var returnsClient = returns.GetTestClient();
+            var targetBefore = Assert.IsType<ProcessStateSnapshot>(await returnsClient.GetFromJsonAsync<ProcessStateSnapshot>($"/returns/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+            Assert.Equal(("returns", processId), (targetBefore.ServiceName, targetBefore.ProcessId));
+            Assert.Contains(targetBefore.Steps, step => step.StepName == nameof(StartStep) && step.Status == StepExecutionStatus.Completed);
+            using var followupRequest = new HttpRequestMessage(HttpMethod.Post, "/returns/1/processes/steps/followupstep")
+            {
+                Content = JsonContent.Create(new { processStep = new { } }, options: KaleidoJsonOptions.Options),
+            };
+            followupRequest.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString("D"));
+            using var followup = await returnsClient.SendAsync(followupRequest, Cancel);
+            Assert.Equal(HttpStatusCode.OK, followup.StatusCode);
+            var next = Assert.IsType<ProcessResult>(await followup.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+            Assert.Equal(StepExecutionStatus.Completed, Assert.Single(next.Steps).ExecutionStatus);
+            var origin = Assert.IsType<ProcessStateSnapshot>(await ordersClient.GetFromJsonAsync<ProcessStateSnapshot>($"/orders/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+            Assert.Equal((ProcessExecutionState.HandOff, "returns", "1"), (origin.State, origin.TargetProcessorName, origin.TargetProcessorVersion));
+            Assert.Equal(2, await CountAsync(path, "ProcessContexts"));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task TwoServicesInTheSameDatabase_CanKeepSeparateRowsUnderOneProcessId()
     {
         var path = NewDatabase();
@@ -246,13 +291,17 @@ public sealed class SqliteIdempotencyPersistenceFunctionalTests
 
     private static string NewDatabase() => Path.Combine(Path.GetTempPath(), $"kaleido-idempotency-{Guid.NewGuid():N}.db");
 
-    private static async Task<WebApplication> StartAsync(string path, string service, TimeProvider? clock = null, string version = "1")
+    private static async Task<WebApplication> StartAsync(string path, string service, TimeProvider? clock = null, string version = "1", WebApplication? target = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         if (clock is not null)
         {
             builder.Services.AddSingleton(clock);
+        }
+        if (target is not null)
+        {
+            builder.Services.AddHttpClient("sqlite-target").ConfigurePrimaryHttpMessageHandler(() => target.GetTestServer().CreateHandler());
         }
 
         var connection = $"Data Source={path};Pooling=False";
@@ -261,7 +310,9 @@ public sealed class SqliteIdempotencyPersistenceFunctionalTests
             ServiceName = service,
             ServiceVersion = version,
             Assemblies = [typeof(SqliteIdempotencyPersistenceFunctionalTests).Assembly],
-            TypeFilter = type => type == typeof(StartStep) || type == typeof(StartHandler),
+            TypeFilter = type => type == typeof(StartStep) || type == typeof(StartHandler)
+                || (service == "returns" && (type == typeof(FollowupStep) || type == typeof(FollowupHandler)))
+                || (target is not null && (type == typeof(SharedDbHandoffStep) || type == typeof(SharedDbHandoffHandler))),
         })
             .AddEventing()
             .AddProcess()
@@ -317,5 +368,38 @@ public sealed class SqliteIdempotencyPersistenceFunctionalTests
     {
         public Task<ProcessStepHandlerResult> ExecuteAsync(StartStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
             Task.FromResult(ProcessStepHandlerResult.Success());
+    }
+
+    [ProcessStep(DisplayName = "Follow up", Description = "Continues the target's process")]
+    [AvailableAfter<StartStep>]
+    public sealed record FollowupStep : IProcessStep;
+
+    public sealed class FollowupHandler : IProcessStepHandler<FollowupStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(FollowupStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
+    }
+
+    [ProcessStep(DisplayName = "Hand off", Description = "Starts the target's process under this id")]
+    [AvailableAfter<StartStep>]
+    public sealed record SharedDbHandoffStep : IProcessStep;
+
+    public sealed class SharedDbHandoffHandler(IHttpClientFactory clients) : IProcessStepHandler<SharedDbHandoffStep>
+    {
+        public async Task<ProcessStepHandlerResult> ExecuteAsync(SharedDbHandoffStep step, ProcessStepContext context, CancellationToken cancellationToken)
+        {
+            using var client = clients.CreateClient("sqlite-target");
+            using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/returns/1/processes/steps/startstep")
+            {
+                Content = JsonContent.Create(new { processStep = new { } }, options: KaleidoJsonOptions.Options),
+            };
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, context.ProcessId.ToString("D"));
+            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.CallingProcessor, "orders");
+            using var response = await client.SendAsync(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            var result = await response.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, cancellationToken)
+                ?? throw new InvalidOperationException("The target returned no Process result.");
+            return ProcessStepHandlerResult.HandOff("returns", result, nameof(StartStep));
+        }
     }
 }
