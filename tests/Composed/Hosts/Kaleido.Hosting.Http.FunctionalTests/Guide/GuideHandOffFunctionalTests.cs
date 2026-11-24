@@ -68,6 +68,48 @@ public sealed class GuideHandOffFunctionalTests
     }
 
     [Fact]
+    public async Task AHandBackFromTheNamedTarget_ReopensTheOriginUnderTheSameProcessId()
+    {
+        await using var authority = await StartAuthorityAsync();
+        var returnsRegistered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var returns = await StartReturnsAsync(authority, returnsRegistered);
+        await returnsRegistered.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        var ordersRegistered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var orders = await StartOrdersAsync(authority, returns, ordersRegistered);
+        await ordersRegistered.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        await WaitForRegistryAsync(orders);
+        using var caller = orders.GetTestClient();
+        caller.BaseAddress = new Uri("https://localhost/");
+        caller.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice"));
+        var placed = await ExecuteAsync(caller, "orders", "placeorderstep", new { item = "Book" }, null);
+        await ExecuteAsync(caller, "orders", "confirmorderstep", new { }, placed.ProcessId);
+        await ExecuteAsync(caller, "orders", "shiporderstep", new { carrier = "post", address = "1 Main St" }, placed.ProcessId);
+        var handedOff = await ExecuteAsync(caller, "orders", "returnorderstep", new ReturnOrderStep(), placed.ProcessId);
+        Assert.Equal(ProcessExecutionState.HandOff, handedOff.State);
+
+        using var handBackCaller = orders.GetTestClient();
+        handBackCaller.BaseAddress = new Uri("https://localhost/");
+        handBackCaller.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("returns-app"));
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/orders/1/processes/steps/giftwrapstep")
+        {
+            Content = JsonContent.Create(new { processStep = new GiftWrapStep() }, options: KaleidoJsonOptions.Options),
+        };
+        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, placed.ProcessId.ToString("D"));
+        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.CallingProcessor, "RETURNS");
+        using var response = await handBackCaller.SendAsync(request, Cancel);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var resumed = Assert.IsType<ProcessResult>(await response.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(placed.ProcessId, resumed.ProcessId);
+        Assert.Equal(StepExecutionStatus.Completed, Assert.Single(resumed.Steps).ExecutionStatus);
+        Assert.Null(resumed.TargetProcessorName);
+        var reopened = Assert.IsType<ProcessStateSnapshot>(await caller.GetFromJsonAsync<ProcessStateSnapshot>($"/orders/1/processes/{placed.ProcessId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.NotEqual(ProcessExecutionState.HandOff, reopened.State);
+        Assert.Null(reopened.TargetProcessorName);
+        Assert.Null(reopened.TargetProcessorVersion);
+        Assert.Contains(reopened.Steps, step => step.StepName == nameof(GiftWrapStep) && step.Status == StepExecutionStatus.Completed);
+    }
+
+    [Fact]
     public async Task TheGuideHandler_ExchangesTheCallerTokenButNotTheRegistryRead()
     {
         await using var authority = await StartAuthorityAsync();
