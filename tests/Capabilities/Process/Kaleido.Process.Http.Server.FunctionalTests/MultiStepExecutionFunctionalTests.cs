@@ -175,10 +175,13 @@ public sealed class MultiStepExecutionFunctionalTests
         Assert.Equal(before.AvailableSteps, after.AvailableSteps);
     }
 
-    [Fact]
-    public async Task AHandlerTimeoutWithoutCallerCancellation_IsRetryableAndLeavesTheProcessStateUnchanged()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AHandlerFailureWithoutCallerCancellation_IsSanitizedRetryableAndLeavesTheProcessStateUnchanged(bool timeout)
     {
         await using var app = await StartAsync();
+        app.Services.GetRequiredService<TimedOutRuns>().ThrowTimeout = timeout;
         using var client = app.GetTestClient();
         using var seeded = await PostStepAsync(client, nameof(SeedStep));
         Assert.Equal(HttpStatusCode.OK, seeded.StatusCode);
@@ -187,7 +190,7 @@ public sealed class MultiStepExecutionFunctionalTests
 
         using var timedOut = await PostStepAsync(client, nameof(TimedOutStep), processId);
         Assert.Equal(HttpStatusCode.OK, timedOut.StatusCode);
-        Assert.DoesNotContain("private downstream timeout", await timedOut.Content.ReadAsStringAsync(Cancel), StringComparison.Ordinal);
+        Assert.DoesNotContain(timeout ? "private downstream timeout" : "private handler failure", await timedOut.Content.ReadAsStringAsync(Cancel), StringComparison.Ordinal);
         var result = Assert.IsType<ProcessResult>(await timedOut.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
         var step = Assert.Single(result.Steps);
         Assert.Equal(StepExecutionStatus.Exception, step.ExecutionStatus);
@@ -203,6 +206,34 @@ public sealed class MultiStepExecutionFunctionalTests
         Assert.Equal(StepExecutionStatus.Completed, Assert.Single(retry.Steps).ExecutionStatus);
         var recovered = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
         Assert.Contains(recovered.Steps, item => item.StepName == nameof(TimedOutStep) && item.Status == StepExecutionStatus.Completed);
+    }
+
+    [Fact]
+    public async Task CompletingTheProcess_ClearsOtherAvailableStepsAndRejectsTheirLaterExecution()
+    {
+        await using var app = await StartAsync();
+        using var client = app.GetTestClient();
+        using var started = await PostStepAsync(client, nameof(SeedStep));
+        var processId = Assert.IsType<ProcessResult>(await started.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).ProcessId;
+        var before = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.Contains(nameof(RootStep), before.AvailableSteps);
+
+        using var completed = await PostStepAsync(client, nameof(FinishProcessStep), processId);
+        Assert.Equal(HttpStatusCode.OK, completed.StatusCode);
+        var finished = Assert.IsType<ProcessResult>(await completed.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(ProcessExecutionState.Complete, finished.State);
+        Assert.Empty(finished.AvailableSteps);
+        var stored = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(ProcessExecutionState.Complete, stored.State);
+        Assert.Empty(stored.AvailableSteps);
+
+        using var late = await PostStepAsync(client, nameof(RootStep), processId);
+        Assert.Equal(HttpStatusCode.OK, late.StatusCode);
+        var refused = Assert.IsType<ProcessResult>(await late.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(StepExecutionStatus.Pending, Assert.Single(refused.Steps).ExecutionStatus);
+        var after = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(stored.State, after.State);
+        Assert.Equal(stored.AvailableSteps, after.AvailableSteps);
     }
 
     [Fact]
@@ -413,6 +444,10 @@ public sealed class MultiStepExecutionFunctionalTests
     [AvailableAfter<SeedStep>]
     public sealed record TimedOutStep : IProcessStep;
 
+    [ProcessStep(DisplayName = "Finish", Description = "Completes the process while other steps are available")]
+    [AvailableAfter<SeedStep>]
+    public sealed record FinishProcessStep : IProcessStep;
+
     [ProcessStep(DisplayName = "Fail", Description = "Returns a business failure")]
     public sealed record FailingStep : IProcessStep;
 
@@ -480,12 +515,26 @@ public sealed class MultiStepExecutionFunctionalTests
     public sealed class TimedOutRuns
     {
         public bool Fail { get; set; } = true;
+        public bool ThrowTimeout { get; set; } = true;
     }
 
     public sealed class TimedOutHandler(TimedOutRuns runs) : IProcessStepHandler<TimedOutStep>
     {
-        public Task<ProcessStepHandlerResult> ExecuteAsync(TimedOutStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
-            runs.Fail ? throw new OperationCanceledException("private downstream timeout") : Task.FromResult(ProcessStepHandlerResult.Success());
+        public Task<ProcessStepHandlerResult> ExecuteAsync(TimedOutStep step, ProcessStepContext context, CancellationToken cancellationToken)
+        {
+            if (runs.Fail)
+            {
+                throw runs.ThrowTimeout ? new OperationCanceledException("private downstream timeout") : new InvalidOperationException("private handler failure");
+            }
+
+            return Task.FromResult(ProcessStepHandlerResult.Success());
+        }
+    }
+
+    public sealed class FinishProcessHandler : IProcessStepHandler<FinishProcessStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(FinishProcessStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Complete());
     }
 
     public sealed class FailingHandler : IProcessStepHandler<FailingStep>

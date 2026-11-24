@@ -402,6 +402,37 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task AHandlerCannotHandOffToItsOwnService_AndTheProcessCanStillContinue()
+    {
+        await using var app = await StartAsync(handOff: true, includeFrameworkMessages: true);
+        using var client = Client(app);
+        using var invalid = await client.PostAsJsonAsync("/catalog/1/processes/steps/selfhandoffstep",
+            new ExecuteStepRequest<SelfHandOffStep> { ProcessStep = new SelfHandOffStep() },
+            KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, invalid.StatusCode);
+        var refused = Assert.IsType<ProcessResult>(await invalid.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        var failed = Assert.Single(refused.Steps);
+        Assert.Equal(StepExecutionStatus.Exception, failed.ExecutionStatus);
+        Assert.Contains(failed.RuntimeMessages, message => message.Code == ProcessorErrorCodes.InvalidHandOff);
+        Assert.Null(refused.TargetProcessorName);
+        var state = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/catalog/1/processes/{refused.ProcessId:D}", KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.NotEqual(ProcessExecutionState.HandOff, state.State);
+        Assert.Null(state.TargetProcessorName);
+        Assert.Contains(state.Steps, step => step.StepName == nameof(SelfHandOffStep) && step.Status == StepExecutionStatus.Exception);
+
+        using var valid = new HttpRequestMessage(HttpMethod.Post, "/catalog/1/processes/steps/handoffstep")
+        {
+            Content = JsonContent.Create(new ExecuteStepRequest<HandOffStep> { ProcessStep = new HandOffStep() }, options: KaleidoJsonOptions.Options),
+        };
+        valid.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, refused.ProcessId.ToString("D"));
+        using var response = await client.SendAsync(valid, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var continued = Assert.IsType<ProcessResult>(await response.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(ProcessExecutionState.HandOff, continued.State);
+        Assert.Equal("target", continued.TargetProcessorName);
+    }
+
+    [Fact]
     public async Task MultiStepExecute_ReplaysAKeyWithoutRunningTheStepAgain_AndRefusesAChangedBody()
     {
         await using var app = await StartAsync();
@@ -598,7 +629,7 @@ public sealed class ProcessHttpServerFunctionalTests
 
     private static async Task<WebApplication> StartAsync(bool handOff = false, KaleidoAuthorizationMode authorizationMode = KaleidoAuthorizationMode.Authenticated,
         bool includePolicyStep = false, bool superuserHandler = false, bool includeAnonymousStep = false, bool includeOpenStep = false,
-        bool includeVisibility = false)
+        bool includeVisibility = false, bool includeFrameworkMessages = false)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -630,6 +661,7 @@ public sealed class ProcessHttpServerFunctionalTests
                     || type == typeof(VisibilityEscalateStep) || type == typeof(VisibilityEscalateHandler)
                     || type == typeof(VisibilityAdminStep) || type == typeof(VisibilityAdminHandler)
                 : handOff ? type == typeof(HandOffStep) || type == typeof(HandOffHandler)
+                    || type == typeof(SelfHandOffStep) || type == typeof(SelfHandOffHandler)
                 : type == typeof(ReviewOrderStep) || type == typeof(ReviewOrderHandler)
                     || type == typeof(AdminOnlyStep) || type == typeof(AdminOnlyHandler)
                     || (includePolicyStep && (type == typeof(ClinicianStep) || type == typeof(ClinicianHandler)))
@@ -642,7 +674,7 @@ public sealed class ProcessHttpServerFunctionalTests
             .AddIdempotencyStore<TestIdempotencyStore>()
             .AddServer(new() { AuthorizationMode = authorizationMode })
             .AddHttp()
-            .AddProcessHttpServer();
+            .AddProcessHttpServer(new KaleidoProcessHttpOptions { IncludeFrameworkMessages = includeFrameworkMessages });
         var app = builder.Build();
         app.UseRouting();
         app.UseAuthentication();
@@ -790,24 +822,33 @@ public sealed class ProcessHttpServerFunctionalTests
 
     public sealed class HandOffHandler : IProcessStepHandler<HandOffStep>
     {
-        public Task<ProcessStepHandlerResult> ExecuteAsync(HandOffStep step, ProcessStepContext context, CancellationToken cancellationToken)
+        public Task<ProcessStepHandlerResult> ExecuteAsync(HandOffStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.HandOff("target", Target(context), "BeginStep"));
+
+        internal static ProcessResult Target(ProcessStepContext context) => new()
         {
-            var target = new ProcessResult
+            ProcessId = context.ProcessId,
+            ServiceVersion = "2",
+            State = ProcessExecutionState.AwaitingStepSelection,
+            AvailableSteps = ["FinishStep"],
+            Steps = [new ProcessStepResult
             {
-                ProcessId = context.ProcessId,
-                ServiceVersion = "2",
-                State = ProcessExecutionState.AwaitingStepSelection,
-                AvailableSteps = ["FinishStep"],
-                Steps = [new ProcessStepResult
-                {
-                    StepName = "BeginStep",
-                    CandidateStatus = StepCandidateStatus.Built,
-                    IncludedInExecutionPlan = true,
-                    ExecutionStatus = StepExecutionStatus.Completed,
-                }],
-            };
-            return Task.FromResult(ProcessStepHandlerResult.HandOff("target", target, "BeginStep"));
-        }
+                StepName = "BeginStep",
+                CandidateStatus = StepCandidateStatus.Built,
+                IncludedInExecutionPlan = true,
+                ExecutionStatus = StepExecutionStatus.Completed,
+            }],
+        };
+    }
+
+    [ProcessStep(DisplayName = "Self hand off", Description = "Attempts to hand a process to its own service")]
+    [KaleidoAuthorization(Roles = "reviewer")]
+    public sealed record SelfHandOffStep : IProcessStep;
+
+    public sealed class SelfHandOffHandler : IProcessStepHandler<SelfHandOffStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(SelfHandOffStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.HandOff("catalog", HandOffHandler.Target(context), "BeginStep"));
     }
 
     public sealed class StoredProcesses
