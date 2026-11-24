@@ -247,6 +247,14 @@ public sealed class GettingStartedTests : IAsyncLifetime
         Assert.DoesNotContain("CancelOrderStep", Available(shipped));
         Assert.Contains("ReturnOrderStep", Available(shipped));
         Assert.DoesNotContain("ShipOrderStep", Available(cancelled));
+
+        var late = await ExecuteStepAsync(client, "cancelorderstep", new { }, shippedProcess);
+        Assert.NotEqual("completed", Assert.Single(late.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
+        using var stateResponse = await client.GetAsync($"/orders/1/processes/{shippedProcess:D}", Cancel);
+        Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
+        var state = await stateResponse.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, Cancel);
+        Assert.Equal(Available(shipped), Available(state));
+        Assert.DoesNotContain(state.GetProperty("steps").EnumerateArray(), step => step.GetProperty("stepName").GetString() == "CancelOrderStep" && step.GetProperty("status").GetString() == "completed");
     }
 
     private static string[] Available(JsonElement result) =>

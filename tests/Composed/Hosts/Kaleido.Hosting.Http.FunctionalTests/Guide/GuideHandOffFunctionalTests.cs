@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Kaleido.Guide.Examples.Callers;
 using Kaleido.Guide.Examples.GettingStarted;
+using Kaleido.Guide.Examples.InformationRequests;
 using Kaleido.Guide.Examples.Processes;
 using Kaleido.Http.Client.Calls;
 using Kaleido.Http.Client.Configuration;
@@ -48,6 +49,12 @@ public sealed class GuideHandOffFunctionalTests
 
         Assert.Equal(("returns", "1"), (handedOff.TargetProcessorName, handedOff.TargetProcessorVersion));
         Assert.Contains(handedOff.Steps, step => step.StepName == nameof(ReturnOrderStep) && step.ExecutionStatus == StepExecutionStatus.Completed);
+        var late = await ExecuteAsync(caller, "orders", "giftwrapstep", new GiftWrapStep(), processId);
+        Assert.Equal(StepExecutionStatus.Pending, Assert.Single(late.Steps).ExecutionStatus);
+        var origin = Assert.IsType<ProcessStateSnapshot>(await caller.GetFromJsonAsync<ProcessStateSnapshot>($"/orders/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(ProcessExecutionState.HandOff, origin.State);
+        Assert.Equal(("returns", "1"), (origin.TargetProcessorName, origin.TargetProcessorVersion));
+        Assert.DoesNotContain(origin.Steps, step => step.StepName == nameof(GiftWrapStep) && step.Status == StepExecutionStatus.Completed);
         using var returnsCaller = returns.GetTestClient();
         returnsCaller.BaseAddress = new Uri("https://localhost/");
         returnsCaller.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice"));
