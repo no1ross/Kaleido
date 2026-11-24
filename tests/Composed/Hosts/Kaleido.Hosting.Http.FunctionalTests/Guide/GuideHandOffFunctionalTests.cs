@@ -48,7 +48,9 @@ public sealed class GuideHandOffFunctionalTests
         var handedOff = await ExecuteAsync(caller, "orders", "returnorderstep", new ReturnOrderStep(), processId);
 
         Assert.Equal(("returns", "1"), (handedOff.TargetProcessorName, handedOff.TargetProcessorVersion));
-        Assert.Contains(handedOff.Steps, step => step.StepName == nameof(ReturnOrderStep) && step.ExecutionStatus == StepExecutionStatus.Completed);
+        var handoffStep = Assert.Single(handedOff.Steps, step => step.StepName == nameof(ReturnOrderStep) && step.ExecutionStatus == StepExecutionStatus.Completed);
+        Assert.Contains(handoffStep.BusinessMessages, message => message.Code == "return_opened");
+        Assert.Equal([nameof(ReceiveReturnStep)], handedOff.AvailableSteps);
         var late = await ExecuteAsync(caller, "orders", "giftwrapstep", new GiftWrapStep(), processId);
         Assert.Equal(StepExecutionStatus.Pending, Assert.Single(late.Steps).ExecutionStatus);
         var origin = Assert.IsType<ProcessStateSnapshot>(await caller.GetFromJsonAsync<ProcessStateSnapshot>($"/orders/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
@@ -110,6 +112,99 @@ public sealed class GuideHandOffFunctionalTests
     }
 
     [Fact]
+    public async Task AHandOffCarriesTheTargetsQuestions_AndItsExchangeIsAnsweredOnTheTarget()
+    {
+        await using var hosts = await StartHandOffAsync(ReturnMode.Questions);
+        using var origin = hosts.Caller();
+        var handedOff = await HandOffAsync(origin);
+        Assert.Equal(("returns", "1", nameof(ReturnReasonStep)), (handedOff.TargetProcessorName, handedOff.TargetProcessorVersion, handedOff.RequiredStep));
+        var request = Assert.IsType<InformationRequest>(handedOff.RequiredInformationRequest);
+        Assert.Equal("return-reason", request.InformationRequestId);
+        Assert.NotEmpty(request.ExchangeId);
+        Assert.Empty(handedOff.AvailableSteps);
+
+        using var target = hosts.TargetCaller();
+        var answered = await ExecuteAsync(target, "returns", "returnreasonstep", new ReturnReasonStep
+        {
+            InformationRequestId = request.InformationRequestId,
+            ExchangeId = request.ExchangeId,
+            Items = [new InformationResponseItem { ItemId = "reason", Answers = [new InformationAnswer { Value = "It arrived broken." }] }],
+        }, handedOff.ProcessId);
+        Assert.Equal(StepExecutionStatus.Completed, Assert.Single(answered.Steps).ExecutionStatus);
+        var state = Assert.IsType<ProcessStateSnapshot>(await target.GetFromJsonAsync<ProcessStateSnapshot>($"/returns/1/processes/{handedOff.ProcessId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.Null(state.RequiredInformationRequest);
+    }
+
+    [Fact]
+    public async Task AHandOffCarriesTheTargetsOrdinaryRequiredStep_WhichRunsOnlyOnTheTarget()
+    {
+        await using var hosts = await StartHandOffAsync(ReturnMode.Required);
+        using var origin = hosts.Caller();
+        var handedOff = await HandOffAsync(origin);
+        Assert.Equal(("returns", nameof(ReceiveReturnStep)), (handedOff.TargetProcessorName, handedOff.RequiredStep));
+        Assert.Null(handedOff.RequiredInformationRequest);
+        Assert.Empty(handedOff.AvailableSteps);
+        using var target = hosts.TargetCaller();
+        var continued = await ExecuteAsync(target, "returns", "receivereturnstep", new ReceiveReturnStep(), handedOff.ProcessId);
+        Assert.Equal(StepExecutionStatus.Completed, Assert.Single(continued.Steps).ExecutionStatus);
+    }
+
+    [Fact]
+    public async Task AHandOffFiltersTheTargetsChoiceForEachSignedCaller()
+    {
+        await using var hosts = await StartHandOffAsync(ReturnMode.Choice);
+        using var clerk = hosts.Caller();
+        var ordinary = await HandOffAsync(clerk);
+        Assert.Contains(nameof(ReceiveReturnStep), ordinary.AvailableSteps);
+        Assert.DoesNotContain(nameof(ApproveReturnStep), ordinary.AvailableSteps);
+        Assert.Null(ordinary.Notice);
+
+        using var manager = hosts.Caller("returns-manager");
+        var privileged = await HandOffAsync(manager);
+        Assert.Contains(nameof(ReceiveReturnStep), privileged.AvailableSteps);
+        Assert.Contains(nameof(ApproveReturnStep), privileged.AvailableSteps);
+    }
+
+    [Fact]
+    public async Task AHandOffHidesTheTargetsRestrictedRequiredStepWithANotice()
+    {
+        await using var hosts = await StartHandOffAsync(ReturnMode.Restricted);
+        using var caller = hosts.Caller();
+        var handedOff = await HandOffAsync(caller);
+        Assert.Null(handedOff.RequiredStep);
+        Assert.Empty(handedOff.AvailableSteps);
+        Assert.Equal(ProcessorErrorCodes.NotPermitted, handedOff.Notice?.Code);
+    }
+
+    [Theory]
+    [InlineData(ReturnMode.Complete)]
+    [InlineData(ReturnMode.Reject)]
+    public async Task ATargetThatCompletesOrRefuses_PreservesTheCorrectOriginState(ReturnMode mode)
+    {
+        await using var hosts = await StartHandOffAsync(mode);
+        using var caller = hosts.Caller();
+        var outcome = await HandOffAsync(caller);
+        if (mode == ReturnMode.Reject)
+        {
+            Assert.Null(outcome.TargetProcessorName);
+            var step = Assert.Single(outcome.Steps, item => item.StepName == nameof(ReturnOrderStep));
+            Assert.Equal(StepExecutionStatus.Rejected, step.ExecutionStatus);
+            Assert.Contains(step.BusinessMessages, message => message.Code == "return_refused");
+        }
+        else
+        {
+            Assert.Equal(("returns", "1"), (outcome.TargetProcessorName, outcome.TargetProcessorVersion));
+            Assert.Null(outcome.RequiredStep);
+            Assert.Empty(outcome.AvailableSteps);
+            Assert.Null(outcome.Notice);
+        }
+
+        var origin = Assert.IsType<ProcessStateSnapshot>(await caller.GetFromJsonAsync<ProcessStateSnapshot>($"/orders/1/processes/{outcome.ProcessId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(mode == ReturnMode.Reject ? null : "returns", origin.TargetProcessorName);
+        Assert.Equal(mode != ReturnMode.Reject, origin.State == ProcessExecutionState.HandOff);
+    }
+
+    [Fact]
     public async Task TheGuideHandler_ExchangesTheCallerTokenButNotTheRegistryRead()
     {
         await using var authority = await StartAuthorityAsync();
@@ -139,6 +234,51 @@ public sealed class GuideHandOffFunctionalTests
         Assert.Equal(KaleidoCallPurpose.OnBehalfOfCaller, outbound.Purpose);
         Assert.True(outbound.Exchanged);
         Assert.False(outbound.Forwarded);
+    }
+
+    private static async Task<HandOffHosts> StartHandOffAsync(ReturnMode mode)
+    {
+        var authority = await StartAuthorityAsync();
+        var returnsRegistered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var returns = await StartReturnsAsync(authority, returnsRegistered);
+        await returnsRegistered.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        returns.Services.GetRequiredService<ReturnControl>().Mode = mode;
+        var ordersRegistered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var orders = await StartOrdersAsync(authority, returns, ordersRegistered);
+        await ordersRegistered.Task.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        await WaitForRegistryAsync(orders);
+        return new HandOffHosts(authority, returns, orders);
+    }
+
+    private static async Task<ProcessResult> HandOffAsync(HttpClient caller)
+    {
+        var placed = await ExecuteAsync(caller, "orders", "placeorderstep", new { item = "Book" }, null);
+        await ExecuteAsync(caller, "orders", "confirmorderstep", new { }, placed.ProcessId);
+        await ExecuteAsync(caller, "orders", "shiporderstep", new { carrier = "post", address = "1 Main St" }, placed.ProcessId);
+        return await ExecuteAsync(caller, "orders", "returnorderstep", new ReturnOrderStep(), placed.ProcessId);
+    }
+
+    private sealed class HandOffHosts(WebApplication authority, WebApplication returns, WebApplication orders) : IAsyncDisposable
+    {
+        public HttpClient Caller(params string[] roles) => Client(orders, roles);
+        public HttpClient TargetCaller(params string[] roles) => Client(returns, roles);
+        private static HttpClient Client(WebApplication app, string[] roles)
+        {
+            var client = app.GetTestClient();
+            client.BaseAddress = new Uri("https://localhost/");
+            client.DefaultRequestHeaders.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", roles));
+            return client;
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await orders.StopAsync(CancellationToken.None);
+            await orders.DisposeAsync();
+            await returns.StopAsync(CancellationToken.None);
+            await returns.DisposeAsync();
+            await authority.StopAsync(CancellationToken.None);
+            await authority.DisposeAsync();
+        }
     }
 
     private static async Task<ProcessResult> ExecuteAsync(HttpClient client, string service, string step, object input, Guid? processId)
@@ -185,13 +325,16 @@ public sealed class GuideHandOffFunctionalTests
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Kaleido:BaseUrl"] = "https://localhost/" });
         builder.Services.AddTestJwtBearer();
+        builder.Services.AddSingleton<ReturnControl>();
         builder.Services.AddKaleido(builder.Configuration, new()
         {
             ServiceName = "returns",
             ServiceVersion = "1",
             Assemblies = [typeof(GuideHandOffFunctionalTests).Assembly],
             TypeFilter = type => type == typeof(OpenReturnStep) || type == typeof(ReceiveReturnStep)
-                || type == typeof(OpenReturnHandler) || type == typeof(ReceiveReturnHandler),
+                || type == typeof(OpenReturnHandler) || type == typeof(ReceiveReturnHandler)
+                || type == typeof(ReturnReasonStep) || type == typeof(ReturnReasonHandler)
+                || type == typeof(ApproveReturnStep) || type == typeof(ApproveReturnHandler),
         })
             .AddEventing()
             .AddProcess()
@@ -349,15 +492,65 @@ public sealed class GuideHandOffFunctionalTests
     [DependsOn<OpenReturnStep>]
     public sealed record ReceiveReturnStep : IProcessStep;
 
-    public sealed class OpenReturnHandler : IProcessStepHandler<OpenReturnStep>
+    public enum ReturnMode { Choice, Questions, Required, Restricted, Complete, Reject }
+
+    public sealed class ReturnControl
     {
-        public Task<ProcessStepHandlerResult> ExecuteAsync(OpenReturnStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
-            Task.FromResult(ProcessStepHandlerResult.Success());
+        public ReturnMode Mode { get; set; } = ReturnMode.Choice;
+    }
+
+    public sealed class OpenReturnHandler(ReturnControl control) : IProcessStepHandler<OpenReturnStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(OpenReturnStep step, ProcessStepContext context, CancellationToken cancellationToken)
+        {
+            var opened = new ProcessMessage { Code = "return_opened", Type = MessageType.Information, Message = "The return was opened." };
+            var result = control.Mode switch
+            {
+                ReturnMode.Questions => ProcessStepHandlerResult.RequireInformation<ReturnReasonStep>(new InformationRequest
+                {
+                    InformationRequestId = "return-reason",
+                    Title = "Why is this being returned?",
+                    Items = [new InformationItem { Id = "reason", Text = "Return reason", Type = InformationItemType.Text }],
+                }, opened),
+                ReturnMode.Required => ProcessStepHandlerResult.Success<ReceiveReturnStep>(opened),
+                ReturnMode.Restricted => ProcessStepHandlerResult.Success<ApproveReturnStep>(opened),
+                ReturnMode.Complete => ProcessStepHandlerResult.Complete(opened),
+                ReturnMode.Reject => ProcessStepHandlerResult.Reject(new ProcessMessage { Code = "return_refused", Type = MessageType.Error, Message = "The return was refused." }),
+                _ => ProcessStepHandlerResult.Success(opened),
+            };
+            return Task.FromResult(result);
+        }
     }
 
     public sealed class ReceiveReturnHandler : IProcessStepHandler<ReceiveReturnStep>
     {
         public Task<ProcessStepHandlerResult> ExecuteAsync(ReceiveReturnStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
+    }
+
+    [ProcessStep(DisplayName = "Return reason", Description = "Answers why the goods were returned")]
+    [DependsOn<OpenReturnStep>]
+    public sealed record ReturnReasonStep : IInformationStep
+    {
+        public string InformationRequestId { get; init; } = string.Empty;
+        public string ExchangeId { get; init; } = string.Empty;
+        public IReadOnlyList<InformationResponseItem> Items { get; init; } = [];
+    }
+
+    public sealed class ReturnReasonHandler : IProcessStepHandler<ReturnReasonStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(ReturnReasonStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
+    }
+
+    [ProcessStep(DisplayName = "Approve return", Description = "Approves a restricted return")]
+    [DependsOn<OpenReturnStep>]
+    [KaleidoAuthorization(Roles = "returns-manager")]
+    public sealed record ApproveReturnStep : IProcessStep;
+
+    public sealed class ApproveReturnHandler : IProcessStepHandler<ApproveReturnStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(ApproveReturnStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
             Task.FromResult(ProcessStepHandlerResult.Success());
     }
 }
