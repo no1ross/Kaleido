@@ -298,6 +298,8 @@ public sealed class RegistryHttpServerFunctionalTests
         using var availability = await client.GetAsync("/registry/availability", TestContext.Current.CancellationToken);
         using var firstStatus = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
         Assert.NotNull(capabilities.Headers.ETag);
+        var published = Assert.IsType<KaleidoRegistry>(await capabilities.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(RegistryStatusNames.NotReported, Assert.Single(published.Queryables).Status);
         Assert.NotNull(availability.Headers.ETag);
         Assert.NotNull(firstStatus.Headers.ETag);
 
@@ -399,6 +401,10 @@ public sealed class RegistryHttpServerFunctionalTests
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
         var error = await unknown.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
         Assert.Equal(RegistryErrorCodes.InstanceUnknown, Assert.Single(Assert.IsType<KaleidoErrorResponse>(error).Errors).Code);
+        using var unknownRemoval = await client.DeleteAsync($"/registry/instances/{Guid.NewGuid():D}", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotFound, unknownRemoval.StatusCode);
+        var removalError = await unknownRemoval.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
+        Assert.Equal(RegistryErrorCodes.InstanceUnknown, Assert.Single(Assert.IsType<KaleidoErrorResponse>(removalError).Errors).Code);
     }
 
     [Theory]
@@ -514,7 +520,8 @@ public sealed class RegistryHttpServerFunctionalTests
         Assert.NotNull(first.Headers.ETag);
         var partial = await first.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken);
         Assert.True(Assert.IsType<KaleidoRegistry>(partial).IsPartial);
-        Assert.Single(partial.Missing);
+        var missing = Assert.Single(partial.Missing);
+        Assert.Equal(("catalog", "1", "expected"), (missing.ServiceName, missing.ServiceVersion, missing.Reason));
 
         using var strict = new HttpRequestMessage(HttpMethod.Get, "/registry?strict");
         strict.Headers.IfNoneMatch.Add(first.Headers.ETag);
@@ -525,6 +532,23 @@ public sealed class RegistryHttpServerFunctionalTests
         ordinary.Headers.IfNoneMatch.Add(first.Headers.ETag);
         using var unchanged = await client.SendAsync(ordinary, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotModified, unchanged.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/registry/status")]
+    [InlineData("/registry/capabilities")]
+    [InlineData("/registry/availability")]
+    public async Task RegistryReaderDocuments_RefuseAUserWithoutTheHostReaderPolicy(string path)
+    {
+        await using var app = await StartAsync(enforceAuthorization: true);
+        using var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost/");
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", ["viewer"]));
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var error = Assert.IsType<KaleidoErrorResponse>(await response.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(RegistryErrorCodes.ReaderNotAllowed, Assert.Single(error.Errors).Code);
     }
 
     [Fact]
@@ -539,6 +563,7 @@ public sealed class RegistryHttpServerFunctionalTests
             [
                 new QueryableRegistryItem { ServiceName = "catalog", Name = "public", Authorization = new AuthorizationMetadata(null, []) { AllowAnonymous = true } },
                 new QueryableRegistryItem { ServiceName = "catalog", Name = "protected", Authorization = new AuthorizationMetadata(null, ["radiology"]) },
+                new QueryableRegistryItem { ServiceName = "catalog", Name = "unknown-policy", Authorization = new AuthorizationMetadata("unregistered-policy", []) },
             ],
         };
 
@@ -549,6 +574,13 @@ public sealed class RegistryHttpServerFunctionalTests
         publish.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("catalog-app", ["registrant", "Kaleido.Registrant.catalog"]));
         using var registered = await client.SendAsync(publish, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
+
+        using var reader = new HttpRequestMessage(HttpMethod.Get, "/registry");
+        reader.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App("reader-app", ["registry-reader"]));
+        using var unfiltered = await client.SendAsync(reader, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, unfiltered.StatusCode);
+        var complete = Assert.IsType<KaleidoRegistry>(await unfiltered.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(["protected", "public", "unknown-policy"], complete.Queryables.Select(item => item.Name).Order(StringComparer.Ordinal));
 
         using var privileged = new HttpRequestMessage(HttpMethod.Get, "/registry");
         privileged.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User("alice", ["radiology"]));
