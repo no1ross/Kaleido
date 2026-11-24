@@ -101,6 +101,72 @@ public sealed class RegistryPublicationIntegrationTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ASecondParticipant_HydratesUnavailableAfterAHeartbeatOrStop(bool stopPublisher)
+    {
+        var time = new HeartbeatClock(new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero));
+        await using var authority = await StartAuthorityAsync(time);
+        var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var refreshed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var heartbeat = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var health = new LocalHealth();
+        await using var publisher = await StartPublisherAsync(authority, registered, time, health, heartbeat, refreshed);
+        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await refreshed.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(publisher);
+        await time.HeartbeatScheduled.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        var read = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var updated = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stored = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? expectedEtag = null;
+        var readerClock = new ReaderClock(time.GetUtcNow());
+        await using var consumer = BuildReader(authority, publisher, read, queryableClientFirst: false, readerClock,
+            () => expectedEtag, updated, stored);
+        await consumer.StartAsync(TestContext.Current.CancellationToken);
+        await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(consumer);
+        await readerClock.FirstCheckScheduled.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        using var client = authority.GetTestClient();
+        if (stopPublisher)
+        {
+            await publisher.StopAsync(TestContext.Current.CancellationToken);
+            using var status = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+            var service = Assert.Single(Assert.IsType<KaleidoRegistryStatus>(await status.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+            Assert.Empty(service.Instances);
+        }
+        else
+        {
+            health.Healthy = false;
+            for (var seconds = 0; seconds < 12 && !heartbeat.Task.IsCompleted; seconds++)
+            {
+                time.Advance(TimeSpan.FromSeconds(1));
+                await Task.Yield();
+            }
+
+            await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            time.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
+        }
+
+        using var availability = await client.GetAsync("/registry/availability", TestContext.Current.CancellationToken);
+        var serviceAvailability = Assert.Single(Assert.IsType<KaleidoRegistryAvailability>(await availability.Content.ReadFromJsonAsync<KaleidoRegistryAvailability>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+        Assert.Equal(RegistryStatusNames.Unavailable, serviceAvailability.Status);
+        expectedEtag = availability.Headers.ETag?.Tag;
+        Assert.NotNull(expectedEtag);
+        readerClock.Advance(TimeSpan.FromSeconds(10));
+        await updated.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await readerClock.SecondCheckScheduled.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        readerClock.Advance(TimeSpan.FromSeconds(10));
+        await stored.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await consumer.StopAsync(TestContext.Current.CancellationToken);
+        if (!stopPublisher)
+        {
+            await publisher.StopAsync(TestContext.Current.CancellationToken);
+        }
+    }
+
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task HydratedReader_QueriesThePublishedQueryableHttpBinding(bool queryableClientFirst)
@@ -110,8 +176,34 @@ public sealed class RegistryPublicationIntegrationTests
         await using var publisher = await StartPublisherAsync(authority, registered);
         await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         var read = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var consumer = BuildReader(authority, publisher, read, queryableClientFirst);
+        using var scope = consumer.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<IKaleidoQueryableClientFactory>().GetClient("catalog");
+        var unavailable = await Assert.ThrowsAsync<KaleidoRegistryClientException>(() =>
+            client.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken));
+        Assert.Equal(RegistryClientErrorCodes.RouteUnavailable, unavailable.Code);
+
+        await consumer.StartAsync(TestContext.Current.CancellationToken);
+        await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(consumer);
+        var result = await client.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken);
+
+        Assert.Equal("one", Assert.Single(result.Results).Name);
+        await consumer.StopAsync(TestContext.Current.CancellationToken);
+        await publisher.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static WebApplication BuildReader(WebApplication authority, WebApplication publisher, TaskCompletionSource<bool> read,
+        bool queryableClientFirst, FakeTimeProvider? time = null, Func<string?>? expectedEtag = null,
+        TaskCompletionSource<bool>? updated = null, TaskCompletionSource<bool>? stored = null)
+    {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
+        if (time is not null)
+        {
+            builder.Services.AddSingleton<TimeProvider>(time);
+        }
+
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Kaleido:BaseUrl"] = "http://localhost/",
@@ -132,27 +224,13 @@ public sealed class RegistryPublicationIntegrationTests
             kaleido.AddRegistryHttpParticipation().AddQueryableHttpClient();
         }
         builder.Services.Configure<HttpClientFactoryOptions>("kaleido-registry", options =>
-            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new ObserveReadHandler(read)
+            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new ObserveReadHandler(read, expectedEtag, updated, stored)
             {
                 InnerHandler = authority.GetTestServer().CreateHandler(),
             }));
         builder.Services.Configure<HttpClientFactoryOptions>("kaleido-queryable", options =>
             options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = publisher.GetTestServer().CreateHandler()));
-        await using var consumer = builder.Build();
-        using var scope = consumer.Services.CreateScope();
-        var client = scope.ServiceProvider.GetRequiredService<IKaleidoQueryableClientFactory>().GetClient("catalog");
-        var unavailable = await Assert.ThrowsAsync<KaleidoRegistryClientException>(() =>
-            client.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken));
-        Assert.Equal(RegistryClientErrorCodes.RouteUnavailable, unavailable.Code);
-
-        await consumer.StartAsync(TestContext.Current.CancellationToken);
-        await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-        await WaitUntilReadyAsync(consumer);
-        var result = await client.QuerySourceAsync<CatalogRecord>("CatalogSource", new QueryRequest(), TestContext.Current.CancellationToken);
-
-        Assert.Equal("one", Assert.Single(result.Results).Name);
-        await consumer.StopAsync(TestContext.Current.CancellationToken);
-        await publisher.StopAsync(TestContext.Current.CancellationToken);
+        return builder.Build();
     }
 
     private static async Task WaitUntilReadyAsync(WebApplication consumer)
@@ -295,6 +373,33 @@ public sealed class RegistryPublicationIntegrationTests
             query.Select(record => new CatalogViewRecord { Name = record.Name });
     }
 
+    private sealed class ReaderClock(DateTimeOffset start) : FakeTimeProvider(start)
+    {
+        private readonly TaskCompletionSource first = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource second = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int checks;
+        public Task FirstCheckScheduled => first.Task;
+        public Task SecondCheckScheduled => second.Task;
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = base.CreateTimer(callback, state, dueTime, period);
+            if (period == Timeout.InfiniteTimeSpan && dueTime == TimeSpan.FromSeconds(10))
+            {
+                if (Interlocked.Increment(ref checks) == 1)
+                {
+                    first.TrySetResult();
+                }
+                else
+                {
+                    second.TrySetResult();
+                }
+            }
+
+            return timer;
+        }
+    }
+
     private sealed class HeartbeatClock(DateTimeOffset start) : FakeTimeProvider(start)
     {
         private readonly TaskCompletionSource scheduled = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -323,7 +428,8 @@ public sealed class RegistryPublicationIntegrationTests
         public DateTimeOffset UtcNow => time.GetUtcNow();
     }
 
-    private sealed class ObserveReadHandler(TaskCompletionSource<bool> observed) : DelegatingHandler
+    private sealed class ObserveReadHandler(TaskCompletionSource<bool> observed, Func<string?>? expectedEtag,
+        TaskCompletionSource<bool>? updated, TaskCompletionSource<bool>? stored) : DelegatingHandler
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -333,6 +439,21 @@ public sealed class RegistryPublicationIntegrationTests
                 && response.IsSuccessStatusCode)
             {
                 observed.TrySetResult(true);
+            }
+
+            if (request.Method == HttpMethod.Get
+                && string.Equals(request.RequestUri?.AbsolutePath, "/registry/availability", StringComparison.Ordinal)
+                && expectedEtag?.Invoke() is { } expected)
+            {
+                if (response.IsSuccessStatusCode && response.Headers.ETag?.Tag == expected)
+                {
+                    updated?.TrySetResult(true);
+                }
+
+                if (request.Headers.IfNoneMatch.Any(tag => tag.Tag == expected))
+                {
+                    stored?.TrySetResult(true);
+                }
             }
 
             return response;
