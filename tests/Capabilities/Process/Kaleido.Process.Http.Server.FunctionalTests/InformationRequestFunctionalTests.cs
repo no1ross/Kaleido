@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Kaleido.Testing.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
@@ -24,6 +25,13 @@ public sealed class InformationRequestFunctionalTests
         Assert.Contains("\"requiredInformationRequest\"", json, StringComparison.Ordinal);
         Assert.Contains("\"type\":\"choice\"", json, StringComparison.Ordinal);
         Assert.Contains("\"enableWhen\"", json, StringComparison.Ordinal);
+        using var parsed = JsonDocument.Parse(json);
+        var serializedRequest = parsed.RootElement.GetProperty("requiredInformationRequest");
+        var detail = Assert.Single(serializedRequest.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetString() == $"{Questionnaires.FirstRound}-detail");
+        var condition = Assert.Single(detail.GetProperty("enableWhen").EnumerateArray());
+        Assert.Equal($"{Questionnaires.FirstRound}-reason", condition.GetProperty("question").GetString());
+        Assert.Equal("equals", condition.GetProperty("operator").GetString());
+        Assert.Equal("b", condition.GetProperty("answer").GetString());
         var result = Assert.IsType<ProcessResult>(await response.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
         var request = Assert.IsType<InformationRequest>(result.RequiredInformationRequest);
         Assert.Equal(nameof(AnswerQuestionsStep), result.RequiredStep);

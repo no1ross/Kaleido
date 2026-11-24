@@ -99,6 +99,13 @@ public sealed class GettingStartedTests : IAsyncLifetime
         Assert.Contains("PlaceOrderStep", body, StringComparison.Ordinal);
         Assert.Contains("ConfirmOrderStep", body, StringComparison.Ordinal);
         Assert.Contains("OrderSource", body, StringComparison.Ordinal);
+        var registry = Assert.IsType<KaleidoRegistry>(await response.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, Cancel));
+        var steps = Assert.Single(registry.Processes).Steps;
+        Assert.NotNull(steps);
+        var answer = Assert.Single(steps, step => step.Name == "GiftWrapAnswersStep");
+        Assert.True(answer.IsInformationStep);
+        Assert.Empty(answer.Fields);
+        Assert.False(Assert.Single(steps, step => step.Name == "GiftWrapStep").IsInformationStep);
     }
 
     [Fact]
