@@ -3,12 +3,15 @@ using System.Net.Http.Json;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Compliance.Classification;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Internal;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Kaleido.Registry.IntegrationTests;
 
@@ -61,6 +64,40 @@ public sealed class RegistryPublicationIntegrationTests
         using var availabilityResponse = await authority.GetTestClient().GetAsync("/registry/availability", TestContext.Current.CancellationToken);
         var availability = Assert.Single(Assert.IsType<KaleidoRegistryAvailability>(await availabilityResponse.Content.ReadFromJsonAsync<KaleidoRegistryAvailability>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
         Assert.Equal(RegistryStatusNames.Unavailable, availability.Status);
+    }
+
+    [Fact]
+    public async Task AnUnhealthyPublisher_ReportsNotReadyOnItsNextAutonomousHeartbeat()
+    {
+        var time = new HeartbeatClock(new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero));
+        await using var authority = await StartAuthorityAsync(time);
+        var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var refreshed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var heartbeat = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var health = new LocalHealth { Healthy = false };
+        await using var publisher = await StartPublisherAsync(authority, registered, time, health, heartbeat, refreshed);
+        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await refreshed.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(publisher);
+        await time.HeartbeatScheduled.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        using var client = authority.GetTestClient();
+        using var before = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        var available = Assert.Single(Assert.IsType<KaleidoRegistryStatus>(await before.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+        Assert.Equal(RegistryStatusNames.Available, available.Status);
+
+        for (var seconds = 0; seconds < 12 && !heartbeat.Task.IsCompleted; seconds++)
+        {
+            time.Advance(TimeSpan.FromSeconds(1));
+            await Task.Yield();
+        }
+
+        await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        time.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
+        using var after = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
+        var unavailable = Assert.Single(Assert.IsType<KaleidoRegistryStatus>(await after.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
+        Assert.Equal(RegistryStatusNames.Unavailable, unavailable.Status);
+        Assert.Equal(RegistryInstanceStateNames.NotReady, Assert.Single(unavailable.Instances).State);
+        await publisher.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -136,10 +173,20 @@ public sealed class RegistryPublicationIntegrationTests
         }
     }
 
-    private static async Task<WebApplication> StartPublisherAsync(WebApplication authority, TaskCompletionSource<bool> registered)
+    private static async Task<WebApplication> StartPublisherAsync(WebApplication authority, TaskCompletionSource<bool> registered,
+        FakeTimeProvider? time = null, LocalHealth? health = null, TaskCompletionSource<bool>? heartbeat = null, TaskCompletionSource<bool>? refreshed = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
+        if (time is not null)
+        {
+            builder.Services.AddSingleton<TimeProvider>(time);
+        }
+
+        if (health is not null)
+        {
+            builder.Services.AddHealthChecks().AddCheck("local", () => health.Healthy ? HealthCheckResult.Healthy() : HealthCheckResult.Unhealthy());
+        }
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Kaleido:BaseUrl"] = "http://localhost/",
@@ -161,7 +208,7 @@ public sealed class RegistryPublicationIntegrationTests
             .AddHttp()
             .AddQueryableHttpBindings();
         builder.Services.Configure<Microsoft.Extensions.Http.HttpClientFactoryOptions>("kaleido-registry", options =>
-            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new ObserveRegistrationHandler(registered)
+            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new ObserveRegistrationHandler(registered, heartbeat, refreshed)
             {
                 InnerHandler = authority.GetTestServer().CreateHandler(),
             }));
@@ -171,10 +218,16 @@ public sealed class RegistryPublicationIntegrationTests
         return app;
     }
 
-    private static async Task<WebApplication> StartAuthorityAsync()
+    private static async Task<WebApplication> StartAuthorityAsync(FakeTimeProvider? time = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
+        if (time is not null)
+        {
+            builder.Services.AddSingleton<TimeProvider>(time);
+            builder.Services.Configure<MemoryCacheOptions>(options => options.Clock = new RegistryClock(time));
+        }
+
         builder.Services.AddKaleido(builder.Configuration, new()
         {
             ServiceName = "registry",
@@ -184,7 +237,7 @@ public sealed class RegistryPublicationIntegrationTests
         })
             .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.None })
             .AddHttp()
-            .AddControlRegistry(new KaleidoRegistryOptions { Cache = new KaleidoRegistryCacheOptions { ViewTtl = TimeSpan.FromHours(1) } })
+            .AddControlRegistry(new KaleidoRegistryOptions { Cache = new KaleidoRegistryCacheOptions { ViewTtl = time is null ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(1) } })
             .AddInMemoryRegistryStore()
             .AddRegistryHttpServer();
         var app = builder.Build();
@@ -242,6 +295,34 @@ public sealed class RegistryPublicationIntegrationTests
             query.Select(record => new CatalogViewRecord { Name = record.Name });
     }
 
+    private sealed class HeartbeatClock(DateTimeOffset start) : FakeTimeProvider(start)
+    {
+        private readonly TaskCompletionSource scheduled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task HeartbeatScheduled => scheduled.Task;
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = base.CreateTimer(callback, state, dueTime, period);
+            if (period == Timeout.InfiniteTimeSpan && dueTime >= TimeSpan.FromSeconds(9)
+                && dueTime <= TimeSpan.FromSeconds(11) && dueTime != TimeSpan.FromSeconds(10))
+            {
+                scheduled.TrySetResult();
+            }
+
+            return timer;
+        }
+    }
+
+    private sealed class LocalHealth
+    {
+        public bool Healthy { get; set; } = true;
+    }
+
+    private sealed class RegistryClock(FakeTimeProvider time) : ISystemClock
+    {
+        public DateTimeOffset UtcNow => time.GetUtcNow();
+    }
+
     private sealed class ObserveReadHandler(TaskCompletionSource<bool> observed) : DelegatingHandler
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -258,7 +339,7 @@ public sealed class RegistryPublicationIntegrationTests
         }
     }
 
-    private sealed class ObserveRegistrationHandler(TaskCompletionSource<bool> observed) : DelegatingHandler
+    private sealed class ObserveRegistrationHandler(TaskCompletionSource<bool> observed, TaskCompletionSource<bool>? heartbeat, TaskCompletionSource<bool>? refreshed) : DelegatingHandler
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -268,6 +349,20 @@ public sealed class RegistryPublicationIntegrationTests
                 && response.IsSuccessStatusCode)
             {
                 observed.TrySetResult(true);
+            }
+
+            if (request.Method == HttpMethod.Get
+                && string.Equals(request.RequestUri?.AbsolutePath, "/registry/capabilities", StringComparison.Ordinal)
+                && response.IsSuccessStatusCode)
+            {
+                refreshed?.TrySetResult(true);
+            }
+
+            if (request.Method == HttpMethod.Put
+                && request.RequestUri?.AbsolutePath.EndsWith("/heartbeat", StringComparison.Ordinal) == true
+                && response.IsSuccessStatusCode)
+            {
+                heartbeat?.TrySetResult(true);
             }
 
             return response;

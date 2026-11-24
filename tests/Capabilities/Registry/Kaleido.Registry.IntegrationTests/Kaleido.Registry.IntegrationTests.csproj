@@ -3,6 +3,7 @@
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Client\Kaleido.Registry.Http.Client.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Server\Kaleido.Registry.Http.Server.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Server\Kaleido.Queryable.Http.Server.csproj" />
