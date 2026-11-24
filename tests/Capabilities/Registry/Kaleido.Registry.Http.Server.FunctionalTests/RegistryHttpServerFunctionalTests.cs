@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Time.Testing;
@@ -227,6 +228,60 @@ public sealed class RegistryHttpServerFunctionalTests
         var second = Assert.IsType<KaleidoRegistryStatus>(await secondResponse.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
         Assert.Equal(sameView ? first.GeneratedAt : time.GetUtcNow(), second.GeneratedAt);
         Assert.Equal("orders", Assert.Single(first.Queryables).Name);
+    }
+
+    [Fact]
+    public async Task CapabilityCache_RetainsAnImmutableBuildUntilItsOwnLifetime_ThenRetriesAfterAFailedRead()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero));
+        var build = "1.0.0-preview.616";
+        var capabilities = new KaleidoRegistry
+        {
+            Queryables = [new QueryableRegistryItem { ServiceName = "catalog", Name = "orders" }],
+        };
+        var contents = new RegistryStoreContents
+        {
+            Registrations = [new RegistryRegistrationRecord { ServiceName = "catalog", ServiceVersion = "1", BuildVersion = build, RegisteredUtc = time.GetUtcNow() }],
+            Instances = [new RegistryInstanceRecord { InstanceId = Guid.NewGuid(), ServiceName = "catalog", ServiceVersion = "1", BuildVersion = build,
+                RegisteredUtc = time.GetUtcNow(), LastHeartbeatUtc = time.GetUtcNow() }],
+            CurrentVersions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["catalog"] = "1" },
+            WatchResumedUtc = time.GetUtcNow(),
+        };
+        var failCapabilities = false;
+        var store = new Mock<IKaleidoRegistryStore>();
+        store.Setup(x => x.ReadAsync(It.IsAny<CancellationToken>())).ReturnsAsync(contents);
+        store.Setup(x => x.TouchWatchAsync(It.IsAny<DateTimeOffset>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).ReturnsAsync(time.GetUtcNow());
+        store.Setup(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .Returns((string _, string _, IReadOnlyCollection<string> _, CancellationToken _) => failCapabilities
+                ? Task.FromException<IReadOnlyDictionary<string, KaleidoRegistry>>(new IOException("capabilities unavailable"))
+                : Task.FromResult<IReadOnlyDictionary<string, KaleidoRegistry>>(new Dictionary<string, KaleidoRegistry> { [build] = capabilities }));
+        await using var app = await StartAsync(fakeTime: time, overrideStore: store.Object, registryOptions: new KaleidoRegistryOptions
+        {
+            Cache = new KaleidoRegistryCacheOptions { ViewTtl = TimeSpan.FromSeconds(1), CapabilitiesTtl = TimeSpan.FromSeconds(4) },
+        });
+        using var client = app.GetTestClient();
+        using var initialResponse = await client.GetAsync("/registry", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, initialResponse.StatusCode);
+        var initial = Assert.IsType<KaleidoRegistry>(await initialResponse.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal("orders", Assert.Single(initial.Queryables).Name);
+
+        failCapabilities = true;
+        time.Advance(TimeSpan.FromSeconds(4) - TimeSpan.FromTicks(1));
+        using var cachedResponse = await client.GetAsync("/registry", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, cachedResponse.StatusCode);
+        var cached = Assert.IsType<KaleidoRegistry>(await cachedResponse.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(initial.Revision, cached.Revision);
+        store.Verify(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        time.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
+        using var failedResponse = await client.GetAsync("/registry", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.InternalServerError, failedResponse.StatusCode);
+        failCapabilities = false;
+        using var recoveredResponse = await client.GetAsync("/registry", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, recoveredResponse.StatusCode);
+        var recovered = Assert.IsType<KaleidoRegistry>(await recoveredResponse.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(initial.Revision, recovered.Revision);
+        store.Verify(x => x.GetCapabilitiesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -856,7 +911,7 @@ public sealed class RegistryHttpServerFunctionalTests
     };
 
     private static async Task<WebApplication> StartAsync(bool enforceAuthorization = false, KaleidoRegistryOptions? registryOptions = null, bool zeroTrust = false,
-        bool superuserHandler = false, FakeTimeProvider? fakeTime = null)
+        bool superuserHandler = false, FakeTimeProvider? fakeTime = null, IKaleidoRegistryStore? overrideStore = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -897,6 +952,10 @@ public sealed class RegistryHttpServerFunctionalTests
                 : registryOptions)
             .AddInMemoryRegistryStore()
             .AddRegistryHttpServer();
+        if (overrideStore is not null)
+        {
+            builder.Services.Replace(ServiceDescriptor.Singleton(overrideStore));
+        }
 
         var app = builder.Build();
         if (enforceAuthorization)
