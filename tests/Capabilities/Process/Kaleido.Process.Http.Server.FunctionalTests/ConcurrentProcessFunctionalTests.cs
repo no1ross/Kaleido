@@ -47,6 +47,34 @@ public sealed class ConcurrentProcessFunctionalTests
         }
     }
 
+    [Fact]
+    public async Task AKeyedRetryWhileTheFirstHandlerRuns_WaitsForItsStoredAnswerInsteadOfRunningAgain()
+    {
+        await using var app = await StartAsync();
+        var processId = await StartProcessAsync(app);
+        var gate = app.Services.GetRequiredService<SlowGate>();
+        const string key = "same-slow-step-0a1b2c3d4e5f";
+        var first = PostAsync(app, nameof(SlowStep), processId, key);
+        await gate.Entered.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
+        using var inProgress = await PostAsync(app, nameof(SlowStep), processId, key);
+        Assert.Equal(HttpStatusCode.Conflict, inProgress.StatusCode);
+        var busy = Assert.IsType<KaleidoErrorResponse>(await inProgress.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(ProcessorErrorCodes.IdempotencyInProgress, Assert.Single(busy.Errors).Code);
+        Assert.Equal(TimeSpan.FromSeconds(1), inProgress.Headers.RetryAfter?.Delta);
+        Assert.Equal(1, gate.Invocations);
+
+        gate.Release();
+        using var completed = await first;
+        Assert.Equal(HttpStatusCode.OK, completed.StatusCode);
+        var initial = Assert.IsType<ProcessResult>(await completed.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+        using var replay = await PostAsync(app, nameof(SlowStep), processId, key);
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        Assert.Equal("true", Assert.Single(replay.Headers.GetValues(KaleidoIdempotencyHeaders.Replayed)));
+        var repeated = Assert.IsType<ProcessResult>(await replay.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(initial.ProcessId, repeated.ProcessId);
+        Assert.Equal(1, gate.Invocations);
+    }
+
     private static async Task<Guid> StartProcessAsync(WebApplication app)
     {
         using var response = await PostAsync(app, nameof(StartStep), null);
