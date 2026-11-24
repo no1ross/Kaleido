@@ -166,6 +166,45 @@ public sealed class StandaloneProcessClientFunctionalTests
     }
 
     [Fact]
+    public async Task KeyedPost_AfterTheGatewayLosesTheServersAnswer_RetriesWithoutRunningTheStepAgain()
+    {
+        await using var authority = await StartAuthorityAsync();
+        var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var publisher = await StartPublisherAsync(authority, "2", registered);
+        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var read = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var time = new RetryClock(DateTimeOffset.UtcNow);
+        var probe = new RetryProbe(HttpStatusCode.ServiceUnavailable, key: "lost-pinned-call-0a1b2c3d4e5f", dropAfterSend: true);
+        using var consumer = StartConsumer(authority, publisher, publisher, read, time, probe);
+        await consumer.StartAsync(TestContext.Current.CancellationToken);
+        await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(consumer);
+        using var scope = consumer.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredKeyedService<IKaleidoProcessorClient>("catalog");
+        var pending = client.ExecuteStepAsync(new Consumer.ReviewOrderStep("A-1"), null,
+            "lost-pinned-call-0a1b2c3d4e5f", TestContext.Current.CancellationToken);
+        await probe.Delivered.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Equal(1, publisher.Services.GetRequiredService<Publisher.ExecutionCounter>().Count);
+        await Task.WhenAny(time.RetryScheduled, probe.SecondAttempt.Task).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        for (var tick = 0; tick < 5 && !probe.SecondAttempt.Task.IsCompleted && !pending.IsCompleted; tick++)
+        {
+            await Task.Yield();
+            time.Advance(TimeSpan.FromSeconds(1));
+        }
+
+        await probe.SecondAttempt.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var result = await pending.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Equal("2", result.ServiceVersion);
+        Assert.Equal(probe.FirstProcessId, result.ProcessId);
+        Assert.Equal(["lost-pinned-call-0a1b2c3d4e5f", "lost-pinned-call-0a1b2c3d4e5f"], probe.Keys);
+        Assert.Equal(1, publisher.Services.GetRequiredService<Publisher.ExecutionCounter>().Count);
+        var state = await client.GetProcessStateAsync(result.ProcessId, TestContext.Current.CancellationToken);
+        Assert.Equal(result.ProcessId, Assert.IsType<ProcessStateSnapshot>(state).ProcessId);
+        await consumer.StopAsync(TestContext.Current.CancellationToken);
+        await publisher.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task AuthenticatedProcessStep_ExchangesCallerTokenAndHandsOffToPinnedTarget()
     {
         await using var authority = await StartAuthorityAsync();
@@ -448,23 +487,49 @@ public sealed class StandaloneProcessClientFunctionalTests
         }
     }
 
-    private sealed class RetryProbe(HttpStatusCode status)
+    private sealed class RetryClock(DateTimeOffset start) : FakeTimeProvider(start)
+    {
+        private readonly TaskCompletionSource scheduled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task RetryScheduled => scheduled.Task;
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = base.CreateTimer(callback, state, dueTime, period);
+            if (period == Timeout.InfiniteTimeSpan && dueTime > TimeSpan.Zero && dueTime < TimeSpan.FromSeconds(3))
+            {
+                scheduled.TrySetResult();
+            }
+
+            return timer;
+        }
+    }
+
+    private sealed class RetryProbe(HttpStatusCode status, string key = "retry-pinned-call", bool dropAfterSend = false)
     {
         private int _rejectFirst = 1;
+        private readonly TaskCompletionSource<bool> delivered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public HttpStatusCode Status { get; } = status;
+        public bool DropAfterSend { get; } = dropAfterSend;
         public TaskCompletionSource<bool> FirstAttempt { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task Delivered => delivered.Task;
         public TaskCompletionSource<bool> SecondAttempt { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ConcurrentQueue<string> Keys { get; } = new();
+        public Guid? FirstProcessId { get; private set; }
+        public void MarkDelivered(Guid id)
+        {
+            FirstProcessId = id;
+            delivered.TrySetResult(true);
+        }
 
         public bool Reject(HttpRequestMessage request)
         {
             if (!request.Headers.TryGetValues(KaleidoIdempotencyHeaders.IdempotencyKey, out var values)
-                || Assert.Single(values) is not "retry-pinned-call")
+                || Assert.Single(values) != key)
             {
                 return false;
             }
 
-            Keys.Enqueue("retry-pinned-call");
+            Keys.Enqueue(key);
             if (Interlocked.Exchange(ref _rejectFirst, 0) != 1)
             {
                 SecondAttempt.TrySetResult(true);
@@ -482,23 +547,30 @@ public sealed class StandaloneProcessClientFunctionalTests
         private readonly HttpMessageInvoker _two = new(two);
         private readonly HttpMessageInvoker _three = new(three);
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             observe?.Invoke(request);
+            var destination = request.RequestUri?.AbsolutePath.StartsWith("/catalog/2/", StringComparison.Ordinal) == true ? _two : _three;
             if (retry?.Reject(request) == true)
             {
+                if (retry.DropAfterSend)
+                {
+                    using var delivered = await destination.SendAsync(request, cancellationToken);
+                    Assert.Equal(HttpStatusCode.OK, delivered.StatusCode);
+                    var result = Assert.IsType<ProcessResult>(await delivered.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, cancellationToken));
+                    retry.MarkDelivered(result.ProcessId);
+                }
+
                 var response = new HttpResponseMessage(retry.Status) { RequestMessage = request };
                 if (retry.Status == HttpStatusCode.Conflict)
                 {
                     response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(1));
                 }
 
-                return Task.FromResult(response);
+                return response;
             }
 
-            return request.RequestUri?.AbsolutePath.StartsWith("/catalog/2/", StringComparison.Ordinal) == true
-                ? _two.SendAsync(request, cancellationToken)
-                : _three.SendAsync(request, cancellationToken);
+            return await destination.SendAsync(request, cancellationToken);
         }
 
         protected override void Dispose(bool disposing)
