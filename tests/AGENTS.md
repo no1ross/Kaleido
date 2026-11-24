@@ -186,7 +186,7 @@ var httpClient = new HttpClient(captureHandler) { BaseAddress = new Uri("http://
 services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("kaleido-gateway", httpClient));
 ```
 
-The `FixedHttpClientFactory` pattern in the parked `ProcessClientHeaderTests` is the canonical example.
+The `FixedHttpClientFactory` pattern in `RegistryHttpClientFunctionalTests` is the canonical example.
 
 #### Pitfall 2 — Always build with ValidateScopes + ValidateOnBuild
 
