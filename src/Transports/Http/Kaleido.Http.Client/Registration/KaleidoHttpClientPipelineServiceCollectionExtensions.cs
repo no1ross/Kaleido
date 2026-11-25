@@ -74,6 +74,8 @@ public static class KaleidoHttpClientPipelineServiceCollectionExtensions
             http.BaseAddress = gateway;
             http.Timeout = settings.Resilience.Enabled ? Timeout.InfiniteTimeSpan : settings.Resilience.TotalTimeout;
         });
+        builder.Services.TryAddTransient<KaleidoClientCallLoggingHandler>();
+        client.AddHttpMessageHandler<KaleidoClientCallLoggingHandler>();
         if (settings.Resilience.Enabled)
         {
             client.AddResilienceHandler("kaleido", pipeline => pipeline.AddSafeResilience(settings.Resilience));

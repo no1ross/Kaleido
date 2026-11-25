@@ -110,6 +110,7 @@ internal sealed class KaleidoProcessorClient(
 
     private void Stamp(HttpRequestMessage request, KaleidoCorrelationContext context, Guid? explicitProcessId = null)
     {
+        request.Options.Set(KaleidoClientCallLoggingHandler.TargetService, serviceName);
         if (inboundCaller.IsInboundRequest)
         {
             request.Options.Set(KaleidoCallContext.Key, KaleidoCallContext.ForCaller(inboundCaller.Principal, inboundCaller.Credential));

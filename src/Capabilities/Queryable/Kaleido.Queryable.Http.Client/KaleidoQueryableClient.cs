@@ -95,6 +95,7 @@ internal sealed class KaleidoQueryableClient(
         {
             Content = JsonContent.Create(body, body.GetType(), options: KaleidoJsonOptions.Options),
         };
+        request.Options.Set(KaleidoClientCallLoggingHandler.TargetService, serviceName);
         if (inboundCaller.IsInboundRequest)
         {
             request.Options.Set(KaleidoCallContext.Key, KaleidoCallContext.ForCaller(inboundCaller.Principal, inboundCaller.Credential));

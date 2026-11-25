@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Kaleido.Http.Client.Registration.UnitTests;
 
@@ -42,6 +44,32 @@ public sealed class KaleidoHttpClientPipelineServiceCollectionExtensionsTests : 
         Assert.Single(services, x => x.ImplementationInstance is KaleidoHttpClientName);
         Assert.Single(services, x => x.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService)
             && x.ImplementationType == typeof(KaleidoClientTransportCheck));
+    }
+
+    [Fact]
+    public async Task AddNamedClient_LogsANonSuccessForItsRemoteServiceWithoutQueryOrCredentials()
+    {
+        var services = new ServiceCollection();
+        var logger = new RecordingLogger();
+        services.AddSingleton<ILogger<KaleidoClientCallLoggingHandler>>(logger);
+        var builder = Builder(services);
+        builder.AddKaleidoHttpClientPipeline();
+        builder.AddKaleidoNamedClient("kaleido-process");
+        services.Configure<HttpClientFactoryOptions>("kaleido-process", options =>
+            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new BadRequestHandler()));
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("kaleido-process");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/catalog/1/processes/state?credential=do-not-log");
+        request.Headers.TryAddWithoutValidation("Authorization", "Bearer do-not-log");
+        request.Options.Set(KaleidoClientCallLoggingHandler.TargetService, "catalog");
+        KaleidoCallContext.MarkServiceOwn(request);
+
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var warning = Assert.Single(logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("catalog", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("do-not-log", warning.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -102,5 +130,20 @@ public sealed class KaleidoHttpClientPipelineServiceCollectionExtensionsTests : 
     {
         var exception = Assert.Throws<KaleidoConfigurationException>(() => Builder(new ServiceCollection(), gateway).AddKaleidoHttpClientPipeline());
         Assert.Contains("BaseUrl", exception.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class BadRequestHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest));
+    }
+
+    private sealed class RecordingLogger : ILogger<KaleidoClientCallLoggingHandler>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel level, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Add((level, formatter(state, exception)));
     }
 }

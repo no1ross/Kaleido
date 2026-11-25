@@ -89,6 +89,7 @@ internal sealed class KaleidoHttpRegistryClient(
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        request.Options.Set(KaleidoClientCallLoggingHandler.TargetService, "registry");
         request.StampKaleidoCorrelation(correlation.Current, localServiceName: localServiceOptions.ServiceName);
         try
         {
