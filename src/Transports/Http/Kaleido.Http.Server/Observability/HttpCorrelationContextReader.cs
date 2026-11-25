@@ -29,11 +29,7 @@ internal static class HttpCorrelationContextReader
 
         return new KaleidoCorrelationContext
         {
-            RequestId =
-                trustIdentity
-                    ? ReadString(context, KaleidoCorrelationHeaders.RequestId)
-                        ?? Guid.NewGuid().ToString()
-                    : Guid.NewGuid().ToString(),
+            RequestId = ReadRequestId(context, trustIdentity),
 
             ProcessId =
                 ReadGuid(context, KaleidoCorrelationHeaders.ProcessId),
@@ -60,6 +56,9 @@ internal static class HttpCorrelationContextReader
                     : null,
         };
     }
+
+    internal static string ReadRequestId(this HttpContext context, bool trustIdentity) =>
+        trustIdentity ? ReadString(context, KaleidoCorrelationHeaders.RequestId) ?? Guid.NewGuid().ToString() : Guid.NewGuid().ToString();
 
     private static string? ReadString(HttpContext context, string headerName)
     {

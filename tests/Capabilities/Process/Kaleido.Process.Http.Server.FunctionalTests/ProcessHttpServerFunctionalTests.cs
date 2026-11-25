@@ -59,6 +59,26 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task AnInvalidProcessIdHeader_ReturnsAStructured400AndEchoesTheTrustedRequestId()
+    {
+        await using var app = await StartAsync();
+        using var client = Client(app);
+        using var request = new HttpRequestMessage(HttpMethod.Post, StepUrl)
+        {
+            Content = JsonContent.Create(new ExecuteStepRequest<ReviewOrderStep> { ProcessStep = new ReviewOrderStep { Code = "A-1" } }, options: KaleidoJsonOptions.Options),
+        };
+        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, "not-a-process-id");
+        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, "req-invalid-process-1");
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("req-invalid-process-1", Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
+        var error = Assert.IsType<KaleidoErrorResponse>(await response.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(KaleidoErrorCodes.ArgumentError, Assert.Single(error.Errors).Code);
+        Assert.Equal(0, app.Services.GetRequiredService<ReviewRuns>().Count);
+        Assert.Empty(app.Services.GetRequiredService<StoredProcesses>().States);
+    }
+
+    [Fact]
     public async Task AnAnonymousCaller_GetsAGeneratedRequestIdInsteadOfTheOneItSent()
     {
         await using var app = await StartAsync(authorizationMode: KaleidoAuthorizationMode.None);

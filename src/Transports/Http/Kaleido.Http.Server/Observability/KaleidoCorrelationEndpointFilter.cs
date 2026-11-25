@@ -47,7 +47,16 @@ internal static class KaleidoCorrelationHttpContextExtensions
             options.TrustCorrelationIdentity?.Invoke(httpContext)
             ?? IsCorrelationIdentityTrustedByDefault(httpContext);
 
-        var correlation = httpContext.ReadCorrelationContext(trustIdentity);
+        KaleidoCorrelationContext correlation;
+        try
+        {
+            correlation = httpContext.ReadCorrelationContext(trustIdentity);
+        }
+        catch (BadHttpRequestException)
+        {
+            EchoHeaders(httpContext, new KaleidoCorrelationContext { RequestId = httpContext.ReadRequestId(trustIdentity) });
+            throw;
+        }
 
         httpContext.RequestServices
             .GetService<IKaleidoCorrelationContextInitializer>()?

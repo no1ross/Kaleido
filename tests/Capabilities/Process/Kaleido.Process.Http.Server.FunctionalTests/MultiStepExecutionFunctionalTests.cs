@@ -33,7 +33,7 @@ public sealed class MultiStepExecutionFunctionalTests
     public async Task DependentSteps_SubmittedTogether_AllComplete()
     {
         await using var app = await StartAsync();
-        using var response = await PostAsync(app, Step(nameof(RootStep)), Step(nameof(FirstStep)), Step(nameof(SecondStep)), Step(nameof(MergeStep)));
+        using var response = await PostAsync(app, Step(nameof(MergeStep)), Step(nameof(SecondStep)), Step(nameof(RootStep)), Step(nameof(FirstStep)));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var result = Assert.IsType<ProcessResult>(await response.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));

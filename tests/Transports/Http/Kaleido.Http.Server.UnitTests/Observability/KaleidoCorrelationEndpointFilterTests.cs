@@ -187,6 +187,34 @@ public sealed class KaleidoCorrelationEndpointFilterTests
             Times.Once);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InvokeAsync_WhenProcessIdIsMalformed_EchoesOnlyATrustedRequestId(bool trust)
+    {
+        var initializer = new Mock<IKaleidoCorrelationContextInitializer>();
+        var httpContext = CreateContext(initializer, new KaleidoHttpServerOptions { TrustCorrelationIdentity = _ => trust });
+        var responseFeature = new StartableResponseFeature();
+        httpContext.Features.Set<Microsoft.AspNetCore.Http.Features.IHttpResponseFeature>(responseFeature);
+        SetHeaders(httpContext, requestId: "req-42");
+        httpContext.Request.Headers[KaleidoCorrelationHeaders.ProcessId] = "not-a-process-id";
+
+        await Assert.ThrowsAsync<BadHttpRequestException>(() => InvokeAsync(httpContext));
+        await responseFeature.StartAsync();
+
+        var echoed = Assert.Single(responseFeature.Headers[KaleidoCorrelationHeaders.RequestId]);
+        if (trust)
+        {
+            Assert.Equal("req-42", echoed);
+        }
+        else
+        {
+            Assert.NotEqual("req-42", echoed);
+            Assert.True(Guid.TryParse(echoed, out _));
+        }
+        initializer.Verify(x => x.Initialize(It.IsAny<KaleidoCorrelationContext>()), Times.Never);
+    }
+
     [Fact]
     public async Task InvokeAsync_WhenNoPredicateAndAuthWired_IgnoresIdentityForAnonymous()
     {
