@@ -18,6 +18,17 @@ public sealed class KaleidoRegistryCacheOptionsTests : SutFixture<KaleidoRegistr
         Assert.Null(sut.CapabilitiesLocalTtl);
     }
 
+    [Fact]
+    public void InterfaceValidation_UsesTheConfiguredCacheSection()
+    {
+        IKaleidoOptions options = Sut with { KeyPrefix = " " };
+
+        Assert.Equal("Kaleido:Registry:Cache", options.ConfigurationPath);
+        var exception = Assert.Throws<KaleidoConfigurationException>(options.Validate);
+        Assert.Equal(ConfigurationErrorCodes.InvalidOptions, exception.Code);
+        Assert.Contains("Kaleido:Registry:Cache:KeyPrefix", exception.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("key prefix empty", "KeyPrefix")]
     [InlineData("key prefix too long", "KeyPrefix")]

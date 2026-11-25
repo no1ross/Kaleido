@@ -66,6 +66,30 @@ public sealed class SqliteKaleidoRegistryStoreTests
     }
 
     [Fact]
+    public async Task RegistrationWrittenBySql_MaterializesThroughTheMappedEntity()
+    {
+        var registration = new RegistryRegistrationRecord
+        {
+            ServiceName = "radiology",
+            ServiceVersion = "1",
+            BuildVersion = "build-1",
+            RegisteredUtc = new DateTimeOffset(2026, 11, 2, 14, 0, 0, TimeSpan.FromHours(2)),
+        };
+        await CreateSut().AddRegistrationAsync(registration, new KaleidoRegistry
+        {
+            Processes = [new ProcessRegistryItem { Name = "radiology", ServiceName = "radiology", ServiceVersion = "1" }],
+        }, Cancel);
+        using var context = Context();
+
+        var entity = await context.RegistryRegistrations.AsNoTracking().SingleAsync(Cancel);
+
+        Assert.Equal((registration.ServiceName, registration.ServiceVersion, registration.BuildVersion),
+            (entity.ServiceName, entity.ServiceVersion, entity.BuildVersion));
+        Assert.Equal(registration.RegisteredUtc.ToUniversalTime().Ticks, entity.RegisteredUtc);
+        Assert.Contains("radiology", entity.Capabilities, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GetCapabilitiesAsync_RoundTripsQueryableBindingsWithoutAQueryableRuntimeDependency()
     {
         var registration = new RegistryRegistrationRecord

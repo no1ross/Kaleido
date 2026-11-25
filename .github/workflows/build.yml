@@ -88,6 +88,9 @@ jobs:
       shell: pwsh
       run: ./tools/test/Test-RunTests.ps1
 
+    - name: Self-test the coverage gate
+      run: python3 tools/test/test-check-coverage.py
+
     - name: Set up Java (Sonar scanner)
       if: ${{ env.SONAR_TOKEN != '' }}
       uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad  # v6.1.0
@@ -132,9 +135,9 @@ jobs:
 
     # Merge per-project cobertura into a union report. Summing hits across files
     # would double-count shared src assemblies; reportgenerator merges hits.
-    # Scope is shipped src/ assemblies only - tests and analyzers (tools/) are excluded by
-    # assembly. Not by path: reportgenerator's file filters are case-insensitive, and '*/tools/*' also
-    # matched src/Mcp/Mcp/Tools/ (#260).
+    # Sonar includes compiled guide examples; the separate production gate excludes them.
+    # Both merges filter test/analyzer assemblies, never paths: '*/tools/*' also matched
+    # src/Mcp/Mcp/Tools/ under the case-insensitive path filters (#260).
     - name: Merge coverage
       run: |
         dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11
@@ -143,6 +146,11 @@ jobs:
           "-targetdir:coverage" \
           "-reporttypes:lcov;HtmlSummary;SonarQube;MarkdownSummaryGithub" \
           "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*;-Kaleido.Analyzers*"
+        reportgenerator \
+          "-reports:TestResults/*.cobertura.xml" \
+          "-targetdir:coverage/production" \
+          "-reporttypes:Cobertura" \
+          "-assemblyfilters:-*Tests*;-*FunctionalTests*;-*IntegrationTests*;-Kaleido.Analyzers*;-Kaleido.Guide.Examples"
         # The coverage table on the run's page (#490); the files themselves are uploaded below.
         cat coverage/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -150,28 +158,10 @@ jobs:
       if: ${{ env.SONAR_TOKEN != '' }}
       run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 
-    # ENFORCED: merged line coverage of the shipped src/ assemblies must meet the floor, or the build
-    # fails. Ratchet: raise, never lower (99.8% when the gate was enforced).
+    # ENFORCED: merged shipped src/ coverage must meet 97.5% on exact counts, never a rounded
+    # display rate (#526). Authored classes below the 97% goal are reported, not failed.
     - name: Coverage gate
-      run: |
-        lh=$(awk -F: '/^LH:/{s+=$2} END{print s+0}' coverage/lcov.info)
-        lf=$(awk -F: '/^LF:/{s+=$2} END{print s+0}' coverage/lcov.info)
-        if [ "$lf" -eq 0 ]; then
-          echo "::error::No coverable lines found in coverage/lcov.info."
-          exit 1
-        fi
-        # The rounded rate is for display only; the floor is compared on the exact counts, so 94.96%
-        # never passes a 95% floor by rounding (#526).
-        rate=$(awk "BEGIN{printf \"%.2f\", $lh*100.0/$lf}")
-        echo "Merged line coverage: $rate% ($lh/$lf) - floor: $COVERAGE_FLOOR%"
-        if awk "BEGIN{exit !($lh*100 >= $COVERAGE_FLOOR*$lf)}"; then
-          echo "Coverage meets the $COVERAGE_FLOOR% floor."
-        else
-          echo "::error::Merged line coverage $rate% is below the $COVERAGE_FLOOR% floor."
-          exit 1
-        fi
-      env:
-        COVERAGE_FLOOR: 95
+      run: python3 tools/test/check-coverage.py coverage/production/Cobertura.xml
 
     - name: Upload coverage
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
@@ -180,6 +170,7 @@ jobs:
         path: |
           TestResults/*.cobertura.xml
           coverage/lcov.info
+          coverage/production/Cobertura.xml
           coverage/index.html
           coverage/SummaryGithub.md
         if-no-files-found: ignore

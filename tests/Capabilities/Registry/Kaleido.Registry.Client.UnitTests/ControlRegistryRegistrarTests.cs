@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Registry.Client.UnitTests;
@@ -84,7 +85,8 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
         double jitter = 0,
         IReadOnlyCollection<IKaleidoLocalCapabilities>? contributions = null,
         IReadOnlyCollection<IProcessRegistryBindingContributor>? processBindings = null,
-        IReadOnlyCollection<IQueryableRegistryBindingContributor>? queryableBindings = null)
+        IReadOnlyCollection<IQueryableRegistryBindingContributor>? queryableBindings = null,
+        ILogger<ControlRegistryRegistrar>? logger = null)
     {
         var provider = new Mock<IServiceProvider>();
         provider.Setup(x => x.GetService(typeof(IKaleidoRegistryClient))).Returns(client.Object);
@@ -98,10 +100,26 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
             new KaleidoServiceOptions { ServiceName = "code-sets", ServiceVersion = "3", InstanceId = InstanceId },
             contributions ?? [local.Object], processBindings ?? [], queryableBindings ?? [],
             [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/code-sets/3" }], registry.Object, health is null ? [] : [health], time,
-            NullLogger<ControlRegistryRegistrar>.Instance)
+            logger ?? NullLogger<ControlRegistryRegistrar>.Instance)
         {
             Jitter = () => jitter,
         };
+    }
+
+    private static Mock<ILogger<ControlRegistryRegistrar>> EnabledLogger()
+    {
+        var logger = new Mock<ILogger<ControlRegistryRegistrar>>();
+        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        return logger;
+    }
+
+    private static void AssertLogged(Mock<ILogger<ControlRegistryRegistrar>> logger, LogLevel level, string fragment)
+    {
+        var log = logger.Invocations.First(x => x.Method.Name == nameof(ILogger.Log) &&
+            (LogLevel)x.Arguments[0] == level &&
+            x.Arguments[2].ToString()!.Contains(fragment, StringComparison.Ordinal));
+        var fields = Assert.IsAssignableFrom<IEnumerable<KeyValuePair<string, object?>>>(log.Arguments[2]);
+        Assert.Contains(fields, field => field.Key == "{OriginalFormat}");
     }
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
@@ -229,7 +247,8 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
     public async Task ARegistrationThatFails_IsRetried_AfterItsBackoff()
     {
         answer = _ => calls.Count == 1 ? RegistryReply.Unavailable : RegistryReply.Ok;
-        var sut = CreateSut();
+        var logger = EnabledLogger();
+        var sut = CreateSut(logger: logger.Object);
 
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
@@ -242,6 +261,32 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
 
         Assert.All(Calls.Take(2), x => Assert.Equal(RegistryOperation.Register, x.Operation));
         Assert.True(sut.HasRegistered);
+        AssertLogged(logger, LogLevel.Warning, "503");
+    }
+
+    [Fact]
+    public async Task AnUnreachableRegistry_IsReportedAndRetried()
+    {
+        client.Setup(x => x.RegisterAsync(It.IsAny<RegistryInstanceRegistration>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((RegistryInstanceRegistration registration, CancellationToken _) =>
+            {
+                Record(RegistryOperation.Register, registration: registration);
+                return calls.Count == 1
+                    ? throw new KaleidoRegistryClientException(RegistryClientErrorCodes.RequestFailed, "Registry unreachable.", status: null)
+                    : Lease();
+            });
+        var logger = EnabledLogger();
+        var sut = CreateSut(logger: logger.Object);
+
+        await sut.StartAsync(Cancel);
+        await CalledAsync(1);
+        Assert.False(sut.HasRegistered);
+        time.Advance(RegistryRetry.First);
+        await CalledAsync(2);
+        await sut.StopAsync(Cancel);
+
+        Assert.True(sut.HasRegistered);
+        AssertLogged(logger, LogLevel.Warning, "registration");
     }
 
     [Fact]
@@ -292,7 +337,8 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
     public async Task AHeartbeatTheRegistryDoesNotKnow_RegistersAgain()
     {
         answer = operation => operation == RegistryOperation.Heartbeat ? RegistryReply.Unknown : RegistryReply.Ok;
-        var sut = CreateSut();
+        var logger = EnabledLogger();
+        var sut = CreateSut(logger: logger.Object);
 
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
@@ -301,13 +347,15 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
         await sut.StopAsync(Cancel);
 
         Assert.Equal([RegistryOperation.Register, RegistryOperation.Heartbeat, RegistryOperation.Register], Calls.Take(3).Select(x => x.Operation));
+        AssertLogged(logger, LogLevel.Warning, InstanceId.ToString());
     }
 
     [Fact]
     public async Task AHeartbeatThatFails_IsTriedAgainAtTheNextInterval_AndTheInstanceStaysReady()
     {
         answer = operation => operation == RegistryOperation.Heartbeat ? RegistryReply.Unavailable : RegistryReply.Ok;
-        var sut = CreateSut();
+        var logger = EnabledLogger();
+        var sut = CreateSut(logger: logger.Object);
 
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
@@ -319,6 +367,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
 
         Assert.Equal([RegistryOperation.Register, RegistryOperation.Heartbeat, RegistryOperation.Heartbeat], Calls.Take(3).Select(x => x.Operation));
         Assert.True(sut.HasRegistered);
+        AssertLogged(logger, LogLevel.Warning, "503");
     }
 
     [Fact]
@@ -331,6 +380,26 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
         await sut.StopAsync(Cancel);
 
         Assert.Equal(RegistryOperation.Deregister, Calls[^1].Operation);
+    }
+
+    [Fact]
+    public async Task AtShutdown_AFailedDeregistration_IsBestEffortAndLogged()
+    {
+        client.Setup(x => x.DeregisterAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid _, CancellationToken _) =>
+            {
+                Record(RegistryOperation.Deregister);
+                return Task.FromException(new KaleidoRegistryClientException(RegistryClientErrorCodes.RequestFailed, "Registry unreachable.", status: null));
+            });
+        var logger = EnabledLogger();
+        var sut = CreateSut(logger: logger.Object);
+
+        await sut.StartAsync(Cancel);
+        await CalledAsync(1);
+        await sut.StopAsync(Cancel);
+
+        Assert.Equal(RegistryOperation.Deregister, Calls[^1].Operation);
+        AssertLogged(logger, LogLevel.Warning, "deregistration");
     }
 
     [Fact]

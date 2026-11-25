@@ -181,6 +181,33 @@ public sealed class QueryableObservabilityTests
         AssertLogged(logger, LogLevel.Error, $"Queryable execution failed for {sourceName}/grid.");
     }
 
+    [Theory]
+    [InlineData("configuration")]
+    [InlineData("framework")]
+    [InlineData("validation")]
+    public void ExecutionFailed_KaleidoFailures_TagTheirCodes(string kind)
+    {
+        const string code = "qry_observability_probe";
+        Exception failure = kind switch
+        {
+            "configuration" => new KaleidoConfigurationException(code, "Bad configuration."),
+            "framework" => new KaleidoFrameworkException(code, "Bad operation."),
+            _ => new KaleidoValidationException(code, "Bad input."),
+        };
+        var sourceName = $"test-source-{Guid.NewGuid():N}";
+        var activities = new List<Activity>();
+        using var listener = CreateActivityListener(activities);
+
+        using (var observation = CreateSut().BeginExecution(new QueryObservationDetails(sourceName, null, true, QueryExecutionMode.DirectSource)))
+        {
+            observation.ExecutionFailed(failure);
+        }
+
+        var activity = Assert.Single(activities, x => x.GetTagItem(QueryableTelemetry.TagQuerySource) as string == sourceName);
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        Assert.Equal(code, activity.StatusDescription);
+    }
+
     [Fact]
     public void Observation_WithoutListener_ReturnsNoOpChildScopesAndOmitsEmptyPaging()
     {

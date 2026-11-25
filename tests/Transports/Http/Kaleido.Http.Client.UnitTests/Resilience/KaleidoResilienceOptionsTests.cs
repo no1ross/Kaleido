@@ -17,6 +17,17 @@ public sealed class KaleidoResilienceOptionsTests
     }
 
     [Fact]
+    public void InterfaceValidation_UsesTheConfiguredResilienceSection()
+    {
+        IKaleidoOptions options = Sut with { TotalTimeout = TimeSpan.Zero };
+
+        Assert.Equal("Kaleido:Resilience", options.ConfigurationPath);
+        var exception = Assert.Throws<KaleidoConfigurationException>(options.Validate);
+        Assert.Equal(HttpClientErrorCodes.InvalidClientOptions, exception.Code);
+        Assert.Contains("Kaleido:Resilience:TotalTimeout", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Validate_ANonPositiveClientTimeout_IsAConfigurationError()
     {
         var options = Sut with { TotalTimeout = TimeSpan.Zero };

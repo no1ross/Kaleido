@@ -39,7 +39,7 @@ CI (`build.yml`) also checks, and you run before committing:
 - every `AGENTS.md` is under 16,000 bytes: `python3 tools/docs/check-agents-size.py` (#455);
 - repository text encoding: `python3 tools/docs/check-repository-encoding.py`; self-test: `python3 tools/docs/test-check-repository-encoding.py`;
 - the packed release set works in a clean host: after a Release build, pack to a fresh subfolder of `artifacts/` and run `./tools/packaging/Test-PackageConsumer.ps1 -Packages <folder>` and `./tools/packaging/Test-PackageConsumer.Tests.ps1 -Packages <folder>` (do not mix older packages in the feed; CI's `-RequireDeterministic` needs PowerShell 7);
-- line coverage of the shipped `src/` assemblies, at least 95% ([build details](./docs/CONVENTIONS.md#build-details)).
+- merged line coverage of the shipped `src/` assemblies, at least 97.5% on exact counts; authored classes below the 97% goal produce warnings ([build details](./docs/CONVENTIONS.md#build-details)).
 
 ## Project boundaries
 

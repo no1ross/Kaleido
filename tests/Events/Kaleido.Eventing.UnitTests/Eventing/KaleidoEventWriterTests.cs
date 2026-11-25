@@ -140,6 +140,19 @@ public sealed class KaleidoEventWriterTests
 
     // The caller's own cancellation is passed on.
     [Fact]
+    public async Task WriteAsync_WhenTheCallerCancels_PropagatesWithoutCommitting()
+    {
+        var canceled = new CancellationToken(canceled: true);
+        var outbox = BuiltInOutbox();
+        outbox.Setup(x => x.AddAsync(It.IsAny<IReadOnlyCollection<KaleidoOutboxEvent>>(), canceled))
+            .ThrowsAsync(new OperationCanceledException(canceled));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => CreateSut(outbox.Object).WriteAsync(Envelope(), canceled));
+
+        outbox.Verify(x => x.CommittedAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task CommittedAsync_WhenTheCallerCancels_Propagates()
     {
         var canceled = new CancellationToken(canceled: true);

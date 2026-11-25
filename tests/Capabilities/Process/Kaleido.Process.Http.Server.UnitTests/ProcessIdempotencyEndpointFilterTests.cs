@@ -619,7 +619,12 @@ public sealed class ProcessIdempotencyEndpointFilterTests
     private IEnumerable<(LogLevel Level, string Message)> Logs() =>
         logger.Invocations
             .Where(x => x.Method.Name == nameof(ILogger.Log))
-            .Select(x => ((LogLevel)x.Arguments[0], x.Arguments[2].ToString() ?? string.Empty));
+            .Select(x =>
+            {
+                var state = Assert.IsAssignableFrom<IEnumerable<KeyValuePair<string, object?>>>(x.Arguments[2]);
+                Assert.Contains(state, field => field.Key == "{OriginalFormat}");
+                return ((LogLevel)x.Arguments[0], x.Arguments[2].ToString() ?? string.Empty);
+            });
 
     private IdempotencyRecord InProgress(string key, DateTimeOffset leaseUntilUtc) =>
         new()

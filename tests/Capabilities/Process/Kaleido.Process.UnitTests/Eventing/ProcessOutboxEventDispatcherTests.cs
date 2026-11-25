@@ -1,4 +1,6 @@
 using Kaleido.Eventing;
+using Kaleido.Exceptions;
+using Kaleido.Storage;
 using Kaleido.UnitTests;
 
 namespace Kaleido.Process.Eventing.UnitTests;
@@ -18,6 +20,26 @@ public sealed class ProcessOutboxEventDispatcherTests : SutFixture
     [Fact]
     public void CanHandle_QueryEventType_IsFalse() =>
         Assert.False(CreateSut().CanHandle("query.executed.v1"));
+
+    [Fact]
+    public async Task PublishAsync_RejectsAnUnknownTypeWithoutCallingThePublisher()
+    {
+        var entry = new KaleidoOutboxEvent
+        {
+            EventId = Guid.NewGuid(),
+            EventType = "query.executed.v1",
+            Payload = "{}",
+            OccurredUtc = DateTimeOffset.UtcNow,
+        };
+        var publisher = new Mock<IEventPublisher>();
+
+        var exception = await Assert.ThrowsAsync<KaleidoFrameworkException>(
+            () => CreateSut().PublishAsync(publisher.Object, entry, TestContext.Current.CancellationToken));
+
+        Assert.Equal(FrameworkErrorCodes.TypeMismatch, exception.Code);
+        Assert.Contains(entry.EventType, exception.Message, StringComparison.Ordinal);
+        publisher.VerifyNoOtherCalls();
+    }
 
     [Fact]
     public async Task PublishAsync_RestoresProcessEvent()

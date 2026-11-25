@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kaleido.Registry.Client.UnitTests;
@@ -45,7 +46,7 @@ public sealed class CentralRegistrySourceTests
             : Task.FromResult((KaleidoRegistryDocument<T>)result);
     }
 
-    private CentralRegistrySource CreateSut()
+    private CentralRegistrySource CreateSut(ILogger<CentralRegistrySource>? logger = null)
     {
         var provider = new Mock<IServiceProvider>();
         provider.Setup(x => x.GetService(typeof(IKaleidoRegistryClient))).Returns(client.Object);
@@ -53,7 +54,7 @@ public sealed class CentralRegistrySourceTests
         scope.Setup(x => x.ServiceProvider).Returns(provider.Object);
         var factory = new Mock<IServiceScopeFactory>();
         factory.Setup(x => x.CreateScope()).Returns(scope.Object);
-        var sut = new CentralRegistrySource(factory.Object, time, NullLogger<CentralRegistrySource>.Instance);
+        var sut = new CentralRegistrySource(factory.Object, time, logger ?? NullLogger<CentralRegistrySource>.Instance);
         created.Add(sut);
         return sut;
     }
@@ -200,6 +201,33 @@ public sealed class CentralRegistrySourceTests
         Assert.Equal("\"caps-1\"", requests.Last(x => x.Document == "capabilities").ETag);
     }
 
+    [Fact]
+    public async Task ANotModifiedAnswerBeforeTheFirstRead_IsAPartialFailure()
+    {
+        answers["availability"] = _ => Unchanged<KaleidoRegistryAvailability>();
+        var sut = CreateSut();
+
+        await sut.SyncAsync(force: true, Cancel);
+
+        Assert.False(sut.HasRead);
+        Assert.Contains("availability unchanged before it was read", Assert.Single((await sut.GetAsync(Cancel)).Errors).Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ANewAnswerWithoutPayload_KeepsTheLastGoodRegistryWithAFailure()
+    {
+        var sut = CreateSut();
+        await sut.SyncAsync(force: true, Cancel);
+        answers["availability"] = _ => new KaleidoRegistryDocument<KaleidoRegistryAvailability>(null, null, NotModified: false);
+
+        await sut.SyncAsync(force: true, Cancel);
+
+        var registry = await sut.GetAsync(Cancel);
+        Assert.Single(registry.Processes);
+        Assert.Null(registry.Revision);
+        Assert.Contains("availability with no payload", Assert.Single(registry.Errors).Reason, StringComparison.Ordinal);
+    }
+
     // A status flip is a new revision: the host rebuilds what it serves.
     [Fact]
     public async Task AStatusFlip_IsANewRegistry()
@@ -238,6 +266,25 @@ public sealed class CentralRegistrySourceTests
         Assert.Null(failed.Revision);
         Assert.Empty(recovered.Errors);
         Assert.NotNull(recovered.Revision);
+    }
+
+    [Theory]
+    [InlineData("503")]
+    [InlineData(null)]
+    public async Task AFailedAvailabilityRead_LogsItsStatusOrTransportFailure(string? status)
+    {
+        answers["availability"] = _ => Failed(status);
+        var logger = new Mock<ILogger<CentralRegistrySource>>();
+        logger.Setup(x => x.IsEnabled(LogLevel.Warning)).Returns(true);
+        var sut = CreateSut(logger.Object);
+
+        await sut.SyncAsync(force: true, Cancel);
+
+        var log = Assert.Single(logger.Invocations, x => x.Method.Name == nameof(ILogger.Log));
+        Assert.Equal(LogLevel.Warning, log.Arguments[0]);
+        var fields = Assert.IsAssignableFrom<IEnumerable<KeyValuePair<string, object?>>>(log.Arguments[2]);
+        Assert.Contains(fields, field => field.Key == "{OriginalFormat}");
+        Assert.Contains(status ?? "availability", log.Arguments[2].ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -281,6 +328,17 @@ public sealed class CentralRegistrySourceTests
         await sut.SyncAsync(force: true, Cancel);
 
         Assert.Equal(TimeSpan.FromMinutes(5), sut.NextCheck);
+    }
+
+    [Fact]
+    public async Task AnOverdueAvailabilityCheck_IsDueImmediately()
+    {
+        var sut = CreateSut();
+        await sut.SyncAsync(force: true, Cancel);
+
+        time.Advance(AvailabilityEvery + TimeSpan.FromTicks(1));
+
+        Assert.Equal(TimeSpan.Zero, sut.NextCheck);
     }
 
     // Nothing to follow yet, or a read that failed: the retry, 1 s doubling - never an interval of the host's.

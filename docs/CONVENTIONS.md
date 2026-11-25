@@ -97,7 +97,7 @@ Kaleido uses `TimeProvider` where time is a production dependency, not where tim
 
 IDE0005 (unused usings) needs `GenerateDocumentationFile`, so `tests/` and `tools/` generate XML docs with CS1591 off. `dotnet format <solution> style --diagnostics IDE0005 --include tests/` fixes unused usings in bulk; IDE0005 reports one per file at a time, so build again until clean.
 
-CI (`build.yml`) enforces a **coverage gate**: merged line coverage of the shipped `src/` assemblies (tests and analyzers excluded) must be at least the `COVERAGE_FLOOR` (95%), or the build fails. Raise the floor, never lower it. To check locally, run `./tools/test/Run-Tests.ps1 -Coverage` (cobertura files in `TestResults/`) and merge the reports with `reportgenerator` using the workflow's `-assemblyfilters`.
+CI (`build.yml`) enforces **at least 97.5% merged line coverage** of shipped `src/` assemblies on exact counts; the 97% goal for each measurable authored class is reported as a warning, not a failure. Generated `obj/` code remains in the aggregate but not the authored-class advisory, and compiled guide examples remain in Sonar's separate coverage report rather than the shipped-source gate. Raise the aggregate floor, never lower it. To check locally, run `./tools/test/Run-Tests.ps1 -Coverage` (Cobertura files in `TestResults/`), merge with `reportgenerator` using the workflow's production `-assemblyfilters`, then run `python3 tools/test/check-coverage.py <merged-Cobertura.xml>`; `python3 tools/test/test-check-coverage.py` tests its exact boundaries and scope.
 
 Never delete `bin`/`obj` folders inside `node_modules`; if a clean is needed, exclude `node_modules` (see below).
 

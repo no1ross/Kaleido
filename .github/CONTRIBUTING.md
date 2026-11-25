@@ -45,7 +45,7 @@ The commit message says why, names the issue (`Fixes #N`) and records the gate r
 - Prefer few, complete PRs: one per work package, with one commit per step and a description with
   one section per topic. One PR may fix several issues (`Fixes #A`, `Fixes #B`).
 - Name breaking changes in a "Breaking changes" section ([versioning](../docs/VERSIONING.md)), and add a line to the `Unreleased` section of [`CHANGELOG.md`](../CHANGELOG.md) for a change a consumer notices.
-- CI must be green: build, tests, the coverage gate (95% line coverage of `src/`), the documentation
+- CI must be green: build, tests, the coverage gate (at least 97.5% merged line coverage of shipped `src/` assemblies, with a 97% authored-class advisory), the documentation
   checks, Sonar and CodeQL.
 - New public types and members carry XML documentation (the build enforces it).
 - A public API change updates the package's `PublicAPI.Unshipped.txt` (the build fails otherwise:

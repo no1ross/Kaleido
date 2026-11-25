@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Kaleido.Exceptions;
 using Kaleido.Observability;
 using Kaleido.Storage;
 using Kaleido.UnitTests;
@@ -240,6 +241,34 @@ public sealed class ProcessorObservabilityTests
         var activity = Assert.Single(activities, x => x.GetTagItem(KaleidoTelemetryTags.ProcessorName) as string == serviceName);
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
         Assert.Equal(ProcessorErrorCodes.ProcessConflict, activity.StatusDescription);
+    }
+
+    [Theory]
+    [InlineData("configuration")]
+    [InlineData("framework")]
+    [InlineData("validation")]
+    public void ExecutionObservation_KaleidoFailures_TagTheirCodes(string kind)
+    {
+        const string code = "pro_observability_probe";
+        Exception failure = kind switch
+        {
+            "configuration" => new KaleidoConfigurationException(code, "Bad configuration."),
+            "framework" => new KaleidoFrameworkException(code, "Bad operation."),
+            _ => new KaleidoValidationException(code, "Bad input."),
+        };
+        var serviceName = $"test-processor-{Guid.NewGuid():N}";
+        var activities = new List<Activity>();
+        using var listener = CreateActivityListener(activities);
+        var observability = CreateSut(serviceName);
+
+        using (var observation = observability.BeginExecution(new ProcessorExecutionObservationDetails(1)))
+        {
+            observation.ExecutionFailed(failure);
+        }
+
+        var activity = Assert.Single(activities, x => x.GetTagItem(KaleidoTelemetryTags.ProcessorName) as string == serviceName);
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        Assert.Equal(code, activity.StatusDescription);
     }
 
     [Fact]
@@ -591,12 +620,14 @@ public sealed class ProcessorObservabilityTests
         return logger;
     }
 
-    private static void AssertLogged(Mock<ILogger<ProcessorObservability>> logger, LogLevel level, string fragment) =>
-        Assert.Contains(
-            logger.Invocations,
-            x => x.Method.Name == nameof(ILogger.Log) &&
-                 (LogLevel)x.Arguments[0] == level &&
-                 x.Arguments[2].ToString()!.Contains(fragment, StringComparison.Ordinal));
+    private static void AssertLogged(Mock<ILogger<ProcessorObservability>> logger, LogLevel level, string fragment)
+    {
+        var log = logger.Invocations.First(x => x.Method.Name == nameof(ILogger.Log) &&
+            (LogLevel)x.Arguments[0] == level &&
+            x.Arguments[2].ToString()!.Contains(fragment, StringComparison.Ordinal));
+        var state = Assert.IsAssignableFrom<IEnumerable<KeyValuePair<string, object?>>>(log.Arguments[2]);
+        Assert.Contains(state, field => field.Key == "{OriginalFormat}");
+    }
 
     private static ActivityListener CreateActivityListener(List<Activity> activities)
     {
