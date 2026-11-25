@@ -94,7 +94,7 @@ Placing, confirming and shipping an order publishes `process.created.v1`, three
 | A service or the relay host restarts | nothing lost; the relay continues |
 | A relay instance crashes mid-publish | the claim's lease expires; another relay instance publishes it (**at least once**: consumers deduplicate by `EventId`) |
 | No relay runs for the database | the events wait and the database grows |
-| In-memory store (`AddInMemoryStores()`) | lost on restart; drained only by a relay in the same process |
+| Explicit in-memory outbox (`AddInMemoryOutboxProvider()` or `AddInMemoryProviders()`) | lost on restart; drained only by a relay in the same process |
 
 ## Is a relay running?
 

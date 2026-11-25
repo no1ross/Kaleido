@@ -73,10 +73,10 @@ public static class ConfigurationErrorCodes
     /// <summary>Authorization is enforced (AuthorizationMode is not None) but the host has no authentication scheme registered.</summary>
     public const string AuthenticationNotConfigured = "authentication_not_configured";
 
-    /// <summary>A Kaleido host maps capabilities or MCP without participating in the central registry.</summary>
+    /// <summary>The MCP adapter was added without an opted-in central Registry client and hydrated source.</summary>
     public const string RegistryNotConfigured = "registry_not_configured";
 
-    /// <summary>KaleidoServiceOptions.AuthorizationMode is not a defined value.</summary>
+    /// <summary>The server's <c>AuthorizationMode</c> supplied to <c>AddServer()</c> is not a defined value.</summary>
     public const string InvalidAuthorizationMode = "invalid_authorization_mode";
 
     /// <summary>A <c>Kaleido:Events</c> setting is out of range (e.g. a non-positive batch size or timeout).</summary>
@@ -89,8 +89,8 @@ public static class ConfigurationErrorCodes
     public const string InvalidOptions = "invalid_options";
 
     /// <summary>
-    /// An HTTP transport setting (<c>Kaleido:Http</c>, <c>Kaleido:Http:Map</c>, or the options passed to
-    /// <c>AddHttp</c>/<c>MapKaleidoHttp</c>) is out of range or cannot be read, e.g. a non-positive
+    /// An HTTP transport setting (<c>Kaleido:Http</c> or options passed to <c>AddHttp()</c> or
+    /// <c>AddProcessHttpServer()</c>) is out of range or cannot be read, e.g. a non-positive
     /// idempotency lease.
     /// </summary>
     public const string InvalidHttpOptions = "invalid_http_options";
@@ -110,16 +110,16 @@ public static class ConfigurationErrorCodes
 
     /// <summary>
     /// Two different implementations were registered for one store or for the transactions (e.g.
-    /// <c>AddSqliteContextStore</c> and <c>AddContextStore&lt;T&gt;()</c>): each has one implementation
+    /// <c>AddSqliteContextProvider</c> and <c>AddContextStore&lt;T&gt;()</c>): each has one implementation
     /// per service.
     /// </summary>
     public const string ConflictingStore = "conflicting_store";
 
     /// <summary>
-    /// The service would keep its process state, idempotency records or outbox in memory without having
-    /// chosen to: a store the service uses was left at its in-memory default. Raised when the host
-    /// starts. Register a durable store (e.g. <c>AddSqliteContextStore</c>, <c>AddContextStore&lt;T&gt;()</c>),
-    /// or choose memory explicitly with <c>AddInMemoryStores()</c> (development, tests) (ADR 0028).
+    /// A hosted capability starts without an explicitly chosen required store, or the control Registry
+    /// maps without an authority store. Register durable providers or choose memory explicitly with
+    /// <c>AddInMemoryProviders()</c> or <c>AddInMemoryRegistryStore()</c> for development and tests
+    /// (ADR 0048/0049).
     /// </summary>
     public const string StoresNotChosen = "stores_not_chosen";
 }

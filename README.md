@@ -167,7 +167,7 @@ Reference the relevant projects, or matching preview packages from your availabl
 ### Publish a business service over HTTP
 
 > [!NOTE]
-> The combined Process/Queryable example below is historical during #585 and is not yet a runnable recipe: its Process ASP.NET mapping and in-memory store names predate the explicit host/provider registrations. For currently tested standalone hosts, see [local Queryable HTTP](src/Capabilities/Queryable/Kaleido.Queryable.Http.Server/README.md), the [in-memory Registry authority](src/Capabilities/Registry/Kaleido.Registry.Server/README.md), and [explicit Registry HTTP participation](src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md). `AddProcess()` and `AddQueryable()` alone do not make central network calls.
+> This local-evaluation registration follows the [compiled getting-started service](docs/guide/getting-started.md). The explicit in-memory provider does not survive a restart; use a durable provider and host authentication/authorization for a real deployment. `AddProcess()` and `AddQueryable()` alone do not make central network calls.
 
 Run a separate [control registry](src/Capabilities/Registry/Kaleido.Registry.Server/README.md) and configure `Kaleido:BaseUrl`
 with the gateway's address. Map `/registry` to the registry host and `/orders/1` to this service's
@@ -176,21 +176,23 @@ host in the gateway's deployment configuration. The registry never holds instanc
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-var kaleido = builder.Services
+builder.Services
     .AddKaleido(builder.Configuration, new()
     {
         ServiceName = "orders",
         ServiceVersion = "1",
-        DisplayName = "Orders",
-        Assemblies = new[] { typeof(Program).Assembly },
-        AuthorizationMode = KaleidoAuthorizationMode.None, // Local evaluation only.
+        Assemblies = [typeof(Program).Assembly],
     })
-    .AddEventing() // Explicit outbox writer, store and health check.
+    .AddEventing() // Outbox writer and health check; the provider is chosen below.
     .AddProcess()
     .AddQueryable()
-    .AddInMemoryStores() // Local evaluation only: process state and events are lost on restart.
+    .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.None }) // Local evaluation only.
+    .AddInMemoryProviders() // Local evaluation only: state, outbox and replay are lost on restart.
     .AddHttp()
-    .AddControlRegistryClient();
+    .AddProcessHttpServer()
+    .AddProcessHttpBindings()
+    .AddQueryableHttpBindings()
+    .AddRegistryHttpParticipation();
 
 var app = builder.Build();
 
@@ -199,7 +201,7 @@ app.MapKaleido().MapProcess().MapQueryable();
 app.Run();
 ```
 
-`AddEventing()` registers the outbox-backed writer and binds `Kaleido:Events`; `AddProcess()` registers steps and handlers, and `AddQueryable()` registers sources and views. `AddKaleido()` installs only the shared baseline. The prior mandatory `AddControlRegistryClient()` and auto-detecting `MapKaleidoHttp()` recipe is superseded: local capability endpoints require no Registry client, and `AddRegistryHttpParticipation()` is an explicit opt-in for publishing installed HTTP bindings. `MapProcessor()` and `MapQueryable()` serve local capability routes independently; [`Kaleido.Hosting.Http`](src/Composed/Hosts/Kaleido.Hosting.Http/README.md) now composes explicitly selected Process, Queryable or central Registry HTTP endpoints through `MapKaleido()`; Process outbound contracts and their HTTP adapter are separate, explicit projects, with local Process unaffected by Registry participation. `ServiceVersion` is required for versioned service endpoints.
+`AddEventing()` registers the outbox-backed writer and binds `Kaleido:Events`; `AddProcess()` registers steps and handlers, and `AddQueryable()` registers sources and views. `AddKaleido()` installs only the shared baseline. Local capability endpoints require no Registry client; `AddRegistryHttpParticipation()` explicitly opts in to publishing installed HTTP bindings and hydrating discovery. `MapProcessor()` and `MapQueryable()` serve local capability routes independently; [`Kaleido.Hosting.Http`](src/Composed/Hosts/Kaleido.Hosting.Http/README.md) now composes explicitly selected Process, Queryable or central Registry HTTP endpoints through `MapKaleido()`; Process outbound contracts and their HTTP adapter are separate, explicit projects, with local Process unaffected by Registry participation. `ServiceVersion` is required for versioned service endpoints.
 
 `Assemblies` is required even for client-only hosts. A missing or empty list fails at `AddKaleido()` with `missing_assembly`; there is no implicit calling-assembly scan.
 
@@ -263,12 +265,7 @@ See the [shared HTTP client pipeline](src/Transports/Http/Kaleido.Http.Client/RE
 
 ### Choose process storage
 
-Every store a service uses is chosen explicitly: Process state, Process.Server idempotency admission and Eventing outbox have **no implicit in-memory defaults** ([ADR 0048](docs/decisions/0048-explicit-provider-registration-without-default-stores.md)). [`Kaleido.Provider.InMemory`](src/Providers/Kaleido.Provider.InMemory/README.md)'s `AddInMemoryProviders()` is a deliberate local/test choice; none of its records survives a restart or is shared between instances. Two different providers for one store conflict in either registration order ([ADR 0049](docs/decisions/0049-one-provider-per-store.md)). For local persistence, configure `ConnectionStrings:orders` and choose the SQLite reference provider in the business-service registration **before `builder.Build()`**. The preceding combined-host snippets still show unmigrated `AddInMemoryStores()` composition under #585; they are not a current owner-level wiring recipe.
-
-```csharp
-// appsettings: ConnectionStrings:orders = "Data Source=kaleido-process.db"
-kaleido.AddSqliteProviders("orders");
-```
+Every store a service uses is chosen explicitly: Process state, Process.Server idempotency admission and Eventing outbox have **no implicit in-memory defaults** ([ADR 0048](docs/decisions/0048-explicit-provider-registration-without-default-stores.md)). [`Kaleido.Provider.InMemory`](src/Providers/Kaleido.Provider.InMemory/README.md)'s `AddInMemoryProviders()` is a deliberate local/test choice; none of its records survives a restart or is shared between instances. Two different providers for one store conflict in either registration order ([ADR 0049](docs/decisions/0049-one-provider-per-store.md)). For local persistence, configure `ConnectionStrings:orders` (for example, `Data Source=kaleido-process.db`) and **replace** `.AddInMemoryProviders()` in the registration chain with `.AddSqliteProviders("orders")` before `builder.Build()`. Do not register both providers for the same stores.
 
 [`Kaleido.Provider.SQLite`](src/Providers/Kaleido.Provider.SQLite/README.md) now implements the neutral Process/Process.Server/Eventing stores and Registry.Server's authority store (#623), but is a **single-machine reference implementation for samples and local development**, not the production-provider recommendation. Registration does not create the database: the host creates the schema once at startup (`SqliteKaleidoContextDbContext.Database.EnsureCreatedAsync()`, shown in the [provider README](src/Providers/Kaleido.Provider.SQLite/README.md#registration)). `EnsureCreated` never migrates an existing database; do not silently treat old HTTP-shaped replay rows as current opaque replays.
 
@@ -334,15 +331,20 @@ The packages are previews. Tagged versions are published to **nuget.org**, so no
 
 ```bash
 dotnet add package Kaleido --prerelease                              # foundation
-dotnet add package Kaleido.Eventing --prerelease                     # event writer and outbox (when used)
-dotnet add package Kaleido.Process --prerelease                      # process steps, state and persistence seams
-dotnet add package Kaleido.Queryable --prerelease                    # query sources and views
-dotnet add package Kaleido.Http.Server --prerelease                  # publish HTTP capabilities
-dotnet add package Kaleido.Http.Client --prerelease                  # central-registry and gateway HTTP clients
-dotnet add package Kaleido.Registry.Http --prerelease                # host the control registry over HTTP
-dotnet add package Kaleido.Mcp --prerelease                          # expose registry capabilities to agents
-dotnet add package Kaleido.Observability.OpenTelemetry --prerelease  # logs, traces and metrics over OTLP
-dotnet add package Kaleido.Provider.SQLite --prerelease             # reference store (local development)
+dotnet add package Kaleido.Eventing --prerelease                     # event writer and outbox
+dotnet add package Kaleido.Process --prerelease                      # local process runtime
+dotnet add package Kaleido.Queryable --prerelease                    # local query sources and views
+dotnet add package Kaleido.Process.Http.Server --prerelease          # local Process HTTP endpoints
+dotnet add package Kaleido.Queryable.Http.Server --prerelease        # local Queryable HTTP endpoints
+dotnet add package Kaleido.Hosting.Http --prerelease                 # explicit HTTP endpoint composition
+dotnet add package Kaleido.Registry.Http.Client --prerelease         # central Registry participation
+dotnet add package Kaleido.Process.Http.Client --prerelease          # remote Process calls
+dotnet add package Kaleido.Queryable.Http.Client --prerelease        # remote Queryable calls
+dotnet add package Kaleido.Registry.Http.Server --prerelease         # central Registry authority HTTP listener
+dotnet add package Kaleido.Mcp --prerelease                          # caller-visible tools
+dotnet add package Kaleido.Observability.OpenTelemetry --prerelease  # opt-in OTLP export
+dotnet add package Kaleido.Provider.InMemory --prerelease            # explicit development/test stores
+dotnet add package Kaleido.Provider.SQLite --prerelease             # local reference stores
 ```
 
 HTTP adapters bring their required `Kaleido.Http`, `Kaleido.Server`, capability-neutral clients, portable Registry contracts and core dependencies transitively. The packages move together: upgrade all Kaleido packages a project references at once ([versioning](docs/VERSIONING.md#versions)).

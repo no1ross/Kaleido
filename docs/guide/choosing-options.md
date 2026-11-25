@@ -45,7 +45,7 @@ See [Events and the outbox](events-and-outbox.md).
 
 | Situation | Register |
 | --- | --- |
-| One instance, tests | `AddInMemoryStores()` or a chosen idempotency store |
+| One instance, tests | `AddInMemoryProviders()` or explicitly select `AddInMemoryIdempotencyProvider()` for that store alone |
 | Several instances, or retries across restarts | `AddIdempotencyStore<T>()` (or `AddSqliteIdempotencyProvider`) |
 
 See [Processes - Concurrent and repeated calls](processes.md#concurrent-and-repeated-calls).

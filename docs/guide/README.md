@@ -21,10 +21,10 @@ applies the rules you declared and records what happened.
 flowchart LR
     caller["UI / service / AI agent"]
     mcp["Kaleido.Mcp<br/>(caller-visible tools)"]
-    client["Kaleido.Client + Kaleido.Http.Client<br/>(registry-resolved calls)"]
+    client["Kaleido.Process/Queryable.Http.Client<br/>(registry-resolved calls)"]
     gateway["Gateway<br/>/{service}/{version}"]
-    registry["Kaleido.Registry + Kaleido.Registry.Http<br/>(central discovery)"]
-    http["Kaleido.Http.Server<br/>(versioned endpoints)"]
+    registry["Kaleido.Registry.Server + Registry.Http.Server<br/>(central discovery)"]
+    http["Process/Queryable.Http.Server<br/>(versioned endpoints)"]
     core["Kaleido foundation + hosted Process / Queryable / Eventing"]
     store[("your stores<br/>(state, outbox, idempotency)")]
 

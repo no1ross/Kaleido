@@ -14,7 +14,7 @@ Every Kaleido exception carries a machine-readable `Code`. Framework-defined cod
 | `ProcessConcurrencyException` | `Kaleido.Process.Exceptions` | 409 Conflict | `ProcessorErrorCodes.ProcessConflict` (`pro_process_conflict`) |
 | `KaleidoAuthorizationException` | `Kaleido.Exceptions` | 401 (unauthenticated) or 403 (denied), answered by the host's authentication scheme (challenge / forbid) | none: carries `Capability` and `CallerIsAuthenticated` ([`architecture/authorization.md`](./architecture/authorization.md)) |
 | `KaleidoHttpClientException` | `Kaleido.Http.Client` | — (client-side) | `HttpClientErrorCodes` |
-| `KaleidoRegistryClientException` | `Kaleido.Client.Registry` | — (client-side) | `RegistryClientErrorCodes` |
+| `KaleidoRegistryClientException` | `Kaleido.Registry.Client` | — (client-side) | `RegistryClientErrorCodes` |
 
 Each area owns its codes; there is no single catalog. Code string values are stable regardless of which class declares them. Every failed Kaleido endpoint answers with the same body, `KaleidoErrorResponse`: `{ "errors": [{ "code", "message" }] }`. The MCP adapter's `mcp_*` codes are returned inside tool results and are listed in the [MCP README](../src/Mcp/Mcp/README.md#when-a-call-fails).
 
@@ -120,7 +120,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `MissingAssembly` | `missing_assembly` | `AddKaleido()` received a null or empty explicit `Assemblies` list; fails before DI registration |
 | `ConflictingAuthorization` | `conflicting_authorization` | `[KaleidoAuthorization]` declares `AllowAnonymous` together with `Roles`/`Policy` |
 | `AuthenticationNotConfigured` | `authentication_not_configured` | `AuthorizationMode` enforces authorization (`Authenticated` is the default) but no authentication scheme is registered: add host authentication, or set `AuthorizationMode = None` explicitly |
-| `RegistryNotConfigured` | `registry_not_configured` | The host maps Kaleido capabilities or MCP without a central-registry participant; configure the gateway base address and register the registry client |
+| `RegistryNotConfigured` | `registry_not_configured` | `AddMcp()` requires the opted-in Registry client and its hydrated source; call `AddRegistryHttpParticipation()` before `AddMcp()`. Local Process/Queryable endpoint mapping needs no central Registry participant |
 | `InvalidAuthorizationMode` | `invalid_authorization_mode` | `AuthorizationMode` is not a defined value |
 | `InvalidEventOptions` | `invalid_event_options` | a `Kaleido:Events` setting is out of range (e.g. a non-positive `BatchSize` or `Resilience:AttemptTimeout`) |
 | `InvalidOptions` | `invalid_options` | A configured value in the `Kaleido` section cannot be read as its setting's type (e.g. text where a number or a duration is expected, or an unknown enum name); startup, ADR 0030 |
@@ -128,7 +128,7 @@ Core service-setup and authorization-settings codes. Area startup codes live wit
 | `DuplicateRegistration` | `duplicate_registration` | `AddKaleido()` or `AddHttp()` was called twice on one service collection, or `MapProcess()`/`MapQueryable()`/`MapCentralRegistry()` selected the same endpoint group twice on one composition root |
 | `ConflictingOutbox` | `conflicting_outbox` | Two outbox stores were registered, or two relays with different publishers (`AddOutboxRelay<TPublisher>()`): a service has one outbox store, and a host runs one relay ([ADR 0036](decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)) |
 | `ConflictingStore` | `conflicting_store` | Two different implementations of one store or of the transactions were registered (e.g. `AddSqliteContextProvider` and `AddContextStore<T>()`) |
-| `StoresNotChosen` | `stores_not_chosen` | When the host starts: a store the service uses is still the in-memory default (process state or idempotency records with process steps; the outbox store with a publisher on Kaleido's outbox). Register durable stores, or call `AddInMemoryStores()` ([ADR 0028](decisions/0028-stores-are-chosen-explicitly.md)) |
+| `StoresNotChosen` | `stores_not_chosen` | A hosted Process/Eventing service starts without its required explicit stores, or a control Registry maps without an authority store. Choose durable providers, `AddInMemoryProviders()` for local services, or `AddInMemoryRegistryStore()` on a development authority ([ADR 0048](decisions/0048-explicit-provider-registration-without-default-stores.md), [ADR 0049](decisions/0049-one-provider-per-store.md)) |
 
 ---
 

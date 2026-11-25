@@ -37,9 +37,7 @@ No response times are promised while Kaleido is in preview.
 
 ## Scope
 
-In scope: the packages built from `src/` (`Kaleido`, `Kaleido.Http`, `Kaleido.Http.Abstractions`,
-`Kaleido.Http.Client`, `Kaleido.Http.Mcp`, `Kaleido.Observability.OpenTelemetry`,
-`Kaleido.Provider.SQLite`) and the analyzers in `tools/`.
+In scope: every shipped Kaleido library package built from `src/` and the consumer analyzer package `Kaleido.Analyzers` built from `tools/analyzers/Kaleido.Analyzers/`.
 
 Out of scope:
 
