@@ -6,10 +6,10 @@
         <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.34" />
         <PackageVersion Include="Microsoft.Data.Sqlite" Version="8.0.34" />
         <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.34" />
-        <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
-        <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
-        <!-- FakeTimeProvider (#460): the 8.10.0 line of dotnet/extensions, as Compliance and Http.Resilience -->
-        <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="8.10.0" />
+        <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.15" />
+        <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.15" />
+        <!-- FakeTimeProvider (#460): timed background tests await timer registration before advancing the 10.11.0 clock. -->
+        <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
         <PackageVersion Include="Moq" Version="4.18.4" />
         <PackageVersion Include="xunit.v3" Version="4.0.3" />
         <!-- Analyzer testing packages (Kaleido.Analyzers.UnitTests) -->

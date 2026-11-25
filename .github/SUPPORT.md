@@ -12,5 +12,6 @@ support ([versioning and support](../docs/VERSIONING.md)).
 - **Security problems:** never in an issue; follow [SECURITY.md](./SECURITY.md).
 
 **Runtimes.** Kaleido supports a .NET runtime while Microsoft does. .NET 8 and .NET 9 reach their end
-of support on 10 November 2026: run services on .NET 10 or later after that, and override Kaleido's 8.x
-dependencies to supported versions ([support window](../docs/VERSIONING.md#support-window)).
+of support on 10 November 2026: run services on .NET 10 or later after that. Kaleido selects vetted
+net8-compatible Microsoft.Extensions 10.x packages; ASP.NET Core/EF Core remain on 8.x until a
+separate target-framework decision ([support window](../docs/VERSIONING.md#support-window)).

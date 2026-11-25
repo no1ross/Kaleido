@@ -74,13 +74,15 @@ Kaleido supports a runtime while Microsoft does ([ADR 0035](decisions/0035-runti
 ends support for .NET 8 and .NET 9 on **10 November 2026**: after that, run Kaleido services on .NET 10
 or later. Kaleido 1.x keeps working on .NET 8, but on a runtime that gets no security patches.
 
-The packages depend on the 8.x lines of Microsoft.Extensions.* (and Microsoft.EntityFrameworkCore.Sqlite
-8.0.x for the SQLite provider), which stop getting patches on the same date. **Override them in your
-service** to supported, patched versions - a direct PackageReference, or a version in central package
-management - and NuGet uses the higher version. Choose a version that still ships a build for your
-runtime and for `net8.0`, which Kaleido's assemblies target: some newer majors (EF Core 10, for example)
-need a newer runtime. The repository's SDK can now build a `net10.0` target; adding one is a maintainer
-decision (#579).
+Kaleido now selects patched, `net8.0`-compatible Microsoft.Extensions 10.x packages (including the
+10.11.0 dotnet/extensions line), while ASP.NET Core and EF Core remain on their 8.0.x lines
+([ADR 0052](decisions/0052-net8-compatible-package-lines.md)). This keeps the library consumable on
+`net8.0`; it does **not** restore security support to an end-of-life .NET 8 runtime. A service on a
+supported runtime may override dependency versions when their assets support its target framework;
+NuGet uses the higher version, but 11.x Microsoft.Extensions packages warn that they are untested on
+`net8.0`, and ASP.NET Core/EF Core 11.x require `net11.0`. Do not suppress those support warnings. The
+repository's SDK can build `net10.0`; adding that target remains a separate maintainer decision
+(#579).
 
 ### Deployment modes
 

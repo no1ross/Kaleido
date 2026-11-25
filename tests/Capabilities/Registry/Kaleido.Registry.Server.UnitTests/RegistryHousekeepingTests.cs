@@ -12,7 +12,7 @@ public sealed class RegistryHousekeepingTests
     private static readonly KaleidoRegistryOptions Options = new();
 
     private readonly Mock<IKaleidoRegistryStore> store = new();
-    private readonly FakeTimeProvider time = new(Start);
+    private readonly TimerObservingClock time = new(Start, Options.Lease / 3);
     private readonly Mock<ILogger<RegistryHousekeeping>> logger = new();
     private DateTimeOffset resumed = Start - Options.Retention;
 
@@ -134,11 +134,30 @@ public sealed class RegistryHousekeepingTests
         var sut = CreateSut();
 
         await sut.StartAsync(CancellationToken.None);
+        await time.Waiting.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         time.Advance(TimeSpan.FromSeconds(10));
         await second.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         await sut.StopAsync(CancellationToken.None);
 
         store.Verify(x => x.TouchWatchAsync(Start, Options.Lease, It.IsAny<CancellationToken>()), Times.Once);
         store.Verify(x => x.TouchWatchAsync(Start + TimeSpan.FromSeconds(10), Options.Lease, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private sealed class TimerObservingClock(DateTimeOffset start, TimeSpan observed) : FakeTimeProvider(start)
+    {
+        private readonly TaskCompletionSource waiting = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Waiting => waiting.Task;
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = base.CreateTimer(callback, state, dueTime, period);
+            if (dueTime == observed)
+            {
+                waiting.TrySetResult();
+            }
+
+            return timer;
+        }
     }
 }

@@ -61,6 +61,7 @@ public sealed class SqliteRegistryPersistenceFunctionalTests
             Assert.Equal(RegistryStatusNames.Available, ready.Status);
             Assert.Equal(RegistryInstanceStateNames.Ready, Assert.Single(ready.Instances).State);
             Assert.Equal(HealthStatus.Healthy, await CompletenessAsync(restarted));
+            await restarted.StopAsync(Cancel);
         }
         finally
         {
@@ -104,6 +105,8 @@ public sealed class SqliteRegistryPersistenceFunctionalTests
             Assert.Equal(source.GeneratedAt, shared.GeneratedAt);
             Assert.Contains(distributed.ReadKeys, key => distributed.WrittenKeys.Contains(key));
             offline.Verify(store => store.ReadAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await second.StopAsync(Cancel);
+            await first.StopAsync(Cancel);
         }
         finally
         {
@@ -132,6 +135,7 @@ public sealed class SqliteRegistryPersistenceFunctionalTests
             Assert.Equal("orders", Assert.Single(rebuilt.Queryables).Name);
             Assert.Equal(first.Revision, rebuilt.Revision);
             Assert.NotEqual(first.GeneratedAt, rebuilt.GeneratedAt);
+            await app.StopAsync(Cancel);
         }
         finally
         {

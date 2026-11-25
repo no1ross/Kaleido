@@ -424,6 +424,7 @@ sections.
 - Release workflow publishing to GitHub Packages; `docs/RELEASING.md`; this changelog (#318).
 
 ### Changed
+- **Vetted dependencies while retaining `net8.0`** (#630, [ADR 0052](docs/decisions/0052-net8-compatible-package-lines.md)): Microsoft.Extensions runtime packages move to the supported 10.0.15 line and HybridCache, Compliance, HTTP resilience and fake-time testing to 10.11.0. ASP.NET Core/EF Core and SQLite stay on compatible 8.0.34, and repository-only Roslynator advances to 5.0.1. Microsoft 11.x and OpenTelemetry 1.21 remain deferred while they warn that their `net8.0` dependency graph is unsupported; MCP 2.4 and SourceLink 11 likewise remain on verified versions. No package target-framework, runtime support promise, wire contract or security policy is relaxed. Background-service tests now observe fake timer registration before advancing time, and SQLite functional tests stop hosts before deleting their databases.
 - **Source-aligned test ownership** (#585): foundation tests now live in `tests/Core/Kaleido.UnitTests`, and the non-web console host suite is `tests/Composed/Hosts/Kaleido.Hosting.FunctionalTests`. Existing test behavior is unchanged; solution entries and dependent test references follow the moved projects.
 - **A policy a host does not define hides what names it** (#553): when a host filters a registry for its
   caller (MCP, the control registry), a capability whose authorization names a policy the host does not

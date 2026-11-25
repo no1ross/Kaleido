@@ -12,7 +12,7 @@ public sealed class ProcessorRecoveryServiceTests
 {
     private static readonly DateTimeOffset Start = new(2026, 10, 30, 12, 0, 0, TimeSpan.Zero);
 
-    private readonly FakeTimeProvider _time = new(Start);
+    private readonly TimerObservingClock _time = new(Start, ProcessorRecoveryService.PollInterval);
     private readonly Mock<IProcessorRecoveryStore> _store = new();
     private readonly Mock<IProcessorTransition> _transition = new();
     private readonly Mock<IProcessorRecoveryObservation> _observation = new();
@@ -153,10 +153,29 @@ public sealed class ProcessorRecoveryServiceTests
         await sut.StartAsync(TestContext.Current.CancellationToken);
         await firstPoll.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.False(secondPoll.Task.IsCompleted);
+        await _time.Waiting.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         _time.Advance(ProcessorRecoveryService.PollInterval);
         await secondPoll.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         await sut.StopAsync(TestContext.Current.CancellationToken);
 
         Assert.True(sut.ExecuteTask?.IsCompletedSuccessfully);
+    }
+
+    private sealed class TimerObservingClock(DateTimeOffset start, TimeSpan observed) : FakeTimeProvider(start)
+    {
+        private readonly TaskCompletionSource waiting = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Waiting => waiting.Task;
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = base.CreateTimer(callback, state, dueTime, period);
+            if (dueTime == observed)
+            {
+                waiting.TrySetResult();
+            }
+
+            return timer;
+        }
     }
 }

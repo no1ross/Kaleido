@@ -322,7 +322,7 @@ gRPC is not implemented or included in the current project and package set; its 
 
 ### Prerequisites
 
-- **Using the packages:** they target `net8.0`, so a service runs on .NET 8 or later; run it on a supported runtime (.NET 10 after .NET 8 reaches end of support on 10 November 2026) and override the 8.x dependencies to patched versions ([support window](docs/VERSIONING.md#support-window)). `Kaleido.Http.Server`, `Kaleido.Registry.Http` and `Kaleido.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`). Trimmed and NativeAOT publishing are not supported ([deployment modes](docs/VERSIONING.md#deployment-modes)).
+- **Using the packages:** they target `net8.0`, so a service runs on .NET 8 or later; run it on a supported runtime (.NET 10 after .NET 8 reaches end of support on 10 November 2026) with vetted net8-compatible Microsoft.Extensions 10.x dependencies; the SQLite/ASP.NET Core packages remain on 8.x until a target-framework decision ([support window](docs/VERSIONING.md#support-window), [ADR 0052](docs/decisions/0052-net8-compatible-package-lines.md)). `Kaleido.Http.Server`, `Kaleido.Registry.Http` and `Kaleido.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`). Trimmed and NativeAOT publishing are not supported ([deployment modes](docs/VERSIONING.md#deployment-modes)).
 - **Building this repository:** the .NET 10 SDK, pinned in `global.json` (#578).
 
 ### Install

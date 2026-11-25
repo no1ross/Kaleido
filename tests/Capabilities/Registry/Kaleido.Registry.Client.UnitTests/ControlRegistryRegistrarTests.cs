@@ -16,7 +16,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
     private enum RegistryOperation { Register, Heartbeat, Deregister }
     private enum RegistryReply { Ok, Unavailable, Forbidden, Unknown }
 
-    private readonly FakeTimeProvider time = new(Start);
+    private readonly TimerObservingClock time = new(Start);
     private readonly Mock<IKaleidoRegistryClient> client = new();
     private readonly ConcurrentQueue<(RegistryOperation Operation, RegistryInstanceRegistration? Registration, RegistryHeartbeat? Heartbeat)> calls = new();
     private readonly Mock<ICentralRegistrySource> registry = new();
@@ -253,6 +253,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
         Assert.False(sut.HasRegistered);
+        await time.WaitForTimer(RegistryRetry.First).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         time.Advance(RegistryRetry.First - TimeSpan.FromTicks(1));
         Assert.Single(Calls);
         time.Advance(TimeSpan.FromTicks(1));
@@ -281,6 +282,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
         Assert.False(sut.HasRegistered);
+        await time.WaitForTimer(RegistryRetry.First).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         time.Advance(RegistryRetry.First);
         await CalledAsync(2);
         await sut.StopAsync(Cancel);
@@ -299,6 +301,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
 
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
+        await time.WaitForTimer(Interval).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         time.Advance(Interval - TimeSpan.FromTicks(1));
         Assert.Single(Calls);
         time.Advance(TimeSpan.FromTicks(1));
@@ -321,6 +324,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
 
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
+        await time.WaitForTimer(Interval).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         time.Advance(Interval);
         await CalledAsync(2);
         await sut.StopAsync(Cancel);
@@ -342,6 +346,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
 
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
+        await time.WaitForTimer(Interval).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         time.Advance(Interval);
         await CalledAsync(3);
         await sut.StopAsync(Cancel);
@@ -359,8 +364,10 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
 
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
+        await time.WaitForTimer(Interval).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         time.Advance(Interval);
         await CalledAsync(2);
+        await time.WaitForTimer(Interval, ordinal: 2).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         time.Advance(Interval);
         await CalledAsync(3);
         await sut.StopAsync(Cancel);
@@ -422,6 +429,7 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
 
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
+        await time.WaitForTimer(Interval * 1.1).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         time.Advance((Interval * 1.1) - TimeSpan.FromTicks(1));
         Assert.Single(Calls);
         time.Advance(TimeSpan.FromTicks(1));
@@ -438,9 +446,11 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
         await sut.StartAsync(Cancel);
         await CalledAsync(1);
         Assert.False(sut.HasRegistered);
+        await time.WaitForTimer(RegistryRetry.First).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         leaseInterval = TimeSpan.FromSeconds(20);
         time.Advance(RegistryRetry.First);
         await CalledAsync(2);
+        await time.WaitForTimer(TimeSpan.FromSeconds(20)).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
         time.Advance(TimeSpan.FromSeconds(20) - TimeSpan.FromTicks(1));
         Assert.Equal(2, Calls.Length);
         time.Advance(TimeSpan.FromTicks(1));
@@ -448,5 +458,34 @@ public sealed class ControlRegistryRegistrarTests : Kaleido.UnitTests.SutFixture
         await sut.StopAsync(Cancel);
 
         Assert.Equal([RegistryOperation.Register, RegistryOperation.Register, RegistryOperation.Heartbeat], Calls.Take(3).Select(x => x.Operation));
+    }
+
+    private sealed class TimerObservingClock(DateTimeOffset start) : FakeTimeProvider(start)
+    {
+        private readonly ConcurrentDictionary<TimeSpan, int> registrations = new();
+        private readonly ConcurrentDictionary<(TimeSpan Due, int Ordinal), TaskCompletionSource> waiting = new();
+
+        public Task WaitForTimer(TimeSpan dueTime, int ordinal = 1)
+        {
+            var signal = waiting.GetOrAdd((dueTime, ordinal), _ => new(TaskCreationOptions.RunContinuationsAsynchronously));
+            if (registrations.TryGetValue(dueTime, out var count) && count >= ordinal)
+            {
+                signal.TrySetResult();
+            }
+
+            return signal.Task;
+        }
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = base.CreateTimer(callback, state, dueTime, period);
+            var ordinal = registrations.AddOrUpdate(dueTime, 1, (_, count) => count + 1);
+            if (waiting.TryGetValue((dueTime, ordinal), out var signal))
+            {
+                signal.TrySetResult();
+            }
+
+            return timer;
+        }
     }
 }
