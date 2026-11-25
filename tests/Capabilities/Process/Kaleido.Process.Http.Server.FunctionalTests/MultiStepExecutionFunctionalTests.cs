@@ -142,14 +142,16 @@ public sealed class MultiStepExecutionFunctionalTests
     [Fact]
     public async Task ANonRepeatableStepSubmittedAgain_IsSatisfiedWithoutRunningItTwice()
     {
-        await using var app = await StartAsync();
+        await using var app = await StartAsync(includeFrameworkMessages: true);
         using var client = app.GetTestClient();
         using var first = await PostStepAsync(client, nameof(SeedStep));
         var processId = Assert.IsType<ProcessResult>(await first.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).ProcessId;
         using var duplicate = await PostStepAsync(client, nameof(SeedStep), processId);
         Assert.Equal(HttpStatusCode.OK, duplicate.StatusCode);
         var replay = Assert.IsType<ProcessResult>(await duplicate.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
-        Assert.Equal(StepCandidateStatus.Satisfied, Assert.Single(replay.Steps).CandidateStatus);
+        var satisfied = Assert.Single(replay.Steps);
+        Assert.Equal(StepCandidateStatus.Satisfied, satisfied.CandidateStatus);
+        Assert.Contains(satisfied.RuntimeMessages, message => message.Code == ProcessorErrorCodes.AlreadyProcessed);
         Assert.Equal(1, app.Services.GetRequiredService<SeedRuns>().Count);
         var state = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
         Assert.Equal(StepExecutionStatus.Completed, Assert.Single(state.Steps, step => step.StepName == nameof(SeedStep)).Status);
@@ -158,7 +160,7 @@ public sealed class MultiStepExecutionFunctionalTests
     [Fact]
     public async Task ADependentStepSubmittedTooEarly_DoesNotRunOrChangeTheExistingProcess()
     {
-        await using var app = await StartAsync();
+        await using var app = await StartAsync(includeFrameworkMessages: true);
         using var client = app.GetTestClient();
         using var seeded = await PostStepAsync(client, nameof(SeedStep));
         var processId = Assert.IsType<ProcessResult>(await seeded.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).ProcessId;
@@ -170,6 +172,7 @@ public sealed class MultiStepExecutionFunctionalTests
         var step = Assert.Single(result.Steps);
         Assert.Equal(StepCandidateStatus.Invalid, step.CandidateStatus);
         Assert.Equal(StepExecutionStatus.Pending, step.ExecutionStatus);
+        Assert.Contains(step.RuntimeMessages, message => message.Code == ProcessorErrorCodes.DependencyNotSatisfied);
         var after = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
         Assert.Equal(before.Steps, after.Steps);
         Assert.Equal(before.AvailableSteps, after.AvailableSteps);
@@ -209,9 +212,41 @@ public sealed class MultiStepExecutionFunctionalTests
     }
 
     [Fact]
+    public async Task ARepeatableStep_RunsTwiceThenItsAvailableUntilStepClosesItWithoutEndingTheProcess()
+    {
+        await using var app = await StartAsync(includeFrameworkMessages: true);
+        using var client = app.GetTestClient();
+        using var seeded = await PostStepAsync(client, nameof(SeedStep));
+        var processId = Assert.IsType<ProcessResult>(await seeded.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).ProcessId;
+        using var first = await PostStepAsync(client, nameof(RepeatableUntilStep), processId);
+        using var second = await PostStepAsync(client, nameof(RepeatableUntilStep), processId);
+        Assert.Equal(StepExecutionStatus.Completed, Assert.Single(Assert.IsType<ProcessResult>(await first.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).Steps).ExecutionStatus);
+        Assert.Equal(StepExecutionStatus.Completed, Assert.Single(Assert.IsType<ProcessResult>(await second.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).Steps).ExecutionStatus);
+        var open = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.Contains(nameof(RepeatableUntilStep), open.AvailableSteps);
+        Assert.Equal(2, app.Services.GetRequiredService<RepeatRuns>().Count);
+
+        using var closed = await PostStepAsync(client, nameof(CloseRepeatStep), processId);
+        Assert.Equal(StepExecutionStatus.Completed, Assert.Single(Assert.IsType<ProcessResult>(await closed.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).Steps).ExecutionStatus);
+        var afterClose = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.NotEqual(ProcessExecutionState.Complete, afterClose.State);
+        Assert.DoesNotContain(nameof(RepeatableUntilStep), afterClose.AvailableSteps);
+        Assert.Contains(nameof(RootStep), afterClose.AvailableSteps);
+        using var late = await PostStepAsync(client, nameof(RepeatableUntilStep), processId);
+        var refused = Assert.IsType<ProcessResult>(await late.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+        var closedStep = Assert.Single(refused.Steps);
+        Assert.Equal(StepExecutionStatus.Pending, closedStep.ExecutionStatus);
+        Assert.Contains(closedStep.RuntimeMessages, message => message.Code == ProcessorErrorCodes.StepNotAvailable);
+        Assert.Equal(2, app.Services.GetRequiredService<RepeatRuns>().Count);
+        var stored = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(afterClose.State, stored.State);
+        Assert.Equal(afterClose.AvailableSteps, stored.AvailableSteps);
+    }
+
+    [Fact]
     public async Task CompletingTheProcess_ClearsOtherAvailableStepsAndRejectsTheirLaterExecution()
     {
-        await using var app = await StartAsync();
+        await using var app = await StartAsync(includeFrameworkMessages: true);
         using var client = app.GetTestClient();
         using var started = await PostStepAsync(client, nameof(SeedStep));
         var processId = Assert.IsType<ProcessResult>(await started.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel)).ProcessId;
@@ -230,7 +265,9 @@ public sealed class MultiStepExecutionFunctionalTests
         using var late = await PostStepAsync(client, nameof(RootStep), processId);
         Assert.Equal(HttpStatusCode.OK, late.StatusCode);
         var refused = Assert.IsType<ProcessResult>(await late.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
-        Assert.Equal(StepExecutionStatus.Pending, Assert.Single(refused.Steps).ExecutionStatus);
+        var endedStep = Assert.Single(refused.Steps);
+        Assert.Equal(StepExecutionStatus.Pending, endedStep.ExecutionStatus);
+        Assert.Contains(endedStep.RuntimeMessages, message => message.Code == ProcessorErrorCodes.ProcessEnded);
         var after = Assert.IsType<ProcessStateSnapshot>(await client.GetFromJsonAsync<ProcessStateSnapshot>($"/execution/1/processes/{processId:D}", KaleidoJsonOptions.Options, Cancel));
         Assert.Equal(stored.State, after.State);
         Assert.Equal(stored.AvailableSteps, after.AvailableSteps);
@@ -369,12 +406,13 @@ public sealed class MultiStepExecutionFunctionalTests
         return await client.SendAsync(request, Cancel);
     }
 
-    private static async Task<WebApplication> StartAsync()
+    private static async Task<WebApplication> StartAsync(bool includeFrameworkMessages = false)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Services.AddSingleton<ReceivedInput>();
         builder.Services.AddSingleton<SeedRuns>();
+        builder.Services.AddSingleton<RepeatRuns>();
         builder.Services.AddSingleton<TimedOutRuns>();
         builder.Services.AddKaleido(builder.Configuration, new()
         {
@@ -387,7 +425,7 @@ public sealed class MultiStepExecutionFunctionalTests
             .AddProcess()
             .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.None })
             .AddHttp()
-            .AddProcessHttpServer()
+            .AddProcessHttpServer(new KaleidoProcessHttpOptions { IncludeFrameworkMessages = includeFrameworkMessages })
             .AddInMemoryProviders();
         var app = builder.Build();
         app.MapProcessor();
@@ -443,6 +481,16 @@ public sealed class MultiStepExecutionFunctionalTests
     [ProcessStep(DisplayName = "Time out", Description = "Calls a downstream service that may time out")]
     [AvailableAfter<SeedStep>]
     public sealed record TimedOutStep : IProcessStep;
+
+    [ProcessStep(DisplayName = "Repeat until closed", Description = "Runs again until another step closes it")]
+    [AvailableAfter<SeedStep>]
+    [AvailableUntil<CloseRepeatStep>]
+    [Repeatable]
+    public sealed record RepeatableUntilStep : IProcessStep;
+
+    [ProcessStep(DisplayName = "Close repeat", Description = "Closes the repeatable step without ending the process")]
+    [AvailableAfter<SeedStep>]
+    public sealed record CloseRepeatStep : IProcessStep;
 
     [ProcessStep(DisplayName = "Finish", Description = "Completes the process while other steps are available")]
     [AvailableAfter<SeedStep>]
@@ -529,6 +577,28 @@ public sealed class MultiStepExecutionFunctionalTests
 
             return Task.FromResult(ProcessStepHandlerResult.Success());
         }
+    }
+
+    public sealed class RepeatRuns
+    {
+        private int count;
+        public int Count => Volatile.Read(ref count);
+        public void Increment() => Interlocked.Increment(ref count);
+    }
+
+    public sealed class RepeatableUntilHandler(RepeatRuns runs) : IProcessStepHandler<RepeatableUntilStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(RepeatableUntilStep step, ProcessStepContext context, CancellationToken cancellationToken)
+        {
+            runs.Increment();
+            return Task.FromResult(ProcessStepHandlerResult.Success());
+        }
+    }
+
+    public sealed class CloseRepeatHandler : IProcessStepHandler<CloseRepeatStep>
+    {
+        public Task<ProcessStepHandlerResult> ExecuteAsync(CloseRepeatStep step, ProcessStepContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessStepHandlerResult.Success());
     }
 
     public sealed class FinishProcessHandler : IProcessStepHandler<FinishProcessStep>

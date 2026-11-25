@@ -145,9 +145,6 @@
   <Folder Name="/test/Core/">
     <Project Path="tests/Core/Kaleido.UnitTests/Kaleido.UnitTests.csproj" />
   </Folder>
-  <Folder Name="/test/Http/">
-    <Project Path="tests/Http/Http.FunctionalTests/Kaleido.Http.FunctionalTests.csproj" />
-  </Folder>
   <Folder Name="/test/Transports/">
     <Project Path="tests/Transports/Kaleido.Server.UnitTests/Kaleido.Server.UnitTests.csproj" />
   </Folder>

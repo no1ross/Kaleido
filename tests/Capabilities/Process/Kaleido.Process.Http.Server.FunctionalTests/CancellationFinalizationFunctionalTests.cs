@@ -72,6 +72,26 @@ public sealed class CancellationFinalizationFunctionalTests
         await host.Publisher.WaitForAsync(processId, nameof(CancelAfterStep)).WaitAsync(TimeSpan.FromSeconds(10), Cancel);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AKeyedCallCancelledAsItsHandlerReturns_ReplaysTheSavedAnswerWithoutRunningAgain(bool sqlite)
+    {
+        await using var host = await CancellationHost.StartAsync(sqlite);
+        var processId = await host.StartProcessAsync();
+        const string key = "cancelled-call-0a1b2c3d4e5f";
+        using var first = await host.PostStepAsync(nameof(CancelAfterStep), processId, key);
+        Assert.Equal(1, host.Cancellation.Invocations);
+        using var replay = await host.PostStepAsync(nameof(CancelAfterStep), processId, key);
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        Assert.Equal("true", Assert.Single(replay.Headers.GetValues(KaleidoIdempotencyHeaders.Replayed)));
+        Assert.Equal(1, host.Cancellation.Invocations);
+        var result = Assert.IsType<ProcessResult>(await replay.Content.ReadFromJsonAsync<ProcessResult>(KaleidoJsonOptions.Options, Cancel));
+        Assert.Equal(processId, result.ProcessId);
+        Assert.Equal(StepExecutionStatus.Completed, Assert.Single(result.Steps).ExecutionStatus);
+        Assert.Equal(StepExecutionStatus.Completed, Assert.Single((await host.StateAsync(processId)).Steps, step => step.StepName == nameof(CancelAfterStep)).Status);
+    }
+
     private sealed class CancellationHost(WebApplication app, CancellationControl cancellation, RecordingPublisher publisher,
         string? databasePath) : IAsyncDisposable
     {
@@ -135,7 +155,7 @@ public sealed class CancellationFinalizationFunctionalTests
             return Assert.IsType<ProcessResult>(result).ProcessId;
         }
 
-        public async Task<HttpResponseMessage> PostStepAsync(string name, Guid? processId)
+        public async Task<HttpResponseMessage> PostStepAsync(string name, Guid? processId, string? key = null)
         {
             using var client = app.GetTestClient();
             using var request = new HttpRequestMessage(HttpMethod.Post, $"/cancellation/1/processes/steps/{name.ToLowerInvariant()}")
@@ -145,6 +165,10 @@ public sealed class CancellationFinalizationFunctionalTests
             if (processId is { } id)
             {
                 request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, id.ToString("D"));
+            }
+            if (key is not null)
+            {
+                request.Headers.TryAddWithoutValidation(KaleidoIdempotencyHeaders.IdempotencyKey, key);
             }
 
             return await client.SendAsync(request, Cancel);

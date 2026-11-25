@@ -205,6 +205,13 @@ public sealed class GettingStartedTests : IAsyncLifetime
 
         Assert.Equal("failed", Assert.Single(failed.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
         Assert.Equal("businessFailure", state.GetProperty("state").GetString());
+        Assert.Empty(Available(state));
+        var late = await ExecuteStepAsync(client, "addnotestep", new { text = "late" }, processId);
+        Assert.Equal("pending", Assert.Single(late.GetProperty("steps").EnumerateArray()).GetProperty("executionStatus").GetString());
+        using var afterResponse = await client.GetAsync($"/orders/1/processes/{processId:D}", Cancel);
+        var after = await afterResponse.Content.ReadFromJsonAsync<JsonElement>(KaleidoJsonOptions.Options, Cancel);
+        Assert.Equal("businessFailure", after.GetProperty("state").GetString());
+        Assert.Empty(Available(after));
     }
 
     [Fact]

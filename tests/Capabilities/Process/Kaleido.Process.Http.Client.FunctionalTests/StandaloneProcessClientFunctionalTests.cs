@@ -123,6 +123,31 @@ public sealed class StandaloneProcessClientFunctionalTests
         await publisher.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    [Fact]
+    public async Task TypedClient_UnknownProcessId_ReportsProcessNotFoundWithoutRunningTheStep()
+    {
+        await using var authority = await StartAuthorityAsync();
+        var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var publisher = await StartPublisherAsync(authority, "2", registered);
+        await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var read = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var consumer = StartConsumer(authority, publisher, publisher, read);
+        await consumer.StartAsync(TestContext.Current.CancellationToken);
+        await read.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await WaitUntilReadyAsync(consumer);
+        using var scope = consumer.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient("catalog", "2");
+        var unknownId = Guid.NewGuid();
+        var failure = await Assert.ThrowsAsync<KaleidoHttpClientException>(() => client.ExecuteStepAsync(
+            new Consumer.ReviewOrderStep("A-1"), unknownId, "missing-process-0a1b2c3d4e5f", TestContext.Current.CancellationToken));
+        Assert.Equal(HttpStatusCode.BadRequest, failure.StatusCode);
+        Assert.Equal(ProcessorErrorCodes.ProcessNotFound, Assert.Single(failure.Errors).Code);
+        Assert.Equal(0, publisher.Services.GetRequiredService<Publisher.ExecutionCounter>().Count);
+        Assert.Null(await client.GetProcessStateAsync(unknownId, TestContext.Current.CancellationToken));
+        await consumer.StopAsync(TestContext.Current.CancellationToken);
+        await publisher.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.Conflict)]

@@ -29,7 +29,6 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Hosting.Http.UnitTests` | `src/Composed/Hosts/Kaleido.Hosting.Http` explicit fluent mapping and host conventions |
 | `Kaleido.Hosting.Http.FunctionalTests` | HTTP roles, caller hops, ZeroTrust, async scopes and guide flows |
 | `Kaleido.Hosting.FunctionalTests` | Non-web Process/Queryable jobs without Registry; explicit provider choice |
-| `Kaleido.Http.FunctionalTests` | HTTP server/client contracts with TestServer and the central registry |
 | `Kaleido.Registry.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry` portable contracts and API |
 | `Kaleido.Registry.Server.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry.Server` authority, store, leases, status and cache |
 | `Kaleido.Registry.Client.UnitTests` | `src/Capabilities/Registry/Kaleido.Registry.Client` neutral publication and hydration |
@@ -141,18 +140,8 @@ per class of behavior), and internals such as relay timing, cache TTLs, the head
 names, option validation, tool-name truncation and catalog-cache eviction.
 
 Models for one scenario family live in their own namespace and are registered with a `TypeFilter` on
-that namespace (e.g. `Processor/Behavior`, `IntegrationTests/EfCore`), so they cannot change what the
+that namespace (e.g. `Kaleido.Process.Http.Server.FunctionalTests.MultiStep`, `IntegrationTests/EfCore`), so they cannot change what the
 shared fixtures publish.
-
-### Shared fixture state
-
-The parked `ProcessorAspNetCoreFixture` exposes:
-
-- `Client` — a pre-wired `HttpClient` pointed at the TestServer (use for raw HTTP assertions)
-- `ClientFactory` — the Kaleido client factory wired against the TestServer (use for client-level tests)
-- `TestServer` — the underlying `TestServer` instance (use when a test needs its own `CreateHandler()`)
-
-It remains in `tests/Http/Http.FunctionalTests` until its other scenarios migrate.
 
 ### Real authentication: the shared test identity (#574)
 
@@ -180,7 +169,7 @@ explicitly in test setup).
 returns a manually-composed `HttpClient`:
 
 ```csharp
-var captureHandler = new RequestCaptureHandler() { InnerHandler = fixture.TestServer.CreateHandler() };
+var captureHandler = new RequestCaptureHandler { InnerHandler = authority.GetTestServer().CreateHandler() };
 var httpClient = new HttpClient(captureHandler) { BaseAddress = new Uri("http://localhost/") };
 
 services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory("kaleido-gateway", httpClient));

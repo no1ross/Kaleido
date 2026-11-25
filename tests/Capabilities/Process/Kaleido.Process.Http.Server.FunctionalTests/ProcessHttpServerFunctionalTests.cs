@@ -59,6 +59,22 @@ public sealed class ProcessHttpServerFunctionalTests
     }
 
     [Fact]
+    public async Task AnUnexpectedStoreFailure_ReturnsARedacted500AndEchoesTheTrustedRequestId()
+    {
+        await using var app = await StartAsync();
+        app.Services.GetRequiredService<StoredProcesses>().FailNextLoad();
+        using var client = Client(app);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/catalog/1/processes/{Guid.NewGuid():D}");
+        request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.RequestId, "req-store-failure-1");
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal("req-store-failure-1", Assert.Single(response.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
+        Assert.DoesNotContain("private store failure", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), StringComparison.Ordinal);
+        var error = Assert.IsType<KaleidoErrorResponse>(await response.Content.ReadFromJsonAsync<KaleidoErrorResponse>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken));
+        Assert.Equal(KaleidoErrorCodes.FrameworkError, Assert.Single(error.Errors).Code);
+    }
+
+    [Fact]
     public async Task AnInvalidProcessIdHeader_ReturnsAStructured400AndEchoesTheTrustedRequestId()
     {
         await using var app = await StartAsync();
@@ -874,10 +890,13 @@ public sealed class ProcessHttpServerFunctionalTests
     public sealed class StoredProcesses
     {
         private int _refuseNextSave;
+        private int _failNextLoad;
         public Dictionary<ProcessKey, ProcessContext> States { get; } = [];
         public object Gate { get; } = new();
         public void RefuseNextSave() => Volatile.Write(ref _refuseNextSave, 1);
         public bool TakeRefusal() => Interlocked.Exchange(ref _refuseNextSave, 0) == 1;
+        public void FailNextLoad() => Volatile.Write(ref _failNextLoad, 1);
+        public bool TakeLoadFailure() => Interlocked.Exchange(ref _failNextLoad, 0) == 1;
     }
 
     public sealed class TestProcessContextStore(StoredProcesses state) : IProcessContextStore
@@ -886,6 +905,11 @@ public sealed class ProcessHttpServerFunctionalTests
         {
             lock (state.Gate)
             {
+                if (state.TakeLoadFailure())
+                {
+                    throw new InvalidOperationException("private store failure");
+                }
+
                 return Task.FromResult(state.States.GetValueOrDefault(key));
             }
         }
