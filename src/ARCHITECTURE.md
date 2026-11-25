@@ -117,16 +117,16 @@ The not-yet-processed OpenTelemetry provider supplies `AddOpenTelemetry()` or cu
 
 #### Client registry participation
 
-- `Kaleido.Client` owns `IKaleidoRegistryClient`, the registration/heartbeat loop (`ControlRegistryRegistrar`), the hydrated copy (`CentralRegistrySource` and `CentralRegistrySync`) and its readiness check (`RegistrationHealthCheck`). None of these orchestrators knows HTTP routes or response types.
-- `Kaleido.Http.Client` implements the wire client as `KaleidoHttpRegistryClient` and wires it with `AddControlRegistryClient()`, using the gateway address in `Kaleido:BaseUrl`. Registry call failures cross the neutral seam as `KaleidoRegistryClientException`.
+- `Kaleido.Registry.Client` owns `IKaleidoRegistryClient`, the registration/heartbeat loop (`ControlRegistryRegistrar`), the hydrated copy (`CentralRegistrySource` and `CentralRegistrySync`) and its readiness check (`RegistrationHealthCheck`). None of these orchestrators knows HTTP routes or response types.
+- `Kaleido.Registry.Http.Client` implements the wire client as `KaleidoHttpRegistryClient` and wires it with explicit `AddRegistryHttpParticipation()`, using the gateway address in `Kaleido:BaseUrl`. Registry call failures cross the neutral seam as `KaleidoRegistryClientException`.
 
 #### Shared client services (#498)
 
 Every piece is built by the container; no service creates another.
 
 - `KaleidoRegistryTargetResolver` reads the hydrated unfiltered registry and selects the current service version, or the explicit version for an existing process. `KaleidoTransportSelector` represents selection and safe-fallback policy, but only HTTP is currently supplied to the resolver; the client send path does not yet invoke cross-protocol fallback.
-- `AddHttpClients()` registers one named gateway `HttpClient` using `Kaleido:BaseUrl`. `IKaleidoProcessorClientFactory` and `IKaleidoQueryableClientFactory` create clients by service name, optionally pinned to a version; keyed injection also resolves by service name without an endpoint list.
-- `KaleidoOnBehalfOfGuard` enforces what an outbound call carries; `KaleidoClientHandlerFilter` adds the host's `AddKaleidoClientHandler<T>()` handlers to the gateway and registry clients. `IKaleidoClientTransport` sends through the gateway with correlation headers, idempotency, logging, failure mapping and deserialization.
+- `AddKaleidoHttpClientPipeline()` configures named gateway clients using `Kaleido:BaseUrl`. `IKaleidoProcessorClientFactory` and `IKaleidoQueryableClientFactory` create clients by service name, optionally pinned to a version; keyed injection also resolves by service name without an endpoint list.
+- `KaleidoOnBehalfOfGuard` enforces what an outbound call carries; `KaleidoClientHandlerFilter` adds the host's `AddKaleidoClientHandler<T>()` handlers to named clients. Each Process, Queryable and Registry HTTP adapter stamps its own correlation and call purpose, sends through the gateway, and maps its own results. Only the Process client retries keyed POSTs; the shared `KaleidoClientCallLoggingHandler` logs the remote service, safe path and failed status without query strings or credentials.
 
 ### Client and HTTP adapter invariants
 
