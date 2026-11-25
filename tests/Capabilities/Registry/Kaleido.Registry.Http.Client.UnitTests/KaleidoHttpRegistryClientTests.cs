@@ -34,7 +34,7 @@ public sealed class KaleidoHttpRegistryClientTests : Kaleido.UnitTests.SutFixtur
             clients.Add(client);
             return client;
         });
-        return new KaleidoHttpRegistryClient(factory.Object, inbound.Object, correlation.Object);
+        return new KaleidoHttpRegistryClient(factory.Object, inbound.Object, correlation.Object, new KaleidoServiceOptions { ServiceName = "reader-service" });
     }
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
@@ -108,6 +108,12 @@ public sealed class KaleidoHttpRegistryClientTests : Kaleido.UnitTests.SutFixtur
     {
         inbound.Setup(x => x.IsInboundRequest).Returns(true);
         inbound.Setup(x => x.Credential).Returns("Bearer caller");
+        correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext
+        {
+            ExecutingStepName = "lookup-step",
+            CallingProcessorName = "untrusted-inbound",
+            CallingStepName = "old-step",
+        });
         answer = _ => new HttpResponseMessage(HttpStatusCode.NotModified);
         var sut = CreateSut();
 
@@ -116,7 +122,10 @@ public sealed class KaleidoHttpRegistryClientTests : Kaleido.UnitTests.SutFixtur
         Assert.True(result.NotModified);
         Assert.Null(result.Value);
         Assert.Equal("\"rev-1\"", result.ETag);
-        Assert.Equal(KaleidoCallPurpose.ServiceOwn, KaleidoCallContext.Of(Assert.Single(requests)).Purpose);
+        var request = Assert.Single(requests);
+        Assert.Equal(KaleidoCallPurpose.ServiceOwn, KaleidoCallContext.Of(request).Purpose);
+        Assert.Equal("reader-service", Assert.Single(request.Headers.GetValues(KaleidoCorrelationHeaders.CallingProcessor)));
+        Assert.Equal("lookup-step", Assert.Single(request.Headers.GetValues(KaleidoCorrelationHeaders.CallingStep)));
     }
 
     [Fact]

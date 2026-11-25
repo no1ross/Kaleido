@@ -9,7 +9,8 @@ internal sealed class KaleidoQueryableClient(
     IKaleidoRegistryTargetResolver targets,
     IHttpClientFactory httpClientFactory,
     IKaleidoInboundCallerAccessor inboundCaller,
-    IKaleidoCorrelationContextAccessor correlation)
+    IKaleidoCorrelationContextAccessor correlation,
+    KaleidoServiceOptions localServiceOptions)
     : IKaleidoQueryableClient
 {
     internal const string ClientName = "kaleido-queryable";
@@ -103,7 +104,7 @@ internal sealed class KaleidoQueryableClient(
             KaleidoCallContext.MarkServiceOwn(request);
         }
 
-        request.StampKaleidoCorrelation(correlation.Current);
+        request.StampKaleidoCorrelation(correlation.Current, localServiceName: localServiceOptions.ServiceName);
         using var response = await httpClientFactory.CreateClient(ClientName).SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {

@@ -28,6 +28,24 @@ public sealed class KaleidoHttpCorrelationStamperTests : Kaleido.UnitTests.SutFi
     }
 
     [Fact]
+    public void Stamp_ExecutingStepUsesThisServicesPerHopIdentity_NotTheInboundCallers()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://gateway.test/member/1/queryable/my-context/query");
+        var context = new KaleidoCorrelationContext
+        {
+            RequestId = "request-1",
+            CallingProcessorName = "inbound-service",
+            CallingStepName = "inbound-step",
+            ExecutingStepName = "current-step\r\ninjected",
+        };
+
+        request.StampKaleidoCorrelation(context, localServiceName: "reader-service\r\ninjected");
+
+        Assert.Equal("reader-serviceinjected", Assert.Single(request.Headers.GetValues(KaleidoCorrelationHeaders.CallingProcessor)));
+        Assert.Equal("current-stepinjected", Assert.Single(request.Headers.GetValues(KaleidoCorrelationHeaders.CallingStep)));
+    }
+
+    [Fact]
     public void Stamp_ExplicitProcessIdWinsOverTheInboundContext()
     {
         var inbound = Guid.NewGuid();
@@ -39,6 +57,14 @@ public sealed class KaleidoHttpCorrelationStamperTests : Kaleido.UnitTests.SutFi
 
         Assert.Equal(explicitId.ToString("D"), Assert.Single(request.Headers.GetValues(KaleidoCorrelationHeaders.ProcessId)));
         Assert.Equal("request-1", Assert.Single(request.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
+    }
+
+    [Fact]
+    public void Stamp_SanitizesARequestIdWithControlCharactersBeforeSending()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://gateway.test/registry");
+        request.StampKaleidoCorrelation(new KaleidoCorrelationContext { RequestId = "req\r\ninjected" });
+        Assert.Equal("reqinjected", Assert.Single(request.Headers.GetValues(KaleidoCorrelationHeaders.RequestId)));
     }
 
     [Fact]

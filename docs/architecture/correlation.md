@@ -153,8 +153,8 @@ step handler / consumer code
             ├─ ProcessId: explicit Process-execution argument, else the
             │  IKaleidoProcessForwarding async-flow scope, else the context's
             │  (state GETs retain ambient correlation, not their resource id)
-            └─ inside a step only: the Process adapter stamps this service
-               and ExecutingStepName as Calling-Processor / Calling-Step
+            └─ inside a step only: each HTTP adapter's shared stamper uses
+               this service and ExecutingStepName as Calling-Processor / Calling-Step
 ```
 
 - **A front door whose callers cannot send headers** (the MCP adapter: the process id is a tool

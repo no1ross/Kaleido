@@ -8,7 +8,7 @@ public sealed class KaleidoQueryableClientFactoryTests : Kaleido.UnitTests.SutFi
     private readonly Mock<IKaleidoCorrelationContextAccessor> correlation = new();
 
     private KaleidoQueryableClientFactory CreateSut() =>
-        new(targets.Object, clients.Object, inboundCaller.Object, correlation.Object);
+        new(targets.Object, clients.Object, inboundCaller.Object, correlation.Object, new KaleidoServiceOptions { ServiceName = "reader-service" });
 
     [Fact]
     public void GetClient_CreatesAClientForAnyServiceNameWithoutEndpointConfiguration()

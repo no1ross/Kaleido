@@ -9,7 +9,8 @@ namespace Kaleido.Registry.Http.Client;
 internal sealed class KaleidoHttpRegistryClient(
     IHttpClientFactory httpClientFactory,
     IKaleidoInboundCallerAccessor inboundCaller,
-    IKaleidoCorrelationContextAccessor correlation)
+    IKaleidoCorrelationContextAccessor correlation,
+    KaleidoServiceOptions localServiceOptions)
     : IKaleidoRegistryClient
 {
     internal const string ClientName = "kaleido-registry";
@@ -88,7 +89,7 @@ internal sealed class KaleidoHttpRegistryClient(
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        request.StampKaleidoCorrelation(correlation.Current);
+        request.StampKaleidoCorrelation(correlation.Current, localServiceName: localServiceOptions.ServiceName);
         try
         {
             return await httpClientFactory.CreateClient(ClientName).SendAsync(request, cancellationToken);

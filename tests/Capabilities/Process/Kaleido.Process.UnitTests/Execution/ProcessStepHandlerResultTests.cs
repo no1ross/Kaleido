@@ -220,6 +220,9 @@ public sealed class ProcessStepHandlerResultTests
     [Theory]
     [InlineData(StepExecutionStatus.Completed, true, false)]
     [InlineData(StepExecutionStatus.Rejected, false, true)]
+    [InlineData(StepExecutionStatus.Failed, false, false)]
+    [InlineData(StepExecutionStatus.ValidationFailed, false, false)]
+    [InlineData(StepExecutionStatus.Pending, false, false)]
     public void HandOff_FromNeutralProcessResult_UsesTheNamedStepAndNextState(StepExecutionStatus status, bool succeeded, bool rejected)
     {
         var target = TargetResult(status);

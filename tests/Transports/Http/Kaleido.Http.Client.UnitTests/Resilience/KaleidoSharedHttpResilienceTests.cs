@@ -22,19 +22,23 @@ public sealed class KaleidoSharedHttpResilienceTests : Kaleido.UnitTests.SutFixt
     [InlineData("POST", HttpStatusCode.ServiceUnavailable, false, 1)]
     [InlineData("GET", HttpStatusCode.ServiceUnavailable, true, 1)]
     [InlineData("GET", HttpStatusCode.Conflict, false, 1)]
-    public async Task AddSafeResilience_RetriesOnlyTransientReadsUnlessNoRetryIsSet(string method, HttpStatusCode status, bool? noRetry, int expectedAttempts)
+    [InlineData(null, HttpStatusCode.ServiceUnavailable, null, 1)]
+    public async Task AddSafeResilience_RetriesOnlyTransientReadsUnlessNoRetryIsSet(string? method, HttpStatusCode status, bool? noRetry, int expectedAttempts)
     {
         var time = new FakeTimeProvider();
         var pipeline = new ResiliencePipelineBuilder<HttpResponseMessage> { TimeProvider = time }
             .AddSafeResilience(new KaleidoResilienceOptions { MaxRetryAttempts = 1, RetryDelay = TimeSpan.FromSeconds(1) }).Build();
-        using var request = new HttpRequestMessage(new HttpMethod(method), "/catalog/1/processes/state");
-        if (noRetry is { } value)
+        using var request = method is null ? null : new HttpRequestMessage(new HttpMethod(method), "/catalog/1/processes/state");
+        if (noRetry is { } value && request is not null)
         {
             request.Options.Set(KaleidoResilienceOptions.NoRetry, value);
         }
 
         var context = ResilienceContextPool.Shared.Get(TestContext.Current.CancellationToken);
-        context.SetRequestMessage(request);
+        if (request is not null)
+        {
+            context.SetRequestMessage(request);
+        }
         var attempts = 0;
         try
         {

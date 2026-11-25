@@ -25,7 +25,8 @@ public sealed class ProcessHttpKeyedResilienceTests : Kaleido.UnitTests.SutFixtu
     [InlineData("POST", " ", HttpStatusCode.ServiceUnavailable, 1)]
     [InlineData("POST", "logical-call-key", HttpStatusCode.Conflict, 1)]
     [InlineData("POST", "logical-call-key", HttpStatusCode.UnprocessableEntity, 1)]
-    public async Task AddKeyedPostRetry_OnlyRetriesTransientPostWithOneStableKey(string method, string? key, HttpStatusCode status, int expectedAttempts) =>
+    [InlineData(null, "logical-call-key", HttpStatusCode.ServiceUnavailable, 1)]
+    public async Task AddKeyedPostRetry_OnlyRetriesTransientPostWithOneStableKey(string? method, string? key, HttpStatusCode status, int expectedAttempts) =>
         Assert.Equal(expectedAttempts, await AttemptsAsync(method, key, status));
 
     [Theory]
@@ -37,8 +38,9 @@ public sealed class ProcessHttpKeyedResilienceTests : Kaleido.UnitTests.SutFixtu
     [InlineData("POST", "logical-call-key", HttpStatusCode.UnprocessableEntity, true, false, 1)]
     [InlineData("POST", "logical-call-key", HttpStatusCode.Conflict, true, true, 1)]
     [InlineData("POST", "logical-call-key", HttpStatusCode.ServiceUnavailable, false, true, 1)]
+    [InlineData(null, "logical-call-key", HttpStatusCode.Conflict, true, false, 1)]
     public async Task AddKeyedPostRetry_OnlyRetriesInProgress409WithOneKeyAndWithoutNoRetry(
-        string method, string? key, HttpStatusCode status, bool retryAfter, bool noRetry, int expectedAttempts) =>
+        string? method, string? key, HttpStatusCode status, bool retryAfter, bool noRetry, int expectedAttempts) =>
         Assert.Equal(expectedAttempts, await AttemptsAsync(method, key, status, retryAfter, noRetry));
 
     [Fact]
@@ -97,7 +99,7 @@ public sealed class ProcessHttpKeyedResilienceTests : Kaleido.UnitTests.SutFixtu
         }
     }
 
-    private static async Task<int> AttemptsAsync(string method, string? key, HttpStatusCode status, bool retryAfter = false, bool noRetry = false)
+    private static async Task<int> AttemptsAsync(string? method, string? key, HttpStatusCode status, bool retryAfter = false, bool noRetry = false)
     {
         var time = new FakeTimeProvider();
         var pipeline = CreateSut(time).AddKeyedPostRetry(new KaleidoResilienceOptions
@@ -105,19 +107,22 @@ public sealed class ProcessHttpKeyedResilienceTests : Kaleido.UnitTests.SutFixtu
             MaxRetryAttempts = 1,
             RetryDelay = TimeSpan.FromSeconds(1),
         }).Build();
-        using var request = new HttpRequestMessage(new HttpMethod(method), "/catalog/1/processes/execute");
-        if (key is not null)
+        using var request = method is null ? null : new HttpRequestMessage(new HttpMethod(method), "/catalog/1/processes/execute");
+        if (key is not null && request is not null)
         {
             request.Headers.TryAddWithoutValidation(KaleidoIdempotencyHeaders.IdempotencyKey, key);
         }
 
-        if (noRetry)
+        if (noRetry && request is not null)
         {
             request.Options.Set(KaleidoResilienceOptions.NoRetry, value: true);
         }
 
         var context = ResilienceContextPool.Shared.Get(TestContext.Current.CancellationToken);
-        context.SetRequestMessage(request);
+        if (request is not null)
+        {
+            context.SetRequestMessage(request);
+        }
         var attempts = 0;
         try
         {

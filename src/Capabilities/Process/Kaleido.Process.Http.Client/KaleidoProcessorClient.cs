@@ -119,12 +119,7 @@ internal sealed class KaleidoProcessorClient(
             KaleidoCallContext.MarkServiceOwn(request);
         }
 
-        request.StampKaleidoCorrelation(context, explicitProcessId);
-        if (context.ExecutingStepName.Sanitize() is { } step)
-        {
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.CallingProcessor, serviceOptions.ServiceName.Sanitize());
-            request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.CallingStep, step);
-        }
+        request.StampKaleidoCorrelation(context, explicitProcessId, serviceOptions.ServiceName);
     }
 
     private async Task<(ProcessRegistryItem Published, RegistryTransportRoute Route, string Version)> ProcessorAsync(CancellationToken cancellationToken)

@@ -94,6 +94,9 @@ public sealed class KaleidoHttpClientPipelineServiceCollectionExtensionsTests : 
     [Theory]
     [InlineData(null)]
     [InlineData("not-a-gateway")]
+    [InlineData("ftp://gateway.test/")]
+    [InlineData("http://")]
+    [InlineData("http://user:secret@gateway.test/")]
     [InlineData("https://name:password@gateway.test/")]
     public void AddPipeline_RejectsAnInvalidGateway(string? gateway)
     {

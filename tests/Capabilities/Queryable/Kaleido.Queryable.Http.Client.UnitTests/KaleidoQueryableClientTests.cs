@@ -15,7 +15,7 @@ public sealed class KaleidoQueryableClientTests : Kaleido.UnitTests.SutFixture, 
     private readonly List<HttpClient> created = [];
     private HttpStatusCode responseStatus = HttpStatusCode.OK;
 
-    private sealed record Sent(HttpMethod Method, string Path, string Body, KaleidoCallContext Call, string? RequestId);
+    private sealed record Sent(HttpMethod Method, string Path, string Body, KaleidoCallContext Call, string? RequestId, string? CallingProcessor, string? CallingStep);
     public sealed class FakeView { public int Id { get; init; } }
     private sealed class FakeParams { public string ProcessId { get; init; } = string.Empty; }
 
@@ -54,7 +54,7 @@ public sealed class KaleidoQueryableClientTests : Kaleido.UnitTests.SutFixture, 
                 new RegistryServiceAvailability { ServiceName = "member", ServiceVersion = "1", IsCurrent = true, Transports = [HttpRoute] }, HttpRoute));
 
     private KaleidoQueryableClient CreateSut(string? version = null) =>
-        new("member", version, targets.Object, clients.Object, inboundCaller.Object, correlation.Object);
+        new("member", version, targets.Object, clients.Object, inboundCaller.Object, correlation.Object, new KaleidoServiceOptions { ServiceName = "reader-service" });
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
@@ -62,7 +62,9 @@ public sealed class KaleidoQueryableClientTests : Kaleido.UnitTests.SutFixture, 
     {
         var body = await Assert.IsAssignableFrom<HttpContent>(request.Content).ReadAsStringAsync(token);
         sent.Add(new Sent(request.Method, request.RequestUri?.AbsolutePath ?? string.Empty, body,
-            KaleidoCallContext.Of(request), request.Headers.TryGetValues(KaleidoCorrelationHeaders.RequestId, out var ids) ? Assert.Single(ids) : null));
+            KaleidoCallContext.Of(request), request.Headers.TryGetValues(KaleidoCorrelationHeaders.RequestId, out var ids) ? Assert.Single(ids) : null,
+            request.Headers.TryGetValues(KaleidoCorrelationHeaders.CallingProcessor, out var processors) ? Assert.Single(processors) : null,
+            request.Headers.TryGetValues(KaleidoCorrelationHeaders.CallingStep, out var steps) ? Assert.Single(steps) : null));
         return responseStatus == HttpStatusCode.OK
             ? new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -175,6 +177,26 @@ public sealed class KaleidoQueryableClientTests : Kaleido.UnitTests.SutFixture, 
         Assert.Equal(KaleidoCallPurpose.OnBehalfOfCaller, call.Purpose);
         Assert.Same(principal, call.Caller);
         Assert.Equal("Bearer alice-inbound", call.CallerAuthorization);
+    }
+
+    [Fact]
+    public async Task QuerySourceAsync_InsideALocalStep_StampsThisHostsIdentityInsteadOfForwardingInboundPerHopHeaders()
+    {
+        correlation.Setup(x => x.Current).Returns(new KaleidoCorrelationContext
+        {
+            RequestId = "query-request",
+            CallingProcessorName = "inbound-service",
+            CallingStepName = "inbound-step",
+            ExecutingStepName = "current-step",
+        });
+        inboundCaller.Setup(x => x.IsInboundRequest).Returns(true);
+        inboundCaller.Setup(x => x.Principal).Returns(new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "alice")], "test")));
+
+        await CreateSut().QuerySourceAsync<FakeView>("My-Context", new QueryRequest(), Cancel);
+
+        var outgoing = Assert.Single(sent);
+        Assert.Equal("reader-service", outgoing.CallingProcessor);
+        Assert.Equal("current-step", outgoing.CallingStep);
     }
 
     [Fact]

@@ -4,7 +4,8 @@ internal sealed class KaleidoQueryableClientFactory(
     IKaleidoRegistryTargetResolver targets,
     IHttpClientFactory httpClientFactory,
     IKaleidoInboundCallerAccessor inboundCaller,
-    IKaleidoCorrelationContextAccessor correlation)
+    IKaleidoCorrelationContextAccessor correlation,
+    KaleidoServiceOptions localServiceOptions)
     : IKaleidoQueryableClientFactory
 {
     public IKaleidoQueryableClient GetClient(string serviceName) => CreateClient(serviceName, serviceVersion: null);
@@ -18,6 +19,6 @@ internal sealed class KaleidoQueryableClientFactory(
     private KaleidoQueryableClient CreateClient(string serviceName, string? serviceVersion)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceName);
-        return new KaleidoQueryableClient(serviceName, serviceVersion, targets, httpClientFactory, inboundCaller, correlation);
+        return new KaleidoQueryableClient(serviceName, serviceVersion, targets, httpClientFactory, inboundCaller, correlation, localServiceOptions);
     }
 }
