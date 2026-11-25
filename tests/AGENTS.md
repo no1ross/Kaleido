@@ -19,9 +19,7 @@ Unit-test suites generally mirror source and analyzer projects; functional and i
 | `Kaleido.Queryable.Http.Client.FunctionalTests` | Startup Registry hydration and real Queryable TestServer calls |
 | `Kaleido.Queryable.Http.Server.UnitTests` | `src/Capabilities/Queryable/Kaleido.Queryable.Http.Server` request conversion and endpoint mapping |
 | `Kaleido.Queryable.Http.Server.FunctionalTests` | Local Queryable source/view requests through ASP.NET TestServer, without central Registry |
-| `Kaleido.Platform.UnitTests` | `src/Platform` contracts, registry status and HTTP headers |
 | `Kaleido.Server.UnitTests` | `src/Transports/Kaleido.Server` neutral authorization options and registration |
-| `Kaleido.Client.UnitTests` | Unmigrated remote Process/Queryable client contracts under `src/Client` |
 | `Kaleido.Http.UnitTests` | `src/Transports/Http/Kaleido.Http` shared JSON/header/error wire and route prefix |
 | `Kaleido.Http.Server.UnitTests` | `src/Transports/Http/Kaleido.Http.Server` generic ASP.NET infrastructure |
 | `Kaleido.Http.Client.UnitTests` | `src/Transports/Http/Kaleido.Http.Client` shared outbound pipeline and credential guard |

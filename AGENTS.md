@@ -51,9 +51,7 @@ Project READMEs explain behavior, the [architecture map](./docs/architecture/REA
 | [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md) | generic event envelope, redaction, writer, outbox store/relay and health | Process/Queryable event payloads or a transport; placement temporary (#592) |
 | [Process](./src/Capabilities/Process/Kaleido.Process/README.md), [HTTP](./src/Capabilities/Process/Kaleido.Process.Http/README.md) | local runtime/Registry projection; HTTP bindings | Queryable, Registry authority/client |
 | [Queryable](./src/Capabilities/Queryable/Kaleido.Queryable/README.md), [Client](./src/Capabilities/Queryable/Kaleido.Queryable.Client/README.md), [HTTP](./src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) | local runtime, neutral remote contract; HTTP requests/bindings | Process, Registry authority/client |
-| [`Kaleido.Platform`](./src/Platform/README.md) | remaining mixed Registry/capability contracts (migration pending) | runtime, shared HTTP wire |
 | [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md) | neutral authorization mode/default | ASP.NET, Registry client, runtime logic |
-| [`src/Client`](./src/Client/README.md) | parked mixed-client source | neutral capability clients, Registry participation |
 | [`Kaleido.Http`](./src/Transports/Http/Kaleido.Http/README.md) | shared HTTP JSON, headers, errors and route prefix | ASP.NET, capability/Registry URLs |
 | [`Kaleido.Http.Server`](./src/Transports/Http/Kaleido.Http.Server/README.md) | shared ASP.NET filters, correlation and caller handling | Registry wiring, capability execution |
 | [`Kaleido.Hosting`](./src/Composed/Hosts/Kaleido.Hosting/README.md) | neutral capability registration and required-store checks | transport, provider choice, mandatory Registry client |
@@ -72,7 +70,7 @@ Project READMEs explain behavior, the [architecture map](./docs/architecture/REA
 - Keep concerns in the correct project.
 - `Kaleido` (core) should remain free of transport-specific behavior.
 - `Kaleido.Http.Server` should adapt and publish; it should not reimplement runtime logic.
-- Unmigrated `Kaleido.Platform` contracts remain migration sources; processed projects must not reintroduce a Platform project dependency.
+- The old `Kaleido.Platform` and mixed `Kaleido.Client` contracts have been retired; do not reintroduce their project dependencies or URL-bearing Process response shapes.
 - Keep transport layers thin.
 - Prefer explicit registration and discoverability over hidden behavior.
 - In #585 each processed owner updates its README, focused architecture and scoped AGENTS before commit; retire reached legacy ARCHITECTURE content. Use scoped `.editorconfig` only for area-specific differences and prefer source analyzers for dependencies (#591). Do not move unrelated HTTP/gRPC placeholders merely to populate folders.

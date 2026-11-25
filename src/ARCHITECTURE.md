@@ -43,7 +43,7 @@ The not-yet-processed OpenTelemetry provider supplies `AddOpenTelemetry()` or cu
 
 - `QueryBodyResolver` — converts `QueryApiBody` (HTTP transport shape, string enums + `JsonElement` values) to `QueryBody` (runtime shape, typed CLR values + enums) before handing to core. Uses `QueryableFieldDescriptor.FieldType` for value resolution.
 - `KaleidoJsonEndpointFilter` — `IEndpointFilter` applied to all Kaleido route groups; wraps `IValueHttpResult` responses in `Results.Json(..., KaleidoJsonOptions.Options)` so enums serialize as strings without touching global `JsonOptions`.
-- `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` in `Kaleido.Platform`, used by both server filter and client.
+- `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` in `Kaleido.Http`, used by both server filter and client.
 
 #### Queryable endpoint mapping (`QueryableEndpointRouteBuilderExtensions`)
 
@@ -76,15 +76,15 @@ The not-yet-processed OpenTelemetry provider supplies `AddOpenTelemetry()` or cu
 
 ---
 
-## 3. Kaleido.Platform and Kaleido.Http
+## 3. Capability contracts and Kaleido.Http
 
-### Platform contract structure
+### Contract placement
 
 #### Process contracts
 
-- Request: `ExecuteProcessRequest`, `ExecuteStepRequest<TStep>`
-- Response: `ProcessExecutionResponse`, `ProcessExecutionStepResponse`, `StepExecutionResponse`, `StepExecutionResponse<TResult>`, `ProcessStateResponse`
-- Registry discovery: `ProcessRegistryItem`, `ProcessStepSummary`, `ProcessStepResponse`; runtime continuations still use `ProcessRequiredStep`
+- HTTP input: `ExecuteProcessRequest`, `ProcessStepRequest`, `ExecuteStepRequest<TStep>` in `Kaleido.Process.Http`
+- Neutral result and state: `ProcessResult`, `ProcessStepResult`, `ProcessStateSnapshot` in `Kaleido.Process`, with required/available step names and a pinned hand-off version rather than route URLs
+- Registry discovery: `ProcessRegistryItem`, `ProcessStepSummary`, `ProcessStepResponse` in `Kaleido.Registry`; the runtime owns its required step and pending `InformationRequest`
 
 #### Queryable contracts
 
@@ -94,26 +94,26 @@ The not-yet-processed OpenTelemetry provider supplies `AddOpenTelemetry()` or cu
 - `QueryApiBodyExtensions.ToApiBody()` — converts runtime `QueryBody` → `QueryApiBody` for core callers forwarding over HTTP (e.g. delegated query sources)
 - `KaleidoJsonOptions.Options` — shared `JsonSerializerOptions` with `JsonStringEnumConverter` for all Kaleido HTTP serialization
 
-### Platform contract invariants
+### Contract invariants
 
-- `Kaleido.Platform` owns the supported model and wire contract surface shared by `Kaleido.Http.Server`, `Kaleido.Http.Client` and future protocols; `Kaleido.Http` holds only shared HTTP routes.
-- Treat the published model as a public API boundary. Prefer additive changes.
+- Portable Process, Queryable and Registry contracts belong to their capability owners. `Kaleido.Http` holds shared HTTP JSON, headers, errors and route-prefix mechanics; each capability's `.Http` project owns its request URLs and input envelopes.
+- Treat published models as public API boundaries. Prefer additive changes.
 - `QueryApiBody` and its sub-types are the wire shape — string enums, `JsonElement` values. Core `QueryBody`/`QueryFilterNode`/`FilterOperator` are never serialized to HTTP directly.
 - `KaleidoJsonOptions.Options` is the single `JsonSerializerOptions` for all Kaleido HTTP serialization — server responses and client read/write. All `ReadFromJsonAsync`/`JsonContent.Create` calls in Kaleido code must pass it explicitly.
 
 ---
 
-## 4. Kaleido.Client and Kaleido.Http.Client
+## 4. Capability clients and shared HTTP pipeline
 
 ### Client and HTTP adapter structure
 
 #### Process client
 
-- `IKaleidoProcessorClient` in `Kaleido.Client` is the neutral contract for process state and step execution. `KaleidoProcessorClient` in `Kaleido.Http.Client` sends the URLs the unfiltered central registry publishes; correlation and idempotency are stamped by the HTTP transport. Failed HTTP responses raise `KaleidoHttpClientException`.
+- `IKaleidoProcessorClient` in `Kaleido.Process.Client` is the neutral contract for process state and step execution. `KaleidoProcessorClient` in `Kaleido.Process.Http.Client` resolves published bindings from the hydrated unfiltered registry, then stamps correlation and a stable key on HTTP execution. Failed HTTP responses raise `KaleidoHttpClientException`.
 
 #### Queryable client
 
-- `IKaleidoQueryableClient` in `Kaleido.Client` queries sources and views by published name; `KaleidoQueryableClient` sends their published `QueryUrl` through the one gateway client.
+- `IKaleidoQueryableClient` in `Kaleido.Queryable.Client` queries sources and views by published name; `KaleidoQueryableClient` in `Kaleido.Queryable.Http.Client` selects their published `Bindings.Http` path through the one gateway client.
 
 #### Client registry participation
 

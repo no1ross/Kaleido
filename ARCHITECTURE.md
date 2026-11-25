@@ -4,13 +4,12 @@ This is the legacy overview while #585 moves each reached area to the [architect
 
 ## 1. Architectural overview
 
-Nineteen source projects currently occupy four layers (fifteen shipped packages and four non-packable gRPC
-placeholders). The capability extraction is in progress (#585); [focused architecture pages](./docs/architecture/README.md) cover only areas processed so far:
+The active source projects are organized by capability and transport; four gRPC placeholders remain non-packable. The #585 migration is in progress; [focused architecture pages](./docs/architecture/README.md) cover processed areas:
 
 | Layer | Projects | Responsibility |
 | --- | --- | --- |
 | Foundation and runtimes | [`Kaleido`](./src/Core/Kaleido/README.md), [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md), [`Kaleido.Process`](./src/Capabilities/Process/Kaleido.Process/README.md), [`Kaleido.Queryable`](./src/Capabilities/Queryable/Kaleido.Queryable/README.md) | Core supplies service identity, metadata and correlation; Eventing owns the outbox/relay, Process and Queryable their runtimes. Eventing placement is provisional (#592). |
-| Shared bases | [`Kaleido.Platform`](./src/Platform/README.md), [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md), [`src/Client`](./src/Client/README.md) | Remaining Platform/remote-client migration sources and neutral Server authorization settings |
+| Neutral Server | [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md) | Authorization mode and service defaults, without ASP.NET or a mandatory Registry client |
 | HTTP | [`Kaleido.Http`](./src/Transports/Http/Kaleido.Http/README.md), [`Kaleido.Http.Server`](./src/Transports/Http/Kaleido.Http.Server/README.md), [`Kaleido.Http.Client`](./src/Transports/Http/Kaleido.Http.Client/README.md), [`Process.Http`](./src/Capabilities/Process/Kaleido.Process.Http/README.md), [`Queryable.Http`](./src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) | Shared wire/ASP.NET/outbound pipeline; capability-owned HTTP requests and callable bindings |
 | Registry | [`Kaleido.Registry`](./src/Capabilities/Registry/Kaleido.Registry/README.md), [`Server`](./src/Capabilities/Registry/Kaleido.Registry.Server/README.md), [`Client`](./src/Capabilities/Registry/Kaleido.Registry.Client/README.md), [`HTTP listener`](./src/Capabilities/Registry/Kaleido.Registry.Http.Server/README.md), [`HTTP client`](./src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md) | Contracts-only Registry, distinct authority/opted-in participant, fixed HTTP endpoints |
 | MCP | [`Kaleido.Mcp`](./src/Mcp/Mcp/README.md) | Caller-visible Registry-derived tools; higher migration gate |
@@ -43,14 +42,11 @@ converts requests and projects the response.
 
 ### Thin transport layers
 
-`Kaleido.Http.Server` and `Kaleido.Http.Client` adapt the runtime and neutral client interfaces;
-they do not implement business rules or introduce a dependency from the core onto ASP.NET Core.
+`Kaleido.Http.Server` and `Kaleido.Http.Client` provide shared ASP.NET and outbound HTTP infrastructure; capability HTTP adapters adapt runtimes and neutral clients. Neither layer implements business rules or adds a core dependency on ASP.NET Core.
 
 ### Clear project boundaries
 
-`Kaleido.Platform` contains published contracts shared across transports; `Kaleido.Server` and
-`Kaleido.Client` own inbound and outbound mechanisms. Protocol projects supply only their wire
-shapes and adapters. The registry owns state and cache, not destination addresses.
+Process, Queryable and Registry own their published portable contracts; `Kaleido.Server` owns neutral authorization and capability clients own outbound contracts. Shared HTTP infrastructure owns only shared wire mechanics, while capability HTTP projects own their routes, input envelopes and adapters. The registry owns state and cache, not destination addresses.
 
 ## 3. Repository structure
 
@@ -106,18 +102,11 @@ address; the gateway's deployment configuration maps each versioned public route
 
 ## 6. Transport model
 
-`Kaleido.Platform` holds the supported wire contracts and shared JSON/header conventions.
-`Kaleido.Http` supplies route shapes; `Kaleido.Http.Server` publishes them, and
-`Kaleido.Http.Client` sends registry-published relative URLs beneath the matching logical gateway
-route. The neutral `Kaleido.Client` selector models gRPC preference and safe fallback when a
-gRPC adapter exists, but the shipped client supports HTTP only: it does not invoke fallback yet.
-The gRPC wire implementation remains future work.
+`Kaleido.Http` owns shared JSON/header/error conventions and route-prefix mechanics. Process, Queryable and Registry HTTP projects own their routes, request envelopes and adapters; outbound capability clients resolve published relative paths under the matching logical gateway route. `Kaleido.Registry.Client` selects a published transport from the hydrated registry, currently HTTP only. The gRPC placeholders define no implementation or cross-protocol fallback yet.
 
 ## 7. Contributor guidance
 
-Keep runtime decisions in `Kaleido`, registry ownership in `Kaleido.Registry`, and wire adaptation
-in the relevant protocol project. Changes to `Kaleido.Platform`'s published shapes affect both
-server and client. Follow the [per-commit gate](./AGENTS.md#per-commit-quality-gate), including
+Keep Process/Queryable runtime decisions in their capabilities, central authority state in `Kaleido.Registry.Server`, and wire adaptation in the relevant protocol project. Changes to published capability contracts affect both server and client. Follow the [per-commit gate](./AGENTS.md#per-commit-quality-gate), including
 local Markdown links and heading fragments.
 
 ## 8. Where to look next

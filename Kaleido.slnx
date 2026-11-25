@@ -54,8 +54,6 @@
     <File Path="src/AGENTS.md" />
     <File Path="src/ARCHITECTURE.md" />
     <File Path="src/Directory.Build.props" />
-    <Project Path="src/Client/Kaleido.Client.csproj" />
-    <Project Path="src/Platform/Kaleido.Platform.csproj" />
   </Folder>
   <Folder Name="/src/Core/">
     <File Path="src/Core/AGENTS.md" />
@@ -135,8 +133,6 @@
     <Project Path="tests/Kaleido.Analyzers.Source.UnitTests/Kaleido.Analyzers.Source.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Analyzers.Testing.UnitTests/Kaleido.Analyzers.Testing.UnitTests.csproj" />
     <Project Path="tests/Kaleido.Analyzers.UnitTests/Kaleido.Analyzers.UnitTests.csproj" />
-    <Project Path="tests/Client.UnitTests/Kaleido.Client.UnitTests.csproj" />
-    <Project Path="tests/Platform.UnitTests/Kaleido.Platform.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Events/">
     <Project Path="tests/Events/Kaleido.Eventing.FunctionalTests/Kaleido.Eventing.FunctionalTests.csproj" />

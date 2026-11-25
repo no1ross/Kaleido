@@ -37,14 +37,6 @@ Kaleido.Observability.OpenTelemetry ──► Kaleido, Kaleido.Eventing, Kaleido
 
 Foundation owns no store choice, contributor or in-memory default. `Kaleido.Provider` bundles the lower store-contract dependencies; `Kaleido.Provider.InMemory` implements Process state, Process.Server idempotency and Eventing outbox as explicit singleton choices (#559). The SQLite package implements the same stores durably and Registry.Server's separate store (#623). Different providers for one store conflict in either registration order (ADR 0049); no lower capability references a provider. Hosting checks **presence** of required registrations, not implementation technology (#597). These owners reference lower projects; foundation references none of them. Cross-assembly internal seams use `.csproj` `<InternalsVisibleTo>` items, and project-wide usings use `.csproj` `<Using>` items.
 
-## Legacy edges awaiting migration
+## Pending graph enforcement
 
-These lower-layer edges were described in the old root/source architecture sketches. They are retained here so deleting duplicate sketches does **not** discard information; this is not a fresh audit or a claim that these project boundaries are final. Each project must verify and revise its own row when reached:
-
-| Unmigrated project | Previously documented lower references |
-| --- | --- |
-| `Kaleido.Platform` | `Kaleido` |
-| Old `src/Client/Kaleido.Client.csproj` | `Kaleido.Platform` (remote Process/Queryable client interfaces still await migration; shared HTTP call context moved separately) |
-| `Kaleido.Mcp` | `Kaleido.Http.Server`, `Kaleido.Http.Client` |
-
-The other projects have **not** completed their migration. Their actual `ProjectReference` declarations, not this old sketch or a proposed diagram, are authoritative until they are processed. The deleted assembly architecture tests leave a temporary enforcement gap: #591 must replace them with build-time source analyzers before epic completion; do not recreate an architecture-test suite or relax KAL fixture rules.
+The retired Platform and mixed Client packages no longer form dependency edges. `Kaleido.Mcp` depends on the shared HTTP server/client adapters as a composed consumer, not on those old packages. Actual `ProjectReference` declarations remain authoritative. The deleted assembly architecture tests leave a temporary enforcement gap: #591 must replace them with build-time source analyzers before epic completion; do not recreate an architecture-test suite or relax KAL fixture rules.

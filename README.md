@@ -306,9 +306,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Queryable.Http`](src/Capabilities/Queryable/Kaleido.Queryable.Http) | HTTP query request bodies, CLR-to-wire conversion and versioned query routes |
 | [`Kaleido.Queryable.Http.Client`](src/Capabilities/Queryable/Kaleido.Queryable.Http.Client) | Outbound source/view queries using published Registry HTTP bindings |
 | [`Kaleido.Queryable.Http.Server`](src/Capabilities/Queryable/Kaleido.Queryable.Http.Server) | ASP.NET source/view query endpoints over the local Queryable catalog |
-| [`Kaleido.Platform`](src/Platform) | Remaining unmigrated Registry, Process and Queryable published contracts |
 | [`Kaleido.Server`](src/Transports/Kaleido.Server) | Transport-neutral authorization mode and service defaults |
-| [`src/Client`](src/Client) | Unmigrated remote Process client contracts (#585) |
 | [`Kaleido.Http`](src/Transports/Http/Kaleido.Http) | Shared HTTP JSON, headers, errors and route prefix |
 | [`Kaleido.Http.Server`](src/Transports/Http/Kaleido.Http.Server) | Generic ASP.NET filters and caller handling |
 | [`Kaleido.Http.Client`](src/Transports/Http/Kaleido.Http.Client) | Shared named gateway HTTP pipeline and caller-credential guard |
@@ -345,12 +343,11 @@ dotnet add package Kaleido.Http.Server --prerelease                  # publish H
 dotnet add package Kaleido.Http.Client --prerelease                  # central-registry and gateway HTTP clients
 dotnet add package Kaleido.Registry.Http --prerelease                # host the control registry over HTTP
 dotnet add package Kaleido.Mcp --prerelease                          # expose registry capabilities to agents
-dotnet add package Kaleido.Platform --prerelease                     # shared contracts only (when needed)
 dotnet add package Kaleido.Observability.OpenTelemetry --prerelease  # logs, traces and metrics over OTLP
 dotnet add package Kaleido.Provider.SQLite --prerelease             # reference store (local development)
 ```
 
-HTTP adapters bring their required `Kaleido.Http`, `Kaleido.Server` or `Kaleido.Client`, `Kaleido.Platform` and core dependencies transitively. The packages move together: upgrade all Kaleido packages a project references at once ([versioning](docs/VERSIONING.md#versions)).
+HTTP adapters bring their required `Kaleido.Http`, `Kaleido.Server`, capability-neutral clients, portable Registry contracts and core dependencies transitively. The packages move together: upgrade all Kaleido packages a project references at once ([versioning](docs/VERSIONING.md#versions)).
 
 Preview builds between tags are published only to the repository's GitHub Packages feed, `https://nuget.pkg.github.com/no1ross/index.json`; to use one, add that feed as a source with a GitHub token that can read packages:
 
@@ -364,7 +361,7 @@ dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name k
 - [Architecture map](docs/architecture/README.md) (the legacy [`ARCHITECTURE.md`](ARCHITECTURE.md) retains only unmigrated sections)
 - [Process authoring: steps, handlers, lookups](docs/architecture/capabilities/process-authoring.md) and [Queryable authoring: sources and views](docs/architecture/capabilities/queryable-authoring.md)
 - [Core runtime](src/Core/Kaleido/README.md)
-- [HTTP transport](src/Transports/Http/Kaleido.Http.Server/README.md) and [contracts](src/Platform/README.md)
+- [HTTP transport](src/Transports/Http/Kaleido.Http.Server/README.md) and [shared HTTP contracts](src/Transports/Http/Kaleido.Http/README.md)
 - [Shared HTTP client pipeline](src/Transports/Http/Kaleido.Http.Client/README.md) and [Registry HTTP client](src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md)
 - [MCP adapter](src/Mcp/Mcp/README.md)
 - [Information requests](docs/architecture/capabilities/information-requests.md)

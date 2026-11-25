@@ -47,7 +47,7 @@ Reference this project when you need to:
 
 This project does not contain:
 - HTTP endpoint publication, DI registration, middleware, or transport services (see [`Kaleido.Http.Server`](../../Transports/Http/Kaleido.Http.Server/README.md))
-- HTTP contract types (see [`Kaleido.Platform`](../../Platform/README.md))
+- HTTP contract types (see [shared HTTP wire](../../Transports/Http/Kaleido.Http/README.md) and the Process/Queryable/Registry `.Http` packages)
 - outbound HTTP client credential/pipeline policy (see [`Kaleido.Http.Client`](../../Transports/Http/Kaleido.Http.Client/README.md))
 - SQLite state persistence (see [`Kaleido.Provider.SQLite`](../../Providers/Kaleido.Provider.SQLite/README.md))
 - event writing, redaction, outbox stores or relay behavior (see [`Kaleido.Eventing`](../../Events/Kaleido.Eventing/README.md))

@@ -42,8 +42,8 @@ instruments and the meter-name subscription merges them.
 `Kaleido.Observability.OpenTelemetry` is not yet migrated: its old core-only reference needs review now that capabilities and Eventing own their instrumentation constants. Do not claim copied names are the final owner. A new meter or activity source must be registered in `AddKaleidoInstrumentation()` with tests when its owning project is processed.
 ## Transport and HTTP rules
 
-### Kaleido.Platform stability
-This is a shared contract boundary. Treat it like a public API:
+### Published contract stability
+Portable Process, Queryable and Registry models and shared HTTP wire types belong to their active owners. Treat their published contracts like a public API:
 - prefer additive changes (new optional fields) over breaking changes
 - when a contract must change, update the matching endpoint, client method, and tests together
 
@@ -70,13 +70,13 @@ When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` a
 
 ## What not to change casually
 
-The processed foundation/Process/Queryable/Eventing invariants are in their child AGENTS files above. Shared HTTP JSON/header/error behavior belongs to `Kaleido.Http` without Platform, ASP.NET or capability/Registry references. The remaining Platform capability/Registry wire shapes are not migrated yet; coordinate their future owner moves with server/client adapters.
+The processed foundation/Process/Queryable/Eventing invariants are in their child AGENTS files above. Shared HTTP JSON/header/error behavior belongs to `Kaleido.Http` without ASP.NET or capability/Registry references. The retired Platform models are not a compatibility layer; coordinate published Process/Queryable/Registry changes with their owning server and client adapters.
 
 ---
 
 ## Common pitfalls
 - Moving runtime logic into `Kaleido.Http.Server` (endpoint mapping and middleware only)
-- Changing `Kaleido.Platform` types without updating both the server endpoint and client
+- Changing a published capability or HTTP contract without updating both its server endpoint and client
 - Adding gRPC as a dependency of `Kaleido.Http.Server` — each protocol owns its own adapter and wire types (`Kaleido.Grpc*` placeholders exist but implement nothing yet)
 
 ---
