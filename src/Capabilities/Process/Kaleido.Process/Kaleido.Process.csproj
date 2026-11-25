@@ -26,9 +26,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Kaleido.Platform" />
 		<InternalsVisibleTo Include="Kaleido.Server" />
-		<InternalsVisibleTo Include="Kaleido.Client" />
 		<InternalsVisibleTo Include="Kaleido.Http.Server" />
 		<!-- Process HTTP routes and their fixtures inspect the internal step catalog for typed binding and authorization. -->
 		<InternalsVisibleTo Include="Kaleido.Process.Http.Server" />
@@ -37,6 +35,5 @@
 		<InternalsVisibleTo Include="Kaleido.Mcp" />
 		<InternalsVisibleTo Include="Kaleido.Registry" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
-		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 	</ItemGroup>
 </Project>

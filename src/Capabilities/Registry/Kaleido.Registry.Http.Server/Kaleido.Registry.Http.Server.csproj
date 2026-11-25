@@ -27,8 +27,4 @@
 		<Using Include="Kaleido.Server" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
-		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
-	</ItemGroup>
 </Project>

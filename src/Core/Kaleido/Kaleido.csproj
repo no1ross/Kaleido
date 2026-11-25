@@ -47,9 +47,7 @@
 		<InternalsVisibleTo Include="Kaleido.Queryable" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server.UnitTests" />
-		<InternalsVisibleTo Include="Kaleido.Platform" />
 		<InternalsVisibleTo Include="Kaleido.Server" />
-		<InternalsVisibleTo Include="Kaleido.Client" />
 		<InternalsVisibleTo Include="Kaleido.Http" />
 		<InternalsVisibleTo Include="Kaleido.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Http.Client" />
@@ -74,9 +72,7 @@
 		<!-- The OpenTelemetry provider lays its configuration section over the options from code with core's overlay (ADR 0030). -->
 		<InternalsVisibleTo Include="Kaleido.Observability.OpenTelemetry" />
 		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
-		<InternalsVisibleTo Include="Kaleido.Platform.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Server.UnitTests" />
-		<InternalsVisibleTo Include="Kaleido.Client.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.Server.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Http.Client.UnitTests" />
@@ -84,6 +80,5 @@
 		<InternalsVisibleTo Include="Kaleido.Registry.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server.UnitTests" />
-		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 	</ItemGroup>
 </Project>

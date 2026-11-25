@@ -22,7 +22,6 @@
 		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
-		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 		<InternalsVisibleTo Include="Kaleido.Mcp.FunctionalTests" />
 	</ItemGroup>
 </Project>

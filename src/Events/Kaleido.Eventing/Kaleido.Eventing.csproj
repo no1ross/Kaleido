@@ -35,6 +35,5 @@
 		<InternalsVisibleTo Include="Kaleido.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Registry" />
 		<InternalsVisibleTo Include="Kaleido.Mcp" />
-		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 	</ItemGroup>
 </Project>

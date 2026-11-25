@@ -33,7 +33,6 @@
 		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Server.UnitTests" />
-		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 		<InternalsVisibleTo Include="Kaleido.Provider.SQLite.UnitTests" />
 	</ItemGroup>
 </Project>

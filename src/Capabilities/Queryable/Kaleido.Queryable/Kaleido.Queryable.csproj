@@ -22,10 +22,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Unmigrated adapters and their functional tests consume Queryable's internal runtime/registry seams; no public API is added for them. -->
-		<InternalsVisibleTo Include="Kaleido.Platform" />
+		<!-- Adapters and their tests consume Queryable's internal runtime/registry seams; no public API is added for them. -->
 		<InternalsVisibleTo Include="Kaleido.Server" />
-		<InternalsVisibleTo Include="Kaleido.Client" />
 		<InternalsVisibleTo Include="Kaleido.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server" />
 		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server.UnitTests" />
@@ -33,6 +31,5 @@
 		<InternalsVisibleTo Include="Kaleido.Mcp" />
 		<InternalsVisibleTo Include="Kaleido.Registry" />
 		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
-		<InternalsVisibleTo Include="Kaleido.Http.FunctionalTests" />
 	</ItemGroup>
 </Project>
