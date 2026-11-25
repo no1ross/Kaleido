@@ -1,6 +1,6 @@
 # Releasing Kaleido
 
-How the eight Kaleido packages (the seven `src/` packages and `Kaleido.Analyzers`) are released. The
+How the shipped Kaleido libraries under `src/` and the `Kaleido.Analyzers` package are released. The
 release workflow is [`.github/workflows/release.yml`](../.github/workflows/release.yml); versions come from
 [`version.json`](../version.json) ([`docs/VERSIONING.md`](VERSIONING.md)).
 
@@ -8,8 +8,8 @@ release workflow is [`.github/workflows/release.yml`](../.github/workflows/relea
 
 | What | Where |
 |---|---|
-| `.nupkg` (all eight), every tagged version (preview or stable) | **nuget.org**, published with [trusted publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key) |
-| `.nupkg` (all eight), every run (tags and dry runs) | the repository's GitHub Packages feed: `https://nuget.pkg.github.com/no1ross/index.json` |
+| `.nupkg` (all shipped packages), every tagged version (preview or stable) | **nuget.org**, published with [trusted publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing) (no stored API key) |
+| `.nupkg` (all shipped packages), every run (tags and dry runs) | the repository's GitHub Packages feed: `https://nuget.pkg.github.com/no1ross/index.json` |
 | `.snupkg` (symbols) | nuget.org's symbol server (tags), attached to the GitHub Release (tags) and to the workflow run; GitHub Packages does not host symbol packages |
 | build provenance | a signed attestation per `.nupkg`, stored with the repository's attestations ([Provenance](#provenance)) |
 
@@ -40,7 +40,7 @@ Every run, from a clean checkout of the tag (or master, for a dry run):
    commit when it was merged, and the release reuses that result. A tag pushed before that run
    finished fails here: wait for it, then re-run the release (#526);
 2. restores, builds and tests the solution (`Kaleido.slnx`) in Release;
-3. packs the eight packages and verifies them ([`tools/packaging/Test-PackageConsumer.ps1`](../tools/packaging/Test-PackageConsumer.ps1)):
+3. packs the shipped packages and verifies them ([`tools/packaging/Test-PackageConsumer.ps1`](../tools/packaging/Test-PackageConsumer.ps1)):
    exactly the release set (the script's manifest of ids, one version, one symbols package per
    library: a missing, duplicate, unexpected or mixed-version package fails), contents and metadata
    (assembly, XML docs, README, icon, LICENSE, NOTICE, license, repository and commit), exact
@@ -70,8 +70,8 @@ the dry run), so nothing is published without an approval.
 Run the **Release** workflow manually (Actions -> Release -> Run workflow) on master. It publishes the
 current preview version (`1.0.0-preview.{height}`) to the feed and uploads packages and symbols to the
 run, without a GitHub Release. Check:
-- the eight packages appear in the feed with the run's version;
-- the run's `release-packages` artifact holds eight `.nupkg` and seven `.snupkg` files;
+- every shipped package appears in the feed with the run's version;
+- the run's `release-packages` artifact holds one `.nupkg` per shipped package and one `.snupkg` per library (none for the analyzer);
 - a scratch project restores `Kaleido` from the feed and builds.
 
 ## Releasing a version
@@ -119,8 +119,8 @@ Every package carries the `LICENSE` and `NOTICE` files.
 
 ## Dependencies that set a package's compatibility
 
-`Kaleido.Http.Mcp` builds on the MCP C# SDK (`ModelContextProtocol.AspNetCore`, 2.x), so its 1.x promise
-holds only as far as the SDK's own: an SDK major version is a `Kaleido.Http.Mcp` major. The SDK's minor
+`Kaleido.Mcp` builds on the MCP C# SDK (`ModelContextProtocol.AspNetCore`, 2.x), so its 1.x promise
+holds only as far as the SDK's own: an SDK major version is a `Kaleido.Mcp` major. The SDK's minor
 versions can change its API surface too - 2.3.0 made the client's server information nullable, which broke the
 build after a Dependabot update (#544, #546) - so a minor SDK update is reviewed like a code change, and the MCP
 unit and functional tests must pass before it merges (#526, D4).

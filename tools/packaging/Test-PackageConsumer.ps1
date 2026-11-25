@@ -5,7 +5,7 @@
     them from clean projects (#319, #436).
 
 .DESCRIPTION
-    1. The release set (manifest): exactly the seven library packages and Kaleido.Analyzers, each once,
+    1. The release set (manifest): exactly the shipped library packages and Kaleido.Analyzers, each once,
        all at one version, read from each package's .nuspec (not its file name); one symbols package
        (.snupkg) per library and no other. A missing, duplicate, unexpected or mixed-version package
        fails.
@@ -21,7 +21,7 @@
        project.assets.json read. No Kaleido package but Kaleido.Analyzers contributes an analyzer,
        Kaleido.Analyzers contributes only Kaleido.Analyzers.dll, and no repository-only analyzer
        (Kaleido.Analyzers.Source/.Testing, Meziantou, Roslynator) reaches the consumer.
-    5. A clean core consumer (Kaleido only) builds a valid step and handler without any
+    5. A clean Process consumer (Kaleido and Kaleido.Process) builds a valid step and handler without any
        repository-only diagnostic (KAL0xxx, KAL1xxx, MA, RCS), and a deliberate violation (a
        [ProcessStep] with an empty Description) fails with KAL2001: the consumer analyzer flows through the
        package dependency.
@@ -55,18 +55,33 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $libraries = @(
     "Kaleido",
     "Kaleido.Eventing",
-    "Kaleido.Process",
-    "Kaleido.Queryable",
-    "Kaleido.Platform",
     "Kaleido.Server",
-    "Kaleido.Client",
     "Kaleido.Http",
     "Kaleido.Http.Server",
     "Kaleido.Http.Client",
-    "Kaleido.Mcp",
+    "Kaleido.Process",
+    "Kaleido.Process.Server",
+    "Kaleido.Process.Client",
+    "Kaleido.Process.Http",
+    "Kaleido.Process.Http.Server",
+    "Kaleido.Process.Http.Client",
+    "Kaleido.Queryable",
+    "Kaleido.Queryable.Client",
+    "Kaleido.Queryable.Http",
+    "Kaleido.Queryable.Http.Server",
+    "Kaleido.Queryable.Http.Client",
     "Kaleido.Registry",
+    "Kaleido.Registry.Server",
+    "Kaleido.Registry.Client",
     "Kaleido.Registry.Http",
+    "Kaleido.Registry.Http.Server",
+    "Kaleido.Registry.Http.Client",
+    "Kaleido.Hosting",
+    "Kaleido.Hosting.Http",
+    "Kaleido.Mcp",
     "Kaleido.Observability.OpenTelemetry",
+    "Kaleido.Provider",
+    "Kaleido.Provider.InMemory",
     "Kaleido.Provider.SQLite"
 )
 $analyzer = "Kaleido.Analyzers"
@@ -239,7 +254,7 @@ try {
     New-Item -ItemType Directory -Path $hostDir, $coreDir | Out-Null
 
     # --- 6. (project) The host consumer: every runtime package -----------------------------------------
-    $runtimeReferences = ($libraries | Where-Object { $_ -notin "Kaleido", "Kaleido.Platform" } |
+    $runtimeReferences = ($libraries | Where-Object { $_ -ne "Kaleido" } |
         ForEach-Object { "    <PackageReference Include=""$_"" Version=""$version"" />" }) -join "`n"
 
     @"
@@ -256,20 +271,26 @@ $runtimeReferences
 "@ | Set-Content (Join-Path $hostDir "Host.csproj")
 
     @"
-using System.ComponentModel;
 using Kaleido;
-using Kaleido.Client.Processor;
-using Kaleido.Http;
+using Kaleido.Eventing;
+using Kaleido.Hosting.Http;
 using Kaleido.Http.Client.Registration;
-using Kaleido.Http.Client.Registry;
 using Kaleido.Http.Server;
 using Kaleido.Mcp;
 using Kaleido.Observability.OpenTelemetry;
-using Kaleido.Processor;
-using Kaleido.Processor.Execution;
+using Kaleido.Process;
+using Kaleido.Process.Client;
+using Kaleido.Process.Execution;
+using Kaleido.Process.Http;
+using Kaleido.Process.Http.Client;
+using Kaleido.Process.Http.Server;
 using Kaleido.Provider.SQLite;
+using Kaleido.Queryable.Http.Client;
 using Kaleido.Registry;
-using Kaleido.Registry.Http;
+using Kaleido.Registry.Http.Client;
+using Kaleido.Registry.Http.Server;
+using Kaleido.Registry.Server;
+using Kaleido.Server;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 // Every runtime package in a clean consumer: a standalone registry and a service with HTTP, MCP and SQLite.
@@ -284,14 +305,15 @@ registryBuilder.WebHost.UseUrls("http://127.0.0.1:0");
 registryBuilder.Services.AddKaleido(registryBuilder.Configuration, new()
 {
     ServiceName = "registry",
+    ServiceVersion = "1",
     Assemblies = [typeof(StartStep).Assembly],
     TypeFilter = _ => false,
-    AuthorizationMode = KaleidoAuthorizationMode.None,
 })
-    .AddInMemoryStores()
+    .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.None })
     .AddHttp()
     .AddControlRegistry()
-    .AddInMemoryRegistryStore();
+    .AddInMemoryRegistryStore()
+    .AddRegistryHttpServer();
 var registryApp = registryBuilder.Build();
 registryApp.MapKaleidoControlRegistry();
 await registryApp.StartAsync();
@@ -314,21 +336,26 @@ builder.Services
         ServiceName = "host",
         ServiceVersion = "1",
         Assemblies = [typeof(StartStep).Assembly],
-        AuthorizationMode = KaleidoAuthorizationMode.None,
     })
+    .AddEventing()
+    .AddProcess()
+    .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.None })
     .AddHttp()
-    .AddHttpClients()
-    .AddControlRegistryClient()
+    .AddProcessHttpServer()
+    .AddProcessHttpBindings()
+    .AddRegistryHttpParticipation()
+    .AddProcessHttpClient()
+    .AddQueryableHttpClient()
     .AddMcp()
-    .AddSqliteContextStore(connection)
-    .AddSqliteOutboxStore(connection)
-    .AddSqliteIdempotencyStore(connection)
+    .AddSqliteContextProvider(connection)
+    .AddSqliteOutboxProvider(connection)
+    .AddSqliteIdempotencyProvider(connection)
     .AddOpenTelemetry();
 
 builder.Services.AddTransient<RegistryRegistrationSignal>();
 builder.Services.AddHttpClient("kaleido-registry").AddHttpMessageHandler<RegistryRegistrationSignal>();
 builder.Services.AddTransient<GatewayRouteToService>();
-builder.Services.AddHttpClient("kaleido-gateway").AddHttpMessageHandler<GatewayRouteToService>();
+builder.Services.AddHttpClient("kaleido-process").AddHttpMessageHandler<GatewayRouteToService>();
 builder.Services.AddSingleton(registered);
 builder.Services.AddSingleton(availabilityRead);
 builder.Services.AddSingleton(gatewayTarget);
@@ -340,7 +367,7 @@ await using (var scope = app.Services.CreateAsyncScope())
     await scope.ServiceProvider.GetRequiredService<SqliteKaleidoContextDbContext>().Database.EnsureCreatedAsync();
 }
 
-app.MapKaleidoHttp();
+app.MapKaleido().MapProcess();
 app.MapKaleidoMcp("/mcp");
 
 await app.StartAsync();
@@ -386,8 +413,8 @@ try
     await using (var scope = app.Services.CreateAsyncScope())
     {
         var client = scope.ServiceProvider.GetRequiredService<IKaleidoProcessorClientFactory>().GetClient("host", "1");
-        var called = await client.ExecuteStepAsync(new StartStep(), CancellationToken.None);
-        if (called.Status != StepExecutionStatus.Completed)
+        var called = await client.ExecuteStepAsync(new StartStep(), processId: null, idempotencyKey: null, cancellationToken: CancellationToken.None);
+        if (called.Steps.Single(step => step.StepName == nameof(StartStep)).ExecutionStatus != StepExecutionStatus.Completed)
         {
             Console.Error.WriteLine("registry-published gateway route did not complete the step");
             return 1;
@@ -494,7 +521,7 @@ public sealed class StartHandler : IProcessStepHandler<StartStep>
     if (-not ($assets.libraries.PSObject.Properties | Where-Object { $_.Name -like "$analyzer/*" })) { $failures.Add("$analyzer does not reach the consumer") }
     Stop-IfFailed "analyzer isolation"
 
-    # --- 5. The core consumer: analyzer diagnostics --------------------------------------------------
+    # --- 5. The Process consumer: analyzer diagnostics --------------------------------------------------
     @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -504,13 +531,14 @@ public sealed class StartHandler : IProcessStepHandler<StartStep>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Kaleido" Version="$version" />
+    <PackageReference Include="Kaleido.Process" Version="$version" />
   </ItemGroup>
 </Project>
 "@ | Set-Content (Join-Path $coreDir "Core.csproj")
 
     @"
-using Kaleido.Processor;
-using Kaleido.Processor.Execution;
+using Kaleido.Process;
+using Kaleido.Process.Execution;
 
 namespace Consumer;
 
@@ -525,13 +553,13 @@ public sealed class StartHandler : IProcessStepHandler<StartStep>
 "@ | Set-Content (Join-Path $coreDir "Valid.cs")
 
     $valid = & dotnet build $coreDir -nologo 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0) { $failures.Add("The clean core consumer does not build:`n$valid") }
+    if ($LASTEXITCODE -ne 0) { $failures.Add("The clean Process consumer does not build:`n$valid") }
 
     $leakedDiagnostics = [regex]::Matches($valid, '\b(KAL[01]\d{3}|MA\d{4}|RCS\d{4})\b') | ForEach-Object Value | Sort-Object -Unique
     if ($leakedDiagnostics) { $failures.Add("Repository-only diagnostics reached the consumer: $($leakedDiagnostics -join ', ')") }
 
     @"
-using Kaleido.Processor;
+using Kaleido.Process;
 
 namespace Consumer;
 
@@ -567,7 +595,7 @@ finally {
 
 Stop-IfFailed "the consumers"
 
-Write-Host "Packages $version`: the complete release set; contents, metadata and symbols complete; analyzers isolated; the core consumer builds and gets KAL2001; the host consumer of every runtime package starts and answers."
+Write-Host "Packages $version`: the complete release set; contents, metadata and symbols complete; analyzers isolated; the Process consumer builds and gets KAL2001; the host consumer of every runtime package starts and answers."
 
 # The last native command was the violation build, which fails by design; a pwsh step in GitHub
 # Actions ends with that $LASTEXITCODE unless the script sets its own.
