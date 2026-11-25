@@ -6,8 +6,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Mcp\Mcp\Kaleido.Mcp.csproj" />
-		<ProjectReference Include="..\..\..\src\Capabilities\Registry\Kaleido.Registry\Kaleido.Registry.csproj" />
-		<ProjectReference Include="..\..\..\src\Transports\Http\Kaleido.Http\Kaleido.Http.csproj" />
 		<ProjectReference Include="..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
 	</ItemGroup>
 	<ItemGroup>

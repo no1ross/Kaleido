@@ -8,7 +8,6 @@
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Process\Kaleido.Process.Http.Server\Kaleido.Process.Http.Server.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Client\Kaleido.Registry.Http.Client.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Server\Kaleido.Registry.Http.Server.csproj" />
-		<ProjectReference Include="..\..\..\..\src\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Include="..\..\..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />

@@ -10,7 +10,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Kaleido.Registry\Kaleido.Registry.csproj" />
 		<ProjectReference Include="..\Kaleido.Registry.Server\Kaleido.Registry.Server.csproj" />
 		<ProjectReference Include="..\Kaleido.Registry.Http\Kaleido.Registry.Http.csproj" />
 		<ProjectReference Include="..\..\..\Transports\Http\Kaleido.Http.Server\Kaleido.Http.Server.csproj" />

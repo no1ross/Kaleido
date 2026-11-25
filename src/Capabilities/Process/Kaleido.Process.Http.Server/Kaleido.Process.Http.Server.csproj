@@ -5,7 +5,6 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-		<ProjectReference Include="..\Kaleido.Process\Kaleido.Process.csproj" />
 		<ProjectReference Include="..\Kaleido.Process.Server\Kaleido.Process.Server.csproj" />
 		<ProjectReference Include="..\Kaleido.Process.Http\Kaleido.Process.Http.csproj" />
 		<ProjectReference Include="..\..\..\Transports\Http\Kaleido.Http.Server\Kaleido.Http.Server.csproj" />

@@ -7,10 +7,7 @@
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
 		<ProjectReference Include="..\Kaleido.Hosting\Kaleido.Hosting.csproj" />
-		<ProjectReference Include="..\..\..\Transports\Http\Kaleido.Http.Server\Kaleido.Http.Server.csproj" />
-		<ProjectReference Include="..\..\..\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
 		<ProjectReference Include="..\..\..\Capabilities\Process\Kaleido.Process.Http.Server\Kaleido.Process.Http.Server.csproj" />
-		<ProjectReference Include="..\..\..\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />
 		<ProjectReference Include="..\..\..\Capabilities\Queryable\Kaleido.Queryable.Http.Server\Kaleido.Queryable.Http.Server.csproj" />
 		<ProjectReference Include="..\..\..\Capabilities\Registry\Kaleido.Registry.Http.Server\Kaleido.Registry.Http.Server.csproj" />
 	</ItemGroup>

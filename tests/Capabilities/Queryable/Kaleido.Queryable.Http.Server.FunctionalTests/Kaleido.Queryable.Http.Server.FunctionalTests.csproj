@@ -4,7 +4,6 @@
 		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
 		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Server\Kaleido.Queryable.Http.Server.csproj" />
-		<ProjectReference Include="..\..\..\..\src\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Include="..\..\..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />

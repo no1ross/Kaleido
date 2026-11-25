@@ -14,18 +14,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
-		<ProjectReference Include="..\..\Transports\Http\Kaleido.Http\Kaleido.Http.csproj" />
 		<ProjectReference Include="..\..\Transports\Http\Kaleido.Http.Server\Kaleido.Http.Server.csproj" />
-		<ProjectReference Include="..\..\Transports\Http\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
-		<ProjectReference Include="..\..\Capabilities\Registry\Kaleido.Registry\Kaleido.Registry.csproj" />
-		<ProjectReference Include="..\..\Capabilities\Registry\Kaleido.Registry.Client\Kaleido.Registry.Client.csproj" />
 		<ProjectReference Include="..\..\Capabilities\Registry\Kaleido.Registry.Http.Client\Kaleido.Registry.Http.Client.csproj" />
-		<ProjectReference Include="..\..\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
-		<ProjectReference Include="..\..\Capabilities\Process\Kaleido.Process.Client\Kaleido.Process.Client.csproj" />
 		<ProjectReference Include="..\..\Capabilities\Process\Kaleido.Process.Http.Client\Kaleido.Process.Http.Client.csproj" />
-		<ProjectReference Include="..\..\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />
-		<ProjectReference Include="..\..\Capabilities\Queryable\Kaleido.Queryable.Client\Kaleido.Queryable.Client.csproj" />
 		<ProjectReference Include="..\..\Capabilities\Queryable\Kaleido.Queryable.Http.Client\Kaleido.Queryable.Http.Client.csproj" />
 	</ItemGroup>
 
