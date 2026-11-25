@@ -1,8 +1,8 @@
 # Releasing Kaleido
 
 How the eight Kaleido packages (the seven `src/` packages and `Kaleido.Analyzers`) are released. The
-release workflow is [`.github/workflows/release.yml`](.github/workflows/release.yml); versions come from
-[`version.json`](version.json) ([`docs/VERSIONING.md`](docs/VERSIONING.md)).
+release workflow is [`.github/workflows/release.yml`](../.github/workflows/release.yml); versions come from
+[`version.json`](../version.json) ([`docs/VERSIONING.md`](VERSIONING.md)).
 
 ## Where packages go
 
@@ -40,11 +40,11 @@ Every run, from a clean checkout of the tag (or master, for a dry run):
    commit when it was merged, and the release reuses that result. A tag pushed before that run
    finished fails here: wait for it, then re-run the release (#526);
 2. restores, builds and tests the solution (`Kaleido.slnx`) in Release;
-3. packs the eight packages and verifies them ([`tools/packaging/Test-PackageConsumer.ps1`](tools/packaging/Test-PackageConsumer.ps1)):
+3. packs the eight packages and verifies them ([`tools/packaging/Test-PackageConsumer.ps1`](../tools/packaging/Test-PackageConsumer.ps1)):
    exactly the release set (the script's manifest of ids, one version, one symbols package per
    library: a missing, duplicate, unexpected or mixed-version package fails), contents and metadata
    (assembly, XML docs, README, icon, LICENSE, NOTICE, license, repository and commit), exact
-   `[x.y.z]` dependencies between the Kaleido packages ([they move together](docs/VERSIONING.md#versions)),
+   `[x.y.z]` dependencies between the Kaleido packages ([they move together](VERSIONING.md#versions)),
    analyzer isolation read from a consumer's restored assets, a clean consumer build with the consumer
    analyzer and no repository-only rule, a clean host of every runtime package that starts and
    answers, and deterministic source paths with Source Link in every symbols package (#436). CI also
@@ -76,11 +76,11 @@ run, without a GitHub Release. Check:
 
 ## Releasing a version
 
-1. **Changelog.** Move the `Unreleased` entries in [`CHANGELOG.md`](CHANGELOG.md) under a heading for
+1. **Changelog.** Move the `Unreleased` entries in [`CHANGELOG.md`](../CHANGELOG.md) under a heading for
    the version (with the date), and list its breaking changes. For a stable release (1.0 and later),
    in the same pull request:
    - move each package's `PublicAPI.Unshipped.txt` lines to its `PublicAPI.Shipped.txt`, leaving
-     only the `#nullable enable` header ([public API baseline](docs/VERSIONING.md#the-public-api-baseline));
+     only the `#nullable enable` header ([public API baseline](VERSIONING.md#the-public-api-baseline));
    - move the `KAL2xxx` rows to `AnalyzerReleases.Shipped.md` under `## Release <version>`.
 
    Merge it. After 1.0 has shipped, enable package validation against it (`EnablePackageValidation`

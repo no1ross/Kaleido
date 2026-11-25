@@ -3,7 +3,7 @@
 This is the contributor guide for `src/`. Read it before making changes to any Kaleido source project.
 
 See also:
-- [architecture map](../docs/architecture/README.md) — canonical design by processed area (the two legacy ARCHITECTURE.md files retire as their remaining sections migrate)
+- [architecture map](../docs/architecture/README.md) — canonical design by behavioral owner
 - [root AGENTS.md](../AGENTS.md) — repository-wide contributor rules
 
 ---
@@ -77,7 +77,7 @@ The processed foundation/Process/Queryable/Eventing invariants are in their chil
 ## Common pitfalls
 - Moving runtime logic into `Kaleido.Http.Server` (endpoint mapping and middleware only)
 - Changing a published capability or HTTP contract without updating both its server endpoint and client
-- Adding gRPC as a dependency of `Kaleido.Http.Server` — each protocol owns its own adapter and wire types (`Kaleido.Grpc*` placeholders exist but implement nothing yet)
+- Adding gRPC as a dependency of `Kaleido.Http.Server` — any future protocol needs its own adapter and wire types, not an HTTP dependency
 
 ---
 

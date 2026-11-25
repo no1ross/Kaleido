@@ -4,9 +4,9 @@ This directory contains three Roslyn analyzer projects with different audiences.
 
 | Project | Rules and audience | Tests |
 |---|---|---|
-| [`Kaleido.Analyzers`](Kaleido.Analyzers/) | Consumer `KAL2xxx` rules, shipped as the analyzer-only `Kaleido.Analyzers` package that `Kaleido` depends on | [`Kaleido.Analyzers.UnitTests`](../../tests/Kaleido.Analyzers.UnitTests/) |
-| [`Kaleido.Analyzers.Source`](Kaleido.Analyzers.Source/) | Repository contributor `KAL0xxx` rules; not shipped to consumers | [`Kaleido.Analyzers.Source.UnitTests`](../../tests/Kaleido.Analyzers.Source.UnitTests/) |
-| [`Kaleido.Analyzers.Testing`](Kaleido.Analyzers.Testing/) | Repository test-contributor `KAL1xxx` rules; not shipped to consumers | [`Kaleido.Analyzers.Testing.UnitTests`](../../tests/Kaleido.Analyzers.Testing.UnitTests/) |
+| [`Kaleido.Analyzers`](Kaleido.Analyzers/) | Consumer `KAL2xxx` rules, shipped as the analyzer-only `Kaleido.Analyzers` package that `Kaleido` depends on | [`Kaleido.Analyzers.UnitTests`](../../tests/Analyzers/Kaleido.Analyzers.UnitTests/) |
+| [`Kaleido.Analyzers.Source`](Kaleido.Analyzers.Source/) | Repository contributor `KAL0xxx` rules; not shipped to consumers | [`Kaleido.Analyzers.Source.UnitTests`](../../tests/Analyzers/Kaleido.Analyzers.Source.UnitTests/) |
+| [`Kaleido.Analyzers.Testing`](Kaleido.Analyzers.Testing/) | Repository test-contributor `KAL1xxx` rules; not shipped to consumers | [`Kaleido.Analyzers.Testing.UnitTests`](../../tests/Analyzers/Kaleido.Analyzers.Testing.UnitTests/) |
 
 `Kaleido.Analyzers` is packed on its own (only `analyzers/dotnet/cs/Kaleido.Analyzers.dll`, no dependencies) and [`src/Core/Kaleido/Kaleido.csproj`](../../src/Core/Kaleido/Kaleido.csproj) references it with analyzer assets only, so `Kaleido.nupkg` depends on it without compiling against or running it. The Source and Testing analyzers are not packable and remain repository-only.
 
@@ -30,4 +30,4 @@ The `AnalyzerReleases.*.md` files are the authoritative rule inventory: Roslyn r
 - `Kaleido.Analyzers` also has an `AnalyzerReleases.Shipped.md`, empty during the preview. **At 1.0** the `KAL2xxx` rows move from `Unshipped.md` to `Shipped.md` under `## Release 1.0.0`; from then on, changing or removing a consumer rule is recorded there (`### Changed Rules` / `### Removed Rules`) in the release that does it.
 - The Source and Testing analyzers never ship, so their rules stay in `Unshipped.md`; a removed repository rule loses its row. Before 1.0 the rules after it are renumbered, so each family stays contiguous; from 1.0 IDs are permanent.
 
-When changing a rule, update its matching analyzer tests and the canonical rule guide. Use the repository's [per-commit build and test gate](../../AGENTS.md#per-commit-quality-gate): the analyzer tests run with the others in `./tools/test/Run-Tests.ps1`, or alone as an assembly, e.g. `dotnet tests/Kaleido.Analyzers.Source.UnitTests/bin/Debug/net8.0/Kaleido.Analyzers.Source.UnitTests.dll --filter-class "*ServiceLocatorAnalyzerTests"`.
+When changing a rule, update its matching analyzer tests and the canonical rule guide. Use the repository's [per-commit build and test gate](../../AGENTS.md#per-commit-quality-gate): the analyzer tests run with the others in `./tools/test/Run-Tests.ps1`, or alone as an assembly, e.g. `dotnet tests/Analyzers/Kaleido.Analyzers.Source.UnitTests/bin/Debug/net8.0/Kaleido.Analyzers.Source.UnitTests.dll --filter-class "*ServiceLocatorAnalyzerTests"`.

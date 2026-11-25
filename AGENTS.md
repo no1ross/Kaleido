@@ -62,7 +62,6 @@ Project READMEs explain behavior, the [architecture map](./docs/architecture/REA
 | [Registry.Http](./src/Capabilities/Registry/Kaleido.Registry.Http/README.md), [Server](./src/Capabilities/Registry/Kaleido.Registry.Http.Server/README.md), [Client](./src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md) | fixed URLs; HTTP listener/client | persistence, planning |
 | [`Kaleido.Observability.OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md) | OpenTelemetry wiring | instrumentation emitted by core |
 | [`Kaleido.Provider.SQLite`](./src/Providers/Kaleido.Provider.SQLite/README.md) | reference Process/Eventing/Registry stores on SQLite | multi-node production guarantees |
-| [gRPC placeholders](./src/Grpc/Grpc/README.md) (`Kaleido.Grpc*`, `Kaleido.Registry.Grpc`) | future protocol boundaries, not packable yet | a gRPC implementation |
 
 ## General contributor rules
 
@@ -73,7 +72,7 @@ Project READMEs explain behavior, the [architecture map](./docs/architecture/REA
 - The old `Kaleido.Platform` and mixed `Kaleido.Client` contracts have been retired; do not reintroduce their project dependencies or URL-bearing Process response shapes.
 - Keep transport layers thin.
 - Prefer explicit registration and discoverability over hidden behavior.
-- In #585 each processed owner updates its README, focused architecture and scoped AGENTS before commit; retire reached legacy ARCHITECTURE content. Use scoped `.editorconfig` only for area-specific differences and prefer source analyzers for dependencies (#591). Do not move unrelated HTTP/gRPC placeholders merely to populate folders.
+- In #585 each processed owner updates its README, focused architecture and scoped AGENTS before commit; `docs/architecture/` is the sole architecture home. Use scoped `.editorconfig` only for area-specific differences and prefer source analyzers for dependencies (#591). Do not add placeholder transports merely to populate folders; gRPC will be designed with its own owners when implemented.
 - When you change contracts or metadata semantics, review the downstream docs and tests for the affected area.
 - Define response semantics before choosing a serialization format: keep distinct message streams separate and represent an empty collection consistently across transports. Options control which messages adapters populate, not JSON-specific field presence.
 
@@ -101,7 +100,7 @@ In [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); read the section before chang
 
   Generate compliant code; never suppress KAL rules.
 - Correlation invariants (one RequestId per request, echo-or-generate,
-  automatic outbound propagation) are in `src/ARCHITECTURE.md`.
+  automatic outbound propagation) are in [`docs/architecture/correlation.md`](./docs/architecture/correlation.md).
 
 ## Tracking work discovered mid-item
 

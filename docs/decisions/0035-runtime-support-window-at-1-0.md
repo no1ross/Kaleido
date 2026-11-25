@@ -24,7 +24,7 @@ Option (b) of #528 (owner decision, 2026-10-30):
 - **1.0 targets `net8.0` only.** A service runs on .NET 8 or later; run it on a supported runtime
   (.NET 10 after 10 November 2026).
 - **The support window is stated** in [VERSIONING](../VERSIONING.md#runtime) and
-  [SUPPORT](../../SUPPORT.md): Kaleido supports a runtime while Microsoft does. Kaleido 1.x keeps
+  [SUPPORT](../../.github/SUPPORT.md): Kaleido supports a runtime while Microsoft does. Kaleido 1.x keeps
   working on .NET 8, but a service on .NET 8 after its end of support runs on an unpatched runtime.
 - **Consumers override the 8.x dependencies** to supported, patched versions in their own project
   (a direct `PackageReference`, or central package management). NuGet takes the higher version, and a

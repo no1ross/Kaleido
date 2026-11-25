@@ -413,7 +413,7 @@ sections.
 - **Public distribution** (#432): tagged versions are published to nuget.org with trusted publishing
   (no stored API key) as well as to GitHub Packages; every package has a signed build provenance
   attestation (`gh attestation verify`) and carries the `LICENSE` text next to `NOTICE`
-  ([RELEASING.md](RELEASING.md)).
+  ([RELEASING.md](docs/RELEASING.md)).
 - Registry caching is now at the authority (#581): `AddControlRegistry()` wires HybridCache for short-lived views and immutable revisioned capabilities, with optional `IDistributedCache` on the registry host and a store fallback. The earlier `AddDistributedRegistrySnapshots()` host cache (#275) and per-client snapshots were removed.
 - Consumer guide (`docs/guide`): concepts, events and the outbox, persistence, deployment and choosing options, around one orders service whose examples are compiled, checked against the pages in CI (`tools/docs/check-guide-snippets.py`) and run by tests (#409).
 - Warnings fail the build in `tests/` and in the samples; IDE code-style rules run in `tests/` and `tools/` (#406).
@@ -421,7 +421,7 @@ sections.
 - Front-door provenance on events and spans: `Origin`/`OriginTool` end to end, `CallerActor` per hop (#403).
 - MCP trust-boundary, instructions-resource and integration documentation; functional trust tests (#403).
 - Help links on every consumer analyzer rule; a clean-consumer package test in CI (#401).
-- Release workflow publishing to GitHub Packages; `RELEASING.md`; this changelog (#318).
+- Release workflow publishing to GitHub Packages; `docs/RELEASING.md`; this changelog (#318).
 
 ### Changed
 - **Source-aligned test ownership** (#585): foundation tests now live in `tests/Core/Kaleido.UnitTests`, and the non-web console host suite is `tests/Composed/Hosts/Kaleido.Hosting.FunctionalTests`. Existing test behavior is unchanged; solution entries and dependent test references follow the moved projects.
@@ -614,5 +614,5 @@ major version. Before 1.0.0 is tagged:
 - the intentional public API and its compatibility baseline are recorded (#313);
 - the remaining pre-1.0 work items of [#284](https://github.com/no1ross/Kaleido/issues/284) are
   resolved or deferred by decision;
-- the nuget.org publisher is set up (trusted publishing policy and `NUGET_USER`, [RELEASING.md](RELEASING.md#owner-setup-once-before-the-first-tag); the workflow is in place, #432);
+- the nuget.org publisher is set up (trusted publishing policy and `NUGET_USER`, [RELEASING.md](docs/RELEASING.md#owner-setup-once-before-the-first-tag); the workflow is in place, #432);
 - this section is replaced by the release's entry, listing the changes since the last preview.

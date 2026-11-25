@@ -12,16 +12,16 @@ Who maintains Kaleido, what each role may do, and where the project's accounts a
 Kaleido has **one maintainer**. The second account belongs to the same person: it keeps the project
 operable if one login or its second factor is lost, but it is not a second person. If the
 maintainer is unavailable, nobody else can merge, approve a release or answer a security report.
-Weigh that when you depend on Kaleido; the project is in preview ([versioning](./docs/VERSIONING.md)).
+Weigh that when you depend on Kaleido; the project is in preview ([versioning](../docs/VERSIONING.md)).
 
 ## Roles
 
 Each right is held by every maintainer account:
-- **Review and merge:** listed in [`.github/CODEOWNERS`](./.github/CODEOWNERS), so every pull
+- **Review and merge:** listed in [`.github/CODEOWNERS`](./CODEOWNERS), so every pull
   request requests their review; a maintainer approves every agent-authored pull request before it
   merges ([contributing](./CONTRIBUTING.md#pull-requests-written-by-ai-agents)).
 - **Release approval:** a required reviewer of the `release` environment; nothing is published
-  without that approval ([releasing](./RELEASING.md)).
+  without that approval ([releasing](../docs/RELEASING.md)).
 - **Security response:** receives private vulnerability reports and coordinates the fix in a
   private advisory ([security policy](./SECURITY.md)). The backup account is the backup contact.
 
@@ -33,7 +33,7 @@ maintainer:
   private vulnerability reporting;
 - the SonarCloud organization (`no1ross_Kaleido`);
 - the GitHub Packages feed, and the nuget.org account that owns the `Kaleido` package IDs (trusted
-  publishing; no stored API key, [releasing](./RELEASING.md)).
+  publishing; no stored API key, [releasing](../docs/RELEASING.md)).
 
 ## Adding or removing a maintainer
 

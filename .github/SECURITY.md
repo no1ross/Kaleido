@@ -19,7 +19,7 @@ Please include:
 
 ## Supported versions
 
-Kaleido is in pre-1.0 preview ([versioning](./docs/VERSIONING.md)). Fixes are made on `master`
+Kaleido is in pre-1.0 preview ([versioning](../docs/VERSIONING.md)). Fixes are made on `master`
 and ship in the next preview; earlier previews are not patched.
 
 | Version | Supported |
@@ -45,6 +45,6 @@ Out of scope:
 
 - the samples ([Kaleido-Samples-PriorAuth](https://github.com/no1ross/Kaleido-Samples-PriorAuth), [Kaleido-Samples-ECommerce](https://github.com/no1ross/Kaleido-Samples-ECommerce)), which run with development sign-in and are not meant to be deployed;
 - behavior Kaleido documents as the host's responsibility: authentication, case-level access
-  ([process ids are bearer handles](./docs/architecture/authorization.md#threat-model-the-process-id-is-a-bearer-handle)),
-  production storage ([`Kaleido.Provider.SQLite`](./src/Providers/Kaleido.Provider.SQLite/README.md) is a
+  ([process ids are bearer handles](../docs/architecture/authorization.md#threat-model-the-process-id-is-a-bearer-handle)),
+  production storage ([`Kaleido.Provider.SQLite`](../src/Providers/Kaleido.Provider.SQLite/README.md) is a
   reference implementation).

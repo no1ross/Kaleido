@@ -22,7 +22,7 @@
 </p>
 
 > [!IMPORTANT]
-> Kaleido is under active pre-1.0 development. APIs and package boundaries may change while the public contract is refined. Use the preview for evaluation and experimentation, not as a stable compatibility or production-readiness commitment. It has one maintainer today ([maintainers](MAINTAINERS.md)).
+> Kaleido is under active pre-1.0 development. APIs and package boundaries may change while the public contract is refined. Use the preview for evaluation and experimentation, not as a stable compatibility or production-readiness commitment. It has one maintainer today ([maintainers](.github/MAINTAINERS.md)).
 
 ## What is Kaleido?
 
@@ -321,9 +321,7 @@ Validate production storage, recovery, privacy, and retry behavior for the deplo
 | [`Kaleido.Observability.OpenTelemetry`](src/Observability/Observability.OpenTelemetry) | Opt-in telemetry export |
 | [`Kaleido.Analyzers`](tools/analyzers/Kaleido.Analyzers) | Consumer compile-time checks (`KAL2xxx`), included by `Kaleido` |
 
-The [`Kaleido.Grpc` projects](src/Grpc/Grpc/README.md) and
-[`Kaleido.Registry.Grpc`](src/Registry/Registry.Grpc/README.md) are non-packable placeholders; gRPC
-is not implemented yet.
+gRPC is not implemented or included in the current project and package set; its projects can be added under their eventual owners when the transport is designed.
 
 ### Prerequisites
 
@@ -332,7 +330,7 @@ is not implemented yet.
 
 ### Install
 
-The packages are previews. Tagged versions are published to **nuget.org**, so no extra source is needed ([releasing](RELEASING.md)); add what the service needs:
+The packages are previews. Tagged versions are published to **nuget.org**, so no extra source is needed ([releasing](docs/RELEASING.md)); add what the service needs:
 
 ```bash
 dotnet add package Kaleido --prerelease                              # foundation
@@ -358,7 +356,7 @@ dotnet nuget add source https://nuget.pkg.github.com/no1ross/index.json --name k
 ## Documentation
 
 - **[Consumer guide](docs/guide/README.md)**: how Kaleido works end to end and how to choose its options, with compiled, tested examples. Start here.
-- [Architecture map](docs/architecture/README.md) (the legacy [`ARCHITECTURE.md`](ARCHITECTURE.md) retains only unmigrated sections)
+- [Architecture map](docs/architecture/README.md) — canonical architecture by behavioral owner
 - [Process authoring: steps, handlers, lookups](docs/architecture/capabilities/process-authoring.md) and [Queryable authoring: sources and views](docs/architecture/capabilities/queryable-authoring.md)
 - [Core runtime](src/Core/Kaleido/README.md)
 - [HTTP transport](src/Transports/Http/Kaleido.Http.Server/README.md) and [shared HTTP contracts](src/Transports/Http/Kaleido.Http/README.md)
@@ -383,11 +381,11 @@ The MCP adapter is implemented, not merely a planned AI integration. That does n
 
 ## Contributing
 
-Issues, design feedback, and focused pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) (setup, the per-commit gate, pull requests) and [SUPPORT.md](SUPPORT.md) for questions. Start with [AGENTS.md](AGENTS.md) and the [architecture map](docs/architecture/README.md) before making structural changes. Everyone follows the [code of conduct](CODE_OF_CONDUCT.md).
+Issues, design feedback, and focused pull requests are welcome: see [CONTRIBUTING.md](.github/CONTRIBUTING.md) (setup, the per-commit gate, pull requests) and [SUPPORT.md](.github/SUPPORT.md) for questions. Start with [AGENTS.md](AGENTS.md) and the [architecture map](docs/architecture/README.md) before making structural changes. Everyone follows the [code of conduct](.github/CODE_OF_CONDUCT.md).
 
 ## Security
 
-Report vulnerabilities privately, never in a public issue: see [SECURITY.md](SECURITY.md).
+Report vulnerabilities privately, never in a public issue: see [SECURITY.md](.github/SECURITY.md).
 
 ## License
 

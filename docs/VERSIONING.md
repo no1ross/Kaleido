@@ -18,7 +18,7 @@ decided at 1.0. Nothing here promises a support period or a date.
   (for example `Kaleido 1.0.1` with `Kaleido.Http 1.0.0`) would fail at run time. NuGet refuses that
   combination at restore instead; upgrade all the Kaleido packages a project references together.
 - The release workflow publishes every run to the repository's GitHub Packages feed, and each tagged
-  version (preview or stable) also to nuget.org ([`RELEASING.md`](../RELEASING.md)); what changed is
+  version (preview or stable) also to nuget.org ([`RELEASING.md`](RELEASING.md)); what changed is
   in [`CHANGELOG.md`](../CHANGELOG.md).
 - From 1.0 the packages follow [Semantic Versioning](https://semver.org): a breaking change to the
   public API, the HTTP wire contracts, the error codes or the telemetry names needs a new major
@@ -31,7 +31,7 @@ decided at 1.0. Nothing here promises a support period or a date.
 - A breaking change is named in its pull request and its commit message (a "Breaking changes"
   section), so it can be found before updating.
 - There is no deprecation period: an API is changed or removed in the preview that changes it.
-- Only the latest preview receives fixes ([security policy](../SECURITY.md)).
+- Only the latest preview receives fixes ([security policy](../.github/SECURITY.md)).
 
 Use previews for evaluation and experimentation, not as a compatibility or production-readiness
 commitment.
@@ -53,7 +53,7 @@ Each package records its public API in two files in its project's `.PublicAPI` f
 - Several overloads with optional parameters are rejected (RS0026/RS0027), since adding a parameter
   later would break compiled callers: one overload takes the optional parameters.
 - **At each stable release (1.0 and later)** the `Unshipped` lines move to `Shipped`
-  ([releasing](../RELEASING.md)). A preview release moves nothing: during the preview `Unshipped`
+  ([releasing](RELEASING.md)). A preview release moves nothing: during the preview `Unshipped`
   holds the whole API and `Shipped` stays empty, so the first move is the 1.0 release.
 - **After 1.0 ships**, package validation (`EnablePackageValidation`) compares each package with the
   released 1.0 package, so a binary-breaking change in a 1.x is caught at pack time.

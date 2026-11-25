@@ -7,6 +7,7 @@
     <File Path="docs/architecture/correlation.md" />
     <File Path="docs/ERROR_CODES.md" />
     <File Path="docs/PATTERNS.md" />
+    <File Path="docs/RELEASING.md" />
     <File Path="docs/VERSIONING.md" />
   </Folder>
   <Folder Name="/docs/guide/">
@@ -17,7 +18,6 @@
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
     <File Path="AGENTS.md" />
-    <File Path="ARCHITECTURE.md" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
     <File Path="global.json" />
@@ -52,7 +52,6 @@
   </Folder>
   <Folder Name="/src/">
     <File Path="src/AGENTS.md" />
-    <File Path="src/ARCHITECTURE.md" />
     <File Path="src/Directory.Build.props" />
   </Folder>
   <Folder Name="/src/Core/">
@@ -61,11 +60,6 @@
   </Folder>
   <Folder Name="/src/Events/">
     <Project Path="src/Events/Kaleido.Eventing/Kaleido.Eventing.csproj" />
-  </Folder>
-  <Folder Name="/src/Grpc/">
-    <Project Path="src/Grpc/Grpc/Kaleido.Grpc.csproj" />
-    <Project Path="src/Grpc/Grpc.Client/Kaleido.Grpc.Client.csproj" />
-    <Project Path="src/Grpc/Grpc.Server/Kaleido.Grpc.Server.csproj" />
   </Folder>
   <Folder Name="/src/Mcp/">
     <Project Path="src/Mcp/Mcp/Kaleido.Mcp.csproj" />
@@ -77,9 +71,6 @@
     <Project Path="src/Providers/Kaleido.Provider/Kaleido.Provider.csproj" />
     <Project Path="src/Providers/Kaleido.Provider.InMemory/Kaleido.Provider.InMemory.csproj" />
     <Project Path="src/Providers/Kaleido.Provider.SQLite/Kaleido.Provider.SQLite.csproj" />
-  </Folder>
-  <Folder Name="/src/Registry/">
-    <Project Path="src/Registry/Registry.Grpc/Kaleido.Registry.Grpc.csproj" />
   </Folder>
   <Folder Name="/src/Transports/">
     <Project Path="src/Transports/Kaleido.Server/Kaleido.Server.csproj" />
@@ -130,9 +121,11 @@
     <File Path="tests/AGENTS.md" />
     <File Path="tests/Directory.Build.props" />
     <File Path="tests/Directory.Packages.props" />
-    <Project Path="tests/Kaleido.Analyzers.Source.UnitTests/Kaleido.Analyzers.Source.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.Analyzers.Testing.UnitTests/Kaleido.Analyzers.Testing.UnitTests.csproj" />
-    <Project Path="tests/Kaleido.Analyzers.UnitTests/Kaleido.Analyzers.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/test/Analyzers/">
+    <Project Path="tests/Analyzers/Kaleido.Analyzers.Source.UnitTests/Kaleido.Analyzers.Source.UnitTests.csproj" />
+    <Project Path="tests/Analyzers/Kaleido.Analyzers.Testing.UnitTests/Kaleido.Analyzers.Testing.UnitTests.csproj" />
+    <Project Path="tests/Analyzers/Kaleido.Analyzers.UnitTests/Kaleido.Analyzers.UnitTests.csproj" />
   </Folder>
   <Folder Name="/test/Events/">
     <Project Path="tests/Events/Kaleido.Eventing.FunctionalTests/Kaleido.Eventing.FunctionalTests.csproj" />

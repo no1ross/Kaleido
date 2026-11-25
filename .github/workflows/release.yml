@@ -1,7 +1,7 @@
 name: Release
 
 # Builds, tests, packs and verifies the packages from a clean checkout, attests their provenance, then
-# publishes them (RELEASING.md, #318, #432).
+# publishes them (docs/RELEASING.md, #318, #432).
 # - A tag v<version> on master publishes that version to the repository's GitHub Packages feed and to
 #   nuget.org (trusted publishing, no stored API key); the tag must equal the version Nerdbank
 #   computes from version.json (set the version in version.json first, then tag that commit), and
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Publishing waits for this environment's protection rules (required reviewers) - configure
-    # them in the repository settings; RELEASING.md lists the expected setup.
+    # them in the repository settings; docs/RELEASING.md lists the expected setup.
     environment: release
 
     permissions:
@@ -109,7 +109,7 @@ jobs:
           exit 1
         }
 
-    # A tag also publishes to nuget.org, which needs the owner setup in RELEASING.md (a trusted
+    # A tag also publishes to nuget.org, which needs the owner setup in docs/RELEASING.md (a trusted
     # publishing policy on nuget.org and the NUGET_USER repository variable): checked before anything
     # is published, so a misconfigured tag publishes nowhere.
     - name: Check the nuget.org publisher is configured
@@ -118,12 +118,12 @@ jobs:
         NUGET_USER: ${{ vars.NUGET_USER }}
       run: |
         test -n "$NUGET_USER" || {
-          echo "::error::The NUGET_USER repository variable is not set: a tag publishes to nuget.org. See RELEASING.md (Owner setup)."
+          echo "::error::The NUGET_USER repository variable is not set: a tag publishes to nuget.org. See docs/RELEASING.md (Owner setup)."
           exit 1
         }
 
     # A signed SLSA build provenance attestation for every package and symbols package (#526): verify a
-    # downloaded file with `gh attestation verify <file> --repo no1ross/Kaleido` (RELEASING.md).
+    # downloaded file with `gh attestation verify <file> --repo no1ross/Kaleido` (docs/RELEASING.md).
     - name: Attest build provenance
       uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
       with:

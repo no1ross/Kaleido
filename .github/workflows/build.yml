@@ -186,7 +186,7 @@ jobs:
         retention-days: 14
 
     # Pack shipped src/ projects and the consumer analyzer on PRs and master
-    # merges; master uploads artifacts. Publishing is the release workflow's (release.yml, RELEASING.md).
+    # merges; master uploads artifacts. Publishing is the release workflow's (release.yml, docs/RELEASING.md).
     - name: Pack
       run: |
         for project in src/*/*.csproj src/*/*/*.csproj src/*/*/*/*.csproj tools/analyzers/Kaleido.Analyzers/Kaleido.Analyzers.csproj; do

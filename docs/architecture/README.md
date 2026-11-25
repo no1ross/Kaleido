@@ -1,6 +1,6 @@
 # Architecture map
 
-This is the entry point for Kaleido's architecture by **behavioral owner**. The repository is migrating under #585; these pages describe the areas already reached, not a speculative directory tree. The legacy [`ARCHITECTURE.md`](../../ARCHITECTURE.md) and [`src/ARCHITECTURE.md`](../../src/ARCHITECTURE.md) temporarily retain **only unmigrated** sections; move and remove those sections as their projects are processed, then retire both files. [Decisions](../decisions/README.md) record why a boundary was chosen; a later decision supersedes an earlier one rather than rewriting history.
+This is the canonical entry point for Kaleido's architecture by **behavioral owner**. The repository is migrating under #585; these pages describe the areas already reached, not a speculative directory tree. [Decisions](../decisions/README.md) record why a boundary was chosen; a later decision supersedes an earlier one rather than rewriting history.
 
 - [Principles and terminology](principles.md) — cross-project design rules and stable vocabulary.
 - [Dependencies](dependencies.md) — the processed subgraph, temporary edges and enforcement status.
