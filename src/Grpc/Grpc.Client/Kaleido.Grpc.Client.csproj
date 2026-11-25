@@ -8,7 +8,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Client\Kaleido.Client.csproj" />
+		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
 		<ProjectReference Include="..\Grpc\Kaleido.Grpc.csproj" />
 	</ItemGroup>
 </Project>

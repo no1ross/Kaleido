@@ -8,6 +8,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Platform\Kaleido.Platform.csproj" />
+		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
 	</ItemGroup>
 </Project>
