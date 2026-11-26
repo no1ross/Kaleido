@@ -74,8 +74,9 @@ public sealed class RegistryPublicationIntegrationTests
         var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var refreshed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var heartbeat = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var readsDrained = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var health = new LocalHealth { Healthy = false };
-        await using var publisher = await StartPublisherAsync(authority, registered, time, health, heartbeat, refreshed);
+        await using var publisher = await StartPublisherAsync(authority, registered, time, health, heartbeat, refreshed, readsDrained);
         await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         await refreshed.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         await WaitUntilReadyAsync(publisher);
@@ -92,6 +93,7 @@ public sealed class RegistryPublicationIntegrationTests
         }
 
         await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await readsDrained.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         time.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
         using var after = await client.GetAsync("/registry/status", TestContext.Current.CancellationToken);
         var unavailable = Assert.Single(Assert.IsType<KaleidoRegistryStatus>(await after.Content.ReadFromJsonAsync<KaleidoRegistryStatus>(KaleidoJsonOptions.Options, TestContext.Current.CancellationToken)).Services);
@@ -110,8 +112,9 @@ public sealed class RegistryPublicationIntegrationTests
         var registered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var refreshed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var heartbeat = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var readsDrained = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var health = new LocalHealth();
-        await using var publisher = await StartPublisherAsync(authority, registered, time, health, heartbeat, refreshed);
+        await using var publisher = await StartPublisherAsync(authority, registered, time, health, heartbeat, refreshed, readsDrained);
         await registered.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         await refreshed.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         await WaitUntilReadyAsync(publisher);
@@ -146,6 +149,7 @@ public sealed class RegistryPublicationIntegrationTests
             }
 
             await heartbeat.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            await readsDrained.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
             time.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
         }
 
@@ -252,7 +256,8 @@ public sealed class RegistryPublicationIntegrationTests
     }
 
     private static async Task<WebApplication> StartPublisherAsync(WebApplication authority, TaskCompletionSource<bool> registered,
-        FakeTimeProvider? time = null, LocalHealth? health = null, TaskCompletionSource<bool>? heartbeat = null, TaskCompletionSource<bool>? refreshed = null)
+        FakeTimeProvider? time = null, LocalHealth? health = null, TaskCompletionSource<bool>? heartbeat = null, TaskCompletionSource<bool>? refreshed = null,
+        TaskCompletionSource<bool>? readsDrained = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -286,7 +291,7 @@ public sealed class RegistryPublicationIntegrationTests
             .AddHttp()
             .AddQueryableHttpBindings();
         builder.Services.Configure<Microsoft.Extensions.Http.HttpClientFactoryOptions>("kaleido-registry", options =>
-            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new ObserveRegistrationHandler(registered, heartbeat, refreshed)
+            options.HttpMessageHandlerBuilderActions.Add(handlers => handlers.PrimaryHandler = new ObserveRegistrationHandler(registered, heartbeat, refreshed, readsDrained)
             {
                 InnerHandler = authority.GetTestServer().CreateHandler(),
             }));
@@ -460,33 +465,60 @@ public sealed class RegistryPublicationIntegrationTests
         }
     }
 
-    private sealed class ObserveRegistrationHandler(TaskCompletionSource<bool> observed, TaskCompletionSource<bool>? heartbeat, TaskCompletionSource<bool>? refreshed) : DelegatingHandler
+    private sealed class ObserveRegistrationHandler(TaskCompletionSource<bool> observed, TaskCompletionSource<bool>? heartbeat,
+        TaskCompletionSource<bool>? refreshed, TaskCompletionSource<bool>? readsDrained) : DelegatingHandler
     {
+        private int inFlightReads;
+        private int heartbeatSeen;
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var response = await base.SendAsync(request, cancellationToken);
-            if (request.Method == HttpMethod.Post
-                && string.Equals(request.RequestUri?.AbsolutePath, "/registry/instances", StringComparison.Ordinal)
-                && response.IsSuccessStatusCode)
+            var documentRead = readsDrained is not null && request.Method == HttpMethod.Get
+                && (request.RequestUri?.AbsolutePath is "/registry/availability" or "/registry/capabilities");
+            if (documentRead)
             {
-                observed.TrySetResult(true);
+                Interlocked.Increment(ref inFlightReads);
             }
 
-            if (request.Method == HttpMethod.Get
-                && string.Equals(request.RequestUri?.AbsolutePath, "/registry/capabilities", StringComparison.Ordinal)
-                && response.IsSuccessStatusCode)
+            try
             {
-                refreshed?.TrySetResult(true);
-            }
+                var response = await base.SendAsync(request, cancellationToken);
+                if (request.Method == HttpMethod.Post
+                    && string.Equals(request.RequestUri?.AbsolutePath, "/registry/instances", StringComparison.Ordinal)
+                    && response.IsSuccessStatusCode)
+                {
+                    observed.TrySetResult(true);
+                }
 
-            if (request.Method == HttpMethod.Put
-                && request.RequestUri?.AbsolutePath.EndsWith("/heartbeat", StringComparison.Ordinal) == true
-                && response.IsSuccessStatusCode)
+                if (request.Method == HttpMethod.Get
+                    && string.Equals(request.RequestUri?.AbsolutePath, "/registry/capabilities", StringComparison.Ordinal)
+                    && response.IsSuccessStatusCode)
+                {
+                    refreshed?.TrySetResult(true);
+                }
+
+                if (request.Method == HttpMethod.Put
+                    && request.RequestUri?.AbsolutePath.EndsWith("/heartbeat", StringComparison.Ordinal) == true
+                    && response.IsSuccessStatusCode)
+                {
+                    Volatile.Write(ref heartbeatSeen, 1);
+                    if (Volatile.Read(ref inFlightReads) == 0)
+                    {
+                        readsDrained?.TrySetResult(true);
+                    }
+
+                    heartbeat?.TrySetResult(true);
+                }
+
+                return response;
+            }
+            finally
             {
-                heartbeat?.TrySetResult(true);
+                if (documentRead && Interlocked.Decrement(ref inFlightReads) == 0 && Volatile.Read(ref heartbeatSeen) == 1)
+                {
+                    readsDrained?.TrySetResult(true);
+                }
             }
-
-            return response;
         }
     }
 }
