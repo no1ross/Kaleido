@@ -13,7 +13,7 @@ namespace Kaleido.Mcp.FunctionalTests;
 public sealed class McpHandOffTests(HandOffFixture fixture)
     : IClassFixture<HandOffFixture>
 {
-    private static readonly string Nurse = BearerTestAuthHandler.Token("nina");
+    private static readonly string Nurse = TestCallerTokens.Token("nina");
 
     [Fact]
     public async Task AfterAHandOff_NextNamesTheTargetsTools_AndTheProcessContinuesThere()
@@ -29,6 +29,17 @@ public sealed class McpHandOffTests(HandOffFixture fixture)
             ["ward_discharge"],
             moved["next"]!["available"]!.AsArray().Select(x => x!["tool"]!.GetValue<string>()));
         Assert.DoesNotContain(fixture.WardRequests, x => string.Equals(x.Method, HttpMethod.Get.Method, StringComparison.Ordinal) && x.Path.Contains("/ward/1/processes/", StringComparison.Ordinal));
+
+        var state = Body(await client.CallToolAsync("get_process_state", new Dictionary<string, object?>
+        {
+            ["service"] = "clinic",
+            ["serviceVersion"] = "1",
+            ["processId"] = moved["processId"]!.GetValue<string>(),
+        }, cancellationToken: cancel));
+        Assert.Equal("ward", state["service"]?.GetValue<string>());
+        Assert.Equal("1", state["next"]?["serviceVersion"]?.GetValue<string>());
+        Assert.Equal("ward_discharge", state["next"]?["available"]?[0]?["tool"]?.GetValue<string>());
+        Assert.Contains(fixture.WardRequests, x => x.Method == HttpMethod.Get.Method && x.Path.Contains("/ward/1/processes/", StringComparison.Ordinal));
 
         var discharged = Body(await client.CallToolAsync(
             "ward_discharge",

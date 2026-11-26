@@ -1,7 +1,7 @@
 using Kaleido.Eventing;
 using Kaleido.Exceptions;
 using Kaleido.Mcp;
-using Kaleido.Processor.Observability;
+using Kaleido.Process.Observability;
 using Kaleido.Provider.SQLite;
 using Kaleido.Queryable.Observability;
 using Kaleido.UnitTests;
@@ -47,6 +47,7 @@ public sealed class KaleidoObservabilityOpenTelemetryExtensionsTests
                 new()
                 {
                     ServiceName = "telemetry-test",
+                    ServiceVersion = "1",
                     Assemblies = [typeof(KaleidoObservabilityOpenTelemetryExtensionsTests).Assembly],
                 })
             .AddOpenTelemetry(options);

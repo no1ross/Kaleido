@@ -1,4 +1,4 @@
-using Kaleido.Processor.Observability;
+using Kaleido.Process.Observability;
 using Kaleido.UnitTests;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;

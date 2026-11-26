@@ -11,7 +11,7 @@ resulting principal. Each step, source and view is a **capability**, and `Author
 what a capability without a rule means:
 
 | Mode | A capability without a rule | Roles / policy rules |
-|---|---|---|
+| --- | --- | --- |
 | `None` | open | not enforced (local evaluation only) |
 | `Authenticated` (default) | any signed-in caller | enforced |
 | `ZeroTrust` | not published, not callable | enforced |
@@ -33,31 +33,31 @@ public sealed record RefundOrderStep : IProcessStep;
 What the test shows, under `Authenticated`:
 
 | Caller | Registry | Calls |
-|---|---|---|
+| --- | --- | --- |
 | anonymous | - | **401** |
 | signed in, role `clerk` | every step and source, **without** Refund order | Refund order: **403** |
 | signed in, role `manager` | everything, Refund order included | Refund order runs |
 
 The MCP adapter builds each caller's tools from that caller's registry. The full rule table
-(`Roles`, `Policy`, `AllowAnonymous`, a service default): [AUTHORIZATION](../AUTHORIZATION.md),
+(`Roles`, `Policy`, `AllowAnonymous`, a service default): [AUTHORIZATION](../architecture/authorization.md),
 [ADR 0021](../decisions/0021-authenticated-by-default.md).
 
 **A process id is not a permission.** Any caller the capability rules admit, holding a process id, can
 continue that process (the test: Ben confirms Ann's order); Kaleido has no case-level guardrails
 ([ADR 0010](../decisions/0010-no-case-level-guardrails.md)). Which records a caller may touch is your
 handlers' and sources' job: [Queries - Who may query, and which rows](queries.md#who-may-query-and-which-rows),
-[threat model](../AUTHORIZATION.md#threat-model-the-process-id-is-a-bearer-handle).
+[threat model](../architecture/authorization.md#threat-model-the-process-id-is-a-bearer-handle).
 
 ## Which token a service sends
 
 When a service calls another Kaleido service (a handler or delegated source using a Kaleido client,
 the MCP adapter calling for a user), a call made **for a caller** and the service's **own** calls
 (registry refresh, heartbeat, health probe) carry different tokens (#574,
-[client README](../../src/Http/Http.Client/README.md)). A call made for a caller is set by
+[client README](../../src/Transports/Http/Kaleido.Http.Client/README.md)). A call made for a caller is set by
 `Kaleido:OnBehalfOfCalls`, a setting, not a token:
 
 | `Kaleido:OnBehalfOfCalls` | A call made for a caller carries | The service's own calls carry |
-|---|---|---|
+| --- | --- | --- |
 | `Forward` (default) | the caller's token, unchanged | what your handlers set, e.g. a client-credentials token |
 | `Exchange` (required on an MCP host) | the token your handler exchanged for the caller, never the inbound one | the same |
 
@@ -89,11 +89,12 @@ public sealed class TokenExchangeHandler(ITokenExchange exchange) : DelegatingHa
 
 <!-- snippet: callers-credentials-registration -->
 ```csharp
-// Kaleido:OnBehalfOfCalls = Exchange in configuration: a caller's call never carries the inbound token.
+// Exchange mode: a caller's call never carries the inbound token.
 services.AddKaleido(configuration, new() { ServiceName = "orders", ServiceVersion = "1", Assemblies = [typeof(TokenExchangeHandler).Assembly] })
-    .AddHttpClients()
-    .AddControlRegistryClient()
-    .AddKaleidoClientHandler<TokenExchangeHandler>();
+    .AddKaleidoClientHandler<TokenExchangeHandler>()
+    .AddRegistryHttpParticipation(new() { OnBehalfOfCalls = KaleidoOnBehalfOfCalls.Exchange })
+    .AddProcessHttpClient()
+    .AddQueryableHttpClient();
 ```
 
 With `Exchange`, a call for a caller that carries no token, or the inbound one unchanged, is refused
@@ -103,7 +104,7 @@ before it is sent (`httpclient_caller_token_not_exchanged`).
 
 Every call carries correlation headers; Kaleido reads them on the way in, passes them to your handlers
 and sources, stamps them on the way out, and puts them on logs, traces and events
-([CORRELATION](../CORRELATION.md)):
+([CORRELATION](../architecture/correlation.md)):
 
 ```mermaid
 sequenceDiagram
@@ -125,7 +126,7 @@ sequenceDiagram
 ```
 
 | Header | Kind | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `X-Kaleido-Request-Id` | end to end | the user action; generated when missing |
 | `X-Kaleido-Process-Id` | end to end | the process the call belongs to |
 | `X-Kaleido-Origin` / `X-Kaleido-Origin-Tool` | end to end | the front door (`mcp`) and the tool; informational, never an authorization input |

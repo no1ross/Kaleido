@@ -7,17 +7,18 @@ decided at 1.0. Nothing here promises a support period or a date.
 
 - Package versions come from [`version.json`](../version.json)
   ([Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning)): `1.0.0-preview.{height}`,
-  where the height is the number of commits since the version was last changed. All eight
-  packages (the seven `src/` packages and `Kaleido.Analyzers`) share one version. Only master and
+  where the height is the number of commits since the version was last changed. All shipped
+  packages in one release share one version. Only master and
   `v*` tags build that public version; any other branch adds the commit (`-g<commit>`), so a package
   packed from a topic branch is never mistaken for a published one (#526).
+- **A service's Registry build label is not the Kaleido package version.** `ServiceName + ServiceVersion` identifies its logical route and Process-state scope. An opted-in publisher's `BuildVersion` comes from the **service application's** entry-assembly Product/AssemblyInformationalVersion before `+commit` metadata (e.g. `1.0.0-preview.616`), even when its compatible `ServiceVersion` stays fixed ([ADR 0045](decisions/0045-registry-publication-build-identity-and-snapshot-versions.md)). Registry snapshot versions and HTTP weak ETags are separate opaque change tokens, never version numbers.
 - **The packages move together.** Each package depends on its sibling Kaleido packages at exactly
   its own version (`[x.y.z]`, #431): the transports, the client and the MCP adapter use core's
   internal seams (`InternalsVisibleTo`), which the public API baseline does not cover, so a mixed set
   (for example `Kaleido 1.0.1` with `Kaleido.Http 1.0.0`) would fail at run time. NuGet refuses that
   combination at restore instead; upgrade all the Kaleido packages a project references together.
 - The release workflow publishes every run to the repository's GitHub Packages feed, and each tagged
-  version (preview or stable) also to nuget.org ([`RELEASING.md`](../RELEASING.md)); what changed is
+  version (preview or stable) also to nuget.org ([`RELEASING.md`](RELEASING.md)); what changed is
   in [`CHANGELOG.md`](../CHANGELOG.md).
 - From 1.0 the packages follow [Semantic Versioning](https://semver.org): a breaking change to the
   public API, the HTTP wire contracts, the error codes or the telemetry names needs a new major
@@ -30,7 +31,7 @@ decided at 1.0. Nothing here promises a support period or a date.
 - A breaking change is named in its pull request and its commit message (a "Breaking changes"
   section), so it can be found before updating.
 - There is no deprecation period: an API is changed or removed in the preview that changes it.
-- Only the latest preview receives fixes ([security policy](../SECURITY.md)).
+- Only the latest preview receives fixes ([security policy](../.github/SECURITY.md)).
 
 Use previews for evaluation and experimentation, not as a compatibility or production-readiness
 commitment.
@@ -40,7 +41,7 @@ commitment.
 Each package records its public API in two files in its project's `.PublicAPI` folder (`Microsoft.CodeAnalysis.PublicApiAnalyzers`, #313):
 
 | File | Holds |
-|---|---|
+| --- | --- |
 | `PublicAPI.Shipped.txt` | the API of the released versions (empty until 1.0) |
 | `PublicAPI.Unshipped.txt` | what changed since the last release (during the preview, the whole API) |
 
@@ -52,7 +53,7 @@ Each package records its public API in two files in its project's `.PublicAPI` f
 - Several overloads with optional parameters are rejected (RS0026/RS0027), since adding a parameter
   later would break compiled callers: one overload takes the optional parameters.
 - **At each stable release (1.0 and later)** the `Unshipped` lines move to `Shipped`
-  ([releasing](../RELEASING.md)). A preview release moves nothing: during the preview `Unshipped`
+  ([releasing](RELEASING.md)). A preview release moves nothing: during the preview `Unshipped`
   holds the whole API and `Shipped` stays empty, so the first move is the 1.0 release.
 - **After 1.0 ships**, package validation (`EnablePackageValidation`) compares each package with the
   released 1.0 package, so a binary-breaking change in a 1.x is caught at pack time.
@@ -60,7 +61,7 @@ Each package records its public API in two files in its project's `.PublicAPI` f
 ## Runtime
 
 - The packages target **`net8.0`**: a service runs on .NET 8 or later. `Kaleido.Server`,
-  `Kaleido.Http.Server`, `Kaleido.Registry.Http` and `Kaleido.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`).
+  `Kaleido.Http.Server`, `Kaleido.Queryable.Http.Server`, `Kaleido.Registry.Http.Server` and `Kaleido.Mcp` need ASP.NET Core (`Microsoft.AspNetCore.App`).
 - The repository builds with the **.NET 10 SDK** pinned in [`global.json`](../global.json) (#578). Moving to a newer SDK is a deliberate change with its own issue; the packages' target framework does not follow the SDK.
 - CI builds and tests on Linux with the .NET 8 runtime installed, so the target framework is the
   runtime the tests run on.
@@ -73,18 +74,20 @@ Kaleido supports a runtime while Microsoft does ([ADR 0035](decisions/0035-runti
 ends support for .NET 8 and .NET 9 on **10 November 2026**: after that, run Kaleido services on .NET 10
 or later. Kaleido 1.x keeps working on .NET 8, but on a runtime that gets no security patches.
 
-The packages depend on the 8.x lines of Microsoft.Extensions.* (and Microsoft.EntityFrameworkCore.Sqlite
-8.0.x for the SQLite provider), which stop getting patches on the same date. **Override them in your
-service** to supported, patched versions - a direct PackageReference, or a version in central package
-management - and NuGet uses the higher version. Choose a version that still ships a build for your
-runtime and for `net8.0`, which Kaleido's assemblies target: some newer majors (EF Core 10, for example)
-need a newer runtime. The repository's SDK can now build a `net10.0` target; adding one is a maintainer
-decision (#579).
+Kaleido now selects patched, `net8.0`-compatible Microsoft.Extensions 10.x packages (including the
+10.11.0 dotnet/extensions line), while ASP.NET Core and EF Core remain on their 8.0.x lines
+([ADR 0052](decisions/0052-net8-compatible-package-lines.md)). This keeps the library consumable on
+`net8.0`; it does **not** restore security support to an end-of-life .NET 8 runtime. A service on a
+supported runtime may override dependency versions when their assets support its target framework;
+NuGet uses the higher version, but 11.x Microsoft.Extensions packages warn that they are untested on
+`net8.0`, and ASP.NET Core/EF Core 11.x require `net11.0`. Do not suppress those support warnings. The
+repository's SDK can build `net10.0`; adding that target remains a separate maintainer decision
+(#579).
 
 ### Deployment modes
 
 | Publish mode | 1.0 |
-|---|---|
+| --- | --- |
 | Framework-dependent or self-contained (JIT) | Supported |
 | Trimmed (`PublishTrimmed`) | **Not supported** |
 | NativeAOT (`PublishAot`) | **Not supported** |

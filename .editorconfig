@@ -310,11 +310,30 @@ dotnet_naming_rule.camel_case_for_private_internal_fields.severity = warning
 dotnet_naming_rule.interfaces_should_be_i_pascal.severity = warning
 dotnet_naming_rule.parameters_should_be_camel_case.severity = warning
 
-[src/{Platform,Server,Client,Http/Http}/{*.cs,**/*.cs}]
+[src/{Platform,Server,Client,Http/Http,Transports/Http/Kaleido.Http.Server}/{*.cs,**/*.cs}]
+dotnet_diagnostic.MA0182.severity = none
+
+; Core internal seams used through InternalsVisibleTo by the extracted capability assemblies
+[src/Core/Kaleido/{AssemblyTypeExtensions.cs,TypeFilterExtensions.cs,TypeExtensions.cs,DataClassificationExtensions.cs,Observability/ActivityExceptionExtensions.cs}]
+dotnet_diagnostic.MA0182.severity = none
+
+; Registry source and publication contracts are consumed by friend assemblies, not inside the contract assembly
+[src/Capabilities/Registry/Kaleido.Registry/{IKaleidoLocalCapabilities,IKaleidoRegistrySource}.cs]
+dotnet_diagnostic.MA0182.severity = none
+
+; Shared HTTP failure mapping is consumed by the capability clients through InternalsVisibleTo
+[src/Transports/Http/Kaleido.Http.Client/Transport/KaleidoClientFailureExtensions.cs]
+dotnet_diagnostic.MA0182.severity = none
+
+[src/Transports/Http/Kaleido.Http.Client/Pipeline/KaleidoHttpCorrelationStamper.cs]
+dotnet_diagnostic.MA0182.severity = none
+
+; The Registry's known HTTP routes are internal and used only by its listener and client friend assemblies
+[src/Capabilities/Registry/Kaleido.Registry.Http/ControlRegistryContractUrls.cs]
 dotnet_diagnostic.MA0182.severity = none
 
 ; EF Core entity navigation properties use ICollection<T> by convention
-[src/Providers/Provider.SQLite/**/*.cs]
+[src/Providers/Kaleido.Provider.SQLite/**/*.cs]
 dotnet_diagnostic.KAL0015.severity = none
 
 ; ════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,181 @@
+using System.Text.Json;
+using Kaleido.Exceptions;
+using Kaleido.UnitTests;
+
+namespace Kaleido.Registry.UnitTests;
+
+public sealed class AuthorizationMetadataTests
+    : SutFixture
+{
+    private static AuthorizationMetadata CreateSut(
+        string? policy = null, string[]? roles = null, bool allowAnonymous = false, bool useNullRoles = false) =>
+        new(policy, useNullRoles ? null! : roles ?? []) { AllowAnonymous = allowAnonymous };
+
+    private static readonly string[] InternalAdminRoles = ["internal", "admin"];
+    private static readonly string[] SpacedRolesExpected = ["a", "b", "c"];
+
+    [Fact]
+    public void ForType_WhenAttributeMissing_ReturnsNull()
+    {
+        var metadata =
+            AuthorizationMetadata.ForType(
+                typeof(AuthorizationMetadataTests));
+
+        Assert.Null(metadata);
+    }
+
+    [Fact]
+    public void ForType_WithPolicyOnly_ReturnsPolicyAndEmptyRoles()
+    {
+        var metadata =
+            AuthorizationMetadata.ForType(
+                typeof(PolicySecured));
+
+        Assert.NotNull(metadata);
+        Assert.Equal("internal-policy", metadata.Policy);
+        Assert.Empty(metadata.Roles);
+    }
+
+    [Fact]
+    public void ForType_WithRolesOnly_ReturnsRolesAndNullPolicy()
+    {
+        var metadata =
+            AuthorizationMetadata.ForType(
+                typeof(RoleSecured));
+
+        Assert.NotNull(metadata);
+        Assert.Null(metadata.Policy);
+        Assert.Equal(
+            InternalAdminRoles,
+            metadata.Roles);
+    }
+
+    [Fact]
+    public void ForType_WithPolicyAndRoles_ReturnsBoth()
+    {
+        var metadata =
+            AuthorizationMetadata.ForType(
+                typeof(FullySecured));
+
+        Assert.NotNull(metadata);
+        Assert.Equal("hipaa", metadata.Policy);
+        Assert.Equal(
+            "clinician",
+            Assert.Single(metadata.Roles));
+    }
+
+    [Fact]
+    public void ForType_WithCommaDelimitedRoles_SplitsAndTrims()
+    {
+        var metadata =
+            AuthorizationMetadata.ForType(
+                typeof(SpacedRoles));
+
+        Assert.NotNull(metadata);
+        Assert.Equal(
+            SpacedRolesExpected,
+            metadata.Roles);
+    }
+
+    [Fact]
+    public void IsExplicit_RequiresRolePolicyOrAllowAnonymous()
+    {
+        Assert.False(CreateSut().IsExplicit());
+        Assert.False(CreateSut(policy: "  ").IsExplicit());
+        Assert.True(CreateSut(roles: ["radiology"]).IsExplicit());
+        Assert.True(CreateSut(policy: "can-view").IsExplicit());
+        Assert.True(CreateSut(allowAnonymous: true).IsExplicit());
+    }
+
+    [Fact]
+    public void JsonDeserialization_StillUsesTheDeclaredPublicConstructor()
+    {
+        var rule = JsonSerializer.Deserialize<AuthorizationMetadata>("{\"Policy\":\"staff\",\"Roles\":[\"reader\"]}");
+        var missingRoles = JsonSerializer.Deserialize<AuthorizationMetadata>("{\"Policy\":\"staff\"}");
+
+        Assert.NotNull(rule);
+        Assert.Equal("staff", rule.Policy);
+        Assert.Equal(["reader"], rule.Roles);
+        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization,
+            Assert.Throws<KaleidoConfigurationException>(() => AuthorizationMetadata.ValidateDefault(missingRoles)).Code);
+    }
+
+    [Fact]
+    public void ValidateDefault_RejectsNullRuleAndRoles()
+    {
+        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization,
+            Assert.Throws<KaleidoConfigurationException>(() => AuthorizationMetadata.ValidateDefault(null)).Code);
+        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization,
+            Assert.Throws<KaleidoConfigurationException>(() => AuthorizationMetadata.ValidateDefault(CreateSut(useNullRoles: true))).Code);
+    }
+
+    [Fact]
+    public void ValidateDefault_RejectsAnonymousWithRules()
+    {
+        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization,
+            Assert.Throws<KaleidoConfigurationException>(() => AuthorizationMetadata.ValidateDefault(CreateSut(policy: "staff", allowAnonymous: true))).Code);
+        Assert.Equal(ConfigurationErrorCodes.ConflictingAuthorization,
+            Assert.Throws<KaleidoConfigurationException>(() => AuthorizationMetadata.ValidateDefault(CreateSut(roles: ["admin"], allowAnonymous: true))).Code);
+        AuthorizationMetadata.ValidateDefault(CreateSut(policy: "staff", roles: ["admin"]));
+    }
+
+    [Fact]
+    public void ForType_WithAllowAnonymous_ReturnsAllowAnonymous()
+    {
+        var metadata =
+            AuthorizationMetadata.ForType(
+                typeof(Public));
+
+        Assert.NotNull(metadata);
+        Assert.True(metadata.AllowAnonymous);
+        Assert.Null(metadata.Policy);
+        Assert.Empty(metadata.Roles);
+    }
+
+    [Fact]
+    public void ForType_WithRolesOnly_AllowAnonymousIsFalse()
+    {
+        var metadata =
+            AuthorizationMetadata.ForType(
+                typeof(RoleSecured));
+
+        Assert.NotNull(metadata);
+        Assert.False(metadata.AllowAnonymous);
+    }
+
+    [Theory]
+    [InlineData(typeof(AnonymousWithRoles))]
+    [InlineData(typeof(AnonymousWithPolicy))]
+    public void ForType_WithAllowAnonymousAndRolesOrPolicy_ThrowsConflictingAuthorization(
+        Type type)
+    {
+        var exception =
+            Assert.Throws<KaleidoConfigurationException>(
+                () => AuthorizationMetadata.ForType(type));
+
+        Assert.Equal(
+            ConfigurationErrorCodes.ConflictingAuthorization,
+            exception.Code);
+    }
+
+    [KaleidoAuthorization(AllowAnonymous = true)]
+    private sealed class Public;
+
+    [KaleidoAuthorization(AllowAnonymous = true, Roles = "admin")]
+    private sealed class AnonymousWithRoles;
+
+    [KaleidoAuthorization(AllowAnonymous = true, Policy = "p")]
+    private sealed class AnonymousWithPolicy;
+
+    [KaleidoAuthorization(Policy = "internal-policy")]
+    private sealed class PolicySecured;
+
+    [KaleidoAuthorization(Roles = "internal,admin")]
+    private sealed class RoleSecured;
+
+    [KaleidoAuthorization(Policy = "hipaa", Roles = "clinician")]
+    private sealed class FullySecured;
+
+    [KaleidoAuthorization(Roles = " a , b ,, c ")]
+    private sealed class SpacedRoles;
+}

@@ -27,7 +27,7 @@ is affected. That is the host's own code; there is no trust boundary between it 
    (configuration or the configure callback of `AddKaleido`, `AddHttp`, `MapKaleidoHttp`,
    `AddHttpClients`, `AddMcp`, `AddOpenTelemetry`). Changing it afterwards is unsupported and its
    effect undefined. Kaleido does not copy options defensively. The rule is documented in
-   `docs/PATTERNS.md`.
+   `docs/architecture/core.md`.
 2. **The builders stay for what they do.** `KaleidoServiceOptionsBuilder` and the MCP options builder
    validate and normalize (service name, assemblies, roles, tool names) when they build the options;
    that is why they exist, not to defend against mutation.

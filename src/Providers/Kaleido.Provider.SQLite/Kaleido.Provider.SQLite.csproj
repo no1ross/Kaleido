@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Reference Kaleido stores on SQLite (process state, idempotent results, event outbox, the control registry). A worked example of the store contracts, not a production provider.</Description>
+		<PackageTags>kaleido;sqlite;entity-framework-core;process-state</PackageTags>
+	</PropertyGroup>
+
+<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="System.Diagnostics" />
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Context" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Process.Exceptions" />
+		<Using Include="Kaleido.Process.Storage" />
+		<Using Include="Kaleido.Process.Server" />
+		<Using Include="Kaleido.Process.Server.Idempotency" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Server" />
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Provider\Kaleido.Provider.csproj" />
+		<!-- The same SQLite provider also implements the existing control Registry store contract. -->
+		<ProjectReference Include="..\..\Capabilities\Registry\Kaleido.Registry.Server\Kaleido.Registry.Server.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Observability.OpenTelemetry.UnitTests" />
+	</ItemGroup>
+</Project>

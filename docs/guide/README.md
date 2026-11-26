@@ -1,7 +1,7 @@
 # Kaleido consumer guide
 
 How Kaleido works end to end, and how to choose between its options. This guide is organized by
-concept; it links to the reference pages (`docs/*.md`), the project READMEs and the decision records
+concept; it links to the [architecture map](../architecture/README.md), project READMEs and decision records
 (`docs/decisions`) for the details, instead of repeating them.
 
 > **Support status: preview.** Kaleido is pre-1.0. Public APIs and wire contracts can still change
@@ -21,11 +21,11 @@ applies the rules you declared and records what happened.
 flowchart LR
     caller["UI / service / AI agent"]
     mcp["Kaleido.Mcp<br/>(caller-visible tools)"]
-    client["Kaleido.Client + Kaleido.Http.Client<br/>(registry-resolved calls)"]
+    client["Kaleido.Process/Queryable.Http.Client<br/>(registry-resolved calls)"]
     gateway["Gateway<br/>/{service}/{version}"]
-    registry["Kaleido.Registry + Kaleido.Registry.Http<br/>(central discovery)"]
-    http["Kaleido.Http.Server<br/>(versioned endpoints)"]
-    core["Kaleido<br/>(Process + Queryable runtimes, events)"]
+    registry["Kaleido.Registry.Server + Registry.Http.Server<br/>(central discovery)"]
+    http["Process/Queryable.Http.Server<br/>(versioned endpoints)"]
+    core["Kaleido foundation + hosted Process / Queryable / Eventing"]
     store[("your stores<br/>(state, outbox, idempotency)")]
 
     caller -- "MCP tools" --> mcp
@@ -39,18 +39,23 @@ flowchart LR
 ## Reading order
 
 | Page | What you learn |
-|---|---|
+| --- | --- |
 | [Getting started](getting-started.md) | A service from zero: a query source, two steps, HTTP, then MCP |
+| [Settings example](examples/kaleido-settings.jsonc) | Complete Core and Queryable JSON settings, with code-only inputs noted; add other owners as their projects are processed |
 | [Processes](processes.md) | Steps, handlers, relationships, outcomes, changing a step |
 | [Queries](queries.md) | Sources, views, query contexts, paging and counting, delegated sources |
 | [Information requests](information-requests.md) | Questions decided at runtime, conditional questions |
 | [Callers and correlation](callers-and-correlation.md) | Authorization, the tokens calls carry, request and process ids across services |
 | [Events and the outbox](events-and-outbox.md) | Which events exist, when they are written, the delivery guarantees |
-| [Persistence](persistence.md) | The store contracts, the defaults, SQLite, your own store, atomicity |
+| [Persistence](persistence.md) | Store contracts, explicit provider choices, SQLite, your own store, atomicity |
 | [Deployment](deployment.md) | Several instances, schemas, health, what to monitor |
 | [Choosing options](choosing-options.md) | Decision tables for every `Add*` registration |
 
 Every C# example is one **orders** service that grows page by page. It is compiled
 (`docs/guide/examples`, under Kaleido's consumer analyzers), each block on a page is checked against
-it in CI (`tools/docs/check-guide-snippets.py`), and what each page states is run by a test
-(`tests/Kaleido.IntegrationTests/Guide`).
+it in CI (`tools/docs/check-guide-snippets.py`), and its scenarios run in the matching
+[Hosting HTTP](../../tests/Composed/Hosts/Kaleido.Hosting.Http.FunctionalTests/Kaleido.Hosting.Http.FunctionalTests.csproj),
+[SQLite](../../tests/Providers/Kaleido.Provider.SQLite.FunctionalTests/Kaleido.Provider.SQLite.FunctionalTests.csproj),
+[MCP](../../tests/Mcp/Mcp.FunctionalTests/Kaleido.Mcp.FunctionalTests.csproj) and
+[Queryable](../../tests/Capabilities/Queryable/Kaleido.Queryable.FunctionalTests/Kaleido.Queryable.FunctionalTests.csproj)
+functional suites.

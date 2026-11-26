@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<Compile Include="..\..\..\Shared\SutFixture.cs" />
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Process.Planning" />
+		<Using Include="Kaleido.Process.Storage" />
+		<Using Include="Kaleido.Process.Exceptions" />
+	</ItemGroup>
+</Project>

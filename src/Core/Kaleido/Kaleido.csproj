@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido foundation: service identity, bootstrap, shared metadata and correlation; no capability runtime, transport or persistence implementation.</Description>
+		<PackageTags>kaleido;foundation;metadata;correlation</PackageTags>
+	</PropertyGroup>
+
+<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Compliance.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Logging" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Observability" />
+	</ItemGroup>
+
+	<!-- EXT-05: this reference exists only so Kaleido.nupkg declares a package
+	     dependency on Kaleido.Analyzers, which flows the consumer rules to every
+	     service that installs Kaleido. It is not an Analyzer item, so the rules do
+	     not run on the framework (the consumer guide's examples load them as an Analyzer item).
+	     Restore ignores ReferenceOutputAssembly=false references, so pack would drop the
+	     dependency; instead IncludeAssets="analyzers" keeps the analyzer DLL out of the
+	     compile and out of downstream projects, PrivateAssets="none" lets the analyzers
+	     flow to consumers, and Private="false" keeps it out of bin. -->
+	<ItemGroup>
+		<ProjectReference
+			Include="..\..\..\tools\analyzers\Kaleido.Analyzers\Kaleido.Analyzers.csproj"
+			Private="false"
+			IncludeAssets="analyzers"
+			PrivateAssets="none" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Extracted capabilities and Eventing use shared internal metadata, configuration overlay and correlation seams; adapters/front doors also use transport seams without making them public API (ADR 0022). -->
+		<InternalsVisibleTo Include="Kaleido.Eventing" />
+		<InternalsVisibleTo Include="Kaleido.Eventing.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Process" />
+		<!-- Process.Server uses the shared explicit-store Replace helper (conflict, idempotence, scoped lifetime). -->
+		<InternalsVisibleTo Include="Kaleido.Process.Server" />
+		<InternalsVisibleTo Include="Kaleido.Process.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Queryable" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Server" />
+		<InternalsVisibleTo Include="Kaleido.Http" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Client" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Client.UnitTests" />
+		<!-- Process HTTP client and fixtures read the scoped inbound caller to request exchanged credentials safely. -->
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Server" />
+		<!-- SQLite outbox leases use this host's internal instance identity, never a public caller-supplied id. -->
+		<InternalsVisibleTo Include="Kaleido.Provider.SQLite" />
+		<InternalsVisibleTo Include="Kaleido.Provider.SQLite.UnitTests" />
+		<!-- Process HTTP server overlays and validates its own options with the shared foundation binder. -->
+		<InternalsVisibleTo Include="Kaleido.Process.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+		<!-- The OpenTelemetry provider lays its configuration section over the options from code with core's overlay (ADR 0030). -->
+		<InternalsVisibleTo Include="Kaleido.Observability.OpenTelemetry" />
+		<!-- Tests beyond this package's own unit tests (src/Directory.Build.props). -->
+		<InternalsVisibleTo Include="Kaleido.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Mcp.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server.UnitTests" />
+	</ItemGroup>
+</Project>

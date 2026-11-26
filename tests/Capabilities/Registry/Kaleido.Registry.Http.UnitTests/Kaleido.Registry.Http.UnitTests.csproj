@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http\Kaleido.Registry.Http.csproj" />
+		<ProjectReference Include="..\..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Registry.Http" />
+		<Using Include="Kaleido.UnitTests" />
+	</ItemGroup>
+</Project>

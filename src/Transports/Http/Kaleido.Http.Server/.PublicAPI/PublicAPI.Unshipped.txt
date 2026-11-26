@@ -1,0 +1,15 @@
+#nullable enable
+Kaleido.Http.Server.KaleidoHttpServerOptions
+Kaleido.Http.Server.KaleidoHttpServerOptions.<Clone>$() -> Kaleido.Http.Server.KaleidoHttpServerOptions!
+Kaleido.Http.Server.KaleidoHttpServerOptions.Equals(Kaleido.Http.Server.KaleidoHttpServerOptions? other) -> bool
+Kaleido.Http.Server.KaleidoHttpServerOptions.KaleidoHttpServerOptions() -> void
+Kaleido.Http.Server.KaleidoHttpServerOptions.TrustCorrelationIdentity.get -> System.Func<Microsoft.AspNetCore.Http.HttpContext!, bool>?
+Kaleido.Http.Server.KaleidoHttpServerOptions.TrustCorrelationIdentity.init -> void
+Kaleido.Http.Server.KaleidoHttpServerServiceCollectionExtensions
+const Kaleido.Http.Server.KaleidoHttpServerOptions.SectionName = "Kaleido:Http" -> string!
+override Kaleido.Http.Server.KaleidoHttpServerOptions.Equals(object? obj) -> bool
+override Kaleido.Http.Server.KaleidoHttpServerOptions.GetHashCode() -> int
+override Kaleido.Http.Server.KaleidoHttpServerOptions.ToString() -> string!
+static Kaleido.Http.Server.KaleidoHttpServerOptions.operator !=(Kaleido.Http.Server.KaleidoHttpServerOptions? left, Kaleido.Http.Server.KaleidoHttpServerOptions? right) -> bool
+static Kaleido.Http.Server.KaleidoHttpServerOptions.operator ==(Kaleido.Http.Server.KaleidoHttpServerOptions? left, Kaleido.Http.Server.KaleidoHttpServerOptions? right) -> bool
+static Kaleido.Http.Server.KaleidoHttpServerServiceCollectionExtensions.AddHttp(this Kaleido.IKaleidoBuilder! builder, Kaleido.Http.Server.KaleidoHttpServerOptions? options = null) -> Kaleido.IKaleidoBuilder!

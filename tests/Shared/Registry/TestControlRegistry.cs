@@ -1,9 +1,7 @@
 using System.Collections.Concurrent;
-using Kaleido.Http.Server;
-using Kaleido.Platform;
-using Kaleido.Platform.Registry;
-using Kaleido.Registry;
-using Kaleido.Registry.Http;
+using Kaleido.Hosting.Http;
+using Kaleido.Registry.Http.Server;
+using Kaleido.Registry.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -18,8 +16,10 @@ namespace Kaleido.Testing.Registry;
 public sealed class TestControlRegistry : IAsyncDisposable
 {
     private readonly FakeTimeProvider time = new(new DateTimeOffset(2026, 11, 3, 12, 0, 0, TimeSpan.Zero));
-    private readonly ConcurrentDictionary<Guid, TaskCompletionSource> registered = new();
-    private IHost host = null!;
+    private readonly ConcurrentDictionary<(string Name, string Version), TaskCompletionSource> registered = new();
+    private IHost? host;
+
+    private IHost Host => host ?? throw new InvalidOperationException("The Registry authority has not started.");
 
     private TestControlRegistry()
     {
@@ -35,41 +35,48 @@ public sealed class TestControlRegistry : IAsyncDisposable
                 web.ConfigureServices(services =>
                 {
                     services.AddRouting();
+                    services.AddTestJwtBearer();
+                    services.AddAuthorizationBuilder()
+                        .AddPolicy("registry-registrant", policy => policy.RequireRole("registrant"))
+                        .AddPolicy("registry-reader", policy => policy.RequireRole("registry-reader"));
                     services.AddSingleton<TimeProvider>(registry.time);
                     services.Configure<MemoryCacheOptions>(options => options.Clock = new RegistryFakeClock(registry.time));
                     services.AddKaleido(new ConfigurationBuilder().Build(), new()
                     {
                         ServiceName = "registry",
-                        AuthorizationMode = KaleidoAuthorizationMode.None,
+                        ServiceVersion = "1",
                         Assemblies = [typeof(TestControlRegistry).Assembly],
                         TypeFilter = _ => false,
                     })
-                        .AddInMemoryStores()
+                        .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
                         .AddHttp()
-                        .AddControlRegistry()
-                        .AddInMemoryRegistryStore();
+                        .AddControlRegistry(new KaleidoRegistryOptions { RegistrantPolicy = "registry-registrant", ReaderPolicy = "registry-reader" })
+                        .AddInMemoryRegistryStore()
+                        .AddRegistryHttpServer();
                 });
                 web.Configure(app =>
                 {
                     app.UseRouting();
-                    app.UseEndpoints(endpoints => endpoints.MapKaleidoControlRegistry());
+                    app.UseAuthentication();
+                    app.UseAuthorization();
+                    app.UseEndpoints(endpoints => endpoints.MapKaleido().MapCentralRegistry());
                 });
             })
             .StartAsync(TestContext.Current.CancellationToken);
         return registry;
     }
 
-    public HttpMessageHandler CreateHandler() => new RegistrationHandler(this) { InnerHandler = host.GetTestServer().CreateHandler() };
+    public HttpMessageHandler CreateHandler() => new RegistrationHandler(this) { InnerHandler = Host.GetTestServer().CreateHandler() };
 
-    public HttpClient CreateClient() => host.GetTestClient();
+    public HttpClient CreateClient() => Host.GetTestClient();
 
     public async Task WaitForRegistrationAsync(IHost participant)
     {
         var service = participant.Services.GetRequiredService<KaleidoServiceOptions>();
-        await registered.GetOrAdd(service.InstanceId, _ => new(TaskCreationOptions.RunContinuationsAsynchronously))
+        await registered.GetOrAdd((service.ServiceName, service.ServiceVersion), _ => new(TaskCreationOptions.RunContinuationsAsynchronously))
             .Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         time.Advance(TimeSpan.FromSeconds(1) + TimeSpan.FromTicks(1));
-        using var registryScope = host.Services.CreateScope();
+        using var registryScope = Host.Services.CreateScope();
         using var participantScope = participant.Services.CreateScope();
         var registry = registryScope.ServiceProvider.GetRequiredService<IKaleidoRegistrySource>();
         var hydrated = participantScope.ServiceProvider.GetRequiredService<IKaleidoRegistrySource>();
@@ -91,8 +98,11 @@ public sealed class TestControlRegistry : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await host.StopAsync(CancellationToken.None);
-        host.Dispose();
+        if (host is not null)
+        {
+            await host.StopAsync(CancellationToken.None);
+            host.Dispose();
+        }
     }
 
     private sealed class RegistrationHandler(TestControlRegistry registry) : DelegatingHandler
@@ -105,7 +115,7 @@ public sealed class TestControlRegistry : IAsyncDisposable
                 var instance = await request.Content.ReadFromJsonAsync<RegistryInstanceRegistration>(KaleidoJsonOptions.Options, cancellationToken);
                 if (instance is not null)
                 {
-                    registry.registered.GetOrAdd(instance.InstanceId, _ => new(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult();
+                    registry.registered.GetOrAdd((instance.ServiceName, instance.ServiceVersion), _ => new(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult();
                 }
             }
 

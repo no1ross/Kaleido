@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Known Registry HTTP route templates and fixed endpoint URLs shared by its listener and client.</Description>
+		<PackageTags>kaleido;registry;http;routes</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<!-- Only the Registry HTTP listener and fixed-endpoint HTTP client consume this internal route contract. -->
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Client" />
+	</ItemGroup>
+</Project>

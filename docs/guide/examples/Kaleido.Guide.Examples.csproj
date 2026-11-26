@@ -2,8 +2,8 @@
 
     <!-- The guide's examples (docs/guide), compiled so the guide cannot drift from the API: every
          csharp block the guide marks with a snippet comment equals its region here
-         (tools/docs/check-guide-snippets.py), and Kaleido.IntegrationTests runs the getting-started
-         service. Consumer code: Kaleido's consumer analyzers (KAL2xxx) apply, as in a real service. -->
+         (tools/docs/check-guide-snippets.py), and the owner functional suites run its scenarios.
+         Consumer code: Kaleido's consumer analyzers (KAL2xxx) apply, as in a real service. -->
     <PropertyGroup>
         <IsPackable>false</IsPackable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -13,13 +13,28 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
         <PackageReference Include="Microsoft.Extensions.Compliance.Redaction" />
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\src\Http\Http.Server\Kaleido.Http.Server.csproj" />
+        <ProjectReference Include="..\..\..\src\Core\Kaleido\Kaleido.csproj" />
+        <ProjectReference Include="..\..\..\src\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
+        <ProjectReference Include="..\..\..\src\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
+        <ProjectReference Include="..\..\..\src\Capabilities\Queryable\Kaleido.Queryable\Kaleido.Queryable.csproj" />
+        <ProjectReference Include="..\..\..\src\Transports\Kaleido.Server\Kaleido.Server.csproj" />
+        <ProjectReference Include="..\..\..\src\Transports\Http\Kaleido.Http.Server\Kaleido.Http.Server.csproj" />
+        <ProjectReference Include="..\..\..\src\Transports\Http\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
+        <ProjectReference Include="..\..\..\src\Composed\Hosts\Kaleido.Hosting.Http\Kaleido.Hosting.Http.csproj" />
+        <ProjectReference Include="..\..\..\src\Capabilities\Process\Kaleido.Process.Client\Kaleido.Process.Client.csproj" />
+        <ProjectReference Include="..\..\..\src\Capabilities\Process\Kaleido.Process.Http.Client\Kaleido.Process.Http.Client.csproj" />
+        <ProjectReference Include="..\..\..\src\Capabilities\Process\Kaleido.Process.Http.Server\Kaleido.Process.Http.Server.csproj" />
+        <ProjectReference Include="..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Client\Kaleido.Queryable.Http.Client.csproj" />
+        <ProjectReference Include="..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Server\Kaleido.Queryable.Http.Server.csproj" />
+        <ProjectReference Include="..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Client\Kaleido.Registry.Http.Client.csproj" />
+        <ProjectReference Include="..\..\..\src\Providers\Kaleido.Provider.InMemory\Kaleido.Provider.InMemory.csproj" />
         <ProjectReference Include="..\..\..\src\Mcp\Mcp\Kaleido.Mcp.csproj" />
         <ProjectReference Include="..\..\..\src\Observability\Observability.OpenTelemetry\Kaleido.Observability.OpenTelemetry.csproj" />
         <ProjectReference Include="..\..\..\tools\analyzers\Kaleido.Analyzers\Kaleido.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />

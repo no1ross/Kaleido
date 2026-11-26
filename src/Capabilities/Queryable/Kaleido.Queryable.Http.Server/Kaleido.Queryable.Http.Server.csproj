@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>ASP.NET Core Queryable source and view endpoint mapping for Kaleido services.</Description>
+		<PackageTags>kaleido;queryable;http;aspnetcore;endpoints</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<ProjectReference Include="..\Kaleido.Queryable.Http\Kaleido.Queryable.Http.csproj" />
+		<ProjectReference Include="..\..\..\Transports\Http\Kaleido.Http.Server\Kaleido.Http.Server.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Server" />
+		<Using Include="Kaleido.Http.Server.Authorization" />
+		<Using Include="Kaleido.Http.Server.Observability" />
+		<Using Include="Kaleido.Queryable.Http" />
+		<Using Include="Kaleido.Queryable.Metadata" />
+		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Server" />
+	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="Kaleido.Hosting.Http" />
+	</ItemGroup>
+</Project>

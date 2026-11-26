@@ -22,6 +22,7 @@ ALLOWED = {
     "KaleidoProcessStepREgistry": "the historical endpoint-name typo KAL0017 prevents",
     "QueryContextSource": "type-name suffix the MCP adapter strips from tool names",
     "QueryViewSource": "type-name suffix the MCP adapter strips from tool names",
+    "StepExecutionResponse": "retired Platform result recorded in CHANGELOG.md; replaced by ProcessResult (ADR 0047)",
     "IQueryable": ".NET type (System.Linq) that query sources return",
 }
 

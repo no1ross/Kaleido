@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Common provider dependency bundle for Process, Process.Server and Eventing store contracts.</Description>
+		<PackageTags>kaleido;provider;contracts</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\Core\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\Capabilities\Process\Kaleido.Process\Kaleido.Process.csproj" />
+		<ProjectReference Include="..\..\Capabilities\Process\Kaleido.Process.Server\Kaleido.Process.Server.csproj" />
+		<ProjectReference Include="..\..\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+	</ItemGroup>
+</Project>

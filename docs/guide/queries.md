@@ -13,7 +13,7 @@ examples continue the orders service (`docs/guide/examples/Queries`); a test run
 | **Delegated source** (`IDelegatedQuerySource<TContext, TResult>`, optionally with parameters) | Answers the query itself, for data Kaleido cannot run as LINQ (another service's API, a search engine) |
 
 The source of the [getting-started](getting-started.md#2-a-query-source) example is a local source;
-every attribute and rule is in [PATTERNS - Queryable](../PATTERNS.md#queryable-sources-views-and-query-contexts).
+every attribute and rule is in [Queryable authoring](../architecture/capabilities/queryable-authoring.md).
 
 ```mermaid
 flowchart LR
@@ -53,7 +53,7 @@ flowchart LR
 - It **counts** the total only when the page cannot tell (a full page, or an empty page past the
   start); `totalCount` is always the number of matching results.
 
-The query wire contract and endpoint behavior: [`Kaleido.Http.Server` README](../../src/Http/Http.Server/README.md). Source and view URLs are published per service version in the central registry; .NET clients use those `QueryUrl` values rather than constructing paths.
+The query wire contract and endpoint behavior: [`Kaleido.Http.Server` README](../../src/Capabilities/Process/Kaleido.Process.Http.Server/README.md). Source and view URLs are published per service version in the central registry; .NET clients use those `QueryUrl` values rather than constructing paths.
 
 ## Views
 
@@ -157,8 +157,7 @@ public sealed class ShippingRateSource
 
 Kaleido validates the caller's query against `ShippingRateQueryContext` first, then hands the request
 (query and parameters) to the source, and returns its `QueryResult` **untouched**, paging included:
-the order and the total are the downstream's. Forwarding the query to another Kaleido service:
-`query.ToApiBody()` (`Kaleido.Platform`).
+the order and the total are the downstream's. The neutral outbound [`Kaleido.Queryable.Client`](../../src/Capabilities/Queryable/Kaleido.Queryable.Client/README.md) now accepts the same `QueryRequest`/`QueryRequest<TParameters>` the source receives. The [HTTP adapter](../../src/Capabilities/Queryable/Kaleido.Queryable.Http.Client/README.md) (#616) converts the CLR `QueryBody` with [`ToApiBody()`](../../src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) before sending; no caller must build `QueryApiRequest` or JSON filter values. A host opts into Registry hydration with `AddRegistryHttpParticipation()` before remote Queryable calls; local sources still need no central participation.
 
 ## Who may query, and which rows
 
@@ -211,13 +210,13 @@ public sealed class MyInvoicesSource(IKaleidoCorrelationContextAccessor correlat
 Listing the page and counting the total is `IQueryContextExecutor<TView>`. Kaleido's default works
 for any LINQ source but counts an async query by **reading every matching row**. On EF Core, register
 the EF Core executor, so a full page is counted with one `SELECT COUNT(*)`; it uses LINQ for any other
-source of the host. The code: [PATTERNS - Queryable](../PATTERNS.md#queryable-sources-views-and-query-contexts).
+source of the host. The code: [Queryable authoring](../architecture/capabilities/queryable-authoring.md).
 
 ## Queries as lookups
 
 A step input the user cannot type (an id) names the query that supplies it with `[Lookup]`: UIs and
 agents search that source, show the matches, and pass the chosen field
-([PATTERNS - Lookup inputs](../PATTERNS.md#lookup-inputs-ids-the-user-cannot-type)).
+([Process authoring - Lookup inputs](../architecture/capabilities/process-authoring.md#lookup-inputs-ids-the-user-cannot-type)).
 
 ## Events
 

@@ -16,19 +16,19 @@ namespace Kaleido.Analyzers.Process;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class EntryStepCompletesProcessAnalyzer : DiagnosticAnalyzer
 {
-    private const string HandlerResultFullName = "Kaleido.Processor.Execution.ProcessStepHandlerResult";
+    private const string HandlerResultFullName = "Kaleido.Process.Execution.ProcessStepHandlerResult";
 
     private static readonly string[] HandlerInterfaces =
     [
-        "Kaleido.Processor.Execution.IProcessStepHandler<TProcessStep>",
-        "Kaleido.Processor.Execution.IProcessStepHandler<TProcessStep, TProcessStepResult>"
+        "Kaleido.Process.Execution.IProcessStepHandler<TProcessStep>",
+        "Kaleido.Process.Execution.IProcessStepHandler<TProcessStep, TProcessStepResult>"
     ];
 
     // The relationships that make a step run after others; AvailableUntil only closes a step.
     private static readonly string[] AfterOtherSteps =
     [
-        "Kaleido.Processor.DependsOnAttribute<TStep>",
-        "Kaleido.Processor.AvailableAfterAttribute<TStep>"
+        "Kaleido.Process.DependsOnAttribute<TStep>",
+        "Kaleido.Process.AvailableAfterAttribute<TStep>"
     ];
 
     private static readonly DiagnosticDescriptor Rule =

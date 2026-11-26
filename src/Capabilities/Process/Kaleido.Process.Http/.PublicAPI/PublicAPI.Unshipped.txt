@@ -1,0 +1,41 @@
+#nullable enable
+const Kaleido.Process.Http.KaleidoIdempotencyHeaders.IdempotencyKey = "Idempotency-Key" -> string!
+const Kaleido.Process.Http.KaleidoIdempotencyHeaders.Replayed = "Idempotent-Replayed" -> string!
+Kaleido.Process.Http.ExecuteProcessRequest
+Kaleido.Process.Http.ExecuteProcessRequest.<Clone>$() -> Kaleido.Process.Http.ExecuteProcessRequest!
+Kaleido.Process.Http.ExecuteProcessRequest.Equals(Kaleido.Process.Http.ExecuteProcessRequest? other) -> bool
+Kaleido.Process.Http.ExecuteProcessRequest.ExecuteProcessRequest() -> void
+Kaleido.Process.Http.ExecuteProcessRequest.Steps.get -> System.Collections.Generic.IReadOnlyCollection<Kaleido.Process.Http.ProcessStepRequest!>!
+Kaleido.Process.Http.ExecuteProcessRequest.Steps.init -> void
+Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>
+Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.<Clone>$() -> Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>!
+Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.Equals(Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>? other) -> bool
+Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.ExecuteStepRequest() -> void
+Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.ProcessStep.get -> TProcessStep
+Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.ProcessStep.init -> void
+Kaleido.Process.Http.KaleidoIdempotencyHeaders
+Kaleido.Process.Http.ProcessHttpRegistryBindingServiceCollectionExtensions
+Kaleido.Process.Http.ProcessStepRequest
+Kaleido.Process.Http.ProcessStepRequest.<Clone>$() -> Kaleido.Process.Http.ProcessStepRequest!
+Kaleido.Process.Http.ProcessStepRequest.Equals(Kaleido.Process.Http.ProcessStepRequest? other) -> bool
+Kaleido.Process.Http.ProcessStepRequest.ProcessStepRequest() -> void
+Kaleido.Process.Http.ProcessStepRequest.Request.get -> System.Text.Json.JsonElement
+Kaleido.Process.Http.ProcessStepRequest.Request.init -> void
+Kaleido.Process.Http.ProcessStepRequest.StepName.get -> string!
+Kaleido.Process.Http.ProcessStepRequest.StepName.init -> void
+override Kaleido.Process.Http.ExecuteProcessRequest.Equals(object? obj) -> bool
+override Kaleido.Process.Http.ExecuteProcessRequest.GetHashCode() -> int
+override Kaleido.Process.Http.ExecuteProcessRequest.ToString() -> string!
+override Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.Equals(object? obj) -> bool
+override Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.GetHashCode() -> int
+override Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.ToString() -> string!
+override Kaleido.Process.Http.ProcessStepRequest.Equals(object? obj) -> bool
+override Kaleido.Process.Http.ProcessStepRequest.GetHashCode() -> int
+override Kaleido.Process.Http.ProcessStepRequest.ToString() -> string!
+static Kaleido.Process.Http.ExecuteProcessRequest.operator !=(Kaleido.Process.Http.ExecuteProcessRequest? left, Kaleido.Process.Http.ExecuteProcessRequest? right) -> bool
+static Kaleido.Process.Http.ExecuteProcessRequest.operator ==(Kaleido.Process.Http.ExecuteProcessRequest? left, Kaleido.Process.Http.ExecuteProcessRequest? right) -> bool
+static Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.operator !=(Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>? left, Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>? right) -> bool
+static Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>.operator ==(Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>? left, Kaleido.Process.Http.ExecuteStepRequest<TProcessStep>? right) -> bool
+static Kaleido.Process.Http.ProcessHttpRegistryBindingServiceCollectionExtensions.AddProcessHttpBindings(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Process.Http.ProcessStepRequest.operator !=(Kaleido.Process.Http.ProcessStepRequest? left, Kaleido.Process.Http.ProcessStepRequest? right) -> bool
+static Kaleido.Process.Http.ProcessStepRequest.operator ==(Kaleido.Process.Http.ProcessStepRequest? left, Kaleido.Process.Http.ProcessStepRequest? right) -> bool

@@ -1,6 +1,6 @@
 # 0039. Package boundaries separate the platform from protocol adapters
 
-- **Status:** Accepted
+- **Status:** Superseded by 0041
 - **Date:** 2026-11-09
 - **Related:** #581, #577, #553, ADR 0017
 

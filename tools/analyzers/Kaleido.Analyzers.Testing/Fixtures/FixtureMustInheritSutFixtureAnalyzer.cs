@@ -33,6 +33,11 @@ public sealed class FixtureMustInheritSutFixtureAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeType(SymbolAnalysisContext context)
     {
+        if (!FixtureConventions.IsUnitTestAssembly(context.Compilation))
+        {
+            return;
+        }
+
         var type = (INamedTypeSymbol)context.Symbol;
 
         if (type.IsAbstract || !FixtureConventions.IsFixture(type))

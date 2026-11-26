@@ -37,9 +37,11 @@ $failures = [System.Collections.Generic.List[string]]::new()
 $work = Join-Path ([System.IO.Path]::GetTempPath()) "kaleido-package-gate-$([guid]::NewGuid().ToString('N'))"
 New-Item -ItemType Directory -Path $work | Out-Null
 
-$expected = "Kaleido", "Kaleido.Analyzers", "Kaleido.Platform", "Kaleido.Server", "Kaleido.Client",
-    "Kaleido.Http", "Kaleido.Http.Server", "Kaleido.Http.Client", "Kaleido.Mcp", "Kaleido.Registry",
-    "Kaleido.Registry.Http", "Kaleido.Observability.OpenTelemetry", "Kaleido.Provider.SQLite"
+$expected = "Kaleido", "Kaleido.Analyzers", "Kaleido.Eventing", "Kaleido.Server", "Kaleido.Http", "Kaleido.Http.Server", "Kaleido.Http.Client",
+    "Kaleido.Process", "Kaleido.Process.Server", "Kaleido.Process.Client", "Kaleido.Process.Http", "Kaleido.Process.Http.Server", "Kaleido.Process.Http.Client",
+    "Kaleido.Queryable", "Kaleido.Queryable.Client", "Kaleido.Queryable.Http", "Kaleido.Queryable.Http.Server", "Kaleido.Queryable.Http.Client",
+    "Kaleido.Registry", "Kaleido.Registry.Server", "Kaleido.Registry.Client", "Kaleido.Registry.Http", "Kaleido.Registry.Http.Server", "Kaleido.Registry.Http.Client",
+    "Kaleido.Hosting", "Kaleido.Hosting.Http", "Kaleido.Mcp", "Kaleido.Observability.OpenTelemetry", "Kaleido.Provider", "Kaleido.Provider.InMemory", "Kaleido.Provider.SQLite"
 $version = [regex]::Match((Get-ChildItem $feed -Filter "Kaleido.Http.*.nupkg" | Where-Object Name -match '^Kaleido\.Http\.\d' | Select-Object -First 1).Name, '^Kaleido\.Http\.(.+)\.nupkg$').Groups[1].Value
 
 function Invoke-Gate([string] $packages) {

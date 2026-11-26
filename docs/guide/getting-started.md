@@ -125,7 +125,7 @@ public sealed class ConfirmOrderHandler : IProcessStepHandler<ConfirmOrderStep>
 
 ## 4. Publish it over HTTP
 
-Run a separate [control registry host](../../src/Registry/Registry/README.md#a-registry-host) and
+Run a separate [control registry host](../../src/Capabilities/Registry/Kaleido.Registry.Server/README.md#a-registry-host) and
 configure `Kaleido:BaseUrl` with the gateway's URL. Map `/registry` to the registry host and
 `/orders/1` to the Orders host; the registry carries logical routes, never host addresses.
 Register Kaleido with the assemblies to scan, then map its endpoints. Kaleido finds the source,
@@ -141,22 +141,30 @@ services.AddKaleido(configuration, new()
     ServiceName = "orders",
     ServiceVersion = "1",
     Assemblies = [typeof(OrderSource).Assembly],
-    AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
 })
-    .AddInMemoryStores()   // local evaluation only: nothing survives a restart
+    .AddEventing()
+    .AddProcess()
+    .AddQueryable()
+    .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.None }) // local evaluation only
+    .AddInMemoryProviders()   // local evaluation only: nothing survives a restart
     .AddHttp()
-    .AddControlRegistryClient();
+    .AddProcessHttpServer()
+    .AddProcessHttpBindings()
+    .AddQueryableHttpBindings()
+    .AddRegistryHttpParticipation()
+    .AddProcessHttpClient();
 ```
 
-`AddInMemoryStores()` is a choice: the process state and idempotency records live in this process
-and are lost on restart. Without a choice the host does not start (`stores_not_chosen`): a service
+`AddKaleido()` installs only the foundation; `AddEventing()` installs the outbox-backed writer, `AddProcess()`/`AddQueryable()` register their runtimes, and `AddServer()` configures authorization. `AddInMemoryProviders()` explicitly chooses process state, idempotency records and an event outbox that live in this process and are lost on restart. Without a choice the host does not start (`stores_not_chosen`): a service
 never keeps them in memory by accident. A deployed service registers durable stores instead
 ([Persistence](persistence.md), [ADR 0028](../decisions/0028-stores-are-chosen-explicitly.md)).
 
 <!-- snippet: getting-started-map -->
 ```csharp
-endpoints.MapKaleidoHttp();
+endpoints.MapKaleido().MapProcess().MapQueryable();
 ```
+
+The composition maps local endpoints only. This service also opts into Registry participation to publish its HTTP bindings and adds the Process HTTP client for the later cross-service return hand-off; a local-only service needs neither. A dedicated Registry authority uses `app.MapKaleido().MapCentralRegistry()` instead. See the [HTTP hosting README](../../src/Composed/Hosts/Kaleido.Hosting.Http/README.md) for the separate host roles.
 
 > `AuthorizationMode.None` leaves every capability open, for local evaluation. The default is
 > `Authenticated`; see [Callers and correlation](callers-and-correlation.md).
@@ -198,51 +206,64 @@ sequenceDiagram
   unfiltered copy fresh from `/registry/availability` and revisioned `/registry/capabilities`.
 
 The routes, the body shapes and the error answers are in the
-[`Kaleido.Http.Server` README](../../src/Http/Http.Server/README.md).
+[`Kaleido.Http.Server` README](../../src/Capabilities/Process/Kaleido.Process.Http.Server/README.md).
 
 ## 6. Publish it to AI agents (MCP)
 
-The MCP adapter turns the registry into tools and calls the service through a Kaleido client, as
-the caller. Here the service publishes its own tools; a separate MCP host can present the
-caller-visible capabilities of several registered services without per-service client configuration
-([README quick start](../../README.md#expose-registered-services-through-an-mcp-host)).
+The MCP adapter presents the central Registry's caller-filtered tools and calls services through
+the current Process/Queryable clients with exchanged user credentials. A reader-only MCP host can
+present several registered services without registering local runtimes or per-service client URLs.
+The publishing services separately register `AddRegistryHttpParticipation()`, HTTP bindings, and
+explicit `MapProcess()`/`MapQueryable()` routes ([MCP README](../../src/Mcp/Mcp/README.md)).
 
 <!-- snippet: getting-started-mcp -->
 ```csharp
-services.AddSingleton<OrderBook>();
+services.AddAuthentication("Bearer").AddJwtBearer(options =>
+{
+    options.Authority = configuration["Authentication:Authority"];
+    options.Audience = configuration["Authentication:Audience"];
+});
+services.AddAuthorization();
 
 services.AddKaleido(configuration, new()
 {
-    ServiceName = "orders",
+    ServiceName = "mcp-reader",
     ServiceVersion = "1",
     Assemblies = [typeof(OrderSource).Assembly],
-    AuthorizationMode = KaleidoAuthorizationMode.None, // local evaluation only
+    TypeFilter = _ => false,
 })
-    .AddInMemoryStores()   // local evaluation only: nothing survives a restart
+    .AddServer(new() { AuthorizationMode = KaleidoAuthorizationMode.Authenticated })
     .AddHttp()
-    .AddHttpClients()   // Kaleido:OnBehalfOfCalls = Exchange: AddMcp() requires it
-    .AddControlRegistryClient()
+    .AddKaleidoClientHandler<TokenExchangeHandler>()
+    .AddRegistryHttpParticipation(new() { OnBehalfOfCalls = KaleidoOnBehalfOfCalls.Exchange })
+    .AddProcessHttpClient()
+    .AddQueryableHttpClient()
     .AddMcp();
 ```
 
-`AddMcp()` refuses to start unless `Kaleido:OnBehalfOfCalls` is `Exchange`
-(`mcp_on_behalf_of_calls_not_exchanged`): every tool call is made for the agent's user, whose token is
-issued for this MCP server, and the MCP authorization specification forbids passing it through to the
-services. This local example has no sign-in, so its calls are anonymous and carry nothing; with sign-in,
-add the handler that exchanges the user's token
-([Which token a service sends](callers-and-correlation.md#which-token-a-service-sends)).
+`AddMcp()` requires generic HTTP, Registry participation and both capability clients; it also
+refuses to start unless `Kaleido:OnBehalfOfCalls` is `Exchange`
+(`mcp_on_behalf_of_calls_not_exchanged`). Authenticate the MCP endpoint with the host's JWT scheme
+and provide a handler that exchanges the user's token, not one that forwards it unchanged. Anonymous
+callers receive no tools and cannot trigger a service-credential Registry read
+([Which token a service sends](callers-and-correlation.md#which-token-a-service-sends)). Configure `Authentication:Authority` and `Authentication:Audience` for the trusted JWT issuer and register the host's `ITokenExchange` implementation before starting this host.
 
 <!-- snippet: getting-started-mcp-map -->
 ```csharp
-app.MapKaleidoHttp();
-app.MapKaleidoMcp("/mcp");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapKaleidoMcp("/mcp").RequireAuthorization();
 ```
 
-The one gateway client used for registry hydration and service calls needs only the gateway address.
-Its routes map `/registry` to the registry host and `/orders/1` to the Orders host:
+An MCP-only reader does not map Process or Queryable endpoints. MCP initialize reports the same
+`ServiceName`/`ServiceVersion` set by `AddKaleido()`; the Registry tracks a deployed `BuildVersion`
+separately ([ADR 0051](../decisions/0051-mcp-uses-service-identity.md)). It hydrates one full participant
+Registry for metadata and version-pinned client routing; ordinary `tools/list` still reads the
+caller's filtered Registry view, and a Process result supplies the current step names. The
+gateway maps `/registry` to the authority and `/orders/1` to the Orders host:
 
 ```json
-{ "Kaleido": { "BaseUrl": "http://localhost:5100", "OnBehalfOfCalls": "Exchange" } }
+{ "Kaleido": { "BaseUrl": "https://gateway.internal/", "OnBehalfOfCalls": "Exchange" } }
 ```
 
 An agent connected to `/mcp` sees one tool per capability, named `orders_<capability>` (the

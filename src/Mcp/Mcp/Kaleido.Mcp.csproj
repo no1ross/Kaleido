@@ -14,9 +14,29 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Until the per-service registry is removed and the client errors and options are protocol-neutral (#581), the adapter builds on the HTTP server's in-host registry and calls through the HTTP clients. -->
-		<ProjectReference Include="..\..\Http\Http.Server\Kaleido.Http.Server.csproj" />
-		<ProjectReference Include="..\..\Http\Http.Client\Kaleido.Http.Client.csproj" />
+		<ProjectReference Include="..\..\Transports\Http\Kaleido.Http.Server\Kaleido.Http.Server.csproj" />
+		<ProjectReference Include="..\..\Capabilities\Registry\Kaleido.Registry.Http.Client\Kaleido.Registry.Http.Client.csproj" />
+		<ProjectReference Include="..\..\Capabilities\Process\Kaleido.Process.Http.Client\Kaleido.Process.Http.Client.csproj" />
+		<ProjectReference Include="..\..\Capabilities\Queryable\Kaleido.Queryable.Http.Client\Kaleido.Queryable.Http.Client.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Configuration" />
+		<Using Include="Kaleido.Http.Client.Transport" />
+		<Using Include="Kaleido.Http.Server.Observability" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Client" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Client" />
+		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Client" />
 	</ItemGroup>
 
 	<ItemGroup>

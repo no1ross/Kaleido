@@ -1,0 +1,9 @@
+#nullable enable
+Kaleido.Process.Client.IKaleidoProcessorClient
+Kaleido.Process.Client.IKaleidoProcessorClient.ExecuteAsync(Kaleido.Process.ProcessRequest! request, string? idempotencyKey, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Process.ProcessResult!>!
+Kaleido.Process.Client.IKaleidoProcessorClient.ExecuteStepAsync(string! stepName, object! processStep, System.Guid? processId, string? idempotencyKey, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Process.ProcessResult!>!
+Kaleido.Process.Client.IKaleidoProcessorClient.ExecuteStepAsync<TStep>(TStep! processStep, System.Guid? processId, string? idempotencyKey, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Process.ProcessResult!>!
+Kaleido.Process.Client.IKaleidoProcessorClient.GetProcessStateAsync(System.Guid processId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Process.ProcessStateSnapshot?>!
+Kaleido.Process.Client.IKaleidoProcessorClientFactory
+Kaleido.Process.Client.IKaleidoProcessorClientFactory.GetClient(string! serviceName) -> Kaleido.Process.Client.IKaleidoProcessorClient!
+Kaleido.Process.Client.IKaleidoProcessorClientFactory.GetClient(string! serviceName, string! serviceVersion) -> Kaleido.Process.Client.IKaleidoProcessorClient!

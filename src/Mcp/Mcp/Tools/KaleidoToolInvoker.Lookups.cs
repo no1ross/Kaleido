@@ -2,8 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Kaleido.Platform;
-using Kaleido.Processor;
 using ModelContextProtocol.Protocol;
 
 namespace Kaleido.Mcp.Tools;
@@ -202,9 +200,9 @@ internal sealed partial class KaleidoToolInvoker
             parameters = new JsonObject { [ToolCatalogBuilder.ProcessIdArgument] = id.ToString() };
         }
 
-        var request = new QueryApiRequest<JsonObject>(
+        var request = new QueryRequest<JsonObject>(
             parameters,
-            new QueryApiBody { SearchText = searchText, Page = new QueryApiPage { Size = LookupPageSize } });
+            new QueryBody(SearchText: searchText, Page: new QueryPage(Size: LookupPageSize, Offset: null)));
 
         var client = query is null ? Queryable(lookup.Service) : Queryable(query);
 

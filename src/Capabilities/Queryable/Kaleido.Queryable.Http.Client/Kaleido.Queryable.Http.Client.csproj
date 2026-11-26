@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Queryable outbound HTTP client and factory resolving published source/view operations from the hydrated Registry.</Description>
+		<PackageTags>kaleido;queryable;http;client</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Queryable.Client\Kaleido.Queryable.Client.csproj" />
+		<ProjectReference Include="..\Kaleido.Queryable.Http\Kaleido.Queryable.Http.csproj" />
+		<ProjectReference Include="..\..\Registry\Kaleido.Registry.Client\Kaleido.Registry.Client.csproj" />
+		<ProjectReference Include="..\..\..\Transports\Http\Kaleido.Http.Client\Kaleido.Http.Client.csproj" />
+		<PackageReference Include="Microsoft.Extensions.Http" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Configuration" />
+		<Using Include="Kaleido.Http.Client.Pipeline" />
+		<Using Include="Kaleido.Http.Client.Registration" />
+		<Using Include="Kaleido.Http.Client.Transport" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Queryable.Client" />
+		<Using Include="Kaleido.Queryable.Http" />
+		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Client" />
+	</ItemGroup>
+</Project>

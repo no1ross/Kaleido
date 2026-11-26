@@ -43,7 +43,7 @@ Information logs must stay minimal — treat them as the "normal operations" vie
   - `QueryableErrorCodes` (`Queryable/QueryableErrorCodes.cs`) — `qry_*` codes for Queryable startup registration and request validation
   - `ConfigurationErrorCodes` (`KaleidoConfigurationException.cs`) — core service-setup and authorization-settings codes only
   - `FrameworkErrorCodes` (`KaleidoFrameworkException.cs`) — cross-cutting integrity violation codes
-  - `HttpClientErrorCodes` (`src/Http/Http.Client/Transport/KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures and the client's startup checks (`httpclient_missing_base_url`)
+  - `HttpClientErrorCodes` (`src/Transports/Http/Kaleido.Http.Client/Transport/KaleidoClientException.cs`) — `httpclient_*` codes for remote call failures and the client's startup checks (`httpclient_missing_base_url`)
   - `SqliteErrorCodes` (`Kaleido.Provider.SQLite`) — the provider's own codes; providers never add codes to core
   - `McpErrorCodes` (`src/Mcp/Mcp/McpErrorCodes.cs`) — `mcp_*` codes for the MCP adapter's startup and tool-call failures
   - `OpenTelemetryErrorCodes` (`Kaleido.Observability.OpenTelemetry`) — `otel_*` codes for the provider's startup failures
@@ -97,7 +97,7 @@ Kaleido uses `TimeProvider` where time is a production dependency, not where tim
 
 IDE0005 (unused usings) needs `GenerateDocumentationFile`, so `tests/` and `tools/` generate XML docs with CS1591 off. `dotnet format <solution> style --diagnostics IDE0005 --include tests/` fixes unused usings in bulk; IDE0005 reports one per file at a time, so build again until clean.
 
-CI (`build.yml`) enforces a **coverage gate**: merged line coverage of the shipped `src/` assemblies (tests and analyzers excluded) must be at least the `COVERAGE_FLOOR` (95%), or the build fails. Raise the floor, never lower it. To check locally, run `./tools/test/Run-Tests.ps1 -Coverage` (cobertura files in `TestResults/`) and merge the reports with `reportgenerator` using the workflow's `-assemblyfilters`.
+CI (`build.yml`) enforces **at least 97.5% merged line coverage** of shipped `src/` assemblies on exact counts; the 97% goal for each measurable authored class is reported as a warning, not a failure. Generated `obj/` code remains in the aggregate but not the authored-class advisory, and compiled guide examples remain in Sonar's separate coverage report rather than the shipped-source gate. Raise the aggregate floor, never lower it. To check locally, run `./tools/test/Run-Tests.ps1 -Coverage` (Cobertura files in `TestResults/`), merge with `reportgenerator` using the workflow's production `-assemblyfilters`, then run `python3 tools/test/check-coverage.py <merged-Cobertura.xml>`; `python3 tools/test/test-check-coverage.py` tests its exact boundaries and scope.
 
 Never delete `bin`/`obj` folders inside `node_modules`; if a clean is needed, exclude `node_modules` (see below).
 

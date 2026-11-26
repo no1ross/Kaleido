@@ -1,0 +1,366 @@
+#nullable enable
+const Kaleido.Queryable.Eventing.QueryableEventTypes.QueryExecuted = "query.executed.v1" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.ActivitySourceName = "Kaleido.Queryable" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.CanceledEventName = "kaleido.queryable.canceled" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.DelegateActivityName = "kaleido.queryable.delegate" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.ExecuteActivityName = "kaleido.queryable.execute" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.ExecutionCancellationsCounterName = "kaleido.queryable.execution_cancellations" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.ExecutionDurationHistogramName = "kaleido.queryable.execution.duration" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.ExecutionFailuresCounterName = "kaleido.queryable.execution_failures" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.ExecutionsCounterName = "kaleido.queryable.executions" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.MaterializeActivityName = "kaleido.queryable.materialize" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.MeterName = "Kaleido.Queryable" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.PageOffsetHistogramName = "kaleido.queryable.page_offset" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.PageSizeHistogramName = "kaleido.queryable.page_size" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.ReturnedCountHistogramName = "kaleido.queryable.returned_count" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.SourceActivityName = "kaleido.queryable.source" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TagPageOffset = "kaleido.query.page_offset" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TagPageSize = "kaleido.query.page_size" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TagQueryDirect = "kaleido.query.direct" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TagQueryExecutionMode = "kaleido.query.execution_mode" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TagQuerySource = "kaleido.query.source" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TagQueryView = "kaleido.query.view" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TagReturnedCount = "kaleido.query.returned_count" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TagTotalCount = "kaleido.query.total_count" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TagValidationCode = "kaleido.validation.code" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.TotalCountHistogramName = "kaleido.queryable.total_count" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.ValidationFailuresCounterName = "kaleido.queryable.validation_failures" -> string!
+const Kaleido.Queryable.Observability.QueryableTelemetry.ViewActivityName = "kaleido.queryable.view" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.DuplicateRegistration = "qry_duplicate_registration" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.DuplicateSortField = "qry_duplicate_sort_field" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.EmptyFilterGroup = "qry_empty_filter_group" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.FieldNotFilterable = "qry_field_not_filterable" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.FieldNotSearchable = "qry_field_not_searchable" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.FieldNotSortable = "qry_field_not_sortable" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.FilterDepthExceeded = "qry_filter_depth_exceeded" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.InvalidField = "qry_invalid_field" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.InvalidFilterNode = "qry_invalid_filter_node" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.InvalidFilterValue = "qry_invalid_filter_value" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.InvalidLogicalOperator = "qry_invalid_logical_operator" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.InvalidPageOffset = "qry_invalid_page_offset" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.InvalidPageSize = "qry_invalid_page_size" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.InvalidParameterValue = "qry_invalid_parameter_value" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.InvalidRegistration = "qry_invalid_registration" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.InvalidSortDirection = "qry_invalid_sort_direction" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.MissingAttribute = "qry_missing_attribute" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.MissingFilterField = "qry_missing_filter_field" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.MissingParameter = "qry_missing_parameter" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.MissingSource = "qry_missing_source" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.PagingNotSupported = "qry_paging_not_supported" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.UnsupportedMatchMode = "qry_unsupported_match_mode" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.UnsupportedOperator = "qry_unsupported_operator" -> string!
+const Kaleido.Queryable.QueryableErrorCodes.UnsupportedRuntimeType = "qry_unsupported_runtime_type" -> string!
+Kaleido.Queryable.EmptyQueryViewParameters
+Kaleido.Queryable.EmptyQueryViewParameters.<Clone>$() -> Kaleido.Queryable.EmptyQueryViewParameters!
+Kaleido.Queryable.EmptyQueryViewParameters.EmptyQueryViewParameters() -> void
+Kaleido.Queryable.EmptyQueryViewParameters.Equals(Kaleido.Queryable.EmptyQueryViewParameters? other) -> bool
+Kaleido.Queryable.Eventing.IQueryEvent
+Kaleido.Queryable.Eventing.QueryableEventTypes
+Kaleido.Queryable.Eventing.QueryExecuted
+Kaleido.Queryable.Eventing.QueryExecuted.<Clone>$() -> Kaleido.Queryable.Eventing.QueryExecuted!
+Kaleido.Queryable.Eventing.QueryExecuted.Equals(Kaleido.Queryable.Eventing.QueryExecuted? other) -> bool
+Kaleido.Queryable.Eventing.QueryExecuted.EventId.get -> System.Guid
+Kaleido.Queryable.Eventing.QueryExecuted.EventId.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.ExecutionMode.get -> string?
+Kaleido.Queryable.Eventing.QueryExecuted.ExecutionMode.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.FilterProvided.get -> bool
+Kaleido.Queryable.Eventing.QueryExecuted.FilterProvided.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.IsDirectQuery.get -> bool
+Kaleido.Queryable.Eventing.QueryExecuted.IsDirectQuery.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.OccurredOn.get -> System.DateTimeOffset
+Kaleido.Queryable.Eventing.QueryExecuted.OccurredOn.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.Offset.get -> int?
+Kaleido.Queryable.Eventing.QueryExecuted.Offset.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.PageSize.get -> int?
+Kaleido.Queryable.Eventing.QueryExecuted.PageSize.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.QueryExecuted() -> void
+Kaleido.Queryable.Eventing.QueryExecuted.QuerySourceName.get -> string!
+Kaleido.Queryable.Eventing.QueryExecuted.QuerySourceName.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.QueryViewName.get -> string?
+Kaleido.Queryable.Eventing.QueryExecuted.QueryViewName.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.Records.get -> System.Collections.Generic.IReadOnlyCollection<object?>!
+Kaleido.Queryable.Eventing.QueryExecuted.Records.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.Request.get -> object?
+Kaleido.Queryable.Eventing.QueryExecuted.Request.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.ReturnedCount.get -> int
+Kaleido.Queryable.Eventing.QueryExecuted.ReturnedCount.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.SearchText.get -> string?
+Kaleido.Queryable.Eventing.QueryExecuted.SearchText.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.SortCount.get -> int
+Kaleido.Queryable.Eventing.QueryExecuted.SortCount.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.TotalCount.get -> int
+Kaleido.Queryable.Eventing.QueryExecuted.TotalCount.init -> void
+Kaleido.Queryable.Eventing.QueryExecuted.ViewParameters.get -> object?
+Kaleido.Queryable.Eventing.QueryExecuted.ViewParameters.init -> void
+Kaleido.Queryable.FilterableAttribute
+Kaleido.Queryable.FilterableAttribute.FilterableAttribute(params Kaleido.Queryable.FilterOperator[]! operators) -> void
+Kaleido.Queryable.FilterableAttribute.Operators.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.FilterOperator>!
+Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.Between = 12 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.Contains = 6 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.EndsWith = 9 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.Equals = 0 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.GreaterThan = 2 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.GreaterThanOrEqual = 4 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.In = 10 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.IsFalse = 17 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.IsNotNull = 15 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.IsNull = 14 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.IsTrue = 16 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.LessThan = 3 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.LessThanOrEqual = 5 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.NotBetween = 13 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.NotContains = 7 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.NotEquals = 1 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.NotIn = 11 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.FilterOperator.StartsWith = 8 -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.IDelegatedQuerySource<TQueryContext, TResult, TParameters>
+Kaleido.Queryable.IDelegatedQuerySource<TQueryContext, TResult, TParameters>.ExecuteAsync(Kaleido.Queryable.Query.IQueryRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
+Kaleido.Queryable.IDelegatedQuerySource<TQueryContext, TResult>
+Kaleido.Queryable.ILocalQuerySource<TQueryContext>
+Kaleido.Queryable.IQueryableService
+Kaleido.Queryable.IQueryableService.QueryAsync<TQuery, TResult>(Kaleido.Queryable.Query.IQueryRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
+Kaleido.Queryable.IQueryContext
+Kaleido.Queryable.IQueryParameters
+Kaleido.Queryable.IQuerySource<TQueryContext>
+Kaleido.Queryable.IQuerySource<TQueryContext>.CreateQuery(Kaleido.Queryable.Query.QueryExecutionContext! executionContext) -> System.Linq.IQueryable<TQueryContext!>!
+Kaleido.Queryable.IQuerySourceAsync<TQueryContext>
+Kaleido.Queryable.IQuerySourceAsync<TQueryContext>.CreateQueryAsync(Kaleido.Queryable.Query.QueryExecutionContext! executionContext, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Linq.IQueryable<TQueryContext!>!>!
+Kaleido.Queryable.IQueryViewSource<TSource, TQueryContext, TView, TViewParameters>
+Kaleido.Queryable.IQueryViewSource<TSource, TQueryContext, TView, TViewParameters>.CreateView(System.Linq.IQueryable<TQueryContext!>! query, Kaleido.Queryable.Query.QueryExecutionContext! executionContext) -> System.Linq.IQueryable<TView!>!
+Kaleido.Queryable.IQueryViewSource<TSource, TQueryContext, TView>
+Kaleido.Queryable.IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParameters>
+Kaleido.Queryable.IQueryViewSourceAsync<TSource, TQueryContext, TView, TViewParameters>.CreateViewAsync(System.Linq.IQueryable<TQueryContext!>! query, Kaleido.Queryable.Query.QueryExecutionContext! executionContext, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Linq.IQueryable<TView!>!>!
+Kaleido.Queryable.IQueryViewSourceAsync<TSource, TQueryContext, TView>
+Kaleido.Queryable.KaleidoQueryableOptions
+Kaleido.Queryable.KaleidoQueryableOptions.<Clone>$() -> Kaleido.Queryable.KaleidoQueryableOptions!
+Kaleido.Queryable.KaleidoQueryableOptions.DefaultAuthorization.get -> Kaleido.Registry.AuthorizationMetadata?
+Kaleido.Queryable.KaleidoQueryableOptions.DefaultAuthorization.init -> void
+Kaleido.Queryable.KaleidoQueryableOptions.Equals(Kaleido.Queryable.KaleidoQueryableOptions? other) -> bool
+Kaleido.Queryable.KaleidoQueryableOptions.KaleidoQueryableOptions() -> void
+Kaleido.Queryable.LogicalOperator
+Kaleido.Queryable.LogicalOperator.And = 0 -> Kaleido.Queryable.LogicalOperator
+Kaleido.Queryable.LogicalOperator.Or = 1 -> Kaleido.Queryable.LogicalOperator
+Kaleido.Queryable.MatchMode
+Kaleido.Queryable.MatchMode.Contains = 3 -> Kaleido.Queryable.MatchMode
+Kaleido.Queryable.MatchMode.EndsWith = 2 -> Kaleido.Queryable.MatchMode
+Kaleido.Queryable.MatchMode.Exact = 0 -> Kaleido.Queryable.MatchMode
+Kaleido.Queryable.MatchMode.StartsWith = 1 -> Kaleido.Queryable.MatchMode
+Kaleido.Queryable.Observability.QueryableTelemetry
+Kaleido.Queryable.PageableAttribute
+Kaleido.Queryable.PageableAttribute.DefaultSize.get -> int
+Kaleido.Queryable.PageableAttribute.DefaultSize.init -> void
+Kaleido.Queryable.PageableAttribute.MaxSize.get -> int
+Kaleido.Queryable.PageableAttribute.MaxSize.init -> void
+Kaleido.Queryable.PageableAttribute.PageableAttribute() -> void
+Kaleido.Queryable.Query.IQueryRequest
+Kaleido.Queryable.Query.IQueryRequest.Query.get -> Kaleido.Queryable.Query.QueryBody?
+Kaleido.Queryable.Query.IQueryRequest.ViewParameters.get -> object?
+Kaleido.Queryable.Query.IQueryRequest.ViewParametersType.get -> System.Type!
+Kaleido.Queryable.Query.IQueryRequest<TParameters>
+Kaleido.Queryable.Query.IQueryRequest<TParameters>.ViewParameters.get -> TParameters?
+Kaleido.Queryable.Query.QueryBody
+Kaleido.Queryable.Query.QueryBody.<Clone>$() -> Kaleido.Queryable.Query.QueryBody!
+Kaleido.Queryable.Query.QueryBody.Deconstruct(out string? SearchText, out Kaleido.Queryable.Query.QueryFilterNode? Filter, out System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Query.QuerySort!>? Sort, out Kaleido.Queryable.Query.QueryPage? Page) -> void
+Kaleido.Queryable.Query.QueryBody.Equals(Kaleido.Queryable.Query.QueryBody? other) -> bool
+Kaleido.Queryable.Query.QueryBody.Filter.get -> Kaleido.Queryable.Query.QueryFilterNode?
+Kaleido.Queryable.Query.QueryBody.Filter.init -> void
+Kaleido.Queryable.Query.QueryBody.Page.get -> Kaleido.Queryable.Query.QueryPage?
+Kaleido.Queryable.Query.QueryBody.Page.init -> void
+Kaleido.Queryable.Query.QueryBody.QueryBody(string? SearchText = null, Kaleido.Queryable.Query.QueryFilterNode? Filter = null, System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Query.QuerySort!>? Sort = null, Kaleido.Queryable.Query.QueryPage? Page = null) -> void
+Kaleido.Queryable.Query.QueryBody.SearchText.get -> string?
+Kaleido.Queryable.Query.QueryBody.SearchText.init -> void
+Kaleido.Queryable.Query.QueryBody.Sort.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Query.QuerySort!>?
+Kaleido.Queryable.Query.QueryBody.Sort.init -> void
+Kaleido.Queryable.Query.QueryExecutionContext
+Kaleido.Queryable.Query.QueryExecutionContext.<Clone>$() -> Kaleido.Queryable.Query.QueryExecutionContext!
+Kaleido.Queryable.Query.QueryExecutionContext.Deconstruct(out Kaleido.Queryable.Query.IQueryRequest! Request) -> void
+Kaleido.Queryable.Query.QueryExecutionContext.Equals(Kaleido.Queryable.Query.QueryExecutionContext? other) -> bool
+Kaleido.Queryable.Query.QueryExecutionContext.QueryExecutionContext(Kaleido.Queryable.Query.IQueryRequest! Request) -> void
+Kaleido.Queryable.Query.QueryExecutionContext.Request.get -> Kaleido.Queryable.Query.IQueryRequest!
+Kaleido.Queryable.Query.QueryExecutionContext.Request.init -> void
+Kaleido.Queryable.Query.QueryExecutionContext.TryGetViewParameters<TViewParameters>() -> TViewParameters?
+Kaleido.Queryable.Query.QueryFilterCondition
+Kaleido.Queryable.Query.QueryFilterCondition.<Clone>$() -> Kaleido.Queryable.Query.QueryFilterCondition!
+Kaleido.Queryable.Query.QueryFilterCondition.Deconstruct(out string! Field, out Kaleido.Queryable.FilterOperator Operator, out System.Collections.Generic.IReadOnlyList<object?>! Values) -> void
+Kaleido.Queryable.Query.QueryFilterCondition.Equals(Kaleido.Queryable.Query.QueryFilterCondition? other) -> bool
+Kaleido.Queryable.Query.QueryFilterCondition.Field.get -> string!
+Kaleido.Queryable.Query.QueryFilterCondition.Field.init -> void
+Kaleido.Queryable.Query.QueryFilterCondition.Operator.get -> Kaleido.Queryable.FilterOperator
+Kaleido.Queryable.Query.QueryFilterCondition.Operator.init -> void
+Kaleido.Queryable.Query.QueryFilterCondition.QueryFilterCondition(string! Field, Kaleido.Queryable.FilterOperator Operator, System.Collections.Generic.IReadOnlyList<object?>! Values) -> void
+Kaleido.Queryable.Query.QueryFilterCondition.Values.get -> System.Collections.Generic.IReadOnlyList<object?>!
+Kaleido.Queryable.Query.QueryFilterCondition.Values.init -> void
+Kaleido.Queryable.Query.QueryFilterGroup
+Kaleido.Queryable.Query.QueryFilterGroup.<Clone>$() -> Kaleido.Queryable.Query.QueryFilterGroup!
+Kaleido.Queryable.Query.QueryFilterGroup.Deconstruct(out Kaleido.Queryable.LogicalOperator Operator, out System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Query.QueryFilterNode!>! Filters) -> void
+Kaleido.Queryable.Query.QueryFilterGroup.Equals(Kaleido.Queryable.Query.QueryFilterGroup? other) -> bool
+Kaleido.Queryable.Query.QueryFilterGroup.Filters.get -> System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Query.QueryFilterNode!>!
+Kaleido.Queryable.Query.QueryFilterGroup.Filters.init -> void
+Kaleido.Queryable.Query.QueryFilterGroup.Operator.get -> Kaleido.Queryable.LogicalOperator
+Kaleido.Queryable.Query.QueryFilterGroup.Operator.init -> void
+Kaleido.Queryable.Query.QueryFilterGroup.QueryFilterGroup(Kaleido.Queryable.LogicalOperator Operator, System.Collections.Generic.IReadOnlyList<Kaleido.Queryable.Query.QueryFilterNode!>! Filters) -> void
+Kaleido.Queryable.Query.QueryFilterNode
+Kaleido.Queryable.Query.QueryFilterNode.<Clone>$() -> Kaleido.Queryable.Query.QueryFilterNode!
+Kaleido.Queryable.Query.QueryFilterNode.Condition.get -> Kaleido.Queryable.Query.QueryFilterCondition?
+Kaleido.Queryable.Query.QueryFilterNode.Condition.init -> void
+Kaleido.Queryable.Query.QueryFilterNode.Deconstruct(out Kaleido.Queryable.Query.QueryFilterCondition? Condition, out Kaleido.Queryable.Query.QueryFilterGroup? Group) -> void
+Kaleido.Queryable.Query.QueryFilterNode.Equals(Kaleido.Queryable.Query.QueryFilterNode? other) -> bool
+Kaleido.Queryable.Query.QueryFilterNode.Group.get -> Kaleido.Queryable.Query.QueryFilterGroup?
+Kaleido.Queryable.Query.QueryFilterNode.Group.init -> void
+Kaleido.Queryable.Query.QueryFilterNode.QueryFilterNode(Kaleido.Queryable.Query.QueryFilterCondition? Condition, Kaleido.Queryable.Query.QueryFilterGroup? Group) -> void
+Kaleido.Queryable.Query.QueryPage
+Kaleido.Queryable.Query.QueryPage.<Clone>$() -> Kaleido.Queryable.Query.QueryPage!
+Kaleido.Queryable.Query.QueryPage.Deconstruct(out int? Size, out int? Offset) -> void
+Kaleido.Queryable.Query.QueryPage.Equals(Kaleido.Queryable.Query.QueryPage? other) -> bool
+Kaleido.Queryable.Query.QueryPage.Offset.get -> int?
+Kaleido.Queryable.Query.QueryPage.Offset.init -> void
+Kaleido.Queryable.Query.QueryPage.QueryPage(int? Size, int? Offset) -> void
+Kaleido.Queryable.Query.QueryPage.Size.get -> int?
+Kaleido.Queryable.Query.QueryPage.Size.init -> void
+Kaleido.Queryable.Query.QueryRequest
+Kaleido.Queryable.Query.QueryRequest.Deconstruct(out Kaleido.Queryable.Query.QueryBody? Query) -> void
+Kaleido.Queryable.Query.QueryRequest.Equals(Kaleido.Queryable.Query.QueryRequest? other) -> bool
+Kaleido.Queryable.Query.QueryRequest.QueryRequest(Kaleido.Queryable.Query.QueryBody? Query = null) -> void
+Kaleido.Queryable.Query.QueryRequest<TParameters>
+Kaleido.Queryable.Query.QueryRequest<TParameters>.Deconstruct(out TParameters? ViewParameters, out Kaleido.Queryable.Query.QueryBody? Query) -> void
+Kaleido.Queryable.Query.QueryRequest<TParameters>.Query.get -> Kaleido.Queryable.Query.QueryBody?
+Kaleido.Queryable.Query.QueryRequest<TParameters>.Query.init -> void
+Kaleido.Queryable.Query.QueryRequest<TParameters>.QueryRequest(TParameters? ViewParameters, Kaleido.Queryable.Query.QueryBody? Query = null) -> void
+Kaleido.Queryable.Query.QueryRequest<TParameters>.ViewParameters.get -> TParameters?
+Kaleido.Queryable.Query.QueryRequest<TParameters>.ViewParameters.init -> void
+Kaleido.Queryable.Query.QueryResult<TView>
+Kaleido.Queryable.Query.QueryResult<TView>.Deconstruct(out int TotalCount, out int Offset, out int PageSize, out System.Collections.Generic.IReadOnlyCollection<TView!>! Results) -> void
+Kaleido.Queryable.Query.QueryResult<TView>.Offset.get -> int
+Kaleido.Queryable.Query.QueryResult<TView>.Offset.init -> void
+Kaleido.Queryable.Query.QueryResult<TView>.PageSize.get -> int
+Kaleido.Queryable.Query.QueryResult<TView>.PageSize.init -> void
+Kaleido.Queryable.Query.QueryResult<TView>.QueryResult(int TotalCount, int Offset, int PageSize, System.Collections.Generic.IReadOnlyCollection<TView!>! Results) -> void
+Kaleido.Queryable.Query.QueryResult<TView>.Results.get -> System.Collections.Generic.IReadOnlyCollection<TView!>!
+Kaleido.Queryable.Query.QueryResult<TView>.Results.init -> void
+Kaleido.Queryable.Query.QueryResult<TView>.TotalCount.get -> int
+Kaleido.Queryable.Query.QueryResult<TView>.TotalCount.init -> void
+Kaleido.Queryable.Query.QuerySort
+Kaleido.Queryable.Query.QuerySort.<Clone>$() -> Kaleido.Queryable.Query.QuerySort!
+Kaleido.Queryable.Query.QuerySort.Deconstruct(out string! Field, out Kaleido.Queryable.SortDirection Direction, out int? Sequence) -> void
+Kaleido.Queryable.Query.QuerySort.Direction.get -> Kaleido.Queryable.SortDirection
+Kaleido.Queryable.Query.QuerySort.Direction.init -> void
+Kaleido.Queryable.Query.QuerySort.Equals(Kaleido.Queryable.Query.QuerySort? other) -> bool
+Kaleido.Queryable.Query.QuerySort.Field.get -> string!
+Kaleido.Queryable.Query.QuerySort.Field.init -> void
+Kaleido.Queryable.Query.QuerySort.QuerySort(string! Field, Kaleido.Queryable.SortDirection Direction, int? Sequence = null) -> void
+Kaleido.Queryable.Query.QuerySort.Sequence.get -> int?
+Kaleido.Queryable.Query.QuerySort.Sequence.init -> void
+Kaleido.Queryable.QueryableErrorCodes
+Kaleido.Queryable.QueryableServiceCollectionExtensions
+Kaleido.Queryable.QuerySourceAttribute
+Kaleido.Queryable.QuerySourceAttribute.DefaultSortField.get -> string?
+Kaleido.Queryable.QuerySourceAttribute.DefaultSortField.init -> void
+Kaleido.Queryable.QuerySourceAttribute.Description.get -> string!
+Kaleido.Queryable.QuerySourceAttribute.Description.init -> void
+Kaleido.Queryable.QuerySourceAttribute.DisplayName.get -> string!
+Kaleido.Queryable.QuerySourceAttribute.DisplayName.init -> void
+Kaleido.Queryable.QuerySourceAttribute.QuerySourceAttribute() -> void
+Kaleido.Queryable.QuerySourceAttribute.Source.get -> string?
+Kaleido.Queryable.QuerySourceAttribute.Source.init -> void
+Kaleido.Queryable.QueryViewAttribute
+Kaleido.Queryable.QueryViewAttribute.DefaultSortField.get -> string?
+Kaleido.Queryable.QueryViewAttribute.DefaultSortField.init -> void
+Kaleido.Queryable.QueryViewAttribute.Description.get -> string!
+Kaleido.Queryable.QueryViewAttribute.Description.init -> void
+Kaleido.Queryable.QueryViewAttribute.DisplayName.get -> string!
+Kaleido.Queryable.QueryViewAttribute.DisplayName.init -> void
+Kaleido.Queryable.QueryViewAttribute.QueryViewAttribute() -> void
+Kaleido.Queryable.Runtime.IQueryContextExecutor<TView>
+Kaleido.Queryable.Runtime.IQueryContextExecutor<TView>.ApplyPage(System.Linq.IQueryable<TView!>! query, int size, int offset) -> System.Linq.IQueryable<TView!>!
+Kaleido.Queryable.Runtime.IQueryContextExecutor<TView>.CountAsync(System.Linq.IQueryable<TView!>! query, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+Kaleido.Queryable.Runtime.IQueryContextExecutor<TView>.ToListAsync(System.Linq.IQueryable<TView!>! query, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<TView!>!>!
+Kaleido.Queryable.SearchableAttribute
+Kaleido.Queryable.SearchableAttribute.MatchMode.get -> Kaleido.Queryable.MatchMode
+Kaleido.Queryable.SearchableAttribute.MatchMode.init -> void
+Kaleido.Queryable.SearchableAttribute.Priority.get -> int
+Kaleido.Queryable.SearchableAttribute.Priority.init -> void
+Kaleido.Queryable.SearchableAttribute.SearchableAttribute() -> void
+Kaleido.Queryable.SortableAttribute
+Kaleido.Queryable.SortableAttribute.SortableAttribute() -> void
+Kaleido.Queryable.SortDirection
+Kaleido.Queryable.SortDirection.Ascending = 0 -> Kaleido.Queryable.SortDirection
+Kaleido.Queryable.SortDirection.Descending = 1 -> Kaleido.Queryable.SortDirection
+override Kaleido.Queryable.EmptyQueryViewParameters.Equals(object? obj) -> bool
+override Kaleido.Queryable.EmptyQueryViewParameters.GetHashCode() -> int
+override Kaleido.Queryable.EmptyQueryViewParameters.ToString() -> string!
+override Kaleido.Queryable.Eventing.QueryExecuted.Equals(object? obj) -> bool
+override Kaleido.Queryable.Eventing.QueryExecuted.GetHashCode() -> int
+override Kaleido.Queryable.Eventing.QueryExecuted.ToString() -> string!
+override Kaleido.Queryable.KaleidoQueryableOptions.Equals(object? obj) -> bool
+override Kaleido.Queryable.KaleidoQueryableOptions.GetHashCode() -> int
+override Kaleido.Queryable.KaleidoQueryableOptions.ToString() -> string!
+override Kaleido.Queryable.Query.QueryBody.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QueryBody.GetHashCode() -> int
+override Kaleido.Queryable.Query.QueryBody.ToString() -> string!
+override Kaleido.Queryable.Query.QueryExecutionContext.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QueryExecutionContext.GetHashCode() -> int
+override Kaleido.Queryable.Query.QueryExecutionContext.ToString() -> string!
+override Kaleido.Queryable.Query.QueryFilterCondition.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QueryFilterCondition.GetHashCode() -> int
+override Kaleido.Queryable.Query.QueryFilterCondition.ToString() -> string!
+override Kaleido.Queryable.Query.QueryFilterGroup.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QueryFilterGroup.GetHashCode() -> int
+override Kaleido.Queryable.Query.QueryFilterGroup.ToString() -> string!
+override Kaleido.Queryable.Query.QueryFilterNode.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QueryFilterNode.GetHashCode() -> int
+override Kaleido.Queryable.Query.QueryFilterNode.ToString() -> string!
+override Kaleido.Queryable.Query.QueryPage.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QueryPage.GetHashCode() -> int
+override Kaleido.Queryable.Query.QueryPage.ToString() -> string!
+override Kaleido.Queryable.Query.QueryRequest.<Clone>$() -> Kaleido.Queryable.Query.QueryRequest!
+override Kaleido.Queryable.Query.QueryRequest.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QueryRequest.GetHashCode() -> int
+override Kaleido.Queryable.Query.QueryRequest.ToString() -> string!
+override Kaleido.Queryable.Query.QueryRequest<TParameters>.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QueryRequest<TParameters>.GetHashCode() -> int
+override Kaleido.Queryable.Query.QueryRequest<TParameters>.ToString() -> string!
+override Kaleido.Queryable.Query.QueryResult<TView>.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QueryResult<TView>.GetHashCode() -> int
+override Kaleido.Queryable.Query.QueryResult<TView>.ToString() -> string!
+override Kaleido.Queryable.Query.QuerySort.Equals(object? obj) -> bool
+override Kaleido.Queryable.Query.QuerySort.GetHashCode() -> int
+override Kaleido.Queryable.Query.QuerySort.ToString() -> string!
+override sealed Kaleido.Queryable.Query.QueryRequest.Equals(Kaleido.Queryable.Query.QueryRequest<Kaleido.Queryable.EmptyQueryViewParameters!>? other) -> bool
+static Kaleido.Queryable.EmptyQueryViewParameters.operator !=(Kaleido.Queryable.EmptyQueryViewParameters? left, Kaleido.Queryable.EmptyQueryViewParameters? right) -> bool
+static Kaleido.Queryable.EmptyQueryViewParameters.operator ==(Kaleido.Queryable.EmptyQueryViewParameters? left, Kaleido.Queryable.EmptyQueryViewParameters? right) -> bool
+static Kaleido.Queryable.Eventing.QueryExecuted.operator !=(Kaleido.Queryable.Eventing.QueryExecuted? left, Kaleido.Queryable.Eventing.QueryExecuted? right) -> bool
+static Kaleido.Queryable.Eventing.QueryExecuted.operator ==(Kaleido.Queryable.Eventing.QueryExecuted? left, Kaleido.Queryable.Eventing.QueryExecuted? right) -> bool
+static Kaleido.Queryable.KaleidoQueryableOptions.operator !=(Kaleido.Queryable.KaleidoQueryableOptions? left, Kaleido.Queryable.KaleidoQueryableOptions? right) -> bool
+static Kaleido.Queryable.KaleidoQueryableOptions.operator ==(Kaleido.Queryable.KaleidoQueryableOptions? left, Kaleido.Queryable.KaleidoQueryableOptions? right) -> bool
+static Kaleido.Queryable.Query.QueryBody.operator !=(Kaleido.Queryable.Query.QueryBody? left, Kaleido.Queryable.Query.QueryBody? right) -> bool
+static Kaleido.Queryable.Query.QueryBody.operator ==(Kaleido.Queryable.Query.QueryBody? left, Kaleido.Queryable.Query.QueryBody? right) -> bool
+static Kaleido.Queryable.Query.QueryExecutionContext.operator !=(Kaleido.Queryable.Query.QueryExecutionContext? left, Kaleido.Queryable.Query.QueryExecutionContext? right) -> bool
+static Kaleido.Queryable.Query.QueryExecutionContext.operator ==(Kaleido.Queryable.Query.QueryExecutionContext? left, Kaleido.Queryable.Query.QueryExecutionContext? right) -> bool
+static Kaleido.Queryable.Query.QueryFilterCondition.operator !=(Kaleido.Queryable.Query.QueryFilterCondition? left, Kaleido.Queryable.Query.QueryFilterCondition? right) -> bool
+static Kaleido.Queryable.Query.QueryFilterCondition.operator ==(Kaleido.Queryable.Query.QueryFilterCondition? left, Kaleido.Queryable.Query.QueryFilterCondition? right) -> bool
+static Kaleido.Queryable.Query.QueryFilterGroup.operator !=(Kaleido.Queryable.Query.QueryFilterGroup? left, Kaleido.Queryable.Query.QueryFilterGroup? right) -> bool
+static Kaleido.Queryable.Query.QueryFilterGroup.operator ==(Kaleido.Queryable.Query.QueryFilterGroup? left, Kaleido.Queryable.Query.QueryFilterGroup? right) -> bool
+static Kaleido.Queryable.Query.QueryFilterNode.CreateCondition(string! field, Kaleido.Queryable.FilterOperator operator, params object?[]! values) -> Kaleido.Queryable.Query.QueryFilterNode!
+static Kaleido.Queryable.Query.QueryFilterNode.CreateGroup(Kaleido.Queryable.LogicalOperator operator, params Kaleido.Queryable.Query.QueryFilterNode![]! filters) -> Kaleido.Queryable.Query.QueryFilterNode!
+static Kaleido.Queryable.Query.QueryFilterNode.operator !=(Kaleido.Queryable.Query.QueryFilterNode? left, Kaleido.Queryable.Query.QueryFilterNode? right) -> bool
+static Kaleido.Queryable.Query.QueryFilterNode.operator ==(Kaleido.Queryable.Query.QueryFilterNode? left, Kaleido.Queryable.Query.QueryFilterNode? right) -> bool
+static Kaleido.Queryable.Query.QueryPage.operator !=(Kaleido.Queryable.Query.QueryPage? left, Kaleido.Queryable.Query.QueryPage? right) -> bool
+static Kaleido.Queryable.Query.QueryPage.operator ==(Kaleido.Queryable.Query.QueryPage? left, Kaleido.Queryable.Query.QueryPage? right) -> bool
+static Kaleido.Queryable.Query.QueryRequest.operator !=(Kaleido.Queryable.Query.QueryRequest? left, Kaleido.Queryable.Query.QueryRequest? right) -> bool
+static Kaleido.Queryable.Query.QueryRequest.operator ==(Kaleido.Queryable.Query.QueryRequest? left, Kaleido.Queryable.Query.QueryRequest? right) -> bool
+static Kaleido.Queryable.Query.QuerySort.operator !=(Kaleido.Queryable.Query.QuerySort? left, Kaleido.Queryable.Query.QuerySort? right) -> bool
+static Kaleido.Queryable.Query.QuerySort.operator ==(Kaleido.Queryable.Query.QuerySort? left, Kaleido.Queryable.Query.QuerySort? right) -> bool
+static Kaleido.Queryable.QueryableServiceCollectionExtensions.AddQueryable(this Kaleido.IKaleidoBuilder! builder, Kaleido.Queryable.KaleidoQueryableOptions? options = null) -> Kaleido.IKaleidoBuilder!
+static Kaleido.Queryable.QueryableServiceCollectionExtensions.AddQueryableEventDispatch(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.EqualityContract.get -> System.Type!
+virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.PrintMembers(System.Text.StringBuilder! builder) -> bool
+~Kaleido.Queryable.Query.QueryRequest<TParameters>.QueryRequest(Kaleido.Queryable.Query.QueryRequest<TParameters>! original) -> void
+~Kaleido.Queryable.Query.QueryResult<TView>.<Clone>$() -> Kaleido.Queryable.Query.QueryResult<TView>!
+~Kaleido.Queryable.Query.QueryResult<TView>.Equals(Kaleido.Queryable.Query.QueryResult<TView>? other) -> bool
+~static Kaleido.Queryable.Query.QueryRequest<TParameters>.operator !=(Kaleido.Queryable.Query.QueryRequest<TParameters>? left, Kaleido.Queryable.Query.QueryRequest<TParameters>? right) -> bool
+~static Kaleido.Queryable.Query.QueryRequest<TParameters>.operator ==(Kaleido.Queryable.Query.QueryRequest<TParameters>? left, Kaleido.Queryable.Query.QueryRequest<TParameters>? right) -> bool
+~static Kaleido.Queryable.Query.QueryResult<TView>.operator !=(Kaleido.Queryable.Query.QueryResult<TView>? left, Kaleido.Queryable.Query.QueryResult<TView>? right) -> bool
+~static Kaleido.Queryable.Query.QueryResult<TView>.operator ==(Kaleido.Queryable.Query.QueryResult<TView>? left, Kaleido.Queryable.Query.QueryResult<TView>? right) -> bool
+~virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.<Clone>$() -> Kaleido.Queryable.Query.QueryRequest<TParameters>!
+~virtual Kaleido.Queryable.Query.QueryRequest<TParameters>.Equals(Kaleido.Queryable.Query.QueryRequest<TParameters>? other) -> bool

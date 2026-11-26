@@ -1,0 +1,79 @@
+using Kaleido.Provider.SQLite.Configuration;
+using Kaleido.Provider.SQLite.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace Kaleido.Provider.SQLite;
+
+/// <summary>
+/// The EF Core context of the SQLite reference context store: process state, idempotent results, the
+/// event outbox and its relays' heartbeats. Registered by <c>AddSqliteProviders</c> or an individual SQLite service-store choice; its tables are internal
+/// to the provider.
+/// </summary>
+/// <remarks>
+/// Registration does not create the database. The host creates the schema once at startup by
+/// resolving this context in a scope and calling <c>Database.EnsureCreatedAsync()</c>; without it
+/// the first save fails because the tables do not exist. <c>EnsureCreated</c> never changes an
+/// existing database, so a database created before a schema change must be recreated or migrated.
+/// </remarks>
+/// <example>
+/// <code>
+/// await using (var scope = app.Services.CreateAsyncScope())
+/// {
+///     await scope.ServiceProvider.GetRequiredService&lt;SqliteKaleidoContextDbContext&gt;().Database.EnsureCreatedAsync();
+/// }
+/// </code>
+/// </example>
+/// <param name="options">The context options, configured by <c>AddSqliteProviders</c>.</param>
+[ExcludeFromCodeCoverage]
+public sealed class SqliteKaleidoContextDbContext(
+    DbContextOptions<SqliteKaleidoContextDbContext> options)
+    : DbContext(options)
+{
+
+    internal DbSet<ProcessContextEntity> ProcessContexts =>
+        Set<ProcessContextEntity>();
+
+    internal DbSet<ProcessStepContextEntity> ProcessStepContexts =>
+        Set<ProcessStepContextEntity>();
+
+    internal DbSet<ProcessAvailableStepEntity> ProcessAvailableSteps =>
+        Set<ProcessAvailableStepEntity>();
+
+    internal DbSet<ProcessRequiredStepEntity> ProcessRequiredSteps =>
+        Set<ProcessRequiredStepEntity>();
+
+    internal DbSet<IdempotentResultEntity> IdempotentResults =>
+        Set<IdempotentResultEntity>();
+
+    internal DbSet<OutboxEventEntity> OutboxEvents =>
+        Set<OutboxEventEntity>();
+
+    internal DbSet<OutboxRelayEntity> OutboxRelays =>
+        Set<OutboxRelayEntity>();
+
+    /// <inheritdoc/>
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfiguration(
+            new ProcessContextEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(
+            new ProcessStepContextEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(
+            new ProcessAvailableStepEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(
+            new ProcessRequiredStepEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(
+            new IdempotentResultEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(
+            new OutboxEventEntityConfiguration());
+
+        modelBuilder.ApplyConfiguration(
+            new OutboxRelayEntityConfiguration());
+    }
+}

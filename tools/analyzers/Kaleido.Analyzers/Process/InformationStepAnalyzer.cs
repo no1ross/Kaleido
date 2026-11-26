@@ -17,14 +17,14 @@ namespace Kaleido.Analyzers.Process;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class InformationStepAnalyzer : DiagnosticAnalyzer
 {
-    private const string InformationStepInterfaceFullName = "Kaleido.Processor.IInformationStep";
+    private const string InformationStepInterfaceFullName = "Kaleido.Process.IInformationStep";
 
-    private const string ProcessStepInterfaceFullName = "Kaleido.Processor.IProcessStep";
+    private const string ProcessStepInterfaceFullName = "Kaleido.Process.IProcessStep";
 
     private static readonly string[] HandlerResultTypes =
     [
-        "Kaleido.Processor.Execution.ProcessStepHandlerResult",
-        "Kaleido.Processor.Execution.ProcessStepHandlerResult<TProcessStepResult>"
+        "Kaleido.Process.Execution.ProcessStepHandlerResult",
+        "Kaleido.Process.Execution.ProcessStepHandlerResult<TProcessStepResult>"
     ];
 
     private static readonly DiagnosticDescriptor ShapeRule =

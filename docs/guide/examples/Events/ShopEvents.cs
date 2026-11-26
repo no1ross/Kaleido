@@ -42,6 +42,7 @@ public static class ShopEvents
         // This service writes its events and also runs the relay that publishes them; with services
         // sharing an outbox database, one host runs the relay for all of them.
         kaleido
+            .AddEventing()
             .AddOutboxRelay<WarehousePublisher>()
             .AddEventRedaction(r =>
                 r.SetRedactor<ErasingRedactor>(new DataClassificationSet(ShopClassifications.Personal)));

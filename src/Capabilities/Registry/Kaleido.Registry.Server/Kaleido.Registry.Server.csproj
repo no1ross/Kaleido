@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Description>Authoritative control Registry store, leases, availability, cache and housekeeping.</Description>
+		<PackageTags>kaleido;registry;server;discovery</PackageTags>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Kaleido.Registry\Kaleido.Registry.csproj" />
+		<ProjectReference Include="..\..\..\Transports\Kaleido.Server\Kaleido.Server.csproj" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
+		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+		<PackageReference Include="Microsoft.Extensions.Logging" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Server" />
+	</ItemGroup>
+	<ItemGroup>
+		<!-- The HTTP listener maps the authority's internal registration, read and caller seams. -->
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http.Server.UnitTests" />
+	</ItemGroup>
+</Project>

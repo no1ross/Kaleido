@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kaleido Queryable capability: source and view registration, query validation, planning and execution.</Description>
+		<PackageTags>kaleido;queryable;query;runtime</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\Core\Kaleido\Kaleido.csproj" />
+		<ProjectReference Include="..\..\..\Events\Kaleido.Eventing\Kaleido.Eventing.csproj" />
+		<ProjectReference Include="..\..\Registry\Kaleido.Registry\Kaleido.Registry.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="System.Diagnostics.CodeAnalysis" />
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Observability" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Query" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Adapters and their tests consume Queryable's internal runtime/registry seams; no public API is added for them. -->
+		<InternalsVisibleTo Include="Kaleido.Server" />
+		<InternalsVisibleTo Include="Kaleido.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server" />
+		<InternalsVisibleTo Include="Kaleido.Queryable.Http.Server.UnitTests" />
+		<InternalsVisibleTo Include="Kaleido.Http.Client" />
+		<InternalsVisibleTo Include="Kaleido.Mcp" />
+		<InternalsVisibleTo Include="Kaleido.Registry" />
+		<InternalsVisibleTo Include="Kaleido.Registry.Http" />
+	</ItemGroup>
+</Project>

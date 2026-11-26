@@ -3,92 +3,26 @@
 This is the contributor guide for `src/`. Read it before making changes to any Kaleido source project.
 
 See also:
-- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — source-level architecture details
-- [`../ARCHITECTURE.md`](../ARCHITECTURE.md) — repo-level architecture overview
-- [`../AGENTS.md`](../AGENTS.md) — repo-level contributor guide
+- [architecture map](../docs/architecture/README.md) — canonical design by behavioral owner
+- [root AGENTS.md](../AGENTS.md) — repository-wide contributor rules
 
 ---
 
 ## Scope and boundaries
 
-What each project owns and must not own is stated once, in the root [project boundaries](../AGENTS.md#project-boundaries); each project's README lists its public types, and [`ARCHITECTURE.md`](./ARCHITECTURE.md) its internals. Two rules apply across `src/`:
+What each project owns is in the root [project boundaries](../AGENTS.md#project-boundaries); a project README explains its software and [focused architecture](../docs/architecture/README.md) explains its internals. These rules apply across `src/`:
 
-- **Project references point one way.** A new reference is an architecture change:
-  - `Kaleido` references no other Kaleido project. Its tooling reference to `Kaleido.Analyzers` carries only analyzer assets; nothing compiles against or runs it.
-  - `Kaleido.Platform` and `Kaleido.Observability.OpenTelemetry` reference `Kaleido`; `Kaleido.Server` and `Kaleido.Client` reference `Kaleido.Platform`.
-  - `Kaleido.Http` references `Kaleido.Platform`; `Kaleido.Http.Server` references `Kaleido.Server` and `Kaleido.Http`; `Kaleido.Http.Client` references `Kaleido.Client` and `Kaleido.Http`.
-  - `Kaleido.Mcp` references `Kaleido.Http.Server` and `Kaleido.Http.Client`; `Kaleido.Registry` references `Kaleido.Server`; `Kaleido.Registry.Http` references `Kaleido.Registry` and `Kaleido.Http.Server`.
-  - `Kaleido.Provider.SQLite` references `Kaleido` and `Kaleido.Registry`; gRPC placeholders mirror the corresponding protocol boundaries.
+- **Project references point one way.** A new reference is an architecture change: the [processed dependency graph](../docs/architecture/dependencies.md) is canonical for foundation, Eventing, Process and Queryable. `Kaleido` has no upper-layer Kaleido reference (its analyzer tooling reference carries analyzer assets only); Eventing references Kaleido and the capabilities reference both. Verify actual `.csproj` references of later, unmigrated projects rather than assuming the proposed graph is already implemented. Do not create cycles.
+- **Project-wide imports:** put `<Using Include="..." />` in each `.csproj`, not in `GlobalUsings.cs`; migrate projects as they are touched.
+- **Namespace/path alignment:** default to the project's name as its root namespace and mirror project-relative directories in declared namespaces. A moved type changes namespace with its folder; update active references, fixtures and PublicAPI together. Reconcile temporary compatibility RootNamespace overrides when their projects are processed rather than leaving a mismatch.
 - **One type with behavior per file.** A type with hand-written logic (a method, operator or computed property; records included) is declared in a file named after it - a generic twin by its arity, `ProcessStepHandlerResult<T>` in `ProcessStepHandlerResultOfT.cs` - and has its own unit-test class (KAL0019, KAL1009, [types with behavior](../docs/ANALYZERS.md#types-with-behavior)). Data-only records, an interface with its implementation (KAL0014), exceptions and attributes may share a file. `[ExcludeFromCodeCoverage]` only on data types (KAL0020).
-- **Public means consumer API.** Transports, front doors and providers are built into the solution, so seams shared between Kaleido's own projects are internal and shared through `InternalsVisibleTo`: always the MSBuild item (`<InternalsVisibleTo Include="..." />`), never the attribute. `src/Directory.Build.props` grants every package's own `<Package>.UnitTests` and Moq's `DynamicProxyGenAssembly2`; any other friend assembly goes in the package's `.csproj`, with a comment saying why. A type is public only when a consumer must name, implement or call it, and then it carries full XML documentation (CS1591 is enforced) and a line in its package's `PublicAPI.Unshipped.txt` (RS0016/RS0017 are enforced). In particular, the runtime registries (`IProcessorStepRegistry`, `ProcessStepRegistration`, `IQuerySourceRegistry`, `IQueryViewRegistry`) and the in-process execution entry points (`IProcessorRuntime` with `ProcessRequest`/`ProcessorRequest`/`ProcessResult`, `IQueryableService`) are internal: only the transports use them (#297).
+- **Public means consumer API.** Transports, front doors and providers are built into the solution, so seams shared between Kaleido's own projects are internal and shared through `InternalsVisibleTo`: always the MSBuild item (`<InternalsVisibleTo Include="..." />`), never the attribute. `src/Directory.Build.props` grants every package's own `<Package>.UnitTests` and Moq's `DynamicProxyGenAssembly2`; any other friend assembly goes in the package's `.csproj`, with a comment saying why. A type is public only when a consumer must name, implement or call it, and then it carries full XML documentation (CS1591 is enforced) and a line in its package's `PublicAPI.Unshipped.txt` (RS0016/RS0017 are enforced).
 
 ---
 
-## Core runtime rules
+## Processed areas
 
-### Bootstrap rules
-`AddKaleido()` should remain responsible for:
-- shared DI baseline setup
-- scoped correlation accessor registration (`TryAddScoped` so pre-existing registrations win)
-- the store defaults (no publisher: see Eventing rules)
-- returning the builder for higher-level frameworks
-
-`AddKaleido()` also registers both runtimes (the internal `AddProcessor()` and `AddQueryable()`), which scan the assemblies in `KaleidoServiceOptions.Assemblies`; the registration model is described once, in [`../ARCHITECTURE.md`](../ARCHITECTURE.md#4-registration-model).
-
-### Builder rules
-`IKaleidoBuilder` is intentionally small: `Services`, `Assemblies`, `Configuration` and `ServiceOptions` — what every subsystem builder (Process, Queryable, Registry, transports) needs without a DI lookup. Be cautious about expanding it — additional members affect every framework built on top.
-
-`KaleidoBuilder` deduplicates assemblies by identity. Preserve that behavior.
-
-### Shared metadata rules
-`TypeDescriber` and `ConstraintMapper` are high-impact shared primitives. Changes ripple into anything that reflects CLR types into discovery metadata, projects validation rules, or converts transport values.
-
-Be careful when changing:
-- scalar type names or format strings
-- nullability behavior
-- enum metadata behavior
-- constraint naming or parameter conventions
-- conversion error behavior
-
-### Queryable runtime rules
-Registration invariants:
-- **The source is the identity; the query context describes how it is queried.** Discovery is interface-only:
-  - sources: `IQuerySource<T>`, `IQuerySourceAsync<T>`, `IDelegatedQuerySource<…>`;
-  - views: `IQueryViewSource<TSource, …>`, `IQueryViewSourceAsync<TSource, …>`.
-
-  Every source needs `[QuerySource]` and every view `[QueryView]`, each with a non-empty `DisplayName` and `Description`.
-- **Names are type names:** source names are unique per service; view names are unique per source.
-- **A type is exactly one capability:** one source shape (sync xor async, one query context; local xor delegated) or one view shape. A view must reference a registered local source.
-- **A query context may back several sources.** Sources are registered and resolved by their concrete type, never as `IQuerySource<T>`.
-
-Runtime invariants:
-- **`QueryableService` dispatches by the queried type** (view, local source, delegated source). Because each type is exactly one capability, there is no lane order or fallback.
-- **The consumer's query is validated against the source's query context before execution, delegated sources included.** A delegated source's `QueryResult` (including its paging) is returned untouched.
-- **`QuerySourceKind` (local or delegated) is service-side runtime metadata.** It must not be published on the registry or wire contracts; consumers see every source the same way.
-- **Paging is per capability:** the source's `[Pageable]` applies to direct queries, a view's to that view; it is never inherited. A pageable view, and a pageable local source, must declare a sortable `DefaultSortField`; a request without a sort is ordered by it (ascending), so pages are stable. A delegated source's order is its downstream's.
-
-### Process runtime rules
-Process is step-centric, not query-centric. Do not import Queryable terminology into Process code or docs.
-
-Registration invariants:
-- `AddKaleido()` must be called before `AddProcessor(...)`
-- A step is identified by `IProcessStep`; `[ProcessStep]` only describes it. Every `IProcessStep` type needs `[ProcessStep]` with a non-empty `DisplayName` and `Description`, and `[ProcessStep]` is only valid on `IProcessStep` types
-- A step's name is its type name (`Type.Name`, unmodified); step type names must be unique across the assembly scan
-- Inside the runtime the next step is typed (`Success<TNext>()`, `Type` through invoker → evaluator); step names are produced only at the boundary (state, events, responses)
-- Every discovered step must have exactly one handler
-- No relationship may self-reference, and the graph of `DependsOn` and `AvailableAfter` together must not be circular (both need every named step completed, so such a cycle can never run); a relationship must name a step the processor registers (all fail at startup with `pro_invalid_registration`). `AvailableUntil` only closes a step and takes no part in cycles
-
-The planning pipeline is layered — keep those responsibilities separated:
-- `StepCandidateBuilder` → resolves step names, hydrates input
-- `StepCandidateValidator` → enforces `DataAnnotations`
-- `StepCandidateConsistencyChecker` → enforces history, dependency, and repeatability consistency
-- `StepCandidatePlanner` → orders executable candidates
-- `StepCandidateNextStepChecker` → admits only next steps (the pending required step, or a step available under the process rules) and checks information-step answers against the pending request
-- `ProcessorExecutor` → invokes handlers, evaluates decisions, updates state, persists, emits events
-
-`ProcessorContext` is current resumable state only. Keep it small. Historical evidence belongs in emitted process events. The pending information request (`RequiredInformationRequest`) is part of that state; past questions and answers are not.
-
-Information requests: Kaleido owns the schema, never the content. Validation is structural only; an `IInformationStep` declares only `InformationRequestId`, `ExchangeId` and `Items`; a request travels only with the required step. See [`docs/INFORMATION_REQUESTS.md`](../docs/INFORMATION_REQUESTS.md) and ADRs 0002–0006.
+Rules unique to an already-processed area live in that area's child AGENTS file: [foundation](Core/AGENTS.md), [capabilities](Capabilities/AGENTS.md) ([Process](Capabilities/Process/AGENTS.md), [Queryable](Capabilities/Queryable/AGENTS.md)) and [Eventing](Events/AGENTS.md). Read those files only when changing their subtree; design rationale belongs in [focused architecture](../docs/architecture/README.md), not repeated here.
 
 ---
 
@@ -105,13 +39,11 @@ no `Meter`/`Counter` instances. Each emitting class owns its instruments as
 when two classes emit on the same meter (e.g. the event outbox and the relay), each declares its own
 instruments and the meter-name subscription merges them.
 
-`Kaleido.Observability.OpenTelemetry` references only core: names of optional projects are copied
-there as internal constants, and its unit tests assert each copy equals the owning constant. A new
-meter or activity source is registered in `AddKaleidoInstrumentation()` in the same change.
+`Kaleido.Observability.OpenTelemetry` is not yet migrated: its old core-only reference needs review now that capabilities and Eventing own their instrumentation constants. Do not claim copied names are the final owner. A new meter or activity source must be registered in `AddKaleidoInstrumentation()` with tests when its owning project is processed.
 ## Transport and HTTP rules
 
-### Kaleido.Platform stability
-This is a shared contract boundary. Treat it like a public API:
+### Published contract stability
+Portable Process, Queryable and Registry models and shared HTTP wire types belong to their active owners. Treat their published contracts like a public API:
 - prefer additive changes (new optional fields) over breaking changes
 - when a contract must change, update the matching endpoint, client method, and tests together
 
@@ -119,64 +51,36 @@ This is a shared contract boundary. Treat it like a public API:
 Middleware and endpoint mapping code should adapt contracts and wire the runtime. It should not reimplement runtime planning or execution logic that belongs in `Kaleido`.
 
 ### Transport contract boundary
-A query request is never read as a core type (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`): `QueryApiBody` and its sub-types in `Kaleido.Platform` are the request wire contract — string enums, `JsonElement` values. `QueryBodyResolver` (in `Kaleido.Http.Server`) converts between them before handing to core. Some core shapes do travel as they are in responses and registry metadata (`InformationRequest`, `ProcessMessage`, `KaleidoCaller`, the Process state enums, `AuthorizationMetadata`, `FilterOperator`/`MatchMode` in field metadata, `QueryResult<T>`): they are supported wire contracts, changed additively only after 1.0 and pinned by snapshot tests ([ADR 0017 amendment](../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds)).
+A query request is never read as a core type (`QueryBody`, `QueryFilterNode`, `FilterOperator`, `SortDirection`, `LogicalOperator`): `QueryApiBody` and its sub-types in `Kaleido.Queryable.Http` are the HTTP request wire contract — string enums, `JsonElement` values. `QueryBodyResolver` (in `Kaleido.Http.Server`) converts between them before handing to core. Some core shapes do travel as they are in responses and registry metadata (`InformationRequest`, `ProcessMessage`, `KaleidoCaller`, the Process state enums, `AuthorizationMetadata`, `FilterOperator`/`MatchMode` in field metadata, `QueryResult<T>`): they are supported wire contracts, changed additively only after 1.0 and pinned by snapshot tests ([ADR 0017 amendment](../docs/decisions/0017-transport-contract-placement.md#amendment-2026-10-26-448-shared-core-shapes-and-the-behavior-abstractions-holds)).
 
-Core never parses transport input. The transport reads each submitted step into its step type (`POST /{service}/{version}/processes/execute`: `ProcessExecutionService`, with `KaleidoJsonOptions`, 400 for a step that cannot be built before anything runs) and core receives typed steps only; `Kaleido.Processor` has no `System.Text.Json` dependency (architecture test `Process_MustNotDependOnJson`). Core's one sanctioned JSON use is the event outbox (`Kaleido.Eventing`): its own storage format, where classified values are redacted (ADR 0013) (#344).
+Process never parses transport input. The transport reads each step into its type (`ProcessExecutionService` uses `KaleidoJsonOptions` and returns 400 for invalid input); the runtime receives typed steps only. `Kaleido.Process` must not depend on `System.Text.Json`; replacement build-time enforcement is tracked in #591. The event outbox uses JSON for its own redacted storage format (ADR 0013, #344).
 
 `KaleidoJsonEndpointFilter` is applied to all Kaleido route groups — it wraps `IValueHttpResult` responses in `Results.Json(..., KaleidoJsonOptions.Options)` so enums serialize as strings. Do not call `ConfigureHttpJsonOptions` — it affects all endpoints in the host app, not just Kaleido's.
 
-`KaleidoJsonOptions.Options` (in `Kaleido.Platform`) is the single shared `JsonSerializerOptions` for all Kaleido HTTP serialization. Every `ReadFromJsonAsync`/`JsonContent.Create` call in Kaleido code must pass it explicitly.
+`KaleidoJsonOptions.Options` (in `Kaleido.Http`) is the single shared `JsonSerializerOptions` for all Kaleido HTTP serialization. Every `ReadFromJsonAsync`/`JsonContent.Create` call in Kaleido code must pass it explicitly.
 
-`QueryResult<T>.TotalCount` semantics: always the number of matching results, whatever page was returned. A pageable source or view always pages (its default page when the request has no `page`). `CountAsync` runs only when the page cannot tell: the page is full, or empty past the start. A partial page ends the results (`TotalCount = offset + results.Count`), and an unpageable capability returns every result (`TotalCount = results.Count`). A delegated source's `TotalCount` is its downstream's.
-
-When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Platform` — samples and consumers should only reference `Kaleido.Platform`, not `Kaleido.Http.Server` (which carries ASP.NET Core dependencies).
+When a delegated query source (`IDelegatedQuerySource`) receives a `QueryBody` and needs to forward it over HTTP, use `query.ToApiBody()` from `Kaleido.Queryable.Http`; clients depend on the wire project, not `Kaleido.Http.Server` (which carries ASP.NET Core dependencies).
 
 ---
 
 ## Correlation rules
-`KaleidoCorrelationContext` fields are transport-agnostic — they live in `Kaleido` core. The HTTP wire names (`KaleidoCorrelationHeaders`) live in `Kaleido.Platform`. Changes to either affect transport handling, observability, event payloads, and higher-level runtime context propagation. Treat them as broad-impact changes.
-
----
-
-## Eventing rules
-`IEventPublisher` is infrastructure-agnostic and belongs to the relay (`AddOutboxRelay`, ADR 0036); every service writes its events, and there is no default publisher.
+`KaleidoCorrelationContext` fields are transport-agnostic foundation types; HTTP header names live in the transport/shared wire contract. Treat changes as broad-impact across transports, capability contexts and event payloads; consult the [correlation flow](../docs/architecture/correlation.md) before editing either side.
 
 ---
 
 ## What not to change casually
-- the minimal shape of `IKaleidoBuilder`
-- `KaleidoBuilder` assembly deduplication behavior
-- services writing every event, the relay owning the publisher
-- `TypeDescriber` scalar/format conventions
-- `ConstraintMapper` constraint naming and parameter conventions
-- Queryable registration invariants (interface identity, type-name naming, one capability per type)
-- `QuerySourceKind` staying unpublished (consumers see every source the same way)
-- Process step registration invariants
-- `ProcessorContext` as current resumable state only
-- `Kaleido.Platform` contract shapes without coordinating server and client changes
+
+The processed foundation/Process/Queryable/Eventing invariants are in their child AGENTS files above. Shared HTTP JSON/header/error behavior belongs to `Kaleido.Http` without ASP.NET or capability/Registry references. The retired Platform models are not a compatibility layer; coordinate published Process/Queryable/Registry changes with their owning server and client adapters.
 
 ---
 
 ## Common pitfalls
-- Moving HTTP or transport concerns into `Kaleido` (core) — `KaleidoCorrelationContext` is transport-agnostic; `KaleidoCorrelationHeaders` and `HttpHeaderSanitizerExtensions` belong in `Kaleido.Platform`
 - Moving runtime logic into `Kaleido.Http.Server` (endpoint mapping and middleware only)
-- Treating `AddAssembly(...)` as if it should also scan and register features
-- Changing `Kaleido.Platform` types without updating both the server endpoint and client
-- Importing Queryable concepts into Process code or vice versa
-- Adding gRPC as a dependency of `Kaleido.Http.Server` — each protocol owns its own adapter and wire types (`Kaleido.Grpc*` placeholders exist but implement nothing yet)
+- Changing a published capability or HTTP contract without updating both its server endpoint and client
+- Adding gRPC as a dependency of `Kaleido.Http.Server` — any future protocol needs its own adapter and wire types, not an HTTP dependency
 
 ---
 
 ## Verification
 
-Build the solution (or one project, `dotnet build src/<Project>/<Project>.csproj`):
-```
-dotnet build Kaleido.slnx
-```
-
-Run tests (every test project, one summary; the gate's command, see root `AGENTS.md`):
-```
-./tools/test/Run-Tests.ps1
-```
-
-If tests report zero, run `full_clean.cmd` from the repo root to clear stale bin/obj, then rebuild. See root `AGENTS.md` for details.
+Follow the root [quality gate and #585 active-unit exception](../AGENTS.md#per-commit-quality-gate), plus the touched area's child AGENTS and corresponding test project. Run the full solution/test script after unmigrated dependents have been updated. Do not treat a stale or zero-test output as a passing gate; use the documented [test-output recovery](../docs/CONVENTIONS.md#when-a-test-project-fails-to-run-or-reports-zero-tests).

@@ -1,0 +1,8 @@
+#nullable enable
+Kaleido.Hosting.Http.IKaleidoHttpEndpointBuilder
+Kaleido.Hosting.Http.IKaleidoHttpEndpointBuilder.Endpoints.get -> Microsoft.AspNetCore.Routing.IEndpointRouteBuilder!
+Kaleido.Hosting.Http.KaleidoEndpointRouteBuilderExtensions
+static Kaleido.Hosting.Http.KaleidoEndpointRouteBuilderExtensions.MapKaleido(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints) -> Kaleido.Hosting.Http.IKaleidoHttpEndpointBuilder!
+static Kaleido.Hosting.Http.KaleidoEndpointRouteBuilderExtensions.MapProcess(this Kaleido.Hosting.Http.IKaleidoHttpEndpointBuilder! builder) -> Kaleido.Hosting.Http.IKaleidoHttpEndpointBuilder!
+static Kaleido.Hosting.Http.KaleidoEndpointRouteBuilderExtensions.MapQueryable(this Kaleido.Hosting.Http.IKaleidoHttpEndpointBuilder! builder) -> Kaleido.Hosting.Http.IKaleidoHttpEndpointBuilder!
+static Kaleido.Hosting.Http.KaleidoEndpointRouteBuilderExtensions.MapCentralRegistry(this Kaleido.Hosting.Http.IKaleidoHttpEndpointBuilder! builder) -> Kaleido.Hosting.Http.IKaleidoHttpEndpointBuilder!

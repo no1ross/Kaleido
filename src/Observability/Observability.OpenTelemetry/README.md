@@ -8,8 +8,7 @@ Optional OpenTelemetry provider for Kaleido. Wires full observability (structure
 
 ```csharp
 builder.Services
-    .AddKaleido(builder.Configuration, new() { ServiceName = "myservice", /* ... */ })
-    .AddHttp()
+    .AddKaleido(builder.Configuration, new() { ServiceName = "myservice", ServiceVersion = "1", /* ... */ })
     .AddOpenTelemetry();   // ← this package
 ```
 

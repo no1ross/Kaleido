@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Client\Kaleido.Registry.Http.Client.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Server\Kaleido.Registry.Http.Server.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Server\Kaleido.Queryable.Http.Server.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Client\Kaleido.Queryable.Http.Client.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\..\..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Server" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Configuration" />
+		<Using Include="Kaleido.Http.Client.Registration" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Http" />
+		<Using Include="Kaleido.Queryable.Http.Server" />
+		<Using Include="Kaleido.Queryable.Http.Client" />
+		<Using Include="Kaleido.Queryable.Client" />
+		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Client" />
+		<Using Include="Kaleido.Registry.Http.Client" />
+		<Using Include="Kaleido.Registry.Http.Server" />
+		<Using Include="Kaleido.Registry.Server" />
+		<Using Include="Kaleido.Server" />
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+</Project>

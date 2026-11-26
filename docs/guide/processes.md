@@ -14,7 +14,7 @@ each behavior described here.
   the C# `required` keyword (KAL2018).
 - Exactly one handler per step: `IProcessStepHandler<TStep>`, or `IProcessStepHandler<TStep, TResult>`
   to return a result (described for agents, KAL2021).
-- Every rule: [PATTERNS - Step + handler](../PATTERNS.md#step--handler).
+- Every rule: [Process authoring - Step + handler](../architecture/capabilities/process-authoring.md#step--handler).
 
 ## What happens on a call
 
@@ -145,11 +145,11 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 }
 ```
 
-| Handler returns | Answer's `status` | The process |
+| Handler returns | Submitted step's `steps[].executionStatus` | The process |
 |---|---|---|
-| `Success()`, `Success<TNext>()`, `Success(result).Next<TNext>()` | `completed` | moves on; `requiredStep` / `availableSteps` say what is next |
+| `Success()`, `Success<TNext>()`, `Success(result).Next<TNext>()` | `completed` | moves on; name-only `requiredStep` / `availableSteps` say what is next |
 | `RequireInformation<TNext>(request)` | `completed` | waits for answers ([Information requests](information-requests.md)) |
-| `HandOff(processor, answer)` | `completed` | continues on another processor (`targetProcessorName`), whose next steps and messages are the answer's; this one runs none of its steps on it, unless that processor hands it back |
+| `HandOff(processor, answer, stepName)` | `completed` | continues on another processor (`targetProcessorName`, `targetProcessorVersion`), whose next-step names and messages are the answer's; this one runs none of its steps on it, unless that processor hands it back |
 | `Complete(messages)` | `completed` | **ends**: its state is `complete`, even when its rules still offer steps |
 | `Reject(messages)` | `rejected` | **unchanged**: the caller corrects the input or retries ([ADR 0008](../decisions/0008-rejected-outcome-and-retryable-exceptions.md)) |
 | `Failure(messages)` | `failed` | **ends**: its state is `businessFailure`; to try again, start a new process |
@@ -157,8 +157,8 @@ public sealed class ShipOrderHandler : IProcessStepHandler<ShipOrderStep>
 | input that fails its validation rules | `validationFailed` | unchanged: the caller corrects the input |
 | the caller cancels while the handler runs | `canceled` | unchanged: the step can be sent again |
 
-The messages are your words for the user (`businessMessages` in the answer), kept apart from Kaleido's
-diagnostics (`frameworkMessages`). The process state is read with `GET /{service}/{version}/processes/{processId}`;
+The messages are your words for the user (`steps[].businessMessages` in the answer), kept apart from Kaleido's
+step diagnostics (`steps[].runtimeMessages`). The process state is read with `GET /{service}/{version}/processes/{processId}`;
 enum values are camelCase on the wire (`businessFailure`, `awaitingRequiredStep`).
 
 A process **ends** as `complete`, `businessFailure` or `handOff`. From then on its state lists no available step, and any step sent to it is answered with status `pending` and `pro_process_ended` ([ADR 0033](../decisions/0033-process-lifecycle-and-admission.md)). Phases are the step graph's (`AvailableAfter` / `AvailableUntil`). A process whose steps stay open after its business outcome (an audit, an appeal) ends with `Complete()`, typically from an internal-only step that a job calls when the process truly ends. Such a step runs after other steps, never as an entry step (KAL2022).
@@ -210,15 +210,17 @@ public sealed class ReturnOrderHandler(IKaleidoProcessorClientFactory processors
         ProcessStepContext context,
         CancellationToken cancellationToken)
     {
-        var answer = await processors.GetClient("returns").ExecuteStepAsync(new OpenReturnStep(), cancellationToken);
+        var answer = await processors.GetClient("returns").ExecuteStepAsync(
+            new OpenReturnStep(), context.ProcessId, idempotencyKey: null, cancellationToken);
+        var opened = answer.Steps.Single(step => step.StepName == nameof(OpenReturnStep));
 
         // The returns service did not take the process over: the return cannot start, as it said.
-        if (answer.Status != StepExecutionStatus.Completed)
+        if (opened.ExecutionStatus != StepExecutionStatus.Completed)
         {
-            return ProcessStepHandlerResult.Reject([.. answer.BusinessMessages]);
+            return ProcessStepHandlerResult.Reject([.. opened.BusinessMessages]);
         }
 
-        return ProcessStepHandlerResult.HandOff("returns", answer);
+        return ProcessStepHandlerResult.HandOff("returns", answer, nameof(OpenReturnStep));
     }
 }
 
@@ -227,8 +229,8 @@ public sealed record OpenReturnStep;
 ```
 
 `HandOff` sends nothing: the handler starts the process on the other service itself, with a
-Kaleido client (`AddHttpClients()` with the one `Kaleido:BaseUrl` gateway). It resolves the
-`returns` service's published route from the host's unfiltered central registry and sends this
+transport-neutral Process client (implemented by `AddProcessHttpClient()` over the shared `Kaleido:BaseUrl` gateway). It resolves the
+`returns` service's published route from the host's hydrated unfiltered central registry and sends this
 process's id and the calling processor, so the returns service starts its process under the
 **same id**, which an unknown id only does for such a call from another processor's step
 ([ADR 0009](../decisions/0009-unknown-process-id-only-on-handoff.md)).
@@ -237,30 +239,23 @@ The handler passes that service's answer to `HandOff`, and this step's answer is
 (#198):
 
 - `targetProcessorName` is `"returns"`;
-- `requiredStep` (with its questions, when it asks some) and `availableSteps` are the returns
-  service's next steps, as its registry publishes them, with its execute URLs, and only the ones
-  this caller may run ([Authorization](../AUTHORIZATION.md));
-- `notice` is its notice, and the step's `businessMessages` are its messages.
+- `targetProcessorVersion` pins the target's actual version (not whichever becomes current later);
+- `requiredStep` (with questions when needed) and `availableSteps` are **names from the returns service's Process result**, not a second Registry-generated choice list or copies of its metadata/execute URLs. They describe what this particular process can submit now. The full Registry already held by the participant describes *those names* and their published versioned operations; it cannot decide which ones this process currently offers ([Authorization](../architecture/authorization.md));
+- `notice` is its notice, and the submitted step's `businessMessages` are its messages.
 
-So a caller follows the URLs and continues on the returns service with the same `processId`, with no
-second call; behind a router it never needs to know the process moved. A step with a typed result
-hands off with its own result too: `HandOff("returns", answer, new ReturnOrderResult { ... })`, built
-from what the returns service returned (`ExecuteStepAsync<TStep, TResponse>`). The other service's
-result is not passed on: your step's result type is your caller's contract. Each `executeUrl`
-includes the target's version; keep that version alongside the `processId` when reading its state
-or continuing it later (`GetClient(serviceName, serviceVersion)`). The id alone cannot select the
-older version after a rollout.
+The consumer uses the answer's `(targetProcessorName, targetProcessorVersion, step name)` to find the step's description and callable binding in its **already-hydrated** Registry, then continues through the same Process client with the same `processId`. There is no extra Registry or target-state read to discover the immediate next choices: the target already answered through the hand-off. A step with a typed result hands off with its own result too: `HandOff("returns", answer, nameof(OpenReturnStep), new ReturnOrderResult { ... })`. That typed result is the origin step's contract; the target's full result is not copied into it. Keep `targetProcessorVersion` alongside the `processId` when reading the target's state later or continuing it (`GetClient(serviceName, serviceVersion)`); the id alone cannot select the older version after a rollout. A **later read of the origin's state** does not replay the target's immediate choice list; read the pinned target if fresh choices are needed. General tool discovery without a current process still filters the Registry for the caller and must never display the internal full copy unchanged ([Process architecture](../architecture/capabilities/process.md#registry-catalog-versus-this-processs-current-choices)).
 
 Hand off only when the other service's step completed: an answer that did not is a process
-violation (the step's status is `exception`). This process keeps only the other service's name, so
-a later call here is refused with `pro_process_ended`, and its state names `targetProcessorName`.
+violation (the step's status is `exception`). The origin stores the target's name and actual
+version, not the target's changing choices: a later call here is refused with `pro_process_ended`,
+and its state names `targetProcessorName` and `targetProcessorVersion`.
 Each processor keeps its own state ([Callers and correlation](callers-and-correlation.md)).
 
 ## Concurrent and repeated calls
 
 - **Two calls for one process at once:** the state is saved conditionally on its version; the second
   gets **409** `pro_process_conflict`, and its handler's work must be safe to run again. See
-  [PATTERNS - Concurrency](../PATTERNS.md#concurrency-idempotency-and-retries).
+  [Process authoring - Concurrency](../architecture/capabilities/process-authoring.md#process-host-and-persistence).
 - **A retried call:** send an `Idempotency-Key` (the Kaleido clients always do); a repeat is answered
   from the stored result instead of running the step again
   ([ADR 0019](../decisions/0019-idempotent-execution-admission.md)).
@@ -270,5 +265,5 @@ Each processor keeps its own state ([Callers and correlation](callers-and-correl
 A step has no version: its name is its identity, one definition per name is live, and running
 processes continue on the deployed definition (completed steps stay in their history). A breaking
 change takes a new step name. See
-[PATTERNS - Changing a step, source or view](../PATTERNS.md#changing-a-step-source-or-view) and
+[Architecture - Capability identity and versions](../architecture/principles.md#capability-identity-and-service-versions) and
 [ADR 0029](../decisions/0029-capabilities-have-no-version.md).

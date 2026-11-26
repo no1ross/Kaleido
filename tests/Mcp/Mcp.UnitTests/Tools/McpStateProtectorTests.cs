@@ -2,7 +2,6 @@ using System.Buffers.Binary;
 using System.Text;
 using Kaleido.Mcp.Observability;
 using Kaleido.Observability;
-using Kaleido.Platform;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.WebUtilities;

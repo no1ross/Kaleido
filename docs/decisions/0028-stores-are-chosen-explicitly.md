@@ -1,6 +1,6 @@
 # 0028. Every store a service uses is chosen explicitly; memory is a choice, never a fallback
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR 0048](0048-explicit-provider-registration-without-default-stores.md) (the explicit-choice principle remains)
 - **Date:** 2026-10-25
 - **Related:** #438, #430, ADR 0020, ADR 0023
 

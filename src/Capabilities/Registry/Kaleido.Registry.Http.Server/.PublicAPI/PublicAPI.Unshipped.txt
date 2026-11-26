@@ -1,0 +1,7 @@
+#nullable enable
+Kaleido.Registry.Http.Server.ControlRegistryEndpointRouteBuilderExtensions
+Kaleido.Registry.Http.Server.IKaleidoRegistryService
+Kaleido.Registry.Http.Server.IKaleidoRegistryService.GetForCallerAsync(bool refresh, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Registry.KaleidoRegistry!>!
+Kaleido.Registry.Http.Server.RegistryHttpServerServiceCollectionExtensions
+static Kaleido.Registry.Http.Server.ControlRegistryEndpointRouteBuilderExtensions.MapKaleidoControlRegistry(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static Kaleido.Registry.Http.Server.RegistryHttpServerServiceCollectionExtensions.AddRegistryHttpServer(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!

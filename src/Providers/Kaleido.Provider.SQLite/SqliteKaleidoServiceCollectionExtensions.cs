@@ -1,0 +1,198 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Kaleido.Provider.SQLite;
+
+/// <summary>
+/// Registers Kaleido's stores on SQLite, each on its own: the process state
+/// (<see cref="AddSqliteContextProvider"/>), the storage of Kaleido's built-in outbox
+/// (<see cref="AddSqliteOutboxProvider"/>) and idempotent requests (<see cref="AddSqliteIdempotencyProvider"/>),
+/// in one database (ADR 0023).
+/// </summary>
+/// <remarks>
+/// <para>
+/// All three share one <see cref="SqliteKaleidoContextDbContext"/>, so they take the same connection
+/// string. With the context store and the outbox store both on SQLite, a process-state transition (the
+/// state and its events) is one transaction. Several instances may share the database: saves are
+/// conditional on the process version, and outbox claims are leased, so each event is relayed by one
+/// instance at a time.
+/// </para>
+/// <para>
+/// These calls only register services; they do not open or create the database. The host creates the
+/// schema once at startup, e.g.
+/// <c>scope.ServiceProvider.GetRequiredService&lt;SqliteKaleidoContextDbContext&gt;().Database.EnsureCreatedAsync()</c>.
+/// <c>EnsureCreated</c> never changes an existing database: a database created before a schema change
+/// must be recreated or migrated. No health check is registered; a host that wants one adds it, e.g.
+/// <c>services.AddHealthChecks().AddDbContextCheck&lt;SqliteKaleidoContextDbContext&gt;("kaleido-sqlite")</c>.
+/// </para>
+/// </remarks>
+/// <example>
+/// <code>
+/// builder.Services.AddKaleido(builder.Configuration, new() { /* ... */ })
+///     .AddSqliteProviders("kaleido")
+///     .AddOutboxRelay&lt;HttpEventPublisher&gt;();   // this host also publishes the database's events
+/// </code>
+/// </example>
+public static class SqliteKaleidoServiceCollectionExtensions
+{
+    /// <summary>Explicitly selects SQLite for process state, the event outbox and server-side idempotency.</summary>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <param name="connectionName">The name of the connection string under <c>ConnectionStrings</c>.</param>
+    /// <returns>The builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">The named connection string is missing or invalid, or a different provider was chosen.</exception>
+    public static IKaleidoBuilder AddSqliteProviders(this IKaleidoBuilder builder, string connectionName)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionName);
+        var connectionString = builder.Configuration[$"ConnectionStrings:{connectionName}"];
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new KaleidoConfigurationException(SqliteErrorCodes.MissingConnectionString,
+                $"ConnectionStrings:{connectionName} must name the SQLite provider database.");
+        }
+
+        Validate(connectionString);
+        return builder.AddSqliteContextProvider(connectionString)
+            .AddSqliteOutboxProvider(connectionString)
+            .AddSqliteIdempotencyProvider(connectionString);
+    }
+
+    /// <summary>
+    /// Stores process state in SQLite (tables <c>ProcessContexts</c>, ...) and makes process-state
+    /// transitions SQLite transactions: the state and its events commit together when the outbox writes
+    /// to the same database (<see cref="AddSqliteOutboxProvider"/>, or an outbox store of the host's own
+    /// joining <see cref="ISqliteKaleidoTransaction"/>).
+    /// </summary>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <param name="connectionString">The SQLite connection string, e.g. <c>Data Source=kaleido.db</c>.</param>
+    /// <returns>The builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">
+    /// The connection string is invalid (<see cref="SqliteErrorCodes.InvalidConnectionString"/>) or
+    /// differs from another SQLite store's (<see cref="SqliteErrorCodes.ConnectionStringMismatch"/>);
+    /// another context store or transactions are registered (<c>conflicting_store</c>).
+    /// </exception>
+    public static IKaleidoBuilder AddSqliteContextProvider(this IKaleidoBuilder builder, string connectionString)
+    {
+        AddDatabase(builder, connectionString);
+        builder.Services.TryAddScoped<ISqliteKaleidoTransaction, SqliteProcessTransaction>();
+
+        return builder
+            .AddContextStore<SqliteProcessContextStore>()
+            .AddTransactions<SqliteProcessTransactions>();
+    }
+
+    /// <summary>
+    /// Stores the service's outbox in SQLite (table <c>OutboxEvents</c>): every event it writes, tagged
+    /// with the service and its version. The relay (<c>AddOutboxRelay&lt;TPublisher&gt;()</c>, on this host
+    /// or another on the same database) claims the entries of every service in it and hands them to its
+    /// publisher, retrying across restarts. Atomic with the process state when the context store is SQLite
+    /// too (<see cref="AddSqliteContextProvider"/>).
+    /// </summary>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <param name="connectionString">The SQLite connection string; the same as the other SQLite stores'.</param>
+    /// <returns>The builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">
+    /// The connection string is invalid or differs from another SQLite store's; another outbox store is
+    /// registered (<c>conflicting_outbox</c>).
+    /// </exception>
+    public static IKaleidoBuilder AddSqliteOutboxProvider(this IKaleidoBuilder builder, string connectionString)
+    {
+        AddDatabase(builder, connectionString);
+
+        return builder.AddOutboxStore<SqliteKaleidoOutboxStore>();
+    }
+
+    /// <summary>
+    /// Stores idempotent requests in SQLite (table <c>IdempotentResults</c>). Independent of the other
+    /// stores: it needs no shared transaction.
+    /// </summary>
+    /// <param name="builder">The Kaleido builder.</param>
+    /// <param name="connectionString">The SQLite connection string; the same as the other SQLite stores'.</param>
+    /// <returns>The builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">
+    /// The connection string is invalid or differs from another SQLite store's; another idempotency store
+    /// is registered (<c>conflicting_store</c>).
+    /// </exception>
+    public static IKaleidoBuilder AddSqliteIdempotencyProvider(this IKaleidoBuilder builder, string connectionString)
+    {
+        AddDatabase(builder, connectionString);
+
+        return builder.AddIdempotencyStore<SqliteProcessIdempotencyStore>();
+    }
+
+    /// <summary>
+    /// Keeps the control registry's state in SQLite (tables <c>RegistryRegistrations</c>,
+    /// <c>RegistryInstances</c>, <c>RegistryCurrentVersions</c>; #553), in the registry host's own database
+    /// (<see cref="SqliteKaleidoRegistryDbContext"/>), apart from any service's process database. Every write
+    /// is one statement, so several registry nodes may share the database file on one machine.
+    /// </summary>
+    /// <param name="builder">The Kaleido builder of the registry host (<c>AddControlRegistry()</c>).</param>
+    /// <param name="connectionString">The SQLite connection string, e.g. <c>Data Source=registry.db</c>.</param>
+    /// <returns>The builder, for chaining.</returns>
+    /// <exception cref="KaleidoConfigurationException">
+    /// The connection string is invalid (<see cref="SqliteErrorCodes.InvalidConnectionString"/>); another
+    /// registry store is registered (<c>conflicting_store</c>).
+    /// </exception>
+    public static IKaleidoBuilder AddSqliteRegistryProvider(this IKaleidoBuilder builder, string connectionString)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        Validate(connectionString);
+
+        builder.Services.TryAdd(ServiceDescriptor.Scoped(
+            typeof(DbContextOptions<SqliteKaleidoRegistryDbContext>),
+            _ => new DbContextOptionsBuilder<SqliteKaleidoRegistryDbContext>().UseSqlite(connectionString).Options));
+        builder.Services.TryAddScoped<SqliteKaleidoRegistryDbContext>();
+
+        return builder.AddRegistryStore<SqliteKaleidoRegistryStore>();
+    }
+
+    // One database for every SQLite store: the first call registers the DbContext, the others must name
+    // the same database.
+    private static void AddDatabase(IKaleidoBuilder builder, string connectionString)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        Validate(connectionString);
+
+        var registered = builder.Services
+            .Select(x => x.ImplementationInstance)
+            .OfType<SqliteKaleidoDatabase>()
+            .FirstOrDefault();
+
+        if (registered is not null)
+        {
+            if (!string.Equals(registered.ConnectionString, connectionString, StringComparison.Ordinal))
+            {
+                throw new KaleidoConfigurationException(
+                    SqliteErrorCodes.ConnectionStringMismatch,
+                    "The SQLite Kaleido stores were registered with different connection strings. They share one database: pass the same connection string to each.");
+            }
+
+            return;
+        }
+
+        builder.Services.AddSingleton(new SqliteKaleidoDatabase(connectionString));
+        builder.Services.AddDbContext<SqliteKaleidoContextDbContext>(options => options.UseSqlite(connectionString));
+    }
+
+    private static void Validate(string connectionString)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+
+        try
+        {
+            _ = new SqliteConnectionStringBuilder(connectionString);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new KaleidoConfigurationException(
+                SqliteErrorCodes.InvalidConnectionString,
+                "The SQLite Kaleido store connection string is invalid.",
+                exception);
+        }
+    }
+}
+
+// The database the SQLite stores were registered on (one per service).
+internal sealed record SqliteKaleidoDatabase(string ConnectionString);

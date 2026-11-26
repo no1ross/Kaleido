@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Queryable\Kaleido.Queryable.Http.Server\Kaleido.Queryable.Http.Server.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\..\..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Http.Server" />
+		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Server" />
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\..\src\Providers\Kaleido.Provider.InMemory\Kaleido.Provider.InMemory.csproj" />
+	</ItemGroup>
+</Project>

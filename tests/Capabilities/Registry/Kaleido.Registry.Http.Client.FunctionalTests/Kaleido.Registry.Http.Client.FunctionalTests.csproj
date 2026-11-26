@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Microsoft.AspNetCore.TestHost" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Client\Kaleido.Registry.Http.Client.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Registry\Kaleido.Registry.Http.Server\Kaleido.Registry.Http.Server.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="..\..\..\Shared\Identity\*.cs" Link="Identity\%(Filename)%(Extension)" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Server" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Registration" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Client" />
+		<Using Include="Kaleido.Registry.Http.Client" />
+		<Using Include="Kaleido.Registry.Http.Server" />
+		<Using Include="Kaleido.Registry.Server" />
+		<Using Include="Kaleido.Server" />
+	</ItemGroup>
+</Project>

@@ -1,6 +1,6 @@
 # Kaleido contributor guide
 
-This is the repository-level contributor guide for Kaleido: 12 shipped projects and four gRPC placeholders (see [Project boundaries](#project-boundaries)). Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) first for the repository model, then the README of the project you are changing. The coding conventions are in [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); this file stays under 16,000 bytes so agent tooling loads it whole (#455, checked in CI).
+This is the contributor guide for Kaleido's #585 migration (see [Project boundaries](#project-boundaries)). Read the [architecture map](./docs/architecture/README.md), then the README and scoped AGENTS.md of the project you are changing. The coding conventions are in [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); this file stays under 16,000 bytes so agent tooling loads it whole (#455, checked in CI).
 
 ## Build and test commands
 
@@ -26,48 +26,53 @@ Every commit must pass this gate on its own. A later commit fixing an earlier on
 2. **All tests pass:** `./tools/test/Run-Tests.ps1` → `Passed!`, 0 failed, with a non-zero test count. The script itself refuses a test project missing from `Kaleido.slnx`, a stale or missing build output (it runs each project's evaluated `TargetPath`), a run without a summary and a project that ran no tests (#437); `tools/test/Test-RunTests.ps1` tests those rules (CI runs it).
 3. **Record the result in the commit message body**, e.g. `Gate: build 0 errors / 0 warnings; tests 2981 passed`.
 
+**Architecture migration #585 exception:** while lower-level projects are being extracted, unmigrated dependents may temporarily fail. For each migration commit, build the active production project, its associated test project(s), and already-migrated dependencies with 0 warnings; run their tests, affected functional tests and applicable analyzer/documentation checks. Record those exact results and any temporarily broken dependents in the commit. Do not disable rules or delete tests. Restore the full gate above and all CI checks before the migration PR is complete.
+
 **Warnings fail the build in every area (#406)** - `src/`, `tools/` and `tests/`, IDE code-style rules included - so the "0 warnings" gate is enforced, not only observed.
 
 CI (`build.yml`) also checks, and you run before committing:
 
 - whitespace and final newlines: `dotnet format whitespace --folder --include src/ tools/ tests/ docs/ --exclude '**/obj/**' '**/bin/**' --verify-no-changes` (drop `--verify-no-changes` to fix) (#462);
-- every Kaleido type or member named in the Markdown docs exists in the sources: `python3 tools/docs/check-doc-symbols.py` (ADRs are skipped as historical; a deliberate non-symbol in code style goes in the script's `ALLOWED` list with its reason);
-- every tracked local Markdown link, image and heading fragment resolves: `python3 tools/docs/check-local-links.py`; test the checker with `python3 tools/docs/test-check-local-links.py` (external URLs are never fetched; use `python` on Windows);
+- docs symbols: `python3 tools/docs/check-doc-symbols.py` (ADRs are historical; intentional non-symbols need a reason in the script's `ALLOWED` list);
+- local Markdown links and fragments: `python3 tools/docs/check-local-links.py`; self-test: `python3 tools/docs/test-check-local-links.py` (use `python` on Windows);
 - every public error code is raised in `src/` and listed in `docs/ERROR_CODES.md` (no more, no less): `python3 tools/docs/check-error-codes.py` (#518);
 - every `AGENTS.md` is under 16,000 bytes: `python3 tools/docs/check-agents-size.py` (#455);
+- repository text encoding: `python3 tools/docs/check-repository-encoding.py`; self-test: `python3 tools/docs/test-check-repository-encoding.py`;
 - the packed release set works in a clean host: after a Release build, pack to a fresh subfolder of `artifacts/` and run `./tools/packaging/Test-PackageConsumer.ps1 -Packages <folder>` and `./tools/packaging/Test-PackageConsumer.Tests.ps1 -Packages <folder>` (do not mix older packages in the feed; CI's `-RequireDeterministic` needs PowerShell 7);
-- line coverage of the shipped `src/` assemblies, at least 95% ([build details](./docs/CONVENTIONS.md#build-details)).
+- merged line coverage of the shipped `src/` assemblies, at least 97.5% on exact counts; authored classes below the 97% goal produce warnings ([build details](./docs/CONVENTIONS.md#build-details)).
 
 ## Project boundaries
 
-One place owns each fact: a project's README lists its types and entry points, [`ARCHITECTURE.md`](./ARCHITECTURE.md) describes how the projects depend on each other and how a host registers them, and [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md) describes the internals. This section states only what each project owns and must not own; link to those documents rather than repeating their type lists.
+Project READMEs explain behavior, the [architecture map](./docs/architecture/README.md) explains design, and scoped AGENTS files preserve local invariants. This table states owners, not type lists.
 
 | Project | Owns | Does not own |
 | --- | --- | --- |
-| [`Kaleido`](./src/Kaleido/README.md) | Process and Queryable runtimes, eventing, store contracts, in-memory defaults | transport, ASP.NET Core, persistence technology |
-| [`Kaleido.Platform`](./src/Platform/README.md) | shared registry/wire contracts, JSON, headers and metadata; changes ripple into server and client | endpoint mapping, runtime planning |
-| [`Kaleido.Server`](./src/Server/README.md) | ASP.NET Core caller, authorization, correlation, filters, in-host registry view | protocol endpoints, runtime logic |
-| [`Kaleido.Client`](./src/Client/README.md) | neutral clients, call context, registry participation, hydration, transport choice | HTTP wire implementation |
-| [`Kaleido.Http`](./src/Http/Http/README.md) | shared HTTP route and URL shapes | server endpoints or outbound calls |
-| [`Kaleido.Http.Server`](./src/Http/Http.Server/README.md) | HTTP Process and Queryable endpoints and execution adapters | core process decisions |
-| [`Kaleido.Http.Client`](./src/Http/Http.Client/README.md) | one gateway HTTP client (`Kaleido:BaseUrl`), published-route calls, credentials and resilience | per-service addresses, server mapping |
+| [`Kaleido`](./src/Core/Kaleido/README.md) | foundation: identity, shared metadata, correlation and options binding | Eventing/outbox, capability runtimes, provider choice, transport |
+| [`Kaleido.Eventing`](./src/Events/Kaleido.Eventing/README.md) | generic event envelope, redaction, writer, outbox store/relay and health | Process/Queryable event payloads or a transport; placement temporary (#592) |
+| [Process](./src/Capabilities/Process/Kaleido.Process/README.md), [HTTP](./src/Capabilities/Process/Kaleido.Process.Http/README.md) | local runtime/Registry projection; HTTP bindings | Queryable, Registry authority/client |
+| [Queryable](./src/Capabilities/Queryable/Kaleido.Queryable/README.md), [Client](./src/Capabilities/Queryable/Kaleido.Queryable.Client/README.md), [HTTP](./src/Capabilities/Queryable/Kaleido.Queryable.Http/README.md) | local runtime, neutral remote contract; HTTP requests/bindings | Process, Registry authority/client |
+| [`Kaleido.Server`](./src/Transports/Kaleido.Server/README.md) | neutral authorization mode/default | ASP.NET, Registry client, runtime logic |
+| [`Kaleido.Http`](./src/Transports/Http/Kaleido.Http/README.md) | shared HTTP JSON, headers, errors and route prefix | ASP.NET, capability/Registry URLs |
+| [`Kaleido.Http.Server`](./src/Transports/Http/Kaleido.Http.Server/README.md) | shared ASP.NET filters, correlation and caller handling | Registry wiring, capability execution |
+| [`Kaleido.Hosting`](./src/Composed/Hosts/Kaleido.Hosting/README.md) | neutral capability registration and required-store checks | transport, provider choice, mandatory Registry client |
+| [`Kaleido.Http.Client`](./src/Transports/Http/Kaleido.Http.Client/README.md) | shared named `IHttpClientFactory` gateway pipeline, caller credential guard, safe reads | Registry URLs, dynamic capability routing, Process idempotency |
 | [`Kaleido.Mcp`](./src/Mcp/Mcp/README.md) | caller-filtered MCP tools, forms, schemas and invocation | transport or client internals |
-| [`Kaleido.Registry`](./src/Registry/Registry/README.md) | control registry, leases, store contract, merged views and HybridCache | instance addresses and gateway routing |
-| [`Kaleido.Registry.Http`](./src/Registry/Registry.Http/README.md) | control-registry HTTP API | registry state or runtime rules |
+| [`Kaleido.Registry`](./src/Capabilities/Registry/Kaleido.Registry/README.md) | Core-only portable Registry item/binding/read contracts | authority, HTTP/gRPC implementation |
+| [Registry.Server](./src/Capabilities/Registry/Kaleido.Registry.Server/README.md), [Client](./src/Capabilities/Registry/Kaleido.Registry.Client/README.md) | authority state; explicit participation | transport, capability runtime |
+| [Registry.Http](./src/Capabilities/Registry/Kaleido.Registry.Http/README.md), [Server](./src/Capabilities/Registry/Kaleido.Registry.Http.Server/README.md), [Client](./src/Capabilities/Registry/Kaleido.Registry.Http.Client/README.md) | fixed URLs; HTTP listener/client | persistence, planning |
 | [`Kaleido.Observability.OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md) | OpenTelemetry wiring | instrumentation emitted by core |
-| [`Kaleido.Provider.SQLite`](./src/Providers/Provider.SQLite/README.md) | reference core and registry stores and transactions on SQLite | production-provider guarantees |
-| [gRPC placeholders](./src/Grpc/Grpc/README.md) (`Kaleido.Grpc*`, `Kaleido.Registry.Grpc`) | future protocol boundaries, not packable yet | a gRPC implementation |
+| [`Kaleido.Provider.SQLite`](./src/Providers/Kaleido.Provider.SQLite/README.md) | reference Process/Eventing/Registry stores on SQLite | multi-node production guarantees |
 
 ## General contributor rules
 
-- **Kaleido is a process engine; it never makes business decisions** ([ADR 0001](./docs/decisions/0001-process-engine-not-decision-maker.md)). It applies declared rules (the step graph, declared roles/policies, structural validation) and records what happened; what to ask, who may access a case, which path to take and what wording to use belong to the implementer. New capabilities are mechanisms, never content.
+- **Kaleido never makes business decisions** ([ADR 0001](./docs/decisions/0001-process-engine-not-decision-maker.md)). It applies declared structural rules and records outcomes; case access, questions, decisions and wording belong to implementers. Capabilities are mechanisms, never content.
 - Keep concerns in the correct project.
 - `Kaleido` (core) should remain free of transport-specific behavior.
 - `Kaleido.Http.Server` should adapt and publish; it should not reimplement runtime logic.
-- `Kaleido.Platform` is shared — changes here ripple into both server and client projects.
+- The old `Kaleido.Platform` and mixed `Kaleido.Client` contracts have been retired; do not reintroduce their project dependencies or URL-bearing Process response shapes.
 - Keep transport layers thin.
 - Prefer explicit registration and discoverability over hidden behavior.
-- Match documentation to the actual code and runtime behavior.
+- In #585 each processed owner updates its README, focused architecture and scoped AGENTS before commit; `docs/architecture/` is the sole architecture home. Use scoped `.editorconfig` only for area-specific differences and prefer source analyzers for dependencies (#591). Do not add placeholder transports merely to populate folders; gRPC will be designed with its own owners when implemented.
 - When you change contracts or metadata semantics, review the downstream docs and tests for the affected area.
 - Define response semantics before choosing a serialization format: keep distinct message streams separate and represent an empty collection consistently across transports. Options control which messages adapters populate, not JSON-specific field presence.
 
@@ -85,11 +90,8 @@ In [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); read the section before chang
 
 ## For code generators
 
-- Read [`docs/PATTERNS.md`](./docs/PATTERNS.md) first — it is the canonical
-  convention doc (step/handler shape, sync-vs-async sources, options
-  snapshots, exceptions, DI, correlation).
-- The vocabulary is: **Processor** = owns/executes steps; **Process** = one
-  executing instance. See `src/ARCHITECTURE.md` → Terminology.
+- Start with the [architecture map](./docs/architecture/README.md); use [Process authoring](./docs/architecture/capabilities/process-authoring.md) or [Queryable authoring](./docs/architecture/capabilities/queryable-authoring.md) for consumer declarations and [implementation boundaries](./docs/architecture/implementation.md) for framework exceptions, DI and async rules.
+- The vocabulary is: **Processor** = owns/executes steps; **Process** = one executing instance. See [principles and terminology](./docs/architecture/principles.md).
 - `docs/ANALYZERS.md` has one section per audience, each listing its rules
   and what they prevent:
   - consumer `KAL2xxx` rules, for code that uses Kaleido (services, samples);
@@ -98,7 +100,7 @@ In [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); read the section before chang
 
   Generate compliant code; never suppress KAL rules.
 - Correlation invariants (one RequestId per request, echo-or-generate,
-  automatic outbound propagation) are in `src/ARCHITECTURE.md`.
+  automatic outbound propagation) are in [`docs/architecture/correlation.md`](./docs/architecture/correlation.md).
 
 ## Tracking work discovered mid-item
 
@@ -136,7 +138,4 @@ When something new surfaces while working an Issue:
 
 ## How to navigate the repo
 
-- **Repository:** [`README.md`](./README.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`MAINTAINERS.md`](./MAINTAINERS.md), [`SECURITY.md`](./SECURITY.md), [`SUPPORT.md`](./SUPPORT.md), [`docs/VERSIONING.md`](./docs/VERSIONING.md), [`RELEASING.md`](./RELEASING.md), [`CHANGELOG.md`](./CHANGELOG.md) — the human-facing summary of these rules, who maintains the project, the vulnerability-reporting route, where to ask, and the preview policy.
-- **Source:** [`src/AGENTS.md`](./src/AGENTS.md), [`src/ARCHITECTURE.md`](./src/ARCHITECTURE.md), [`docs/CONVENTIONS.md`](./docs/CONVENTIONS.md); project READMEs: [`Kaleido`](./src/Kaleido/README.md), [`Platform`](./src/Platform/README.md), [`Server`](./src/Server/README.md), [`Client`](./src/Client/README.md), [`Http`](./src/Http/Http/README.md), [`Http.Server`](./src/Http/Http.Server/README.md), [`Http.Client`](./src/Http/Http.Client/README.md), [`Mcp`](./src/Mcp/Mcp/README.md), [`Registry`](./src/Registry/Registry/README.md), [`Registry.Http`](./src/Registry/Registry.Http/README.md), [`OpenTelemetry`](./src/Observability/Observability.OpenTelemetry/README.md), [`SQLite`](./src/Providers/Provider.SQLite/README.md).
-- **Tooling:** [`tools/analyzers/README.md`](./tools/analyzers/README.md) — analyzer project roles and test locations; rule catalog in [`docs/ANALYZERS.md`](./docs/ANALYZERS.md).
-- **Tests and examples:** [`tests/AGENTS.md`](./tests/AGENTS.md); the consumer guide's compiled examples, [`docs/guide`](./docs/guide/README.md); the full samples in their own repositories, consuming the Kaleido packages: [`Kaleido-Samples-PriorAuth`](https://github.com/no1ross/Kaleido-Samples-PriorAuth) and [`Kaleido-Samples-ECommerce`](https://github.com/no1ross/Kaleido-Samples-ECommerce) (#95). Use the examples and samples to understand intended consumer usage, and the tests to understand behavioral expectations and invariants.
+Start with the [architecture map](./docs/architecture/README.md) and the touched project's README (linked in [project boundaries](#project-boundaries)). Read [`src/AGENTS.md`](./src/AGENTS.md) for production rules, [`tests/AGENTS.md`](./tests/AGENTS.md) for testing and [`docs/ANALYZERS.md`](./docs/ANALYZERS.md) for enforced rules. Consumer examples are in the [guide](./docs/guide/README.md); support/release policy is in [`docs/VERSIONING.md`](./docs/VERSIONING.md).

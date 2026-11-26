@@ -1,0 +1,35 @@
+#nullable enable
+const Kaleido.Registry.Client.RegistryClientErrorCodes.EmptyResponse = "registryclient_empty_response" -> string!
+const Kaleido.Registry.Client.RegistryClientErrorCodes.InvalidResponse = "registryclient_invalid_response" -> string!
+const Kaleido.Registry.Client.RegistryClientErrorCodes.RequestFailed = "registryclient_request_failed" -> string!
+const Kaleido.Registry.Client.RegistryClientErrorCodes.RouteUnavailable = "registryclient_route_unavailable" -> string!
+Kaleido.Registry.Client.IKaleidoRegistryClient
+Kaleido.Registry.Client.IKaleidoRegistryClient.DeregisterAsync(System.Guid instanceId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Kaleido.Registry.Client.IKaleidoRegistryClient.GetAvailabilityAsync(string? etag, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Registry.Client.KaleidoRegistryDocument<Kaleido.Registry.KaleidoRegistryAvailability!>!>!
+Kaleido.Registry.Client.IKaleidoRegistryClient.GetCapabilitiesAsync(string? etag, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Registry.Client.KaleidoRegistryDocument<Kaleido.Registry.KaleidoRegistry!>!>!
+Kaleido.Registry.Client.IKaleidoRegistryClient.GetRegistryAsync(string? etag, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Registry.Client.KaleidoRegistryDocument<Kaleido.Registry.KaleidoRegistry!>!>!
+Kaleido.Registry.Client.IKaleidoRegistryClient.HeartbeatAsync(System.Guid instanceId, Kaleido.Registry.RegistryHeartbeat! heartbeat, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Registry.RegistryLease?>!
+Kaleido.Registry.Client.IKaleidoRegistryClient.RegisterAsync(Kaleido.Registry.RegistryInstanceRegistration! registration, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Registry.RegistryLease!>!
+Kaleido.Registry.Client.KaleidoRegistryClientException
+Kaleido.Registry.Client.KaleidoRegistryClientException.Code.get -> string!
+Kaleido.Registry.Client.KaleidoRegistryClientException.KaleidoRegistryClientException(string! code, string! message, string? status = null, System.Exception? innerException = null) -> void
+Kaleido.Registry.Client.KaleidoRegistryClientException.Status.get -> string?
+Kaleido.Registry.Client.KaleidoRegistryClientServiceCollectionExtensions
+Kaleido.Registry.Client.KaleidoRegistryDocument<T>
+Kaleido.Registry.Client.KaleidoRegistryDocument<T>.Deconstruct(out T? Value, out string? ETag, out bool NotModified) -> void
+Kaleido.Registry.Client.KaleidoRegistryDocument<T>.ETag.get -> string?
+Kaleido.Registry.Client.KaleidoRegistryDocument<T>.ETag.init -> void
+Kaleido.Registry.Client.KaleidoRegistryDocument<T>.KaleidoRegistryDocument(T? Value, string? ETag, bool NotModified) -> void
+Kaleido.Registry.Client.KaleidoRegistryDocument<T>.NotModified.get -> bool
+Kaleido.Registry.Client.KaleidoRegistryDocument<T>.NotModified.init -> void
+Kaleido.Registry.Client.KaleidoRegistryDocument<T>.Value.get -> T?
+Kaleido.Registry.Client.KaleidoRegistryDocument<T>.Value.init -> void
+Kaleido.Registry.Client.RegistryClientErrorCodes
+override Kaleido.Registry.Client.KaleidoRegistryDocument<T>.Equals(object? obj) -> bool
+override Kaleido.Registry.Client.KaleidoRegistryDocument<T>.GetHashCode() -> int
+override Kaleido.Registry.Client.KaleidoRegistryDocument<T>.ToString() -> string!
+static Kaleido.Registry.Client.KaleidoRegistryClientServiceCollectionExtensions.AddRegistryClient(this Kaleido.IKaleidoBuilder! builder) -> Kaleido.IKaleidoBuilder!
+~Kaleido.Registry.Client.KaleidoRegistryDocument<T>.<Clone>$() -> Kaleido.Registry.Client.KaleidoRegistryDocument<T>!
+~Kaleido.Registry.Client.KaleidoRegistryDocument<T>.Equals(Kaleido.Registry.Client.KaleidoRegistryDocument<T>? other) -> bool
+~static Kaleido.Registry.Client.KaleidoRegistryDocument<T>.operator !=(Kaleido.Registry.Client.KaleidoRegistryDocument<T>? left, Kaleido.Registry.Client.KaleidoRegistryDocument<T>? right) -> bool
+~static Kaleido.Registry.Client.KaleidoRegistryDocument<T>.operator ==(Kaleido.Registry.Client.KaleidoRegistryDocument<T>? left, Kaleido.Registry.Client.KaleidoRegistryDocument<T>? right) -> bool

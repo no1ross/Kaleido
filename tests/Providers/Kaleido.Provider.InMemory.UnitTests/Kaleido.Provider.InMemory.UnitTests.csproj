@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Configuration" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<ProjectReference Include="..\..\..\src\Providers\Kaleido.Provider.InMemory\Kaleido.Provider.InMemory.csproj" />
+		<ProjectReference Include="..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Storage" />
+		<Using Include="Kaleido.Process.Storage" />
+		<Using Include="Kaleido.Process.Context" />
+		<Using Include="Kaleido.Process.Server.Idempotency" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Server" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Exceptions" />
+		<Using Include="Kaleido.Provider.InMemory" />
+		<Using Include="Kaleido.Provider.InMemory.Storage" />
+		<Using Include="Kaleido.Provider.InMemory.Idempotency" />
+	</ItemGroup>
+</Project>

@@ -71,22 +71,12 @@ internal sealed partial class ToolCatalogBuilder(
         // Queries take a processId only where processes exist: it records the query with the process.
         var context = new BuildContext { HasProcesses = processServices.Count > 0, AllocatedNames = AllocateNames(nameScope) };
 
-        foreach (var source in registry.Queryables.OrderBy(x => x.ServiceName, StringComparer.Ordinal).ThenBy(x => x.Name, StringComparer.Ordinal))
-        {
-            if (!string.IsNullOrWhiteSpace(source.QueryUrl))
-            {
-                AddSourceTool(context, source);
-            }
-
-            foreach (var view in source.Views.OrderBy(x => x.Name, StringComparer.Ordinal))
-            {
-                AddViewTool(context, source, view);
-            }
-        }
+        AddQueryableTools(context, registry.Queryables);
 
         foreach (var processor in processors)
         {
-            foreach (var step in (processor.Steps ?? []).Where(x => !x.IsInformationStep).OrderBy(x => x.Name, StringComparer.Ordinal))
+            foreach (var step in (processor.Steps ?? []).Where(x => !x.IsInformationStep && HasHttpOperation(x.Bindings, "execute", "POST"))
+                         .OrderBy(x => x.Name, StringComparer.Ordinal))
             {
                 AddStepTool(context, processor, step);
             }
@@ -109,7 +99,7 @@ internal sealed partial class ToolCatalogBuilder(
             IsPartial = registry.IsPartial || registry.Errors.Count > 0,
             UnavailableServices = registry.Errors.Select(x => x.Source).ToArray(),
             ProcessServices = processServices,
-            Routes = registry.Routes,
+            Processes = registry.Processes,
             MissingDescriptions = context.MissingDescriptions,
             TruncatedNames = context.TruncatedNames,
             UnresolvedLookups = context.UnresolvedLookups,
@@ -117,11 +107,32 @@ internal sealed partial class ToolCatalogBuilder(
         };
     }
 
+    private void AddQueryableTools(BuildContext context, IReadOnlyCollection<QueryableRegistryItem> queryables)
+    {
+        foreach (var source in queryables.OrderBy(x => x.ServiceName, StringComparer.Ordinal).ThenBy(x => x.Name, StringComparer.Ordinal))
+        {
+            if (HasHttpOperation(source.Bindings, "query", "POST"))
+            {
+                AddSourceTool(context, source);
+            }
+
+            foreach (var view in source.Views.Where(x => HasHttpOperation(x.Bindings, "query", "POST"))
+                         .OrderBy(x => x.Name, StringComparer.Ordinal))
+            {
+                AddViewTool(context, source, view);
+            }
+        }
+    }
+
+    private static bool HasHttpOperation(RegistryTransportBindings bindings, string operation, string method) =>
+        bindings.Http.Where(x => string.Equals(x.Operation, operation, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.Method, method, StringComparison.OrdinalIgnoreCase)).Take(2).Count() == 1;
+
     // ── Query tools ──────────────────────────────────────────────────────────
 
     private void AddSourceTool(
         BuildContext context,
-        QueryableSourceResponse source)
+        QueryableRegistryItem source)
     {
         var name = Name(context, source.ServiceName, source.Name, "source", serviceVersion: source.ServiceVersion);
         var query = QuerySchema(context, name, FieldOwner(source), source.Fields, source.Parameters, source.Pageable);
@@ -145,7 +156,6 @@ internal sealed partial class ToolCatalogBuilder(
             ServiceVersion = source.ServiceVersion,
             CapabilityName = source.Name,
             SourceName = source.Name,
-            Url = source.QueryUrl ?? string.Empty,
             ParametersTakeProcessId = query.ParametersTakeProcessId,
             OutputDescriptions = OutputDescriptions(source.OutputFields),
         });
@@ -153,8 +163,8 @@ internal sealed partial class ToolCatalogBuilder(
 
     private void AddViewTool(
         BuildContext context,
-        QueryableSourceResponse source,
-        QueryableViewResponse view)
+        QueryableRegistryItem source,
+        QueryableRegistryViewItem view)
     {
         var name = Name(context, source.ServiceName, view.Name, "view", owner: source.Name, serviceVersion: source.ServiceVersion);
         var query = QuerySchema(context, name, FieldOwner(source), source.Fields, view.Parameters, view.Pageable);
@@ -179,7 +189,6 @@ internal sealed partial class ToolCatalogBuilder(
             CapabilityName = view.Name,
             SourceName = source.Name,
             ViewName = view.Name,
-            Url = view.QueryUrl,
             ParametersTakeProcessId = query.ParametersTakeProcessId,
             OutputDescriptions = OutputDescriptions(view.OutputFields),
         });
@@ -215,9 +224,9 @@ internal sealed partial class ToolCatalogBuilder(
         BuildContext context,
         string toolName,
         string fieldOwner,
-        IReadOnlyCollection<QueryableFieldMetadata> fields,
-        IReadOnlyCollection<QueryableQueryParameter> parameters,
-        QueryablePagingMetadata? pageable)
+        IReadOnlyCollection<QueryableRegistryField> fields,
+        IReadOnlyCollection<QueryableRegistryParameter> parameters,
+        QueryableRegistryPaging? pageable)
     {
         var properties = new JsonObject();
         var required = new List<string>();
@@ -267,8 +276,8 @@ internal sealed partial class ToolCatalogBuilder(
         BuildContext context,
         string fieldOwner,
         JsonObject properties,
-        IReadOnlyCollection<QueryableFieldMetadata> fields,
-        QueryablePagingMetadata? pageable)
+        IReadOnlyCollection<QueryableRegistryField> fields,
+        QueryableRegistryPaging? pageable)
     {
         var searchable = fields.Where(x => x.IsSearchable).OrderBy(x => x.SearchPriority ?? int.MaxValue).ToArray();
         var filterable = fields.Where(x => x.IsFilterable && x.FilterOperators.Count > 0).ToArray();
@@ -300,10 +309,10 @@ internal sealed partial class ToolCatalogBuilder(
         }
     }
 
-    private static string FieldOwner(QueryableSourceResponse source) =>
+    private static string FieldOwner(QueryableRegistryItem source) =>
         $"{source.ServiceName}.{source.Name}";
 
-    private static JsonObject QueryProcessIdSchema(QueryableQueryParameter? declared) =>
+    private static JsonObject QueryProcessIdSchema(QueryableRegistryParameter? declared) =>
         new()
         {
             ["type"] = "string",
@@ -325,22 +334,22 @@ internal sealed partial class ToolCatalogBuilder(
     private sealed record QueryToolSchema(JsonObject Schema, bool ParametersTakeProcessId, bool ProcessIdRequired);
 
     // Fields the filters already explain are only named here.
-    private static JsonObject SearchTextSchema(IEnumerable<QueryableFieldMetadata> searchable, IReadOnlyCollection<QueryableFieldMetadata> explained) =>
+    private static JsonObject SearchTextSchema(IEnumerable<QueryableRegistryField> searchable, IReadOnlyCollection<QueryableRegistryField> explained) =>
         new()
         {
             ["type"] = "string",
             ["description"] =
                 "Free-text search. Matches: " +
-                string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")}{(explained.Contains(x) ? string.Empty : Explain(x.Description))})")) + ".",
+                string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode ?? "contains")}{(explained.Contains(x) ? string.Empty : Explain(x.Description))})")) + ".",
         };
 
-    private static JsonObject FiltersSchema(QueryableFieldMetadata[] filterable) =>
+    private static JsonObject FiltersSchema(QueryableRegistryField[] filterable) =>
         new()
         {
             ["type"] = "array",
             ["description"] =
                 "Conditions, all of which must match. Fields and their operators: " +
-                string.Join("; ", filterable.Select(x => $"{x.Name} ({DescribeType(x.DataType)}{Explain(x.Description)}): {string.Join(", ", x.FilterOperators.Select(o => Camel(o.ToString())))}")) +
+                string.Join("; ", filterable.Select(x => $"{x.Name} ({DescribeType(x.DataType)}{Explain(x.Description)}): {string.Join(", ", x.FilterOperators.Select(Camel))}")) +
                 ". Pass values typed like the field (in/between take several values; isNull/isTrue take none).",
             ["items"] = new JsonObject
             {
@@ -348,7 +357,7 @@ internal sealed partial class ToolCatalogBuilder(
                 ["properties"] = new JsonObject
                 {
                     ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.Select(x => x.Name)) },
-                    ["operator"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.SelectMany(x => x.FilterOperators).Select(x => Camel(x.ToString())).Distinct(StringComparer.Ordinal)) },
+                    ["operator"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.SelectMany(x => x.FilterOperators).Select(Camel).Distinct(StringComparer.Ordinal)) },
                     ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject() },
                 },
                 ["required"] = new JsonArray("field", "operator"),
@@ -357,7 +366,7 @@ internal sealed partial class ToolCatalogBuilder(
 
     // A field's description is said once per tool, where it first appears (filters, then search),
     // so the sort list only explains fields that are sortable and nothing else.
-    private static JsonObject SortSchema(IEnumerable<QueryableFieldMetadata> sortable, IReadOnlyCollection<QueryableFieldMetadata> explained) =>
+    private static JsonObject SortSchema(IEnumerable<QueryableRegistryField> sortable, IReadOnlyCollection<QueryableRegistryField> explained) =>
         new()
         {
             ["type"] = "array",
@@ -378,7 +387,7 @@ internal sealed partial class ToolCatalogBuilder(
             },
         };
 
-    private static JsonObject PageSchema(QueryablePagingMetadata pageable) =>
+    private static JsonObject PageSchema(QueryableRegistryPaging pageable) =>
         new()
         {
             ["type"] = "object",
@@ -394,7 +403,7 @@ internal sealed partial class ToolCatalogBuilder(
     private (JsonObject Schema, bool HasRequired) ParametersSchema(
         BuildContext context,
         string toolName,
-        IReadOnlyCollection<QueryableQueryParameter> parameters)
+        IReadOnlyCollection<QueryableRegistryParameter> parameters)
     {
         var parameterProperties = new JsonObject();
         var requiredParameters = new List<string>();
@@ -435,7 +444,7 @@ internal sealed partial class ToolCatalogBuilder(
 
     private void AddStepTool(
         BuildContext context,
-        ProcessorRegistryResponse processor,
+        ProcessRegistryItem processor,
         ProcessStepResponse step)
     {
         var name = Name(context, processor.ServiceName, step.Name, "step", serviceVersion: processor.ServiceVersion);
@@ -479,7 +488,6 @@ internal sealed partial class ToolCatalogBuilder(
             Service = processor.ServiceName,
             ServiceVersion = processor.ServiceVersion,
             CapabilityName = step.Name,
-            Url = step.ExecuteUrl,
             IsInitial = step.IsInitial,
             Repeatable = step.Repeatable,
             RequiresConfirmation = step.RequiresConfirmation,
@@ -885,7 +893,7 @@ internal sealed partial class ToolCatalogBuilder(
 
         foreach (var (name, description) in (fields ?? []).Select(x => x switch
                  {
-                     QueryableQueryProperty p => (p.Name, p.Description),
+                     QueryableRegistryOutputField p => (p.Name, p.Description),
                      ProcessOutputFieldMetadata p => (p.Name, p.Description),
                      _ => (string.Empty, null),
                  }))
@@ -905,7 +913,7 @@ internal sealed partial class ToolCatalogBuilder(
         var names = fields?
             .Select(x => x switch
             {
-                QueryableQueryProperty p => Classified(p.Name, p.Classifications),
+                QueryableRegistryOutputField p => Classified(p.Name, p.Classifications),
                 ProcessOutputFieldMetadata p => Classified(p.Name, p.Classifications),
                 _ => null,
             })

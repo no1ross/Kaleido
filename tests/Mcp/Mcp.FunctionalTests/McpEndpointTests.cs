@@ -13,8 +13,8 @@ namespace Kaleido.Mcp.FunctionalTests;
 public sealed class McpEndpointTests(McpClinicFixture fixture)
     : IClassFixture<McpClinicFixture>
 {
-    private static readonly string Nurse = BearerTestAuthHandler.Token("nina");
-    private static readonly string Doctor = BearerTestAuthHandler.Token("dora", ClinicRoles.Doctor);
+    private static readonly string Nurse = TestCallerTokens.Token("nina");
+    private static readonly string Doctor = TestCallerTokens.Token("dora", ClinicRoles.Doctor);
 
     private static readonly string[] Checkup = ["checkup"];
     private static readonly string[] NotUrgent = ["false"];
@@ -83,23 +83,17 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
         Assert.Contains("Ask the user to confirm before calling.", close.Description, StringComparison.Ordinal);
     }
 
-    // #463: with no ServerVersion set, initialize reports the host application's own version (here the
-    // test host's entry assembly), without its +commit suffix.
+    // MCP initialize reports the same service identity AddKaleido validated; the Registry tracks
+    // deployment build identity separately from this opaque service-version label.
     [Fact]
-    public async Task Initialize_WithoutAServerVersion_ReportsTheHostApplicationsVersion()
+    public async Task Initialize_UsesTheHostServiceNameAndServiceVersion()
     {
-        var entry = System.Reflection.Assembly.GetEntryAssembly() ?? throw new InvalidOperationException("No entry assembly.");
-        var informational = System.Reflection.CustomAttributeExtensions
-            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(entry)?.InformationalVersion;
-        var expected = informational?.Split('+')[0] ?? entry.GetName().Version?.ToString();
-
         await using var client = await fixture.ConnectAsync(Nurse);
 
         // MCP SDK 2.3.0 declares ServerInfo nullable (#544): the server always sends it.
         var server = Assert.IsType<ModelContextProtocol.Protocol.Implementation>(client.ServerInfo);
-        Assert.Equal("kaleido", server.Name);
-        Assert.Equal(expected, server.Version);
-        Assert.DoesNotContain('+', server.Version);
+        Assert.Equal("clinic", server.Name);
+        Assert.Equal("1", server.Version);
     }
 
     [Fact]
@@ -373,17 +367,17 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
     [Fact]
     public async Task Tools_CallTheServiceAsTheCaller_NeverWithTheHostsCredentials()
     {
-        var nurse = BearerTestAuthHandler.Token($"nurse-{Guid.NewGuid():N}");
+        var nurse = TestCallerTokens.Token($"nurse-{Guid.NewGuid():N}");
         await using var client = await fixture.ConnectAsync(nurse);
 
         await client.CallToolAsync("clinic_patient", new Dictionary<string, object?>(), cancellationToken: Cancel);
         await client.CallToolAsync("clinic_start_visit", new Dictionary<string, object?> { ["patientId"] = 1 }, cancellationToken: Cancel);
 
-        var calls = fixture.ServiceRequests.Where(x => x.Authorization == BearerTestAuthHandler.Exchanged(nurse)).ToArray();
+        var calls = fixture.ServiceRequests.Where(x => TestCallerTokens.IsExchangedFor(x.Authorization, nurse)).ToArray();
 
         Assert.Contains(calls, x => x.Path.Contains("/clinic/1/queryable/", StringComparison.Ordinal));
         Assert.Contains(calls, x => x.Path.Contains("/clinic/1/processes/steps/", StringComparison.Ordinal));
-        Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == McpClinicFixture.HostServiceToken);
+        Assert.DoesNotContain(calls, x => TestCallerTokens.IsServiceOwn(x.Authorization));
 
         // #574: the agent's token itself never reaches the service (no token passthrough).
         Assert.DoesNotContain(fixture.ServiceRequests, x => x.Authorization == nurse);
@@ -393,12 +387,12 @@ public sealed class McpEndpointTests(McpClinicFixture fixture)
     [Fact]
     public async Task ATool_TellsTheServiceItCameThroughMcp_AndWhichTool()
     {
-        var nurse = BearerTestAuthHandler.Token($"nurse-{Guid.NewGuid():N}");
+        var nurse = TestCallerTokens.Token($"nurse-{Guid.NewGuid():N}");
         await using var client = await fixture.ConnectAsync(nurse);
 
         await client.CallToolAsync("clinic_patient", new Dictionary<string, object?>(), cancellationToken: Cancel);
 
-        var call = Assert.Single(fixture.ServiceOrigins, x => x.Authorization == BearerTestAuthHandler.Exchanged(nurse) && x.Path.Contains("/clinic/1/queryable/", StringComparison.Ordinal));
+        var call = Assert.Single(fixture.ServiceOrigins, x => TestCallerTokens.IsExchangedFor(x.Authorization, nurse) && x.Path.Contains("/clinic/1/queryable/", StringComparison.Ordinal));
         Assert.Equal(("mcp", "clinic_patient"), (call.Origin, call.OriginTool));
     }
 }

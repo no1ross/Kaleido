@@ -1,4 +1,4 @@
-using Kaleido.Processor.Observability;
+using Kaleido.Process.Observability;
 
 namespace Kaleido.Observability.OpenTelemetry;
 

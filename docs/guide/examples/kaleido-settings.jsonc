@@ -1,0 +1,36 @@
+{
+  // Foundation, Queryable and Process settings only. Add each other owner when its project is migrated.
+  "Kaleido": {
+    // Required: lowercase service identity, also used in published route names.
+    "ServiceName": "orders",
+    // Required: opaque service version; every service and its store keys are versioned.
+    "ServiceVersion": "1",
+    // Optional: human-readable registry metadata.
+    "DisplayName": "Orders",
+    "Description": "Processes and queries orders",
+    "Queryable": {
+      // Optional: sources without their own authorization declaration inherit this rule.
+      // An absent Queryable default inherits Hosting's service rule, or is unspecified when standalone.
+      "DefaultAuthorization": {
+        "Policy": "read-orders",
+        "Roles": ["reader"],
+        "AllowAnonymous": false
+      }
+    },
+    "Process": {
+      // Optional: marks this processor as an entry processor in published metadata.
+      "IsEntryProcessor": true,
+      // Optional: steps without their own authorization declaration inherit this rule.
+      // An absent Process default is unspecified standalone; Hosting inheritance is later-owned.
+      "DefaultAuthorization": {
+        "Policy": "write-orders",
+        "Roles": ["processor"],
+        "AllowAnonymous": false
+      }
+    }
+  }
+}
+
+// Assemblies is required in the KaleidoServiceOptions passed in code to AddKaleido();
+// TypeFilter is an optional Func<Type, bool> supplied in code. Neither can be bound from JSON.
+// InstanceId is generated internally per running service instance; it is not a configuration setting.

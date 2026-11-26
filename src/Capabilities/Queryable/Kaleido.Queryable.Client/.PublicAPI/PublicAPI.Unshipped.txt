@@ -1,0 +1,8 @@
+#nullable enable
+Kaleido.Queryable.Client.IKaleidoQueryableClient
+Kaleido.Queryable.Client.IKaleidoQueryableClient.QuerySourceAsync<TParameters, TResult>(string! source, Kaleido.Queryable.Query.QueryRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
+Kaleido.Queryable.Client.IKaleidoQueryableClient.QuerySourceAsync<TResult>(string! source, Kaleido.Queryable.Query.QueryRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TResult!>!>!
+Kaleido.Queryable.Client.IKaleidoQueryableClient.QueryViewAsync<TParameters, TView>(string! source, string! view, Kaleido.Queryable.Query.QueryRequest<TParameters!>! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Kaleido.Queryable.Query.QueryResult<TView!>!>!
+Kaleido.Queryable.Client.IKaleidoQueryableClientFactory
+Kaleido.Queryable.Client.IKaleidoQueryableClientFactory.GetClient(string! serviceName) -> Kaleido.Queryable.Client.IKaleidoQueryableClient!
+Kaleido.Queryable.Client.IKaleidoQueryableClientFactory.GetClient(string! serviceName, string! serviceVersion) -> Kaleido.Queryable.Client.IKaleidoQueryableClient!

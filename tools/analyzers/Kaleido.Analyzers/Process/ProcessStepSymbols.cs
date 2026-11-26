@@ -4,9 +4,9 @@ namespace Kaleido.Analyzers.Process;
 
 internal static class ProcessStepSymbols
 {
-    public const string StepInterfaceFullName = "Kaleido.Processor.IProcessStep";
+    public const string StepInterfaceFullName = "Kaleido.Process.IProcessStep";
 
-    public const string StepAttributeFullName = "Kaleido.Processor.ProcessStepAttribute";
+    public const string StepAttributeFullName = "Kaleido.Process.ProcessStepAttribute";
 
     public static bool ImplementsProcessStep(
         INamedTypeSymbol type,

@@ -1,8 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Kaleido.Platform;
-using Kaleido.Processor;
 using ModelContextProtocol.Protocol;
 
 namespace Kaleido.Mcp.Tools;
@@ -114,7 +112,7 @@ internal sealed partial class KaleidoToolInvoker
     // Null when the answers may be submitted now; otherwise what the caller gets instead (#516): the
     // same decision and the same form as for any step, before anything is submitted.
     private async Task<ToolOutcome?> ConfirmAnswersAsync(
-        ProcessRequiredStep step,
+        ProcessStepResponse step,
         Guid processId,
         ConfirmedAnswers answers,
         KaleidoToolCall call,
@@ -165,7 +163,7 @@ internal sealed partial class KaleidoToolInvoker
     // the note for the step's summary. A form that cannot be shown is a note too, never the step failing.
     private async Task<string?> ConfirmAnswersInSessionAsync(
         KaleidoToolCall call,
-        ProcessRequiredStep step,
+        ProcessStepResponse step,
         InformationResponseItem[] items,
         Guid processId,
         CancellationToken cancellationToken)
@@ -216,7 +214,7 @@ internal sealed partial class KaleidoToolInvoker
                 cancellationToken);
         }
 
-        var pending = await PendingAsync(answers.Service, answers.ServiceVersion, processId, cancellationToken);
+        var pending = await PendingAsync(answers.Service, answers.ServiceVersion, processId, catalog, cancellationToken);
 
         if (pending.Error is { } error)
         {
@@ -242,7 +240,7 @@ internal sealed partial class KaleidoToolInvoker
             answers.ServiceVersion);
     }
 
-    private static CallToolResult AnswersNotConfirmed(ProcessRequiredStep step, string action) =>
+    private static CallToolResult AnswersNotConfirmed(ProcessStepResponse step, string action) =>
         Success(new JsonObject
         {
             ["step"] = step.Name,
@@ -281,7 +279,7 @@ internal sealed partial class KaleidoToolInvoker
                 .Select(x => $"{x.Key}: {x.Value.GetRawText()}"));
 
     // The information step and the answers that will be submitted.
-    private static ElicitRequestParams AnswersConfirmationForm(ProcessRequiredStep step, IEnumerable<InformationResponseItem> items) =>
+    private static ElicitRequestParams AnswersConfirmationForm(ProcessStepResponse step, IEnumerable<InformationResponseItem> items) =>
         ConfirmationForm(
             $"submit the answers to {StepTitle(step)}",
             step.Destructive,

@@ -11,7 +11,7 @@ namespace Kaleido.Mcp.FunctionalTests;
 public sealed class McpUnavailableTests(DownstreamDownFixture fixture)
     : IClassFixture<DownstreamDownFixture>
 {
-    private static readonly string Nurse = BearerTestAuthHandler.Token("nina");
+    private static readonly string Nurse = TestCallerTokens.Token("nina");
 
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 

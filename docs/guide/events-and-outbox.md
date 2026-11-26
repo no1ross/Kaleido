@@ -7,7 +7,7 @@ data warehouse, a compliance store or other services. The examples continue the 
 ## Which events, and when
 
 | Event | `EventType` | Written when | In the state's transaction |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `ProcessCreated` | `process.created.v1` | a process starts | yes |
 | `ProcessStepCompleted` | `process.step-completed.v1` | a step completes | yes |
 | `ProcessPlanBuilt` | `process.plan-built.v1` | the runtime planned what a call may run | no |
@@ -15,7 +15,7 @@ data warehouse, a compliance store or other services. The examples continue the 
 | `QueryExecuted` | `query.executed.v1` | a query ran | no |
 
 Every event carries a context (request id, process id, service and its version, step, caller) and its
-payload; the schemas are in the [`Kaleido` README](../../src/Kaleido/README.md). A process event also
+payload; Process and Queryable own their event payloads and discriminators ([Process](../../src/Capabilities/Process/Kaleido.Process/README.md), [Queryable](../../src/Capabilities/Queryable/Kaleido.Queryable/README.md)), while [Eventing](../../src/Events/Kaleido.Eventing/README.md) owns the generic envelope and outbox. A process event also
 carries `ProcessVersion`, the version of the process state it describes: there is no ordering guarantee,
 so order a process's events by it.
 
@@ -30,9 +30,15 @@ Every service writes every event to its outbox store, in the same transaction as
 publisher. One relay publishes them ([ADR 0036](../decisions/0036-stores-scoped-by-service-and-a-shared-outbox-relay.md)):
 
 | Part | Registration | Runs where |
-|---|---|---|
-| **The outbox store** (every service) | `AddOutboxStore<T>()` or `AddSqliteOutboxStore`, on the context store's database | in every service |
+| --- | --- | --- |
+| **The event writer and outbox default** | `AddEventing(options?)` after `AddKaleido()` | every host writing or relaying events |
+| **The durable outbox store** | `AddOutboxStore<T>()` or `AddSqliteOutboxProvider`, on the context store's database when state is persisted with it | in each event-writing service |
 | **The relay** and its `IEventPublisher` | `AddOutboxRelay<TPublisher>()` | on one host per outbox database: one of the services, or a host with nothing else |
+
+A host that runs only the relay and publishes no steps or queries also calls `AddProcessEventDispatch()`
+and `AddQueryableEventDispatch()` for the event families in its outbox. A host that registers
+Process or Queryable capabilities adds the corresponding dispatch automatically. The relay
+publishes the same typed event envelopes in either kind of host.
 
 Several services, and versions of one, may share an outbox database. Each entry names its writer
 (`ServiceName`, `ServiceVersion`), and the relay drains every one: it polls and claims a batch at a time,
@@ -83,12 +89,12 @@ Placing, confirming and shipping an order publishes `process.created.v1`, three
 ## The guarantees
 
 | Situation | What happens (durable outbox store) |
-|---|---|
+| --- | --- |
 | The publisher (broker) is down | events wait in the store; retried with backoff, parked after the last attempt |
 | A service or the relay host restarts | nothing lost; the relay continues |
 | A relay instance crashes mid-publish | the claim's lease expires; another relay instance publishes it (**at least once**: consumers deduplicate by `EventId`) |
 | No relay runs for the database | the events wait and the database grows |
-| In-memory store (`AddInMemoryStores()`) | lost on restart; drained only by a relay in the same process |
+| Explicit in-memory outbox (`AddInMemoryOutboxProvider()` or `AddInMemoryProviders()`) | lost on restart; drained only by a relay in the same process |
 
 ## Is a relay running?
 
@@ -97,7 +103,7 @@ it at run time, in its own database ([ADR 0036](../decisions/0036-stores-scoped-
 
 - **Every relay instance keeps a heartbeat** in the outbox it drains (`IKaleidoOutboxStore.RecordRelayAsync`,
   every `Kaleido:Events:RelayHeartbeatInterval`, default 30 s).
-- **Every service's health check `kaleido-outbox`** (registered by `AddKaleido()`) reads it there, with the
+- **Every Eventing host's health check `kaleido-outbox`** (registered by `AddEventing()`) reads it there, with the
   backlog. It fails when:
   - no relay was seen within `RelaySeenWithin` (default 2 minutes), including when none ever ran;
   - the oldest due event is older than `BacklogMaxAge` (default 5 minutes);
@@ -134,13 +140,14 @@ registration, the shipping step's event carries no address:
 // This service writes its events and also runs the relay that publishes them; with services
 // sharing an outbox database, one host runs the relay for all of them.
 kaleido
+    .AddEventing()
     .AddOutboxRelay<WarehousePublisher>()
     .AddEventRedaction(r =>
         r.SetRedactor<ErasingRedactor>(new DataClassificationSet(ShopClassifications.Personal)));
 ```
 
 | Registration | Effect |
-|---|---|
+| --- | --- |
 | `AddEventRedaction(...)` | the events' redactor per classification (`ErasingRedactor`, a hashing redactor, ...) |
 | `AddEventRedactor<T>()` | your own `IKaleidoEventRedactor` |
 | (neither) | classified fields are erased, with a warning at startup |
@@ -148,6 +155,6 @@ kaleido
 ## Where to read more
 
 - The outbox store contract, the relay's options (batch size, concurrency, retries):
-  [`Kaleido` README](../../src/Kaleido/README.md).
+  [`Kaleido` README](../../src/Core/Kaleido/README.md).
 - The SQLite outbox, and an outbox store of your own joining its transaction:
-  [SQLite provider README](../../src/Providers/Provider.SQLite/README.md).
+  [SQLite provider README](../../src/Providers/Kaleido.Provider.SQLite/README.md).

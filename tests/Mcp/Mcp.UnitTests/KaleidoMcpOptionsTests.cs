@@ -14,13 +14,20 @@ public sealed class KaleidoMcpOptionsTests
 
         KaleidoMcpOptions.Validate(options);
 
-        Assert.Equal("kaleido", options.ServerName);
         Assert.Equal(5, options.MaxElicitationRounds);
         Assert.Equal(McpToolListing.All, options.ToolListing);
         Assert.Empty(options.ListedTools);
         Assert.False(options.RequireConfirmation);
         Assert.Null(options.Instructions);
-        Assert.Null(options.ServerVersion);
+    }
+
+    [Fact]
+    public void Options_UseTheSharedConfigurationPathAndValidationContract()
+    {
+        var options = Assert.IsAssignableFrom<IKaleidoOptions>(Sut);
+
+        Assert.Equal(KaleidoMcpOptions.SectionName, options.ConfigurationPath);
+        options.Validate();
     }
 
     [Theory]
@@ -34,8 +41,6 @@ public sealed class KaleidoMcpOptionsTests
     // ADR 0030: nothing is trimmed or replaced - a blank, repeated, out-of-range or conflicting value
     // stops startup, naming the setting.
     [Theory]
-    [InlineData("ServerName")]
-    [InlineData("ServerVersion")]
     [InlineData("Instructions")]
     [InlineData("InstructionsFile")]
     [InlineData("AdditionalInstructions")]
@@ -48,8 +53,6 @@ public sealed class KaleidoMcpOptionsTests
     {
         var (options, name) = setting switch
         {
-            "ServerName" => (Sut with { ServerName = " " }, "ServerName"),
-            "ServerVersion" => (Sut with { ServerVersion = string.Empty }, "ServerVersion"),
             "Instructions" => (Sut with { Instructions = " " }, "Instructions"),
             "InstructionsFile" => (Sut with { InstructionsFile = string.Empty }, "InstructionsFile"),
             "AdditionalInstructions" => (Sut with { AdditionalInstructions = "\n" }, "AdditionalInstructions"),

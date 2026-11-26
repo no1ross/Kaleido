@@ -1,6 +1,6 @@
 # 0040. One authoritative registry publishes versioned logical routes
 
-- **Status:** Accepted
+- **Status:** Accepted; registration revision/hash rule superseded by 0045, combined-mapper participation clause superseded by [0050](0050-explicit-http-host-mapping.md)
 - **Date:** 2026-11-09
 - **Related:** #581, #577, #553, ADR 0037, ADR 0039
 

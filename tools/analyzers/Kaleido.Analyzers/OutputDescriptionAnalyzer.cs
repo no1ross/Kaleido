@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Kaleido.Analyzers;
 
 /// <summary>
-/// KAL2021: what a step returns (<c>TResult</c> of <c>IProcessStepHandler&lt;TStep, TResult&gt;</c>), what
+/// KAL2021: what a step returns (<c>TProcessStepResult</c> of <c>IProcessStepHandler&lt;TProcessStep, TProcessStepResult&gt;</c>), what
 /// a view returns (<c>TView</c> of <c>IQueryViewSource*</c>) and what a delegated source returns
 /// (<c>TResult</c> of <c>IDelegatedQuerySource&lt;TQueryContext, TResult[, TParameters]&gt;</c>, which need
 /// not be its query context, #454) is read by agents and UIs; the registry publishes each property's
@@ -20,7 +20,7 @@ namespace Kaleido.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class OutputDescriptionAnalyzer : DiagnosticAnalyzer
 {
-    private const string HandlerInterfaceDefinition = "Kaleido.Processor.IProcessStepHandler<TStep, TResult>";
+    private const string HandlerInterfaceDefinition = "Kaleido.Process.Execution.IProcessStepHandler<TProcessStep, TProcessStepResult>";
 
     private static readonly string[] ViewInterfaceDefinitions =
     [

@@ -1,18 +1,25 @@
 namespace Kaleido.Mcp.FunctionalTests.Infrastructure;
 
 /// <summary>
-/// The MCP host's token exchange stand-in (#574): a call made for the agent's user carries a new token for
-/// that user (<see cref="BearerTestAuthHandler.Exchanged"/>), never the agent's token; the host's own calls
-/// are left as the host configured them.
+/// The MCP host's token exchange stand-in (#574): user calls carry a newly signed token for
+/// the validated caller, never their inbound credential; registration and hydration use an app token.
 /// </summary>
-internal sealed class TestTokenExchangeHandler : DelegatingHandler
+internal sealed class TestTokenExchangeHandler(KaleidoServiceOptions service) : DelegatingHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        if (KaleidoCallContext.Of(request) is { Purpose: KaleidoCallPurpose.OnBehalfOfCaller, CallerAuthorization: { } inbound })
+        var call = KaleidoCallContext.Of(request);
+        if (call.Purpose == KaleidoCallPurpose.ServiceOwn)
         {
-            request.Headers.Remove("Authorization");
-            request.Headers.TryAddWithoutValidation("Authorization", BearerTestAuthHandler.Exchanged(inbound));
+            request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.App($"{service.ServiceName}-app",
+                ["registrant", "registry-reader", $"Kaleido.Registrant.{service.ServiceName}"]));
+        }
+        else if (call is { Caller: { Identity.IsAuthenticated: true } caller, CallerAuthorization: { } })
+        {
+            var name = caller.FindFirst(TestTokenIssuer.NameClaimType)?.Value
+                ?? throw new InvalidOperationException("The validated caller has no user name to exchange.");
+            var roles = caller.FindAll(TestTokenIssuer.RoleClaimType).Select(x => x.Value).ToArray();
+            request.Headers.Authorization = TestJwtAuthentication.Bearer(TestTokenIssuer.User(name, roles, app: "mcp-exchange", tokenId: Guid.NewGuid().ToString("N")));
         }
 
         return base.SendAsync(request, cancellationToken);

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<Compile Include="..\..\..\Shared\SutFixture.cs" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<ProjectReference Include="..\..\..\..\src\Composed\Hosts\Kaleido.Hosting\Kaleido.Hosting.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Storage" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Server" />
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+</Project>

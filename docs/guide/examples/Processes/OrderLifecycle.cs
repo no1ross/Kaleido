@@ -1,10 +1,10 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using Kaleido.Client.Processor;
+using Kaleido.Process.Client;
 using Kaleido.Guide.Examples.Events;
 using Kaleido.Guide.Examples.GettingStarted;
-using Kaleido.Processor;
-using Kaleido.Processor.Execution;
+using Kaleido.Process;
+using Kaleido.Process.Execution;
 
 namespace Kaleido.Guide.Examples.Processes;
 
@@ -106,15 +106,17 @@ public sealed class ReturnOrderHandler(IKaleidoProcessorClientFactory processors
         ProcessStepContext context,
         CancellationToken cancellationToken)
     {
-        var answer = await processors.GetClient("returns").ExecuteStepAsync(new OpenReturnStep(), cancellationToken);
+        var answer = await processors.GetClient("returns").ExecuteStepAsync(
+            new OpenReturnStep(), context.ProcessId, idempotencyKey: null, cancellationToken);
+        var opened = answer.Steps.Single(step => step.StepName == nameof(OpenReturnStep));
 
         // The returns service did not take the process over: the return cannot start, as it said.
-        if (answer.Status != StepExecutionStatus.Completed)
+        if (opened.ExecutionStatus != StepExecutionStatus.Completed)
         {
-            return ProcessStepHandlerResult.Reject([.. answer.BusinessMessages]);
+            return ProcessStepHandlerResult.Reject([.. opened.BusinessMessages]);
         }
 
-        return ProcessStepHandlerResult.HandOff("returns", answer);
+        return ProcessStepHandlerResult.HandOff("returns", answer, nameof(OpenReturnStep));
     }
 }
 

@@ -1,0 +1,3 @@
+#nullable enable
+Kaleido.Hosting.KaleidoHostingServiceCollectionExtensions
+static Kaleido.Hosting.KaleidoHostingServiceCollectionExtensions.AddHosting(this Kaleido.IKaleidoBuilder! builder, Kaleido.Server.KaleidoServerOptions? serverOptions = null, Kaleido.Eventing.KaleidoEventOptions? eventOptions = null, Kaleido.Process.KaleidoProcessOptions? processOptions = null, Kaleido.Queryable.KaleidoQueryableOptions? queryableOptions = null) -> Kaleido.IKaleidoBuilder!

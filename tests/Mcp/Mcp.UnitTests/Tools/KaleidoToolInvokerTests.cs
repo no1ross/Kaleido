@@ -1,7 +1,4 @@
 using System.Text;
-using Kaleido.Client.Registry;
-using Kaleido.Platform;
-using Kaleido.Queryable.Query;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol;
@@ -29,7 +26,7 @@ public sealed class KaleidoToolInvokerTests
     private readonly List<Guid?> forwardedProcessIds = [];
     private readonly Mock<McpServer> server = new();
     private readonly List<(string Service, string Step, JsonNode Body, Guid? ProcessId, string? IdempotencyKey)> posts = [];
-    private readonly List<(string Source, string? View, QueryApiRequest<JsonObject> Request)> queries = [];
+    private readonly List<(string Source, string? View, QueryRequest<JsonObject> Request)> queries = [];
 
     private static readonly InformationRequest Questions = new()
     {
@@ -43,8 +40,7 @@ public sealed class KaleidoToolInvokerTests
         Kind = KaleidoToolKind.Query,
         Service = "clinic",
         CapabilityName = "Patient",
-        SourceName = "Patient",
-        Url = "/clinic/queryable/patients/query"
+        SourceName = "Patient"
     };
 
     private static readonly KaleidoTool SearchView = new()
@@ -54,8 +50,7 @@ public sealed class KaleidoToolInvokerTests
         Service = "clinic",
         CapabilityName = "PatientSummary",
         SourceName = "Patient",
-        ViewName = "PatientSummary",
-        Url = "/clinic/queryable/patients/views/summary/query"
+        ViewName = "PatientSummary"
     };
 
     private static readonly KaleidoTool Start = new()
@@ -64,7 +59,6 @@ public sealed class KaleidoToolInvokerTests
         Kind = KaleidoToolKind.Step,
         Service = "clinic",
         CapabilityName = "StartVisitStep",
-        Url = "/clinic/processes/steps/StartVisitStep",
         IsInitial = true
     };
 
@@ -73,8 +67,7 @@ public sealed class KaleidoToolInvokerTests
         Definition = new Tool { Name = "clinic_close_visit" },
         Kind = KaleidoToolKind.Step,
         Service = "clinic",
-        CapabilityName = "CloseVisitStep",
-        Url = "/clinic/processes/steps/CloseVisitStep"
+        CapabilityName = "CloseVisitStep"
     };
 
     private static readonly KaleidoTool Scan = new()
@@ -82,8 +75,13 @@ public sealed class KaleidoToolInvokerTests
         Definition = new Tool { Name = "radiology_capture_scan" },
         Kind = KaleidoToolKind.Step,
         Service = "radiology",
-        CapabilityName = "CaptureScanStep",
-        Url = "/radiology/processes/steps/CaptureScanStep"
+        CapabilityName = "CaptureScanStep"
+    };
+
+    private static readonly KaleidoTool LocalScan = Scan with
+    {
+        Definition = new Tool { Name = "clinic_capture_scan", Title = "Capture scan" },
+        Service = "clinic",
     };
 
     private static readonly KaleidoTool Answer = new()
@@ -98,29 +96,36 @@ public sealed class KaleidoToolInvokerTests
         Kind = KaleidoToolKind.GetProcessState
     };
 
-    private static readonly ToolCatalog Catalog = new() { Tools = [Search, SearchView, Start, Close, Scan, Answer, State] };
+    private static readonly ProcessStepResponse CloseRequired = new() { Name = "CloseVisitStep", DisplayName = "Close visit" };
 
-    private static readonly ProcessRequiredStep CloseRequired = new() { Name = "CloseVisitStep", DisplayName = "Close visit", ExecuteUrl = Close.Url };
+    private static readonly ProcessStepResponse QuestionsRequired = new() { Name = "VisitQuestionsStep", IsInformationStep = true };
 
-    private static readonly ProcessRequiredStep QuestionsRequired = new()
+    private static readonly ToolCatalog Catalog = new()
     {
-        Name = "VisitQuestionsStep",
-        IsInformationStep = true,
-        ExecuteUrl = "/clinic/processes/steps/VisitQuestionsStep",
-        InformationRequest = Questions
+        Tools = [Search, SearchView, Start, Close, LocalScan, Scan, Answer, State],
+        Processes =
+        [
+            new ProcessRegistryItem
+            {
+                ServiceName = "clinic", Name = "clinic",
+                Steps = [new ProcessStepResponse { Name = "StartVisitStep" }, CloseRequired, QuestionsRequired,
+                    new ProcessStepResponse { Name = "CaptureScanStep", DisplayName = "Capture scan" }],
+            },
+            new ProcessRegistryItem
+            {
+                ServiceName = "radiology", Name = "radiology",
+                Steps = [new ProcessStepResponse { Name = "CaptureScanStep", DisplayName = "Capture scan" }],
+            },
+        ],
     };
 
     private static ToolCatalog VersionedCatalog() => Catalog with
     {
-        Routes = [new RegistryServiceRoute
-        {
-            ServiceName = "clinic", ServiceVersion = "1",
-            Transports = [new RegistryTransportRoute { Transport = "http", GatewayRoute = "/clinic/1" }],
-        }],
+        Tools = [.. Catalog.Tools.Select(x => string.Equals(x.Service, "clinic", StringComparison.Ordinal) ? x with { ServiceVersion = "1" } : x)],
+        Processes = [.. Catalog.Processes.Select(x => string.Equals(x.ServiceName, "clinic", StringComparison.Ordinal) ? x with { ServiceVersion = "1" } : x)],
     };
 
-    private static ProcessRequiredStep VersionedQuestions() =>
-        QuestionsRequired with { ExecuteUrl = "/clinic/1/processes/steps/visitquestionsstep" };
+    private static ProcessStepResponse VersionedQuestions() => QuestionsRequired;
 
     public KaleidoToolInvokerTests()
     {
@@ -133,11 +138,11 @@ public sealed class KaleidoToolInvokerTests
                 ? clinicQueries.Object
                 : throw new KaleidoRegistryClientException(RegistryClientErrorCodes.RouteUnavailable, $"Service '{service}' is not published."));
 
-        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
-            .Callback((string source, QueryApiRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+            .Callback((string source, QueryRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
             .ReturnsAsync(new QueryResult<JsonObject>(1, 0, 1, [new JsonObject { ["name"] = "Ava" }]));
-        clinicQueries.Setup(x => x.QueryViewAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
-            .Callback((string source, string view, QueryApiRequest<JsonObject> request, CancellationToken _) => queries.Add((source, view, request)))
+        clinicQueries.Setup(x => x.QueryViewAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QueryRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+            .Callback((string source, string view, QueryRequest<JsonObject> request, CancellationToken _) => queries.Add((source, view, request)))
             .ReturnsAsync(new QueryResult<JsonObject>(0, 0, 0, []));
 
         StepReturns(StepResponse());
@@ -215,43 +220,72 @@ public sealed class KaleidoToolInvokerTests
     private void ClientShowsForms() =>
         server.Setup(x => x.ClientCapabilities).Returns(new ClientCapabilities { Elicitation = new ElicitationCapability { Form = new() } });
 
-    private static StepExecutionResponse<JsonElement> StepResponse(
-        ProcessRequiredStep? required = null,
+    private static ProcessResult StepResponse(
+        ProcessStepResponse? required = null,
         string? target = null,
         StepExecutionStatus status = StepExecutionStatus.Completed,
-        IReadOnlyCollection<ProcessStepSummary>? available = null) =>
+        IReadOnlyCollection<string>? available = null,
+        InformationRequest? information = null,
+        string? serviceVersion = null,
+        string? targetVersion = null) =>
         new()
         {
             ProcessId = ProcessId,
-            StepName = "StartVisitStep",
-            Status = status,
-            RequiredStep = required,
+            ServiceVersion = serviceVersion,
+            State = target is not null ? ProcessExecutionState.HandOff : required?.IsInformationStep == true
+                ? ProcessExecutionState.AwaitingInformation : available?.Count > 0
+                    ? ProcessExecutionState.AwaitingStepSelection : ProcessExecutionState.Active,
+            RequiredStep = required?.Name,
+            RequiredInformationRequest = information ?? (required?.IsInformationStep == true ? Questions : null),
             TargetProcessorName = target,
+            TargetProcessorVersion = targetVersion,
             AvailableSteps = available ?? [],
-            BusinessMessages = [new ProcessMessage { Type = MessageType.Information, Code = "visit_opened", Message = "The visit is open." }],
-            Result = JsonSerializer.SerializeToElement(new { visitId = "V-9" })
+            Steps = [new ProcessStepResult
+            {
+                StepName = "StartVisitStep", CandidateStatus = StepCandidateStatus.Built, IncludedInExecutionPlan = true,
+                ExecutionStatus = status,
+                BusinessMessages = [new ProcessMessage { Type = MessageType.Information, Code = "visit_opened", Message = "The visit is open." }],
+                Response = JsonSerializer.SerializeToElement(new { visitId = "V-9" }),
+            }],
         };
 
-    private static ProcessStateResponse StateResponse(ProcessRequiredStep? required, string? target = null, ProcessExecutionState state = ProcessExecutionState.AwaitingInformation) =>
+    private static ProcessResult WithStatus(ProcessResult result, StepExecutionStatus status) =>
+        result with { Steps = [result.Steps.Single() with { ExecutionStatus = status }] };
+
+    private static ProcessResult WithResponse(ProcessResult result, object? response) =>
+        result with { Steps = [result.Steps.Single() with { Response = response }] };
+
+    private static ProcessResult WithRuntimeMessages(ProcessResult result, params StepProcessingMessage[] messages) =>
+        result with { Steps = [result.Steps.Single() with { RuntimeMessages = messages }] };
+
+    private static ProcessResult WithoutResponseOrBusinessMessages(ProcessResult result) =>
+        result with { Steps = [result.Steps.Single() with { Response = null, BusinessMessages = [] }] };
+
+    private static ProcessStateSnapshot StateResponse(ProcessStepResponse? required, string? target = null,
+        ProcessExecutionState state = ProcessExecutionState.AwaitingInformation, InformationRequest? information = null,
+        string? targetVersion = null) =>
         new()
         {
             ProcessId = ProcessId,
+            ServiceName = "clinic",
             State = state,
-            RequiredStep = required,
+            RequiredStep = required?.Name,
+            RequiredInformationRequest = information ?? (required?.IsInformationStep == true ? Questions : null),
             TargetProcessorName = target,
-            Steps = [new ProcessStepHistory { StepName = "StartVisitStep", Status = StepExecutionStatus.Completed }]
+            TargetProcessorVersion = targetVersion,
+            Steps = [new ProcessStateStep { StepName = "StartVisitStep", Status = StepExecutionStatus.Completed }],
         };
 
-    private void StateIs(string service, ProcessStateResponse state) =>
+    private void StateIs(string service, ProcessStateSnapshot state) =>
         services[service].Setup(x => x.GetProcessStateAsync(ProcessId, It.IsAny<CancellationToken>())).ReturnsAsync(state);
 
-    private void StepReturns(StepExecutionResponse<JsonElement> response)
+    private void StepReturns(ProcessResult response)
     {
         foreach (var (service, client) in services)
         {
-            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .Callback((string step, JsonElement body, Guid? processId, string? idempotencyKey, CancellationToken _) =>
-                    posts.Add((service, step, JsonNode.Parse(body.GetRawText()) ?? new JsonObject(), processId, idempotencyKey)))
+            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .Callback((string step, object body, Guid? processId, string? idempotencyKey, CancellationToken _) =>
+                    posts.Add((service, step, JsonSerializer.SerializeToNode(body, KaleidoJsonOptions.Options) ?? new JsonObject(), processId, idempotencyKey)))
                 .ReturnsAsync(response);
         }
     }
@@ -260,7 +294,7 @@ public sealed class KaleidoToolInvokerTests
     {
         foreach (var client in services.Values)
         {
-            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(exception);
         }
     }
@@ -293,10 +327,10 @@ public sealed class KaleidoToolInvokerTests
         Assert.Null(view);
         Assert.Equal("Ava", request.Query?.SearchText);
         Assert.Equal("Id", request.Query?.Filter?.Condition?.Field);
-        Assert.Equal("equals", request.Query?.Filter?.Condition?.Operator);
+        Assert.Equal(FilterOperator.Equals, request.Query?.Filter?.Condition?.Operator);
         Assert.Equal("Name", Assert.Single(request.Query?.Sort ?? []).Field);
         Assert.Equal(10, request.Query?.Page?.Size);
-        Assert.Equal("C1", request.Parameters?["clinicId"]?.GetValue<string>());
+        Assert.Equal("C1", request.ViewParameters?["clinicId"]?.GetValue<string>());
         Assert.Empty(posts);
     }
 
@@ -310,7 +344,7 @@ public sealed class KaleidoToolInvokerTests
             Cancel);
 
         var group = Assert.Single(queries).Request.Query?.Filter?.Group;
-        Assert.Equal("and", group?.Operator);
+        Assert.Equal(LogicalOperator.And, group?.Operator);
         Assert.Equal(2, group?.Filters?.Count);
     }
 
@@ -342,7 +376,7 @@ public sealed class KaleidoToolInvokerTests
         var (source, view, request) = Assert.Single(queries);
         Assert.Equal("Patient", source);
         Assert.Equal("PatientSummary", view);
-        Assert.Null(request.Parameters);
+        Assert.Null(request.ViewParameters);
     }
 
     [Fact]
@@ -357,7 +391,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AQueryTheServiceRefuses_IsAServiceError_WithItsStatusAndErrors()
     {
-        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new KaleidoHttpClientException(
                 HttpClientErrorCodes.RequestFailed,
                 "Query failed",
@@ -377,7 +411,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AServicesOwnRefusalReason_IsAlsoSentToTheUser_KaleidosCodesAreNot()
     {
-        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new KaleidoHttpClientException(
                 HttpClientErrorCodes.RequestFailed,
                 "Query failed",
@@ -409,10 +443,8 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AStepsBusinessMessages_AreAlsoSentToTheUser_TheSummaryToTheAgent()
     {
-        StepReturns(StepResponse() with
-        {
-            FrameworkMessages = [new ProcessMessage { Type = MessageType.Warning, Code = "pro_something", Message = "Check this." }],
-        });
+        StepReturns(WithRuntimeMessages(StepResponse(),
+            new StepProcessingMessage { Type = MessageType.Warning, Code = "pro_something", Message = "Check this." }));
 
         var outcome = await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
         var summary = Assert.IsType<TextContentBlock>(outcome.Result?.Content[0]);
@@ -436,7 +468,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AQueryTheServiceFails_TellsTheAgentWhatToDo_WithoutTheServicesMessage()
     {
-        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new KaleidoHttpClientException(
                 HttpClientErrorCodes.RequestFailed,
                 "clinic tried to call source 'PatientQueryContextSource', but the request failed with status code 500 (InternalServerError).",
@@ -456,7 +488,7 @@ public sealed class KaleidoToolInvokerTests
 
         Assert.Equal([ProcessId], forwardedProcessIds);
         Assert.Equal(ProcessId.ToString(), body["processId"]?.GetValue<string>());
-        Assert.Null(Assert.Single(queries).Request.Parameters);
+        Assert.Null(Assert.Single(queries).Request.ViewParameters);
     }
 
     [Fact]
@@ -499,7 +531,7 @@ public sealed class KaleidoToolInvokerTests
     {
         await CreateSut().InvokeAsync(ScopedSearch, Call(new { processId = ProcessId }), Catalog, Cancel);
 
-        Assert.Equal(ProcessId.ToString(), Assert.Single(queries).Request.Parameters?["processId"]?.GetValue<string>());
+        Assert.Equal(ProcessId.ToString(), Assert.Single(queries).Request.ViewParameters?["processId"]?.GetValue<string>());
         Assert.Equal([ProcessId], forwardedProcessIds);
     }
 
@@ -508,7 +540,7 @@ public sealed class KaleidoToolInvokerTests
     {
         await CreateSut().InvokeAsync(ScopedSearch, Call(new { parameters = new { processId = ProcessId } }), Catalog, Cancel);
 
-        Assert.Equal(ProcessId.ToString(), Assert.Single(queries).Request.Parameters?["processId"]?.GetValue<string>());
+        Assert.Equal(ProcessId.ToString(), Assert.Single(queries).Request.ViewParameters?["processId"]?.GetValue<string>());
     }
 
     [Fact]
@@ -611,7 +643,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AStepResult_SummarizesTheOutcome_Messages_AndTheNextToolByName()
     {
-        StepReturns(StepResponse(required: CloseRequired, available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]));
+        StepReturns(StepResponse(required: CloseRequired, available: ["CaptureScanStep"]));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(new { patientId = 1 }), Catalog, Cancel));
 
@@ -621,7 +653,7 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal("V-9", body["result"]?["visitId"]?.GetValue<string>());
         Assert.Equal("The visit is open.", body["messages"]?[0]?["message"]?.GetValue<string>());
         Assert.Equal("clinic_close_visit", body["next"]?["required"]?["tool"]?.GetValue<string>());
-        Assert.Equal("radiology_capture_scan", body["next"]?["available"]?[0]?["tool"]?.GetValue<string>());
+        Assert.Equal("clinic_capture_scan", body["next"]?["available"]?[0]?["tool"]?.GetValue<string>());
     }
 
     [Fact]
@@ -629,17 +661,13 @@ public sealed class KaleidoToolInvokerTests
     {
         // Capturing the scan closes closing the visit (CloseVisitStep is available until CaptureScanStep).
         // A 'with' copy of a used catalog must find the new tools, not the original's.
-        Assert.NotNull(Catalog.FindByUrl(Close.Url));
-        var catalog = Catalog with { Tools = [Search, SearchView, Start, Close with { ClosedBy = ["CaptureScanStep"] }, Scan, Answer, State] };
-        StepReturns(StepResponse(available:
-        [
-            new ProcessStepSummary { Name = "CloseVisitStep", ExecuteUrl = Close.Url },
-            new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }
-        ]));
+        Assert.NotNull(Catalog.FindStep("clinic", "CloseVisitStep"));
+        var catalog = Catalog with { Tools = [Search, SearchView, Start, Close with { ClosedBy = ["CaptureScanStep"] }, LocalScan, Scan, Answer, State] };
+        StepReturns(StepResponse(available: ["CloseVisitStep", "CaptureScanStep"]));
 
         var next = Body(await CreateSut().InvokeAsync(Start, Call(), catalog, Cancel))["next"];
 
-        var scan = next?["available"]?.AsArray().Single(x => x?["tool"]?.GetValue<string>() == "radiology_capture_scan");
+        var scan = next?["available"]?.AsArray().Single(x => x?["tool"]?.GetValue<string>() == "clinic_capture_scan");
         Assert.Equal("clinic_close_visit", scan?["closes"]?[0]?.GetValue<string>());
         Assert.Null(next?["available"]?.AsArray().Single(x => x?["tool"]?.GetValue<string>() == "clinic_close_visit")?["closes"]);
         Assert.Contains("let the user choose", next?["choice"]?.GetValue<string>(), StringComparison.Ordinal);
@@ -648,7 +676,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task OneAvailableStep_IsNotPresentedAsAChoice()
     {
-        StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]));
+        StepReturns(StepResponse(available: ["CaptureScanStep"]));
 
         var next = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel))["next"];
 
@@ -658,10 +686,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task RejectedStep_SaysNothingChanged_AndKeepsTheNextSteps()
     {
-        StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]) with
-        {
-            Status = StepExecutionStatus.Rejected
-        });
+        StepReturns(WithStatus(StepResponse(available: ["CaptureScanStep"]), StepExecutionStatus.Rejected));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -677,10 +702,7 @@ public sealed class KaleidoToolInvokerTests
     [InlineData(StepExecutionStatus.Canceled)]
     public async Task AnUnfinishedStepWithNextSteps_SaysNothingWasRecorded(StepExecutionStatus status)
     {
-        StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]) with
-        {
-            Status = status
-        });
+        StepReturns(WithStatus(StepResponse(available: ["CaptureScanStep"]), status));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -692,10 +714,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task ABusinessFailure_IsNotDescribedAsNothingRecorded()
     {
-        StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]) with
-        {
-            Status = StepExecutionStatus.Failed
-        });
+        StepReturns(WithStatus(StepResponse(available: ["CaptureScanStep"]), StepExecutionStatus.Failed));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -708,14 +727,9 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task BusinessMessages_AreMessages_FrameworkWarningsAreDiagnostics_Separately()
     {
-        StepReturns(StepResponse() with
-        {
-            FrameworkMessages =
-            [
-                new ProcessMessage { Type = MessageType.Information, Code = "pro_repeatable_step", Message = "Step is repeatable." },
-                new ProcessMessage { Type = MessageType.Warning, Code = "pro_something", Message = "Check this." }
-            ]
-        });
+        StepReturns(WithRuntimeMessages(StepResponse(),
+            new StepProcessingMessage { Type = MessageType.Information, Code = "pro_repeatable_step", Message = "Step is repeatable." },
+            new StepProcessingMessage { Type = MessageType.Warning, Code = "pro_something", Message = "Check this." }));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -726,10 +740,8 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task WithoutFrameworkWarnings_ThereAreNoDiagnostics()
     {
-        StepReturns(StepResponse() with
-        {
-            FrameworkMessages = [new ProcessMessage { Type = MessageType.Information, Code = "pro_repeatable_step", Message = "Step is repeatable." }]
-        });
+        StepReturns(WithRuntimeMessages(StepResponse(),
+            new StepProcessingMessage { Type = MessageType.Information, Code = "pro_repeatable_step", Message = "Step is repeatable." }));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -743,7 +755,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AStepResult_WithARequiredStepTheCallerCannotRun_SaysSo()
     {
-        StepReturns(StepResponse(required: new ProcessRequiredStep { Name = "ApproveStep", ExecuteUrl = "/clinic/processes/steps/ApproveStep" }));
+        StepReturns(StepResponse(required: new ProcessStepResponse { Name = "ApproveStep" }));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -764,7 +776,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AStepResult_WhoseNextStepsTheCallerCannotRun_IsNotDescribedAsComplete()
     {
-        StepReturns(StepResponse() with { AvailableSteps = [new ProcessStepSummary { Name = "ReviewStep", ExecuteUrl = "/clinic/processes/steps/ReviewStep" }] });
+        StepReturns(StepResponse() with { AvailableSteps = ["ReviewStep"] });
         var hidden = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
         StepReturns(StepResponse() with { Notice = new KaleidoNotice("pro_not_permitted", "You do not have access to continue this process.") });
         var notPermitted = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
@@ -778,16 +790,22 @@ public sealed class KaleidoToolInvokerTests
     }
 
     [Fact]
-    public async Task AHandoff_IsFollowedToTheTargetService_SoNextNamesItsTools()
+    public async Task AHandoff_UsesTheTargetsPinnedAnswer_WithoutAnotherStateRead()
     {
-        StepReturns(StepResponse(target: "radiology"));
-        StateIs("radiology", StateResponse(new ProcessRequiredStep { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }, state: ProcessExecutionState.Active));
+        StepReturns(StepResponse(required: new ProcessStepResponse { Name = "CaptureScanStep" }, target: "radiology", targetVersion: "2"));
+        var catalog = Catalog with
+        {
+            Tools = [.. Catalog.Tools.Select(tool => tool == Scan ? tool with { ServiceVersion = "2" } : tool)],
+            Processes = [.. Catalog.Processes.Select(process => process.ServiceName == "radiology" ? process with { ServiceVersion = "2" } : process)],
+        };
 
-        var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
+        var body = Body(await CreateSut().InvokeAsync(Start, Call(), catalog, Cancel));
 
         Assert.Equal("radiology", body["handoff"]?.GetValue<string>());
         Assert.Equal("radiology", body["next"]?["service"]?.GetValue<string>());
+        Assert.Equal("2", body["next"]?["serviceVersion"]?.GetValue<string>());
         Assert.Equal("radiology_capture_scan", body["next"]?["required"]?["tool"]?.GetValue<string>());
+        services["radiology"].Verify(x => x.GetProcessStateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // #198: a hand-off's answer carries the target's next steps, so they are offered as they are and
@@ -795,7 +813,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AHandoffThatCarriesTheTargetsSteps_OffersThem_WithoutReadingTheTargetsState()
     {
-        StepReturns(StepResponse(new ProcessRequiredStep { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }, target: "radiology"));
+        StepReturns(StepResponse(new ProcessStepResponse { Name = "CaptureScanStep" }, target: "radiology"));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -840,11 +858,11 @@ public sealed class KaleidoToolInvokerTests
         Assert.Contains(guidance, body["message"]?.GetValue<string>(), StringComparison.Ordinal);
     }
 
-    // The step completed: failing to read the hand-off target's state is a note, not the step failing.
+    // The target's immediate answer is already in the result: MCP never fetches state to invent choices.
     [Fact]
-    public async Task AHandoffWhoseTargetCannotBeRead_StillReportsTheCompletedStep()
+    public async Task AHandoffWithNoTargetChoices_StillReportsTheCompletedStepWithoutAnotherStateRead()
     {
-        StepReturns(StepResponse(target: "radiology"));
+        StepReturns(StepResponse(target: "radiology", targetVersion: "2"));
         services["radiology"].Setup(x => x.GetProcessStateAsync(ProcessId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("radiology is down"));
 
@@ -852,7 +870,8 @@ public sealed class KaleidoToolInvokerTests
 
         Assert.Equal("completed", body["outcome"]?.GetValue<string>());
         Assert.Equal("radiology", body["handoff"]?.GetValue<string>());
-        Assert.Contains("could not be read", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Equal("2", body["next"]?["serviceVersion"]?.GetValue<string>());
+        services["radiology"].Verify(x => x.GetProcessStateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // Another call changed the process: the agent rereads the state instead of repeating the call.
@@ -891,11 +910,8 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task Questions_WithProposedAnswers_AreReturned_WithAnInstructionToConfirmThem()
     {
-        var proposing = QuestionsRequired with
-        {
-            InformationRequest = Questions with { Items = [Questions.Items[0] with { ProposedAnswers = [new InformationAnswer { Value = "true" }] }] }
-        };
-        StepReturns(StepResponse(required: proposing));
+        var proposing = Questions with { Items = [Questions.Items[0] with { ProposedAnswers = [new InformationAnswer { Value = "true" }] }] };
+        StepReturns(StepResponse(required: QuestionsRequired, information: proposing));
 
         var next = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel))["next"];
 
@@ -1055,7 +1071,6 @@ public sealed class KaleidoToolInvokerTests
         Kind = KaleidoToolKind.Step,
         Service = "clinic",
         CapabilityName = "PickPatientStep",
-        Url = "/clinic/processes/steps/PickPatientStep",
         Lookups =
         [
             new ToolLookup
@@ -1078,8 +1093,8 @@ public sealed class KaleidoToolInvokerTests
         ClientShowsForms();
         server.Setup(x => x.IsMrtrSupported).Returns(true);
 
-        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
-            .Callback((string source, QueryApiRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+            .Callback((string source, QueryRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
             .ReturnsAsync(new QueryResult<JsonObject>(1, 0, 10, [new JsonObject { ["patientId"] = "P-1", ["enrollmentId"] = "E-1", ["name"] = "Ava Carter" }]));
 
         // The search form is answered with a search text, the pick form with the first result.
@@ -1182,13 +1197,13 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal("P-2", Assert.Single(posts).Body["patientId"]?.GetValue<string>());
     }
 
-    private async Task<string> MrtrStateAsync(ProcessRequiredStep? required = null)
+    private async Task<string> MrtrStateAsync(ProcessStepResponse? required = null, InformationRequest? information = null, ToolCatalog? catalog = null)
     {
         ClientShowsForms();
         server.Setup(x => x.IsMrtrSupported).Returns(true);
-        StepReturns(StepResponse(required: required ?? QuestionsRequired));
+        StepReturns(StepResponse(required: required ?? QuestionsRequired, information: information));
 
-        var outcome = await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
+        var outcome = await CreateSut().InvokeAsync(Start, Call(), catalog ?? Catalog, Cancel);
         posts.Clear();
 
         return outcome.InputRequired?.RequestState ?? throw new Xunit.Sdk.XunitException("No state.");
@@ -1247,7 +1262,7 @@ public sealed class KaleidoToolInvokerTests
     public async Task TheMrtrRetry_ForQuestionsTheProcessNoLongerAsks_SubmitsNothing()
     {
         var state = await MrtrStateAsync();
-        StateIs("clinic", StateResponse(QuestionsRequired with { InformationRequest = Questions with { InformationRequestId = "newer" } }));
+        StateIs("clinic", StateResponse(QuestionsRequired, information: Questions with { InformationRequestId = "newer" }));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel));
 
@@ -1260,8 +1275,8 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task TheMrtrRetry_ForTheSameQuestionnaireAskedAgain_SubmitsNothing()
     {
-        var state = await MrtrStateAsync(QuestionsRequired with { InformationRequest = Questions with { ExchangeId = "first-exchange" } });
-        StateIs("clinic", StateResponse(QuestionsRequired with { InformationRequest = Questions with { ExchangeId = "second-exchange" } }));
+        var state = await MrtrStateAsync(QuestionsRequired, information: Questions with { ExchangeId = "first-exchange" });
+        StateIs("clinic", StateResponse(QuestionsRequired, information: Questions with { ExchangeId = "second-exchange" }));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel));
 
@@ -1273,7 +1288,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AnswerInformationRequest_SubmitsTheExchangeIdItsQuestionsCameWith()
     {
-        StateIs("clinic", StateResponse(ConditionalRequired with { InformationRequest = ConditionalQuestions with { ExchangeId = "shown" } }));
+        StateIs("clinic", StateResponse(ConditionalRequired, information: ConditionalQuestions with { ExchangeId = "shown" }));
         var shown = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true", Issued("shown")), Catalog, Cancel));
         var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
 
@@ -1286,10 +1301,10 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AnswerInformationRequest_WithATokenFromAnEarlierExchange_SubmitsNothing()
     {
-        StateIs("clinic", StateResponse(ConditionalRequired with { InformationRequest = ConditionalQuestions with { ExchangeId = "first-exchange" } }));
+        StateIs("clinic", StateResponse(ConditionalRequired, information: ConditionalQuestions with { ExchangeId = "first-exchange" }));
         var shown = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true", Issued("first-exchange")), Catalog, Cancel));
         var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
-        StateIs("clinic", StateResponse(ConditionalRequired with { InformationRequest = ConditionalQuestions with { ExchangeId = "second-exchange" } }));
+        StateIs("clinic", StateResponse(ConditionalRequired, information: ConditionalQuestions with { ExchangeId = "second-exchange" }));
 
         var outcome = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("reason", "Chest pain", token), Catalog, Cancel));
 
@@ -1313,7 +1328,7 @@ public sealed class KaleidoToolInvokerTests
     {
         var required = VersionedQuestions();
         var catalog = VersionedCatalog();
-        StateIs("clinic", StateResponse(required));
+        StateIs("clinic", StateResponse(required) with { ServiceVersion = "1" });
         var shown = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", processId = ProcessId }), catalog, Cancel));
         var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
         Assert.Equal("1", shown["next"]?["serviceVersion"]?.GetValue<string>());
@@ -1337,7 +1352,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AnswerInformationRequest_ARequestForAnotherVersion_CannotReuseTheIssuedToken()
     {
-        StateIs("clinic", StateResponse(VersionedQuestions()));
+        StateIs("clinic", StateResponse(VersionedQuestions()) with { ServiceVersion = "1" });
         var catalog = VersionedCatalog();
         var shown = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", processId = ProcessId }), catalog, Cancel));
         var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
@@ -1364,8 +1379,8 @@ public sealed class KaleidoToolInvokerTests
         var catalog = VersionedCatalog();
         ClientShowsForms();
         server.Setup(x => x.IsMrtrSupported).Returns(true);
-        StepReturns(StepResponse(required: required));
-        StateIs("clinic", StateResponse(required));
+        StepReturns(StepResponse(required: required, serviceVersion: "1"));
+        StateIs("clinic", StateResponse(required) with { ServiceVersion = "1" });
         processors.Setup(x => x.GetClient("clinic", "1")).Returns(services["clinic"].Object);
         var round = await CreateSut().InvokeAsync(Start with { ServiceVersion = "1" }, Call(), catalog, Cancel);
         Assert.StartsWith("kaleido-mcp-state:", round.InputRequired?.RequestState, StringComparison.Ordinal);
@@ -1470,17 +1485,26 @@ public sealed class KaleidoToolInvokerTests
     }
 
     [Fact]
-    public async Task GetProcessState_SummarizesState_CompletedSteps_AndNext_FollowingAHandoff()
+    public async Task GetProcessState_UsesThePinnedHandOffVersionToReadFreshTargetChoices()
     {
-        StateIs("clinic", StateResponse(null, target: "radiology", state: ProcessExecutionState.Active));
-        StateIs("radiology", StateResponse(QuestionsRequired));
+        StateIs("clinic", StateResponse(null, target: "radiology", state: ProcessExecutionState.HandOff, targetVersion: "2"));
+        StateIs("radiology", StateResponse(QuestionsRequired) with { ServiceName = "radiology", ServiceVersion = "2" });
+        processors.Setup(x => x.GetClient("radiology", "2")).Returns(services["radiology"].Object);
+        var catalog = Catalog with
+        {
+            Processes = [.. Catalog.Processes.Select(process => process.ServiceName == "radiology"
+                ? process with { ServiceVersion = "2", Steps = [.. (process.Steps ?? []), QuestionsRequired] }
+                : process)],
+        };
 
-        var body = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", processId = ProcessId }), Catalog, Cancel));
+        var body = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", processId = ProcessId }), catalog, Cancel));
 
         Assert.Equal("radiology", body["service"]?.GetValue<string>());
         Assert.Equal("awaitingInformation", body["state"]?.GetValue<string>());
         Assert.Equal("StartVisitStep", body["completedSteps"]?[0]?.GetValue<string>());
         Assert.Equal("visit-intake", body["next"]?["informationRequest"]?["informationRequestId"]?.GetValue<string>());
+        processors.Verify(x => x.GetClient("radiology", "2"), Times.Once);
+        processors.Verify(x => x.GetClient("radiology"), Times.Never);
     }
 
     // ── Failures ─────────────────────────────────────────────────────────────
@@ -1637,7 +1661,7 @@ public sealed class KaleidoToolInvokerTests
         Assert.Null(request.Query?.Filter);
         Assert.Null(request.Query?.Sort);
         Assert.Null(request.Query?.Page);
-        Assert.Null(request.Parameters);
+        Assert.Null(request.ViewParameters);
     }
 
     [Fact]
@@ -1678,7 +1702,7 @@ public sealed class KaleidoToolInvokerTests
 
         await CreateSut().InvokeAsync(tool, Call(new { parameters = new { clinicId = "C1" } }), Catalog, Cancel);
 
-        var parameters = Assert.Single(queries).Request.Parameters;
+        var parameters = Assert.Single(queries).Request.ViewParameters;
         Assert.Equal("C1", parameters?["clinicId"]?.GetValue<string>());
         Assert.Null(parameters?["processId"]);
         Assert.Empty(forwardedProcessIds);
@@ -1689,7 +1713,7 @@ public sealed class KaleidoToolInvokerTests
     {
         await CreateSut().InvokeAsync(ScopedSearch, Call(new { processId = ProcessId, parameters = new { clinicId = "C1" } }), Catalog, Cancel);
 
-        var parameters = Assert.Single(queries).Request.Parameters;
+        var parameters = Assert.Single(queries).Request.ViewParameters;
         Assert.Equal("C1", parameters?["clinicId"]?.GetValue<string>());
         Assert.Equal(ProcessId.ToString(), parameters?["processId"]?.GetValue<string>());
     }
@@ -1700,7 +1724,7 @@ public sealed class KaleidoToolInvokerTests
         await CreateSut().InvokeAsync(Search, Call(new { parameters = new { processId = 5 } }), Catalog, Cancel);
 
         Assert.Empty(forwardedProcessIds);
-        Assert.Equal(5, Assert.Single(queries).Request.Parameters?["processId"]?.GetValue<int>());
+        Assert.Equal(5, Assert.Single(queries).Request.ViewParameters?["processId"]?.GetValue<int>());
     }
 
     // ── Queries: required arguments ──────────────────────────────────────────
@@ -1841,7 +1865,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AStepResult_WithoutAResult_OrMessages_HasNeither()
     {
-        StepReturns(StepResponse() with { Result = default, BusinessMessages = [] });
+        StepReturns(WithoutResponseOrBusinessMessages(StepResponse()));
 
         var outcome = await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
         var body = Body(outcome);
@@ -1854,7 +1878,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task AStepResult_ThatIsNull_HasNoResult()
     {
-        StepReturns(StepResponse() with { Result = JsonSerializer.SerializeToElement<object?>(null) });
+        StepReturns(WithResponse(StepResponse(), JsonSerializer.SerializeToElement<object?>(null)));
 
         Assert.Null(Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel))["result"]);
     }
@@ -1883,18 +1907,14 @@ public sealed class KaleidoToolInvokerTests
     }
 
     [Fact]
-    public async Task AnAvailableStep_IsOfferedByItsDisplayName_AndUnknownUrlsAreLeftOut()
+    public async Task AnAvailableStep_IsOfferedByItsRegistryDisplayName_AndUnpublishedNamesAreLeftOut()
     {
-        StepReturns(StepResponse(available:
-        [
-            new ProcessStepSummary { Name = "CaptureScanStep", DisplayName = "Capture scan", ExecuteUrl = Scan.Url },
-            new ProcessStepSummary { Name = "SecretStep", ExecuteUrl = "/clinic/processes/steps/SecretStep" }
-        ]));
+        StepReturns(StepResponse(available: ["CaptureScanStep", "SecretStep"]));
 
         var available = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel))["next"]?["available"]?.AsArray();
 
         var offered = Assert.Single(available ?? []);
-        Assert.Equal("radiology_capture_scan", offered?["tool"]?.GetValue<string>());
+        Assert.Equal("clinic_capture_scan", offered?["tool"]?.GetValue<string>());
         Assert.Equal("Capture scan", offered?["displayName"]?.GetValue<string>());
     }
 
@@ -1923,7 +1943,6 @@ public sealed class KaleidoToolInvokerTests
         Kind = KaleidoToolKind.Step,
         Service = "clinic",
         CapabilityName = "DischargeStep",
-        Url = "/clinic/processes/steps/DischargeStep",
         RequiresConfirmation = true
     };
 
@@ -2188,35 +2207,44 @@ public sealed class KaleidoToolInvokerTests
             });
     }
 
-    private void StepsReturn(params StepExecutionResponse<JsonElement>[] responses)
+    private void StepsReturn(params ProcessResult[] responses)
     {
-        var queue = new Queue<StepExecutionResponse<JsonElement>>(responses);
+        var queue = new Queue<ProcessResult>(responses);
 
         foreach (var (service, client) in services)
         {
-            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<JsonElement>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .Callback((string step, JsonElement body, Guid? processId, string? idempotencyKey, CancellationToken _) =>
-                    posts.Add((service, step, JsonNode.Parse(body.GetRawText()) ?? new JsonObject(), processId, idempotencyKey)))
+            client.Setup(x => x.ExecuteStepAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .Callback((string step, object body, Guid? processId, string? idempotencyKey, CancellationToken _) =>
+                    posts.Add((service, step, JsonSerializer.SerializeToNode(body, KaleidoJsonOptions.Options) ?? new JsonObject(), processId, idempotencyKey)))
                 .ReturnsAsync(queue.Dequeue);
         }
     }
 
     private static readonly InformationRequest FollowUpQuestions = Questions with { InformationRequestId = "follow-up" };
 
-    private static readonly ProcessRequiredStep FollowUpRequired = QuestionsRequired with { InformationRequest = FollowUpQuestions };
+    private static readonly ProcessStepResponse FollowUpRequired = QuestionsRequired;
 
     // ── Information steps: confirmation (#516) ───────────────────────────────
 
     // An information step declared RequiresConfirmation: with the host's RequireConfirmation on, its
     // answers are submitted only after the user confirms them, on every path that submits them.
-    private static readonly ProcessRequiredStep ConfirmedQuestions = QuestionsRequired with { DisplayName = "Visit questions", RequiresConfirmation = true };
+    private static readonly ProcessStepResponse ConfirmedQuestions = QuestionsRequired with { DisplayName = "Visit questions", RequiresConfirmation = true };
+
+    private static ToolCatalog WithInformationMetadata(ToolCatalog catalog, ProcessStepResponse metadata) => catalog with
+    {
+        Processes = [.. catalog.Processes.Select(process => string.Equals(process.ServiceName, "clinic", StringComparison.Ordinal)
+            ? process with { Steps = [.. (process.Steps ?? []).Select(step => step.Name == metadata.Name ? metadata : step)] }
+            : process)],
+    };
+
+    private static ToolCatalog ConfirmedCatalog() => WithInformationMetadata(Catalog, ConfirmedQuestions);
 
     [Fact]
     public async Task InformationStep_AnsweredByTheAgent_WithoutForms_IsRefused_AndNothingIsSubmitted()
     {
         StateIs("clinic", StateResponse(ConfirmedQuestions));
 
-        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), ConfirmedCatalog(), Cancel));
 
         Assert.Equal(McpErrorCodes.ConfirmationRequired, body["code"]?.GetValue<string>());
         Assert.Contains("Visit questions", body["message"]?.GetValue<string>(), StringComparison.Ordinal);
@@ -2232,7 +2260,7 @@ public sealed class KaleidoToolInvokerTests
         StateIs("clinic", StateResponse(ConfirmedQuestions));
         UserAnswersInASession(Confirmation(action, confirm));
 
-        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), ConfirmedCatalog(), Cancel));
 
         var form = Assert.Single(sessionForms);
         Assert.StartsWith("Confirm: submit the answers to Visit questions.", form.Message, StringComparison.Ordinal);
@@ -2255,13 +2283,13 @@ public sealed class KaleidoToolInvokerTests
         server.Setup(x => x.IsMrtrSupported).Returns(true);
         StateIs("clinic", StateResponse(ConfirmedQuestions));
 
-        var round = await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel);
+        var round = await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), ConfirmedCatalog(), Cancel);
 
         Assert.Empty(posts);
         Assert.StartsWith("kaleido-mcp-confirm:", round.InputRequired?.RequestState, StringComparison.Ordinal);
 
         await CreateSut(requireConfirmation: true).InvokeAsync(
-            Answer, Call(requestState: round.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation(action, confirm))), Catalog, Cancel);
+            Answer, Call(requestState: round.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation(action, confirm))), ConfirmedCatalog(), Cancel);
 
         Assert.Equal(submitted, posts.Count);
     }
@@ -2269,9 +2297,9 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task ConfirmedAnswersContinuation_RetainsTheVersionProtectedWithTheAnswers()
     {
-        var required = ConfirmedQuestions with { ExecuteUrl = VersionedQuestions().ExecuteUrl };
-        var catalog = VersionedCatalog();
-        StateIs("clinic", StateResponse(required));
+        var required = ConfirmedQuestions;
+        var catalog = WithInformationMetadata(VersionedCatalog(), required);
+        StateIs("clinic", StateResponse(required) with { ServiceVersion = "1" });
         var shown = Body(await CreateSut().InvokeAsync(State, Call(new { service = "clinic", processId = ProcessId }), catalog, Cancel));
         var token = shown["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
         processors.Setup(x => x.GetClient("clinic", "1")).Returns(services["clinic"].Object);
@@ -2305,11 +2333,11 @@ public sealed class KaleidoToolInvokerTests
         ClientShowsForms();
         server.Setup(x => x.IsMrtrSupported).Returns(true);
         StateIs("clinic", StateResponse(ConfirmedQuestions));
-        var round = await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel);
-        StateIs("clinic", StateResponse(ConfirmedQuestions with { InformationRequest = Questions with { ExchangeId = "asked-again" } }));
+        var round = await CreateSut(requireConfirmation: true).InvokeAsync(Answer, AnswerCall("urgent", "true"), ConfirmedCatalog(), Cancel);
+        StateIs("clinic", StateResponse(ConfirmedQuestions, information: Questions with { ExchangeId = "asked-again" }));
 
         var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(
-            Answer, Call(requestState: round.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation("accept", confirm: true))), Catalog, Cancel));
+            Answer, Call(requestState: round.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation("accept", confirm: true))), ConfirmedCatalog(), Cancel));
 
         Assert.Empty(posts);
         Assert.Contains("different questions", body["note"]?.GetValue<string>(), StringComparison.Ordinal);
@@ -2319,16 +2347,16 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task InformationStep_AnsweredInMrtrForms_ConfirmsInARound_ThenSubmitsOnce()
     {
-        var state = await MrtrStateAsync(ConfirmedQuestions);
+        var state = await MrtrStateAsync(ConfirmedQuestions, catalog: ConfirmedCatalog());
         StateIs("clinic", StateResponse(ConfirmedQuestions));
 
-        var confirm = await CreateSut(requireConfirmation: true).InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel);
+        var confirm = await CreateSut(requireConfirmation: true).InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), ConfirmedCatalog(), Cancel);
 
         Assert.Empty(posts);
         Assert.Equal("kaleido-confirm", Assert.Single(confirm.InputRequired?.InputRequests ?? new Dictionary<string, InputRequest>()).Key);
 
         await CreateSut(requireConfirmation: true).InvokeAsync(
-            Start, Call(requestState: confirm.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation("accept", confirm: true))), Catalog, Cancel);
+            Start, Call(requestState: confirm.InputRequired?.RequestState, inputResponses: Confirmed(Confirmation("accept", confirm: true))), ConfirmedCatalog(), Cancel);
 
         Assert.Equal(QuestionsRequired.Name, Assert.Single(posts).Step);
     }
@@ -2341,7 +2369,7 @@ public sealed class KaleidoToolInvokerTests
         UserAnswersInASession(Accepted(), Confirmation("decline", confirm: null));
         StepsReturn(StepResponse(required: ConfirmedQuestions));
 
-        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Start, Call(), Catalog, Cancel));
+        var body = Body(await CreateSut(requireConfirmation: true).InvokeAsync(Start, Call(), ConfirmedCatalog(), Cancel));
 
         Assert.Equal(2, sessionForms.Count);
         Assert.Equal("StartVisitStep", Assert.Single(posts).Step);
@@ -2355,7 +2383,7 @@ public sealed class KaleidoToolInvokerTests
         StateIs("clinic", StateResponse(ConfirmedQuestions));
         UserAnswersInASession();
 
-        await CreateSut(requireConfirmation: false).InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel);
+        await CreateSut(requireConfirmation: false).InvokeAsync(Answer, AnswerCall("urgent", "true"), ConfirmedCatalog(), Cancel);
 
         Assert.Empty(sessionForms);
         Assert.Single(posts);
@@ -2427,7 +2455,7 @@ public sealed class KaleidoToolInvokerTests
     public async Task Questions_InASession_SubmitTheAnswersOnTheVersionThatAsked()
     {
         UserAnswersInASession(Accepted());
-        StepsReturn(StepResponse(required: VersionedQuestions()), StepResponse(required: null));
+        StepsReturn(StepResponse(required: VersionedQuestions(), serviceVersion: "1"), StepResponse(required: null, serviceVersion: "1"));
         processors.Setup(x => x.GetClient("clinic", "1")).Returns(services["clinic"].Object);
 
         await CreateSut().InvokeAsync(Start with { ServiceVersion = "1" }, Call(), VersionedCatalog(), Cancel);
@@ -2458,7 +2486,7 @@ public sealed class KaleidoToolInvokerTests
     public async Task Questions_BeyondTheMaximumRounds_AreLeftForTheAgent_SayingMoreFollowed()
     {
         UserAnswersInASession(Accepted());
-        StepsReturn(StepResponse(required: QuestionsRequired), StepResponse(required: FollowUpRequired));
+        StepsReturn(StepResponse(required: QuestionsRequired), StepResponse(required: FollowUpRequired, information: FollowUpQuestions));
 
         var body = Body(await CreateSut(maxElicitationRounds: 1).InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -2525,7 +2553,7 @@ public sealed class KaleidoToolInvokerTests
     {
         var state = await MrtrStateAsync();
         StateIs("clinic", StateResponse(QuestionsRequired));
-        StepReturns(StepResponse(required: FollowUpRequired));
+        StepReturns(StepResponse(required: FollowUpRequired, information: FollowUpQuestions));
 
         var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel);
 
@@ -2536,7 +2564,7 @@ public sealed class KaleidoToolInvokerTests
         Assert.Equal(["visit-intake"], decoded?["answered"]?.AsArray().Select(x => x?.GetValue<string>()));
 
         posts.Clear();
-        StateIs("clinic", StateResponse(FollowUpRequired));
+        StateIs("clinic", StateResponse(FollowUpRequired, information: FollowUpQuestions));
         StepReturns(StepResponse(required: CloseRequired));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(requestState: next, inputResponses: Answered("accept")), Catalog, Cancel));
@@ -2573,7 +2601,7 @@ public sealed class KaleidoToolInvokerTests
     public async Task AStepResult_CarriesTheDescriptionsOfItsFields()
     {
         var start = Start with { OutputDescriptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["VisitId"] = "The visit opened." } };
-        StepReturns(StepResponse() with { Result = JsonSerializer.SerializeToElement(new { visitId = "v-1" }) });
+        StepReturns(WithResponse(StepResponse(), JsonSerializer.SerializeToElement(new { visitId = "v-1" })));
 
         var body = Body(await CreateSut().InvokeAsync(start, Call(), new ToolCatalog { Tools = [start, Close, Answer, State] }, Cancel));
 
@@ -2596,7 +2624,7 @@ public sealed class KaleidoToolInvokerTests
             OutputDescriptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["VisitId"] = "The new result." },
         };
         processors.Setup(x => x.GetClient("clinic", "2")).Returns(services["clinic"].Object);
-        StepReturns(StepResponse() with { Result = JsonSerializer.SerializeToElement(new { visitId = "v-2" }) });
+        StepReturns(WithResponse(StepResponse(), JsonSerializer.SerializeToElement(new { visitId = "v-2" })));
         var catalog = new ToolCatalog { Tools = [older, newer, Close, Answer, State] };
 
         var body = Body(await CreateSut().InvokeAsync(newer, Call(), catalog, Cancel));
@@ -2625,7 +2653,7 @@ public sealed class KaleidoToolInvokerTests
         ]
     };
 
-    private static readonly ProcessRequiredStep ConditionalRequired = QuestionsRequired with { InformationRequest = ConditionalQuestions };
+    private static readonly ProcessStepResponse ConditionalRequired = QuestionsRequired;
 
     private readonly List<InformationRequest> roundForms = [];
 
@@ -2655,10 +2683,10 @@ public sealed class KaleidoToolInvokerTests
         FormsAnswer(Answers("urgent", "true"), Answers("reason", "Chest pain"));
         ClientShowsForms();
         server.Setup(x => x.IsMrtrSupported).Returns(true);
-        StepReturns(StepResponse(required: ConditionalRequired));
+        StepReturns(StepResponse(required: ConditionalRequired, information: ConditionalQuestions));
         var first = (await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel)).InputRequired?.RequestState ?? throw new Xunit.Sdk.XunitException("No form.");
         posts.Clear();
-        StateIs("clinic", StateResponse(ConditionalRequired));
+        StateIs("clinic", StateResponse(ConditionalRequired, information: ConditionalQuestions));
 
         var second = (await CreateSut().InvokeAsync(Start, Call(requestState: first, inputResponses: Answered("accept")), Catalog, Cancel)).InputRequired?.RequestState
             ?? throw new Xunit.Sdk.XunitException("No follow-up form.");
@@ -2679,8 +2707,8 @@ public sealed class KaleidoToolInvokerTests
     public async Task ConditionalQuestions_WithMrtr_WhenTheAnswerDisablesTheFollowUp_SubmitAtOnce()
     {
         FormsAnswer(Answers("urgent", "false"));
-        var state = await MrtrStateAsync(ConditionalRequired);
-        StateIs("clinic", StateResponse(ConditionalRequired));
+        var state = await MrtrStateAsync(ConditionalRequired, information: ConditionalQuestions);
+        StateIs("clinic", StateResponse(ConditionalRequired, information: ConditionalQuestions));
         StepReturns(StepResponse(required: CloseRequired));
 
         var outcome = await CreateSut().InvokeAsync(Start, Call(requestState: state, inputResponses: Answered("accept")), Catalog, Cancel);
@@ -2694,7 +2722,7 @@ public sealed class KaleidoToolInvokerTests
     {
         FormsAnswer(Answers("urgent", "true"), Answers("reason", "Chest pain"));
         UserAnswersInASession(Accepted(), Accepted());
-        StepsReturn(StepResponse(required: ConditionalRequired), StepResponse(required: CloseRequired));
+        StepsReturn(StepResponse(required: ConditionalRequired, information: ConditionalQuestions), StepResponse(required: CloseRequired));
 
         await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel);
 
@@ -2708,7 +2736,7 @@ public sealed class KaleidoToolInvokerTests
     {
         FormsAnswer(Answers("urgent", "true"));
         UserAnswersInASession(Accepted(), Declined());
-        StepReturns(StepResponse(required: ConditionalRequired));
+        StepReturns(StepResponse(required: ConditionalRequired, information: ConditionalQuestions));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -2722,7 +2750,7 @@ public sealed class KaleidoToolInvokerTests
     {
         FormsAnswer(Answers("urgent", "true"), []);
         UserAnswersInASession(Accepted(), Accepted());
-        StepReturns(StepResponse(required: ConditionalRequired));
+        StepReturns(StepResponse(required: ConditionalRequired, information: ConditionalQuestions));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -2735,7 +2763,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task ConditionalQuestions_ForTheAgent_ListOnlyTheQuestionsThatApplyNow()
     {
-        StepReturns(StepResponse(required: ConditionalRequired));
+        StepReturns(StepResponse(required: ConditionalRequired, information: ConditionalQuestions));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -2749,7 +2777,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task Questions_ForTheAgent_ComeWithATokenForTheirExchange()
     {
-        StepReturns(StepResponse(required: ConditionalRequired));
+        StepReturns(StepResponse(required: ConditionalRequired, information: ConditionalQuestions));
 
         var body = Body(await CreateSut().InvokeAsync(Start, Call(), Catalog, Cancel));
 
@@ -2781,7 +2809,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task ConditionalQuestions_ForTheAgent_ReturnTheFollowUpWithAToken_ThenSubmitEveryAnswer()
     {
-        StateIs("clinic", StateResponse(ConditionalRequired));
+        StateIs("clinic", StateResponse(ConditionalRequired, information: ConditionalQuestions));
 
         var first = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
 
@@ -2801,7 +2829,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task ConditionalQuestions_ForTheAgent_AnAnswerToADisabledQuestion_IsNotSubmitted()
     {
-        StateIs("clinic", StateResponse(ConditionalRequired));
+        StateIs("clinic", StateResponse(ConditionalRequired, information: ConditionalQuestions));
         var call = Call(new
         {
             service = "clinic",
@@ -2825,7 +2853,7 @@ public sealed class KaleidoToolInvokerTests
     [InlineData("none")]
     public async Task ConditionalQuestions_ForTheAgent_ATokenForSomethingElse_IsRefused_AndNothingIsSubmitted(string kind)
     {
-        StateIs("clinic", StateResponse(ConditionalRequired));
+        StateIs("clinic", StateResponse(ConditionalRequired, information: ConditionalQuestions));
         var first = Body(await CreateSut().InvokeAsync(Answer, AnswerCall("urgent", "true"), Catalog, Cancel));
         var token = first["next"]?[KaleidoToolInvoker.AnswersTokenArgument]?.GetValue<string>() ?? throw new Xunit.Sdk.XunitException("No token.");
         var changed = kind switch
@@ -2998,9 +3026,9 @@ public sealed class KaleidoToolInvokerTests
         {
             Steps =
             [
-                new ProcessStepHistory { StepName = "StartVisitStep", Status = StepExecutionStatus.Completed },
-                new ProcessStepHistory { StepName = "CheckInStep", Status = StepExecutionStatus.Failed },
-                new ProcessStepHistory { StepName = "ScanStep", Status = StepExecutionStatus.Exception }
+                new ProcessStateStep { StepName = "StartVisitStep", Status = StepExecutionStatus.Completed },
+                new ProcessStateStep { StepName = "CheckInStep", Status = StepExecutionStatus.Failed },
+                new ProcessStateStep { StepName = "ScanStep", Status = StepExecutionStatus.Exception }
             ]
         });
 
@@ -3014,11 +3042,11 @@ public sealed class KaleidoToolInvokerTests
 
     // ── Front door: details ──────────────────────────────────────────────────
 
-    private static readonly KaleidoTool HiddenScan = Scan with
+    private static readonly KaleidoTool HiddenScan = LocalScan with
     {
         Definition = new Tool
         {
-            Name = "radiology_capture_scan",
+            Name = "clinic_capture_scan",
             InputSchema = JsonSerializer.SerializeToElement(new { type = "object" })
         },
         Listed = false,
@@ -3039,7 +3067,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task FrontDoor_Next_DescribesAnUnlistedAvailableStep_AndItsLookups()
     {
-        StepReturns(StepResponse(available: [new ProcessStepSummary { Name = "CaptureScanStep", ExecuteUrl = Scan.Url }]));
+        StepReturns(StepResponse(available: ["CaptureScanStep"]));
 
         var next = Body(await CreateSut().InvokeAsync(Start, Call(), DetailsCatalog, Cancel))["next"];
         var scan = next?["available"]?[0];
@@ -3062,7 +3090,7 @@ public sealed class KaleidoToolInvokerTests
     [Fact]
     public async Task FrontDoor_Next_WithOnlyListedSteps_SaysNothingAboutRunningThem()
     {
-        StepReturns(StepResponse(required: CloseRequired, available: [new ProcessStepSummary { Name = "StartVisitStep", ExecuteUrl = Start.Url }]));
+        StepReturns(StepResponse(required: CloseRequired, available: ["StartVisitStep"]));
 
         var next = Body(await CreateSut().InvokeAsync(Start, Call(), DetailsCatalog, Cancel))["next"];
 
@@ -3166,11 +3194,11 @@ public sealed class KaleidoToolInvokerTests
 
     private void PatientsFound(int total, params JsonObject[] rows)
     {
-        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
-            .Callback((string source, QueryApiRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+            .Callback((string source, QueryRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
             .ReturnsAsync(() => new QueryResult<JsonObject>(total, 0, 10, [.. rows.Select(x => x.DeepClone().AsObject())]));
-        clinicQueries.Setup(x => x.QueryViewAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
-            .Callback((string source, string view, QueryApiRequest<JsonObject> request, CancellationToken _) => queries.Add((source, view, request)))
+        clinicQueries.Setup(x => x.QueryViewAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<QueryRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+            .Callback((string source, string view, QueryRequest<JsonObject> request, CancellationToken _) => queries.Add((source, view, request)))
             .ReturnsAsync(() => new QueryResult<JsonObject>(total, 0, 10, [.. rows.Select(x => x.DeepClone().AsObject())]));
     }
 
@@ -3415,7 +3443,7 @@ public sealed class KaleidoToolInvokerTests
         var (source, view, request) = Assert.Single(queries);
         Assert.Equal("Room", source);
         Assert.Equal("FreeRooms", view);
-        Assert.Equal(ProcessId.ToString(), request.Parameters?["processId"]?.GetValue<string>());
+        Assert.Equal(ProcessId.ToString(), request.ViewParameters?["processId"]?.GetValue<string>());
         Assert.Equal([ProcessId], forwardedProcessIds);
         Assert.Equal("Find Room", forms[0].Title);
         Assert.Equal("Search Room: enter details that identify the record.", forms[0].Items[0].Text);
@@ -3432,7 +3460,7 @@ public sealed class KaleidoToolInvokerTests
 
         await CreateSut().InvokeAsync(BookRoom, Call(requestState: searchState, inputResponses: LookupAnswered()), RoomCatalog, Cancel);
 
-        Assert.Null(Assert.Single(queries).Request.Parameters);
+        Assert.Null(Assert.Single(queries).Request.ViewParameters);
         Assert.Empty(forwardedProcessIds);
     }
 
@@ -3440,8 +3468,8 @@ public sealed class KaleidoToolInvokerTests
     public async Task ALookupStateOfALookupWithoutASearch_SearchesItsSource_AndLabelsResultsByTheirInputs()
     {
         MrtrLookupForms();
-        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryApiRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
-            .Callback((string source, QueryApiRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
+        clinicQueries.Setup(x => x.QuerySourceAsync<JsonObject, JsonObject>(It.IsAny<string>(), It.IsAny<QueryRequest<JsonObject>>(), It.IsAny<CancellationToken>()))
+            .Callback((string source, QueryRequest<JsonObject> request, CancellationToken _) => queries.Add((source, null, request)))
             .ReturnsAsync(new QueryResult<JsonObject>(1, 0, 10, [new JsonObject { ["wardId"] = "W-1", ["isInNetwork"] = true, ["isOpen"] = false, ["is"] = true }]));
         var searchState = Recode(await LookupSearchStateAsync(BookRoom, RoomCatalog), "kaleido-mcp-lookup:", x => x["group"] = "ward");
 
@@ -3450,7 +3478,7 @@ public sealed class KaleidoToolInvokerTests
         var (source, view, request) = Assert.Single(queries);
         Assert.Equal("Ward", source);
         Assert.Null(view);
-        Assert.Null(request.Parameters);
+        Assert.Null(request.ViewParameters);
         Assert.Equal("Choose the Ward result", forms[^1].Title);
         Assert.Equal("W-1 · In network · not open · Is", forms[^1].Items[0].Options[0].Display);
     }

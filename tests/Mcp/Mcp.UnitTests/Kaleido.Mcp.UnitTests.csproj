@@ -6,8 +6,25 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Mcp\Mcp\Kaleido.Mcp.csproj" />
-		<ProjectReference Include="..\..\..\src\Platform\Kaleido.Platform.csproj" />
-		<ProjectReference Include="..\..\..\src\Http\Http\Kaleido.Http.csproj" />
-		<ProjectReference Include="..\..\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+		<ProjectReference Include="..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="System.Net" />
+		<Using Include="System.Text.Json" />
+		<Using Include="System.Text.Json.Nodes" />
+		<Using Include="Kaleido.Http" />
+		<Using Include="Kaleido.Http.Client.Calls" />
+		<Using Include="Kaleido.Http.Client.Configuration" />
+		<Using Include="Kaleido.Http.Client.Transport" />
+		<Using Include="Kaleido.Http.Server.Observability" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Client" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Queryable" />
+		<Using Include="Kaleido.Queryable.Client" />
+		<Using Include="Kaleido.Queryable.Query" />
+		<Using Include="Kaleido.Registry" />
+		<Using Include="Kaleido.Registry.Client" />
+		<Using Include="Moq" />
 	</ItemGroup>
 </Project>

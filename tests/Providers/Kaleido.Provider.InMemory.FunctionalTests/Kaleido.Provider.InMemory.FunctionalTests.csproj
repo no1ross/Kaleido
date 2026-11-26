@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Hosting" />
+		<ProjectReference Include="..\..\..\src\Providers\Kaleido.Provider.InMemory\Kaleido.Provider.InMemory.csproj" />
+		<ProjectReference Include="..\..\..\src\Composed\Hosts\Kaleido.Hosting\Kaleido.Hosting.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido" />
+		<Using Include="Kaleido.Eventing" />
+		<Using Include="Kaleido.Hosting" />
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Context" />
+		<Using Include="Kaleido.Process.Execution" />
+		<Using Include="Kaleido.Process.Server.Idempotency" />
+		<Using Include="Kaleido.Process.Storage" />
+		<Using Include="Kaleido.Provider.InMemory" />
+		<Using Include="Kaleido.Storage" />
+	</ItemGroup>
+</Project>

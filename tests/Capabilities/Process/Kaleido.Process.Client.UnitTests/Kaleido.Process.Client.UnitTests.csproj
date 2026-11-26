@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\..\src\Capabilities\Process\Kaleido.Process.Client\Kaleido.Process.Client.csproj" />
+		<ProjectReference Include="..\..\..\Core\Kaleido.UnitTests\Kaleido.UnitTests.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Using Include="Kaleido.Process" />
+		<Using Include="Kaleido.Process.Client" />
+	</ItemGroup>
+</Project>
