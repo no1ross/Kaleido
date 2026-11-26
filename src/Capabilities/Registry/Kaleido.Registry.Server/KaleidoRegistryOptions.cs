@@ -80,7 +80,7 @@ public sealed record KaleidoRegistryOptions : IKaleidoOptions
 
     internal KaleidoRegistryOptions Snapshot() => this with
     {
-        Registrants = Registrants.ToDictionary(x => x.Key, x => (IReadOnlyList<string>)[.. x.Value], StringComparer.OrdinalIgnoreCase),
+        Registrants = Registrants.ToDictionary(x => x.Key, x => (IReadOnlyList<string>)x.Value.ToArray(), StringComparer.OrdinalIgnoreCase),
         Expected = [.. Expected.Select(x => x with { Versions = [.. x.Versions] })],
         Cache = Cache with { },
     };

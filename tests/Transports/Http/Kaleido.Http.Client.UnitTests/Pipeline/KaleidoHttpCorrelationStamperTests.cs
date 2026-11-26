@@ -68,6 +68,23 @@ public sealed class KaleidoHttpCorrelationStamperTests : Kaleido.UnitTests.SutFi
     }
 
     [Fact]
+    public void Stamp_ExecutingStepWithoutLocalService_DoesNotReuseInboundCallingIdentity()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://gateway.test/registry");
+        var context = new KaleidoCorrelationContext
+        {
+            ExecutingStepName = "local-step",
+            CallingProcessorName = "inbound-service",
+            CallingStepName = "inbound-step",
+        };
+
+        request.StampKaleidoCorrelation(context);
+
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingProcessor));
+        Assert.False(request.Headers.Contains(KaleidoCorrelationHeaders.CallingStep));
+    }
+
+    [Fact]
     public void Stamp_OmitsMissingOrSanitizedEmptyValues()
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://gateway.test/registry");

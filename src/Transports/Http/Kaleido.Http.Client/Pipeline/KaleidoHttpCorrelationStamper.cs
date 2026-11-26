@@ -27,7 +27,7 @@ internal static class KaleidoHttpCorrelationStamper
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.ProcessId, processId.ToString("D"));
         }
 
-        if (context.ExecutingStepName.Sanitize() is { } step && localServiceName.Sanitize() is { } service)
+        if (context.ExecutingStepName.Sanitize() is { } step && localServiceName?.Sanitize() is { } service)
         {
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.CallingProcessor, service);
             request.Headers.TryAddWithoutValidation(KaleidoCorrelationHeaders.CallingStep, step);

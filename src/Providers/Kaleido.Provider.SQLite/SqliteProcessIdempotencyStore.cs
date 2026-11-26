@@ -1,5 +1,6 @@
 using System.Globalization;
 using Kaleido.Provider.SQLite.Entities;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kaleido.Provider.SQLite;
@@ -65,13 +66,17 @@ internal sealed class SqliteProcessIdempotencyStore(
 
         // Only the admission that holds the key, while it is in progress; never an insert.
         var nowTicks = time.GetUtcNow().UtcTicks;
+        var replayPayload = new SqliteParameter("@replayPayload", SqliteType.Blob)
+        {
+            Value = (object?)result.Replay?.Payload ?? DBNull.Value,
+        };
         var updated = await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
             UPDATE IdempotentResults
             SET State = {(int)result.State},
                 LeaseUntilUtc = {result.LeaseUntilUtc.UtcTicks},
                 ReplayFormat = {result.Replay?.Format},
-                ReplayPayload = {result.Replay?.Payload},
+                ReplayPayload = {replayPayload},
                 ExpiresUtc = {result.ExpiresUtc.UtcTicks}
             WHERE Key = {result.Key} AND AdmissionId = {Text(result.AdmissionId)} AND State = {(int)IdempotencyState.InProgress} AND ExpiresUtc > {nowTicks}
             """,

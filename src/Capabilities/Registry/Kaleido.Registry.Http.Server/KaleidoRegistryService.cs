@@ -286,11 +286,8 @@ internal sealed partial class KaleidoRegistryService(
     // content: an unchanged view keeps its revision for that caller, so its ETag still yields 304.
     private string ComputeRevision(KaleidoRegistry response)
     {
-        var user = httpContextAccessor.HttpContext?.User;
-        var authenticated = user?.Identity?.IsAuthenticated == true;
-        var subject = authenticated ? user?.FindFirst("sub") ?? user?.FindFirst(ClaimTypes.NameIdentifier) : null;
-        var caller = authenticated
-            ? subject is { Value.Length: > 0 }
+        var caller = httpContextAccessor.HttpContext?.User is { Identity.IsAuthenticated: true } user
+            ? (user.FindFirst("sub") ?? user.FindFirst(ClaimTypes.NameIdentifier)) is { Value.Length: > 0 } subject
                 ? $"{subject.Issuer}\u001f{subject.Value}"
                 : Guid.NewGuid().ToString("N")
             : null;

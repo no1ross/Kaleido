@@ -115,6 +115,29 @@ public sealed class KaleidoRegistryServiceTests : Kaleido.UnitTests.SutFixture
         Assert.NotEqual(first.Revision, second.Revision);
     }
 
+    [Theory]
+    [InlineData("sub")]
+    [InlineData(ClaimTypes.NameIdentifier)]
+    public async Task GetForCaller_AuthenticatedSubject_UsesAStableCallerScopedRevision(string claimType)
+    {
+        AllowEverything();
+        using var services = new ServiceCollection().BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(claimType, "alice")], "test")),
+            RequestServices = services,
+        };
+        var sut = CreateSut(httpContextAccessor: Mock.Of<IHttpContextAccessor>(x => x.HttpContext == context));
+
+        var first = await sut.GetForCallerAsync(refresh: false, Cancel);
+        var repeated = await sut.GetForCallerAsync(refresh: false, Cancel);
+        context.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(claimType, "bob")], "test"));
+        var anotherCaller = await sut.GetForCallerAsync(refresh: false, Cancel);
+
+        Assert.Equal(first.Revision, repeated.Revision);
+        Assert.NotEqual(first.Revision, anotherCaller.Revision);
+    }
+
     [Fact]
     public async Task GetForCaller_DoesNotExposeARouteOfAHiddenService()
     {

@@ -59,4 +59,17 @@ public sealed class KaleidoRegistryOptionsTests
             Expected = [new KaleidoRegistryExpectedService { ServiceName = "radiology", Versions = ["2026-11"] }],
         });
     }
+
+    [Fact]
+    public void Snapshot_ClonesRegistrantIdsAndPreservesCaseInsensitiveNames()
+    {
+        var clients = new List<string> { "client-a" };
+        var sut = Sut with { Registrants = new Dictionary<string, IReadOnlyList<string>> { ["radiology"] = clients } };
+
+        var snapshot = sut.Snapshot();
+        clients[0] = "client-b";
+
+        Assert.Equal("client-a", Assert.Single(snapshot.Registrants["RADIOLOGY"]));
+        Assert.NotSame(clients, snapshot.Registrants["radiology"]);
+    }
 }
