@@ -66,20 +66,37 @@ internal sealed class SqliteProcessIdempotencyStore(
 
         // Only the admission that holds the key, while it is in progress; never an insert.
         var nowTicks = time.GetUtcNow().UtcTicks;
+        var replayFormat = new SqliteParameter("@replayFormat", SqliteType.Text)
+        {
+            Value = (object?)result.Replay?.Format ?? DBNull.Value,
+        };
         var replayPayload = new SqliteParameter("@replayPayload", SqliteType.Blob)
         {
             Value = (object?)result.Replay?.Payload ?? DBNull.Value,
         };
-        var updated = await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"""
+        object[] parameters =
+        [
+            (int)result.State,
+            result.LeaseUntilUtc.UtcTicks,
+            replayFormat,
+            replayPayload,
+            result.ExpiresUtc.UtcTicks,
+            result.Key,
+            Text(result.AdmissionId),
+            (int)IdempotencyState.InProgress,
+            nowTicks,
+        ];
+        var updated = await dbContext.Database.ExecuteSqlRawAsync(
+            """
             UPDATE IdempotentResults
-            SET State = {(int)result.State},
-                LeaseUntilUtc = {result.LeaseUntilUtc.UtcTicks},
-                ReplayFormat = {result.Replay?.Format},
-                ReplayPayload = {replayPayload},
-                ExpiresUtc = {result.ExpiresUtc.UtcTicks}
-            WHERE Key = {result.Key} AND AdmissionId = {Text(result.AdmissionId)} AND State = {(int)IdempotencyState.InProgress} AND ExpiresUtc > {nowTicks}
+            SET State = {0},
+                LeaseUntilUtc = {1},
+                ReplayFormat = {2},
+                ReplayPayload = {3},
+                ExpiresUtc = {4}
+            WHERE Key = {5} AND AdmissionId = {6} AND State = {7} AND ExpiresUtc > {8}
             """,
+            parameters,
             cancellationToken);
 
         return updated == 1;

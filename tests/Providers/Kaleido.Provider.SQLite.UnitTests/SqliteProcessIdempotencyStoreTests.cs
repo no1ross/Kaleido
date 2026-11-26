@@ -178,6 +178,9 @@ public sealed class SqliteProcessIdempotencyStoreTests
         Assert.True(await sut.CompleteAsync(admission with { State = IdempotencyState.OutcomeUnknown }, TestContext.Current.CancellationToken));
 
         Assert.Equal(IdempotencyState.OutcomeUnknown, (await sut.AdmitAsync(Admission("svc:alice:k1"), TestContext.Current.CancellationToken))?.State);
+        var stored = await dbContext.IdempotentResults.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Null(stored.ReplayFormat);
+        Assert.Null(stored.ReplayPayload);
     }
 
     // A finalized record is final: neither a second completion nor a release changes it.
