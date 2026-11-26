@@ -23,6 +23,7 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
     /// <returns>The same root, ready for another explicit mapping or host conventions.</returns>
     public static IKaleidoHttpEndpointBuilder MapProcess(this IKaleidoHttpEndpointBuilder builder)
     {
+        ArgumentNullException.ThrowIfNull(builder);
         var root = RequireRoot(builder);
         root.RequireAvailable("Process");
         RequireLocalRuntime<IProcessorRuntime>(root.Endpoints, ProcessorErrorCodes.InvalidRegistration, "AddProcess()");
@@ -39,6 +40,7 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
     /// <returns>The same root, ready for another explicit mapping or host conventions.</returns>
     public static IKaleidoHttpEndpointBuilder MapQueryable(this IKaleidoHttpEndpointBuilder builder)
     {
+        ArgumentNullException.ThrowIfNull(builder);
         var root = RequireRoot(builder);
         root.RequireAvailable("Queryable");
         RequireLocalRuntime<IQueryableService>(root.Endpoints, QueryableErrorCodes.InvalidRegistration, "AddQueryable()");
@@ -54,6 +56,7 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
     /// <returns>The same root, ready for authority host conventions.</returns>
     public static IKaleidoHttpEndpointBuilder MapCentralRegistry(this IKaleidoHttpEndpointBuilder builder)
     {
+        ArgumentNullException.ThrowIfNull(builder);
         var root = RequireRoot(builder);
         root.RequireAvailable("CentralRegistry");
         root.Endpoints.MapKaleidoControlRegistry();
@@ -61,13 +64,10 @@ public static partial class KaleidoEndpointRouteBuilderExtensions
         return builder;
     }
 
-    private static KaleidoHttpEndpointBuilder RequireRoot(IKaleidoHttpEndpointBuilder? builder)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        return builder as KaleidoHttpEndpointBuilder
+    private static KaleidoHttpEndpointBuilder RequireRoot(IKaleidoHttpEndpointBuilder builder) =>
+        builder as KaleidoHttpEndpointBuilder
             ?? throw new KaleidoConfigurationException(ConfigurationErrorCodes.InvalidOptions,
                 "Use MapKaleido() to create a Kaleido HTTP endpoint composition root.");
-    }
 
     private static void RequireLocalRuntime<TService>(IEndpointRouteBuilder endpoints, string code, string registration)
     {

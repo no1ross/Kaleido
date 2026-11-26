@@ -12,5 +12,5 @@ public static class ProcessServerServiceCollectionExtensions
     /// <exception cref="KaleidoConfigurationException">Another idempotency store has already been chosen.</exception>
     public static IKaleidoBuilder AddIdempotencyStore<TStore>(this IKaleidoBuilder builder)
         where TStore : class, IProcessIdempotencyStore =>
-        KaleidoServiceCollectionExtensions.Replace<IProcessIdempotencyStore, TStore, TStore>(builder, "idempotency store");
+        builder.Replace<IProcessIdempotencyStore, TStore, TStore>("idempotency store");
 }

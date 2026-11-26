@@ -261,7 +261,7 @@ internal sealed class StoreRegistrySource(
     {
         var builds = contents.Registrations
             .Select(x => $"{x.ServiceName}@{x.ServiceVersion}@{x.BuildVersion}")
-            .OrderBy(x => x, StringComparer.Ordinal);
+            .Order(StringComparer.Ordinal);
         var selected = contents.Instances
             .GroupBy(x => (x.ServiceName, x.ServiceVersion))
             .SelectMany(group =>
@@ -271,7 +271,7 @@ internal sealed class StoreRegistrySource(
                 return chosen.Select(x => $"{x.ServiceName}@{x.ServiceVersion}@{x.BuildVersion}");
             })
             .Distinct(StringComparer.Ordinal)
-            .OrderBy(x => x, StringComparer.Ordinal);
+            .Order(StringComparer.Ordinal);
         return [.. builds, "selected", .. selected];
     }
 

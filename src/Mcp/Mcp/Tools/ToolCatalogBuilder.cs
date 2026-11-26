@@ -340,7 +340,7 @@ internal sealed partial class ToolCatalogBuilder(
             ["type"] = "string",
             ["description"] =
                 "Free-text search. Matches: " +
-                string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode?.ToString() ?? "contains")}{(explained.Contains(x) ? string.Empty : Explain(x.Description))})")) + ".",
+                string.Join(", ", searchable.Select(x => $"{x.Name} ({Camel(x.MatchMode ?? "contains")}{(explained.Contains(x) ? string.Empty : Explain(x.Description))})")) + ".",
         };
 
     private static JsonObject FiltersSchema(QueryableRegistryField[] filterable) =>
@@ -349,7 +349,7 @@ internal sealed partial class ToolCatalogBuilder(
             ["type"] = "array",
             ["description"] =
                 "Conditions, all of which must match. Fields and their operators: " +
-                string.Join("; ", filterable.Select(x => $"{x.Name} ({DescribeType(x.DataType)}{Explain(x.Description)}): {string.Join(", ", x.FilterOperators.Select(o => Camel(o.ToString())))}")) +
+                string.Join("; ", filterable.Select(x => $"{x.Name} ({DescribeType(x.DataType)}{Explain(x.Description)}): {string.Join(", ", x.FilterOperators.Select(Camel))}")) +
                 ". Pass values typed like the field (in/between take several values; isNull/isTrue take none).",
             ["items"] = new JsonObject
             {
@@ -357,7 +357,7 @@ internal sealed partial class ToolCatalogBuilder(
                 ["properties"] = new JsonObject
                 {
                     ["field"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.Select(x => x.Name)) },
-                    ["operator"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.SelectMany(x => x.FilterOperators).Select(x => Camel(x.ToString())).Distinct(StringComparer.Ordinal)) },
+                    ["operator"] = new JsonObject { ["type"] = "string", ["enum"] = Strings(filterable.SelectMany(x => x.FilterOperators).Select(Camel).Distinct(StringComparer.Ordinal)) },
                     ["values"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject() },
                 },
                 ["required"] = new JsonArray("field", "operator"),

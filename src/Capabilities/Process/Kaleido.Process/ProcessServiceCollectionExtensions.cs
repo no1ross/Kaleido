@@ -73,7 +73,7 @@ public static class ProcessServiceCollectionExtensions
     /// <exception cref="KaleidoConfigurationException">Another context store has already been chosen.</exception>
     public static IKaleidoBuilder AddContextStore<TStore>(this IKaleidoBuilder builder)
         where TStore : class, IProcessContextStore =>
-        KaleidoServiceCollectionExtensions.Replace<IProcessContextStore, TStore, TStore>(builder, "context store");
+        builder.Replace<IProcessContextStore, TStore, TStore>("context store");
 
     /// <summary>Registers the scoped transaction used to save Process state and its event atomically on one database.</summary>
     /// <typeparam name="TTransactions">The persistence-specific transaction implementation.</typeparam>
@@ -82,7 +82,7 @@ public static class ProcessServiceCollectionExtensions
     /// <exception cref="KaleidoConfigurationException">Another transaction implementation has already been chosen.</exception>
     public static IKaleidoBuilder AddTransactions<TTransactions>(this IKaleidoBuilder builder)
         where TTransactions : class, IProcessTransactions =>
-        KaleidoServiceCollectionExtensions.Replace<IProcessTransactions, TTransactions, NoProcessTransactions>(builder, "transactions");
+        builder.Replace<IProcessTransactions, TTransactions, NoProcessTransactions>("transactions");
 
     private static void RegisterRegistries(
         IKaleidoBuilder builder,

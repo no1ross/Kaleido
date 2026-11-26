@@ -36,11 +36,9 @@ public sealed class TestControlRegistry : IAsyncDisposable
                 {
                     services.AddRouting();
                     services.AddTestJwtBearer();
-                    services.AddAuthorization(policies =>
-                    {
-                        policies.AddPolicy("registry-registrant", policy => policy.RequireRole("registrant"));
-                        policies.AddPolicy("registry-reader", policy => policy.RequireRole("registry-reader"));
-                    });
+                    services.AddAuthorizationBuilder()
+                        .AddPolicy("registry-registrant", policy => policy.RequireRole("registrant"))
+                        .AddPolicy("registry-reader", policy => policy.RequireRole("registry-reader"));
                     services.AddSingleton<TimeProvider>(registry.time);
                     services.Configure<MemoryCacheOptions>(options => options.Clock = new RegistryFakeClock(registry.time));
                     services.AddKaleido(new ConfigurationBuilder().Build(), new()
