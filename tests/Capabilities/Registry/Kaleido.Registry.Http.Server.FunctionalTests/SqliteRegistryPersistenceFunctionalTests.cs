@@ -96,6 +96,7 @@ public sealed class SqliteRegistryPersistenceFunctionalTests
             using var primed = await firstClient.GetAsync("/registry", Cancel);
             Assert.Equal(HttpStatusCode.OK, primed.StatusCode);
             var source = Assert.IsType<KaleidoRegistry>(await primed.Content.ReadFromJsonAsync<KaleidoRegistry>(KaleidoJsonOptions.Options, Cancel));
+            await distributed.ViewWritten.WaitAsync(TimeSpan.FromSeconds(10), Cancel);
             Assert.NotEmpty(distributed.WrittenKeys);
             using var remote = await secondClient.GetAsync("/registry", Cancel);
             Assert.Equal(HttpStatusCode.OK, remote.StatusCode);
@@ -210,8 +211,11 @@ public sealed class SqliteRegistryPersistenceFunctionalTests
 
     private sealed class ObservingDistributedCache(MemoryDistributedCache inner) : IDistributedCache
     {
+        private readonly TaskCompletionSource viewWritten = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public ConcurrentQueue<string> WrittenKeys { get; } = new();
         public ConcurrentQueue<string> ReadKeys { get; } = new();
+        public Task ViewWritten => viewWritten.Task;
         public byte[]? Get(string key)
         {
             ReadKeys.Enqueue(key);
@@ -228,13 +232,21 @@ public sealed class SqliteRegistryPersistenceFunctionalTests
         public Task RemoveAsync(string key, CancellationToken token = default) => inner.RemoveAsync(key, token);
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
         {
-            WrittenKeys.Enqueue(key);
             inner.Set(key, value, options);
+            RecordWrite(key);
         }
-        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+        public async Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+        {
+            await inner.SetAsync(key, value, options, token);
+            RecordWrite(key);
+        }
+        private void RecordWrite(string key)
         {
             WrittenKeys.Enqueue(key);
-            return inner.SetAsync(key, value, options, token);
+            if (key.StartsWith("kaleido:registry:view", StringComparison.Ordinal))
+            {
+                viewWritten.TrySetResult();
+            }
         }
     }
 
